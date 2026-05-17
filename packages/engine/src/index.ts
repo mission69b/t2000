@@ -121,6 +121,23 @@ export type { SSEEvent } from './streaming.js';
 export { withStreamState } from './stream-state.js';
 export type { StreamState, StreamStateEvent } from './stream-state.js';
 
+// [SPEC 37 v0.7a Phase 5 Slice C / v2.2.0] Stream checkpoint store —
+// pluggable per-stream EngineEvent log for page-reload / cold-start
+// resume of the LIVE stream. Wire by setting `EngineConfig.streamCheckpointStore`
+// (engine then emits `stream_started` first and appends every event
+// fire-and-forget); host re-passes the streamId as `EngineConfig.resumeStreamId`
+// on reconnect. The CLI / MCP / tests / single-instance dev should use
+// the in-memory default; multi-instance hosts (audric on Vercel) need
+// an Upstash-backed impl.
+export {
+  InMemoryStreamCheckpointStore,
+  detectInFlightTool,
+} from './stream-checkpoint.js';
+export type {
+  StreamCheckpointStore,
+  InFlightToolDetection,
+} from './stream-checkpoint.js';
+
 // Session store
 export { MemorySessionStore } from './session.js';
 export type { SessionData, SessionStore } from './session.js';

@@ -358,7 +358,26 @@ export type EngineEvent =
   | {
       type: 'stream_state';
       state: 'routing' | 'quoting' | 'confirming' | 'settling' | 'done';
-    };
+    }
+  /**
+   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] Emitted FIRST on
+   * every `submitMessage()` when `streamCheckpointStore` is configured
+   * on `EngineConfig`. Carries the UUID v4 streamId the engine assigned
+   * to this turn so the host can persist it and later pass it back as
+   * `EngineConfig.resumeStreamId` on a fresh `submitMessage()` (page
+   * reload / Vercel cold-start / mobile-tab swap mid-turn).
+   *
+   * Per Decision 4 of the Slice C spec: engine owns streamId generation
+   * (guarantees uniqueness across hosts). The event is OPT-IN — engines
+   * without `streamCheckpointStore` never emit it. Legacy hosts ignore
+   * unknown event types so the addition is wire-compatible.
+   *
+   * Resume scope: page-reload of the LIVE stream. The
+   * user-confirm-then-resume flow (`pending_action` →
+   * `resumeWithToolResult`) is unchanged and keys on `attemptId`, not
+   * `streamId`.
+   */
+  | { type: 'stream_started'; streamId: string };
 
 /**
  * [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — driven by `classifyEffort()`,
@@ -1067,6 +1086,35 @@ export interface EngineConfig {
    * Omit (undefined / empty map) to disable post-write refresh entirely.
    */
   postWriteRefresh?: Record<string, string[]>;
+  /**
+   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] Pluggable per-stream
+   * EngineEvent checkpoint log. When configured, every yielded event is
+   * appended (fire-and-forget) to the store keyed by an engine-generated
+   * `streamId`, and a `stream_started` EngineEvent fires first so the
+   * host can persist the id. On a subsequent `submitMessage()` with
+   * `resumeStreamId` set to that id, the engine replays the checkpoint
+   * before starting the live stream — enabling page-reload / cold-start
+   * recovery of an in-flight turn.
+   *
+   * Omit to disable checkpointing entirely (the historical, pre-v2.2.0
+   * behavior). The CLI / MCP / tests / single-instance dev should omit
+   * or use `InMemoryStreamCheckpointStore`; multi-instance hosts (audric
+   * on Vercel) need an Upstash-backed impl.
+   */
+  streamCheckpointStore?: import('./stream-checkpoint.js').StreamCheckpointStore;
+  /**
+   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] When set, engine
+   * treats this `submitMessage()` call as a RESUME — it replays the
+   * checkpointed events for `resumeStreamId` from `streamCheckpointStore`
+   * before continuing the live stream. Requires `streamCheckpointStore`
+   * to also be set (the engine throws on misconfig).
+   *
+   * Resume detects in-flight tools (`tool_start` without matching
+   * `tool_result`) and aborts with an `EngineEvent.error` instead of
+   * continuing — see Path B in the Slice C spec. Hosts re-prompt the
+   * user on that error.
+   */
+  resumeStreamId?: string;
 }
 
 // ---------------------------------------------------------------------------

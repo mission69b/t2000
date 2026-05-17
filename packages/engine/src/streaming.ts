@@ -136,7 +136,14 @@ export type SSEEvent =
   | {
       type: 'stream_state';
       state: 'routing' | 'quoting' | 'confirming' | 'settling' | 'done';
-    };
+    }
+  // [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] stream_started event
+  // — emitted first when `EngineConfig.streamCheckpointStore` is wired.
+  // Carries the engine-generated streamId so the host can persist it
+  // and pass it back as `resumeStreamId` on a reconnect after page
+  // reload / Vercel cold-start / mobile-tab swap. Mirrors
+  // EngineEvent.stream_started; see types.ts for the full contract.
+  | { type: 'stream_started'; streamId: string };
 
 // ---------------------------------------------------------------------------
 // Serialise: SSEEvent → SSE text

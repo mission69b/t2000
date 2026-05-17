@@ -263,6 +263,17 @@ import { EarlyToolDispatcher } from '@t2000/engine';
 import { serializeSSE, parseSSE } from '@t2000/engine';
 import { MemorySessionStore } from '@t2000/engine';
 
+// [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice C] Stream checkpoint store —
+// wire `EngineConfig.streamCheckpointStore` for page-reload / cold-start
+// resume of the LIVE stream. Engine emits `stream_started` first
+// (carries the engine-generated streamId), appends every event
+// fire-and-forget, and replays the checkpoint when host passes the
+// id back as `EngineConfig.resumeStreamId`. In-flight tool on resume
+// is Path B (error + re-prompt). CLI / MCP / tests use the in-memory
+// default; multi-instance hosts (audric on Vercel) inject Upstash.
+import { InMemoryStreamCheckpointStore } from '@t2000/engine';
+import type { StreamCheckpointStore } from '@t2000/engine';
+
 // Context + cost + microcompact
 import { estimateTokens, compactMessages, CostTracker, microcompact } from '@t2000/engine';
 
@@ -306,7 +317,8 @@ type EngineEvent =
   | { type: 'canvas'; html: string }
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
-  | { type: 'error'; error: Error };
+  | { type: 'error'; error: Error }
+  | { type: 'stream_started'; streamId: string }; // [v2.2.0 Slice C] emitted FIRST when streamCheckpointStore configured
 ```
 
 ### Tool permission levels

@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-05-17 (post-SPEC-37 v0.7a Phase 4 — engine 2.1.0, all 4 packages aligned, 37 tools / 14 MCP prompts)
+> Last verified: 2026-05-17 (post-SPEC-37 v0.7a Phase 5 Slice A+C — engine 2.2.0, all 4 packages aligned, 37 tools / 14 MCP prompts, stream checkpoint store landed)
 
 ---
 
@@ -683,6 +683,7 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | `registerEngineTools` | function | Register engine tools on MCP server |
 | `serializeSSE` / `parseSSE` | function | SSE wire format (canonical wire-byte emitter + parser; the only wire-format SSOT post-v2.2.0) |
 | `withStreamState` | function | SPEC 21.1 stream-state choreography wrapper — converts engine-emitted `routing` / `quoting` / `confirming` / `settling` / `done` signals into `stream_state` SSE events for UI motion (previously default-applied inside the deleted `engineToSSE`; hosts now wrap their EngineEvent iteration with it directly) |
+| `StreamCheckpointStore` / `InMemoryStreamCheckpointStore` / `detectInFlightTool` | type / class / function | [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice C] Page-reload / cold-start LIVE-stream resume primitive. Wire `EngineConfig.streamCheckpointStore`; engine emits new `stream_started` EngineEvent first (carrying engine-generated UUID streamId), fire-and-forget appends every yielded event, replays the checkpoint when host passes the id back as `EngineConfig.resumeStreamId`. In-flight tool on resume → Path B (`{type: 'error'}` + host re-prompt) per Decision 6 of the Slice C spec. `InMemoryStreamCheckpointStore` is the default (5-min TTL); hosts on Vercel inject an Upstash-backed impl. Resume scope = page-reload of the LIVE stream; the user-confirm-then-resume flow (`pending_action` → `resumeWithToolResult`) is unchanged and keys on `attemptId`. |
 | `estimateTokens` | function | Rough token estimation |
 | `compactMessages` | function | Context window compaction (ContextBudget) |
 | `fetchTokenPrices` | function | Batch USD prices from BlockVision Indexer REST (Sui-RPC + hardcoded-stable degraded fallback) |

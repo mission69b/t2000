@@ -88,6 +88,7 @@ import {
   clearPortfolioCacheFor,
   clearDefiCacheFor,
 } from '../blockvision-prices.js';
+import { detectInFlightTool } from '../stream-checkpoint.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -296,6 +297,90 @@ export class AISDKEngine {
       harnessRationale?: string;
     },
   ): AsyncGenerator<EngineEvent> {
+    // [SPEC 37 v0.7a Phase 5 Slice C / v2.2.0] Validate checkpoint config
+    // BEFORE we mutate history. `resumeStreamId` without a store is a
+    // host bug (no way to fulfil the contract); fail loudly.
+    if (this.config.resumeStreamId && !this.config.streamCheckpointStore) {
+      throw new Error(
+        '[AISDKEngine] resumeStreamId set without streamCheckpointStore — checkpoint store is required for resume',
+      );
+    }
+
+    // [Slice C] On a resume call, replay the checkpointed events first
+    // and check for an in-flight tool. If we find one, we emit an error
+    // and STOP — Path B per the spec (Path A silent re-execution is
+    // deferred to v2.3.0+). On a clean checkpoint (every tool_start has
+    // a matching tool_result), replay all events then continue into the
+    // live stream below.
+    const checkpointStore = this.config.streamCheckpointStore;
+    const resumeStreamId = this.config.resumeStreamId;
+    if (resumeStreamId && checkpointStore) {
+      const replayed: EngineEvent[] = [];
+      try {
+        for await (const ev of checkpointStore.replay(resumeStreamId)) {
+          replayed.push(ev);
+        }
+      } catch (err) {
+        yield {
+          type: 'error',
+          error: err instanceof Error ? err : new Error(String(err)),
+        };
+        return;
+      }
+
+      // Empty replay = no checkpoint found (expired / never written /
+      // wrong id). Surface as an error so the host knows to start a
+      // fresh turn rather than silently producing a half-stream.
+      if (replayed.length === 0) {
+        yield {
+          type: 'error',
+          error: new Error(
+            `[AISDKEngine] resumeStreamId '${resumeStreamId}' has no checkpoint (expired or unknown)`,
+          ),
+        };
+        return;
+      }
+
+      const dangling = detectInFlightTool(replayed);
+      if (dangling) {
+        // Replay everything we have so the UI shows what already happened,
+        // then emit a clear error and stop. Host re-prompts the user.
+        for (const ev of replayed) yield ev;
+        yield {
+          type: 'error',
+          error: new Error(
+            `[AISDKEngine] cannot resume mid-tool: '${dangling.toolName}' was in-flight when the stream dropped — please retry the request`,
+          ),
+        };
+        return;
+      }
+
+      // Clean checkpoint: replay all events to the new client, then
+      // clear the checkpoint (the host kept the events; we don't need
+      // to retain them past this point). We do NOT continue into the
+      // live LLM stream — the original stream emitted `turn_complete`
+      // before our `clear`, so a fully-replayed log is by construction
+      // a completed turn. (If it wasn't, `detectInFlightTool` would
+      // have caught it OR the missing `turn_complete` would have left
+      // the host expecting more — handled below by emitting one.)
+      for (const ev of replayed) yield ev;
+      void checkpointStore.clear(resumeStreamId).catch((err) => {
+        console.error('[AISDKEngine] checkpoint clear failed (non-fatal):', err);
+      });
+
+      // Defensive: ensure the host always sees a terminal event. If the
+      // original stream was cut between the last `tool_result` and the
+      // `turn_complete`, the replay above won't contain it; synthesise
+      // one so the host's stream-consumer state machine doesn't hang.
+      const hasTerminal = replayed.some(
+        (ev) => ev.type === 'turn_complete' || ev.type === 'pending_action',
+      );
+      if (!hasTerminal) {
+        yield { type: 'turn_complete', stopReason: 'end_turn' };
+      }
+      return;
+    }
+
     // Push user message into history first (matches legacy semantics
     // — failures during streamText still leave the user message in
     // history so the next turn sees it).
@@ -304,13 +389,42 @@ export class AISDKEngine {
       content: [{ type: 'text', text: prompt }],
     });
 
+    // [Slice C] If a checkpoint store is configured (but we're not
+    // resuming), generate a fresh streamId and emit `stream_started`
+    // as the very first event so the host can persist the id before
+    // anything else streams.
+    const streamId =
+      checkpointStore && !resumeStreamId
+        ? this.generateStreamId()
+        : null;
+    if (streamId) {
+      yield { type: 'stream_started', streamId };
+      // Fire-and-forget append per Decision 5 — the live stream NEVER
+      // stalls on store I/O.
+      void checkpointStore!
+        .append(streamId, { type: 'stream_started', streamId })
+        .catch((err) => {
+          console.error(
+            '[AISDKEngine] checkpoint append failed (non-fatal, stream not resumable):',
+            err,
+          );
+        });
+    }
+
     // Emit harness_shape upfront if provided — same as legacy.
     if (options?.harnessShape) {
-      yield {
+      const ev: EngineEvent = {
         type: 'harness_shape',
         shape: options.harnessShape,
         rationale: options.harnessRationale ?? options.harnessShape,
       };
+      yield ev;
+      if (streamId) {
+        void checkpointStore!.append(streamId, ev).catch(() => {
+          // Already logged on the first failure above; further failures
+          // for the same stream stay silent to avoid log spam.
+        });
+      }
     }
 
     this.abortController = new AbortController();
@@ -350,7 +464,46 @@ export class AISDKEngine {
       this.stepFinishMutable,
     );
 
+    // [Slice C] When checkpointing, intercept every yielded event from
+    // runStream and fire-and-forget append to the store. On turn_complete
+    // (terminal for a non-paused turn) we clear the checkpoint — the
+    // turn finished cleanly and the host won't need to resume it.
+    // pending_action does NOT clear: the host's resume route uses the
+    // separate `resumeWithToolResult` path keyed on `attemptId`, but
+    // a page reload BETWEEN pending_action emission and user-confirm
+    // should still let the user see the confirm card on reconnect.
+    if (streamId && checkpointStore) {
+      for await (const ev of this.runStream(tools, internal, onStepFinish)) {
+        yield ev;
+        void checkpointStore.append(streamId, ev).catch(() => {
+          // Already logged above on first failure for this stream.
+        });
+        if (ev.type === 'turn_complete') {
+          void checkpointStore.clear(streamId).catch((err) => {
+            console.error(
+              '[AISDKEngine] checkpoint clear failed on turn_complete (non-fatal):',
+              err,
+            );
+          });
+        }
+      }
+      return;
+    }
+
     yield* this.runStream(tools, internal, onStepFinish);
+  }
+
+  /**
+   * [Slice C] Generate a fresh streamId. Uses `crypto.randomUUID()` when
+   * available (Node ≥19, all browsers, edge runtime); falls back to a
+   * timestamp+random hybrid for ancient environments. Engine-owned per
+   * Decision 4 of the Slice C spec — guarantees uniqueness across hosts
+   * without requiring hosts to wire up their own UUID source.
+   */
+  private generateStreamId(): string {
+    const cryptoObj = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+    return `stream_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   }
 
   /**

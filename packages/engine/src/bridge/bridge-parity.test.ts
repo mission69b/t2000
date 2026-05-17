@@ -123,6 +123,12 @@ const OUTER_ENGINE_EMITS = new Set<EngineEvent['type']>([
   // LLM stream. (Pre-v2.2.0 the deleted `engineToSSE` adapter applied
   // this wrapper by default.)
   'stream_state',
+  // [SPEC 37 v0.7a Phase 5 Slice C / v2.2.0] Stream-checkpoint correlation
+  // id. Emitted by the OUTER engine at `submitMessage` start when
+  // `EngineConfig.streamCheckpointStore` is wired (before any bridge
+  // events). Bridge has no view of the checkpoint store; this is purely
+  // outer plumbing.
+  'stream_started',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -224,6 +230,7 @@ const BRIDGE_EMIT_FIXTURES: Record<
   proactive_text: null,
   harness_shape: null,
   stream_state: null,
+  stream_started: null,
 };
 
 // ---------------------------------------------------------------------------

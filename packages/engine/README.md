@@ -80,6 +80,7 @@ QueryEngine.submitMessage()
 | `tool.ts` | `buildTool` | Typed tool factory with Zod validation |
 | `orchestration.ts` | `runTools`, `TxMutex` | Parallel reads, serial writes |
 | `streaming.ts` | `serializeSSE`, `parseSSE` | SSE wire format SSOT (`engineToSSE` removed in v2.2.0 — hosts iterate EngineEvent raw + call `serializeSSE` per event) |
+| `stream-checkpoint.ts` | `StreamCheckpointStore`, `InMemoryStreamCheckpointStore`, `detectInFlightTool` | [v2.2.0 / Slice C] Page-reload / cold-start LIVE-stream resume. Wire `EngineConfig.streamCheckpointStore`; engine emits `stream_started` first (with engine-generated UUID streamId) and fire-and-forget appends every yielded event. Host re-passes the id as `EngineConfig.resumeStreamId` on reconnect; engine replays then continues. In-flight tool on resume → Path B error. In-memory default has a 5-min TTL; multi-instance hosts inject Upstash. |
 | `session.ts` | `MemorySessionStore` | In-memory session store with TTL |
 | `context.ts` | `estimateTokens`, `compactMessages` | Token estimation + message compaction |
 | `cost.ts` | `CostTracker` | Token usage + USD cost tracking with budget limits |
