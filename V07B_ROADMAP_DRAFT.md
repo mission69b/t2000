@@ -22,6 +22,8 @@ Recent run (Phase 4 → Phase 5 → Phase 5.5 → Phase 6 → Phase 6G → Phase
 | `2.3.0` | Phase 6 | Skills baked into `@t2000/mcp` as `skill-*` prompts; legacy `RecipeRegistry` deleted; `classifyEffort` decoupled from `matchedRecipe` | F-10 realized; one source of truth for agent capabilities |
 | `2.4.0` | Phase 6G | `mcp/prompts.ts` rewritten as skill-compositions via `composeSkillBody` / `composeSkillSections` | Drift firewall — skill edits propagate to every dependent workflow prompt automatically |
 | `2.5.0` | Phase 5 deferred | P1 JSDoc hygiene + `onStreamResume` telemetry callback + `replay(opts: { signal })` AbortSignal threading | Audric wires `onStreamResume` → Vercel-log telemetry (shipped same day in audric `0255fc7`) |
+| `2.6.0` | D-6 prep | `approvalId` forward-compat alias for `attemptId` on `PendingAction` (mirrors AI SDK v6 HITL terminology) — 4 emission sites stamp `approvalId === attemptId` verbatim; ~half day | No-op today (legacy reads of `attemptId` continue working); reduces v0.7c migration cost when full Slice D lands |
+| `2.7.0` | Phase 7 engine prototype | `MemoryStore` interface + `InMemoryMemoryStore` mock + `EngineConfig.memoryStore` + `financialContextBlock` + `skillRecipeBlock` + `prepareStep` 5-layer F-4 assembler + per-turn cache + honest degradation; 37→40 new tests (post-audit hardening), full suite 1313/0 pass/fail | Engine-side F-4 realized. Audric integration awaits 2026-05-29 MemWal checkpoint OR earlier dry-run via the in-memory mock |
 
 **Plus Phase 5.5 (audric-side, engine 2.2.0 consumer):** `UpstashStreamCheckpointStore` + chat-route `resumeStreamId` plumbing + `useEngine` retry-pill + cold page-reload auto-resume + sessionStorage quota fallback. Logged as S.152 in `audric-build-tracker.md`.
 
@@ -35,7 +37,7 @@ Recent run (Phase 4 → Phase 5 → Phase 5.5 → Phase 6 → Phase 6G → Phase
 |---|---|---|---|
 | **Slice B** — UIMessage / `sse-format-adapter` production path | Engine | "When UIMessage is a goal" — audric still on `EngineEvent` + `serializeSSE` (works fine) | Audric commits to Vercel chat UIMessage protocol OR cross-product chat surface needs UIMessage |
 | **Path A** — silent in-flight tool re-execution on resume | Engine | Need production data on how often Path B (mid-tool) fires; engine v2.5.0 just shipped the `onStreamResume` callback to capture it | ~2 weeks of `[stream-resume]` Vercel logs showing `mid_tool` is non-trivial AND correlated to recoverable tools |
-| **Phase 7** — MemWal memory layer (S-1 Mysten partnership, F-4 prepareStep, F-11/F-12 vector retrieval, S-10 SEAL→Walrus encrypted memory, O-1 ECS cron eliminated) | Engine + audric | Gated on MemWal infra. Original `balance::split` error fixed but sidecar drop-out + 25s p50 ingest latency still surprising. Hard deadline 2026-06-26 (Plan B pivot day) | 2026-05-29 smoke re-run; 2026-06-12 fallback eval matrix start (parallel); 2026-06-26 Plan A vs B decision |
+| **Phase 7 (production)** — F-11 + F-12 (vector retrieval at scale) + S-1 (Mysten partnership) + S-10 (SEAL→Walrus encrypted memory) + O-1 (ECS daily Claude cron eliminated). | Audric + MemWal | **Engine prototype SHIPPED in v2.7.0 2026-05-18** (F-4 ✅). Production realization gated on (a) MemWal infra stability and (b) audric `MemWalMemoryStore` impl + cron + telemetry. Hard deadline 2026-06-26 (Plan B pivot day) | 2026-05-29 smoke re-run; 2026-06-12 fallback eval matrix start (parallel); 2026-06-26 Plan A vs B decision. Audric dry-run with engine's mock store can land EARLIER (de-risks the wiring change before MemWal is live). |
 | **`onStreamResume` → `TurnMetrics` column** | Audric | Today's wiring logs to Vercel only; needs Prisma migration to add `streamResumeOutcome` JSON column for dashboarding | Vercel-log volume justifies dashboarding (probably ~2 weeks of data) |
 | **Sidecar drop-out follow-up issue against MemWal** | Founder | Distinct failure mode from #159 (Seal encryption sidecar dropping mid-batch); awaiting 2026-05-29 re-run to see if it persists | Drop-out reproduces on 2026-05-29 smoke |
 
@@ -65,7 +67,8 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 | **D-3** | **Slice B — UIMessage / `sse-format-adapter` production path** | Phase 5 backlog | ~3-5 days engine + multi-week audric | Re-gated post-D-scoping (2026-05-18): now linked to v0.7c chatbot template fork since that's when audric naturally commits to `useChat`. Engine-side adapter remains shippable standalone. |
 | **D-4** | **`TurnMetrics.streamResumeOutcome` column** | onStreamResume telemetry consumer | ~2h Prisma migration + dashboard tile | Audric-side. Cheap once Vercel logs justify it. |
 | **D-5** | **MemWal Path B pivot** (Mem0 / Letta cloud / Letta self-hosted / Supermemory / Hindsight) | Phase 7 commitment gate | ~1-2 weeks if triggered | Only if 2026-06-26 Plan A decision fails. Otherwise Phase 7 absorbs MemWal as scoped. |
-| **D-6** | **AI SDK shape alignment (prep)** — replaces the demoted D-1. 4 sub-items in `SPEC_SLICE_D_DRAFT.md` §7: add `approvalId` alias for `attemptId`, optionally rename `pending_action` → `pending-action` event, document the impedance, optionally add `experimental_aiSdkCompat` mode. | This scoping doc (2026-05-18) | ~half day (D-6.1+D-6.3) up to ~1 day (D-6.4 included) | Marginal value standalone — main payoff is reducing v0.7c migration cost when full Slice D lands. |
+| **D-6** | ~~**AI SDK shape alignment (prep)**~~ ✅ **SHIPPED engine v2.6.0 2026-05-18.** D-6.1 (approvalId alias) + D-6.3 (impedance docs) landed; D-6.2 (event-name rename) + D-6.4 (compat mode) remain deferred to v0.7c with full Slice D. | This scoping doc (2026-05-18) | ✅ done | — |
+| **D-7** | **Audric dry-run integration of engine v2.7.0 memory path** — wire `EngineConfig.memoryStore` (with `InMemoryMemoryStore` mock) + move `<financial_context>` + skill recipe text from `systemPrompt` into the new typed config fields. Proves F-4 ordering works in audric system prompts BEFORE MemWal stabilizes; when MemWal lands, only the store impl swap is required. Add `[memory-recall]` Vercel telemetry tag (parallels `[stream-resume]`). | Phase 7 audric prep | ~3-4h | De-risks the audric coordinated change; verifies prompt-caching behavior is unchanged when system arg moves to prepareStep return value. |
 
 ### v0.7b explicit NON-goals
 
@@ -80,8 +83,8 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 
 | Signal | Pick |
 |---|---|
-| Founder wants user-visible progress | Phase 7 design scoping (engine-side prepareStep prototype against mock memory store) — unblocks v0.7c chatbot template fork |
-| Founder wants platform-alignment win in v0.7b | **D-6** lightweight cosmetic prep (~half day) — full Slice D is v0.7c-class now |
+| Founder wants user-visible progress | ~~Phase 7 design scoping~~ ✅ shipped 2026-05-18 as engine v2.7.0. Next user-visible step: audric dry-run integration against the in-memory mock (proves F-4 wiring end-to-end before MemWal stabilizes; ~3-4h). |
+| Founder wants platform-alignment win in v0.7b | ~~**D-6** lightweight cosmetic prep (~half day)~~ ✅ shipped 2026-05-18 as engine v2.6.0. Full Slice D remains v0.7c-class. |
 | Founder wants platform-alignment win and is ready for v0.7c | Pair D + B as a coupled migration alongside chatbot template fork |
 | Vercel logs show `mid_tool` resumes >5% of resume volume | **D-2** Path A engine-side prototype |
 | Audric chat UI commits to UIMessage | **D-3** Slice B (UIMessage path) — best paired with the v0.7c chatbot fork |
