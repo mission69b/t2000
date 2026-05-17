@@ -105,6 +105,7 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 
 - Full v0.7a contract → `BENEFITS_SPEC_v07a.md`
 - **Slice D scoping result (2026-05-18)** → `SPEC_SLICE_D_DRAFT.md`
+- **Phase 7 engine-side scoping (2026-05-18)** → `SPEC_PHASE_7_DRAFT.md`
 - Audric build tracker (S.NNN entries) → `audric-build-tracker.md` (local-only)
 - Engine releases ledger → `packages/engine/CHANGELOG.md`
 - Audric chat-route resume wiring → `audric/apps/web/app/api/engine/chat/route.ts`
