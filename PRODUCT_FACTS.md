@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-05-07 (post-SPEC-12 P1+P2 — engine 1.22.1, all 4 packages aligned, 35 tools / 14 MCP prompts)
+> Last verified: 2026-05-17 (post-SPEC-37 v0.7a Phase 4 — engine 2.1.0, all 4 packages aligned, 37 tools / 14 MCP prompts)
 
 ---
 
@@ -17,7 +17,7 @@
 | Product | What it is |
 |---------|-----------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, Enoki-sponsored gas (web only). Wraps every other product. |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (35 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (37 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC + USDsui), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Harvest (single-PTB compound: claim NAVI rewards → swap each non-USDC reward to USDC → deposit into savings; per-leg fees), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Move money — Send USDC, Receive (payment links, invoices, QR). Free, global, instant on Sui. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5). |
@@ -34,7 +34,7 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | # | System | One-line | Owns | Implementation |
 |---|---|---|---|---|
-| 1 | 🎛️ **Agent Harness** | 35 tools, one agent. | Tool registry, parallel reads, serial writes (`TxMutex`), permission gates, streaming dispatch (`EarlyToolDispatcher`) | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (24 read + 11 write) |
+| 1 | 🎛️ **Agent Harness** | 37 tools, one agent. | Tool registry, parallel reads, serial writes (`TxMutex`), permission gates, streaming dispatch | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (25 read + 12 write) |
 | 2 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards across 3 priority tiers (12 pre-exec + 2 post-exec hints), 6 YAML skill recipes, prompt caching, preflight validation | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` `cache_control` |
 | 3 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot (`UserFinancialContext`) + Claude-inferred profile (`UserFinancialProfile`), injected as `<financial_context>` block at every engine boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` |
 | 4 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows; injected silently as `<chain_memory>` | _Audric-side_: 7 chain classifiers in `daily-intel` cron group + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -44,7 +44,7 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 - The phrase **"5 systems"** is canonical — never list 4, never list 6.
 - Always use the system names exactly as written: `Agent Harness`, `Reasoning Engine`, `Silent Profile`, `Chain Memory`, `AdviceLog`.
 - The Reasoning Engine has **14 guards** (12 pre-exec gates + 2 post-exec hints) across **3 priority tiers** (Safety > Financial > UX) and **6 YAML skill recipes**.
-- The Agent Harness has **35 tools** (24 read + 11 write).
+- The Agent Harness has **37 tools** (25 read + 12 write).
 
 ---
 
@@ -668,16 +668,16 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 
 | Export | Type | Purpose |
 |--------|------|---------|
-| `QueryEngine` | class | Stateful conversation loop with tool dispatch, thinking, guards |
-| `validateHistory` | function | Pre-flight message history validation |
-| `AnthropicProvider` | class | Streaming LLM provider (Anthropic Claude, extended thinking) |
-| `buildTool` | function | Typed tool factory with Zod + JSON schema |
+| `AISDKEngine` | class | Stateful conversation loop with tool dispatch, thinking, guards. Sole engine since v2.0.0 (SPEC 37 v0.7a Phases 1-3) — `QueryEngine` was deleted. Backs onto `streamText` + `@ai-sdk/anthropic`. |
+| `AISDKAnthropicProvider` | class | Drop-in `LLMProvider` for in-process embeddings that need the provider shape without an engine. Backs onto `@ai-sdk/anthropic`. (Hand-rolled `AnthropicProvider` deleted in v2.0.0.) |
+| `defineTool` | function | Typed tool factory with Zod `inputSchema` as single source of truth (auto-derives JSON Schema). Sole tool factory since v2.0.0 — `buildTool` was deleted. |
 | `runTools` | function | Parallel reads / serial writes orchestration |
 | `TxMutex` | class | Transaction serialization lock |
 | `CostTracker` | class | Token usage + USD cost tracking |
 | `MemorySessionStore` | class | In-memory session store with TTL |
-| `McpClientManager` | class | Multi-server MCP client with caching |
-| `McpResponseCache` | class | Client-side TTL cache for MCP responses |
+| `McpClientManager` | class | Multi-server MCP client with caching (thin wrapper around `@ai-sdk/mcp`'s `createMCPClient` since engine v2.1.0 — SPEC 37 v0.7a Phase 4; public method signatures preserved verbatim) |
+| `McpResponseCache` | class | Client-side TTL cache for MCP responses (30s default; preserved through v2.1.0 migration — load-bearing for NAVI read hit rate) |
+| `McpPromptAdapter` | class | NEW in v2.1.0 — wraps `experimental_listPrompts` + `experimental_getPrompt` from `@ai-sdk/mcp`; exposes MCP prompts as engine-native strings for `prepareStep.system` injection (Phase 4 ships the adapter; Phase 6 wires `t2000-skills/skills/` through `@t2000/mcp`) |
 | `adaptMcpTool` | function | Convert MCP tool → engine Tool |
 | `buildMcpTools` | function | Convert engine tools → MCP descriptors |
 | `registerEngineTools` | function | Register engine tools on MCP server |
@@ -688,7 +688,7 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | `fetchTokenPrices` | function | Batch USD prices from BlockVision Indexer REST (Sui-RPC + hardcoded-stable degraded fallback) |
 | `fetchAddressPortfolio` | function | Wallet coins + balances + USD prices + totals from BlockVision (single round-trip) |
 | `clearPortfolioCache` / `clearPortfolioCacheFor` / `clearPriceMapCache` | function | Reset BlockVision portfolio + price caches |
-| `getDefaultTools` | function | All 35 built-in tools (24 read, 11 write) |
+| `getDefaultTools` | function | All 37 built-in tools (25 read, 12 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 | `classifyEffort` | function | Adaptive thinking effort classifier |
 | `ContextBudget` | class | Context window budget tracking + compaction trigger |

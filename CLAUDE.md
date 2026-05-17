@@ -40,7 +40,7 @@ t2000/
 | Audric product | What it is | t2000 layer |
 |---|---|---|
 | 🪪 **Audric Passport** | The trust layer. Identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` |
-| 🧠 **Audric Intelligence** | The brain (the moat). Five systems orchestrate every money decision — Agent Harness (35 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (QueryEngine + tools + reasoning + guards + skill recipes) |
+| 🧠 **Audric Intelligence** | The brain (the moat). Five systems orchestrate every money decision — Agent Harness (37 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (AISDKEngine + tools + reasoning + guards + skill recipes) |
 | 💰 **Audric Finance** | Manage your money on Sui. Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception added in v0.51.0), Credit (NAVI borrow USDC or USDsui against savings, health factor visible at all times — repay must use the same asset as the borrow), Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee), Charts (interactive yield / health / portfolio visualizations rendered from chat). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
 | 💸 **Audric Pay** | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / invoices / QR. No bank, no borders, no fees. | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. 92% to creator. **Coming soon (Phase 5).** | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) |
@@ -64,7 +64,7 @@ Every Audric action runs through Passport. It's the wallet itself.
 
 | System | What it does | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 35 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `QueryEngine` + 35 tools (24 read / 11 write) |
+| 🎛️ **Agent Harness** | 37 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `AISDKEngine` + 37 tools (25 read / 12 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 6 YAML skill recipes, 14 safety guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, extended thinking always-on |
 | 🧠 **Silent Profile** | Knows your finances. Builds a private financial profile from chat history + a daily on-chain orientation snapshot (`<financial_context>` system-prompt block — savings/wallet/debt/HF/APY/recent activity). Used silently to make answers more relevant — never surfaced as nudges. | `UserFinancialProfile` + `UserFinancialContext` Prisma models + Claude inference cron + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. Reads wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes. | 7 chain classifiers + `ChainFact` rows + `buildMemoryContext()` |
@@ -271,7 +271,10 @@ import {
 import type { PermissionRule, UserPermissionConfig } from '@t2000/engine';
 
 // MCP client (consume external MCPs)
-import { McpClientManager, NAVI_MCP_CONFIG } from '@t2000/engine';
+// Internally backed by @ai-sdk/mcp's createMCPClient since engine v2.1.0
+// (SPEC 37 v0.7a Phase 4); McpClientManager class name + public method
+// signatures preserved verbatim. Prompts adapter is NEW in v2.1.0.
+import { McpClientManager, NAVI_MCP_CONFIG, McpPromptAdapter } from '@t2000/engine';
 
 // MCP server adapter (expose engine tools)
 import { buildMcpTools, registerEngineTools } from '@t2000/engine';
