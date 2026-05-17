@@ -1,11 +1,41 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import type { Tool as McpToolDef } from '@modelcontextprotocol/sdk/types.js';
+// ---------------------------------------------------------------------------
+// MCP client manager — thin wrapper around @ai-sdk/mcp's createMCPClient.
+//
+// **SPEC 37 v0.7a Phase 4 (2026-05-17, engine v2.1.0):** the legacy
+// `@modelcontextprotocol/sdk` `Client` + `StreamableHTTPClientTransport`
+// pair (~250 LoC of bespoke transport plumbing + retry config) was
+// replaced by `@ai-sdk/mcp`'s `createMCPClient`. The PUBLIC contract of
+// `McpClientManager` (class name + every public method signature +
+// `McpServerConnection` field names) is preserved verbatim — 12+
+// production call sites + 27 test cases in `__tests__/mcp-client.test.ts`
+// continue to compile and pass without modification.
+//
+// What changed under the hood:
+//   - Production `connect(config)` path: `createMCPClient({ transport })`
+//     instead of `new Client(...)` + `new StreamableHTTPClientTransport(...)`.
+//   - `conn.client.callTool({ name, arguments })` continues to work; for
+//     production-path connections it routes through an internal wrapper
+//     that calls `aiClient.tools()[name].execute(...)`. Tests that inject
+//     a legacy `Client` directly into `connections` (via `as any`) still
+//     work because the legacy `Client` already exposes `.callTool({name,
+//     arguments})` with the same shape.
+//
+// What did NOT change:
+//   - `McpResponseCache` (30s default TTL, server-namespaced) is preserved
+//     verbatim — `createMCPClient` does not ship a response cache, and
+//     the cache is load-bearing for the 40-60% NAVI read hit rate
+//     observed in production.
+//   - `transport: 'streamable-http' | 'sse'` config field name preserved
+//     (AI SDK calls them `'http' | 'sse'`; we map at construction time).
+//   - All public method signatures (`connect`, `disconnect`, `disconnectAll`,
+//     `getConnection`, `isConnected`, `listAllTools`, `callTool`,
+//     `serverCount`, `serverNames`) preserved.
+// ---------------------------------------------------------------------------
+
+import { createMCPClient, type MCPClient as AISDKMcpClient } from '@ai-sdk/mcp';
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — preserved verbatim from the legacy surface
 // ---------------------------------------------------------------------------
 
 export interface McpServerConfig {
@@ -13,18 +43,48 @@ export interface McpServerConfig {
   name: string;
   /** MCP server URL (Streamable HTTP or SSE endpoint). */
   url: string;
-  /** Transport type. Defaults to 'streamable-http'. */
+  /** Transport type. Defaults to 'streamable-http' (mapped to 'http' for AI SDK). */
   transport?: 'streamable-http' | 'sse';
   /** Response cache TTL in ms. Default 30_000 (30s). */
   cacheTtlMs?: number;
   /** Whether all tools from this server are read-only. Default true. */
   readOnly?: boolean;
+  /** Optional HTTP headers (e.g. Authorization for authenticated MCP servers). */
+  headers?: Record<string, string>;
+}
+
+/**
+ * Tool definition shape — preserved from legacy `@modelcontextprotocol/sdk`
+ * `Tool` so production callers reading `conn.tools` continue to compile.
+ * AI SDK's `listTools()` returns a superset of these fields; we trim down.
+ */
+export interface McpToolDef {
+  name: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/**
+ * Minimal client shape that both legacy `@modelcontextprotocol/sdk` `Client`
+ * (used by tests via direct injection) and our internal AI SDK wrapper
+ * (used by production `connect()` path) satisfy. Return type stays loose
+ * (`unknown`) because the legacy SDK `CallToolResult` union also admits a
+ * `{ toolResult, _meta }` alternative we don't care about; the manager's
+ * `callTool` reads `content` / `isError` defensively via the cast in the
+ * adapter at the boundary.
+ */
+export interface McpUnderlyingClient {
+  callTool(args: { name: string; arguments: Record<string, unknown> }): Promise<unknown>;
+  close(): Promise<unknown>;
 }
 
 export interface McpServerConnection {
   config: McpServerConfig;
-  client: Client;
-  transport: Transport;
+  /** Either a legacy `Client` (tests) or our AI-SDK-wrapping shim (production). */
+  client: McpUnderlyingClient;
+  /** Opaque — production path stores the resolved AI SDK MCPClient; tests inject in-memory transport. */
+  transport: unknown;
   tools: McpToolDef[];
   status: 'connected' | 'disconnected' | 'error';
   lastError?: string;
@@ -36,7 +96,8 @@ export interface McpCallResult {
 }
 
 // ---------------------------------------------------------------------------
-// Response cache
+// Response cache — preserved verbatim. @ai-sdk/mcp does NOT ship one, and
+// the 30s TTL is load-bearing for production NAVI read hit rate.
 // ---------------------------------------------------------------------------
 
 interface CacheEntry {
@@ -93,7 +154,49 @@ export class McpResponseCache {
 }
 
 // ---------------------------------------------------------------------------
-// McpClientManager — multi-server connection registry
+// AI SDK wrapper — exposes a legacy-Client-shaped `callTool` over an
+// `AISDKMcpClient` so `McpServerConnection.client.callTool(...)` works
+// uniformly across production + test injection paths.
+// ---------------------------------------------------------------------------
+
+function wrapAISDKClient(aiClient: AISDKMcpClient): McpUnderlyingClient {
+  // Materialize the AI SDK tool set lazily on first callTool. Cached for
+  // the lifetime of the connection (cleared on disconnect via aiClient.close).
+  let toolSetPromise: Promise<Record<string, { execute: (input: unknown, opts: unknown) => Promise<unknown> }>> | null = null;
+  const getToolSet = () => {
+    if (!toolSetPromise) {
+      toolSetPromise = aiClient.tools().then((set) => set as unknown as Record<string, { execute: (input: unknown, opts: unknown) => Promise<unknown> }>);
+    }
+    return toolSetPromise;
+  };
+
+  return {
+    async callTool({ name, arguments: args }) {
+      const set = await getToolSet();
+      const tool = set[name];
+      if (!tool) {
+        throw new Error(`MCP tool "${name}" not found on server`);
+      }
+      // AI SDK Tool.execute(input, options) returns CallToolResult for MCP
+      // tools (matches the legacy { content, isError } shape verbatim per
+      // the MCP spec). We pass minimal call options — the toolCallId +
+      // messages are AI-SDK-engine-internal concerns that don't apply
+      // when invoking out-of-band from the manager. The return is opaque
+      // here; the manager re-shapes at the public boundary.
+      return await tool.execute(args, {
+        toolCallId: `mcp-${name}-${Date.now()}`,
+        messages: [],
+      } as unknown as Parameters<typeof tool.execute>[1]);
+    },
+    async close() {
+      await aiClient.close();
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// McpClientManager — multi-server connection registry. Public surface
+// preserved verbatim; internals delegate to @ai-sdk/mcp's createMCPClient.
 // ---------------------------------------------------------------------------
 
 export class McpClientManager {
@@ -113,43 +216,46 @@ export class McpClientManager {
       await this.disconnect(config.name);
     }
 
-    const client = new Client(
-      { name: 'audric-engine', version: '0.1.0' },
-      { capabilities: {} },
-    );
+    // AI SDK's MCPTransportConfig uses 'http' for streamable HTTP; the
+    // legacy public field 'streamable-http' maps onto it.
+    const aiTransportType: 'http' | 'sse' =
+      config.transport === 'sse' ? 'sse' : 'http';
 
-    const transportType = config.transport ?? 'streamable-http';
-    const url = new URL(config.url);
+    let aiClient: AISDKMcpClient;
+    try {
+      aiClient = await createMCPClient({
+        transport: {
+          type: aiTransportType,
+          url: config.url,
+          ...(config.headers ? { headers: config.headers } : {}),
+        },
+        clientName: 'audric-engine',
+        version: '0.1.0',
+      });
+    } catch (err) {
+      throw err;
+    }
 
-    const transport = transportType === 'sse'
-      ? new SSEClientTransport(url)
-      : new StreamableHTTPClientTransport(url, {
-          reconnectionOptions: {
-            maxReconnectionDelay: 30_000,
-            initialReconnectionDelay: 1_000,
-            reconnectionDelayGrowFactor: 1.5,
-            maxRetries: 3,
-          },
-        });
+    let tools: McpToolDef[];
+    try {
+      const listResult = await aiClient.listTools();
+      tools = listResult.tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema as Record<string, unknown> | undefined,
+      }));
+    } catch (err) {
+      try { await aiClient.close(); } catch { /* best-effort */ }
+      throw err;
+    }
 
     const conn: McpServerConnection = {
       config,
-      client,
-      transport,
-      tools: [],
-      status: 'disconnected',
+      client: wrapAISDKClient(aiClient),
+      transport: aiClient, // opaque storage; close path goes through client.close()
+      tools,
+      status: 'connected',
     };
-
-    try {
-      await client.connect(transport);
-      conn.status = 'connected';
-
-      const { tools } = await client.listTools();
-      conn.tools = tools;
-    } catch (err) {
-      try { await client.close(); } catch { /* best-effort */ }
-      throw err;
-    }
 
     this.connections.set(config.name, conn);
     return conn;
@@ -215,11 +321,14 @@ export class McpClientManager {
       if (cached) return cached;
     }
 
-    const result = await conn.client.callTool({ name: toolName, arguments: args });
+    const rawResult = (await conn.client.callTool({ name: toolName, arguments: args })) as {
+      content?: McpCallResult['content'];
+      isError?: boolean;
+    };
 
     const callResult: McpCallResult = {
-      content: (result.content ?? []) as McpCallResult['content'],
-      isError: result.isError as boolean | undefined,
+      content: rawResult.content ?? [],
+      isError: rawResult.isError,
     };
 
     if (conn.config.readOnly !== false && cacheTtl > 0) {

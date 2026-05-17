@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.77",
+    "@ai-sdk/mcp": "^1.0.42",
     "@anthropic-ai/sdk": "^0.39",
     "@modelcontextprotocol/sdk": "^1.28.0",
     "@t2000/sdk": "workspace:*",
