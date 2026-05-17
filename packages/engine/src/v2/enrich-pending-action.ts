@@ -115,6 +115,54 @@ function projectHF(
   return (newSupplied * liquidationThreshold) / newBorrowed;
 }
 
+/**
+ * [Day 14d / 2026-05-17] Defensive amount coercion.
+ *
+ * `cached.input.amount` reaches enrichment BEFORE the tool's Zod schema
+ * validates it. The LLM occasionally emits numeric fields as strings
+ * (`"0.5"` instead of `0.5`) — Anthropic's JSON-mode is not 100%
+ * strict about types when the schema parameter doc says
+ * "Amount to borrow". Pre-Day-14d the strict `typeof === 'number'`
+ * check coerced these strings to `0`, which then propagated into
+ * `projectHF` and returned `null` (no-debt projection) instead of
+ * the real projected HF.
+ *
+ * Returns `0` when the input is non-numeric or non-positive — the
+ * downstream `projectHF` first guard `!(amount > 0)` catches `0` and
+ * returns `undefined`, hiding the HF row entirely. That's preferable
+ * to silently rendering a misleading "∞ → ∞" preview.
+ */
+function coerceAmount(raw: unknown): number {
+  if (typeof raw === 'number') return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  if (typeof raw === 'string') {
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+  return 0;
+}
+
+/**
+ * [Day 14d / 2026-05-17] Coerce currentHF to `null` when the user has
+ * no real debt, regardless of what NAVI's `healthFactor` field reports.
+ *
+ * Root cause this fixes: after a repay, NAVI's indexer occasionally
+ * leaves residual sub-dust borrow rows for ~30-60s. `fetchHealthFactor`
+ * returns `borrowed: 0.0001` + `healthFactor: 0` (NAVI's literal value
+ * when the field is unset / liquidation-like), and `transformHealthFactor`
+ * falls through to `(borrowed === 0 ? Infinity : 0)` — that branch
+ * returns `0` for the dust case, which then renders as a misleading
+ * "Health factor 0.00" (looks like liquidation imminent).
+ *
+ * By treating `borrowed <= DEBT_DUST_USD` as no-debt for the preview
+ * display, the row correctly shows `∞` — matching what `transformHealthFactor`
+ * would emit if NAVI returned `borrowed === 0` exactly.
+ */
+function coerceCurrentHF(healthFactor: number, borrowed: number): number | null {
+  if (borrowed <= DEBT_DUST_USD) return null;
+  if (!Number.isFinite(healthFactor)) return null;
+  return healthFactor;
+}
+
 export async function enrichPendingActionWithLiveData(
   toolName: string,
   input: unknown,
@@ -163,22 +211,32 @@ export async function enrichPendingActionWithLiveData(
 
   if (needsHF) {
     work.push(
-      fetchHealthFactor(manager, context.walletAddress as string)
+      // [Day 14d / 2026-05-17] Preview HF MUST be fresh — `skipCache: true`
+      // bypasses the 30s naviKey.health TTL. Without this, a preview
+      // emitted within 30s of a prior write reads stale position data
+      // (residual dust borrow / pre-deposit supplied), which then
+      // poisons both `currentHF` and `projectedHF`. The preview is
+      // shown ONCE before the user taps Approve; the latency cost
+      // (~100-300ms cache miss vs <5ms cache hit) is worth correctness
+      // on the single most safety-critical pre-write surface.
+      fetchHealthFactor(manager, context.walletAddress as string, { skipCache: true })
         .then((hf) => {
-          // [Day 14c] HF semantics — `null` is the deliberate ∞ sentinel
-          // (no debt = infinitely safe). Audric's HFRow handles both
-          // `number` and `null`. Pre-14c we omitted the field when not
-          // finite; 14c-shipped consumers (current + projected display)
-          // need to distinguish "∞ before borrow" from "no data".
-          out.currentHF = Number.isFinite(hf.healthFactor) ? hf.healthFactor : null;
+          // [Day 14d] HF semantics — `null` is the deliberate ∞ sentinel
+          // (no debt = infinitely safe). `coerceCurrentHF` treats sub-dust
+          // borrowed as no-debt regardless of NAVI's literal `healthFactor`
+          // field, fixing the post-repay indexer-lag edge case where NAVI
+          // returned `0` instead of `Infinity`. Audric's HFRow handles
+          // both `number` and `null`.
+          out.currentHF = coerceCurrentHF(hf.healthFactor, hf.borrowed);
 
-          // [Day 14c] Projection — borrow / repay / withdraw / save_deposit
+          // [Day 14d] Projection — borrow / repay / withdraw / save_deposit
           // all change supplied or borrowed. Use the live position data
           // we already fetched (`supplied` / `borrowed` /
-          // `liquidationThreshold`) + the input amount.
+          // `liquidationThreshold`) + the input amount. `coerceAmount`
+          // handles the LLM-emits-string edge case so projection isn't
+          // silently dropped to `null`.
           const inputObj = (input ?? {}) as Record<string, unknown>;
-          const amount =
-            typeof inputObj.amount === 'number' ? inputObj.amount : 0;
+          const amount = coerceAmount(inputObj.amount);
           const projected = projectHF(
             toolName,
             amount,

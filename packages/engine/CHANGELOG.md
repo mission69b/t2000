@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.38.4 (2026-05-17) — Day 14d HF preview fixes (string-amount coercion + post-write cache bypass)
+
+Two surgical fixes to `enrichPendingActionWithLiveData` that close the prod-observed Health-Factor preview gaps surfaced during the WRITE_PREVIEWS_V2 rollout smoke (2026-05-17).
+
+The previews shipped two misleading states on borrow / save confirm cards:
+1. **`borrow $X` preview showed `Health factor ∞ → ∞`** when the projected HF should drop to a finite number (e.g. ∞ → ~16.5 for $0.5 borrow against $9.72 collateral). Root cause: `cached.input.amount` reached `projectHF` BEFORE the tool's Zod schema validates it — the LLM occasionally emits numeric fields as strings (`"0.5"` not `0.5`), the strict `typeof === 'number'` check coerced these to `0`, and `projectHF` then returned `null` (no-borrow-change projection).
+2. **`save $X` preview showed `Health factor 0.00 → ∞`** (looks like liquidation imminent) for users with no real debt. Root cause: NAVI's indexer leaves residual sub-dust borrow rows for ~30-60s after a repay. The cached HF read returned `borrowed: 0.001` + `healthFactor: 0`, and `transformHealthFactor`'s fallthrough `(borrowed === 0 ? Infinity : 0)` returned `0` because `0.001 !== 0`. `Number.isFinite(0)` then gated `currentHF` to `0`.
+
+HF is the user's primary risk signal on borrows. Shipping `USE_AI_SDK_NATIVE_ENGINE=1` globally with these gaps would let every borrow up to ~$10 (auto-confirm threshold) render with wrong HF projection. Patching before the global engine flip.
+
+### Changed
+
+- **`enrich-pending-action.ts` — `coerceAmount(raw: unknown)`** — new defensive helper that handles `string`, `number`, and non-numeric inputs. Replaces the strict `typeof === 'number' ? raw : 0` ternary. Returns `0` for invalid inputs, which `projectHF`'s first guard `!(amount > 0)` then catches and returns `undefined` from — hiding the HF row entirely (preferable to silently rendering a misleading `∞ → ∞`).
+- **`enrich-pending-action.ts` — `coerceCurrentHF(healthFactor, borrowed)`** — new helper that treats `borrowed <= DEBT_DUST_USD` as no-debt for the preview display, returning `null` (∞) regardless of NAVI's literal `healthFactor` field. Fixes the post-repay indexer-lag edge case where NAVI returns `0` instead of `Infinity`.
+- **`enrich-pending-action.ts` — `fetchHealthFactor` now called with `{ skipCache: true }`** for preview enrichment. The preview is shown ONCE before the user taps Approve; the latency cost (~100-300ms cache miss vs <5ms cache hit) is worth correctness on the single most safety-critical pre-write surface. Without this, a preview emitted within the 30s naviKey.health TTL reads stale position data (residual dust borrow / pre-deposit supplied), which poisons both `currentHF` and `projectedHF`.
+
+### Added
+
+- **5 new regression tests** in `enrich-pending-action.test.ts`:
+  - LLM emits `amount` as string `"0.5"` → coerced to 0.5, projection computed correctly (`∞ → 16.524` for $0.5 borrow against $9.72 collateral at 0.85 LT)
+  - Invalid string amount (`"not-a-number"`) → `projectedHF` undefined, no misleading null
+  - Dust borrow (NAVI indexer lag after repay) → `currentHF` coerced to `null` (∞)
+  - Above-dust borrow still reports real `currentHF` (over-correction guard)
+  - Preview HF read bypasses the NAVI cache (`{ skipCache: true }`)
+
+### What this preserves
+
+- Every existing happy-path test (28 pre-existing) continues to pass — the coercion helpers are strictly additive.
+- `transformHealthFactor` is unchanged. The fix is at the enrichment-layer boundary (where NAVI data meets preview rendering), not at the transform layer. Keeping the transform untouched preserves its contract for `health_check` tool consumers.
+- `BORROW_APY_TOOLS` / `HF_TOOLS` / `DEBT_DUST_USD` / `projectHF` signature all unchanged. Only the enrichment-call-site behavior changed.
+
+### Operational impact
+
+- **Audric**: bump `@t2000/engine` from `1.38.3` → `1.38.4`. No code changes needed on the audric side — the V2 preview-body components (`BorrowPreviewBody`, `SavePreviewBody`, `RepayPreviewBody`, `WithdrawPreviewBody`) consume `currentHF` + `projectedHF` from the PendingAction without further transformation.
+- **Other consumers (@t2000/cli, @t2000/mcp)**: not affected — they don't surface V2 preview cards.
+- **NAVI MCP load**: +1 GET_HEALTH_FACTOR call per write-tool preview that we'd previously cache-served. Estimated <2 RPS additional load on NAVI's open-api gateway based on prod write volume.
+
 ## 1.29.1 (2026-05-11) — SPEC 24 audit-gap patches (G1, G2, G3) — pre-smoke prompt polish
 
 Three surgical prompt edits closing audit gaps surfaced during the pre-ship review of 1.29.0. Together they prevent three predictable LLM failure modes that the F1 prompt didn't cover:

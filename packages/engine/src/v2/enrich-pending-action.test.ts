@@ -379,6 +379,103 @@ describe('enrichPendingActionWithLiveData', () => {
   // by asserting `toBeCloseTo`. This block pins the `null` and
   // `undefined` semantics explicitly.
 
+  // ---------------------------------------------------------------------
+  // [Day 14d / 2026-05-17] Regression tests for the prod-observed bugs:
+  //   1. LLM emits `amount` as string → projection silently nulls out
+  //   2. Stale NAVI HF cache from prior write → currentHF = 0
+  //   3. Preview should bypass cache for freshness
+  // ---------------------------------------------------------------------
+
+  it('Day 14d: LLM emits amount as string → coerced + projection computed', async () => {
+    // Pre-Day-14d, strict `typeof === number` failed for `"0.5"`, amount
+    // became 0, projectHF returned null, HFRow rendered ∞→∞ for a borrow
+    // that would actually drop HF from ∞ to ~16.5.
+    vi.mocked(fetchHealthFactor).mockResolvedValueOnce({
+      ...HAPPY_HF,
+      supplied: 9.72,
+      borrowed: 0,
+      healthFactor: Infinity,
+      liquidationThreshold: 0.85,
+    });
+    const result = await enrichPendingActionWithLiveData(
+      'borrow',
+      { amount: '0.5', asset: 'USDC' } as unknown as Record<string, unknown>,
+      ctx(),
+    );
+    expect(result.currentHF).toBeNull();
+    // (9.72 × 0.85) / 0.5 = 16.524
+    expect(result.projectedHF).toBeCloseTo(16.524, 2);
+  });
+
+  it('Day 14d: invalid amount (string non-number) → projection undefined, no misleading null', async () => {
+    const result = await enrichPendingActionWithLiveData(
+      'borrow',
+      { amount: 'not-a-number', asset: 'USDC' } as unknown as Record<string, unknown>,
+      ctx(),
+    );
+    // coerceAmount returns 0 → projectHF first guard `!(0 > 0)` → undefined
+    expect(result.projectedHF).toBeUndefined();
+  });
+
+  it('Day 14d: dust borrow (NAVI indexer lag after repay) → currentHF coerced to null (∞)', async () => {
+    // Reproduces the prod Save $6 preview rendering "0.00 → ∞": NAVI
+    // returned borrowed=0.001 (residual dust from prior repay) +
+    // healthFactor=0 (NAVI's sentinel for "no real position").
+    // Pre-Day-14d, transformHealthFactor's `borrowed === 0 ? Infinity : 0`
+    // fallthrough returned 0 (because 0.001 !== 0), and Number.isFinite(0)
+    // gated currentHF to 0. Renderer showed "0.00" — looks like liquidation.
+    vi.mocked(fetchHealthFactor).mockResolvedValueOnce({
+      ...HAPPY_HF,
+      supplied: 9.72,
+      borrowed: 0.001,
+      healthFactor: 0,
+      liquidationThreshold: 0.85,
+    });
+    const result = await enrichPendingActionWithLiveData(
+      'save_deposit',
+      { amount: 6, asset: 'USDC' },
+      ctx(),
+    );
+    // Dust < DEBT_DUST_USD (0.01) → treat as no debt → null (∞)
+    expect(result.currentHF).toBeNull();
+    // Save with no real debt → projection stays ∞
+    expect(result.projectedHF).toBeNull();
+  });
+
+  it('Day 14d: above-dust borrow still reports real currentHF', async () => {
+    // Guard against over-correction: real debt above DEBT_DUST_USD should
+    // pass through as the finite HF from NAVI.
+    vi.mocked(fetchHealthFactor).mockResolvedValueOnce({
+      ...HAPPY_HF,
+      supplied: 100,
+      borrowed: 20,
+      healthFactor: 4.25,
+      liquidationThreshold: 0.85,
+    });
+    const result = await enrichPendingActionWithLiveData(
+      'borrow',
+      { amount: 5 },
+      ctx(),
+    );
+    expect(result.currentHF).toBeCloseTo(4.25, 5);
+  });
+
+  it('Day 14d: preview HF read bypasses the NAVI cache (skipCache: true)', async () => {
+    // The HF fetch is the single most safety-critical read for the
+    // preview surface. We MUST hit live NAVI even when the cache is warm
+    // because previews are emitted post-write often within the 30s TTL.
+    await enrichPendingActionWithLiveData(
+      'borrow',
+      { amount: 5, asset: 'USDC' },
+      ctx(),
+    );
+    expect(vi.mocked(fetchHealthFactor)).toHaveBeenCalledWith(
+      expect.anything(),
+      '0xtest',
+      { skipCache: true },
+    );
+  });
+
   it('parallel fetch — both NAVI calls fire concurrently for borrow', async () => {
     let ratesResolveAt = 0;
     let hfResolveAt = 0;
