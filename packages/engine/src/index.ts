@@ -243,6 +243,16 @@ export type { McpServerConfig, McpServerConnection, McpCallResult } from './mcp/
 export { adaptMcpTool, adaptAllMcpTools, adaptAllServerTools } from './mcp/tool-adapter.js';
 export type { McpToolAdapterConfig } from './mcp/tool-adapter.js';
 
+// [SPEC 37 v0.7a Phase 4] MCP prompt adapter — wraps `experimental_listPrompts`
+// + `experimental_getPrompt` from @ai-sdk/mcp's MCPClient. Phase 4 ships the
+// adapter; Phase 6 wires `t2000-skills/skills/` through `@t2000/mcp`.
+export { McpPromptAdapter } from './mcp/prompt-adapter.js';
+export type {
+  PromptDescriptor,
+  PromptArgumentDescriptor,
+  PromptCapableMcpClient,
+} from './mcp/prompt-adapter.js';
+
 // NAVI MCP integration
 export { NAVI_SERVER_NAME, NAVI_MCP_URL, NAVI_MCP_CONFIG, NaviTools } from './navi/config.js';
 export {
