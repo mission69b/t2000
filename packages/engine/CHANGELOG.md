@@ -1,6 +1,48 @@
 # Changelog
 
-## 2.0.1 (PENDING — 2026-05-17) — `resumeWithInput` stub for audric type compat
+## 2.0.2 (PENDING — 2026-05-17) — Wallet + DeFi cache invalidation after writes
+
+**Patch release.** Fixes a user-visible cache-staleness bug where a write tool followed by a balance read could return pre-write cached state for up to 60 seconds.
+
+### The bug
+
+After a successful `withdraw` (or any write that changes wallet / DeFi state), the LLM's next `balance_check` call could return the pre-write wallet snapshot from cache. Founder smoke at v1.38.5 caught this in the wild: withdrew ~$9 USDC from NAVI savings → agent reported the wallet as having only $0.31 USDC → "want me to save $0.31 instead of $6?" The on-chain state was correct; only the engine's view was stale.
+
+### Root cause
+
+Two factors compounded:
+1. The BlockVision-backed wallet portfolio cache has a 60s fresh-TTL window.
+2. v2's `step-finish.ts` was not invalidating that cache after writes (the deferred Day 3b PWR injection from SPEC 37 v0.7a Phase 2 never landed).
+
+### The fix
+
+`buildStepFinishHandler` now fires `clearPortfolioCacheFor(walletAddress)` + `clearDefiCacheFor(walletAddress)` after every successful write tool, fire-and-forget so engine never blocks on the invalidation. The next `balance_check` / `portfolio_analysis` call misses the cache and refetches fresh state from BlockVision.
+
+This is the architecturally correct fix: cache invalidation lives in the engine (single source of truth) rather than each host wiring its own `onAutoExecuted` hook. Audric needs zero code changes.
+
+### What this does NOT fix
+
+- **BlockVision indexer lag.** Even after cache invalidation, BV's indexer may take a second or two to reflect the new on-chain state. The next `balance_check` could still see slightly stale data — but only for the BV indexer window (~1-3s typical), not the cache's 60s. If this becomes the dominant remaining staleness vector in soak, v2.0.3 will add a Sui-RPC spot-check that supplements BV when post-write divergence is detected.
+- **NAVI cache.** `savings_info` reads from a separate NAVI cache (30s TTL, keyed by tool+address). Not invalidated here because the surface is more complex and the staleness window is already narrower. Tracked for v2.0.3 if it shows up in soak.
+
+### Added
+
+- `clearDefiCache` + `clearDefiCacheFor` exported from `@t2000/engine` (mirrors the wallet cache pair that's been exported since v1.4). Hosts driving the engine themselves (CLI, future SDK clients) can call these directly if they need manual invalidation.
+
+### Tests
+
+5 new tests in `src/v2/step-finish.test.ts` cover the new behavior:
+- invalidates both caches after a successful write
+- does NOT invalidate after a read tool
+- does NOT invalidate after a tool-error
+- skips invalidation when `walletAddress` is undefined
+- swallows store errors (engine never breaks on cache invalidation failure)
+
+Full suite: 1221 tests pass (+5).
+
+---
+
+## 2.0.1 — 2026-05-17 — `resumeWithInput` stub for audric type compat
 
 **Patch release.** Adds a stub `AISDKEngine.resumeWithInput(...)` method that yields a clear `error` event + `turn_complete`. Unblocks audric's `app/api/engine/resume-with-input/route.ts` typecheck without forking the host route or adding type casts.
 

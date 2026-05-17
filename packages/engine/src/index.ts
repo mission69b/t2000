@@ -396,6 +396,12 @@ export {
   fetchTokenPrices,
   clearPortfolioCache,
   clearPortfolioCacheFor,
+  // [v2.0.2] DeFi cache invalidators — mirror the wallet cache pair
+  // above. v2's step-finish.ts now calls `clearDefiCacheFor` after every
+  // successful write. Hosts that drive the engine themselves (CLI,
+  // future SDK clients) can import these to invalidate manually.
+  clearDefiCache,
+  clearDefiCacheFor,
   clearPriceMapCache,
 } from './blockvision-prices.js';
 export type {

@@ -15,7 +15,7 @@
 //   - onAutoExecuted host throws are caught (don't break engine)
 // ---------------------------------------------------------------------------
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import type { StepResult, ToolSet } from 'ai';
 import { defineTool } from './define-tool.js';
@@ -24,6 +24,16 @@ import { createGuardRunnerState, DEFAULT_GUARD_CONFIG } from '../guards.js';
 import { DEFAULT_PERMISSION_CONFIG } from '../permission-rules.js';
 import { buildStepFinishHandler, type StepFinishMutableState } from './step-finish.js';
 import type { InternalContext } from './internal-context.js';
+import {
+  setWalletCacheStore,
+  resetWalletCacheStore,
+  type WalletCacheStore,
+} from '../cache/wallet.js';
+import {
+  setDefiCacheStore,
+  resetDefiCacheStore,
+  type DefiCacheStore,
+} from '../cache/defi.js';
 
 function makeReadTool(name = 'balance_check'): LegacyTool {
   return defineTool({
@@ -275,6 +285,169 @@ describe('buildStepFinishHandler', () => {
     await new Promise((r) => setImmediate(r));
 
     expect(onAutoExecuted).toHaveBeenCalled();
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // [v2.0.2 / 2026-05-17] Wallet + DeFi cache invalidation after writes
+  // ─────────────────────────────────────────────────────────────────────
+  // Regression: a withdraw immediately followed by `balance_check` was
+  // returning the pre-withdraw cached wallet snapshot (60s BV fresh-TTL)
+  // and telling the user they had no funds when they just received them.
+  // The fix invalidates both caches in the step-finish handler.
+  describe('post-write cache invalidation (v2.0.2 — wallet cache staleness fix)', () => {
+    let walletDeleteSpy: ReturnType<typeof vi.fn>;
+    let defiDeleteSpy: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      walletDeleteSpy = vi.fn(async () => undefined);
+      defiDeleteSpy = vi.fn(async () => undefined);
+
+      const stubWallet: WalletCacheStore = {
+        get: async () => null,
+        set: async () => undefined,
+        delete: walletDeleteSpy,
+        clear: async () => undefined,
+      };
+      const stubDefi: DefiCacheStore = {
+        get: async () => null,
+        set: async () => undefined,
+        delete: defiDeleteSpy,
+        clear: async () => undefined,
+      };
+
+      setWalletCacheStore(stubWallet);
+      setDefiCacheStore(stubDefi);
+    });
+
+    afterEach(() => {
+      resetWalletCacheStore();
+      resetDefiCacheStore();
+    });
+
+    it('invalidates wallet + DeFi caches after a successful write', async () => {
+      const tool = makeWriteTool('send_transfer');
+      const internal = makeInternal();
+      const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
+      const handler = buildStepFinishHandler([tool], internal, mutable);
+
+      const step = makeStep([
+        {
+          toolName: 'send_transfer',
+          toolCallId: 'call_inv',
+          input: { amount: 5, to: '0xabc' },
+          output: { ok: true },
+        },
+      ]);
+
+      await handler(step);
+      // Invalidation is fire-and-forget — wait a tick for the promise.
+      await new Promise((r) => setImmediate(r));
+
+      expect(walletDeleteSpy).toHaveBeenCalledTimes(1);
+      expect(walletDeleteSpy).toHaveBeenCalledWith('0xtest');
+      expect(defiDeleteSpy).toHaveBeenCalledTimes(1);
+      expect(defiDeleteSpy).toHaveBeenCalledWith('0xtest');
+    });
+
+    it('does NOT invalidate caches after a read tool', async () => {
+      const tool = makeReadTool('balance_check');
+      const internal = makeInternal();
+      const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
+      const handler = buildStepFinishHandler([tool], internal, mutable);
+
+      const step = makeStep([
+        {
+          toolName: 'balance_check',
+          toolCallId: 'call_r_inv',
+          input: {},
+          output: { balance: 100 },
+        },
+      ]);
+
+      await handler(step);
+      await new Promise((r) => setImmediate(r));
+
+      expect(walletDeleteSpy).not.toHaveBeenCalled();
+      expect(defiDeleteSpy).not.toHaveBeenCalled();
+    });
+
+    it('does NOT invalidate caches after a tool-error', async () => {
+      const tool = makeWriteTool('send_transfer');
+      const internal = makeInternal();
+      const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
+      const handler = buildStepFinishHandler([tool], internal, mutable);
+
+      const step = makeStep(
+        [],
+        [
+          {
+            toolName: 'send_transfer',
+            toolCallId: 'call_err_inv',
+            input: { amount: 5, to: '0xabc' },
+            error: new Error('on-chain reverted'),
+          },
+        ],
+      );
+
+      await handler(step);
+      await new Promise((r) => setImmediate(r));
+
+      expect(walletDeleteSpy).not.toHaveBeenCalled();
+      expect(defiDeleteSpy).not.toHaveBeenCalled();
+    });
+
+    it('skips invalidation when walletAddress is undefined', async () => {
+      const tool = makeWriteTool('send_transfer');
+      const internal = makeInternal({ walletAddress: undefined });
+      const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
+      const handler = buildStepFinishHandler([tool], internal, mutable);
+
+      const step = makeStep([
+        {
+          toolName: 'send_transfer',
+          toolCallId: 'call_no_addr',
+          input: { amount: 5, to: '0xabc' },
+          output: { ok: true },
+        },
+      ]);
+
+      await handler(step);
+      await new Promise((r) => setImmediate(r));
+
+      expect(walletDeleteSpy).not.toHaveBeenCalled();
+      expect(defiDeleteSpy).not.toHaveBeenCalled();
+    });
+
+    it('swallows store errors — engine never breaks on cache invalidation failure', async () => {
+      const failingWallet: WalletCacheStore = {
+        get: async () => null,
+        set: async () => undefined,
+        delete: vi.fn(async () => {
+          throw new Error('upstash unavailable');
+        }),
+        clear: async () => undefined,
+      };
+      setWalletCacheStore(failingWallet);
+
+      const tool = makeWriteTool('send_transfer');
+      const internal = makeInternal();
+      const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
+      const handler = buildStepFinishHandler([tool], internal, mutable);
+
+      const step = makeStep([
+        {
+          toolName: 'send_transfer',
+          toolCallId: 'call_fail',
+          input: { amount: 5, to: '0xabc' },
+          output: { ok: true },
+        },
+      ]);
+
+      // The handler completes successfully even though the underlying
+      // store throws — the .catch() in the fire-and-forget chain swallows
+      // the error and logs a warning.
+      await expect(handler(step)).resolves.toBeUndefined();
+    });
   });
 
   it('updates guard state for both read and write tool results', async () => {

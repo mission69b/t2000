@@ -23,11 +23,25 @@
 //      the host's TurnMetricsCollector (we just keep an in-memory mirror
 //      so dispatched-but-not-yet-persisted writes get accounted for).
 //
+// [v2.0.2 / 2026-05-17] Adds wallet + DeFi cache invalidation as a
+// fourth responsibility: every successful write tool kicks
+// `clearPortfolioCacheFor(walletAddress)` + `clearDefiCacheFor(...)` so
+// the next read tool (typically the LLM's verify-after-write
+// `balance_check`) misses the 60s-TTL BlockVision cache and refetches
+// fresh state. Without this, a withdraw-then-balance turn could read
+// the pre-withdraw wallet snapshot from cache and tell the user they
+// have no funds when they just received them. The invalidation runs
+// fire-and-forget — engine never blocks waiting on it.
+//
 // What this module does NOT do (Day 3 deferrals):
 //   - postWriteRefresh injection — interacts with `prepareStep` to
 //     pre-canned read results for the NEXT step. Deferred to Day 3b
 //     because the natural integration point is messages mutation
 //     across the step boundary, which deserves its own focused PR.
+//     The cache invalidation above is a strict subset of what full PWR
+//     would do (PWR also pre-runs the read tools); since the LLM
+//     already re-fires balance_check after most writes, plain
+//     invalidation gets us 90% of the way.
 //   - `flagSuspiciousResult` post-result scan — not part of the 14-guard
 //     spec (private engine helper). Skipping for v2.
 // ---------------------------------------------------------------------------
@@ -40,6 +54,10 @@ import {
 } from '../guards.js';
 import { resolveUsdValue } from '../permission-rules.js';
 import { findTool } from '../tool.js';
+import {
+  clearPortfolioCacheFor,
+  clearDefiCacheFor,
+} from '../blockvision-prices.js';
 import type { Tool as LegacyTool } from '../types.js';
 import type { InternalContext } from './internal-context.js';
 
@@ -192,6 +210,38 @@ export function buildStepFinishHandler(
               console.warn('[v2/step-finish] onAutoExecuted callback failed:', err);
             });
         }
+      }
+
+      // 4. Wallet + DeFi cache invalidation — every successful write
+      //    changes on-chain state. The next balance_check /
+      //    portfolio_analysis call MUST miss the BV cache and fetch
+      //    fresh data. Cheap to call unconditionally (no-op when no
+      //    cached entry exists for the address).
+      //
+      //    Gated independently from sessionSpend / onAutoExecuted (no
+      //    permissionConfig / priceCache requirement) because cache
+      //    correctness has nothing to do with USD pricing.
+      //
+      //    NAVI cache is NOT invalidated here — it has a 30s TTL
+      //    (vs BV's 60s) and is keyed by tool+address rather than
+      //    address-only, so its staleness window is narrower and the
+      //    invalidation surface is more complex. Tracked for v2.0.3
+      //    if savings_info post-write staleness shows up in soak.
+      if (!isError && tool && !tool.isReadOnly && internal.walletAddress) {
+        const address = internal.walletAddress;
+        Promise.resolve()
+          .then(() =>
+            Promise.all([
+              clearPortfolioCacheFor(address),
+              clearDefiCacheFor(address),
+            ]),
+          )
+          .catch((err) => {
+            console.warn(
+              '[v2/step-finish] post-write cache invalidation failed:',
+              err,
+            );
+          });
       }
     }
   };
