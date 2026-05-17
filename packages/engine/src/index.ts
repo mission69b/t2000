@@ -136,6 +136,7 @@ export {
 export type {
   StreamCheckpointStore,
   InFlightToolDetection,
+  StreamResumeOutcome,
 } from './stream-checkpoint.js';
 
 // Session store

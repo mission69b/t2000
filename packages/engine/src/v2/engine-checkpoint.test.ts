@@ -25,11 +25,12 @@
 // Haiku call kept tiny.
 // ---------------------------------------------------------------------------
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { AISDKEngine, type AISDKEngineConfig } from './engine.js';
 import {
   InMemoryStreamCheckpointStore,
   type StreamCheckpointStore,
+  type StreamResumeOutcome,
 } from '../stream-checkpoint.js';
 import type { EngineEvent, PendingAction } from '../types.js';
 
@@ -288,6 +289,298 @@ describe('AISDKEngine — Slice C resume path (no LLM)', () => {
       type: 'turn_complete',
       stopReason: 'end_turn',
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// [v2.5.0 5e-3] onStreamResume telemetry callback — fires exactly once per
+// resume call with the matching outcome, before the engine returns.
+// ---------------------------------------------------------------------------
+
+describe('AISDKEngine — Slice C onStreamResume callback (5e-3)', () => {
+  async function runResume(
+    seedEvents: EngineEvent[],
+    cb: (info: StreamResumeOutcome) => void,
+    sid = 'cb-test',
+  ): Promise<EngineEvent[]> {
+    const store = new InMemoryStreamCheckpointStore();
+    for (const ev of seedEvents) await store.append(sid, ev);
+    const engine = new AISDKEngine(
+      baseConfig({
+        resumeStreamId: sid,
+        streamCheckpointStore: store,
+        onStreamResume: cb,
+      }),
+    );
+    return collect(engine.submitMessage('ignored'));
+  }
+
+  it("fires { outcome: 'clean' } when replay log has a natural terminal", async () => {
+    const cb = vi.fn();
+    await runResume(
+      [
+        { type: 'stream_started', streamId: 'cb-test' },
+        { type: 'text_delta', text: 'hello' },
+        { type: 'turn_complete', stopReason: 'end_turn' },
+      ],
+      cb,
+    );
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith({
+      outcome: 'clean',
+      streamId: 'cb-test',
+      eventsReplayed: 3,
+    });
+  });
+
+  it("fires { outcome: 'synthesized_terminal' } when replay lacks a terminal", async () => {
+    const cb = vi.fn();
+    await runResume(
+      [
+        { type: 'stream_started', streamId: 'cb-test' },
+        { type: 'text_delta', text: 'partial' },
+      ],
+      cb,
+    );
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith({
+      outcome: 'synthesized_terminal',
+      streamId: 'cb-test',
+      eventsReplayed: 2,
+    });
+  });
+
+  it("fires { outcome: 'mid_tool', toolUseId, toolName } on Path B", async () => {
+    const cb = vi.fn();
+    await runResume(
+      [
+        { type: 'stream_started', streamId: 'cb-test' },
+        {
+          type: 'tool_start',
+          toolName: 'swap_execute',
+          toolUseId: 't-swap-1',
+          input: { from: 'SUI', to: 'USDC' },
+        },
+      ],
+      cb,
+    );
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith({
+      outcome: 'mid_tool',
+      streamId: 'cb-test',
+      eventsReplayed: 2,
+      toolUseId: 't-swap-1',
+      toolName: 'swap_execute',
+    });
+  });
+
+  it("fires { outcome: 'empty' } when checkpoint store has no data", async () => {
+    const cb = vi.fn();
+    const store = new InMemoryStreamCheckpointStore();
+    const engine = new AISDKEngine(
+      baseConfig({
+        resumeStreamId: 'never-checkpointed',
+        streamCheckpointStore: store,
+        onStreamResume: cb,
+      }),
+    );
+    await collect(engine.submitMessage('ignored'));
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith({
+      outcome: 'empty',
+      streamId: 'never-checkpointed',
+    });
+  });
+
+  it("fires { outcome: 'replay_error', error } when store.replay() throws", async () => {
+    const cb = vi.fn();
+    const throwingStore: StreamCheckpointStore = {
+      async append() {
+        return 0;
+      },
+      async *replay() {
+        throw new Error('upstash unreachable');
+      },
+      async clear() {},
+    };
+    const engine = new AISDKEngine(
+      baseConfig({
+        resumeStreamId: 'whatever',
+        streamCheckpointStore: throwingStore,
+        onStreamResume: cb,
+      }),
+    );
+    await collect(engine.submitMessage('ignored'));
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    const arg = cb.mock.calls[0]![0] as StreamResumeOutcome;
+    expect(arg.outcome).toBe('replay_error');
+    if (arg.outcome === 'replay_error') {
+      expect(arg.streamId).toBe('whatever');
+      expect(arg.error.message).toMatch(/upstash unreachable/);
+    }
+  });
+
+  it('callback errors are swallowed (do not crash the resume) and logged', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const cb = vi.fn(() => {
+      throw new Error('telemetry subscriber bug');
+    });
+    const events = await runResume(
+      [
+        { type: 'stream_started', streamId: 'cb-test' },
+        { type: 'turn_complete', stopReason: 'end_turn' },
+      ],
+      cb,
+    );
+
+    // Replay still completed successfully — callback throw didn't tank it.
+    expect(events).toHaveLength(2);
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/onStreamResume callback threw/),
+      expect.any(Error),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('omitting onStreamResume is fine — no callback wiring, no throws', async () => {
+    const store = new InMemoryStreamCheckpointStore();
+    await store.append('s', { type: 'stream_started', streamId: 's' });
+    await store.append('s', { type: 'turn_complete', stopReason: 'end_turn' });
+    const engine = new AISDKEngine(
+      baseConfig({
+        resumeStreamId: 's',
+        streamCheckpointStore: store,
+        // onStreamResume intentionally omitted
+      }),
+    );
+    const events = await collect(engine.submitMessage('ignored'));
+    expect(events).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// [v2.5.0 5e-4] AbortSignal in submitMessage threaded to replay
+// ---------------------------------------------------------------------------
+
+describe('AISDKEngine — Slice C resume AbortSignal (5e-4)', () => {
+  it('aborting BEFORE replay starts emits 0 events and exits cleanly', async () => {
+    const store = new InMemoryStreamCheckpointStore();
+    const sid = 'abort-pre';
+    for (let i = 0; i < 5; i++) {
+      await store.append(sid, { type: 'text_delta', text: `chunk ${i}` });
+    }
+    await store.append(sid, { type: 'turn_complete', stopReason: 'end_turn' });
+
+    const cb = vi.fn();
+    const controller = new AbortController();
+    controller.abort();
+    const engine = new AISDKEngine(
+      baseConfig({
+        resumeStreamId: sid,
+        streamCheckpointStore: store,
+        onStreamResume: cb,
+      }),
+    );
+    const events = await collect(
+      engine.submitMessage('ignored', { signal: controller.signal }),
+    );
+
+    // No events emitted because the store stopped before yielding any.
+    // Empty replay → 'empty' outcome, error event emitted.
+    expect(events).toHaveLength(1);
+    expect(events[0]?.type).toBe('error');
+    expect(cb).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'empty' }),
+    );
+  });
+
+  it('signal is threaded into store.replay so the store can short-circuit (Upstash use case)', async () => {
+    // Demonstrates the contract: engine passes the AbortSignal through
+    // to the store's `replay(streamId, { signal })` call. The store can
+    // then check it between batches/yields and stop pulling early.
+    //
+    // The in-memory store yields synchronously fast — for that case
+    // the engine's internal collection loop finishes before any
+    // consumer iteration. The real benefit kicks in for async stores
+    // (Upstash awaits Redis between batches): the abort cancels the
+    // remaining I/O. We assert the signal REACHES the store and that
+    // an early store-return yields the engine's "synthesise terminal"
+    // fallback path.
+    const events10: EngineEvent[] = Array.from({ length: 10 }, (_, i) => ({
+      type: 'text_delta',
+      text: `chunk ${i}`,
+    }));
+    const yieldedFromStore: number[] = [];
+
+    const controller = new AbortController();
+    const storeSawSignal: { signal: AbortSignal | undefined } = {
+      signal: undefined,
+    };
+
+    const slowStore: StreamCheckpointStore = {
+      async append() {
+        return 0;
+      },
+      async *replay(_sid, opts) {
+        storeSawSignal.signal = opts?.signal;
+        for (let i = 0; i < events10.length; i++) {
+          if (opts?.signal?.aborted) return;
+          yieldedFromStore.push(i);
+          yield events10[i]!;
+          // The store itself decides to abort after yielding event #2.
+          // (In production this would be a Vercel-driven request-close
+          // signal or a host-level "fresh submitMessage is starting" abort.)
+          if (i === 2) controller.abort();
+        }
+      },
+      async clear() {},
+    };
+
+    const engine = new AISDKEngine(
+      baseConfig({
+        resumeStreamId: 'async-store',
+        streamCheckpointStore: slowStore,
+      }),
+    );
+    const events = await collect(
+      engine.submitMessage('ignored', { signal: controller.signal }),
+    );
+
+    // Signal reached the store (the wire works).
+    expect(storeSawSignal.signal).toBe(controller.signal);
+    // Store stopped pulling after the abort — only 3 events yielded
+    // (#0, #1, #2 before abort; iteration 4 sees signal.aborted and
+    // returns).
+    expect(yieldedFromStore).toEqual([0, 1, 2]);
+    // Engine yields the 3 partial events + a synthesised terminal.
+    expect(events).toHaveLength(4);
+    expect(events[events.length - 1]).toEqual({
+      type: 'turn_complete',
+      stopReason: 'end_turn',
+    });
+  });
+
+  it('no signal = back-compat: replay runs to completion as before', async () => {
+    const store = new InMemoryStreamCheckpointStore();
+    const sid = 'no-signal';
+    await store.append(sid, { type: 'stream_started', streamId: sid });
+    await store.append(sid, { type: 'text_delta', text: 'hi' });
+    await store.append(sid, { type: 'turn_complete', stopReason: 'end_turn' });
+
+    const engine = new AISDKEngine(
+      baseConfig({
+        resumeStreamId: sid,
+        streamCheckpointStore: store,
+      }),
+    );
+    const events = await collect(engine.submitMessage('ignored'));
+    expect(events).toHaveLength(3);
   });
 });
 

@@ -1,5 +1,102 @@
 # Changelog
 
+## 2.5.0 — 2026-05-17 — Stream resume telemetry + abort signal (SPEC 37 v0.7a Phase 5 deferred follow-ups)
+
+**Minor release.** Closes three Phase 5 Slice C follow-ups deferred at the v2.2.0 ship:
+
+- **P1 hygiene** — JSDoc drift fixes (docs-only, behavior-preserving).
+- **5e-3 — `onStreamResume` callback** — telemetry hook so hosts can count which resume outcome fired (clean / mid-tool / empty / replay-error / synthesized-terminal). Prerequisite for evaluating whether to build Path A (silent in-flight tool re-execution) in a future minor.
+- **5e-4 — `AbortSignal` in `replay()`** — `StreamCheckpointStore.replay(streamId, { signal })` is now signal-aware so async stores (Upstash) can short-circuit pulling remaining events when the consumer is gone.
+
+All three additive — no breaking changes to existing hosts. Hosts that don't subscribe to `onStreamResume` or don't pass a `signal` continue to work exactly as before.
+
+### P1 — JSDoc hygiene (docs-only)
+
+The shipped Slice C behavior is **replay-only, no live continuation** (per S.151 — "no duplicate `tool_start`, no redundant LLM run"). The JSDoc in `stream-checkpoint.ts` (header + `StreamCheckpointStore.replay` interface) and `types.ts` (`EngineConfig.streamCheckpointStore` + `EngineConfig.resumeStreamId`) still said "replays the checkpointed events **then continues the live stream**" — pre-implementation language that survived the spec → code translation. Updated to match shipped behavior:
+
+- Replay-only contract explicit at every doc site.
+- `resumeStreamId` JSDoc now enumerates ALL FIVE outcomes (clean / synthesized-terminal / mid-tool / empty / replay-error) inline, so integrators don't have to read source to understand what their consumer will see.
+- `streamCheckpointStore` JSDoc notes the empty-checkpoint = error behavior so hosts know to plan for it.
+
+### 5e-3 — `onStreamResume` telemetry callback
+
+New optional field on `EngineConfig`:
+
+```typescript
+onStreamResume?: (info: StreamResumeOutcome) => void;
+```
+
+Fires exactly ONCE per resume call (`submitMessage({ resumeStreamId })`), right before the engine returns. Five mutually-exclusive variants on `StreamResumeOutcome`:
+
+```typescript
+export type StreamResumeOutcome =
+  | { outcome: 'clean'; streamId: string; eventsReplayed: number }
+  | { outcome: 'synthesized_terminal'; streamId: string; eventsReplayed: number }
+  | { outcome: 'mid_tool'; streamId: string; eventsReplayed: number;
+      toolUseId: string; toolName: string }
+  | { outcome: 'empty'; streamId: string }
+  | { outcome: 'replay_error'; streamId: string; error: Error };
+```
+
+- Subscriber errors are caught + logged — never crash the resume.
+- Synchronous (Promise<void> not awaited) — telemetry is fire-and-forget.
+- CLI / MCP / single-instance dev typically omit; audric subscribes and pushes the outcome to its telemetry pipeline so we can answer "does Path B fire often enough that Path A is worth building?" with production data instead of guesswork.
+
+The `mid_tool` variant carries `toolUseId` + `toolName` so telemetry can correlate Path B fires with specific tools (e.g. "swap_execute accounts for 80% of mid-tool resumes → Path A would help here").
+
+### 5e-4 — `AbortSignal` in `StreamCheckpointStore.replay()`
+
+`StreamCheckpointStore.replay` interface gets an optional opts bag:
+
+```typescript
+replay(
+  streamId: string,
+  opts?: { signal?: AbortSignal },
+): AsyncGenerator<EngineEvent>;
+```
+
+`submitMessage(prompt, options)` gets a matching `signal?: AbortSignal` field that is threaded into the store's `replay()` call. Impls SHOULD check `opts?.signal?.aborted` between yields / Redis batch fetches and exit early when set. An aborted replay is treated as clean termination (no `EngineEvent.error` emitted because the host requested it) — the engine still yields whatever was pulled before the abort, plus a synthesised `turn_complete` if no natural terminal was reached.
+
+**Why this matters.** The audric deployment runs each `/api/engine/chat` POST as a separate Vercel function with its own engine instance. When the client EventSource drops, the Vercel function eventually gets a `ResponseAborted` signal but the AsyncGenerator side has no native way to short-circuit. Passing an `AbortSignal` from the request through to `submitMessage({ signal })` and on to the Upstash store's `replay({ signal })` lets us cap the work the store does (Redis fetches, RTT amplification) instead of pulling every remaining event into a closed pipe.
+
+The `InMemoryStreamCheckpointStore` yields synchronously fast — for that case the abort barely matters in practice (the loop finishes before the host can interleave). But the wire is right, and Upstash impls benefit immediately.
+
+### Tests
+
+- `src/stream-checkpoint.test.ts` — +4 new `InMemoryStreamCheckpointStore` tests: abort-before-first-yield (0 events), abort-mid-yield (partial events), no-signal back-compat, non-aborted-signal full replay.
+- `src/v2/engine-checkpoint.test.ts` — +10 new tests:
+  - 7 for the `onStreamResume` callback (one per outcome variant + callback-throws-don't-crash + omitting-the-callback-is-fine).
+  - 3 for AbortSignal threading: pre-replay abort surfaces as `empty` outcome; signal reaches the store via the opts bag; store's early return triggers engine's synthesise-terminal fallback path.
+
+Full engine suite: **1271 tests pass** (+14 from v2.4.0's 1257). Engine v2.5.0 cleared every gate (typecheck / lint / build / full suite green).
+
+### Public surface additions
+
+```typescript
+// New exports from @t2000/engine
+export type { StreamResumeOutcome } from '@t2000/engine';
+
+// Extended types (additive, optional)
+interface EngineConfig {
+  // ...existing fields...
+  onStreamResume?: (info: StreamResumeOutcome) => void;
+}
+
+interface StreamCheckpointStore {
+  // ...existing methods...
+  replay(streamId: string, opts?: { signal?: AbortSignal }): AsyncGenerator<EngineEvent>;
+}
+
+// submitMessage options grew
+engine.submitMessage(prompt, { signal: AbortController.signal });
+```
+
+### Cross-references
+
+- Slice C ship → v2.2.0 entry below.
+- Spec → `/Users/funkii/.cursor/plans/v07a-phase-5-slice-c-spec.md` (Decision 6, Path A deferral context).
+- Original triage of these follow-ups → conversation log circa 2026-05-17 ~17:00 AEST (P1 hygiene + 5e-3 + 5e-4 identified together; 5e-3 and 5e-4 were deferred to "next code-change window" — this is that window).
+
 ## 2.4.0 — 2026-05-17 — prompts.ts → skill-compositions (SPEC 37 v0.7a Phase 6G)
 
 **No engine surface changes** — this release exists to keep the four packages on the same version line per the monorepo's "all 4 packages always at same version" rule (see `CLAUDE.md`). All the work landed in `@t2000/mcp`.

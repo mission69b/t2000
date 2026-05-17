@@ -27,6 +27,68 @@ describe('InMemoryStreamCheckpointStore — contract', () => {
     vi.useRealTimers();
   });
 
+  // [v2.5.0 5e-4] AbortSignal honored mid-replay — host-side cancel
+  // (consumer gone, fresh submitMessage starting, etc) lets the store
+  // skip yielding the rest of the log without throwing.
+  it('replay honors AbortSignal aborted BEFORE first yield (no events emitted)', async () => {
+    vi.useRealTimers();
+    const store = new InMemoryStreamCheckpointStore();
+    await store.append('s1', sample(1));
+    await store.append('s1', sample(2));
+    await store.append('s1', sample(3));
+
+    const controller = new AbortController();
+    controller.abort();
+    const out: EngineEvent[] = [];
+    for await (const ev of store.replay('s1', { signal: controller.signal })) {
+      out.push(ev);
+    }
+    expect(out).toEqual([]);
+  });
+
+  it('replay honors AbortSignal aborted MID-yield (partial events emitted)', async () => {
+    vi.useRealTimers();
+    const store = new InMemoryStreamCheckpointStore();
+    for (let i = 1; i <= 5; i++) await store.append('s1', sample(i));
+
+    const controller = new AbortController();
+    const out: EngineEvent[] = [];
+    for await (const ev of store.replay('s1', { signal: controller.signal })) {
+      out.push(ev);
+      if (out.length === 2) controller.abort();
+    }
+    // First 2 yielded before abort; loop body aborts AFTER pushing #2.
+    // Next iteration checks signal at top → exits. Total = 2 events.
+    expect(out).toHaveLength(2);
+    expect(out.map((e) => (e as { text: string }).text)).toEqual([
+      'chunk 1',
+      'chunk 2',
+    ]);
+  });
+
+  it('replay without signal works as before (back-compat)', async () => {
+    vi.useRealTimers();
+    const store = new InMemoryStreamCheckpointStore();
+    for (let i = 1; i <= 3; i++) await store.append('s1', sample(i));
+
+    const out: EngineEvent[] = [];
+    for await (const ev of store.replay('s1')) out.push(ev);
+    expect(out).toHaveLength(3);
+  });
+
+  it('replay with non-aborted signal yields all events', async () => {
+    vi.useRealTimers();
+    const store = new InMemoryStreamCheckpointStore();
+    for (let i = 1; i <= 3; i++) await store.append('s1', sample(i));
+
+    const controller = new AbortController();
+    const out: EngineEvent[] = [];
+    for await (const ev of store.replay('s1', { signal: controller.signal })) {
+      out.push(ev);
+    }
+    expect(out).toHaveLength(3);
+  });
+
   it('append returns 1-indexed monotonic sequence numbers per streamId', async () => {
     const store = new InMemoryStreamCheckpointStore();
     expect(await store.append('s1', sample(1))).toBe(1);

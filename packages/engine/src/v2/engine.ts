@@ -88,7 +88,10 @@ import {
   clearPortfolioCacheFor,
   clearDefiCacheFor,
 } from '../blockvision-prices.js';
-import { detectInFlightTool } from '../stream-checkpoint.js';
+import {
+  detectInFlightTool,
+  type StreamResumeOutcome,
+} from '../stream-checkpoint.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -295,6 +298,17 @@ export class AISDKEngine {
     options?: {
       harnessShape?: HarnessShape;
       harnessRationale?: string;
+      /**
+       * [v2.5.0 5e-4] Optional abort signal. When set, threaded to
+       * `checkpointStore.replay(streamId, { signal })` so the store
+       * can short-circuit pulling remaining events from the backend
+       * once the host signals "consumer is gone, stop spending."
+       * Aborting MID-REPLAY exits cleanly (no `EngineEvent.error`
+       * emitted) and fires `onStreamResume({ outcome: 'clean' })`
+       * with `eventsReplayed` reflecting only what was yielded
+       * before the abort.
+       */
+      signal?: AbortSignal;
     },
   ): AsyncGenerator<EngineEvent> {
     // [SPEC 37 v0.7a Phase 5 Slice C / v2.2.0] Validate checkpoint config
@@ -309,22 +323,38 @@ export class AISDKEngine {
     // [Slice C] On a resume call, replay the checkpointed events first
     // and check for an in-flight tool. If we find one, we emit an error
     // and STOP — Path B per the spec (Path A silent re-execution is
-    // deferred to v2.3.0+). On a clean checkpoint (every tool_start has
-    // a matching tool_result), replay all events then continue into the
-    // live stream below.
+    // deferred to v2.3.0+). The replay is the ENTIRE response — no
+    // second LLM pass, no live continuation (per S.151). When a
+    // terminal is missing (replay was captured mid-event) we synthesise
+    // `turn_complete` so the host state machine doesn't hang.
     const checkpointStore = this.config.streamCheckpointStore;
     const resumeStreamId = this.config.resumeStreamId;
     if (resumeStreamId && checkpointStore) {
+      // [v2.5.0 5e-3] All four resume terminal paths fire the
+      // `onStreamResume` callback exactly once before returning.
+      // Helper centralises the try/catch so a misbehaving subscriber
+      // can't tank the resume.
+      const reportOutcome = (outcome: StreamResumeOutcome): void => {
+        const cb = this.config.onStreamResume;
+        if (!cb) return;
+        try {
+          cb(outcome);
+        } catch (err) {
+          console.error('[AISDKEngine] onStreamResume callback threw (non-fatal):', err);
+        }
+      };
+
       const replayed: EngineEvent[] = [];
       try {
-        for await (const ev of checkpointStore.replay(resumeStreamId)) {
+        for await (const ev of checkpointStore.replay(resumeStreamId, {
+          signal: options?.signal,
+        })) {
           replayed.push(ev);
         }
       } catch (err) {
-        yield {
-          type: 'error',
-          error: err instanceof Error ? err : new Error(String(err)),
-        };
+        const error = err instanceof Error ? err : new Error(String(err));
+        yield { type: 'error', error };
+        reportOutcome({ outcome: 'replay_error', streamId: resumeStreamId, error });
         return;
       }
 
@@ -338,6 +368,7 @@ export class AISDKEngine {
             `[AISDKEngine] resumeStreamId '${resumeStreamId}' has no checkpoint (expired or unknown)`,
           ),
         };
+        reportOutcome({ outcome: 'empty', streamId: resumeStreamId });
         return;
       }
 
@@ -352,6 +383,13 @@ export class AISDKEngine {
             `[AISDKEngine] cannot resume mid-tool: '${dangling.toolName}' was in-flight when the stream dropped — please retry the request`,
           ),
         };
+        reportOutcome({
+          outcome: 'mid_tool',
+          streamId: resumeStreamId,
+          eventsReplayed: replayed.length,
+          toolUseId: dangling.toolUseId,
+          toolName: dangling.toolName,
+        });
         return;
       }
 
@@ -377,6 +415,17 @@ export class AISDKEngine {
       );
       if (!hasTerminal) {
         yield { type: 'turn_complete', stopReason: 'end_turn' };
+        reportOutcome({
+          outcome: 'synthesized_terminal',
+          streamId: resumeStreamId,
+          eventsReplayed: replayed.length,
+        });
+      } else {
+        reportOutcome({
+          outcome: 'clean',
+          streamId: resumeStreamId,
+          eventsReplayed: replayed.length,
+        });
       }
       return;
     }

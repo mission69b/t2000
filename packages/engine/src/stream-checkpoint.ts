@@ -10,8 +10,16 @@
 // • `StreamCheckpointStore` — pluggable per-stream event log interface.
 //   Engine appends every yielded `EngineEvent` (fire-and-forget per
 //   Decision 5); on a subsequent `submitMessage({ resumeStreamId })`,
-//   engine replays the checkpointed sequence then continues the live
-//   stream. Resume scope = page-reload / Vercel cold-start / mobile-tab
+//   engine REPLAYS THE CHECKPOINTED SEQUENCE AND RETURNS — no second
+//   LLM pass, no live continuation (per S.151: "no duplicate
+//   `tool_start`, no redundant LLM run"). When the replay log lacks
+//   a terminal event (`turn_complete` or `pending_action`), the engine
+//   synthesises a `turn_complete` so the host state machine doesn't
+//   hang waiting for one. Empty checkpoint → engine emits a clear
+//   `EngineEvent.error` ("no checkpoint for streamId …"); host should
+//   start a fresh send.
+//
+//   Resume scope = page-reload / Vercel cold-start / mobile-tab
 //   swap mid-turn; NOT the user-confirm-then-resume flow (that stays
 //   on the existing pending_action / resumeWithToolResult path).
 //
@@ -65,8 +73,11 @@ import type { EngineEvent } from './types.js';
  *
  * Lifecycle: one `streamId` per `submitMessage()` call. Engine appends
  * every yielded `EngineEvent` to the store as it emits; on a subsequent
- * `submitMessage({ resumeStreamId })`, engine replays the checkpointed
- * events before starting the live stream.
+ * `submitMessage({ resumeStreamId })`, engine REPLAYS THE CHECKPOINTED
+ * EVENTS AND RETURNS — replay-only, no second LLM pass, no live
+ * continuation (per S.151). Engine synthesises a terminal `turn_complete`
+ * if the replay log lacks one (e.g. the original stream was killed
+ * mid-event). Empty replay → `EngineEvent.error` on the wire.
  *
  * Idempotency: `append` is called once per event by the engine; duplicate
  * appends (same streamId + same sequence number) are caller-side bugs.
@@ -102,8 +113,23 @@ export interface StreamCheckpointStore {
    *
    * On infra failure: throw. The engine propagates as an
    * `EngineEvent.error` and stream closes; client retries.
+   *
+   * [v2.5.0 5e-4] Optional `opts.signal` lets the caller cancel an
+   * in-flight replay (e.g. host knows the SSE consumer is gone, or
+   * a fresh `submitMessage` is starting and the previous replay's
+   * remaining work can be discarded). Impls SHOULD check
+   * `opts?.signal?.aborted` between yields and exit early when set;
+   * the engine treats an aborted replay as a clean termination (no
+   * `EngineEvent.error` is emitted because the host requested it).
+   *
+   * The parameter is OPTIONAL on the interface — existing impls
+   * (v2.2.0 / v2.3.0 / v2.4.0 era) that ignore it continue to work,
+   * they just don't gain the early-exit benefit.
    */
-  replay(streamId: string): AsyncGenerator<EngineEvent>;
+  replay(
+    streamId: string,
+    opts?: { signal?: AbortSignal },
+  ): AsyncGenerator<EngineEvent>;
 
   /**
    * Drop the checkpoint log for `streamId`. Idempotent — clearing
@@ -160,10 +186,20 @@ export class InMemoryStreamCheckpointStore implements StreamCheckpointStore {
     return log.length;
   }
 
-  async *replay(streamId: string): AsyncGenerator<EngineEvent> {
+  async *replay(
+    streamId: string,
+    opts?: { signal?: AbortSignal },
+  ): AsyncGenerator<EngineEvent> {
     const log = this.streams.get(streamId);
     if (!log) return;
-    for (const ev of log) yield ev;
+    for (const ev of log) {
+      // [v2.5.0 5e-4] Honor caller's abort signal between yields so
+      // a host that no longer cares about the rest of the replay can
+      // tell us to stop. Cheap (one boolean check per event) and the
+      // right end-state even when nothing currently consumes it.
+      if (opts?.signal?.aborted) return;
+      yield ev;
+    }
   }
 
   async clear(streamId: string): Promise<void> {
@@ -227,6 +263,56 @@ export interface InFlightToolDetection {
  * — it intentionally pauses the stream and the user-confirm flow takes
  * over from there (see `resumeWithToolResult`, not `submitMessage`).
  */
+// ---------------------------------------------------------------------------
+// StreamResumeOutcome — `onStreamResume` telemetry callback payload
+// ---------------------------------------------------------------------------
+
+/**
+ * [v2.5.0 5e-3] Outcome of a resume call (`submitMessage({ resumeStreamId })`).
+ * Passed to `EngineConfig.onStreamResume` exactly ONCE per resume call,
+ * right before the engine returns from the resume branch.
+ *
+ * Five mutually-exclusive outcomes:
+ *
+ * - `clean` — replay log contained a natural terminal (`turn_complete`
+ *   or `pending_action`); engine yielded the events verbatim.
+ * - `synthesized_terminal` — replay log lacked a terminal (original
+ *   stream was killed mid-event); engine yielded the events PLUS a
+ *   synthetic `turn_complete` so the host state machine doesn't hang.
+ * - `mid_tool` — replay log contained a `tool_start` without matching
+ *   `tool_result` (Path B). Engine yielded an `EngineEvent.error`
+ *   ("cannot resume mid-tool"); host re-prompts.
+ * - `empty` — checkpoint store had nothing for `resumeStreamId`
+ *   (expired, never written, wrong id). Engine yielded an
+ *   `EngineEvent.error` ("no checkpoint"); host starts a fresh send.
+ * - `replay_error` — `store.replay()` itself threw. Engine yielded
+ *   an `EngineEvent.error` carrying the underlying error.
+ *
+ * `eventsReplayed` counts events emitted from the checkpoint (NOT
+ * the synthetic terminal in the `synthesized_terminal` case, NOT
+ * any error events emitted alongside).
+ *
+ * The `mid_tool` variant carries `toolUseId` + `toolName` so telemetry
+ * can correlate Path B fires with specific tools (e.g. "swap_execute
+ * accounts for 80% of mid-tool resumes → Path A would help here").
+ */
+export type StreamResumeOutcome =
+  | { outcome: 'clean'; streamId: string; eventsReplayed: number }
+  | {
+      outcome: 'synthesized_terminal';
+      streamId: string;
+      eventsReplayed: number;
+    }
+  | {
+      outcome: 'mid_tool';
+      streamId: string;
+      eventsReplayed: number;
+      toolUseId: string;
+      toolName: string;
+    }
+  | { outcome: 'empty'; streamId: string }
+  | { outcome: 'replay_error'; streamId: string; error: Error };
+
 export function detectInFlightTool(
   events: EngineEvent[],
 ): InFlightToolDetection | null {

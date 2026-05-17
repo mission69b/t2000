@@ -1089,10 +1089,13 @@ export interface EngineConfig {
    * EngineEvent checkpoint log. When configured, every yielded event is
    * appended (fire-and-forget) to the store keyed by an engine-generated
    * `streamId`, and a `stream_started` EngineEvent fires first so the
-   * host can persist the id. On a subsequent `submitMessage()` with
-   * `resumeStreamId` set to that id, the engine replays the checkpoint
-   * before starting the live stream — enabling page-reload / cold-start
-   * recovery of an in-flight turn.
+   * host can persist the id.
+   *
+   * On a subsequent `submitMessage()` with `resumeStreamId` set, the
+   * engine REPLAYS the checkpointed events AND RETURNS — replay-only,
+   * no second LLM pass (per S.151). This enables page-reload /
+   * Vercel cold-start / mobile-tab swap recovery of an in-flight turn
+   * without paying for or risking a redundant LLM call.
    *
    * Omit to disable checkpointing entirely (the historical, pre-v2.2.0
    * behavior). The CLI / MCP / tests / single-instance dev should omit
@@ -1104,15 +1107,46 @@ export interface EngineConfig {
    * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] When set, engine
    * treats this `submitMessage()` call as a RESUME — it replays the
    * checkpointed events for `resumeStreamId` from `streamCheckpointStore`
-   * before continuing the live stream. Requires `streamCheckpointStore`
-   * to also be set (the engine throws on misconfig).
+   * AND RETURNS. No live LLM continuation runs; the replayed events
+   * (which were captured from a previous live stream on this same
+   * `streamId`) become the entire response. Requires
+   * `streamCheckpointStore` to also be set (the engine throws on misconfig).
    *
-   * Resume detects in-flight tools (`tool_start` without matching
-   * `tool_result`) and aborts with an `EngineEvent.error` instead of
-   * continuing — see Path B in the Slice C spec. Hosts re-prompt the
-   * user on that error.
+   * Outcomes the engine emits before returning:
+   * - **Clean replay** — replay log ends with `turn_complete` or
+   *   `pending_action`; engine yields the events verbatim and returns.
+   * - **Missing terminal** — replay log was captured mid-event (e.g.
+   *   the original stream was killed before emitting a terminal); engine
+   *   yields the events plus a synthetic `turn_complete` so the host
+   *   state machine doesn't hang.
+   * - **In-flight tool (Path B)** — replay log contains a `tool_start`
+   *   without matching `tool_result`. Engine emits an `EngineEvent.error`
+   *   ("cannot resume mid-tool; please retry") and stops; host re-prompts
+   *   the user fresh. (Path A — silent re-execution — deferred to v2.3.0+.)
+   * - **Empty checkpoint** — `resumeStreamId` was passed but the store
+   *   has nothing for it (expired, never written, wrong id). Engine
+   *   emits an `EngineEvent.error` ("no checkpoint for streamId …");
+   *   host should start a fresh `submitMessage()` send.
+   * - **Replay infra failure** — `store.replay()` throws. Engine
+   *   propagates as `EngineEvent.error` and stops.
+   *
+   * Use `EngineConfig.onStreamResume` to subscribe to which outcome
+   * fired (telemetry for evaluating Path A in v2.3.0+).
    */
   resumeStreamId?: string;
+  /**
+   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.5.0] Optional callback
+   * invoked exactly ONCE per `submitMessage({ resumeStreamId })` call
+   * with the outcome of the replay (see `resumeStreamId` JSDoc for the
+   * five outcomes). Fires before the engine returns. Errors thrown from
+   * the callback are caught and logged — the resume path is not affected.
+   *
+   * Use to count how often Path B (mid-tool resume) fires in production;
+   * if it's common enough, Path A (silent tool re-execution) becomes
+   * worth building. CLI / MCP / single-instance dev typically omit;
+   * audric subscribes and pushes the outcome to its telemetry pipeline.
+   */
+  onStreamResume?: (info: import('./stream-checkpoint.js').StreamResumeOutcome) => void;
 }
 
 // ---------------------------------------------------------------------------
