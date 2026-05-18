@@ -793,7 +793,7 @@ Tools across three categories:
 
 Prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, etc.
 
-All write operations go through a `TxMutex` to prevent concurrent transactions (Sui object version conflicts). Safeguards are checked before every write.
+All write operations serialize structurally — `confirm`-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step runs (prevents concurrent transactions + Sui object version conflicts). Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset. Safeguards are checked before every write. (Pre-v2.0.0 used an in-process `TxMutex`; v2 engine `AISDKEngine` doesn't instantiate one — the AI SDK step model + `needsApproval` round-trip is the actual serialization mechanism. Legacy `TxMutex` is still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts` lines 33-45.)
 
 ---
 
@@ -815,7 +815,7 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 
 | System | Owns | Implementation files |
 |---|---|---|
-| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `v2/tool-wrapper.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Adaptive thinking, 14 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
 | 🧠 **Silent Profile** | Daily on-chain snapshot + Claude-inferred profile, injected as `<financial_context>` block | audric-side: `UserFinancialProfile`, `UserFinancialContext`, `buildFinancialContextBlock()`, `buildProfileContext()` |
 | 🔗 **Chain Memory** | 7 classifiers extract `ChainFact` rows from on-chain history; injected silently | audric-side: classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -825,34 +825,37 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 
 The rest of this section is the technical deep-dive: how each system is wired in code, then the two recent harness upgrades — **Spec 1 (Correctness)** and **Spec 2 (Intelligence)**.
 
-### QueryEngine
+### AISDKEngine
 
-Stateful async-generator loop that drives conversations:
+Stateful async-generator loop that drives conversations. (Pre-v2.0.0 this was a hand-rolled `QueryEngine`; v2.0.0 cut over to wrapping Vercel AI SDK v6's `streamText` while preserving the same public API surface — `QueryEngine` was deleted, `AISDKEngine` is the only engine.)
 
 ```
 User prompt
-    → LLM (Anthropic Claude via streaming provider)
-    → Tool dispatch (read/write classification)
-    → Permission check (auto / confirm / explicit)
-    → Tool execution
+    → LLM (Anthropic Claude via AISDKAnthropicProvider → @ai-sdk/anthropic)
+    → AI SDK step lifecycle (start-step / tool-call / tool-result / finish-step)
+    → Per-step dedupe of duplicate concurrent read tool_calls
+    → Per-tool needsApproval check (auto / confirm / explicit, USD-aware)
+    → Tool execution (read tools parallel within a step; write tools yield pending_action then resume)
     → Results fed back to LLM
     → Repeat until end_turn or max_turns
 ```
 
-`QueryEngine.submitMessage(prompt)` returns `AsyncGenerator<EngineEvent>` — consumers iterate over events to build their UI (terminal, web, extension).
+`AISDKEngine.submitMessage(prompt)` returns `AsyncGenerator<EngineEvent>` — consumers iterate over events to build their UI (terminal, web, extension).
 
 ### Tool System
 
-Tools are built with `buildTool()` which enforces:
+Tools are built with `defineTool()` (the v2 factory; the pre-v2.0.0 `buildTool` was deleted in engine 1.38.0) which enforces:
 
 - **Zod input validation** with auto-generated JSON schema for the LLM
 - **Permission tiers**: `auto` (no approval), `confirm` (user must approve), `explicit` (manual only)
-- **Concurrency flags**: `isReadOnly` and `isConcurrencySafe`
+- **Concurrency flags**: `isReadOnly` and `isConcurrencySafe` (drive per-step dedupe, not a mutex)
 
-`runTools()` dispatches tool calls:
+Tool dispatch in `AISDKEngine`:
 
-- Read-only tools → `Promise.allSettled` (parallel)
-- Write tools → sequential under `TxMutex` (prevents Sui object version conflicts)
+- Read-only `isConcurrencySafe` tools → AI SDK runs them in parallel within a step; identical concurrent calls are deduped per-step (engine.ts L1145-L1149)
+- Write tools → serial via the step + `needsApproval` round-trip: confirm-tier writes yield `pending_action`, host round-trips through user confirm, next step runs the next write. Prevents Sui object version conflicts structurally without an in-process mutex.
+
+(Legacy `runTools()` + `TxMutex` from `orchestration.ts` are still exported for back-compat with non-AISDKEngine callers — the CLI's `audric chat` command, certain MCP server tests — but the v2 engine doesn't use them.)
 
 ### Built-in Financial Tools
 
@@ -906,7 +909,7 @@ Additional features:
 - **Context compaction** — `ContextBudget` (200k limit, 85% compact trigger) with LLM summarizer + truncation fallback
 - **Tool flags** — `ToolFlags` interface on all tools (mutating, requiresBalance, affectsHealth, irreversible, etc.)
 - **Preflight validation** — input validation gate on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`
-- **Streaming tool dispatch** — `EarlyToolDispatcher` fires read-only tools mid-stream before `message_stop`
+- **Streaming tool dispatch** — AI SDK v6's `streamText` natively dispatches read-only `isConcurrencySafe` tools as soon as each `tool-call` event completes (no separate dispatcher; legacy `EarlyToolDispatcher` exported for back-compat with non-AISDKEngine callers)
 - **Tool result budgeting** — `maxResultSizeChars` caps output; truncated with re-call hint
 - **Microcompact** — deduplicates identical tool calls in history with back-references
 - **Granular permissions** — USD-aware `resolvePermissionTier()` with conservative/balanced/aggressive presets
@@ -1241,14 +1244,15 @@ Any write operation (send, save, pay, etc.)
   │   ├── Amount ≤ maxPerTx? ($500 default)
   │   └── dailyUsed + amount ≤ maxDailySend? ($1000 default)
   │
-  ├── TxMutex.acquire()  ← serializes all writes
-  │
   ├── Build + sign + execute TX
   │
-  ├── SafeguardEnforcer.recordUsage(amount)  ← outbound ops only
-  │
-  └── TxMutex.release()
+  └── SafeguardEnforcer.recordUsage(amount)  ← outbound ops only
 ```
+
+Write serialization is the caller's responsibility, NOT the SDK's. In practice:
+- **CLI** (`t2000 send` / `t2000 save`): interactive single-command → naturally serial.
+- **Engine** (`AISDKEngine` driving the conversational harness): structural via AI SDK step model + `needsApproval` round-trip (confirm-tier writes yield `pending_action`, host round-trips, next step runs next write).
+- **Audric web**: per-user single-session writes serialize through the sponsored-tx flow (`/api/transactions/prepare` → user signs → `/api/transactions/execute`).
 
 **Outbound ops** (guarded by daily limit): `send`, `pay`
 **Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`
@@ -1308,9 +1312,14 @@ Agent (local)                    Gateway (Vercel)              Upstream API
 - `chargeProxy()` injects headers server-side via `upstreamHeaders`
 - Response is proxied back without exposing internal headers
 
-### Transaction serialization (TxMutex)
+### Transaction serialization
 
-All write operations go through a `TxMutex` that ensures only one transaction executes at a time per agent. This prevents Sui object version conflicts that occur when concurrent transactions try to use the same coin objects.
+Write serialization is enforced at the caller layer, not inside `@t2000/sdk`:
+- **CLI** (interactive single-command) is naturally serial.
+- **`@t2000/engine` `AISDKEngine`** serializes structurally via the AI SDK step model + `needsApproval` round-trip — confirm-tier writes yield `pending_action`, host round-trips through user confirm, the next step runs the next write. Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset.
+- **Audric web** serializes per-user via the sponsored-tx flow (one transaction prepare → sign → execute round-trip at a time per session).
+
+Pre-v2.0.0 the engine instantiated an in-process `TxMutex` (still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts` L33-45); v2.0.0 deleted that wiring in favor of the structural mechanism above. Sui object version conflicts are prevented by the structural one-write-per-step contract, not a lock.
 
 ### What the server knows vs doesn't
 

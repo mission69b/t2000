@@ -159,7 +159,7 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 
 | System | What it does | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 37 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Read tools fan out in parallel (`Promise.allSettled`); write tools serialise under `TxMutex`. Streaming dispatch fires read-only tools mid-stream before `message_stop`. | `AISDKEngine` + `runTools` + `EarlyToolDispatcher` + 25 read / 12 write tools (`getDefaultTools()`) |
+| 🎛️ **Agent Harness** | 37 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Read tools fan out in parallel via AI SDK's native step model; write tools serialise structurally — confirm-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step. Auto-execute writes (USD-aware permission resolver) inherit the same one-write-per-step contract from the LLM's planning. | `AISDKEngine` + AI SDK v6 `streamText` + `needsApproval` round-trip + 25 read / 12 write tools (`getDefaultTools()`) |
 | ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort` routes `low`/`medium`/`high`/`max`), 14 safety guards across 3 priority tiers (12 pre-exec + 2 post-exec hints) — `input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`, `cost_warning`, `artifact_preview`, `stale_data`. Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save", "emergency withdraw", "account report", "send to alice") lives in **skills** — 14 markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` at build time and exposed to MCP clients as `skill-<name>` prompts. Prompt caching on system prompt + tool definitions. Extended thinking always-on for Sonnet/Opus. | `classifyEffort`, `runGuards`, `t2000-skills/skills/`, `@t2000/mcp` skills-as-prompts adapter, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. Daily on-chain orientation snapshot (savings/wallet/debt USD, health factor, weighted APY, recent activity) refreshed at 02:00 UTC and injected as a `<financial_context>` system-prompt block at every engine boot — every chat starts oriented, no warm-up tool calls. Plus a Claude-inferred profile (risk tolerance, goals, horizon) from chat history. Never surfaced as nudges. | audric-side: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + `buildProfileContext()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. 7 classifiers extract structured facts (recurring sends, idle balances, position changes, near-liquidation events, large transactions, compounding streaks, borrow patterns) into `ChainFact` rows. Silent context — no proposals, no notifications. | audric-side: 7 chain classifiers + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -168,10 +168,10 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
 
 ```typescript
-import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
+import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
 
-const engine = new QueryEngine({
-  provider: new AnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
+const engine = new AISDKEngine({
+  provider: new AISDKAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
   agent,
   tools: getDefaultTools(),
 });
@@ -180,6 +180,8 @@ for await (const event of engine.submitMessage('What is my balance?')) {
   if (event.type === 'text_delta') process.stdout.write(event.text);
 }
 ```
+
+> The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine `v2.0.0` (2026-05-17). `AISDKEngine` is the only engine; it wraps Vercel AI SDK v6's `streamText` and preserves the same public API surface (`submitMessage`, `EngineEvent` stream, `PendingAction`).
 
 ### What shipped recently — Spec 1 + Spec 2
 

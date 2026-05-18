@@ -34,7 +34,7 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | # | System | One-line | Owns | Implementation |
 |---|---|---|---|---|
-| 1 | 🎛️ **Agent Harness** | 37 tools, one agent. | Tool registry, parallel reads, serial writes (`TxMutex`), permission gates, streaming dispatch | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (25 read + 12 write) |
+| 1 | 🎛️ **Agent Harness** | 37 tools, one agent. | Tool registry, parallel reads (AI SDK step model), serial writes (structural via `needsApproval` round-trip — confirm-tier writes yield `pending_action`, host round-trips through user confirm, next step runs next write), permission gates, mid-stream tool dispatch | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (25 read + 12 write) |
 | 2 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards across 3 priority tiers (12 pre-exec + 2 post-exec hints), prompt caching, preflight validation. Multi-step orchestration ships from `@t2000/mcp` skills (markdown playbooks, exposed as MCP prompts). | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control`, `t2000-skills/skills/` |
 | 3 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot (`UserFinancialContext`) + Claude-inferred profile (`UserFinancialProfile`), injected as `<financial_context>` block at every engine boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` |
 | 4 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows; injected silently as `<chain_memory>` | _Audric-side_: 7 chain classifiers in `daily-intel` cron group + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -671,8 +671,8 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | `AISDKEngine` | class | Stateful conversation loop with tool dispatch, thinking, guards. Sole engine since v2.0.0 (SPEC 37 v0.7a Phases 1-3) — `QueryEngine` was deleted. Backs onto `streamText` + `@ai-sdk/anthropic`. |
 | `AISDKAnthropicProvider` | class | Drop-in `LLMProvider` for in-process embeddings that need the provider shape without an engine. Backs onto `@ai-sdk/anthropic`. (Hand-rolled `AnthropicProvider` deleted in v2.0.0.) |
 | `defineTool` | function | Typed tool factory with Zod `inputSchema` as single source of truth (auto-derives JSON Schema). Sole tool factory since v2.0.0 — `buildTool` was deleted. |
-| `runTools` | function | Parallel reads / serial writes orchestration |
-| `TxMutex` | class | Transaction serialization lock |
+| `runTools` | function | Legacy parallel-reads / serial-writes orchestration (pre-v2.0.0). Still exported for back-compat with non-AISDKEngine callers (CLI dispatch). v2 engine uses AI SDK's native step model — `runTools` is NOT in the v2 hot path. |
+| `TxMutex` | class | Legacy transaction serialization lock (pre-v2.0.0). v2 engine doesn't instantiate one — write serialisation is structural via the AI SDK step model + `needsApproval` round-trip. Kept exported for back-compat consumers. See `packages/engine/src/v2/tool-policy.ts` lines 33-45 for the v2 contract. |
 | `CostTracker` | class | Token usage + USD cost tracking |
 | `MemorySessionStore` | class | In-memory session store with TTL |
 | `McpClientManager` | class | Multi-server MCP client with caching (thin wrapper around `@ai-sdk/mcp`'s `createMCPClient` since engine v2.1.0 — SPEC 37 v0.7a Phase 4; public method signatures preserved verbatim) |

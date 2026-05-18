@@ -8,6 +8,35 @@
 >
 > **Re-read trigger:** at the end of every engine release day. Update what's shipped, what's open, what's been re-prioritized.
 
+> ## ⚠️ Promotion-criterion status (2026-05-18 / S.159 H cluster)
+>
+> **Cannot promote to formal `BENEFITS_SPEC_v07b.md` yet — the §3 promotion criterion (≥3 locked-in items with measurable acceptance criteria) is NOT met.**
+>
+> Audit of the §3 candidate scope (7 items):
+> - **3 shipped early** — D-4 ✅ (S.155 audric `d5b50a2`), D-6 ✅ (engine v2.6.0), D-7 ✅ (S.153 audric `363e4f1`). These were dispatched as part of v0.7a closeout because they were small + de-risking. They are NOT "locked-in v0.7b items" — they're "v0.7b backlog items that fit naturally in v0.7a closeout."
+> - **2 deferred to v0.7c** — D-1 Slice D (zkLogin model requires client-side tools → `useChat` adoption → Slice B prerequisite → v0.7c chatbot template fork) and D-3 Slice B (re-gated to v0.7c per D-scoping 2026-05-18).
+> - **2 trigger-gated** — D-2 Path A (needs ~2 weeks of `[stream-resume]` Vercel data + `mid_tool` >5% threshold), D-5 MemWal Plan B pivot (only fires if Plan A misses 2026-06-26).
+>
+> Result: there are currently **zero locked-in v0.7b items** with measurable acceptance criteria. Everything is either shipped, deferred, or contingent on external triggers. A formal `BENEFITS_SPEC_v07b.md` drafted today would be padding around a contingency tree.
+>
+> **Explicit promotion triggers (any one of these → start the formal draft):**
+> 1. D-2 Path A trigger fires — Vercel `[stream-resume]` logs show `mid_tool` outcome >5% of total resume volume sustained over 7+ days AND a specific tool dominates the `toolName` histogram (queries in `apps/web/prisma/schema.prisma` JSDoc).
+> 2. D-5 Plan B trigger fires — 2026-06-26 Plan A decision deems MemWal not production-ready; fallback vendor (Mem0 / Letta / Supermemory / Hindsight) eval matrix has a winner.
+> 3. Founder commits to v0.7c chatbot template fork — at that point D-1 + D-3 promote to v0.7c spec, and any residual v0.7b items (D-2 if not yet triggered) get folded into v0.7c or postponed.
+> 4. A NEW engine-infra item lands in §3 that's not derivable from existing trigger paths and is locked with measurable criteria.
+>
+> Until one of these fires, this doc remains the working triage and `audric-build-tracker.md` S-entries are the audit trail. No padding-SPEC.
+
+> ## 📌 Semver framing (2026-05-18 / S.159 H cluster)
+>
+> **The original v0.7a planning docs reference a `v1.50.0` release target. Reality is `v2.7.0`. Don't rewrite the past — this is the locked framing going forward.**
+>
+> Why: v0.7a planning assumed the cutover from `QueryEngine` → `AISDKEngine` could ship as a minor (preserve both classes, add `AISDKEngine` alongside). In practice, audric/web's `engine-factory.ts` cut over in-place, `QueryEngine` + `AnthropicProvider` were deleted (v2.0.0), and `buildTool` was deleted earlier (v1.38.0). Each of those deletions is a breaking change to exported public surface — semver requires a major.
+>
+> Result: v2.0.0 was the correct semver outcome the moment QueryEngine was deleted. v2.7.0 reflects 7 subsequent minors (MCP migration v2.1.0, stream checkpoint resume v2.2.0, etc.).
+>
+> v0.7b → engine version: next minor on the `v2.x` line. Next major (v3.x) is RESERVED for a future cutover that deletes another tier of public API (likely Audric host-bridge fold-forward in v0.7c if the chatbot template fork happens).
+
 ---
 
 ## 0. SPEC 37 phase-status cheat sheet (canonical — keep current)

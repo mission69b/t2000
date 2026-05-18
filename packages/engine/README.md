@@ -2,18 +2,18 @@
 
 Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (37 tools — 25 read, 12 write), Reasoning Engine (14 guards across 3 priority tiers), Silent Profile, Chain Memory, and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
-QueryEngine orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop.
+`AISDKEngine` orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop. (The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine `v2.0.0` (2026-05-17); `AISDKEngine` is the only engine, wrapping Vercel AI SDK v6's `streamText` while preserving the same public API surface.)
 
 ## Quick Start
 
 ```typescript
-import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
+import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
 import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
 
-const engine = new QueryEngine({
-  provider: new AnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
+const engine = new AISDKEngine({
+  provider: new AISDKAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
   agent,
   tools: getDefaultTools(),
 });
@@ -39,7 +39,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
-| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), one agent. | Tool registry, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -53,32 +53,37 @@ The engine package owns **Agent Harness** and **Reasoning Engine** in code. The 
 User message
     │
     ▼
-QueryEngine.submitMessage()
+AISDKEngine.submitMessage()
     │
-    ├── LLM Provider (Anthropic Claude)
+    ├── LLM Provider (AISDKAnthropicProvider — wraps AI SDK v6 streamText)
     │       ├── text_delta events → streamed to client
-    │       └── tool_use → dispatched to tool system
+    │       └── tool-call → AI SDK dispatches via the step model
     │
-    ├── Tool Orchestration (runTools)
-    │       ├── Read-only tools  → parallel (Promise.allSettled)
-    │       └── Write tools      → serial (TxMutex)
+    ├── Tool Execution (v2 wrapper around AI SDK `tool()`)
+    │       ├── Read-only tools  → parallel within a step (AI SDK native)
+    │       └── Write tools      → serial via the step + needsApproval contract:
+    │                              confirm-tier writes yield pending_action,
+    │                              host round-trips through user confirm,
+    │                              next step runs the next write.
     │
     ├── Delegated Execution
     │       └── confirm-level tools yield pending_action
     │           → client executes on-chain → resumeWithToolResult()
     │
-    └── MCP Integration
-            ├── MCP Client (McpClientManager) → consume external MCPs
-            └── MCP Server (buildMcpTools)    → expose tools to AI clients
+    └── MCP Integration (Phase 4, engine v2.1.0)
+            ├── MCP Client (McpClientManager → @ai-sdk/mcp createMCPClient)
+            ├── Prompt Adapter (McpPromptAdapter) → consume MCP prompts
+            └── MCP Server (buildMcpTools) → expose engine tools to AI clients
 ```
 
 ## Modules
 
 | Module | Export | Purpose |
 |--------|--------|---------|
-| `engine.ts` | `QueryEngine` | Stateful conversation loop with tool dispatch |
-| `tool.ts` | `buildTool` | Typed tool factory with Zod validation |
-| `orchestration.ts` | `runTools`, `TxMutex` | Parallel reads, serial writes |
+| `v2/engine.ts` | `AISDKEngine` | Stateful conversation loop wrapping AI SDK v6 `streamText` + `prepareStep` + `needsApproval` |
+| `v2/define-tool.ts` | `defineTool` | Typed tool factory with Zod validation (replaces deleted `buildTool` from engine 1.38.0) |
+| `v2/tool-policy.ts` | `TOOL_POLICY`, `getToolPolicy`, `registerToolPolicy` | Tool isReadOnly + isConcurrencySafe + permissionLevel registry — drives per-step dedupe + `needsApproval` resolution |
+| `orchestration.ts` | `runTools`, `TxMutex` (legacy) | Pre-v2.0.0 orchestration kept exported for back-compat with non-AISDKEngine callers (CLI, MCP). v2 engine doesn't use these — write serialisation is structural via the AI SDK step model. |
 | `streaming.ts` | `serializeSSE`, `parseSSE` | SSE wire format SSOT (`engineToSSE` removed in v2.2.0 — hosts iterate EngineEvent raw + call `serializeSSE` per event) |
 | `stream-checkpoint.ts` | `StreamCheckpointStore`, `InMemoryStreamCheckpointStore`, `detectInFlightTool` | [v2.2.0 / Slice C] Page-reload / cold-start LIVE-stream resume. Wire `EngineConfig.streamCheckpointStore`; engine emits `stream_started` first (with engine-generated UUID streamId) and fire-and-forget appends every yielded event. Host re-passes the id as `EngineConfig.resumeStreamId` on reconnect; engine replays then continues. In-flight tool on resume → Path B error. In-memory default has a 5-min TTL; multi-instance hosts inject Upstash. |
 | `session.ts` | `MemorySessionStore` | In-memory session store with TTL |
@@ -99,7 +104,7 @@ QueryEngine.submitMessage()
 | `tools/volo-stake.ts` | `voloStakeTool` | Stake SUI → vSUI |
 | `tools/volo-unstake.ts` | `voloUnstakeTool` | Unstake vSUI → SUI |
 | `prompt.ts` | `DEFAULT_SYSTEM_PROMPT` | Audric system prompt |
-| `providers/anthropic.ts` | `AnthropicProvider` | Anthropic Claude LLM provider |
+| `providers/ai-sdk-anthropic.ts` | `AISDKAnthropicProvider` | Anthropic Claude LLM provider via AI SDK v6 (`@ai-sdk/anthropic`). Replaces the deleted `AnthropicProvider` (v2.0.0). Implements the locked retry contract: retry-before-first-token only (`maxRetries: 0` on AI SDK call), never resume mid-stream. |
 
 ## Built-in Tools
 
@@ -200,9 +205,9 @@ Net effect: we keep our 15-field `PendingAction` event (which carries load-beari
 
 ## Engine Features
 
-### Streaming Tool Execution (Early Dispatch)
+### Streaming Tool Execution
 
-`EarlyToolDispatcher` dispatches read-only tools mid-stream before `message_stop`. Tools with `isReadOnly && isConcurrencySafe` fire as soon as their `tool_use` block completes. Write tools still go through the permission gate.
+In `AISDKEngine` (v2), AI SDK v6's `streamText` natively dispatches read-only `isConcurrencySafe` tools mid-stream — each `tool-call` event triggers execution as soon as the tool block completes (no separate dispatcher needed). Write tools still go through the permission gate via the `needsApproval` callback after the step boundary. The legacy `EarlyToolDispatcher` is still exported for back-compat with non-AISDKEngine callers (CLI, MCP); v2 engine doesn't use it.
 
 ### Tool Result Budgeting
 
@@ -414,7 +419,7 @@ import { McpClientManager, NAVI_MCP_CONFIG } from '@t2000/engine';
 const mcpManager = new McpClientManager();
 await mcpManager.connect(NAVI_MCP_CONFIG);
 
-const engine = new QueryEngine({
+const engine = new AISDKEngine({
   provider,
   agent,
   mcpManager,
@@ -464,9 +469,9 @@ registerEngineTools(server, getDefaultTools());
 
 ```typescript
 import { z } from 'zod';
-import { buildTool } from '@t2000/engine';
+import { defineTool } from '@t2000/engine';
 
-const myTool = buildTool({
+const myTool = defineTool({
   name: 'my_tool',
   description: 'Does something useful',
   inputSchema: z.object({ query: z.string() }),

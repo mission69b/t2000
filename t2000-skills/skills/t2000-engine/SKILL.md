@@ -2,13 +2,13 @@
 name: t2000-engine
 description: >-
   Use the @t2000/engine package to build conversational AI agents with
-  financial capabilities. Use when asked to set up QueryEngine, build
+  financial capabilities. Use when asked to set up AISDKEngine, build
   custom tools, configure LLM providers, handle streaming events, or
   integrate with MCP servers. Powers the Audric consumer product.
 license: MIT
 metadata:
   author: t2000
-  version: "1.0"
+  version: "2.0"
   requires: "@t2000/engine (npm i @t2000/engine)"
 ---
 
@@ -16,18 +16,24 @@ metadata:
 
 ## Purpose
 Build conversational AI agents with financial capabilities on Sui.
-`@t2000/engine` provides QueryEngine, 12 financial tools, LLM orchestration,
-MCP client/server integration, streaming, sessions, and cost tracking.
+`@t2000/engine` provides `AISDKEngine`, 37 financial tools (25 read + 12 write),
+LLM orchestration via Vercel AI SDK v6, MCP client/server integration,
+streaming, sessions, and cost tracking.
+
+> The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine
+> `v2.0.0` (2026-05-17). `AISDKEngine` + `AISDKAnthropicProvider` are the only
+> engine and provider; they wrap AI SDK v6's `streamText` while preserving the
+> same public API surface (`submitMessage`, `EngineEvent` stream, `PendingAction`).
 
 ## Quick Start
 ```typescript
-import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
+import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
 import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
 
-const engine = new QueryEngine({
-  provider: new AnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
+const engine = new AISDKEngine({
+  provider: new AISDKAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
   agent,
   tools: getDefaultTools(),
 });
@@ -40,19 +46,23 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 ## Building Custom Tools
 ```typescript
 import { z } from 'zod';
-import { buildTool } from '@t2000/engine';
+import { defineTool } from '@t2000/engine';
 
-const myTool = buildTool({
+const myTool = defineTool({
   name: 'my_tool',
   description: 'Tool description for the LLM',
   inputSchema: z.object({ query: z.string() }),
   isReadOnly: true,
+  isConcurrencySafe: true,
   permissionLevel: 'auto',
   async call(input, context) {
     return { data: { result: input.query }, displayText: `Result: ${input.query}` };
   },
 });
 ```
+
+> `defineTool` is the v2 factory. The pre-v2 `buildTool` was deleted in engine
+> `1.38.0`. Signature is the same (Zod schema, isReadOnly, permissionLevel, `call`).
 
 ## Permission Levels
 | Level | Behavior | Use for |
@@ -61,18 +71,27 @@ const myTool = buildTool({
 | `confirm` | Yields `pending_action`, client executes and resumes | Financial writes |
 | `explicit` | Never auto-dispatched by LLM | Dangerous operations |
 
+USD-aware resolution: write tools with `permissionLevel: 'confirm'` are
+dynamically downgraded to `auto` if `amountUsd < rule.autoBelow` and the user's
+`permissionConfig` is plumbed through `ToolContext`. See
+`packages/engine/src/permission-rules.ts` for the three presets
+(`conservative` / `balanced` / `aggressive`) and `borrow`-always-confirms rule.
+
 ## Event Types
 ```typescript
-// Handle events from engine.submitMessage()
 for await (const event of engine.submitMessage(prompt)) {
   switch (event.type) {
-    case 'text_delta':       // LLM text chunk
-    case 'tool_start':       // Tool execution beginning
-    case 'tool_result':      // Tool execution complete
-    case 'pending_action':     // Write tool needs approval → client executes, then resumes
-    case 'turn_complete':    // Conversation turn finished
-    case 'usage':            // Token usage report
-    case 'error':            // Unrecoverable error
+    case 'stream_started':    // first event — carries engine-generated streamId (v2.2.0+, when streamCheckpointStore is wired)
+    case 'text_delta':        // LLM text chunk (markers like <proactive> and <eval_summary> pass through verbatim; host strips at render)
+    case 'thinking_delta':    // Extended-thinking chunk (always-on)
+    case 'thinking_done':     // Thinking block closed
+    case 'tool_start':        // Tool execution beginning
+    case 'tool_result':       // Tool execution complete
+    case 'pending_action':    // Write tool needs approval → client executes, then resumes. action.attemptId is a UUID v4; persist on TurnMetrics + key resume `updateMany` on it
+    case 'canvas':            // Inline HTML/React canvas artifact
+    case 'turn_complete':     // Conversation turn finished
+    case 'usage':             // Token usage report (input / output / cache reads + writes)
+    case 'error':             // Unrecoverable error
   }
 }
 ```
@@ -85,7 +104,7 @@ const mcpManager = new McpClientManager();
 await mcpManager.connect(NAVI_MCP_CONFIG);
 
 // Read tools auto-use MCP when available, SDK as fallback
-const engine = new QueryEngine({
+const engine = new AISDKEngine({
   provider,
   agent,
   mcpManager,
@@ -93,6 +112,10 @@ const engine = new QueryEngine({
   tools: getDefaultTools(),
 });
 ```
+
+> Internally backed by `@ai-sdk/mcp`'s `createMCPClient` since engine `v2.1.0`
+> (SPEC 37 v0.7a Phase 4); `McpClientManager` class name + public method
+> signatures preserved verbatim. `McpPromptAdapter` for MCP prompts is new in `v2.1.0`.
 
 ## MCP Server (expose tools to AI clients)
 ```typescript
@@ -106,7 +129,7 @@ registerEngineTools(server, getDefaultTools());
 
 ## SSE Streaming (web apps)
 ```typescript
-// [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice A] `engineToSSE` removed —
+// [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice A] `engineToSSE` was deleted —
 // iterate EngineEvent raw and call serializeSSE per event. Audric chat +
 // resume routes have used this pattern since v1.4.2 (Spec G3). Hosts that
 // want the SPEC 21.1 routing/quoting/etc → stream_state choreography wrap
@@ -122,18 +145,48 @@ for await (const event of withStreamState(engine.submitMessage(prompt))) {
 // Write tools yield pending_action → client executes on-chain → POST /api/engine/resume
 ```
 
-## Built-in Tools (12)
+## Stream Checkpoint Resume (v2.2.0+)
+```typescript
+// Wire a checkpoint store to enable page-reload / cold-start resume of the
+// LIVE stream. Engine emits `stream_started` first (carries the streamId),
+// appends every event fire-and-forget, and replays the checkpoint when the
+// host passes the id back as `EngineConfig.resumeStreamId`.
+import { InMemoryStreamCheckpointStore } from '@t2000/engine';
 
-### Read (parallel, auto-approved)
-`balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`
+const engine = new AISDKEngine({
+  // ...
+  streamCheckpointStore: new InMemoryStreamCheckpointStore(),
+});
+// In-flight tool on resume = Path B (error + re-prompt). CLI / MCP / tests
+// use the in-memory default; multi-instance hosts (audric on Vercel) inject Upstash.
+```
 
-### Write (serial, confirmation required)
-`save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`
+## Built-in Tools (37)
+
+### Read (25, parallel, auto-approved)
+`render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`,
+`transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`,
+`explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `token_prices`,
+`create_payment_link`, `list_payment_links`, `cancel_payment_link`,
+`create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`,
+`yield_summary`, `activity_summary`, `resolve_suins`, `pending_rewards`
+
+### Write (12, structurally serial, confirmation required)
+`save_deposit` (USDC + USDsui), `withdraw`, `send_transfer`,
+`borrow` (USDC + USDsui), `repay_debt` (USDC + USDsui — same asset as borrow),
+`claim_rewards`, `harvest_rewards`, `pay_api`, `swap_execute`, `volo_stake`,
+`volo_unstake`, `save_contact`
+
+> Write serialization is structural in v2 — no in-process mutex. Confirm-tier
+> writes yield a `pending_action` event, the host round-trips through user
+> confirm, and the next step runs the next write. Auto-execute writes
+> (USD-aware permission resolver, sub-threshold) inherit one-write-per-step
+> from the LLM's planning + the conservative-default preset.
 
 ## Configuration
 ```typescript
-new QueryEngine({
-  provider: new AnthropicProvider({ apiKey }),  // Required
+new AISDKEngine({
+  provider: new AISDKAnthropicProvider({ apiKey }),  // Required
   agent,                // T2000 SDK instance
   mcpManager,           // McpClientManager for MCP-first reads
   walletAddress,        // Sui address for MCP reads
@@ -143,21 +196,35 @@ new QueryEngine({
   maxTurns: 10,
   maxTokens: 4096,
   costTracker: { budgetLimitUsd: 1.0 },
+  streamCheckpointStore, // optional, v2.2.0+ for live-stream resume
+  resumeStreamId,        // optional, replays a checkpointed stream on cold start
 });
 ```
 
 ## Key Imports
 ```typescript
 // Core
-import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
-// Tools
-import { buildTool, READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
-// Streaming (`engineToSSE` removed in v2.2.0 — see "SSE Streaming" above)
+import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
+// Tools (defineTool replaced the deleted buildTool in engine 1.38.0)
+import { defineTool, READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
+// Streaming (`engineToSSE` was deleted in v2.2.0 — see "SSE Streaming" above)
 import { serializeSSE, parseSSE, withStreamState } from '@t2000/engine';
+// Stream checkpoint resume (v2.2.0+)
+import { InMemoryStreamCheckpointStore } from '@t2000/engine';
 // Sessions
 import { MemorySessionStore } from '@t2000/engine';
 // Cost
 import { CostTracker } from '@t2000/engine';
+// Microcompact + context budgeting
+import { microcompact, compactMessages, estimateTokens } from '@t2000/engine';
+// Granular permissions (USD-aware resolver)
+import {
+  resolvePermissionTier, resolveUsdValue, toolNameToOperation,
+  DEFAULT_PERMISSION_CONFIG, PERMISSION_PRESETS,
+} from '@t2000/engine';
 // MCP
-import { McpClientManager, NAVI_MCP_CONFIG, buildMcpTools, registerEngineTools } from '@t2000/engine';
+import {
+  McpClientManager, McpPromptAdapter,
+  NAVI_MCP_CONFIG, buildMcpTools, registerEngineTools,
+} from '@t2000/engine';
 ```

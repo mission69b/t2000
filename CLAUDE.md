@@ -245,15 +245,29 @@ Powers **Audric** — the conversational finance agent. Wraps `@t2000/sdk` in an
 
 ```ts
 // Core
-import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
+import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
 
-// Tool building
-import { buildTool, toolsToDefinitions, findTool } from '@t2000/engine';
+// Tool building — `defineTool` is the v2 factory.
+// `buildTool` was deleted in engine 1.38.0; use `defineTool` for new tools.
+import { defineTool, toolsToDefinitions, findTool } from '@t2000/engine';
 
-// Orchestration + tool budgeting
-import { TxMutex, runTools, budgetToolResult } from '@t2000/engine';
+// Tool result budgeting.
+// `TxMutex` + `runTools` are STILL exported for back-compat with legacy
+// orchestration callers (e.g. CLI dispatch). v2 `AISDKEngine` does NOT
+// instantiate TxMutex — write serialisation is structural (AI SDK step
+// model + `needsApproval` round-trip; confirm-tier writes yield a
+// `pending_action` event → host round-trips through user confirm → next
+// step). See `packages/engine/src/v2/tool-policy.ts` lines 33-45.
+import { budgetToolResult } from '@t2000/engine';
+// Legacy (kept for back-compat consumers; v2 engine doesn't use them):
+import { TxMutex, runTools } from '@t2000/engine';
 
-// Streaming tool execution (early dispatch)
+// Streaming tool execution.
+// `EarlyToolDispatcher` is the legacy QueryEngine-era helper (still
+// exported for back-compat). v2 `AISDKEngine` natively dispatches
+// read-only `isConcurrencySafe` tools mid-stream as AI SDK emits each
+// `tool-call` event — no separate dispatcher needed. Use this import
+// only if you're building on the legacy orchestration path.
 import { EarlyToolDispatcher } from '@t2000/engine';
 
 // Streaming + sessions
@@ -348,7 +362,7 @@ Tools can set `maxResultSizeChars` to cap output size. Results exceeding the lim
 
 ### Streaming tool execution (B.1)
 
-`EarlyToolDispatcher` dispatches read-only tools mid-stream (before `message_stop`). Tools with `isReadOnly && isConcurrencySafe` are fired as soon as their `tool_use` block completes. Write tools still go through the permission gate after stream ends. Results yield in original dispatch order.
+In `AISDKEngine` (v2), AI SDK natively dispatches read-only `isConcurrencySafe` tools mid-stream — each `tool-call` event triggers execution as soon as the tool block completes (no separate dispatcher needed). Write tools still go through the permission gate (`needsApproval` callback) after the stream's `start-step` / `finish-step` boundary. Results stream back via `tool-result` events in original dispatch order. The legacy `EarlyToolDispatcher` is still exported for back-compat with non-AISDKEngine callers (CLI, MCP), but the v2 engine doesn't use it — the AI SDK step model is the native mechanism.
 
 ### Microcompact (B.3)
 

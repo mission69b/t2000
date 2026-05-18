@@ -61,9 +61,9 @@ The following are in scope:
 
 - **Permission tiers** — Tools are classified as `auto` (read-only, no approval), `confirm` (requires user approval before execution), or `explicit` (manual-only, never auto-dispatched by LLM)
 - **Delegated execution** — Write tools yield `pending_action` events; the client executes the transaction on-chain and resumes the engine via `resumeWithToolResult`. Session state is persisted so the flow is stateless and serverless-friendly.
-- **Transaction serialization** — `TxMutex` ensures write tools execute sequentially, preventing Sui object version conflicts from concurrent mutations
+- **Transaction serialization** — Write tools serialize structurally via the AI SDK step model + `needsApproval` round-trip: confirm-tier writes yield a `pending_action`, the host round-trips through user confirm, and the next step runs the next write — preventing Sui object version conflicts from concurrent mutations without an in-process lock. (Pre-v2.0.0 used an in-process `TxMutex`; v2 engine `AISDKEngine` doesn't instantiate one — legacy `TxMutex` is still exported for back-compat consumers.)
 - **Budget limits** — `CostTracker` enforces configurable `budgetLimitUsd`; engine stops when the threshold is reached
-- **Max turns** — `QueryEngine` enforces `maxTurns` to prevent runaway LLM loops
+- **Max turns** — `AISDKEngine` enforces `maxTurns` to prevent runaway LLM loops
 - **Input validation** — All tool inputs are validated through Zod schemas before execution
 - **Context isolation** — `MemorySessionStore` uses `structuredClone` to prevent cross-session data leaks
 
