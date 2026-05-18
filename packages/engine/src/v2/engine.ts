@@ -53,6 +53,7 @@ import {
   stepCountIs,
   type ToolSet,
   type StopCondition,
+  type SystemModelMessage,
 } from 'ai';
 import type {
   ContentBlock,
@@ -65,6 +66,11 @@ import type {
   Tool as LegacyTool,
   ToolContext,
 } from '../types.js';
+import {
+  buildPrepareStepSystem,
+  buildSystemForStream as buildSystemForStreamHelper,
+} from './system-prompt-cache.js';
+import { buildAnthropicProviderOptions } from '../providers/ai-sdk-message-conversion.js';
 import { toAISDKTools } from './tool-wrapper.js';
 import { buildToolContext } from './tool-context.js';
 import { enrichPendingActionWithLiveData } from './enrich-pending-action.js';
@@ -983,13 +989,48 @@ export class AISDKEngine {
     // guarantees. Hosts pick one assembly strategy and stay there.
     const useMemoryPath = this.config.memoryStore !== undefined;
 
+    // [F-13 / 2026-05-18] Convert engine ThinkingConfig + OutputConfig →
+    // Anthropic provider options so Anthropic's extended-thinking + signed-
+    // thinking + effort-mode features actually fire. Phase 0 O-2 smoke
+    // (BENEFITS_SPEC_v07c §"Day 0e") confirmed `thinkingHead=""` across
+    // every production turn despite `thinking: { type: 'adaptive' }` in
+    // config — root cause was the v2 engine never reading these config
+    // fields and never calling `buildAnthropicProviderOptions`. The legacy
+    // v1 `AISDKAnthropicProvider` did this at `ai-sdk-anthropic.ts:173`;
+    // the v0.7a drain dropped the call entirely. Production has been
+    // running without extended thinking since the v0.7a cutover.
+    //
+    // The cast mirrors the legacy v1 pattern — our internal helper returns
+    // `{ anthropic: Record<string, unknown> } | undefined`, which is
+    // structurally compatible with AI SDK's `ProviderOptions` shape but
+    // TS can't prove it without the cast.
+    const anthropicProviderOptions = buildAnthropicProviderOptions(
+      this.config.thinking,
+      this.config.outputConfig,
+    );
+
     const stream = streamText({
       model: this.anthropic(this.config.model ?? 'claude-sonnet-4-5'),
       tools,
       messages: toAISDKMessages(validatedMessages),
+      // [F-12 / 2026-05-18] buildSystemForStream() preserves cache_control
+      // markers (legacy systemPromptString() flattened them away). The
+      // memory path's prepareStep is responsible for its own assembly.
       ...(useMemoryPath
         ? { prepareStep: this.buildPrepareStepHook(internal) }
-        : { system: this.systemPromptString() }),
+        : { system: this.buildSystemForStream() }),
+      // [F-13] Spread Anthropic providerOptions only when present —
+      // streamText accepts `providerOptions?: ProviderOptions`.
+      // `buildAnthropicProviderOptions` returns the loose internal shape
+      // `{ anthropic: Record<string, unknown> }` which is JSON-compatible
+      // at runtime but doesn't satisfy AI SDK v6's stricter `JSONObject`-
+      // indexed `ProviderOptions` type. The double-cast via `unknown`
+      // bridges this without pulling in `@ai-sdk/provider-utils` as a
+      // direct dep (the type isn't re-exported from `ai` v6).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...(anthropicProviderOptions
+        ? { providerOptions: anthropicProviderOptions as unknown as any }
+        : {}),
       experimental_context: internal,
       stopWhen: stepCountIs(this.config.maxTurns ?? 10) as StopCondition<typeof tools>,
       abortSignal: this.abortController?.signal,
@@ -1363,16 +1404,33 @@ export class AISDKEngine {
   // refresh, real EngineEvent translation via the bridge layer)
   // -------------------------------------------------------------------
 
+  /**
+   * Legacy helper — returns the system prompt as a flattened string.
+   *
+   * RETAINED for back-compat with code paths that haven't migrated to the
+   * typed `buildSystemForStream()` path (no in-tree callers as of F-12, but
+   * external consumers may exist). Prefer `buildSystemForStream()` for any
+   * code path that flows into `streamText({ system })` — see F-12.
+   */
   private systemPromptString(): string | undefined {
     const sp = this.config.systemPrompt;
     if (!sp) return undefined;
     if (typeof sp === 'string') return sp;
-    // SystemBlock[] → joined string. Cache hints dropped during
-    // join — AI SDK v3 handles cache breakpoints automatically.
     if (Array.isArray(sp)) {
       return sp.map((b) => b.text).join('\n\n');
     }
     return undefined;
+  }
+
+  /**
+   * [F-12 / 2026-05-18] Build the `system` argument for `streamText()` while
+   * **preserving Anthropic prompt-cache markers**. Delegates to the pure
+   * helper in `./system-prompt-cache.ts` (which is unit-tested in
+   * `./system-prompt-cache.test.ts`). See that module's header for the full
+   * rationale + Anthropic cache semantics.
+   */
+  private buildSystemForStream(): string | SystemModelMessage[] | undefined {
+    return buildSystemForStreamHelper(this.config.systemPrompt);
   }
 
   /**
@@ -1411,7 +1469,7 @@ export class AISDKEngine {
     }: {
       stepNumber: number;
       messages: import('ai').ModelMessage[];
-    }): Promise<{ system: string }> => {
+    }): Promise<{ system: string | SystemModelMessage[] }> => {
       const memoryStore = this.config.memoryStore;
       if (memoryStore && stepNumber === 0) {
         const userMessage = extractLatestUserMessage(messages);
@@ -1428,16 +1486,17 @@ export class AISDKEngine {
         }
       }
 
-      const layers: string[] = [
-        this.systemPromptString() ?? '',
+      // [F-12 / 2026-05-18] Compose layers via `buildPrepareStepSystem`
+      // (pure helper in `./system-prompt-cache.ts`). Preserves cache_control
+      // markers when the base systemPrompt is typed SystemBlock[]; falls
+      // back to the legacy joined-string path when it's a plain string.
+      const baseSystem = this.buildSystemForStream();
+      const volatileLayers = [
         this.config.financialContextBlock ?? '',
         buildMemoryBlock(internal.toolContext.memoryCache?.results ?? []),
         this.config.skillRecipeBlock ?? '',
       ];
-
-      return {
-        system: layers.filter((l) => l.length > 0).join('\n\n'),
-      };
+      return { system: buildPrepareStepSystem(baseSystem, volatileLayers) };
     };
   }
 
