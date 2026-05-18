@@ -49,11 +49,52 @@ export const TOOL_MODIFIABLE_FIELDS: Record<string, PendingActionModifiableField
 };
 
 /**
+ * Tools that accept multiple asset types on their amount field. Per the
+ * v0.51.0 strategic exception, NAVI lend/borrow flows accept USDC OR USDsui;
+ * the registry's hardcoded `asset: 'USDC'` is a default that must be
+ * overridden by the actual transaction asset when `input.asset` is set.
+ *
+ * Other amount-bearing tools are excluded by design:
+ *  - `send_transfer` / `swap_execute` — no asset on the amount field
+ *    (the UI shows the input-side asset from the tx itself).
+ *  - `volo_stake` / `volo_unstake` — hardcoded SUI / vSUI single-asset.
+ */
+const ASSET_OVERRIDABLE_TOOLS = new Set<string>([
+  'save_deposit',
+  'withdraw',
+  'borrow',
+  'repay_debt',
+]);
+
+/**
  * Returns the modifiable fields for a tool name, or `undefined` if the tool
  * has no modifiable inputs. Used by the engine when emitting `pending_action`.
+ *
+ * When `input` is provided AND the tool is one of the asset-overridable
+ * NAVI lend/borrow flows, the asset on amount-bearing fields is rewritten
+ * to match `input.asset` ('USDC' | 'USDsui'). Without `input`, the
+ * registry default ('USDC') is preserved — back-compat for legacy callers.
+ *
+ * Pre-fix (v2.7.0-): every USDsui save_deposit / borrow / withdraw /
+ * repay_debt emitted `modifiableFields[].asset === 'USDC'` regardless of
+ * the actual tx asset, so the UI's amount editor labelled USDsui txs as
+ * USDC. Surfaced in the 2026-05-18 founder smoke (F-11).
  */
 export function getModifiableFields(
   toolName: string,
+  input?: unknown,
 ): PendingActionModifiableField[] | undefined {
-  return TOOL_MODIFIABLE_FIELDS[toolName];
+  const fields = TOOL_MODIFIABLE_FIELDS[toolName];
+  if (!fields) return undefined;
+  if (!ASSET_OVERRIDABLE_TOOLS.has(toolName)) return fields;
+  if (!input || typeof input !== 'object') return fields;
+
+  const inputAsset = (input as Record<string, unknown>).asset;
+  if (inputAsset !== 'USDC' && inputAsset !== 'USDsui') return fields;
+
+  return fields.map((field) =>
+    field.kind === 'amount' && field.asset
+      ? { ...field, asset: inputAsset }
+      : field,
+  );
 }

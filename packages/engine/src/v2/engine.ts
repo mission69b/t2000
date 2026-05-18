@@ -1311,7 +1311,7 @@ export class AISDKEngine {
 
       const turnIndex = this.messages.filter((m) => m.role === 'assistant').length;
       const attemptId = crypto.randomUUID();
-      const modifiableFields = getModifiableFields(tool.name);
+      const modifiableFields = getModifiableFields(tool.name, cached.input);
 
       // [SPEC 37 v0.7a Week 4 cleanup — Day 14a / 2026-05-16] Stamp live
       // NAVI data (borrowApyBps for borrow/repay, currentHF for borrow/

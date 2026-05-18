@@ -355,7 +355,7 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
       );
     }
     const description = describeAction(tool, call);
-    const modifiableFields = getModifiableFields(call.name);
+    const modifiableFields = getModifiableFields(call.name, call.input);
     // [SPEC 20.2 / D-1 (a)] Thread the matching swap_quote's serialized
     // route into `step.cetusRoute` for swap_execute steps. No-match is
     // fine — audric prepare-route falls back to fresh findSwapRoute().

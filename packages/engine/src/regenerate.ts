@@ -385,7 +385,7 @@ export async function regenerateBundle(
       input: action.input,
     };
     const description = describeAction(tool, call);
-    const modifiableFields = getModifiableFields(action.toolName);
+    const modifiableFields = getModifiableFields(action.toolName, action.input);
     const { canRegenerate, regenerateToolUseIds, quoteAge } =
       computeRegenerateFields(readResults);
     newPendingAction = {
