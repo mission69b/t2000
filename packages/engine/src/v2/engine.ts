@@ -171,6 +171,57 @@ export interface AISDKEngineConfig extends Omit<EngineConfig, 'provider'> {
    * experimental).
    */
   experimentalTelemetry?: TelemetrySettings;
+
+  /**
+   * [SPEC v0.7c Day 2c++ / D-6 AI Gateway audit] Vercel AI Gateway
+   * provider options forwarded into `streamText` as
+   * `providerOptions.gateway`. Use this to:
+   *  - `caching: 'auto'` — let the gateway auto-inject `cache_control`
+   *    breakpoints on providers that require them (Anthropic, MiniMax).
+   *    Critical: without this, Anthropic prompt caching is silently
+   *    OFF when the engine system prompt is a plain string (web-v2's
+   *    Day 2b minimal-prompt case). The gateway places the breakpoint
+   *    at the end of static content per Vercel docs.
+   *  - `order: ['anthropic', 'bedrock']` — provider failover order.
+   *  - `only: ['anthropic']` — provider allow-list.
+   *  - `sort: 'cost' | 'ttft' | 'tps'` — rank providers by metric.
+   *  - `disallowPromptTraining: true` — request providers don't train.
+   *  - `zeroDataRetention: true` — ZDR-only providers.
+   *  - `hipaaCompliant: true` — HIPAA-compliant routing.
+   *  - `byok: {...}` — per-request bring-your-own-key credentials.
+   *
+   * Only meaningful when `modelInstance` is a `gateway(...)` call (or
+   * a global-provider model id string that AI SDK resolves through
+   * the default gateway). Direct-Anthropic callers ignore this.
+   *
+   * Type kept local + permissive: `@ai-sdk/gateway` v3.0.114's
+   * `GatewayProviderOptions` type lacks the `caching` field even
+   * though Vercel docs document it (the gateway server accepts it
+   * regardless). We type the documented surface verbatim; hosts cast
+   * if they need vendor extensions.
+   */
+  gatewayProviderOptions?: AISDKEngineGatewayProviderOptions;
+}
+
+/**
+ * Local subset of Vercel AI Gateway provider options that the engine
+ * forwards into `streamText.providerOptions.gateway`. See the
+ * `gatewayProviderOptions` JSDoc on `AISDKEngineConfig` for the full
+ * meaning of each field. Kept local so the engine doesn't need a
+ * direct dep on `@ai-sdk/gateway` (it's transitively available via
+ * `ai`'s re-exports).
+ */
+export interface AISDKEngineGatewayProviderOptions {
+  caching?: 'auto';
+  order?: string[];
+  only?: string[];
+  sort?: 'cost' | 'ttft' | 'tps';
+  disallowPromptTraining?: boolean;
+  zeroDataRetention?: boolean;
+  hipaaCompliant?: boolean;
+  byok?: Record<string, Record<string, unknown>[]>;
+  user?: string;
+  tags?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1108,10 +1159,23 @@ export class AISDKEngine {
       // indexed `ProviderOptions` type. The double-cast via `unknown`
       // bridges this without pulling in `@ai-sdk/provider-utils` as a
       // direct dep (the type isn't re-exported from `ai` v6).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(anthropicProviderOptions
-        ? { providerOptions: anthropicProviderOptions as unknown as any }
-        : {}),
+      //
+      // [v2.9.0 / SPEC v0.7c Day 2c++] Merge in `providerOptions.gateway`
+      // from `config.gatewayProviderOptions` when present (Vercel AI
+      // Gateway settings like `caching: 'auto'`, `order`, `sort`).
+      ...(() => {
+        const merged: Record<string, unknown> = {};
+        if (anthropicProviderOptions) {
+          merged.anthropic = anthropicProviderOptions.anthropic;
+        }
+        if (this.config.gatewayProviderOptions) {
+          merged.gateway = this.config.gatewayProviderOptions;
+        }
+        return Object.keys(merged).length > 0
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            { providerOptions: merged as unknown as any }
+          : {};
+      })(),
       experimental_context: internal,
       stopWhen: stepCountIs(this.config.maxTurns ?? 10) as StopCondition<typeof tools>,
       abortSignal: this.abortController?.signal,
