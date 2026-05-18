@@ -126,6 +126,48 @@ describe('translate', () => {
     ]);
   });
 
+  // [SPEC 37 v0.7a Phase 8 H5 verification / 2026-05-18]
+  //
+  // H5 acceptance: "Streamdown narration wrapper strips parseEvalSummary /
+  // parseProactiveMarker markers (SPEC 21.4) before audric/web renders.
+  // The wrapper is implemented in audric/web (not the engine) — audric/web's
+  // chat shell ALREADY strips markers, but if Phase 5 introduces UIMessage
+  // parts that bypass the existing strip, add a narration-wrapper layer."
+  //
+  // The engine half of H5 is the inverse contract: text_deltas carrying
+  // marker text MUST pass through verbatim — the engine MUST NOT pre-strip
+  // them. If the engine ever started stripping, audric would still strip
+  // (double-strip is benign), but a future refactor that replaces audric's
+  // Streamdown with a plain renderer would silently leak markers into the
+  // UI. These two regression tests pin the seam so that failure mode
+  // surfaces here, in the engine test suite, not in production.
+  //
+  // The marker text gets re-assembled on text-end (test at line ~138)
+  // where `parseProactiveMarker` populates the structured field on
+  // `text_done`. Mid-stream, it's just text — exactly as Anthropic's
+  // wire format delivers it.
+  it('text-delta with embedded <proactive> marker passes through verbatim (H5)', () => {
+    const state = createStreamState();
+    translate({ type: 'text-start', id: 't1' } as never, state);
+    const markerText =
+      '<proactive type="idle_balance" subjectKey="USDC">You have $120 USDC sitting idle.</proactive>';
+    expect(
+      translate({ type: 'text-delta', id: 't1', text: markerText } as never, state),
+    ).toEqual([{ type: 'text_delta', text: markerText }]);
+  });
+
+  it('text-delta with embedded <eval_summary> marker passes through verbatim (H5)', () => {
+    const state = createStreamState();
+    translate({ type: 'reasoning-start', id: 'r1' } as never, state);
+    const markerText =
+      '<eval_summary>\n{"items":[{"label":"HF","status":"good","note":"1.85"}]}\n</eval_summary>';
+    // eval_summary lives in reasoning; verify the reasoning-delta path
+    // also doesn't strip — the audric strip layer runs at render time.
+    expect(
+      translate({ type: 'reasoning-delta', id: 'r1', text: markerText } as never, state),
+    ).toEqual([{ type: 'thinking_delta', text: markerText, blockIndex: 0 }]);
+  });
+
   it('text-end with no proactive marker → text_done (no marker)', () => {
     const state = createStreamState();
     translate({ type: 'text-start', id: 't1' } as never, state);
