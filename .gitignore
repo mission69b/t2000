@@ -73,3 +73,7 @@ SM_DATA_USECASES.md
 loadtest/.env.loadtest
 loadtest/reports/*.json
 loadtest/reports/*.log
+.smoke-jwt
+.smoke-addr
+.smoke-runner.mjs
+.smoke-logs/
