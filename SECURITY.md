@@ -70,7 +70,7 @@ The following are in scope:
 ## Audit Status
 
 **Last audit**: March 2026 (automated full-stack review)
-**Report**: [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
+**Report**: [spec/archive/one-offs/SECURITY_AUDIT.md](./spec/archive/one-offs/SECURITY_AUDIT.md)
 **Status**: Findings being remediated — see report for details
 
 This is beta software. Use at your own risk. See [DISCLAIMER](/disclaimer) for details.

@@ -893,7 +893,7 @@ Tool dispatch in `AISDKEngine`:
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions` (allowance contract dormant), `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't sign without user presence under zkLogin), `pause_pattern`, `pattern_status` (proposal pipeline removed; classifiers stay as silent context). See the S.0–S.12 entries in `audric-build-tracker.md`.
 >
-> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `protocol_deep_dive` retains its DefiLlama dependency as the lone production consumer of `api.llama.fi`. See `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
+> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `protocol_deep_dive` retains its DefiLlama dependency as the lone production consumer of `api.llama.fi`. See `spec/active/harness/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
 
 ### Reasoning Engine (Shipped — always on)
 
@@ -1048,7 +1048,7 @@ Spec 1 closed three correctness holes that made Audric inconsistent under load:
 
 Together these give hosts a stable join key from `pending_action` → on-chain receipt → `TurnMetrics.pendingActionOutcome` ('approved' / 'declined' / 'modified') and let auto-executed writes participate in the same telemetry as confirm-gated ones.
 
-> Local-only spec: `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`. Cross-repo contract: `t2000/.cursor/rules/agent-harness-spec.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc`.
+> Local-only spec: `spec/active/harness/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`. Cross-repo contract: `t2000/.cursor/rules/agent-harness-spec.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc`.
 
 ### Spec 2 — Intelligence (engine v0.47.0–v0.54.1)
 
@@ -1062,7 +1062,7 @@ Spec 2 swapped the data layer + added boot-time orientation:
 | **`attemptId` keyed resume** — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
 | **`protocol_deep_dive` exception** — kept on DefiLlama as the lone production consumer of `api.llama.fi` | Protocol metadata (TVL trends, fees, audits) isn't available on BlockVision; not worth building a custom replacement for one tool. |
 
-> Local-only spec: `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Resilience contract: `t2000/.cursor/rules/blockvision-resilience.mdc`.
+> Local-only spec: `spec/active/harness/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Resilience contract: `t2000/.cursor/rules/blockvision-resilience.mdc`.
 
 ---
 

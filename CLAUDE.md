@@ -115,25 +115,48 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 
 ---
 
+## Repo Layout (SPEC 38a — 2026-05-18)
+
+Read `docs/REPO_LAYOUT.md` once at session start for "where does X go?"
+Read `spec/README.md` (internal) for the spec/active vs archive vs reference layout + promotion rules.
+
+**Short version:**
+- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `PRODUCT_FACTS.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + 3 founder-local trackers (`audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
+- **`spec/active/`** — in-flight SPECs (mostly gitignored)
+- **`spec/active/shipping/`** — SPECs with at least one phase shipped (tracked)
+- **`spec/archive/<version>/`** — fully shipped SPECs (tracked)
+- **`spec/archive/deferred/`**, **`deprecated/`**, **`one-offs/`**, **`pre-spec-30/`** — historical
+- **`spec/archive/handoffs/`** + **`build-tracker/`** — rotating archives (gitignored)
+- **`spec/reference/`** — long-lived reference docs (tracked: CLI_UX_SPEC, PRODUCT_SPEC, etc.)
+- **`spec/runbooks/`** — operational runbooks (tracked)
+- **`docs/`** — public-facing docs (tracked)
+
 ## Key Documents
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
 | `PRODUCT_FACTS.md` | Versions, fees, CLI syntax, SDK signatures | Documentation or marketing |
-| `CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
-| `audric-roadmap.md` | Product roadmap, feature specs, revenue model (**local-only as of S.23 — gitignored**) | Feature planning |
-| `audric-build-tracker.md` | Execution status per phase and task (**local-only as of S.23 — gitignored**). **Top of file has the canonical "Forward backlog" table — the source of truth for SPEC numbering. Always read it before assigning a SPEC number to any new work.** | Status checks; before promoting any work to a SPEC number |
-| `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` | Spec 1 — engine harness correctness (TurnMetrics, attemptId, modifiableFields). Shipped engine v0.41.0–v0.50.3. **Local-only — gitignored.** | Engine/harness changes |
-| `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` | Spec 2 — harness intelligence (BlockVision swap, `<financial_context>`, attemptId resume keying). Shipped engine v0.47.0–v0.50.3. **Local-only — gitignored.** | Engine/intelligence changes |
+| `docs/REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
+| `spec/README.md` | Internal spec/ layout — active vs archive vs reference + promotion rules | Working on a SPEC |
+| `audric-roadmap.md` (local-only) | Product roadmap, feature specs, revenue model (gitignored) | Feature planning |
+| `audric-build-tracker.md` (local-only) | Execution status per phase and task (gitignored). **Top of file: canonical "Forward backlog" table — SSOT for SPEC numbering. Always read before assigning a SPEC number.** | Status checks; before promoting work to a SPEC number |
+| `spec/active/BENEFITS_SPEC_v07c.md` (local-only) | v0.7c migration SPEC (Chat Shell Fork — in flight) | v0.7c work |
+| `spec/active/harness/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` (local-only) | Spec 1 — engine harness correctness (TurnMetrics, attemptId, modifiableFields) | Engine/harness changes |
+| `spec/active/harness/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` (local-only) | Spec 2 — harness intelligence (BlockVision, financial_context, attemptId resume) | Engine/intelligence changes |
+| `spec/active/shipping/SPEC_30_CROSS_REPO_SECURITY_REVIEW.md` | SPEC 30 (Phase 1A+1B SHIPPED; Phase 2-10 open) | Security work |
+| `spec/archive/v07a/BENEFITS_SPEC_v07a.md` | v0.7a engine drain — SHIPPED 2026-05-18 (historical reference) | Engine architecture context |
+| `spec/reference/CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
+| `spec/reference/PRODUCT_SPEC.md` (local-only) | Product reference | Product decisions |
+| `spec/runbooks/RUNBOOK_*.md` | Operational runbooks (parent-sui, SPEC 7/9/18-20/37 closeout, BV outage drill) | Operational work |
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
 | `.cursor/rules/single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement | Portfolio/wallet/positions reads |
-| `.cursor/rules/agent-harness-spec.mdc` | Spec 1 + Spec 2 contracts (attemptId, TurnMetrics, resume updateMany, EngineConfig.onAutoExecuted) | Engine/resume route changes |
+| `.cursor/rules/agent-harness-spec.mdc` | Spec 1 + Spec 2 contracts | Engine/resume route changes |
 | `.cursor/rules/blockvision-resilience.mdc` | Retry + circuit breaker + sticky-positive cache rules | BlockVision integration changes |
-| `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources (TOKEN_MAP, SUPPORTED_ASSETS, etc.) | Adding tokens, fixing decimal/display bugs |
+| `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources | Adding tokens, fixing decimal/display bugs |
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — every env var goes through Zod schema | Adding env vars / wiring a new app |
-| `audric/apps/web/lib/env.ts` | Canonical Zod env-validation template (boot-time fail-fast, server/client split, proxy guard) | Adding env vars, copying the pattern to a new app |
-| `audric/.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which code path runs when (**lives in audric repo**) | Any Audric transaction/receipt bug |
+| `audric/apps/web/lib/env.ts` | Canonical Zod env-validation template | Adding env vars, copying the pattern |
+| `audric/.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct (lives in audric repo) | Audric transaction/receipt bugs |
 
 ---
 

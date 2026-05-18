@@ -32,38 +32,50 @@ pnpm-debug.log*
 # infra generated
 infra/.env.infra
 
-# specs — fully private as of S.23 (2026-04-27). Working notes + canonical specs
-# both live locally only. Public canonical surface is README + CLAUDE +
-# PRODUCT_FACTS + ARCHITECTURE; spec/ holds the deeper unreleased detail.
-spec/
+# spec/ — selective tracking per SPEC 38a (2026-05-18)
+#
+# Layout doc at spec/README.md explains the active/archive/reference/runbooks
+# breakdown. Rule of thumb: anything that's PUBLIC HISTORY (shipped SPECs,
+# deferred SPECs, deprecated, reference docs, runbooks) is tracked; anything
+# that's WORKING NOTES (active drafts, harness internals, rotating
+# handoff/build-tracker archives, founder one-offs) stays local-only.
+spec/*
+!spec/README.md
+!spec/active/
+!spec/archive/
+!spec/reference/
+!spec/runbooks/
+# spec/active/ — most active work is local-only; track the shipping/ subdir only
+spec/active/*
+!spec/active/shipping/
+# spec/archive/ — public history EXCEPT founder-local rotating archives + one-offs that contain personal/strategic content
+spec/archive/handoffs/
+spec/archive/build-tracker/
+spec/archive/one-offs/BL_MEETING_PREP.md
+spec/archive/one-offs/SM_DATA_USECASES.md
+spec/archive/one-offs/audric-raise-strategy.canvas.tsx
+spec/archive/one-offs/AUDIT_FINDINGS.md
+spec/archive/one-offs/article-trust-layer.md
+spec/archive/deferred/audric-simplification-spec.md
+spec/archive/deprecated/audric-scaling-spec.md
+spec/archive/deprecated/audric-scaling-spec-v2.md
 
 # marketing — wiped in S.20; ignore by default in case someone recreates locally
 marketing/
 
+# docs/marketing — litepaper local-only until marketing site relaunch (founder lock 2026-05-18 SPEC 38a Q-promote-public)
+docs/marketing/
 
 # raise / investor docs — local reference only
 audric-raise-strategy.canvas.tsx
 audric-litepaper.html
-AUDRIC_LITEPAPER.md
-AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md
 
 # private working docs (S.23 2026-04-27 repo privacy sweep) — kept locally,
 # untracked from the public mirror. See audric-build-tracker.md S.23 entry
 # (itself private now) for rationale.
 audric-build-tracker.md
 audric-roadmap.md
-audric-simplification-spec.md
-audric-scaling-spec.md
-audric-scaling-spec-v2.md
-AUDIT_FINDINGS.md
-AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md
-AUDRIC_HARNESS_DEPTH_SPEC_v0.1.md
-CLI_UX_SPEC.md
-article-trust-layer.md
-REMINDERS.md
 HANDOFF_NEXT_AGENT.md
-BL_MEETING_PREP.md
-SM_DATA_USECASES.md
 
 # MCP registry tokens
 .mcpregistry_*
