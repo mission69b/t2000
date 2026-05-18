@@ -354,6 +354,35 @@ export type { AISDKAnthropicProviderConfig } from './providers/ai-sdk-anthropic.
 export { AISDKEngine, TOOL_POLICY, getToolPolicy, registerToolPolicy } from './v2/index.js';
 export type { AISDKEngineConfig, ToolPolicy } from './v2/index.js';
 
+// [v2.11.0 / SPEC v0.7c Phase 2 Day 2e] Host-side composition primitives.
+// Lets audric `web-v2` build `new Experimental_Agent({...})` directly
+// without going through `AISDKEngine.submitMessage()`. See D-15 lock.
+//
+// - `toAISDKTools` wraps `LegacyTool[]` into AI SDK `ToolSet` with guards
+//   + preflight + USD-aware permissions preserved (same wrapping the
+//   engine class uses internally).
+// - `buildToolContext` builds a fresh `ToolContext` per turn from a
+//   config + per-turn input (same helper the engine uses internally).
+// - `buildInternalContext` constructs the `experimental_context` envelope
+//   tools see in their `.execute()` call. Mirrors the engine's internal
+//   construction at `v2/engine.ts` ~L643 — exposed so hosts can compose
+//   without re-implementing.
+export { toAISDKTools } from './v2/tool-wrapper.js';
+export { buildToolContext } from './v2/tool-context.js';
+export {
+  buildInternalContext,
+  asInternalContext,
+  tryGetInternalContext,
+} from './v2/internal-context.js';
+export type {
+  InternalContext,
+  ConfigSubsetForStepFinish,
+  BuildInternalContextOptions,
+} from './v2/internal-context.js';
+// Note: `createGuardRunnerState`, `GuardRunnerState`, `GuardConfig` are
+// already exported above from the legacy guards block (~L160-181). Hosts
+// composing via `Agent` use those exports + `buildInternalContext` together.
+
 // Canvas
 export { CANVAS_TEMPLATES } from './tools/canvas.js';
 export type { CanvasTemplate } from './tools/canvas.js';
