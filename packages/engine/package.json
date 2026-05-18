@@ -1,6 +1,6 @@
 {
   "name": "@t2000/engine",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "Agent engine for conversational finance — AISDKEngine (wraps Vercel AI SDK v6 `streamText`) with 37 tools (25 read, 12 write), 14-guard runner across 3 priority tiers, silent intelligence layer, streaming, canvas, BlockVision-backed pricing. Chat-first by design — every write requires user confirmation. Skills (orchestration playbooks) live in @t2000/mcp and are exposed to MCP clients as prompts.",
   "type": "module",
   "main": "./dist/index.js",
