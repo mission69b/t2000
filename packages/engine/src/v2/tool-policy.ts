@@ -31,8 +31,17 @@
 //     engine's `maxResultSizeChars` cap stays as a hard ceiling.
 //
 // What's KEPT:
-//   - `isReadOnly` / `isConcurrencySafe`: drives the engine's TxMutex
-//     (write-write serialisation) — kept because financial safety.
+//   - `isReadOnly` / `isConcurrencySafe`: drives the engine's per-step
+//     parallel-tool-call dedupe (engine.ts ~L1145 — `isSafeToDedupTool`).
+//     NOT a mutex — write-write serialisation in v2 comes from the AI SDK
+//     step model + `needsApproval` round-trip: each write step yields a
+//     pending_action that audric round-trips through user confirm before
+//     the next step runs, so two writes structurally cannot interleave.
+//     For sub-USD-threshold auto-execute writes (USD-aware resolver), the
+//     LLM produces one tool_call per step in practice, and we rely on that
+//     + the conservative-default preset to keep auto-writes serial in
+//     production. Legacy `TxMutex` (orchestration.ts) is still exported
+//     for back-compat but the v2 engine never instantiates one.
 //   - `permissionLevel` (auto / confirm / explicit): drives the
 //     `needsApproval` callback — same USD-aware permission resolver.
 //   - `cacheable`: drives the engine's `cache/turn-read.ts` layer — kept

@@ -284,4 +284,136 @@ describe('PERMISSION_PRESETS', () => {
       }
     }
   });
+
+  // ---------------------------------------------------------------------------
+  // [SPEC 37 v0.7a Phase 8 verification walk / 2026-05-18]
+  //
+  // Phase 8 acceptance: "USD-aware permission resolver — 3 presets verified
+  // (conservative/balanced/aggressive) with auto/confirm/explicit boundary
+  // tests for every operation".
+  //
+  // The two existing assertions above pin (1) relative ordering of
+  // globalAutoBelow + autonomousDailyLimit, and (2) the borrow=non-auto
+  // invariant. The grid below pins the full resolver contract: for every
+  // preset × every operation, the boundary between auto / confirm / explicit
+  // matches the documented threshold. This is the regression net that
+  // catches drift like the F14 borrow.autoBelow=10 incident (silent
+  // auto-borrow on aggressive preset, fixed in v1.11.3) before it ships.
+  //
+  // Test design: every operation in every preset has a `rule` (asserted
+  // below as the first invariant). For each rule, we assert four boundary
+  // points: (a) below autoBelow → auto, (b) AT autoBelow → confirm
+  // (boundary is `<`), (c) just below confirmBetween → confirm, (d) AT
+  // confirmBetween → explicit. Borrow gets a special case since autoBelow
+  // is 0 — the (a) point doesn't exist for any positive amount.
+  // ---------------------------------------------------------------------------
+
+  it('every preset defines a rule for every PermissionOperation (no gaps)', () => {
+    const operations = ['save', 'send', 'borrow', 'withdraw', 'swap', 'pay', 'repay'] as const;
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      for (const op of operations) {
+        const rule = config.rules.find((r) => r.operation === op);
+        expect(rule, `${presetName} preset must define a rule for '${op}'`).toBeDefined();
+      }
+    }
+  });
+
+  it('every preset rule has autoBelow <= confirmBetween (no inverted thresholds)', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      for (const rule of config.rules) {
+        expect(
+          rule.autoBelow,
+          `${presetName} / ${rule.operation}: autoBelow (${rule.autoBelow}) must be <= confirmBetween (${rule.confirmBetween})`,
+        ).toBeLessThanOrEqual(rule.confirmBetween);
+      }
+    }
+  });
+
+  it('preset boundary grid: each rule resolves auto/confirm/explicit correctly at threshold edges', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      for (const rule of config.rules) {
+        const { operation, autoBelow, confirmBetween } = rule;
+        const tag = `${presetName} / ${operation}`;
+
+        // (a) Just below autoBelow → auto.
+        // Skip for borrow (autoBelow: 0 → no positive amount is below it).
+        // Skip for send too — the contact-rule downgrades raw 0x recipients,
+        // but the basic boundary check uses no sendContext so it's still valid;
+        // we exclude only borrow.
+        if (autoBelow > 0) {
+          const justBelow = autoBelow - 0.01;
+          expect(
+            resolvePermissionTier(operation, justBelow, config),
+            `${tag}: $${justBelow} (< autoBelow=$${autoBelow}) should be auto`,
+          ).toBe('auto');
+        }
+
+        // (b) AT autoBelow → confirm (boundary is exclusive `<`).
+        // For borrow this lands at $0; resolver returns auto for $0 < $0 → false,
+        // so falls through to `else if ($0 < confirmBetween)` → confirm.
+        expect(
+          resolvePermissionTier(operation, autoBelow, config),
+          `${tag}: $${autoBelow} (== autoBelow) should be confirm`,
+        ).toBe('confirm');
+
+        // (c) Just below confirmBetween → confirm.
+        const justBelowConfirm = confirmBetween - 0.01;
+        if (justBelowConfirm > autoBelow) {
+          expect(
+            resolvePermissionTier(operation, justBelowConfirm, config),
+            `${tag}: $${justBelowConfirm} (< confirmBetween=$${confirmBetween}) should be confirm`,
+          ).toBe('confirm');
+        }
+
+        // (d) AT confirmBetween → explicit (boundary is exclusive `<`).
+        expect(
+          resolvePermissionTier(operation, confirmBetween, config),
+          `${tag}: $${confirmBetween} (== confirmBetween) should be explicit`,
+        ).toBe('explicit');
+
+        // (e) Well above confirmBetween → explicit.
+        expect(
+          resolvePermissionTier(operation, confirmBetween * 10, config),
+          `${tag}: $${confirmBetween * 10} (>> confirmBetween) should be explicit`,
+        ).toBe('explicit');
+      }
+    }
+  });
+
+  it('preset boundary grid: unknown operation falls back to globalAutoBelow per preset', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      const tag = `${presetName} / unknown_op`;
+      // Below globalAutoBelow → auto.
+      expect(
+        resolvePermissionTier('mystery_op_not_in_rules', config.globalAutoBelow - 0.01, config),
+        `${tag}: below globalAutoBelow=$${config.globalAutoBelow} should be auto`,
+      ).toBe('auto');
+      // At globalAutoBelow → confirm (fallback confirmBetween defaults to 1000).
+      expect(
+        resolvePermissionTier('mystery_op_not_in_rules', config.globalAutoBelow, config),
+        `${tag}: at globalAutoBelow should be confirm`,
+      ).toBe('confirm');
+    }
+  });
+
+  it('preset autonomousDailyLimit gates auto→confirm downgrade for every preset', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      const tag = `${presetName}`;
+      // save rule under every preset has autoBelow > 0, so a small save WITH
+      // sessionSpendUsd ≈ limit should downgrade. Test a near-limit cumulative.
+      const saveRule = config.rules.find((r) => r.operation === 'save')!;
+      const smallSave = Math.min(saveRule.autoBelow / 2, 1);
+      // Below limit → still auto.
+      expect(
+        resolvePermissionTier('save', smallSave, config, /* sessionSpend */ 0),
+        `${tag}: small save with $0 prior spend should be auto`,
+      ).toBe('auto');
+      // Pushing cumulative over autonomousDailyLimit → downgraded to confirm.
+      const spendThatPushesOver = config.autonomousDailyLimit;
+      expect(
+        resolvePermissionTier('save', smallSave, config, spendThatPushesOver),
+        `${tag}: small save with $${spendThatPushesOver} prior spend (limit=$${config.autonomousDailyLimit}) should downgrade to confirm`,
+      ).toBe('confirm');
+    }
+  });
 });
