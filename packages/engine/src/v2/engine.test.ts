@@ -109,6 +109,93 @@ describe('AISDKEngine — Day 1 scaffolding', () => {
 });
 
 // ---------------------------------------------------------------------------
+// v2.10.0 — gatewayTools merge (SPEC v0.7c Day 2c++ Batch 1)
+// ---------------------------------------------------------------------------
+//
+// Verifies the AISDKEngine merges host-supplied `gatewayTools` into the
+// AI SDK `ToolSet` alongside engine-wrapped `config.tools`, with engine
+// tools taking precedence on name collision. No real API call — we
+// inspect the result of the private `buildToolSet()` helper via cast.
+// ---------------------------------------------------------------------------
+
+describe('AISDKEngine — v2.10.0 gatewayTools merge', () => {
+  const engineToolFactory = (name: string): LegacyTool =>
+    defineTool({
+      name,
+      description: `Engine-native tool ${name}`,
+      inputSchema: z.object({}),
+      flags: {},
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async () => ({ data: { name }, displayText: name }),
+    });
+
+  // Minimal AI SDK Tool shape — just enough to register in the ToolSet.
+  // The engine forwards verbatim; no execution path runs in this test.
+  const gatewayToolStub = (label: string) => ({
+    description: `Gateway tool ${label}`,
+    inputSchema: { type: 'object' as const, properties: {} },
+    execute: async () => ({ label }),
+  });
+
+  it('merges gatewayTools and engine tools into one ToolSet', () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [engineToolFactory('balance_check')],
+      // biome-ignore lint/suspicious/noExplicitAny: stub shape
+      gatewayTools: {
+        perplexity_search: gatewayToolStub('perplexity') as any,
+      },
+    });
+
+    const tools = (engine as unknown as { buildToolSet: () => Record<string, unknown> })
+      .buildToolSet();
+
+    expect(Object.keys(tools).sort()).toEqual(['balance_check', 'perplexity_search']);
+  });
+
+  it('engine-native tools take precedence on name collision', () => {
+    const engineTool = engineToolFactory('web_search');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [engineTool],
+      gatewayTools: {
+        // biome-ignore lint/suspicious/noExplicitAny: stub shape
+        web_search: gatewayToolStub('overridden') as any,
+      },
+    });
+
+    const tools = (engine as unknown as {
+      buildToolSet: () => Record<string, { description?: string }>;
+    }).buildToolSet();
+
+    expect(Object.keys(tools)).toEqual(['web_search']);
+    // Engine wrapper sets description from the LegacyTool's description.
+    expect(tools.web_search?.description).toBe('Engine-native tool web_search');
+  });
+
+  it('returns engine tools unchanged when gatewayTools is absent (backward compat)', () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [engineToolFactory('balance_check')],
+    });
+
+    const tools = (engine as unknown as { buildToolSet: () => Record<string, unknown> })
+      .buildToolSet();
+
+    expect(Object.keys(tools)).toEqual(['balance_check']);
+  });
+
+  it('returns empty ToolSet when both tools and gatewayTools are absent', () => {
+    const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
+    const tools = (engine as unknown as { buildToolSet: () => Record<string, unknown> })
+      .buildToolSet();
+    expect(Object.keys(tools)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Day 2 tests — tool dispatch via toAISDKTools wrapper
 // ---------------------------------------------------------------------------
 //

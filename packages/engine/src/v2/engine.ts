@@ -56,6 +56,7 @@ import {
   type SystemModelMessage,
   type LanguageModel,
   type TelemetrySettings,
+  type Tool,
 } from 'ai';
 import type {
   ContentBlock,
@@ -201,6 +202,32 @@ export interface AISDKEngineConfig extends Omit<EngineConfig, 'provider'> {
    * if they need vendor extensions.
    */
   gatewayProviderOptions?: AISDKEngineGatewayProviderOptions;
+
+  /**
+   * [SPEC v0.7c Day 2c++ Batch 1 / v2.10.0] Host-supplied tools that
+   * are NOT engine-native — passed verbatim into the AI SDK `ToolSet`
+   * alongside the engine's wrapped `config.tools`. The two sets are
+   * merged with engine tools taking precedence on name collision.
+   *
+   * Intended consumers: hosts routing through Vercel AI Gateway who
+   * want gateway-managed tools (`gateway.tools.perplexitySearch()`,
+   * `gateway.tools.parallelSearch()`, etc.) without forcing every
+   * non-gateway host (CLI, MCP server, direct-Anthropic fallback) to
+   * carry the same vendor dep. Engine stays vendor-agnostic; hosts
+   * opt in per-request.
+   *
+   * Shape: AI SDK v6's `Tool` type (re-exported from `ai`) keyed by
+   * tool name string — same shape AI SDK's `streamText({ tools })`
+   * already accepts.
+   *
+   * When unset (every pre-v2.10 caller), the engine's tool set is
+   * unchanged. Backward compatible by construction.
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: Tool's generic params are
+  // covariant + provider-specific (e.g. Vercel gateway tools type their
+  // input/output with provider-internal schemas). Hosts pass whatever
+  // tool factory produces; engine forwards verbatim.
+  gatewayTools?: Record<string, Tool<any, any>>;
 }
 
 /**
@@ -605,7 +632,7 @@ export class AISDKEngine {
     // and thread it through experimental_context. The wrapper extracts
     // .toolContext for legacy.call; needsApproval extracts .toolContext
     // + .contacts; onStepFinish reads .guardState + .config.
-    const tools = toAISDKTools(this.config.tools ?? []) as ToolSet;
+    const tools = this.buildToolSet();
     const toolContext = buildToolContext(this.config, {
       signal: this.abortController.signal,
     });
@@ -998,7 +1025,7 @@ export class AISDKEngine {
     // Approved → re-invoke streamText to narrate. Same tool/context/
     // guard wiring as submitMessage so post-write refresh + chained
     // tools (rare on resume but possible) flow through the same path.
-    const tools = toAISDKTools(this.config.tools ?? []) as ToolSet;
+    const tools = this.buildToolSet();
     const toolContext = buildToolContext(this.config, {
       signal: this.abortController.signal,
     });
@@ -1548,6 +1575,32 @@ export class AISDKEngine {
   // (Day 3 adds: prepareStep guard pipeline, onStepFinish post-write
   // refresh, real EngineEvent translation via the bridge layer)
   // -------------------------------------------------------------------
+
+  /**
+   * [v2.10.0 / SPEC v0.7c Day 2c++ Batch 1] Build the `ToolSet` passed
+   * to `streamText({ tools })`. Merges:
+   *
+   *  1. Engine-native `config.tools` (wrapped via `toAISDKTools` so
+   *     guards + permissions + preflight + result budgeting all fire).
+   *  2. Host-supplied `config.gatewayTools` (passed verbatim — these
+   *     are managed tools like `gateway.tools.perplexitySearch()` that
+   *     execute provider-side and don't go through the engine's
+   *     wrappers).
+   *
+   * Engine tools take precedence on name collision — guarantees an
+   * engine-registered name (e.g. an existing `web_search`) can't be
+   * silently shadowed by a gateway tool with the same key.
+   */
+  private buildToolSet(): ToolSet {
+    const engineTools = toAISDKTools(this.config.tools ?? []) as ToolSet;
+    if (!this.config.gatewayTools) {
+      return engineTools;
+    }
+    return {
+      ...this.config.gatewayTools,
+      ...engineTools,
+    } as ToolSet;
+  }
 
   /**
    * Legacy helper — returns the system prompt as a flattened string.
