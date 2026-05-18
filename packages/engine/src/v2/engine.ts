@@ -54,6 +54,8 @@ import {
   type ToolSet,
   type StopCondition,
   type SystemModelMessage,
+  type LanguageModel,
+  type TelemetrySettings,
 } from 'ai';
 import type {
   ContentBlock,
@@ -127,10 +129,48 @@ import { extractLatestUserMessage } from '../memory/extract-user-message.js';
 // ---------------------------------------------------------------------------
 export interface AISDKEngineConfig extends Omit<EngineConfig, 'provider'> {
   /**
-   * Anthropic API key. Direct dependency on @ai-sdk/anthropic; no
-   * provider abstraction layer.
+   * Anthropic API key — required when `modelInstance` is NOT set. When
+   * `modelInstance` is provided (e.g. a `gateway('anthropic/claude-...')`
+   * wrapped model from web-v2 per SPEC v0.7c D-6 Day 2c), this field
+   * is ignored and the engine never calls `createAnthropic`.
    */
-  anthropicApiKey: string;
+  anthropicApiKey?: string;
+
+  /**
+   * [SPEC v0.7c Day 2c / D-6 AI Gateway lock] Pre-built `LanguageModel`
+   * to use verbatim instead of the engine's internal
+   * `createAnthropic({ apiKey })` path. Lets hosts inject:
+   *  - A `gateway('anthropic/claude-sonnet-4-5')` wrapped model for
+   *    multi-provider failover + Vercel-native observability (web-v2).
+   *  - A `wrapLanguageModel({ model, middleware })` for the future
+   *    SPEC v0.7c D-17 Phase 5.5 middleware adoption.
+   *  - A mocked `MockLanguageModelV3` for engine integration tests.
+   *
+   * When set, the engine uses this verbatim and ignores both
+   * `anthropicApiKey` AND `config.model` (the legacy string model id —
+   * the injected `LanguageModel` is fully self-describing). When
+   * absent, falls back to `createAnthropic({apiKey})` + `this.anthropic(config.model ?? 'claude-sonnet-4-5')`
+   * (the pre-2.8.0 behavior — backward compatible).
+   *
+   * Accepts the AI SDK v6 `LanguageModel` union (string id |
+   * LanguageModelV3 | LanguageModelV2) so callers can pass either a
+   * pre-built provider instance OR a raw global-provider model id
+   * (`'anthropic/claude-sonnet-4-5'`) when the AI SDK's global
+   * provider auto-resolution covers their case.
+   */
+  modelInstance?: LanguageModel;
+
+  /**
+   * [SPEC v0.7c Day 2c / D-18 telemetry lock] AI SDK v6
+   * `experimental_telemetry` settings forwarded into `streamText`.
+   * Hosts pass `{ isEnabled: true, functionId: 'audric-chat',
+   * metadata: { sessionId, userId } }` to emit OpenTelemetry spans
+   * that the Vercel AI Gateway dashboard consumes automatically.
+   *
+   * When absent, telemetry is disabled (AI SDK v6 default while
+   * experimental).
+   */
+  experimentalTelemetry?: TelemetrySettings;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +178,13 @@ export interface AISDKEngineConfig extends Omit<EngineConfig, 'provider'> {
 // ---------------------------------------------------------------------------
 export class AISDKEngine {
   private readonly config: AISDKEngineConfig;
-  private readonly anthropic: ReturnType<typeof createAnthropic>;
+  /**
+   * Internal Anthropic provider — instantiated only when `modelInstance`
+   * is NOT injected (the pre-2.8.0 code path). When the host injects
+   * a pre-built `LanguageModel` (e.g. gateway-wrapped), this stays
+   * null and the engine never calls `createAnthropic`.
+   */
+  private readonly anthropic: ReturnType<typeof createAnthropic> | null;
   private messages: Message[] = [];
   private abortController: AbortController | null = null;
 
@@ -164,7 +210,22 @@ export class AISDKEngine {
 
   constructor(config: AISDKEngineConfig) {
     this.config = config;
-    this.anthropic = createAnthropic({ apiKey: config.anthropicApiKey });
+    // [SPEC v0.7c Day 2c] When the host injects a pre-built `LanguageModel`
+    // (e.g. gateway-wrapped), skip the internal Anthropic provider
+    // entirely — `anthropicApiKey` becomes optional. When neither is
+    // set, fail loudly at construct time (vs silent undefined at first
+    // turn) so misconfig surfaces in the same boot phase as env-gate
+    // failures.
+    if (config.modelInstance === undefined) {
+      if (!config.anthropicApiKey) {
+        throw new Error(
+          '[AISDKEngine] Either `modelInstance` (pre-built LanguageModel) or `anthropicApiKey` must be provided.',
+        );
+      }
+      this.anthropic = createAnthropic({ apiKey: config.anthropicApiKey });
+    } else {
+      this.anthropic = null;
+    }
     this.guardState = createGuardRunnerState();
     this.stepFinishMutable = {
       sessionSpendUsdLocal: config.sessionSpendUsd ?? 0,
@@ -1009,10 +1070,30 @@ export class AISDKEngine {
       this.config.outputConfig,
     );
 
+    // [SPEC v0.7c Day 2c / D-6] Prefer the host-injected `modelInstance`
+    // (e.g. `gateway('anthropic/claude-sonnet-4-5')` from web-v2) over
+    // the internal Anthropic provider. When `modelInstance` is set,
+    // `this.anthropic` is null and `config.model` (the legacy string
+    // model id) is ignored — the injected model is fully self-describing.
+    const resolvedModel: LanguageModel =
+      this.config.modelInstance !== undefined
+        ? this.config.modelInstance
+        : // anthropic is non-null here per the constructor invariant
+          // (modelInstance undefined → anthropic created or throws).
+          (this.anthropic as ReturnType<typeof createAnthropic>)(
+            this.config.model ?? 'claude-sonnet-4-5',
+          );
+
     const stream = streamText({
-      model: this.anthropic(this.config.model ?? 'claude-sonnet-4-5'),
+      model: resolvedModel,
       tools,
       messages: toAISDKMessages(validatedMessages),
+      // [SPEC v0.7c Day 2c / D-18] Forward host-supplied OTel telemetry
+      // settings. Vercel AI Gateway dashboard consumes the resulting
+      // spans automatically when the model is gateway-routed.
+      ...(this.config.experimentalTelemetry !== undefined
+        ? { experimental_telemetry: this.config.experimentalTelemetry }
+        : {}),
       // [F-12 / 2026-05-18] buildSystemForStream() preserves cache_control
       // markers (legacy systemPromptString() flattened them away). The
       // memory path's prepareStep is responsible for its own assembly.
