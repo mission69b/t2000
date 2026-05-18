@@ -74,7 +74,7 @@ jobs:
       # step in that case.
       - name: Upload benchmark artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: engine-cold-start-${{ github.run_id }}-${{ github.run_attempt }}
           path: engine-benchmark-cold-start.json
