@@ -58,6 +58,27 @@ export function classifyEffort(
 
   if (sessionWriteCount > 0 && /borrow|withdraw|send|swap/i.test(msg)) return 'high';
 
+  // [F-14 / 2026-05-18] Explicit deep-reasoning markers ALWAYS upgrade to
+  // medium, BEFORE the single-fact-lookup short-circuit below. Pre-F-14, a
+  // prompt like "Should I save 5 USDC into NAVI? Walk me through your
+  // reasoning step by step, weighing the APY vs my portfolio composition
+  // and any risks" got mis-routed to `low` (Haiku, no thinking) because
+  // it mentioned "apy" — even though it explicitly asked for multi-step
+  // reasoning + trade-off analysis. The cost of this mis-classification
+  // was hidden pre-F-13 (no extended thinking anywhere); now that F-13 is
+  // restored, classifier accuracy directly determines whether deep prompts
+  // get Anthropic structured-thinking output or fall back to inline
+  // `<thinking>` text tags from Haiku.
+  //
+  // Markers chosen are intent-bearing, not topical — they signal the
+  // USER wants reasoning shown, not just a fact lookup. False-positive
+  // cost is low (occasional Sonnet routing for a borderline prompt);
+  // false-negative cost is high (Sonnet+thinking budget wasted on a
+  // model that can't use it).
+  if (/\b(walk me through|step.?by.?step|show.{0,20}reasoning|trade.?offs?|weigh.{0,20}(against|risks?|alternatives?|options?)|reason\s+(through|about))\b/i.test(msg)) {
+    return 'medium';
+  }
+
   // Pure simple lookups — single-fact questions Haiku handles well.
   // Explicitly excludes `show|history|all|list|everything` which imply
   // multi-record synthesis (the original regex sent these to Haiku and

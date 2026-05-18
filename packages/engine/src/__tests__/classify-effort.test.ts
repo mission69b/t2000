@@ -90,6 +90,58 @@ describe('classifyEffort — post-Phase-6 routing (recipes-free)', () => {
     });
   });
 
+  // [F-14 / 2026-05-18] Deep-reasoning markers ALWAYS upgrade above the
+  // single-fact-lookup short-circuit, even when topical keywords (apy,
+  // balance, rate, hf, price) appear. Pre-F-14, "walk me through saving 5
+  // USDC, weighing apy vs risks" got mis-routed to `low` because of the
+  // bare "apy" mention — Phase 0 O-2 smoke 3 hit this exact case
+  // (BENEFITS_SPEC_v07c §"Day 0e"). Lock these explicitly so regressions
+  // re-introducing the topical short-circuit fail at test-time.
+  describe('REGRESSION GUARD (F-14) — explicit deep-reasoning markers override topical short-circuits', () => {
+    it('"walk me through" upgrades to medium even with topical keywords', () => {
+      expect(classifyEffort(SONNET, 'walk me through the APY math', 0)).toBe('medium');
+      expect(classifyEffort(SONNET, 'walk me through how the rate works', 0)).toBe('medium');
+    });
+
+    it('"step by step" + topical keyword still gets medium (not low)', () => {
+      expect(classifyEffort(SONNET, 'explain the price step by step', 0)).toBe('medium');
+      expect(classifyEffort(SONNET, 'step-by-step what is going on with my hf', 0)).toBe('medium');
+    });
+
+    it('"weighing X vs Y" patterns upgrade to medium', () => {
+      expect(classifyEffort(SONNET, 'weigh the risks against the APY', 0)).toBe('medium');
+      expect(classifyEffort(SONNET, 'weigh against alternatives', 0)).toBe('medium');
+      expect(classifyEffort(SONNET, 'weigh against my options', 0)).toBe('medium');
+    });
+
+    it('"trade-off" / "tradeoffs" patterns upgrade to medium', () => {
+      expect(classifyEffort(SONNET, 'what is the trade-off here', 0)).toBe('medium');
+      expect(classifyEffort(SONNET, 'show me the tradeoffs of APY', 0)).toBe('medium');
+    });
+
+    it('"show your reasoning" patterns upgrade to medium', () => {
+      expect(classifyEffort(SONNET, 'show your reasoning for the price', 0)).toBe('medium');
+      expect(classifyEffort(SONNET, 'show me your reasoning on the rate', 0)).toBe('medium');
+    });
+
+    it('"reason through" / "reason about" upgrade to medium', () => {
+      expect(classifyEffort(SONNET, 'reason through the APY question', 0)).toBe('medium');
+      expect(classifyEffort(SONNET, 'reason about my balance', 0)).toBe('medium');
+    });
+
+    it('canonical Phase 0 O-2 smoke 3 prompt class — explicit reasoning + topical APY → medium not low', () => {
+      const smokePrompt =
+        'Should I save 5 USDC into NAVI right now? Walk me through your reasoning step by step, weighing the APY vs my current portfolio composition and any risks I should know about.';
+      expect(classifyEffort(SONNET, smokePrompt, 0)).toBe('medium');
+    });
+
+    it('still routes bare single-fact lookups to low (no regression in the other direction)', () => {
+      expect(classifyEffort(SONNET, 'whats my apy', 0)).toBe('low');
+      expect(classifyEffort(SONNET, 'check the price', 0)).toBe('low');
+      expect(classifyEffort(SONNET, 'balance', 0)).toBe('low');
+    });
+  });
+
   describe('opus-4-6 max routing', () => {
     it('rebalance / DCA / close-position → max (opus only)', () => {
       expect(classifyEffort(OPUS, 'rebalance my portfolio', 0)).toBe('max');
