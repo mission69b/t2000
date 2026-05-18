@@ -195,8 +195,14 @@ Coverage actually exercised:
 **No safety-critical bugs found.** Auth surface is tight (IDOR + missing/forged JWT all 401/403). Guards block what they should. Preflight rejects what it should. Cross-session memory works.
 
 **Two ship-now fixes** (one per repo, batched per "ship-all"):
-1. **Engine release** — F-11 `tool-modifiable-fields.ts` derive asset from input
-2. **Audric commit** — F-5 strip `{data:...}` wrapper in `route.ts:909` (no version bump, audric isn't published)
+1. **Engine release** — F-11 `tool-modifiable-fields.ts` derive asset from input — ✅ **SHIPPED v2.7.1** (commit `89bfc8a8`, npm `@t2000/engine@2.7.1`, GitHub release v2.7.1). Production-verified: USDsui save_deposit now emits `modifiableFields[].asset === 'USDsui'`.
+2. **Audric commit** — F-5 strip `{data:...}` wrapper in `route.ts:909` — ✅ **SHIPPED** (commit `1239396`, Vercel `dpl_Cg12GBCj…`). Production-verified: bootstrap + LLM call shapes now identical (`['available','savings','debt','pendingRewards','gasReserve','defi']`).
+
+**F-5b (new finding from post-deploy verify)** — F-5 fixes the dedupe key but `balance_check` STILL fires twice in same turn. The LLM follows a system-prompt rule ("always call balance_check to render the rich card") that issues a second call regardless of bootstrap. Microcompact dedupes RESULTS in history, not pre-dispatched CALLS in-flight. Eliminating same-turn duplicates requires either:
+- System prompt tightening: "skip balance_check if bootstrapped in this turn"
+- Engine pre-dispatch dedupe: intercept LLM call if input matches existing result in current turn's context
+
+Not in this ship batch — larger design decision. Track for v0.7c (chat shell rewrite is a natural fold point).
 
 **Two doc/UX follow-ups** (next maintenance window, not blocking):
 3. F-9 — surface session-limit reset time in error body
