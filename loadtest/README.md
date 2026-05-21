@@ -31,7 +31,6 @@ cat loadtest/reports/combined-report.md
 | `BASE_URL` | `https://audric.ai` (prod) or your staging URL |
 | `TEST_JWT` | Browser DevTools → Network tab → any `/api/engine/chat` request → `Authorization: Bearer <token>` header |
 | `TEST_ADDRESS` | Same page — it's in the request body as `address` |
-| `INTERNAL_KEY` | Vercel dashboard → `T2000_INTERNAL_KEY` env var |
 
 > **TIP:** Create a dedicated load-test Audric account (sign up with a `+loadtest@...` email) so your real account's session history isn't polluted.
 
@@ -45,7 +44,8 @@ cat loadtest/reports/combined-report.md
 | **S2 — Viral address** | 200 concurrent on same wallet | 20 | 200 | ~3 min | BV calls < 50/min (cache + lock working) |
 | **S3 — Mixed R+W** | 10% write-intent turns (save 1 USDC) | 20 | 200 | ~12 min | Writes yield `pending_action`, never auto-execute |
 | **S4 — BV degraded** | Portfolio reads, watch sticky-positive cache | 20 | 200 | ~12 min | > 80% of reads return positive `walletValueUsd` |
-| **S5 — Cron overlap** | Trigger cron while load is running | 1 | 1 | ~3 min | Cron shard < 60s, post-cron chat p95 unaffected |
+
+> **S5 retired 2026-05-21 (S.224 / v0.7d Phase 6 Block C):** the scenario triggered the t2000 ECS cron via `POST /api/internal/financial-context-snapshot` to measure shard fan-out vs live chat. That route + the ECS cron itself were deleted (Vercel cron at `/api/cron/financial-context-snapshot` replaces both). Vercel cron jobs run in isolated function invocations so the original "does cron tank live chat?" concern no longer applies the same way. If revived, port to a Vercel-cron trigger via `Authorization: Bearer ${CRON_SECRET}`.
 
 ---
 
@@ -61,18 +61,6 @@ cat loadtest/reports/combined-report.md
 
 # Or with explicit env vars (no .env.loadtest file)
 BASE_URL=https://audric.ai TEST_JWT=eyJ... TEST_ADDRESS=0x... ./loadtest/run.sh s1
-```
-
----
-
-## Running S5 alongside S1 (cron overlap)
-
-```bash
-# Terminal 1 — keep S1 running
-./loadtest/run.sh s1 0.2   # 20% scale = ~100 VUs, runs for 10 min
-
-# Terminal 2 — while S1 is running, trigger cron
-./loadtest/run.sh s5
 ```
 
 ---
@@ -119,7 +107,6 @@ The combined report is a markdown table with pass/fail per scenario and the key 
 | S2 BV calls < 50/min | Cross-instance coalescing working — single leader per address per 10s |
 | S3 writes always yield `pending_action` | Confirm gate never bypassed under concurrent load |
 | S4 sticky-positive > 80% | PR 1's sticky-positive write rules serving correct data under BV degradation |
-| S5 cron < 60s + chat unaffected | PR 3's sharding working — 8 parallel invocations, no timeout |
 
 ---
 

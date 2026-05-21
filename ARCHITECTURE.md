@@ -1002,7 +1002,7 @@ Silent Profile is two cooperating layers, both lived in `audric/apps/web` (the e
 | Layer | Storage | Refresh | Used as |
 |---|---|---|---|
 | `UserFinancialProfile` (Prisma) | risk tolerance, goals, investment horizon | Claude inference cron in the `daily-intel` group | `buildProfileContext()` → `<user_profile>` block |
-| `UserFinancialContext` (Prisma) | savings/wallet/debt USD, health factor, weighted savings APY, open goals, recent activity, last-session days | `/api/internal/financial-context-snapshot` cron @ 02:00 UTC; refreshed on-demand after large writes | `buildFinancialContextBlock()` → `<financial_context>` block |
+| `UserFinancialContext` (Prisma) | savings/wallet/debt USD, health factor, weighted savings APY, open goals, recent activity, last-session days | Vercel cron at `/api/cron/financial-context-snapshot` @ 02:30 UTC (Block B, S.222); refreshed on-demand after large writes | `buildFinancialContextBlock()` → `<financial_context>` block |
 
 The `<financial_context>` block lets every chat start oriented — no warm-up tool calls, no "let me check your balance" before the agent says anything useful. The block is silent context, never surfaced as a nudge or notification.
 
