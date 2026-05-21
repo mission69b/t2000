@@ -82,7 +82,12 @@ async function getWalletBalances(): Promise<WalletBalances | null> {
         balanceUsdc: Number(gatewayUsdc.totalBalance) / 1e6,
       },
     };
-  } catch {
+  } catch (err) {
+    console.error(
+      `[api/stats] getWalletBalances failed (SUI_RPC=${SUI_RPC}):`,
+      err instanceof Error ? err.message : String(err),
+      err instanceof Error ? err.stack : undefined
+    );
     return null;
   }
 }
