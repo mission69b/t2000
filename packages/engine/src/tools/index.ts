@@ -11,8 +11,6 @@ import { sendTransferTool } from './transfer.js';
 import { borrowTool } from './borrow.js';
 import { repayDebtTool } from './repay.js';
 import { claimRewardsTool } from './claim.js';
-import { payApiTool } from './pay.js';
-import { mppServicesTool } from './mpp-services.js';
 import { swapExecuteTool } from './swap.js';
 import { swapQuoteTool } from './swap-quote.js';
 import { voloStakeTool } from './volo-stake.js';
@@ -81,8 +79,11 @@ import { tokenPricesTool } from './token-prices.js';
 // protocol-fees/sui-protocols deleted, no replacement). v1.4 left the
 // engine at 23 reads + 11 writes = 34 tools. SPEC 10 (May 2026) added
 // resolve_suins (→ 24 reads / 35 total). S.119 added pending_rewards
-// + Track B added harvest_rewards → **current count is 25 reads + 12
-// writes = 37 tools** (matches the array literals below).
+// + Track B added harvest_rewards → bumped to 25 reads + 12 writes = 37.
+// [S.245 — 2026-05-22] V07E_D_QUESTION_AUDITS D-2 reframe deleted
+// pay_api + mpp_services from the engine entirely. Capabilities return
+// as Commerce primitives in Audric Store SPEC (clean-slate redesign,
+// not a port). **Current count: 24 reads + 11 writes = 35 tools.**
 
 export const READ_TOOLS: Tool[] = [
   renderCanvasTool,
@@ -93,7 +94,6 @@ export const READ_TOOLS: Tool[] = [
   transactionHistoryTool,
   swapQuoteTool,
   voloStatsTool,
-  mppServicesTool,
   webSearchTool,
   explainTxTool,
   portfolioAnalysisTool,
@@ -120,7 +120,6 @@ export const WRITE_TOOLS: Tool[] = [
   repayDebtTool,
   claimRewardsTool,
   harvestRewardsTool,
-  payApiTool,
   swapExecuteTool,
   voloStakeTool,
   voloUnstakeTool,
@@ -144,8 +143,6 @@ export {
   borrowTool,
   repayDebtTool,
   claimRewardsTool,
-  payApiTool,
-  mppServicesTool,
   swapExecuteTool,
   swapQuoteTool,
   voloStakeTool,

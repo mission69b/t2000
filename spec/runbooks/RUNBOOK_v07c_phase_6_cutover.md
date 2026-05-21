@@ -74,7 +74,7 @@ Voice + pay_api dispositions (audit-3 specifics):
 | Surface | LoC | Disposition | Notes |
 |---|---|---|---|
 | Voice (`/api/voice/*` + `lib/voice/` + `hooks/useVoice*`) | ~700 | **DELETE WITH CHAT SHELL (post-soak)** | Verified consumed ONLY by chat-shell internals (`ChatMessage`, `dashboard-content`, `BlockRouter`). Web-v2 chat has no voice mode. If voice becomes a future feature, it gets built fresh in v2. |
-| MPP `pay_api` (`/api/services/*` + `lib/engine/mpp-services-tool.ts` + `GenericMppReceipt.tsx` + related canvases) | ~500 | **TBD — verification deferred** | Per S.7 (Apr 2026 simplification), pay_api was deferred. Need production-log audit for 30-day usage before deletion. Treat as `KEEP-IN-WEB` placeholder until separate verification session decides. |
+| MPP `pay_api` (`/api/services/*` + `lib/engine/mpp-services-tool.ts` + `GenericMppReceipt.tsx` + related canvases) | ~500 | **DELETE WITH APPS/WEB ARCHIVE (S.245 — V07E_D_QUESTION_AUDITS D-2 reframe)** | 2026-05-22: engine-side `pay_api` + `mpp_services` tools deleted (S.245). The legacy MPP gateway capability returns as a clean-slate Commerce primitive in the upcoming Audric Store SPEC. The web-side `/api/services/*` routes, `GenericMppReceipt.tsx`, canvases, and `mpp-services-tool.ts` are now permanently unreachable from web-v2 (it filters them out of `writeToolsForWebV2`). They die en-bloc with apps/web in v0.7e Phase 5. |
 
 ### 1.2 Estimated LoC delta after Phase 6 + post-soak deletion
 
@@ -88,7 +88,7 @@ Voice + pay_api dispositions (audit-3 specifics):
 | Post-soak deletion sweep | 0 | ~-24,700 to -33,700 (chat-shell) + ~-1,800 (apps/web settings/store/pay/invoice + their backing APIs) | -26,500 to -35,500 |
 | **NET** | **~+2,000 in web-v2** | **~-26,500 to -35,500 in apps/web** | **~-24,500 to -33,500 overall** |
 
-Apps/web stays alive POST-v0.7c for: crons (4), internal API (10), analytics (7), identity (4), user (8 — minus Memory which keeps using legacy), legal (4), litepaper, admin, marketing landing, canonical lib (~8k LoC). **Apps/web becomes a backend + marketing app post-v0.7c, NOT archived yet.** Voice + pay_api delete with chat shell. Per audit-3 lock: **apps/web fully archived end of v0.7e** (Tier C copy-port sweep + cron migration + final archive — see Section 11 below).
+Apps/web stays alive POST-v0.7c for: crons (4), internal API (10), analytics (7), identity (4), user (8 — minus Memory which keeps using legacy), legal (4), litepaper, admin, marketing landing, canonical lib (~8k LoC). **Apps/web becomes a backend + marketing app post-v0.7c, NOT archived yet.** Voice + pay_api delete with chat shell (pay_api engine tool already deleted S.245 — only the apps/web routes remain as zombie code). Per audit-3 lock + S.245 reframe: **apps/web fully archived end of v0.7e** (Tier C copy-port sweep + cron migration + final archive — see Section 11 below).
 
 ### 1.3 Why this is the right shape
 

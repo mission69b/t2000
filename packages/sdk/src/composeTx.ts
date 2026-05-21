@@ -93,8 +93,6 @@ import { validateAddress } from './utils/sui.js';
  * (Track B 2026-05-08 added `harvest_rewards`).
  *
  * Excluded by design:
- * - `pay_api` — recipient/amount unknown at compose time; the on-chain
- *   leg uses `send_transfer` after the gateway 402 challenge resolves.
  * - `save_contact` — no on-chain leg (Prisma-only).
  */
 export type WriteToolName =

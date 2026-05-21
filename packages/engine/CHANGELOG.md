@@ -1,5 +1,61 @@
 # Changelog
 
+## 2.12.0 — 2026-05-22 — `pay_api` + `mpp_services` deleted (S.245 / V07E_D_QUESTION_AUDITS D-2 reframe)
+
+**Breaking for direct importers only.** No known production consumers — audric/web-v2 already cleaned up in the paired commit; legacy audric/apps/web is post-rewrite zombie code scheduled for v0.7e Phase 5 deletion.
+
+### What's gone
+
+| Removed | Kind | Why |
+|---|---|---|
+| `payApiTool` (`pay_api`) | Write tool | Legacy MPP gateway 3-leg flow (402 challenge → on-chain pay → API call) was tightly coupled to apps/web's bespoke routes. Returns redesigned as a Commerce primitive in the upcoming Audric Store SPEC. |
+| `mppServicesTool` (`mpp_services`) | Read tool | Catalog browse for the MPP gateway. Dead without `pay_api`; the Audric Store redesign will surface services differently. |
+
+### Files deleted
+
+- `packages/engine/src/tools/pay.ts`
+- `packages/engine/src/tools/mpp-services.ts`
+- `packages/engine/src/tools/pay.test.ts`
+- `packages/engine/src/__tests__/pay.test.ts`
+
+### Files edited
+
+- `packages/engine/src/tools/index.ts` — removed both tools from `READ_TOOLS` + `WRITE_TOOLS`; tool count comments updated 37 → 35.
+- `packages/engine/src/tool-flags.ts` — removed `pay_api` flags entry.
+- `packages/engine/src/v2/tool-policy.ts` — removed both tools from read/write policy maps.
+- `packages/engine/src/v2/canonical-route.ts` — comment scrub.
+- `packages/engine/src/v2/enrich-pending-action.test.ts` — comment scrub.
+- `packages/engine/src/types.ts` — removed `pay_api` from bundleability comments.
+- `packages/engine/src/permission-rules.ts` — removed `pay_api` from `TOOL_TO_OPERATION` + `resolveUsdValue`.
+- `packages/engine/src/describe-action.ts` — removed `estimatePayApiCost` import + `pay_api` case.
+- `packages/engine/src/index.ts` — removed exports for both tools.
+- `packages/engine/src/prompt/index.ts` — rewrote "paid third-party APIs" deferral block to drop legacy naming.
+- `packages/engine/src/prompt/index.test.ts` — rewritten as a regression test asserting `pay_api` + `mpp_services` STAY out of the system prompt.
+- `packages/engine/src/__tests__/aci-constraints.test.ts` — entire `mpp_services` describe block removed.
+- `packages/engine/src/__tests__/permission-rules.test.ts` — `pay_api`-specific cases removed.
+- `packages/sdk/src/composeTx.ts` + `.test.ts` — comment scrub.
+
+### What this is NOT
+
+- **NOT a deletion of the `costAware` or `retry_blocked` guards.** They remain — the test fixtures in `guards-coverage.test.ts` still exercise them via inline `defineTool` mocks. Future Commerce tools may re-enable `costAware`.
+- **NOT a deletion of the legacy `apps/web` `pay_api` route.** That dies with v0.7e Phase 5 (full apps/web archive). For audric/web-v2 users, `pay_api` was already dead (filtered out of `writeToolsForWebV2`) — this just makes the dead tool's absence canonical.
+
+### Verification
+
+- ✅ `pnpm --filter @t2000/engine typecheck` — 0 errors
+- ✅ `pnpm --filter @t2000/engine test` — 1338 passed, 10 skipped (no regressions)
+- ✅ `pnpm --filter @t2000/engine lint` — 0 errors (only pre-existing `any` warnings)
+- ✅ `pnpm --filter @t2000/engine build` — clean tsup ESM + DTS
+
+### Cross-refs
+
+- `spec/active/V07E_D_QUESTION_AUDITS.md` — D-2 reframe
+- `spec/active/BENEFITS_SPEC_v07e.md` — Phase 5 restored
+- `spec/active/V07F_FORWARD_MAP.md` — `pay_api` removed from v0.7f scope
+- Forthcoming `spec/active/AUDRIC_STORE_SPEC_v01_DRAFT.md` — clean-slate Commerce design
+
+---
+
 ## 2.7.0 — 2026-05-18 — Phase 7 memory layer prototype (SPEC_PHASE_7_DRAFT.md)
 
 **Minor release.** Pure additive — every host that doesn't set the new `EngineConfig.memoryStore` field continues exactly as in v2.6.0. Opt-in only.

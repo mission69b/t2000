@@ -869,8 +869,7 @@ Tool dispatch in `AISDKEngine`:
 | `rates_info`              | `repay_debt`            |
 | `transaction_history`     | `claim_rewards`         |
 | `swap_quote`              | `harvest_rewards`       |
-| `volo_stats`              | `pay_api`               |
-| `mpp_services`            | `swap_execute`          |
+| `volo_stats`              | `swap_execute`          |
 | `web_search`              | `volo_stake`            |
 | `explain_tx`              | `volo_unstake`          |
 | `portfolio_analysis`      | `save_contact`          |
@@ -889,7 +888,7 @@ Tool dispatch in `AISDKEngine`:
 | `pending_rewards`         |                         |
 
 
-25 read tools, 12 write tools, **37 total**. (Reads went 23 → 24 in SPEC 10 May 2026 with `resolve_suins` for the Audric Passport identity layer; reads → 25 + writes → 12 in S.119 May 2026 with `pending_rewards` + `harvest_rewards` — the NAVI rewards preview + the single-PTB compound that claims, swaps each non-USDC reward to USDC, and deposits into NAVI savings.) Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
+24 read tools, 11 write tools, **35 total**. (Reads went 23 → 24 in SPEC 10 May 2026 with `resolve_suins` for the Audric Passport identity layer; reads → 25 + writes → 12 in S.119 May 2026 with `pending_rewards` + `harvest_rewards` — the NAVI rewards preview + the single-PTB compound that claims, swaps each non-USDC reward to USDC, and deposits into NAVI savings. S.245 May 2026 deleted `pay_api` + `mpp_services` per V07E_D_QUESTION_AUDITS D-2 reframe → current 24 reads / 11 writes.) Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions` (allowance contract dormant), `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't sign without user presence under zkLogin), `pause_pattern`, `pattern_status` (proposal pipeline removed; classifiers stay as silent context). See the S.0–S.12 entries in `audric-build-tracker.md`.
 >
@@ -908,7 +907,7 @@ Additional features:
 - **Prompt caching** — system prompt + tool definitions cached across turns (Anthropic `cache_control`)
 - **Context compaction** — `ContextBudget` (200k limit, 85% compact trigger) with LLM summarizer + truncation fallback
 - **Tool flags** — `ToolFlags` interface on all tools (mutating, requiresBalance, affectsHealth, irreversible, etc.)
-- **Preflight validation** — input validation gate on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`
+- **Preflight validation** — input validation gate on `send_transfer`, `swap_execute`, `borrow`, `save_deposit`
 - **Streaming tool dispatch** — AI SDK v6's `streamText` natively dispatches read-only `isConcurrencySafe` tools as soon as each `tool-call` event completes (no separate dispatcher; legacy `EarlyToolDispatcher` exported for back-compat with non-AISDKEngine callers)
 - **Tool result budgeting** — `maxResultSizeChars` caps output; truncated with re-call hint
 - **Microcompact** — deduplicates identical tool calls in history with back-references

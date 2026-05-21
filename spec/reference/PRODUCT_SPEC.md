@@ -34,7 +34,7 @@ The Audric consumer brand is exactly five products. All operations the user can 
 | charts (yield / health / portfolio viz)                   | **Finance** (canvas templates rendered from chat)       | `@t2000/engine` canvas + read tools                                       |
 | send USDC                                                 | **Pay** (`send_transfer` tool)                          | Direct Sui transactions                                                   |
 | receive (payment links / invoices / QR)                   | **Pay** (`create_payment_link`, `create_invoice` tools) | t2000 payment-kit + Sui Payment Kit URIs                                  |
-| pay an MPP API                                            | Internal capability (`pay_api` tool)                    | MPP gateway (`mpp.t2000.ai`, 41 services) — not a promoted product        |
+| pay an MPP API                                            | **DELETED S.245** — returns as Audric Store Commerce primitive | (legacy MPP gateway capability scoped to upcoming Audric Store SPEC)        |
 | sign / consent                                            | **Passport** (every write)                              | zkLogin ephemeral key + Enoki sponsorship                                 |
 | profile / memory / chain-fact / advice / guards / recipes | **Intelligence** (silent — never user-facing as a verb) | `@t2000/engine` reasoning + guards + crons + audric-side context builders |
 
@@ -246,7 +246,7 @@ Conversational finance engine powering Audric:
 
 #### 1b-beta: Write Tools + Confirmation + Cost Tracking ✅
 
-- Write tools: `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`
+- Write tools: `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `harvest_rewards`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact` (S.245 — `pay_api` deleted)
 - Async confirmation flow: `permission_request` event with `resolve` callback, `Promise.race` + `AbortSignal` for deadlock prevention
 - `CostTracker` — cumulative token tracking (input, output, cache read/write), USD cost estimation, budget limits
 - 12 confirmation integration tests, cost tests with cache token coverage

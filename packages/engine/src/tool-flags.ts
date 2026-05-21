@@ -16,10 +16,8 @@ import type { Tool, ToolFlags } from './types.js';
  *   maxRetries      — max calls with same input (default: unlimited for reads, 1 for writes)
  *   bundleable      — [SPEC 7 Layer 2] can participate in a multi-write Payment
  *                     Intent. Set on every confirm-tier write whose on-chain effect
- *                     is fully expressible at compose time. Excluded: `pay_api`
- *                     (recipient/amount/currency unknown until gateway 402 challenge
- *                     resolves at route time) and `save_contact` (Postgres-only, no
- *                     on-chain effect).
+ *                     is fully expressible at compose time. Excluded: `save_contact`
+ *                     (Postgres-only, no on-chain effect).
  */
 export const TOOL_FLAGS: Record<string, ToolFlags> = {
   // Write tools — financial (bundleable — SPEC 7 Layer 2)
@@ -32,9 +30,6 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   claim_rewards:   { mutating: true, bundleable: true },
   volo_stake:      { mutating: true, requiresBalance: true, bundleable: true },
   volo_unstake:    { mutating: true, bundleable: true },
-
-  // Write tools — pay / services (NOT bundleable — see ToolFlags.bundleable JSDoc)
-  pay_api:         { mutating: true, requiresBalance: true, costAware: true, producesArtifact: true, maxRetries: 1 },
 
   // Write tools — lightweight (no financial guards, NOT bundleable — Postgres only)
   save_contact:    {},

@@ -3,8 +3,8 @@
  *
  * Acceptance gate #2 (per spec): every `case` in today's
  * `transactions/prepare` switch statement has a paired `composeTx` test
- * that produces a valid PTB. 9 cases × 1 test each (excluding pay_api +
- * save_contact per spec).
+ * that produces a valid PTB. 9 cases × 1 test each (excluding
+ * save_contact per spec; pay_api was deleted entirely in S.245).
  *
  * **Test strategy:** these tests assert STRUCTURAL parity — composeTx's
  * registry correctly dispatches each tool to its appender, the appender

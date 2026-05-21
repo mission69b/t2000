@@ -146,7 +146,6 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   swap_quote: { ...READ_DEFAULT, cacheable: false }, // quotes go stale
   transaction_history: READ_DEFAULT,
   volo_stats: READ_DEFAULT,
-  mpp_services: READ_DEFAULT,
   web_search: READ_DEFAULT,
   explain_tx: READ_DEFAULT,
   protocol_deep_dive: READ_DEFAULT,
@@ -172,7 +171,6 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   repay_debt: WRITE_CONFIRM,
   claim_rewards: WRITE_CONFIRM,
   harvest_rewards: WRITE_CONFIRM,
-  pay_api: WRITE_CONFIRM,
   swap_execute: WRITE_CONFIRM,
   volo_stake: WRITE_CONFIRM,
   volo_unstake: WRITE_CONFIRM,

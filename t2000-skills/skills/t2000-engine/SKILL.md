@@ -161,21 +161,26 @@ const engine = new AISDKEngine({
 // use the in-memory default; multi-instance hosts (audric on Vercel) inject Upstash.
 ```
 
-## Built-in Tools (37)
+## Built-in Tools (35 — was 37 pre-S.245)
 
-### Read (25, parallel, auto-approved)
+### Read (24, parallel, auto-approved)
 `render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`,
-`transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`,
+`transaction_history`, `swap_quote`, `volo_stats`, `web_search`,
 `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `token_prices`,
 `create_payment_link`, `list_payment_links`, `cancel_payment_link`,
 `create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`,
 `yield_summary`, `activity_summary`, `resolve_suins`, `pending_rewards`
 
-### Write (12, structurally serial, confirmation required)
+### Write (11, structurally serial, confirmation required)
 `save_deposit` (USDC + USDsui), `withdraw`, `send_transfer`,
 `borrow` (USDC + USDsui), `repay_debt` (USDC + USDsui — same asset as borrow),
-`claim_rewards`, `harvest_rewards`, `pay_api`, `swap_execute`, `volo_stake`,
+`claim_rewards`, `harvest_rewards`, `swap_execute`, `volo_stake`,
 `volo_unstake`, `save_contact`
+
+> **S.245 (2026-05-22):** `pay_api` (write) + `mpp_services` (read) deleted
+> per V07E_D_QUESTION_AUDITS D-2 reframe. The legacy MPP gateway
+> capability returns as a Commerce primitive in the upcoming Audric Store
+> SPEC — clean-slate redesign, not a port of the legacy 3-leg apps/web flow.
 
 > Write serialization is structural in v2 — no in-process mutex. Confirm-tier
 > writes yield a `pending_action` event, the host round-trips through user

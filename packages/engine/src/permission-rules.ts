@@ -171,7 +171,6 @@ const TOOL_TO_OPERATION: Record<string, PermissionOperation> = {
   borrow: 'borrow',
   repay_debt: 'repay',
   swap_execute: 'swap',
-  pay_api: 'pay',
   volo_stake: 'save',
   volo_unstake: 'withdraw',
 };
@@ -209,21 +208,6 @@ export function resolveUsdValue(
       if (fromAsset === 'USDC' || fromAsset === 'USDT') return amount;
       return amount * (priceCache.get(fromAsset) ?? 0);
     }
-
-    case 'pay_api':
-      // [SPEC 23B-MPP6-fastpath audit / 2026-05-12] Field name fix.
-      // Pre-fix: read `input.maxCost ?? input.price` — neither field
-      // is in the pay_api schema (which declares `maxPrice`). Result:
-      // every pay_api call resolved to $0 → tier=auto regardless of
-      // preset, AND `onAutoExecuted({usdValue: 0})` made
-      // `incrementSessionSpend` a no-op so the autonomousDailyLimit
-      // cap never engaged for MPP spend. Post-fix: when the LLM sets
-      // `maxPrice`, that drives tier resolution + spend tracking. When
-      // omitted (the common case — gateway price is the truth), still
-      // resolves to 0 → auto, matching pre-fix behavior. Behavior
-      // change is semantically: "honor maxPrice when set, otherwise
-      // unchanged."
-      return safeNum(input.maxPrice);
 
     case 'volo_stake':
     case 'volo_unstake':

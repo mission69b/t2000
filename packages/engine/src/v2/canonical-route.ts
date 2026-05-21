@@ -100,7 +100,7 @@ export function buildCanonicalRouteText(
  * payload shape for any of the known failure tells:
  *
  * - `success: false` (audric's executeToolAction shape on catch)
- * - `error` key present (audric's pay_api / generic catch shape)
+ * - `error` key present (audric's generic catch shape)
  * - `_bundleReverted: true` (atomic Payment Intent revert)
  * - `_sessionExpired: true` (Enoki zkLogin JWT expired)
  * - `_txReverted: true` (reserved for future on-chain revert sentinel)

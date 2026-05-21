@@ -613,8 +613,8 @@ export interface PendingAction {
    *
    * Bundleable tools (v1): `save_deposit`, `withdraw`, `borrow`,
    * `repay_debt`, `send_transfer`, `swap_execute`, `claim_rewards`,
-   * `volo_stake`, `volo_unstake`. Non-bundleable: `pay_api`
-   * (HTTPS coupling), `save_contact` (Postgres only).
+   * `volo_stake`, `volo_unstake`. Non-bundleable: `save_contact`
+   * (Postgres only).
    */
   steps?: PendingActionStep[];
   /**
@@ -897,10 +897,6 @@ export interface ToolFlags {
    * `claim_rewards`, `volo_stake`, `volo_unstake`.
    *
    * **Permanently non-bundleable:**
-   *  - `pay_api` — recipient/amount/currency aren't known at LLM intent
-   *    time (gateway 402 challenge resolves them at route time, after a
-   *    network round-trip the engine has no knowledge of). Payment Intent
-   *    cannot be composed at compose time.
    *  - `save_contact` — Postgres-only, no on-chain effect.
    */
   bundleable?: boolean;

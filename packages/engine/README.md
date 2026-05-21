@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (37 tools — 25 read, 12 write), Reasoning Engine (14 guards across 3 priority tiers), Silent Profile, Chain Memory, and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Four systems work together: Agent Harness (35 tools — 24 read, 11 write), Reasoning Engine (14 guards across 3 priority tiers), Memory (MemWal vector store), and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 `AISDKEngine` orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop. (The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine `v2.0.0` (2026-05-17); `AISDKEngine` is the only engine, wrapping Vercel AI SDK v6's `streamText` while preserving the same public API surface.)
 
@@ -39,7 +39,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
-| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
+| 🎛️ **Agent Harness** | 35 tools (24 read + 11 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -123,7 +123,6 @@ AISDKEngine.submitMessage()
 | `volo_stats` | VOLO liquid staking stats — vSUI/SUI rate, APY, TVL |
 | `portfolio_analysis` | Portfolio breakdown with diversification insights |
 | `protocol_deep_dive` | Deep protocol analysis — TVL, yields, risks, alternatives (lone surviving DefiLlama dependency) |
-| `mpp_services` | Browse available MPP gateway services and endpoints |
 | `token_prices` | Current USD prices for Sui tokens (BlockVision; optional 24h change). Replaces deleted `defillama_token_prices` and `defillama_price_change`. |
 | `create_payment_link` | Create a shareable USDC payment link |
 | `list_payment_links` | List payment links with statuses |
@@ -146,7 +145,6 @@ AISDKEngine.submitMessage()
 | `borrow` | Borrow **USDC or USDsui** against collateral (v0.51.0+). Pass `asset: 'USDC' \| 'USDsui'`. |
 | `repay_debt` | Repay outstanding **USDC or USDsui** debt (v0.51.1+). Pass `asset` to target a specific debt; omit for highest-APY repay. **Repay symmetry is enforced:** USDsui debt MUST be repaid with USDsui. |
 | `claim_rewards` | Claim pending yield rewards |
-| `pay_api` | Pay for an API service via MPP |
 | `swap_execute` | Swap any token pair via Cetus Aggregator (20+ DEXs) |
 | `volo_stake` | Stake SUI for vSUI (VOLO liquid staking) |
 | `volo_unstake` | Unstake vSUI back to SUI |
@@ -171,13 +169,17 @@ AISDKEngine.submitMessage()
 > Post-SPEC-10 (`resolve_suins`) + S.119 (`pending_rewards`) + Track B (`harvest_rewards`): 25 reads + 12 writes = 37 tools.
 >
 > **SPEC 10 SuiNS reverse-lookup (May 2026):** Added 1 read tool — `resolve_suins`.
-> Net post-Phase-6 + S.119 + Track B: 25 reads + 12 writes = 37 tools.
 >
 > **S.119 NAVI rewards (May 2026):** Added 1 read tool — `pending_rewards` (preview claimable
 > rewards without triggering a claim) — and 1 write tool — `harvest_rewards` (compound: claim
 > NAVI rewards → swap each non-USDC reward to USDC → deposit merged USDC into NAVI savings,
 > single PTB). Per-leg fees (10 bps Cetus overlay × N + 10 bps NAVI save fee) wired in S.120.
-> Net post-S.119: **25 reads + 12 writes = 37 tools** (current).
+>
+> **S.245 pay_api + mpp_services deletion (May 2026):** Removed 1 read tool (`mpp_services`)
+> and 1 write tool (`pay_api`) per V07E_D_QUESTION_AUDITS D-2 reframe. The legacy MPP
+> gateway capability returns as a Commerce primitive in the upcoming Audric Store SPEC —
+> clean-slate redesign, not a port of the legacy 3-leg apps/web flow.
+> Net post-S.245: **24 reads + 11 writes = 35 tools** (current).
 
 ## Recent Upgrades — Spec 1 (Correctness) + Spec 2 (Intelligence)
 
@@ -228,7 +230,7 @@ Write tool permission resolved dynamically via `resolvePermissionTier(operation,
 - **Skills** — 14 markdown playbooks in `t2000-skills/skills/*/SKILL.md` (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save section, `t2000-send` with offer-save-contact, plus 8 single-tool skills). Baked into `@t2000/mcp` at build time, exposed to MCP clients as `skill-<name>` prompts. Skill content guides the LLM through multi-step intents; the engine just runs the tools the LLM picks. (Pre-Phase 6 had a YAML recipe runtime; deleted May 2026 — see `index.ts` header comment for migration notes.)
 - **Context compaction** — 200k limit, 85% compact trigger, LLM summarizer fallback
 - **Tool flags** — `mutating`, `requiresBalance`, `affectsHealth`, `irreversible` etc.
-- **Preflight validation** — input validation on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`
+- **Preflight validation** — input validation on `send_transfer`, `swap_execute`, `borrow`, `save_deposit`
 
 ### Stream Checkpoint Resume (v2.2.0+)
 

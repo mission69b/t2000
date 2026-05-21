@@ -68,18 +68,6 @@ describe('resolveUsdValue', () => {
     expect(resolveUsdValue('swap_execute', { fromAmount: 5, fromAsset: 'SUI' }, priceCache)).toBe(17.5);
   });
 
-  it('returns maxPrice for pay_api when set (matches pay_api schema field)', () => {
-    expect(resolveUsdValue('pay_api', { maxPrice: 2 }, priceCache)).toBe(2);
-  });
-
-  it('returns 0 for pay_api when maxPrice is omitted (the common case)', () => {
-    expect(resolveUsdValue('pay_api', { url: 'https://example.com' }, priceCache)).toBe(0);
-  });
-
-  it('does NOT honor legacy maxCost field on pay_api (was a typo, never in schema)', () => {
-    expect(resolveUsdValue('pay_api', { maxCost: 2 }, priceCache)).toBe(0);
-  });
-
   it('returns 0 for unknown tool', () => {
     expect(resolveUsdValue('balance_check', { amount: 100 }, priceCache)).toBe(0);
   });
@@ -101,7 +89,6 @@ describe('toolNameToOperation', () => {
     expect(toolNameToOperation('repay_debt')).toBe('repay');
     expect(toolNameToOperation('withdraw')).toBe('withdraw');
     expect(toolNameToOperation('swap_execute')).toBe('swap');
-    expect(toolNameToOperation('pay_api')).toBe('pay');
     expect(toolNameToOperation('volo_stake')).toBe('save');
     expect(toolNameToOperation('volo_unstake')).toBe('withdraw');
   });

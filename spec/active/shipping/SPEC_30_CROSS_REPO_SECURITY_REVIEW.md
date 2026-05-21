@@ -1394,9 +1394,9 @@ Each schema is small (gateway is dominated by per-vendor keys; server is interna
 
 #### §9.1 — Engine tool inventory (35 tools)
 
-Per CLAUDE.md:
-- **Read (24 tools):** `render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`, `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `token_prices`, `create_payment_link` ⚠️ (re-classified read in CLAUDE), `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`, `yield_summary`, `activity_summary`, `resolve_suins`, `pending_rewards`.
-- **Write (12 tools):** `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `harvest_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact`.
+Per CLAUDE.md (updated S.245 — `pay_api` + `mpp_services` deleted 2026-05-22):
+- **Read (24 tools):** `render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `web_search`, `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `token_prices`, `create_payment_link` ⚠️ (re-classified read in CLAUDE), `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`, `yield_summary`, `activity_summary`, `resolve_suins`, `pending_rewards`.
+- **Write (11 tools):** `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `harvest_rewards`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact`.
 
 Each write tool flows through:
 1. **Preflight** (synchronous, no I/O) — input validation per `safeguards-defense-in-depth.mdc` Layer 2.

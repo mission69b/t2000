@@ -7,7 +7,6 @@
  */
 import type { Tool } from './types.js';
 import type { PendingToolCall } from './orchestration.js';
-import { estimatePayApiCost } from './tools/pay.js';
 
 function resolveTokenSymbol(nameOrType: string): string {
   if (!nameOrType.includes('::')) return nameOrType;
@@ -49,11 +48,6 @@ export function describeAction(tool: Tool, call: PendingToolCall): string {
     }
     case 'claim_rewards':
       return 'Claim all pending protocol rewards';
-    case 'pay_api': {
-      const url = String(input.url ?? '');
-      const cost = estimatePayApiCost(url);
-      return `Pay for API call to ${url} (~$${cost})`;
-    }
     case 'swap_execute': {
       const from = resolveTokenSymbol(String(input.from ?? '?'));
       const to = resolveTokenSymbol(String(input.to ?? '?'));

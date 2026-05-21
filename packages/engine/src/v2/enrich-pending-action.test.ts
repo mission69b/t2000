@@ -7,7 +7,7 @@
 // Pins the contract for `enrichPendingActionWithLiveData`:
 //   - borrow / repay_debt → populates borrowApyBps + currentHF
 //   - withdraw / save_deposit → populates currentHF only
-//   - send_transfer / swap_execute / pay_api → returns {} (out of scope)
+//   - send_transfer / swap_execute → returns {} (out of scope)
 //   - asset='USDsui' picks the USDsui pool's borrowApy
 //   - case-insensitive asset lookup ('usdc' matches 'USDC')
 //   - fail-soft: missing mcpManager / wallet / rates / HF → no throw
