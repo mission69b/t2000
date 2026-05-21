@@ -1,7 +1,4 @@
 import { runPortfolioSnapshots } from './jobs/portfolioSnapshots.js';
-import { runProfileInference } from './jobs/profileInference.js';
-import { runMemoryExtraction } from './jobs/memoryExtraction.js';
-import { runChainMemory } from './jobs/chainMemory.js';
 import { runFinancialContextSnapshot } from './jobs/financialContextSnapshot.js';
 import { fetchNotificationUsers } from './scheduler.js';
 import type { JobResult } from './types.js';
@@ -35,7 +32,8 @@ import { env } from '../env.js';
 const CRON_GROUP = env.CRON_GROUP;
 
 const HOUR_DATA = 7; // midnight US East
-const HOUR_INTELLIGENCE = 19; // 2pm US East
+// HOUR_INTELLIGENCE (19 UTC) constant removed alongside its jobs
+// in v0.7d Phase 6 Block A (S.221).
 // [v1.4.2 — Day 5 / Spec Item 6] Daily orientation snapshot. Spec-mandated
 // 02:00 UTC. That's 19h *after* the prior calendar day's `HOUR_DATA` (07
 // UTC) portfolio-snapshot, so the freshest PortfolioSnapshot row for every
@@ -63,13 +61,16 @@ async function runCron(): Promise<void> {
   if (CRON_GROUP === 'daily-intel') {
     if (utcHour === HOUR_DATA) {
       results.push(await runPortfolioSnapshots());
-      results.push(await runChainMemory());
     }
 
-    if (utcHour === HOUR_INTELLIGENCE) {
-      results.push(await runProfileInference());
-      results.push(await runMemoryExtraction());
-    }
+    // [v0.7d Phase 6 Block A — 2026-05-21 / S.221] HOUR_INTELLIGENCE
+    // (19 UTC) used to dispatch profile-inference + memory-extraction;
+    // both jobs deleted alongside the legacy Anthropic-driven memory
+    // pipeline (replaced by MemWal `onFinish` extraction + `<memory_recall>`
+    // injection in web-v2). HOUR_DATA's chainMemory was also deleted —
+    // chain-memory rebuild on `memwal.store` is deferred to Phase 6
+    // Block B alongside the portfolioSnapshots / financialContextSnapshot
+    // Vercel cron migration.
 
     if (utcHour === HOUR_FIN_CTX) {
       results.push(await runFinancialContextSnapshot());
