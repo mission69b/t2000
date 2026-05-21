@@ -4,20 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "prisma generate && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "clean": "rm -rf .next"
   },
   "dependencies": {
     "@mysten/sui": "2.11.0",
-    "@prisma/client": "^6",
     "@vercel/analytics": "^1.6.1",
     "geist": "^1.7.0",
     "next": "16.2.1",
-    "prisma": "^6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

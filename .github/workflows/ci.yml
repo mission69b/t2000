@@ -36,10 +36,9 @@ jobs:
       - run: pnpm --filter @t2000/engine typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/cli typecheck
-      # Each Prisma-using app's `typecheck` script runs `prisma generate` first
-      # (the three apps share `node_modules/.prisma/client`, so order matters
-      # — keep these sequential; running in parallel would clobber each other).
-      - run: pnpm --filter @t2000/server typecheck
+      # @t2000/web has no Prisma stack post-S.224 (Block C.2). gateway still
+      # owns its own schema (MppPayment + ReputationCache) — its `typecheck`
+      # script runs `prisma generate` first.
       - run: pnpm --filter @t2000/web typecheck
       - run: pnpm --filter gateway typecheck
 
@@ -57,10 +56,8 @@ jobs:
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/engine build
       - run: pnpm --filter @t2000/mcp build
-      - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/engine test
-      - run: pnpm --filter @t2000/server test
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/cli test

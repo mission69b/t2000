@@ -129,7 +129,7 @@ const ARCH_LAYERS = [
     label: "Layer 3 \u2014 t2000 Stack",
     split: [
       { title: "Packages (npm)", items: "@t2000/sdk \u00B7 @t2000/engine \u00B7 @t2000/mcp \u00B7 @t2000/cli \u00B7 @suimpp/mpp" },
-      { title: "Services", items: "mpp.t2000.ai (40 services) \u00B7 api.t2000.ai (fee ledger + indexer)" },
+      { title: "Services", items: "mpp.t2000.ai (40 services)" },
     ],
   },
   {
