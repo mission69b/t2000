@@ -17,14 +17,47 @@
 // the page is marketing, not telemetry.
 import { NextResponse } from "next/server";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
+import { isValidSuiAddress } from "@mysten/sui/utils";
 
-const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
+const SUI_RPC = process.env.SUI_RPC_URL?.trim() || getJsonRpcFullnodeUrl("mainnet");
 
-const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
-  ?? "0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a";
+// [S.226 / 2026-05-21] Canonical hardcoded addresses are the source of
+// truth. Env vars are an OPTIONAL override; if set but malformed (empty,
+// whitespace, non-Sui-address shape) the canonical constant wins.
+//
+// This mirrors the env-validation-gate.mdc pattern surgically — t2000/apps/web
+// has no Zod env schema yet (separate backlog: `t2000-web-env-gate`), so we
+// validate at the read site instead. Pre-S.226 the bare `process.env.X ?? "..."`
+// fallback let an empty-string env var (the exact S.25 BlockVision bug class)
+// override the canonical with `""`, which SuiJsonRpcClient.getBalance rejected
+// with `Invalid Sui address` — silently swallowed by the broad catch (now
+// instrumented in S.226 to log the actual cause).
+const T2000_OVERLAY_FEE_CANONICAL = "0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a";
+const MPP_GATEWAY_TREASURY_CANONICAL = "0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012";
 
-const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY
-  ?? "0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012";
+function resolveSuiAddress(envValue: string | undefined, canonical: string, label: string): string {
+  const trimmed = envValue?.trim();
+  if (!trimmed) return canonical;
+  if (!isValidSuiAddress(trimmed)) {
+    console.warn(
+      `[api/stats] env var ${label} is set but invalid (${JSON.stringify(trimmed)}); falling back to canonical ${canonical}`
+    );
+    return canonical;
+  }
+  return trimmed;
+}
+
+const T2000_OVERLAY_FEE_WALLET = resolveSuiAddress(
+  process.env.T2000_OVERLAY_FEE_WALLET,
+  T2000_OVERLAY_FEE_CANONICAL,
+  "T2000_OVERLAY_FEE_WALLET"
+);
+
+const MPP_GATEWAY_TREASURY = resolveSuiAddress(
+  process.env.MPP_GATEWAY_TREASURY,
+  MPP_GATEWAY_TREASURY_CANONICAL,
+  "MPP_GATEWAY_TREASURY"
+);
 
 const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
