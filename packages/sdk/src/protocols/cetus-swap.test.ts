@@ -719,22 +719,23 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
       sponsoredContext: true,
     });
 
-    type IntentCommand = {
-      $kind: '$Intent';
-      $Intent: { name: string; data: { type: string; balance: bigint } };
-    };
+    // Cast through unknown — Transaction.commands is a discriminated
+    // union that doesn't narrow cleanly via type predicate against our
+    // local IntentCommand shape (the actual `$Intent` type also carries
+    // an `inputs` field that we don't care about for this assertion).
     const data = tx.getData();
-    const cwbIntent = data.commands.find(
-      (c): c is IntentCommand =>
-        (c as { $kind?: string }).$kind === '$Intent' &&
-        (c as IntentCommand).$Intent?.name === 'CoinWithBalance',
-    );
+    const cwbIntent = data.commands.find((c) => {
+      const cmd = c as { $kind?: string; $Intent?: { name?: string } };
+      return cmd.$kind === '$Intent' && cmd.$Intent?.name === 'CoinWithBalance';
+    });
     expect(cwbIntent).toBeDefined();
+    const intentType = (cwbIntent as unknown as { $Intent: { data: { type: string } } })
+      .$Intent.data.type;
     // Asserts useGasCoin: false — the normalized SUI type (NOT 'gas') is
     // stored. See @mysten/sui/transactions/intents/CoinWithBalance.ts L44:
     //   `type: coinType === SUI_TYPE && useGasCoin ? 'gas' : coinType`
-    expect(cwbIntent?.$Intent.data.type).toBe(SUI_TYPE_NORMALIZED);
-    expect(cwbIntent?.$Intent.data.type).not.toBe('gas');
+    expect(intentType).toBe(SUI_TYPE_NORMALIZED);
+    expect(intentType).not.toBe('gas');
   });
 
   it('SUI source under sponsoredContext: false (default) splits from tx.gas (self-funded path)', async () => {
@@ -765,17 +766,15 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
 
     // Self-funded path: selectSuiCoin uses `tx.splitCoins(tx.gas, [amount])`
     // — no CoinWithBalance intent should be present for SUI.
-    type IntentCommand = {
-      $kind: '$Intent';
-      $Intent: { name: string; data: { type: string } };
-    };
     const data = tx.getData();
-    const suiCwbIntent = data.commands.find(
-      (c): c is IntentCommand =>
-        (c as { $kind?: string }).$kind === '$Intent' &&
-        (c as IntentCommand).$Intent?.name === 'CoinWithBalance' &&
-        (c as IntentCommand).$Intent?.data?.type === SUI_TYPE_NORMALIZED,
-    );
+    const suiCwbIntent = data.commands.find((c) => {
+      const cmd = c as { $kind?: string; $Intent?: { name?: string; data?: { type?: string } } };
+      return (
+        cmd.$kind === '$Intent' &&
+        cmd.$Intent?.name === 'CoinWithBalance' &&
+        cmd.$Intent?.data?.type === SUI_TYPE_NORMALIZED
+      );
+    });
     expect(suiCwbIntent).toBeUndefined();
   });
 
@@ -800,17 +799,15 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
     // USDC source: CoinWithBalance intent uses USDC type (no gas-coin
     // path possible since coin type isn't SUI). sponsoredContext is a
     // no-op for non-SUI assets — verifies the SUI branch is bounded.
-    type IntentCommand = {
-      $kind: '$Intent';
-      $Intent: { name: string; data: { type: string } };
-    };
     const data = tx.getData();
-    const cwbIntent = data.commands.find(
-      (c): c is IntentCommand =>
-        (c as { $kind?: string }).$kind === '$Intent' &&
-        (c as IntentCommand).$Intent?.name === 'CoinWithBalance',
-    );
-    expect(cwbIntent?.$Intent.data.type).toBe(USDC_TYPE);
+    const cwbIntent = data.commands.find((c) => {
+      const cmd = c as { $kind?: string; $Intent?: { name?: string } };
+      return cmd.$kind === '$Intent' && cmd.$Intent?.name === 'CoinWithBalance';
+    });
+    expect(cwbIntent).toBeDefined();
+    const intentType = (cwbIntent as unknown as { $Intent: { data: { type: string } } })
+      .$Intent.data.type;
+    expect(intentType).toBe(USDC_TYPE);
   });
 });
 
