@@ -1,5 +1,9 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import {
+  Transaction,
+  coinWithBalance,
+  type TransactionObjectArgument,
+} from '@mysten/sui/transactions';
 import {
   getLendingPositions,
   getPools as naviGetPools,
@@ -119,34 +123,6 @@ function resolveAssetInfo(asset: string): { type: string; decimals: number; disp
 }
 
 
-async function fetchCoins(
-  client: SuiJsonRpcClient,
-  owner: string,
-  coinType: string,
-): Promise<Array<{ coinObjectId: string; balance: string }>> {
-  const all: Array<{ coinObjectId: string; balance: string }> = [];
-  let cursor: string | null | undefined;
-  let hasNext = true;
-  while (hasNext) {
-    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
-    all.push(...page.data.map((c) => ({ coinObjectId: c.coinObjectId, balance: c.balance })));
-    cursor = page.nextCursor;
-    hasNext = page.hasNextPage;
-  }
-  return all;
-}
-
-function mergeCoins(
-  tx: Transaction,
-  coins: Array<{ coinObjectId: string; balance: string }>,
-): TransactionObjectArgument {
-  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No coins to merge');
-  const primary = tx.object(coins[0].coinObjectId);
-  if (coins.length > 1) {
-    tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
-  }
-  return primary;
-}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -278,21 +254,23 @@ export async function buildSaveTx(
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
 
-  const coins = await fetchCoins(client, address, assetInfo.type);
-  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
-
-  const totalBalance = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+  const balResp = await client.getBalance({ owner: address, coinType: assetInfo.type });
+  const totalBalance = BigInt(balResp.totalBalance);
+  if (totalBalance === 0n) {
+    throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} balance found`);
+  }
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  const coinObj = mergeCoins(tx, coins);
-
-  // [B5 v2 / 2026-04-30] No fee collection here. SDK + CLI are fee-free by design.
-  // Consumer apps (Audric) collect fees by calling `addFeeTransfer(tx, coinObj, ...)`
-  // BEFORE invoking this builder. See packages/sdk/src/protocols/protocolFee.ts.
-
   const rawAmount = Math.min(Number(stableToRaw(amount, assetInfo.decimals)), Number(totalBalance));
+
+  // [2026-05-22] coinWithBalance auto-resolves coin objects + address
+  // balance at build time. Replaces fetchCoins+mergeCoins+splitCoins.
+  // [B5 v2 / 2026-04-30] No fee collection here. SDK + CLI are fee-free by design.
+  // Consumer apps (Audric) collect fees by calling `addFeeTransfer(tx, ...)`
+  // BEFORE invoking this builder. See packages/sdk/src/protocols/protocolFee.ts.
+  const coinObj = coinWithBalance({ type: assetInfo.type, balance: BigInt(rawAmount) })(tx);
 
   try {
     await depositCoinPTB(tx, assetInfo.type, coinObj as never, {
@@ -533,10 +511,12 @@ export async function buildRepayTx(
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
 
-  const coins = await fetchCoins(client, address, assetInfo.type);
-  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins to repay with. Withdraw some savings first to get cash.`);
+  const balResp = await client.getBalance({ owner: address, coinType: assetInfo.type });
+  const totalBalance = BigInt(balResp.totalBalance);
+  if (totalBalance === 0n) {
+    throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} to repay with. Withdraw some savings first to get cash.`);
+  }
 
-  const totalBalance = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
   const rawRequested = Number(stableToRaw(amount, assetInfo.decimals));
 
   if (Number(totalBalance) < rawRequested && Number(totalBalance) < 1000) {
@@ -546,10 +526,8 @@ export async function buildRepayTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  const coinObj = mergeCoins(tx, coins);
-
   const rawAmount = Math.min(rawRequested, Number(totalBalance));
-  const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
+  const repayCoin = coinWithBalance({ type: assetInfo.type, balance: BigInt(rawAmount) })(tx);
 
   await refreshOracle(tx, client, address, {
     skipOracle: options.skipOracle,

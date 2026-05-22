@@ -3,4 +3,4 @@ import { env } from '@/lib/env';
 
 export const POST = chargeProxy('0.005', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
   'x-goog-api-key': env.GEMINI_API_KEY!,
-}, { settleOnSuccess: true });
+});

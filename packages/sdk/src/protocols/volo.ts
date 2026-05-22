@@ -3,7 +3,11 @@
  * No SDK dependency. Two Move calls, immutable contract addresses.
  */
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import {
+  Transaction,
+  coinWithBalance,
+  type TransactionObjectArgument,
+} from '@mysten/sui/transactions';
 import { SUI_TYPE } from '../token-registry.js';
 
 export const VOLO_PKG = '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20';
@@ -89,25 +93,20 @@ export async function buildUnstakeVSuiTx(
   address: string,
   amountMist: bigint | 'all',
 ): Promise<Transaction> {
-  const coins = await fetchCoinsByType(client, address, VSUI_TYPE);
-  if (coins.length === 0) {
+  const balResp = await client.getBalance({ owner: address, coinType: VSUI_TYPE });
+  const totalBalance = BigInt(balResp.totalBalance);
+  if (totalBalance === 0n) {
     throw new Error('No vSUI found in wallet.');
   }
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  const primary = tx.object(coins[0].coinObjectId);
-  if (coins.length > 1) {
-    tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
+  const requested = amountMist === 'all' ? totalBalance : amountMist;
+  if (requested > totalBalance) {
+    throw new Error(`Insufficient vSUI: need ${requested} MIST, have ${totalBalance}`);
   }
-
-  let vSuiCoin: TransactionObjectArgument;
-  if (amountMist === 'all') {
-    vSuiCoin = primary;
-  } else {
-    [vSuiCoin] = tx.splitCoins(primary, [amountMist]);
-  }
+  const vSuiCoin = coinWithBalance({ type: VSUI_TYPE, balance: requested })(tx);
 
   const [suiCoin] = tx.moveCall({
     target: `${VOLO_PKG}::stake_pool::unstake`,
@@ -126,15 +125,16 @@ export async function buildUnstakeVSuiTx(
 /**
  * SPEC 7 § "Layer 1" Volo stake appender. Two modes.
  *
- * Wallet mode (`inputCoin` omitted): fetches SUI coins from the
- * sender's wallet (paginated), merges/splits to `amountMist`. Mirrors
+ * Wallet mode (`inputCoin` omitted): pre-flights via `getBalance` and
+ * sources SUI through `coinWithBalance({ type: SUI, useGasCoin: false })`,
+ * which resolves coin objects + address balance at build time. Mirrors
  * the audric host's `transactions/prepare/route.ts:524-545` volo-stake
  * branch — sponsored-flow safe (does NOT consume `tx.gas`, which
  * belongs to the Enoki sponsor in sponsored flows).
  *
  * For non-sponsored flows where the caller owns `tx.gas`, prefer
- * `buildStakeVSuiTx` directly (it splits from gas, which is more
- * efficient by avoiding the extra getCoins RTT).
+ * `buildStakeVSuiTx` directly (it splits from gas, which avoids one
+ * `getBalance` RTT).
  *
  * Chain mode (`inputCoin` provided): consumes the passed-in SUI coin
  * ref entirely. Used for chained flows like "swap USDC → SUI → stake".
@@ -166,21 +166,19 @@ export async function addStakeVSuiToTx(
   if (input.inputCoin) {
     suiCoin = input.inputCoin;
   } else {
-    const coins = await fetchCoinsByType(client, address, SUI_TYPE);
-    if (coins.length === 0) {
-      throw new Error('No SUI coins found in wallet');
-    }
-
-    const totalBalance = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+    const balResp = await client.getBalance({ owner: address, coinType: SUI_TYPE });
+    const totalBalance = BigInt(balResp.totalBalance);
     if (totalBalance < input.amountMist) {
       throw new Error(`Insufficient SUI: need ${input.amountMist} MIST, have ${totalBalance}`);
     }
-
-    const primary = tx.object(coins[0].coinObjectId);
-    if (coins.length > 1) {
-      tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
-    }
-    [suiCoin] = tx.splitCoins(primary, [input.amountMist]);
+    // Sponsored-flow safe: useGasCoin=false sources from the user's SUI
+    // (coin objects + address balance), NOT from `tx.gas` which the
+    // Enoki sponsor owns under sponsored flows.
+    suiCoin = coinWithBalance({
+      type: SUI_TYPE,
+      balance: input.amountMist,
+      useGasCoin: false,
+    })(tx);
   }
 
   const [vSuiCoin] = tx.moveCall({
@@ -199,9 +197,10 @@ export async function addStakeVSuiToTx(
 /**
  * SPEC 7 § "Layer 1" Volo unstake appender. Two modes.
  *
- * Wallet mode (`inputCoin` omitted): fetches vSUI coins from the
- * sender's wallet (paginated), merges to a primary coin, splits to
- * `amountMist` (or consumes the entire merged primary if `'all'`).
+ * Wallet mode (`inputCoin` omitted): pre-flights via `getBalance` and
+ * sources vSUI through `coinWithBalance({ type: VSUI, balance })`,
+ * which resolves coin objects + address balance at build time. With
+ * `'all'`, the entire balance is consumed.
  *
  * Chain mode (`inputCoin` provided): consumes the passed-in vSUI coin
  * ref. With `amountMist = 'all'`, the entire input coin is unstaked.
@@ -238,21 +237,16 @@ export async function addUnstakeVSuiToTx(
       [vSuiCoin] = tx.splitCoins(input.inputCoin, [input.amountMist]);
     }
   } else {
-    const coins = await fetchCoinsByType(client, address, VSUI_TYPE);
-    if (coins.length === 0) {
+    const balResp = await client.getBalance({ owner: address, coinType: VSUI_TYPE });
+    const totalBalance = BigInt(balResp.totalBalance);
+    if (totalBalance === 0n) {
       throw new Error('No vSUI found in wallet.');
     }
-
-    const primary = tx.object(coins[0].coinObjectId);
-    if (coins.length > 1) {
-      tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
+    const requested = input.amountMist === 'all' ? totalBalance : input.amountMist;
+    if (requested > totalBalance) {
+      throw new Error(`Insufficient vSUI: need ${requested} MIST, have ${totalBalance}`);
     }
-
-    if (input.amountMist === 'all') {
-      vSuiCoin = primary;
-    } else {
-      [vSuiCoin] = tx.splitCoins(primary, [input.amountMist]);
-    }
+    vSuiCoin = coinWithBalance({ type: VSUI_TYPE, balance: requested })(tx);
   }
 
   const [suiCoin] = tx.moveCall({
@@ -268,30 +262,3 @@ export async function addUnstakeVSuiToTx(
   return { coin: suiCoin, effectiveAmountMist: input.amountMist };
 }
 
-/**
- * Paginated coin lookup by coin type. Local helper shared between
- * `buildUnstakeVSuiTx` (fetches vSUI), `addStakeVSuiToTx` (fetches
- * SUI), and `addUnstakeVSuiToTx` (fetches vSUI). P2.2c may extract
- * a shared `wallet/coinSelection.ts` once `addSendFromWalletToTx` and
- * the registry adapter need the same prelude.
- */
-async function fetchCoinsByType(
-  client: SuiJsonRpcClient,
-  owner: string,
-  coinType: string,
-): Promise<Array<{ coinObjectId: string; balance: string }>> {
-  const all: Array<{ coinObjectId: string; balance: string }> = [];
-  let cursor: string | null | undefined;
-  let hasNext = true;
-  while (hasNext) {
-    const page = await client.getCoins({
-      owner,
-      coinType,
-      cursor: cursor ?? undefined,
-    });
-    all.push(...page.data.map((c) => ({ coinObjectId: c.coinObjectId, balance: c.balance })));
-    cursor = page.nextCursor;
-    hasNext = page.hasNextPage;
-  }
-  return all;
-}

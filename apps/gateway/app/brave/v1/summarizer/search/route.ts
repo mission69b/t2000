@@ -4,4 +4,4 @@ import { env } from '@/lib/env';
 export const POST = chargeProxy('0.01', 'https://api.search.brave.com/res/v1/summarizer/search', {
   'x-subscription-token': env.BRAVE_SEARCH_API_KEY!,
   accept: 'application/json',
-}, { settleOnSuccess: true, upstreamMethod: 'GET', bodyToQuery: true });
+}, { upstreamMethod: 'GET', bodyToQuery: true });

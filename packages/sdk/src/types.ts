@@ -311,6 +311,14 @@ export interface PayResult {
   body: unknown;
   paid: boolean;
   cost?: number;
+  /**
+   * SUI gas cost actually paid on chain. Zero for gasless payments —
+   * which means an MPP payment hit the protocol's gasless allowlist
+   * (USDC / USDsui / USDY / FdUSD / AUSD / BUCK / USDB / SUI_USDE) and
+   * was accepted with `gasPrice=0, gasBudget=0, gasPayment=[]`. See
+   * https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers
+   */
+  gasCostSui?: number;
   receipt?: {
     reference: string;
     timestamp: string;

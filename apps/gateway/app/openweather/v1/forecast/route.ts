@@ -6,7 +6,6 @@ export const POST = chargeProxy(
   `https://api.openweathermap.org/data/2.5/forecast?appid=${env.OPENWEATHER_API_KEY}&units=metric`,
   {},
   {
-    settleOnSuccess: true,
     upstreamMethod: 'GET',
     bodyToQuery: true,
     mapBody: (b) => {

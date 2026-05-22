@@ -5,6 +5,12 @@ import { SUPPORTED_ASSETS } from '../constants.js';
 
 function mockClient(usdcBalance: bigint = 10_000_000n) {
   return {
+    getBalance: vi.fn().mockResolvedValue({
+      coinType: SUPPORTED_ASSETS.USDC.type,
+      coinObjectCount: 1,
+      totalBalance: usdcBalance.toString(),
+      lockedBalance: {},
+    }),
     getCoins: vi.fn().mockResolvedValue({
       data: [
         {
@@ -13,6 +19,8 @@ function mockClient(usdcBalance: bigint = 10_000_000n) {
           coinType: SUPPORTED_ASSETS.USDC.type,
         },
       ],
+      nextCursor: null,
+      hasNextPage: false,
     }),
   } as any;
 }
@@ -81,14 +89,19 @@ describe('buildSendTx', () => {
     ).rejects.toThrow('Insufficient');
   });
 
-  it('throws when no USDC coins exist', async () => {
+  it('throws when USDC balance is zero', async () => {
     const client = {
-      getCoins: vi.fn().mockResolvedValue({ data: [] }),
+      getBalance: vi.fn().mockResolvedValue({
+        coinType: SUPPORTED_ASSETS.USDC.type,
+        coinObjectCount: 0,
+        totalBalance: '0',
+        lockedBalance: {},
+      }),
     } as any;
 
     await expect(
       buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1 }),
-    ).rejects.toThrow('No USDC coins found');
+    ).rejects.toThrow('Insufficient');
   });
 });
 

@@ -5,5 +5,5 @@ export const POST = chargeProxy(
   '0.005',
   'https://newsapi.org/v2/top-headlines',
   { 'x-api-key': env.NEWSAPI_API_KEY! },
-  { settleOnSuccess: true, upstreamMethod: 'GET', bodyToQuery: true },
+  { upstreamMethod: 'GET', bodyToQuery: true },
 );

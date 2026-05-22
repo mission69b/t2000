@@ -5,13 +5,6 @@ import { TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
 import { getDigestStore } from './upstash-digest-store';
-import { chargeProxyFingerprint } from './charge-proxy-fingerprint';
-import {
-  InMemoryUpstreamResponseCache,
-  type UpstreamResponseCache,
-} from './upstream-response-cache';
-import { getUpstashUpstreamResponseCache } from './upstash-upstream-response-cache';
-import { logSettleEvent } from './settle-metrics';
 import { env } from '@/lib/env';
 
 const NETWORK = (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
@@ -74,58 +67,6 @@ function inferServiceEndpoint(rawUrl: string): { service: string; endpoint: stri
   }
 }
 
-/**
- * SPEC 26 — verdict returned by the per-route response classifier when
- * `settleOnSuccess: true`. Drives the charge gate:
- *
- *   - `'deliverable'` → upstream succeeded; charge fires for full `amount`.
- *   - `'refundable'`  → upstream failed in a user-actionable way; NO
- *                       charge, response forwarded to client with HTTP 402.
- *   - `'mixed'`       → partial success (e.g. OpenAI n=4 with 3 successes).
- *                       Charge fires for `amount * chargedFraction`.
- */
-export type ClassifyVerdict =
-  | { kind: 'deliverable'; price?: string }
-  | { kind: 'refundable'; reason: string }
-  | { kind: 'mixed'; chargedFraction: number; reason: string };
-
-/**
- * Default classifier used when `settleOnSuccess: true` is set without an
- * explicit `classifyResponse`. Maps the upstream HTTP status onto the
- * verdict: 2xx → deliverable, anything else → refundable. Per-route
- * classifiers (e.g. OpenAI partial-success in P3) can override.
- */
-export const DEFAULT_CLASSIFY_RESPONSE: NonNullable<ProxyOptions['classifyResponse']> = async (
-  res,
-) => {
-  if (res.ok) return { kind: 'deliverable' };
-  return { kind: 'refundable', reason: `upstream ${res.status}` };
-};
-
-/**
- * SPEC 26 D-1 lock — upstream-response cache TTL when `settleOnSuccess: true`.
- * Long enough to cover Sui finality (typical 2–5s), short enough to bound
- * any replay window. Override per-handler via `ProxyOptions.cacheTtlSeconds`
- * (e.g. raise to 300 if Sui p99 latency trends > 30s — see spec §5.6).
- */
-export const SETTLE_CACHE_TTL_SECONDS = 60;
-
-/**
- * SPEC 26 D-3 lock — hard limit on absorbed vendor cost when an upstream
- * probe succeeds but the subsequent charge fails (chain congestion, client
- * disconnect, etc.). Routes priced above this limit MUST be opted into
- * `settleOnSuccess` only after a per-route D-question.
- *
- * Today's max route is $1 (Lob postcard, but Lob lives on `chargeCustom`
- * which is out of scope for SPEC 26 v1); the gateway-wide max under
- * `chargeProxy` is $0.05 (DALL-E / TTS). 5x headroom covers any
- * medium-cost service we'd add this year. The Vercel `[mpp.settle]
- * event=charge_failed absorbedCostUsd=…` log line (D-9, P9 wiring)
- * tracks every absorbed cost so the founder can sum the week and
- * promote to a weekly cap if the trend goes bad.
- */
-export const SETTLE_MAX_ABSORBED_COST_USD = 5;
-
 interface ProxyOptions {
   upstreamMethod?: 'GET' | 'POST';
   bodyToQuery?: boolean;
@@ -137,91 +78,12 @@ interface ProxyOptions {
    * MPP (e.g. gpt-image-* base64 → hosted URL).
    */
   transformUpstreamResponse?: (upstreamResponse: Response) => Promise<Response>;
-
-  /**
-   * SPEC 26 — when `true`, fetch upstream FIRST and charge only after the
-   * response is classified as deliverable (or partially deliverable). This
-   * eliminates the `bug_mpp_no_refund_on_failure` window for synchronous
-   * vendor failures at the cost of ~200–500ms latency per call (one
-   * upstream RTT before the charge round-trip).
-   *
-   * Default: `false` (legacy charge-first behavior — byte-identical to
-   * pre-SPEC-26 code path). Per-route opt-in per D-4 lock.
-   */
-  settleOnSuccess?: boolean;
-
-  /**
-   * SPEC 26 — used only when `settleOnSuccess: true`. Classifies the
-   * upstream response into one of three verdicts (deliverable / refundable
-   * / mixed). Defaults to `DEFAULT_CLASSIFY_RESPONSE` (`res.ok ? deliverable
-   * : refundable`) when omitted. Per-route classifiers handle vendor-specific
-   * partial-success shapes (e.g. OpenAI's `data[].error` in n>1 image gen).
-   */
-  classifyResponse?: (
-    res: Response,
-    body: unknown,
-  ) => Promise<ClassifyVerdict>;
-
-  /**
-   * SPEC 26 — proxy identifier used as the multi-tenant fingerprint
-   * suffix when `settleOnSuccess: true`. Defaults to the literal
-   * `'default'` so single-tenant deployments work out of the box. Set
-   * per-route in multi-tenant deployments so caller A's identical body
-   * doesn't collide with caller B's cache slot.
-   */
-  apiKeyId?: string;
-
-  /**
-   * SPEC 26 — override the cache TTL for this route (default
-   * `SETTLE_CACHE_TTL_SECONDS = 60`). Increase if Sui p99 latency trends
-   * > 30s (see spec §5.6). Has no effect when `settleOnSuccess: false`.
-   */
-  cacheTtlSeconds?: number;
 }
 
 /**
- * Process-wide cache instance for `settleOnSuccess` mode (SPEC 26).
- *
- * **Resolution order (first match wins):**
- *   1. Whatever was last passed to `setUpstreamResponseCache(...)` — the
- *      test override / explicit injection seam (always wins).
- *   2. `UpstashUpstreamResponseCache` — when both `KV_REST_API_URL` and
- *      `KV_REST_API_TOKEN` are present in env (multi-instance correct;
- *      mandatory for Vercel where ≥2 functions per route share traffic).
- *   3. `InMemoryUpstreamResponseCache` — local dev / unit tests / any
- *      env without KV vars wired. NOT safe for multi-instance prod.
- *
- * Initialization is lazy (first `getUpstreamResponseCache()` call) so
- * importing `gateway.ts` doesn't trigger Upstash client construction
- * (and the implicit env-var read) at module load time. This matches
- * the `getDigestStore()` lazy pattern for `UpstashDigestStore`.
- */
-let _upstreamResponseCache: UpstreamResponseCache | undefined;
-
-export function setUpstreamResponseCache(cache: UpstreamResponseCache): void {
-  _upstreamResponseCache = cache;
-}
-
-export function getUpstreamResponseCache(): UpstreamResponseCache {
-  if (!_upstreamResponseCache) {
-    if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) {
-      _upstreamResponseCache = getUpstashUpstreamResponseCache();
-    } else {
-      _upstreamResponseCache = new InMemoryUpstreamResponseCache();
-    }
-  }
-  return _upstreamResponseCache;
-}
-
-/**
- * Shared upstream-fetch helper used by both the legacy charge-first path
- * AND the SPEC 26 settle-on-success path. Pulled out of the legacy
- * inline closure so both paths transform vendor responses identically
- * (transform errors surface the same way; non-JSON responses bypass the
- * transformer; etc.).
- *
- * Returns the Response that should be forwarded to the client (or, in
- * settle-on-success mode, classified before the charge fires).
+ * Shared upstream-fetch helper. Runs the upstream HTTP call, applies any
+ * `transformUpstreamResponse` for JSON 2xx responses, and returns the
+ * Response that should be forwarded to the client.
  */
 async function fetchAndTransformUpstream(
   upstream: string,
@@ -253,11 +115,6 @@ async function fetchAndTransformUpstream(
   if (options?.transformUpstreamResponse && res.ok) {
     const ct = res.headers.get('content-type') ?? '';
     if (ct.includes('application/json')) {
-      // Wrap so a normalizer crash (e.g. Vercel Blob upload throws) doesn't
-      // bubble as an unhandled rejection — that path returns an opaque 500
-      // with no body, which audric's `useAgent` then renders as the literal
-      // string "[object Object]". Surfacing the actual error here lets the
-      // host show the user something actionable.
       try {
         outgoing = await options.transformUpstreamResponse(res);
       } catch (err) {
@@ -281,21 +138,15 @@ async function fetchAndTransformUpstream(
 }
 
 /**
- * Fixed-price proxy — charges a static amount per request.
- * Use for standard APIs where every request costs the same.
+ * Fixed-price proxy — charges a static amount per request, then proxies
+ * to the upstream API and returns the response (with optional transform).
  *
- * ## Behavior modes (SPEC 26)
- *
- * **Default (`settleOnSuccess: false` or omitted)** — LEGACY path,
- * byte-identical to pre-SPEC-26. Charges Sui USDC FIRST via
- * `mppx.charge`, then runs the upstream fetch + transform. If upstream
- * fails post-charge, the user is out the money (the
- * `bug_mpp_no_refund_on_failure` class).
- *
- * **`settleOnSuccess: true`** — SPEC 26 mode. Probes upstream FIRST,
- * classifies the response, then charges only on a deliverable verdict.
- * Refundable verdicts return HTTP 402 with no charge. Mixed verdicts
- * charge a fractional amount. See spec § 2.2 for the full flow.
+ * The previous SPEC 26 settle-on-success path (probe-then-charge with a
+ * fingerprint cache + per-route classifier) was reverted 2026-05-22 in
+ * favour of the simpler charge-first path. Routes that need refunds for
+ * upstream failures should fail fast at the upstream + return 402; the
+ * payment-on-failure window is narrow enough in practice that the
+ * dual-path complexity wasn't justified.
  */
 export function chargeProxy(
   amount: string,
@@ -320,18 +171,6 @@ export function chargeProxy(
       }
     }
 
-    if (options?.settleOnSuccess) {
-      return chargeProxySettleOnSuccess({
-        mppx,
-        amount,
-        upstream,
-        upstreamHeaders,
-        options,
-        req,
-        bodyText,
-      });
-    }
-
     const handler: RouteHandler = async () =>
       fetchAndTransformUpstream(upstream, upstreamHeaders, bodyText, options);
 
@@ -349,339 +188,6 @@ export function chargeProxy(
 
     return response;
   };
-}
-
-/**
- * SPEC 26 settle-on-success implementation. Lives outside `chargeProxy`
- * so the legacy path stays visually identical to its pre-SPEC-26 shape
- * (regression bar from spec §6.4: the legacy branch is byte-equivalent
- * to today's behavior).
- *
- * Flow:
- *   1. Compute fingerprint over (method + path + sortedJsonBody + apiKeyId)
- *   2. Cache hit within TTL → return cached body + cached Payment-Receipt
- *      (no second charge, no second probe — true idempotency per §5.2/5.3)
- *   3. Cache miss → probe upstream + transform
- *   4. Classify response (default: res.ok → deliverable, else refundable)
- *   5. Refundable → return HTTP 402 with the upstream error body, no charge
- *   6. Deliverable / mixed → charge for `amount * chargedFraction`
- *      a. If charge fails (chain congestion, replay, etc.) → return 402,
- *         absorb upstream cost (within `SETTLE_MAX_ABSORBED_COST_USD`)
- *      b. If charge succeeds → return upstream body with Payment-Receipt
- *         header, populate cache for the TTL window
- */
-async function chargeProxySettleOnSuccess(params: {
-  mppx: ReturnType<typeof createMppx>;
-  amount: string;
-  upstream: string;
-  upstreamHeaders: Record<string, string>;
-  options: ProxyOptions;
-  req: Request;
-  bodyText: string;
-}): Promise<Response> {
-  const { mppx, amount, upstream, upstreamHeaders, options, req, bodyText } = params;
-  const cache = getUpstreamResponseCache();
-  const ttlSeconds = options.cacheTtlSeconds ?? SETTLE_CACHE_TTL_SECONDS;
-  const apiKeyId = options.apiKeyId ?? 'default';
-
-  // Phase 1 — fingerprint + cache lookup
-  const url = (() => {
-    try {
-      return new URL(req.url);
-    } catch {
-      return null;
-    }
-  })();
-  const path = url?.pathname ?? req.url;
-  const fingerprint = chargeProxyFingerprint({
-    method: req.method,
-    path,
-    body: bodyText,
-    apiKeyId,
-  });
-
-  // Cache READ is best-effort: the spec § 5.2 idempotency guarantee is
-  // a NICETY for legitimate retries, not a correctness requirement for
-  // any single request. If Upstash is degraded (timeout, 5xx, etc.) we
-  // intentionally fall through to a fresh probe — the user may be
-  // double-billed across two retries within TTL, but they're never
-  // outright errored. Trade SPEC §5.2 strictness for liveness.
-  let cached: Awaited<ReturnType<typeof cache.get>> | undefined;
-  try {
-    cached = await cache.get(fingerprint);
-  } catch (cacheErr) {
-    const message = cacheErr instanceof Error ? cacheErr.message : String(cacheErr);
-    console.warn(
-      `[chargeProxy:settleOnSuccess] cache.get failed (treating as miss): ${message}`,
-    );
-    cached = undefined;
-  }
-
-  // Resolve route name once for D-9 metric emission (every event below
-  // tags by route so the founder can filter / sum per-endpoint).
-  const routeForMetrics = inferServiceEndpoint(req.url);
-  const routeKey = `${routeForMetrics.service}${routeForMetrics.endpoint}`;
-
-  if (cached) {
-    // Idempotent retry — return cached body + cached receipt. NO charge,
-    // NO probe. Per §5.2 + §5.3 this is the legitimate-retry path.
-    logSettleEvent({ event: 'idempotency_hit', fields: { route: routeKey } });
-    const headers = new Headers({ 'content-type': cached.contentType });
-    if (cached.paymentReceiptHeader) {
-      headers.set('Payment-Receipt', cached.paymentReceiptHeader);
-    }
-    return new Response(cached.body, { status: cached.status, headers });
-  }
-
-  // Phase 2 — probe upstream
-  // Capture the timestamp before the probe so D-9 `durationMs` measures
-  // probe-to-classify latency (the value the spec asks us to track for
-  // the latency histogram).
-  const probeStartedAt = Date.now();
-
-  // [SPEC 26 v1.0.2 hotfix / 2026-05-14] Wrap probe + classifier in
-  // try/catch. Pre-hotfix, an uncaught throw inside `fetchAndTransformUpstream`
-  // (network reset reaching OpenAI, abort, malformed Response) OR inside the
-  // classifier propagated up to Vercel's outer wrapper, surfacing as an
-  // opaque HTTP 500 with a Vercel invocation ID. The 2026-05-14 06:19 smoke
-  // hit this path: audric saw `Gateway error (500)` between two successful
-  // image-gen probes (network blip, attempt 3 with identical params worked).
-  //
-  // Conversion: any probe-side throw → SPEC 26 `refundable` verdict. The
-  // user-money invariant is identical (no charge in either case — we never
-  // reach mppx.charge), but the LLM gets the typed `X-Settle-Verdict:
-  // refundable` signal that drives the D-8 retry prompt instead of a
-  // generic 500 it must guess at. Wrapping the WHOLE block (probe +
-  // arrayBuffer + classifier) keeps the catch-all narrow to the
-  // probe-derivation surface; the rest of the flow stays uncatched.
-  let probeBytes: ArrayBuffer;
-  let probeContentType: string;
-  let probeRes: Response;
-  let verdict: ClassifyVerdict;
-  try {
-    probeRes = await fetchAndTransformUpstream(upstream, upstreamHeaders, bodyText, options);
-    // Read the body bytes ONCE so we can both classify and re-emit. Type
-    // is `ArrayBuffer` (not `Uint8Array`) because that's the unambiguous
-    // `BodyInit` shape under Node 22+ DOM types — see CachedUpstreamResponse.
-    probeBytes = await probeRes.arrayBuffer();
-    probeContentType = probeRes.headers.get('content-type') ?? 'application/json';
-
-    // Reconstruct a fresh Response for the classifier (the original was
-    // consumed by arrayBuffer above). Body parsing happens here once so
-    // the classifier has the parsed shape without re-decoding bytes.
-    let parsedBody: unknown = undefined;
-    if (probeContentType.includes('application/json')) {
-      try {
-        parsedBody = JSON.parse(new TextDecoder().decode(probeBytes));
-      } catch {
-        parsedBody = undefined;
-      }
-    }
-    const probeForClassifier = new Response(probeBytes, {
-      status: probeRes.status,
-      headers: { 'content-type': probeContentType },
-    });
-
-    // Phase 3 — classify
-    const classifier = options.classifyResponse ?? DEFAULT_CLASSIFY_RESPONSE;
-    verdict = await classifier(probeForClassifier, parsedBody);
-  } catch (probeErr) {
-    const message = probeErr instanceof Error ? probeErr.message : String(probeErr);
-    const probeDurationMs = Date.now() - probeStartedAt;
-    console.error(
-      `[chargeProxy:settleOnSuccess] upstream probe threw (treating as refundable): ${message}`,
-    );
-    logSettleEvent({
-      event: 'classify',
-      fields: {
-        route: routeKey,
-        verdict: 'refundable',
-        durationMs: probeDurationMs,
-        reason: `probe-failed: ${message.slice(0, 160)}`,
-      },
-    });
-    return Response.json(
-      {
-        error: 'Upstream probe failed',
-        detail: message.slice(0, 256),
-      },
-      {
-        status: 402,
-        headers: {
-          'X-Settle-Verdict': 'refundable',
-          'X-Settle-Reason': `probe-failed: ${message.slice(0, 200)}`,
-        },
-      },
-    );
-  }
-
-  const probeDurationMs = Date.now() - probeStartedAt;
-
-  if (verdict.kind === 'refundable') {
-    // No charge. Return the upstream error body verbatim, but coerce the
-    // status to 402 so the client (audric) gets the explicit
-    // "no-charge-can-retry" signal per spec §2.3 + D-8.
-    logSettleEvent({
-      event: 'classify',
-      fields: {
-        route: routeKey,
-        verdict: 'refundable',
-        durationMs: probeDurationMs,
-        reason: verdict.reason.slice(0, 160),
-      },
-    });
-    return new Response(probeBytes, {
-      status: 402,
-      headers: {
-        'content-type': probeContentType,
-        'X-Settle-Verdict': 'refundable',
-        'X-Settle-Reason': verdict.reason.slice(0, 256),
-      },
-    });
-  }
-
-  // Phase 4 — charge
-  const chargedFraction = verdict.kind === 'mixed' ? verdict.chargedFraction : 1;
-  const chargeAmount = computeChargeAmount(amount, chargedFraction);
-
-  // [SPEC 26 v1.0.2 hotfix / 2026-05-14] D-9 classify event WITHOUT
-  // chargeAmount. Pre-hotfix this carried `chargeAmount=X`, but the event
-  // fires BEFORE mppx.charge runs — so a classify line with chargeAmount
-  // does NOT prove an on-chain charge happened (mppx may still 402, the
-  // request may abort, etc.). Reading classify=chargeAmount as charges
-  // produced two false alarms in 24 hours. The truth signal moved to a
-  // dedicated `event=charge_succeeded` log emitted only after mppx
-  // returns 200 (Phase 5). Filter `[mpp.settle] event=charge_succeeded`
-  // for true on-chain charge counts.
-  logSettleEvent({
-    event: 'classify',
-    fields: {
-      route: routeKey,
-      verdict: verdict.kind,
-      durationMs: probeDurationMs,
-      ...(verdict.kind === 'mixed' ? { chargedFraction } : {}),
-    },
-  });
-
-  // Stub handler — mppx still needs a handler to run, but we've already
-  // probed upstream and don't want to re-fire the request. The stub
-  // returns the captured body so mppx wraps it with the Payment-Receipt
-  // header without a second upstream RTT.
-  const stubHandler: RouteHandler = async () =>
-    new Response(probeBytes, {
-      status: probeRes.status,
-      headers: { 'content-type': probeContentType },
-    });
-
-  let chargeResponse: Response;
-  try {
-    chargeResponse = await mppx.charge({ amount: chargeAmount })(stubHandler)(
-      new Request(req.url, { method: req.method, headers: req.headers }),
-    );
-  } catch (chargeErr) {
-    // Chain congestion / replay rejection / disconnect mid-charge.
-    // We've already paid the upstream vendor cost; absorb it. Return
-    // 402 so the client knows the request is safe to retry. Tracked on
-    // the Vercel `[mpp.settle] event=charge_failed` log line (D-9, P9
-    // wiring) — the founder sums absorbedCostUsd across the week to
-    // verify the SPEC's economic-impact claim.
-    const message = chargeErr instanceof Error ? chargeErr.message : String(chargeErr);
-    console.error('[chargeProxy:settleOnSuccess] charge failed after successful probe:', message);
-    logSettleEvent({
-      event: 'charge_failed',
-      fields: { route: routeKey, reason: message, absorbedCostUsd: chargeAmount },
-    });
-    return new Response(probeBytes, {
-      status: 402,
-      headers: {
-        'content-type': probeContentType,
-        'X-Settle-Verdict': 'charge-failed',
-        'X-Settle-Reason': message.slice(0, 256),
-      },
-    });
-  }
-
-  if (chargeResponse.status === 402) {
-    // mppx returned 402 — auth header missing/invalid. Pass through
-    // unchanged (no charge happened, no upstream cost absorbed because
-    // we already paid it; mppx won't double-bill).
-    return chargeResponse;
-  }
-
-  // Phase 5 — deliver. Charge succeeded; merge Payment-Receipt onto our
-  // captured probe body + populate cache for the TTL window so legitimate
-  // retries return the same digest (§5.2 idempotency).
-  const paymentReceiptHeader = chargeResponse.headers.get('Payment-Receipt');
-  const finalHeaders = new Headers({ 'content-type': probeContentType });
-  if (paymentReceiptHeader) {
-    finalHeaders.set('Payment-Receipt', paymentReceiptHeader);
-  }
-
-  // [SPEC 26 v1.0.2 hotfix / 2026-05-14] Truth signal: emit AFTER mppx
-  // returns 200 (success). `count(event=charge_succeeded)` over a window
-  // == true on-chain charge count for that window. Founder reads this
-  // instead of `event=classify chargeAmount=…` for charge-count metrics.
-  // See settle-metrics.ts header for the full rationale.
-  logSettleEvent({
-    event: 'charge_succeeded',
-    fields: { route: routeKey, chargeAmount },
-  });
-
-  // Cache WRITE is best-effort. The user has already paid AND we have a
-  // valid response to return — populating the cache is a "next-retry
-  // dedup" niceity (§5.2). If Upstash is degraded, swallow + warn rather
-  // than error out a paid request the user can otherwise be served.
-  try {
-    await cache.set(
-      fingerprint,
-      {
-        status: probeRes.status,
-        body: probeBytes,
-        contentType: probeContentType,
-        paymentReceiptHeader,
-      },
-      ttlSeconds,
-    );
-  } catch (cacheErr) {
-    const message = cacheErr instanceof Error ? cacheErr.message : String(cacheErr);
-    console.warn(
-      `[chargeProxy:settleOnSuccess] cache.set failed (paid response still returned): ${message}`,
-    );
-  }
-
-  // Logging + registry report — same as legacy path.
-  const { service, endpoint } = inferServiceEndpoint(req.url);
-  const digest = parseReceiptDigest(paymentReceiptHeader);
-  const report = digest ? pendingReports.get(digest) : undefined;
-  logPayment({ service, endpoint, amount: chargeAmount, digest, sender: report?.sender }).catch(
-    () => {},
-  );
-  if (report) reportToRegistry(report, { service, endpoint });
-
-  return new Response(probeBytes, {
-    status: probeRes.status,
-    headers: finalHeaders,
-  });
-}
-
-/**
- * Computes the charged amount for a verdict.kind === 'mixed' result.
- * Sui USDC has 6 decimals so `$0.05 × 0.75 = $0.0375 = 37500 raw units`
- * (no precision loss — see spec §5.8).
- *
- * Floors to 6 decimals to match `financial-amounts.mdc` rule "never round
- * up" — a fractional charge MUST be ≤ the on-chain amount, never more.
- */
-export function computeChargeAmount(amount: string, fraction: number): string {
-  if (fraction >= 1) return amount;
-  if (fraction <= 0) return '0';
-  const numeric = Number(amount);
-  if (!Number.isFinite(numeric)) return amount;
-  // 6 decimals = USDC native precision. Floor (not round) per
-  // financial-amounts.mdc; rounding up could exceed the deliverable
-  // value when measured against the base amount.
-  const scaled = Math.floor(numeric * fraction * 1_000_000) / 1_000_000;
-  return scaled.toFixed(6);
 }
 
 /**

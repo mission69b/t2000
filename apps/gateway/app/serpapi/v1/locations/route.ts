@@ -5,5 +5,5 @@ export const POST = chargeProxy(
   '0.005',
   `https://serpapi.com/locations.json?api_key=${env.SERPAPI_API_KEY}`,
   { accept: 'application/json' },
-  { settleOnSuccess: true, upstreamMethod: 'GET', bodyToQuery: true },
+  { upstreamMethod: 'GET', bodyToQuery: true },
 );

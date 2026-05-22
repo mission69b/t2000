@@ -3,8 +3,6 @@
  *
  * Each test asserts the validate hook returns a STRING (which `chargeProxy`
  * surfaces as a 400) for inputs that would otherwise charge → fail post-charge.
- * The structural "charge before delivery" issue is solved in SPEC 26
- * (MPP_SETTLE_ON_SUCCESS); this file is the defense-in-depth backstop.
  */
 import { describe, it, expect } from 'vitest';
 

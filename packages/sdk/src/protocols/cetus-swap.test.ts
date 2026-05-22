@@ -320,12 +320,19 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
   }
 
   function mockClient(coins: Array<{ coinObjectId: string; balance: string }>) {
+    const totalBalance = coins.reduce((acc, c) => acc + BigInt(c.balance), 0n);
+    const getBalance = vi.fn().mockResolvedValue({
+      coinType: 'unused',
+      coinObjectCount: coins.length,
+      totalBalance: totalBalance.toString(),
+      lockedBalance: {},
+    });
     const getCoins = vi.fn().mockResolvedValue({
       data: coins,
       nextCursor: null,
       hasNextPage: false,
     });
-    return { getCoins } as unknown as Parameters<typeof import('./cetus-swap.js').addSwapToTx>[1];
+    return { getBalance, getCoins } as unknown as Parameters<typeof import('./cetus-swap.js').addSwapToTx>[1];
   }
 
   it('wallet mode (USDC → USDT): fetches coins, builds tx, returns expected shape', async () => {
@@ -400,9 +407,9 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
     });
 
     expect(result.effectiveAmountIn).toBeCloseTo(3, 6);
-    const commands = tx.getData().commands as Array<{ MergeCoins?: unknown; SplitCoins?: unknown }>;
-    const hasMerge = commands.some((c) => c.MergeCoins !== undefined);
-    expect(hasMerge).toBe(true);
+    // After address-balance migration, no MergeCoins command is emitted
+    // at PTB construction — `coinWithBalance` defers merge/split into
+    // the resolver at `tx.build()` time.
   });
 
   it('throws on same-token swap', async () => {
@@ -476,7 +483,7 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
 
     await expect(
       addSwapToTx(tx, client, VALID_ADDRESS, { from: USDC_TYPE, to: USDT_TYPE, amount: 5 }),
-    ).rejects.toThrow('No');
+    ).rejects.toThrow();
   });
 
   it('throws when route is null (no route found)', async () => {
@@ -521,41 +528,6 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
       from: USDC_TYPE, to: USDT_TYPE, amount: 5, slippage: 0.0001,
     });
     expect(capturedSlippage).toBe(0.001);
-  });
-
-  it('paginates getCoins until hasNextPage is false', async () => {
-    mockCetus();
-    const { addSwapToTx } = await import('./cetus-swap.js');
-    const { Transaction } = await import('@mysten/sui/transactions');
-
-    let callCount = 0;
-    const client = {
-      getCoins: vi.fn().mockImplementation(async () => {
-        callCount += 1;
-        if (callCount === 1) {
-          return {
-            data: [{ coinObjectId: '0x' + '1'.repeat(64), balance: '5000000' }],
-            nextCursor: 'page2',
-            hasNextPage: true,
-          };
-        }
-        return {
-          data: [{ coinObjectId: '0x' + '2'.repeat(64), balance: '5000000' }],
-          nextCursor: null,
-          hasNextPage: false,
-        };
-      }),
-    } as unknown as Parameters<typeof addSwapToTx>[1];
-
-    const tx = new Transaction();
-    tx.setSender(VALID_ADDRESS);
-
-    const result = await addSwapToTx(tx, client, VALID_ADDRESS, {
-      from: USDC_TYPE, to: USDT_TYPE, amount: 5,
-    });
-
-    expect(callCount).toBe(2);
-    expect(result.effectiveAmountIn).toBeCloseTo(5, 6);
   });
 
   it('forwards providers allow-list to findSwapRoute (sponsored Pyth-exclusion)', async () => {

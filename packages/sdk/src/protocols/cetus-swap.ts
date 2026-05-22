@@ -401,11 +401,11 @@ export async function buildSwapTx(params: {
  * Append a swap fragment to an existing PTB. SPEC 7 § "Layer 1" Cetus
  * appender. Two modes, dispatched by the presence of `input.inputCoin`:
  *
- * - **Wallet mode** (`inputCoin` omitted) — fetches `from`-asset coins
- *   from the sender's wallet (paginated), merges/splits to the
- *   requested amount, runs the swap. Mirrors the audric host's
- *   `transactions/prepare/route.ts` swap branch (P2.2c will retire that
- *   branch in favor of this appender via `composeTx`).
+ * - **Wallet mode** (`inputCoin` omitted) — sources `from`-asset funds
+ *   via `coinWithBalance({ type, balance })` (resolves coin objects +
+ *   address balance at build time), runs the swap. Mirrors the audric
+ *   host's `transactions/prepare/route.ts` swap branch (P2.2c will
+ *   retire that branch in favor of this appender via `composeTx`).
  *
  * - **Chain mode** (`inputCoin` provided) — consumes the passed-in coin
  *   reference (typically produced by an upstream appender like
@@ -413,14 +413,14 @@ export async function buildSwapTx(params: {
  *   split. This is the SPEC 7 multi-write enabler ("withdraw → swap →
  *   save" without intermediate wallet materialization).
  *
- * **SUI in wallet mode:** uses `client.getCoins` like every other
- * token. This works for sponsored flows (Enoki — `tx.gas` belongs to
- * the sponsor, swap input comes from the user's separate SUI coin
- * objects). For non-sponsored flows where `tx.gas` IS the user's SUI,
- * the caller should pre-build the inputCoin via
- * `tx.splitCoins(tx.gas, [rawAmount])[0]` and pass it via chain mode
- * instead. (`T2000.swap()` already handles this internally — direct SDK
- * users go through the high-level class, not through this appender.)
+ * **SUI in wallet mode:** routes through `selectAndSplitCoin` like every
+ * other token, which uses `coinWithBalance` to pull from the user's SUI
+ * (coin objects + address balance) — NOT from `tx.gas`. This is correct
+ * for sponsored flows (Enoki owns `tx.gas`). For non-sponsored flows
+ * where `tx.gas` IS the user's SUI, the caller should pre-build the
+ * inputCoin via `tx.splitCoins(tx.gas, [rawAmount])[0]` and pass it via
+ * chain mode instead. (`T2000.swap()` already handles this internally —
+ * direct SDK users go through the high-level class, not this appender.)
  *
  * **`swapAll` semantics (wallet mode):** if the requested raw amount
  * is >= the wallet's total `from` balance, the appender consumes the
@@ -507,14 +507,15 @@ export async function addSwapToTx(
     inputCoin = input.inputCoin;
     effectiveRaw = requestedRaw;
   } else {
-    // Delegate to the canonical wallet-mode prelude. Critically, this path
-    // shares a per-PTB merge cache with every other appender via
-    // `selectAndSplitCoin` — when a multi-write bundle includes
-    // `swap_execute` alongside `save_deposit`/`send_transfer` of the same
-    // input asset (e.g. swap+save+send all from USDC), the second/third
-    // appender hits the cache and splits from the already-merged primary
-    // instead of re-emitting `mergeCoins` on consumed input slots. That's
-    // the P2.7 multi-write bundle fix landed 2026-05-02.
+    // Delegate to the canonical wallet-mode prelude. Pre-flights against
+    // `getBalance().totalBalance` (sums coins + address balance) and
+    // returns a `coinWithBalance({ type, balance })` argument. Multi-write
+    // bundles that consume the same input asset across legs (swap+save,
+    // swap+send) get correct merge/split dedup automatically because the
+    // `@mysten/sui` resolver batches all `coinWithBalance` intents for a
+    // given coin type into a single merge at `tx.build()` time. Replaces
+    // the per-PTB merge cache that was load-bearing pre-2026-05-22 (when
+    // `selectAndSplitCoin` emitted explicit `mergeCoins` itself).
     const { selectAndSplitCoin } = await import('../wallet/coinSelection.js');
     const result = await selectAndSplitCoin(tx, client, address, fromType, requestedRaw);
     inputCoin = result.coin;

@@ -56,7 +56,13 @@ export function registerPay(program: Command) {
 
         if (!isJsonMode()) {
           if (result.paid && result.receipt) {
-            printSuccess(`Paid via MPP (tx: ${result.receipt.reference.slice(0, 10)}...)`);
+            const gasNote =
+              typeof result.gasCostSui === 'number'
+                ? result.gasCostSui === 0
+                  ? pc.green(' · gasless ⚡')
+                  : pc.dim(` · gas: ${result.gasCostSui.toFixed(6)} SUI`)
+                : '';
+            printSuccess(`Paid via MPP (tx: ${result.receipt.reference.slice(0, 10)}...)${gasNote}`);
           }
           printInfo(`← ${result.status} OK  ${pc.dim(`[${elapsed}ms]`)}`);
         }
@@ -68,6 +74,7 @@ export function registerPay(program: Command) {
             elapsed,
             paid: result.paid,
             cost: result.cost,
+            gasCostSui: result.gasCostSui,
             receipt: result.receipt,
             body: result.body,
           });

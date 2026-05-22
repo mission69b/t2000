@@ -1,7 +1,7 @@
 import { EventEmitter } from 'eventemitter3';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import { Transaction, coinWithBalance, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { createPaymentTransactionUri } from '@mysten/payment-kit';
 import { getSuiClient } from './utils/sui.js';
 import {
@@ -77,14 +77,23 @@ interface T2000Events {
 // manager — every transaction is now self-funded by the agent's wallet.
 type SuiTransactionEffects = NonNullable<Awaited<ReturnType<SuiJsonRpcClient['executeTransactionBlock']>>['effects']>;
 
+type BuildClient = NonNullable<Parameters<Transaction['build']>[0]>['client'];
+
 async function executeTx(
   client: SuiJsonRpcClient,
   signer: TransactionSigner,
   buildTx: () => Promise<Transaction> | Transaction,
+  options: { buildClient?: BuildClient } = {},
 ): Promise<{ digest: string; gasCostSui: number; effects: SuiTransactionEffects | undefined }> {
   const tx = await buildTx();
   tx.setSender(signer.getAddress());
-  const txBytes = await tx.build({ client });
+  // [2026-05-22] Optional buildClient. When set, `tx.build()` uses it to
+  // resolve the PTB — relevant for gasless stablecoin transfers where the
+  // SuiGrpcClient build path auto-detects allowlisted ops and zeros out
+  // gasPrice/gasBudget/gasPayment. See `T2000.pay()`. Submission still
+  // goes through the JSON-RPC client (gRPC client's submit API is not
+  // drop-in compatible with the rest of the SDK).
+  const txBytes = await tx.build({ client: options.buildClient ?? client });
   const { signature } = await signer.signTransaction(txBytes);
   const result = await client.executeTransactionBlock({
     transactionBlock: txBytes,
@@ -213,12 +222,37 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const { Mppx } = await import('mppx/client');
     const { sui, USDC } = await import('@suimpp/mpp/client');
+    const { SuiGrpcClient } = await import('@mysten/sui/grpc');
 
     const client = this.client;
     const signer = this._signer;
     const signerAddress = signer.getAddress();
 
     let paymentDigest: string | undefined;
+    let gasCostSui = 0;
+
+    // [2026-05-22] Gasless MPP. Build the payment PTB via SuiGrpcClient
+    // so the SDK's gasless-eligibility resolver runs at build time. When
+    // the PTB is `0x2::balance::send_funds` on an allowlisted stablecoin
+    // (USDC, USDsui, USDY, FdUSD, AUSD, BUCK, USDB, SUI_USDE), the resolver
+    // sets `gasPrice=0, gasBudget=0, gasPayment=[]` automatically. The
+    // protocol then accepts the tx for $0 gas.
+    //
+    // Submission stays on JSON-RPC because (a) the rest of the SDK expects
+    // SuiJsonRpcClient and (b) the docs explicitly support a "build via
+    // gRPC, execute via JSON-RPC" hybrid:
+    // https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers
+    //
+    // Network selection: only mainnet + testnet are gasless-eligible
+    // surfaces. Devnet/localnet/custom RPC fall back to mainnet — the
+    // tx will still build, just without the gasless allowlist check
+    // (which is mainnet-protocol-config-driven anyway).
+    const network: 'mainnet' | 'testnet' = client.network === 'testnet' ? 'testnet' : 'mainnet';
+    const grpcBaseUrl =
+      network === 'testnet'
+        ? 'https://fullnode.testnet.sui.io'
+        : 'https://fullnode.mainnet.sui.io';
+    const grpcClient = new SuiGrpcClient({ baseUrl: grpcBaseUrl, network });
 
     const mppx = Mppx.create({
       polyfill: false,
@@ -230,8 +264,9 @@ export class T2000 extends EventEmitter<T2000Events> {
           signPersonalMessage: (bytes: Uint8Array) => signer.signPersonalMessage(bytes),
         } as Parameters<typeof sui>[0]['signer'],
         execute: async (tx) => {
-          const result = await executeTx(client, signer, () => tx);
+          const result = await executeTx(client, signer, () => tx, { buildClient: grpcClient });
           paymentDigest = result.digest;
+          gasCostSui = result.gasCostSui;
           return { digest: result.digest };
         },
       })],
@@ -267,6 +302,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       body,
       paid,
       cost: paid ? (options.maxPrice ?? undefined) : undefined,
+      gasCostSui: paid ? gasCostSui : undefined,
       receipt: paymentDigest
         ? { reference: paymentDigest, timestamp: new Date().toISOString() }
         : undefined,
@@ -307,8 +343,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     if (params.amount === 'all') {
       amountMist = 'all';
-      const coins = await this._fetchCoins(VSUI_TYPE);
-      vSuiAmount = coins.reduce((sum, c) => sum + Number(c.balance), 0) / 1e9;
+      const bal = await this.client.getBalance({ owner: this._address, coinType: VSUI_TYPE });
+      vSuiAmount = Number(bal.totalBalance) / 1e9;
     } else {
       amountMist = BigInt(Math.floor(params.amount * 1e9));
       vSuiAmount = params.amount;
@@ -386,10 +422,14 @@ export class T2000 extends EventEmitter<T2000Events> {
       if (fromType === '0x2::sui::SUI') {
         [inputCoin] = tx.splitCoins(tx.gas, [rawAmount]);
       } else {
-        const coins = await this._fetchCoins(fromType);
-        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${params.from} coins found.`);
-        const merged = this._mergeCoinsInTx(tx, coins);
-        [inputCoin] = tx.splitCoins(merged, [rawAmount]);
+        const bal = await this.client.getBalance({ owner: this._address, coinType: fromType });
+        if (BigInt(bal.totalBalance) < rawAmount) {
+          throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${params.from} balance.`, {
+            available: Number(bal.totalBalance) / 10 ** fromDecimals,
+            required: params.amount,
+          });
+        }
+        inputCoin = coinWithBalance({ type: fromType, balance: rawAmount })(tx);
       }
 
       const outputCoin = await buildSwapTx({
@@ -727,11 +767,15 @@ export class T2000 extends EventEmitter<T2000Events> {
         const tx = new Transaction();
         tx.setSender(this._address);
 
-        const coins = await this._fetchCoins(assetInfo.type);
-        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
-        const merged = this._mergeCoinsInTx(tx, coins);
         const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
-        const [inputCoin] = tx.splitCoins(merged, [rawAmount]);
+        const bal = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
+        if (BigInt(bal.totalBalance) < rawAmount) {
+          throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${assetInfo.displayName} balance`, {
+            available: Number(bal.totalBalance) / 10 ** assetInfo.decimals,
+            required: saveAmount,
+          });
+        }
+        const inputCoin = coinWithBalance({ type: assetInfo.type, balance: rawAmount })(tx);
 
         await adapter.addSaveToTx!(tx, this._address, inputCoin, asset);
         return tx;
@@ -954,71 +998,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
   }
 
-  private async _fetchCoins(coinType: string): Promise<Array<{ coinObjectId: string; balance: string }>> {
-    const all: Array<{ coinObjectId: string; balance: string }> = [];
-    let cursor: string | null | undefined;
-    let hasNext = true;
-    while (hasNext) {
-      const page = await this.client.getCoins({ owner: this._address, coinType, cursor: cursor ?? undefined });
-      all.push(...page.data.map((c) => ({ coinObjectId: c.coinObjectId, balance: c.balance })));
-      cursor = page.nextCursor;
-      hasNext = page.hasNextPage;
-    }
-
-    if (all.length > 0) {
-      this._lastFundDigest = undefined;
-      return all;
-    }
-
-    if (this._lastFundDigest && coinType === SUPPORTED_ASSETS.USDC.type) {
-      const txInfo = await this.client.getTransactionBlock({
-        digest: this._lastFundDigest,
-        options: { showObjectChanges: true },
-      });
-      const coinIds = (txInfo.objectChanges ?? [])
-        .filter((c): c is typeof c & { objectId: string } =>
-          (c.type === 'created' || c.type === 'mutated') &&
-          'objectType' in c &&
-          typeof c.objectType === 'string' &&
-          c.objectType.includes('0x2::coin::Coin') &&
-          c.objectType.includes(coinType),
-        )
-        .map(c => c.objectId);
-
-      if (coinIds.length > 0) {
-        const objects = await this.client.multiGetObjects({
-          ids: coinIds,
-          options: { showContent: true, showOwner: true },
-        });
-        for (const obj of objects) {
-          if (
-            obj.data?.content?.dataType === 'moveObject' &&
-            obj.data.owner &&
-            typeof obj.data.owner === 'object' &&
-            'AddressOwner' in obj.data.owner &&
-            obj.data.owner.AddressOwner === this._address
-          ) {
-            const fields = obj.data.content.fields as Record<string, unknown>;
-            all.push({ coinObjectId: obj.data.objectId!, balance: String(fields.balance ?? '0') });
-          }
-        }
-      }
-    }
-
-    return all;
-  }
-
-  private _mergeCoinsInTx(tx: Transaction, coins: Array<{ coinObjectId: string; balance: string }>): TransactionObjectArgument {
-    if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No coins to merge');
-    const primary = tx.object(coins[0].coinObjectId);
-    if (coins.length > 1) {
-      tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
-    }
-    return primary;
-  }
-
-  private _lastFundDigest: string | undefined;
-
   private async _autoFundFromSavings(shortfall: number): Promise<void> {
     const positions = await this.positions();
     const savingsTotal = positions.positions
@@ -1054,7 +1033,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     if (!usdcReceived) {
       throw new T2000Error('WITHDRAW_FAILED', 'Withdraw TX did not produce USDC');
     }
-    this._lastFundDigest = result.tx;
   }
 
   async maxWithdraw(): Promise<MaxWithdrawResult> {
@@ -1150,11 +1128,18 @@ export class T2000 extends EventEmitter<T2000Events> {
       if (adapter.addRepayToTx) {
         const tx = new Transaction();
         tx.setSender(this._address);
-        const coins = await this._fetchCoins(targetAssetInfo.type);
-        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${targetAssetInfo.displayName} coins`);
-        const merged = this._mergeCoinsInTx(tx, coins);
         const raw = BigInt(Math.floor(repayAmount * 10 ** targetAssetInfo.decimals));
-        const [repayCoin] = tx.splitCoins(merged, [raw]);
+        const bal = await this.client.getBalance({
+          owner: this._address,
+          coinType: targetAssetInfo.type,
+        });
+        if (BigInt(bal.totalBalance) < raw) {
+          throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${targetAssetInfo.displayName} balance for repayment`, {
+            available: Number(bal.totalBalance) / 10 ** targetAssetInfo.decimals,
+            required: repayAmount,
+          });
+        }
+        const repayCoin = coinWithBalance({ type: targetAssetInfo.type, balance: raw })(tx);
         await adapter.addRepayToTx!(tx, this._address, repayCoin, target.asset);
         return tx;
       }
@@ -1195,26 +1180,35 @@ export class T2000 extends EventEmitter<T2000Events> {
         const tx = new Transaction();
         tx.setSender(this._address);
 
-        // [v0.51.1] Group borrows by asset; fetch + merge coins per asset.
-        // Pre-v0.51.1 we fetched USDC coins once and tried to repay every
-        // borrow (including USDsui) from the same merged USDC. That works
-        // when every borrow happens to be USDC; it silently breaks the
-        // moment USDsui (or any other allowed borrow asset) appears.
-        const assetMerged = new Map<string, TransactionObjectArgument>();
+        // [v0.51.1] Group borrows by asset and pre-flight balance per
+        // asset. Pre-v0.51.1 we fetched USDC coins once and tried to repay
+        // every borrow (including USDsui) from the same merged USDC. That
+        // works when every borrow happens to be USDC; it silently breaks
+        // the moment USDsui (or any other allowed borrow asset) appears.
+        //
+        // [2026-05-22] Address-balance migration. Per-borrow `coinWithBalance`
+        // intents get auto-batched into one merge per coin type by the
+        // resolver — no need to manually pre-merge.
         const uniqueAssets = Array.from(new Set(entries.map((e) => e.borrow.asset)));
         for (const asset of uniqueAssets) {
           const info = SUPPORTED_ASSETS[asset as SupportedAsset];
           if (!info) throw new T2000Error('ASSET_NOT_SUPPORTED', `Cannot repay unknown asset: ${asset}`);
-          const coins = await this._fetchCoins(info.type);
-          if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${info.displayName} coins for repayment`);
-          assetMerged.set(asset, this._mergeCoinsInTx(tx, coins));
+          const required = entries
+            .filter((e) => e.borrow.asset === asset)
+            .reduce((sum, e) => sum + BigInt(Math.floor(e.borrow.amount * 10 ** info.decimals)), 0n);
+          const bal = await this.client.getBalance({ owner: this._address, coinType: info.type });
+          if (BigInt(bal.totalBalance) < required) {
+            throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${info.displayName} balance for repayment`, {
+              available: Number(bal.totalBalance) / 10 ** info.decimals,
+              required: Number(required) / 10 ** info.decimals,
+            });
+          }
         }
 
         for (const { borrow, adapter } of entries) {
           const info = SUPPORTED_ASSETS[borrow.asset as SupportedAsset]!;
-          const merged = assetMerged.get(borrow.asset)!;
           const raw = BigInt(Math.floor(borrow.amount * 10 ** info.decimals));
-          const [repayCoin] = tx.splitCoins(merged, [raw]);
+          const repayCoin = coinWithBalance({ type: info.type, balance: raw })(tx);
           await adapter.addRepayToTx!(tx, this._address, repayCoin, borrow.asset);
           totalRepaid += borrow.amount;
         }
@@ -1374,9 +1368,11 @@ export class T2000 extends EventEmitter<T2000Events> {
       };
     }
 
-    // Snapshot USDC balance before compounding to scope deposit correctly
-    const preUsdcCoins = await this._fetchCoins(USDC_TYPE);
-    const preUsdcRaw = preUsdcCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
+    // Snapshot USDC balance before compounding to scope deposit correctly.
+    // Use getBalance (sums coins + address balance) so claimed rewards
+    // landing in address balance are counted in the pre-snapshot too.
+    const preUsdcBal = await this.client.getBalance({ owner: this._address, coinType: USDC_TYPE });
+    const preUsdcRaw = BigInt(preUsdcBal.totalBalance);
 
     // Step 1: Claim — transfers reward tokens to wallet
     const claimResult = await this.claimRewards();
@@ -1401,8 +1397,8 @@ export class T2000 extends EventEmitter<T2000Events> {
         const rawAmount = BigInt(Math.floor(reward.amount * 10 ** decimals));
         if (rawAmount <= 0n) continue;
 
-        const coins = await this._fetchCoins(reward.coinType);
-        if (coins.length === 0) continue;
+        const bal = await this.client.getBalance({ owner: this._address, coinType: reward.coinType });
+        if (BigInt(bal.totalBalance) < rawAmount) continue;
 
         const route = await findSwapRoute({
           walletAddress: this._address,
@@ -1418,11 +1414,10 @@ export class T2000 extends EventEmitter<T2000Events> {
           const tx = new Transaction();
           tx.setSender(this._address);
 
-          const freshCoins = await this._fetchCoins(reward.coinType);
-          if (freshCoins.length === 0) return tx;
+          const freshBal = await this.client.getBalance({ owner: this._address, coinType: reward.coinType });
+          if (BigInt(freshBal.totalBalance) < rawAmount) return tx;
 
-          const merged = this._mergeCoinsInTx(tx, freshCoins);
-          const [inputCoin] = tx.splitCoins(merged, [rawAmount]);
+          const inputCoin = coinWithBalance({ type: reward.coinType, balance: rawAmount })(tx);
 
           const outputCoin = await buildSwapTx({
             walletAddress: this._address,
@@ -1444,8 +1439,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     // Step 3: Deposit only the NEW USDC gained from compounding (not pre-existing balance)
-    const postUsdcCoins = await this._fetchCoins(USDC_TYPE);
-    const postUsdcRaw = postUsdcCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
+    const postUsdcBal = await this.client.getBalance({ owner: this._address, coinType: USDC_TYPE });
+    const postUsdcRaw = BigInt(postUsdcBal.totalBalance);
     const gainedRaw = postUsdcRaw > preUsdcRaw ? postUsdcRaw - preUsdcRaw : 0n;
     const depositUsdc = Number(gainedRaw) / 10 ** USDC_DEC;
 
@@ -1456,10 +1451,11 @@ export class T2000 extends EventEmitter<T2000Events> {
         const depositResult = await executeTx(this.client, this._signer, async () => {
           const tx = new Transaction();
           tx.setSender(this._address);
-          const coins = await this._fetchCoins(USDC_TYPE);
-          if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins after swap');
-          const merged = this._mergeCoinsInTx(tx, coins);
-          const [inputCoin] = tx.splitCoins(merged, [gainedRaw]);
+          const bal = await this.client.getBalance({ owner: this._address, coinType: USDC_TYPE });
+          if (BigInt(bal.totalBalance) < gainedRaw) {
+            throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC available after swap');
+          }
+          const inputCoin = coinWithBalance({ type: USDC_TYPE, balance: gainedRaw })(tx);
           await adapter.addSaveToTx!(tx, this._address, inputCoin, 'USDC');
           return tx;
         });

@@ -31,12 +31,22 @@ const USDSUI_TYPE = '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844f
 const VSUI_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
 
 function mockRpcClient(coins: Record<string, Array<{ coinObjectId: string; balance: string }>>): SuiJsonRpcClient {
+  const getBalance = vi.fn(async ({ coinType }: { coinType: string }) => {
+    const coinData = coins[coinType] ?? [];
+    const total = coinData.reduce((acc, c) => acc + BigInt(c.balance), 0n);
+    return {
+      coinType,
+      coinObjectCount: coinData.length,
+      totalBalance: total.toString(),
+      lockedBalance: {},
+    };
+  });
   const getCoins = vi.fn(async ({ coinType }: { coinType: string }) => ({
     data: coins[coinType] ?? [],
     nextCursor: null,
     hasNextPage: false,
   }));
-  return { getCoins } as unknown as SuiJsonRpcClient;
+  return { getBalance, getCoins } as unknown as SuiJsonRpcClient;
 }
 
 function mockNaviAdapter(positions: Array<{ asset: string; type: 'save' | 'borrow'; amount: number }> = []) {
@@ -152,7 +162,7 @@ describe('composeTx — single-step migration tests (9 canonical write tools)', 
       steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 1, asset: 'SUI' } }],
     });
 
-    expect(client.getCoins).toHaveBeenCalledWith(expect.objectContaining({ coinType: SUI_TYPE }));
+    expect(client.getBalance).toHaveBeenCalledWith(expect.objectContaining({ coinType: SUI_TYPE }));
     expect(result.derivedAllowedAddresses).toContain(RECIPIENT_ADDRESS);
   });
 
@@ -186,7 +196,7 @@ describe('composeTx — single-step migration tests (9 canonical write tools)', 
     });
 
     expect(navi.depositCoinPTB).toHaveBeenCalled();
-    expect(client.getCoins).toHaveBeenCalledWith(expect.objectContaining({ coinType: USDC_TYPE }));
+    expect(client.getBalance).toHaveBeenCalledWith(expect.objectContaining({ coinType: USDC_TYPE }));
     const preview = result.perStepPreviews[0];
     if (preview.toolName === 'save_deposit') {
       expect(preview.asset).toBe('USDC');
@@ -432,7 +442,7 @@ describe('composeTx — error handling', () => {
         client,
         steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 5, asset: 'USDC' } }],
       }),
-    ).rejects.toThrow(/No coins found/);
+    ).rejects.toThrow(/No balance found/);
   });
 
   it('throws ASSET_NOT_SUPPORTED for swap with unknown token', async () => {
@@ -694,10 +704,10 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
         ],
       });
 
-      // getCoins called once (for swap's USDC input) — NOT for save's USDsui (chained).
-      const getCoinsCalls = (client.getCoins as ReturnType<typeof vi.fn>).mock.calls;
-      expect(getCoinsCalls).toHaveLength(1);
-      expect(getCoinsCalls[0][0]).toMatchObject({ coinType: USDC_TYPE });
+      // getBalance called once (for swap's USDC input) — NOT for save's USDsui (chained).
+      const getBalanceCalls = (client.getBalance as ReturnType<typeof vi.fn>).mock.calls;
+      expect(getBalanceCalls).toHaveLength(1);
+      expect(getBalanceCalls[0][0]).toMatchObject({ coinType: USDC_TYPE });
 
       // No transferObjects to sender — swap output goes directly to NAVI deposit, no wallet round-trip.
       const transfers = countTransferObjectsByRecipient(result.tx);

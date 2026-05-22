@@ -5,5 +5,5 @@ export const POST = chargeProxy(
   '0.005',
   `https://api.coingecko.com/api/v3/coins/markets?x_cg_demo_api_key=${env.COINGECKO_API_KEY}`,
   { accept: 'application/json' },
-  { settleOnSuccess: true, upstreamMethod: 'GET', bodyToQuery: true },
+  { upstreamMethod: 'GET', bodyToQuery: true },
 );

@@ -38,6 +38,16 @@ const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f
 
 function mockRpcClient(coins: Record<string, Array<{ coinObjectId: string; balance: string }>>): SuiJsonRpcClient {
   return {
+    getBalance: vi.fn(async ({ coinType }: { coinType: string }) => {
+      const coinData = coins[coinType] ?? [];
+      const total = coinData.reduce((acc, c) => acc + BigInt(c.balance), 0n);
+      return {
+        coinType,
+        coinObjectCount: coinData.length,
+        totalBalance: total.toString(),
+        lockedBalance: {},
+      };
+    }),
     getCoins: vi.fn(async ({ coinType }: { coinType: string }) => ({
       data: coins[coinType] ?? [],
       nextCursor: null,
