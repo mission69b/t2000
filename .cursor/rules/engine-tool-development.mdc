@@ -138,7 +138,7 @@ await addSaveToTx(tx, client, depositCoin, asset, amount, address);
 **Cross-references for the S.120 fix:**
 - SDK macro pattern → `packages/sdk/src/protocols/navi-harvest.ts` (`addHarvestToTx`)
 - `composeTx` registry forwarding → `packages/sdk/src/composeTx.ts` (`harvest_rewards` appender)
-- Audric host wiring → `audric/apps/web/app/api/transactions/prepare/route.ts` (`needsOverlayFee` + `feeHooks`)
+- Audric host wiring → `audric/apps/web-v2/app/api/transactions/prepare/route.ts` (`needsOverlayFee` + `feeHooks`)
 - Indexer composite classification → `apps/server/src/indexer/eventParser.ts` (`classifyFromMoveCallTargets` harvest detection)
 
 ## Required tests

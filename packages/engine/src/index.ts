@@ -46,8 +46,10 @@ export { TOOL_TTL_MS, DEFAULT_TOOL_TTL_MS, bundleShortestTtl, REGENERATABLE_READ
 // **[SPEC 15 v0.7 follow-up #3 — single-source bundle composer, 2026-05-04]**
 // `composeBundleFromToolResults` is now a public export. Hosts that
 // produce bundles outside the canonical engine agent loop (today:
-// audric's chip-Confirm fast-path in `audric/apps/web/lib/engine/
-// fast-path-bundle.ts`) MUST call this helper instead of building
+// audric's chip-Confirm fast-path; pre-v0.7e Phase 5 this lived at
+// `audric/apps/web/lib/engine/fast-path-bundle.ts`; in web-v2 the chip
+// confirm flow goes through `lib/audric/dispatch-intents.ts`) MUST call
+// this helper instead of building
 // `PendingAction`s by hand — that's how the bundle PermissionCard's
 // `↻ Refresh quote` button + `modifiableFields` inline edits + every
 // future bundle-shape addition stay in sync across paths. Drift was

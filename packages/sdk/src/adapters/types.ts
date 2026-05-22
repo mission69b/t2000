@@ -92,7 +92,7 @@ export interface LendingAdapter {
    * [B5 v2] Add a borrow to an existing PTB and return the borrowed coin
    * WITHOUT transferring it to the user. Lets consumer apps wedge a fee
    * transfer between the borrow and the user transfer (see
-   * `audric/apps/web/app/api/transactions/prepare/route.ts`).
+   * `audric/apps/web-v2/app/api/transactions/prepare/route.ts`).
    */
   addBorrowToTx?(tx: Transaction, address: string, amount: number, asset: string, options?: { skipPythUpdate?: boolean }): Promise<TransactionObjectArgument>;
   addRepayToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string, options?: { skipPythUpdate?: boolean }): Promise<void>;

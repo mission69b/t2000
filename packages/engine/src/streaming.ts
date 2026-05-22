@@ -5,7 +5,7 @@
 // adapter that historically wrapped a `QueryEngine.submitMessage()` generator
 // into an SSE byte stream was deleted in v2.2.0 — it had no live caller. The
 // audric host's chat/resume routes iterate `EngineEvent` raw (per `audric/
-// apps/web/app/api/engine/{chat,resume}/route.ts`'s "v1.4.2 — Day 4 / Spec
+// apps/web-v2/app/api/chat/route.ts`'s "v1.4.2 — Day 4 / Spec
 // G3" switch to per-event collection + `serializeSSE`-per-event); CLI / MCP
 // embed the engine in-process and never hit SSE. The legacy `withStreamState`
 // wrapper that `engineToSSE` applied by default is still exported standalone

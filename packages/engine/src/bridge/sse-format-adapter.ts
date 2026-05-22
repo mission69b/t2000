@@ -13,9 +13,10 @@
 // and the (now-deleted) `streaming.ts:engineToSSE` serialised directly to
 // legacy SSE bytes. v2.0.0's AISDKEngine already emits EngineEvent via
 // `streamText` + `bridge/event-bridge.ts`; audric hosts iterate raw and
-// call `serializeSSE` per event (audric/apps/web/app/api/engine/{chat,
-// resume}/route.ts since v1.4.2 / Spec G3). The Phase 5 Slice A cleanup
-// (v2.2.0) deleted `engineToSSE` because it had no live caller.
+// call `serializeSSE` per event (audric/apps/web-v2/app/api/chat/route.ts
+// since v1.4.2 / Spec G3 — post-v0.7e Phase 5 the resume sub-route is
+// inline in /api/chat). The Phase 5 Slice A cleanup (v2.2.0) deleted
+// `engineToSSE` because it had no live caller.
 //
 // This adapter remains as the alternative production path: when engine
 // code optionally emits via `createUIMessageStream` (a typed
@@ -30,9 +31,10 @@
 // then be passed to `serializeSSE` (already the sole wire-format
 // authority) to produce identical bytes.
 //
-// Net effect on `audric/web`: ZERO change. The SSE consumer in
-// `apps/web/hooks/useEngine.ts:processSSEChunk` parses the same byte
-// stream pre- and post-Phase 5.
+// Net effect on `audric/web-v2`: ZERO change. The SSE consumer (was
+// `apps/web/hooks/useEngine.ts:processSSEChunk` pre-v0.7e Phase 5; now
+// AI SDK's `useChat` consumes the byte stream directly in web-v2)
+// parses the same byte stream pre- and post-Phase 5.
 //
 // Removed in v0.7b
 // ----------------

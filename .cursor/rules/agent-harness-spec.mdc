@@ -109,6 +109,6 @@ Reserved for the next harness milestone. Do not pre-emptively implement spec-3 c
 ## Cross-references
 
 - Pending action types → `packages/engine/src/types.ts` (`PendingAction`, `PermissionResponse`, `EngineConfig`)
-- Resume route reference impl → `audric/apps/web/app/api/engine/resume/route.ts`
+- Resume / HITL reference impl → `audric/apps/web-v2/app/api/chat/route.ts` (post-v0.7e Phase 5: the standalone `/api/engine/resume` route is gone; resume is inline in the same `/api/chat` POST that initiates the turn, keyed on `attemptId` round-tripping through the user-confirm event)
 - BlockVision retry/circuit-breaker → `blockvision-resilience.mdc`
 - Sponsored tx client flow → `audric/.cursor/rules/audric-transaction-flow.mdc`

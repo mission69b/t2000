@@ -81,7 +81,7 @@ const combinedRestrictedSyntax = [
 ]
 ```
 
-**The canonical reference is `audric/apps/web/eslint.config.mjs`** (consolidated 2026-05-02 during SPEC 7 v0.4.1 C0.2). Look at the `combinedRestrictedSyntax` array — it holds env-gate, canonical-portfolio vendor-fetch, and canonical-write `new Transaction()` selectors all in ONE rule entry. The header comment (lines ~137-142) documents the empirical verification.
+**The canonical reference WAS `audric/apps/web/eslint.config.mjs`** (consolidated 2026-05-02 during SPEC 7 v0.4.1 C0.2). The `combinedRestrictedSyntax` array held env-gate, canonical-portfolio vendor-fetch, and canonical-write `new Transaction()` selectors all in ONE rule entry. **[STALE — v0.7e Phase 5 / 2026-05-22] audric/apps/web was archived; audric/apps/web-v2 uses Biome (`biome.jsonc`) not ESLint. The flat-config consolidation lesson still applies for `t2000/apps/server` + `t2000/apps/gateway` which still run ESLint.**
 
 **When you add a new ESLint flat-config rule**:
 - If it takes an array value (`no-restricted-syntax`, `no-restricted-imports`, `no-restricted-properties`, `no-magic-numbers`, etc.) AND the same rule already exists in another block → **consolidate**, don't add a sibling block.
@@ -95,7 +95,7 @@ rg "no-restricted-imports" --glob 'eslint.config.mjs'
 rg "no-restricted-properties" --glob 'eslint.config.mjs'
 ```
 
-Audited 2026-05-07 (SPEC 12 Phase 1 Step 5): all 5 flat configs across t2000 + audric are clean. Only audric/apps/web uses array-valued restricted rules; it already consolidates correctly.
+Audited 2026-05-07 (SPEC 12 Phase 1 Step 5): all 5 flat configs across t2000 + audric were clean. **[STALE — v0.7e Phase 5 / 2026-05-22] audric/apps/web (the only consumer of array-valued restricted rules) was archived; audric/apps/web-v2 uses Biome. Remaining ESLint configs: `t2000/apps/server/eslint.config.mjs`, `t2000/apps/gateway/eslint.config.mjs`, `t2000/apps/web/eslint.config.mjs` (t2000.ai marketing site — different project, do not confuse with the deleted audric one).**
 
 ## Test file location convention
 

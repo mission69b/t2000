@@ -40,7 +40,7 @@ export const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{1,64}$/i;
 export const SUI_ADDRESS_STRICT_REGEX = /^0x[a-fA-F0-9]{64}$/i;
 
 /**
- * Mirrors the pattern in `audric/apps/web/lib/suins-resolver.ts` so the
+ * Mirrors the pattern in `audric/apps/web-v2/lib/suins-cache.ts` so the
  * host-side send executor and the engine-side read normalizer agree on
  * what counts as a SuiNS name. SuiNS allows nested labels (`team.alex.sui`)
  * but every label must use only `[a-z0-9-]`.

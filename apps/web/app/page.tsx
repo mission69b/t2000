@@ -108,7 +108,7 @@ const THREE_PRODUCTS = [
 
 const PRIMITIVES = [
   { title: "Reasoning engine", desc: "Adaptive thinking, 14 step guards, 14 skills (markdown playbooks shipped via @t2000/mcp). Complexity-based model routing.", isNew: true },
-  { title: "Silent intelligence", desc: "Financial profile inference, episodic memory, chain memory, AdviceLog \u2014 all silent context that makes the chat smarter without ever surfacing.", isNew: true },
+  { title: "Memory", desc: "MemWal vector memory + daily financial-context snapshot + AdviceLog \u2014 silent context that makes the chat smarter without ever surfacing.", isNew: true },
   { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, savings planner. Powers Audric Canvas.", isNew: true },
   { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
   { title: "DeFi access (Audric Finance)", desc: "Save, credit, swap, charts \u2014 every on-chain money op a user can do, all by asking in chat. NAVI lend at 3\u20138% APY USDC, NAVI borrow with health factor, Cetus aggregator across 20+ DEXs at 0.1% fee. Every write taps to confirm via Passport." },
@@ -137,7 +137,7 @@ const ARCH_LAYERS = [
     accent: true,
     split: [
       { title: "Reasoning Engine", items: "Adaptive thinking \u00B7 14 step guards \u00B7 14 skills (via @t2000/mcp) \u00B7 Model routing" },
-      { title: "Silent Intelligence", items: "Financial profile \u00B7 Episodic memory \u00B7 Chain memory \u00B7 AdviceLog \u2014 silent context only" },
+      { title: "Memory", items: "MemWal vector memory \u00B7 Financial-context snapshot \u00B7 AdviceLog \u2014 silent context only" },
     ],
   },
 ];

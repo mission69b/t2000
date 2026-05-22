@@ -72,7 +72,7 @@ if (portfolio.source !== 'blockvision') {
 
 ## When `BLOCKVISION_API_KEY` is empty
 
-- `apps/web/lib/env.ts` (audric) makes it `requiredString` — boot fails before any request runs. **Do not relax to optional** unless you also accept the entire DeFi/wallet pricing stack degrading to RPC.
+- `apps/web-v2/lib/env.ts` (audric) makes it `requiredString` — boot fails before any request runs. **Do not relax to optional** unless you also accept the entire DeFi/wallet pricing stack degrading to RPC.
 - This is the S.25 incident class — see `env-validation-gate.mdc`.
 
 ## What's banned

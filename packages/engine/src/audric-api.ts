@@ -3,10 +3,10 @@
 //
 // When the engine runs server-side inside the Audric Next.js host, every
 // portfolio / history / price read should resolve through Audric's
-// canonical fetchers (`apps/web/lib/portfolio.ts`,
-// `apps/web/lib/transaction-history.ts`) so that the LLM, the dashboard,
-// and the daily cron all see identical numbers. This file is the engine's
-// thin client for those routes.
+// canonical fetchers (`audric/apps/web-v2/lib/portfolio.ts`; transaction-
+// history is now an in-engine tool since v0.7e Phase 5) so that the LLM,
+// the dashboard, and the daily cron all see identical numbers. This file
+// is the engine's thin client for those routes.
 //
 // Activation: set `T2000_AUDRIC_API` (preferred) or fall back to
 // `AUDRIC_INTERNAL_API_URL` / `NEXT_PUBLIC_APP_URL`. When neither is

@@ -28,7 +28,7 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 ## Audric Intelligence — the 5 systems (canonical)
 
-> **Not a chatbot. A financial agent.** Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 35 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
+> **Not a chatbot. A financial agent.** Four systems work together to **understand** the user's money, **reason** about decisions, **act** through 35 financial tools in one conversation, and **remember what they did + what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
 >
 > _This block is the canonical definition. README, docs, marketing copy, and the engine system prompt must match it. Implementation details live in `ARCHITECTURE.md` (`## Engine (@t2000/engine) — Audric Intelligence implementation`)._
 
@@ -36,13 +36,12 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 |---|---|---|---|---|
 | 1 | 🎛️ **Agent Harness** | 35 tools, one agent. | Tool registry, parallel reads (AI SDK step model), serial writes (structural via `needsApproval` round-trip — confirm-tier writes yield `pending_action`, host round-trips through user confirm, next step runs next write), permission gates, mid-stream tool dispatch | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (24 read + 11 write) |
 | 2 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards across 3 priority tiers (12 pre-exec + 2 post-exec hints), prompt caching, preflight validation. Multi-step orchestration ships from `@t2000/mcp` skills (markdown playbooks, exposed as MCP prompts). | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control`, `t2000-skills/skills/` |
-| 3 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot (`UserFinancialContext`) + Claude-inferred profile (`UserFinancialProfile`), injected as `<financial_context>` block at every engine boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` |
-| 4 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows; injected silently as `<chain_memory>` | _Audric-side_: 7 chain classifiers in `daily-intel` cron group + `ChainFact` Prisma model + `buildMemoryContext()` |
-| 5 | 📓 **AdviceLog** | Remembers what it told you. | Every recommendation written via `record_advice` (audric-side tool); last 30 days hydrated each turn so the chat doesn't contradict itself across sessions | _Audric-side_: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` + `EngineConfig.onAutoExecuted` flips `actedOn` |
+| 3 | 🧠 **Memory (MemWal)** | Knows your finances + remembers what you do on-chain. | `@mysten-incubation/memwal` vector memory for long-term facts (preferences, goals, risk tolerance, on-chain patterns). Short-term daily `<financial_context>` block from `UserFinancialContext` (savings/wallet/debt/HF/APY/recent activity). Both injected silently to calibrate answers — never surfaced as nudges. | `@mysten-incubation/memwal` SDK + `memwal-prepare-step.ts` + `memwal-write-callback.ts` + `UserFinancialContext` Prisma model + 02:00 UTC `financial-context-snapshot` cron + `buildFinancialContextBlock()` |
+| 4 | 📓 **AdviceLog** | Remembers what it told you. | Every recommendation written via `record_advice` (audric-side tool); last 30 days hydrated each turn so the chat doesn't contradict itself across sessions | _Audric-side_: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` + `EngineConfig.onAutoExecuted` flips `actedOn` |
 
 **Naming rules (binding):**
-- The phrase **"5 systems"** is canonical — never list 4, never list 6.
-- Always use the system names exactly as written: `Agent Harness`, `Reasoning Engine`, `Silent Profile`, `Chain Memory`, `AdviceLog`.
+- The phrase **"4 systems"** is canonical — never list 3, never list 5. _(v0.7d Phase 6 Block A — 2026-05-21 — absorbed former "Silent Profile" + "Chain Memory" into a single MemWal-backed "Memory" system. Pre-Block A docs still mention 5; the canonical is 4.)_
+- Always use the system names exactly as written: `Agent Harness`, `Reasoning Engine`, `Memory (MemWal)`, `AdviceLog`.
 - The Reasoning Engine has **14 guards** (12 pre-exec gates + 2 post-exec hints) across **3 priority tiers** (Safety > Financial > UX). Multi-step orchestration moved to **14 skills** (markdown playbooks in `t2000-skills/skills/`, shipped via `@t2000/mcp` as MCP prompts; pre-v0.7a these were 6 YAML recipes — runtime deleted Phase 6, May 2026).
 - The Agent Harness has **35 tools** (24 read + 11 write). (Pre-S.245 had 37; `pay_api` + `mpp_services` removed 2026-05-22.)
 

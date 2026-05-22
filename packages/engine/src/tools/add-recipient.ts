@@ -48,7 +48,9 @@
 // - SPEC 9 § A.2.1 (form schema spec)
 // - SPEC 10 § D.7 (unified Contact shape)
 // - `normalizeAddressInput` — sui-address.ts (S.52)
-// - Host endpoint — audric/apps/web/app/api/engine/resume-with-input/route.ts
+// - Host endpoint — audric/apps/web-v2/app/api/chat/route.ts (post-v0.7e
+//   Phase 5: resume-with-input is inline in the same /api/chat POST; the
+//   standalone /api/engine/resume-with-input route was archived with apps/web)
 // ---------------------------------------------------------------------------
 
 import { z } from 'zod';

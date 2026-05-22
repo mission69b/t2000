@@ -20,7 +20,10 @@
  *    PermissionCard for confirmation; user can approve, regenerate
  *    again, or deny.
  *  - Mutate `TurnMetrics` rows. The host route owns analytics — see
- *    `audric/apps/web/app/api/engine/regenerate/route.ts`.
+ *    `audric/apps/web-v2/app/api/chat/route.ts` (post-v0.7e Phase 5,
+ *    regenerate flow runs inline through the same POST that initiates
+ *    the turn; the standalone `/api/engine/regenerate` route was
+ *    archived with apps/web).
  *
  * **Spec 1 / Spec 2 invariants preserved.**
  *  - Each regeneration produces its own per-step `attemptId` (UUID v4),

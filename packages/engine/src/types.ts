@@ -537,7 +537,9 @@ export interface PendingAction {
    * [v1.4 Item 6] Monotonic turn index (assistant message count) at the
    * point this pending action was emitted. Hosts use it to update the
    * matching `TurnMetrics` row when the action resolves — see
-   * `apps/web/app/api/engine/resume/route.ts` `updateMany` clause.
+   * `apps/web-v2/app/api/chat/route.ts` `updateMany` clause (post-v0.7e
+   * Phase 5: resume is inline in /api/chat; the standalone /api/engine/
+   * resume route was archived with apps/web).
    */
   turnIndex: number;
   /**

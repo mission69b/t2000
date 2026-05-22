@@ -15,10 +15,10 @@ Adapters MUST NOT do their own pricing, summing, RPC calls, or token-list manage
 
 | Domain | Canonical fetcher | File |
 |---|---|---|
-| Wallet + positions + net worth | `getPortfolio(address)` | `apps/web/lib/portfolio.ts` |
-| Token prices (USD) | `getTokenPrices(coinTypes)` | `apps/web/lib/portfolio.ts` |
-| Transaction history | `getTransactionHistory(address, opts)` | `apps/web/lib/transaction-history.ts` |
-| Lending rates (NAVI) | `getRates()` | `apps/web/lib/rates.ts` |
+| Wallet + positions + net worth | `getPortfolio(address)` | `apps/web-v2/lib/portfolio.ts` |
+| Token prices (USD) | `getTokenPrices(coinTypes)` | `apps/web-v2/lib/portfolio.ts` |
+| Transaction history | `transaction_history` engine tool | `packages/engine/src/tools/history.ts` (was `apps/web/lib/transaction-history.ts` pre-v0.7e Phase 5; moved into the engine in the apps/web archive) |
+| Lending rates (NAVI) | `rates_info` engine tool | `packages/engine/src/tools/rates.ts` (was `apps/web/lib/rates.ts` pre-v0.7e Phase 5; moved into the engine in the apps/web archive) |
 
 ## Forbidden patterns outside canonical files
 
@@ -56,9 +56,8 @@ If you genuinely need to bypass the canonical (e.g. for a write-side balance che
 
 ## How this is enforced
 
-- **ESLint rule** `audric/canonical-portfolio`: scans imports and call expressions, fails CI on forbidden patterns outside canonical files.
-- **Spec consistency runner** (`apps/web/lib/engine/spec-consistency.ts`): runs at server startup in dev (hard fail) and prod (log only); checks that no consumer re-implements canonical behavior.
-- **Contract test** (`apps/web/lib/__tests__/portfolio-contract.test.ts`): asserts identical output across every adapter for a fixed mocked-RPC test address. Any new adapter added to the test must produce the same numbers.
+- **Biome rule** (was ESLint `audric/canonical-portfolio` pre-Biome migration): scans imports and call expressions, fails CI on forbidden patterns outside canonical files. See `audric/apps/web-v2/biome.jsonc`.
+- **[STALE — v0.7e Phase 5 / 2026-05-22]** The runtime spec-consistency runner (`apps/web/lib/engine/spec-consistency.ts`) + contract test (`apps/web/lib/__tests__/portfolio-contract.test.ts`) were archived with apps/web. The engineering principle still applies but the automated enforcement at startup is gone. Re-introduce via Biome custom plugin or a vitest contract test in `apps/web-v2/lib/__tests__/` if drift becomes a problem again.
 
 ## Related rules
 

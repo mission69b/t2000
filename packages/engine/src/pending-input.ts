@@ -54,7 +54,10 @@
 // - SPEC 9 § A.2 (full design rationale)
 // - `add_recipient` tool — the first consumer
 // - `engine.resumeWithInput()` — the resume entry point
-// - `audric/apps/web/app/api/engine/resume-with-input/route.ts` — host endpoint
+// - `audric/apps/web-v2/app/api/chat/route.ts` — host endpoint (post-v0.7e
+//   Phase 5: resume-with-input is inline in the same /api/chat POST that
+//   initiates the turn; the standalone /api/engine/resume-with-input
+//   route was archived with apps/web).
 // ---------------------------------------------------------------------------
 
 /**

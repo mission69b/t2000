@@ -18,7 +18,7 @@
 //     workers don't race the real Anthropic API on shared CI quota.
 //
 // Run locally with:
-//   set -a && source ../../audric/apps/web/.env.local && set +a && \
+//   set -a && source ../../audric/apps/web-v2/.env.local && set +a && \
 //   RUN_REAL_API_TESTS=1 pnpm --filter @t2000/engine vitest run src/v2
 //
 // Day 2-3 will add tests for: tool dispatch, prepareStep guard

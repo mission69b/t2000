@@ -151,7 +151,7 @@ AISDKEngine.submitMessage()
 | `save_contact` | Save a contact name + address for quick sends |
 
 > Note: `record_advice` is an Audric-local tool registered in
-> `audric/apps/web/lib/engine/advice-tool.ts`, not part of the engine package.
+> `audric/apps/web-v2/lib/audric/moat-context.ts` (post-v0.7e Phase 5; previously `audric/apps/web/lib/engine/advice-tool.ts`), not part of the engine package.
 
 > **Simplification Day 7:** Removed 9 tools — `allowance_status`, `toggle_allowance`,
 > `update_daily_limit`, `update_permissions` (allowance contract dormant under zkLogin),
@@ -247,7 +247,7 @@ const engine = new AISDKEngine({
 });
 ```
 
-For single-instance hosts (CLI, dev, tests), the in-memory default is enough (5-min sliding TTL). Multi-instance hosts (audric on Vercel) inject a Redis-backed store — see [`audric/apps/web/lib/engine/upstash-stream-checkpoint-store.ts`](https://github.com/mission69b/audric/blob/main/apps/web/lib/engine/upstash-stream-checkpoint-store.ts) as the reference implementation (Upstash LIST per `streamId`, namespaced by `sessionId`, Error-safe serialization, fire-and-forget append).
+For single-instance hosts (CLI, dev, tests), the in-memory default is enough (5-min sliding TTL). Multi-instance hosts (audric on Vercel) inject a Redis-backed store. **[STALE — v0.7e Phase 5 / 2026-05-22]** The reference Upstash implementation lived at `audric/apps/web/lib/engine/upstash-stream-checkpoint-store.ts`; that path was archived with apps/web. Web-v2 has not yet ported a stream-checkpoint store (LOCK-4 deferred to v0.7f per HANDOFF) — when it lands it will live under `audric/apps/web-v2/lib/audric/`.
 
 **2. Persist the `streamId` from the first event on each fresh stream.**
 

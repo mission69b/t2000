@@ -81,5 +81,5 @@ console.log(`User ${address} sent ${amount} USDC to ${recipient}`);
 
 - Spec 1 telemetry → `agent-harness-spec.mdc` (TurnMetrics + attemptId)
 - Audric-side metrics emission → `audric/.cursor/rules/metrics-and-monitoring.mdc`
-- Cost rates table → `apps/web/lib/engine/cost-rates.ts`
+- Cost rates table → `packages/engine/src/cost.ts` (was `apps/web/lib/engine/cost-rates.ts` pre-v0.7e Phase 5; moved into the engine in the apps/web archive)
 - Scaling decisions → `audric-scaling-spec.md`

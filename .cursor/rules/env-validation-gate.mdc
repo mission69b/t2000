@@ -9,7 +9,7 @@ alwaysApply: true
 
 April 2026, an audric production deploy ran for ~4 days with `BLOCKVISION_API_KEY=""` (empty string in Vercel UI), silently degrading every BlockVision-backed feature. The bug surfaced as "the LLM thinks the user has no DeFi positions" — three layers below the actual misconfig.
 
-The fix is now the cross-app standard. **Every app in this monorepo (apps/web, apps/server, apps/gateway) MUST validate its env contract at boot via a Zod schema and expose values through a typed proxy.**
+The fix is now the cross-app standard. **Every app (audric/apps/web-v2, t2000/apps/server, t2000/apps/gateway) MUST validate its env contract at boot via a Zod schema and expose values through a typed proxy.**
 
 ## The contract
 
@@ -24,7 +24,7 @@ The fix is now the cross-app standard. **Every app in this monorepo (apps/web, a
 
 ## Canonical reference implementation
 
-`audric/apps/web/lib/env.ts` (v0.53.x, ~375 lines, well-commented). Pattern:
+`audric/apps/web-v2/lib/env.ts` (post-v0.7e Phase 5 canonical; apps/web archived 2026-05-22). Pattern:
 
 ```typescript
 import { z } from 'zod';
@@ -102,7 +102,7 @@ const k = env.X ?? 'default';   // explicit optional default
 
 ## Cross-references
 
-- Canonical implementation → `audric/apps/web/lib/env.ts`
-- Boot-time hook → `audric/apps/web/instrumentation.ts`
+- Canonical implementation → `audric/apps/web-v2/lib/env.ts`
+- Boot-time hook → `audric/apps/web-v2/instrumentation.ts`
 - audric-side rule → `audric/.cursor/rules/env-validation-gate.mdc`
-- The incident → S.25 in `audric-build-tracker.md` + `audric/apps/web/RUNBOOK_zklogin_env_parity.md`
+- The incident → S.25 in `audric-build-tracker.md` (RUNBOOK lived under apps/web; archived in v0.7e Phase 5)
