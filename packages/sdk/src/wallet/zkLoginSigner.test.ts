@@ -36,6 +36,13 @@ describe('ZkLoginSigner', () => {
   it('implements TransactionSigner interface', () => {
     expect(typeof signer.getAddress).toBe('function');
     expect(typeof signer.signTransaction).toBe('function');
+    expect(typeof signer.signPersonalMessage).toBe('function');
+  });
+
+  it('signPersonalMessage throws — not yet implemented for zkLogin', async () => {
+    await expect(
+      signer.signPersonalMessage(new TextEncoder().encode('test')),
+    ).rejects.toThrow(/not yet implemented/i);
   });
 
   it('isExpired returns false when currentEpoch < maxEpoch', () => {

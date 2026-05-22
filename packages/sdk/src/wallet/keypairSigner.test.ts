@@ -14,11 +14,20 @@ describe('KeypairSigner', () => {
   it('implements TransactionSigner interface', () => {
     expect(typeof signer.getAddress).toBe('function');
     expect(typeof signer.signTransaction).toBe('function');
+    expect(typeof signer.signPersonalMessage).toBe('function');
   });
 
   it('signTransaction returns a signature string', async () => {
     const txBytes = new Uint8Array(32).fill(1);
     const result = await signer.signTransaction(txBytes);
+    expect(result).toHaveProperty('signature');
+    expect(typeof result.signature).toBe('string');
+    expect(result.signature.length).toBeGreaterThan(0);
+  });
+
+  it('signPersonalMessage returns a signature for arbitrary bytes', async () => {
+    const messageBytes = new TextEncoder().encode('grief-protection-proof-test');
+    const result = await signer.signPersonalMessage(messageBytes);
     expect(result).toHaveProperty('signature');
     expect(typeof result.signature).toBe('string');
     expect(result.signature.length).toBeGreaterThan(0);

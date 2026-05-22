@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Mppx } from 'mppx/client';
-import { sui } from '@suimpp/mpp/client';
+import { sui, USDC } from '@suimpp/mpp/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 
@@ -27,7 +27,7 @@ beforeAll(async () => {
   console.log(`Network:    ${NETWORK}`);
 
   mppxClient = Mppx.create({
-    methods: [sui({ client, signer: keypair })],
+    methods: [sui({ client, signer: keypair, currency: USDC })],
     polyfill: false,
   });
 

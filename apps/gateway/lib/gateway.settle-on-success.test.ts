@@ -52,9 +52,11 @@ vi.mock('mppx/nextjs', () => ({
 
 // Mock @suimpp/mpp/server's `sui` (just used by the `methods:` array in
 // createMppx — never actually invoked in tests since our mocked Mppx
-// doesn't read it).
+// doesn't read it). `USDC` mocked as a stub Currency object since
+// gateway.ts imports it for the `currency:` arg.
 vi.mock('@suimpp/mpp/server', () => ({
   sui: () => ({}),
+  USDC: { type: 'mock-usdc-type', decimals: 6 },
 }));
 
 // Mock the digest store so we don't need Upstash env vars at module load.

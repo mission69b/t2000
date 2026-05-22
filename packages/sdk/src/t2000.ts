@@ -212,7 +212,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.enforcer.check({ operation: 'pay', amount: options.maxPrice ?? 1.0 });
 
     const { Mppx } = await import('mppx/client');
-    const { sui } = await import('@suimpp/mpp/client');
+    const { sui, USDC } = await import('@suimpp/mpp/client');
 
     const client = this.client;
     const signer = this._signer;
@@ -222,10 +222,14 @@ export class T2000 extends EventEmitter<T2000Events> {
       polyfill: false,
       methods: [sui({
         client,
-        signer: { toSuiAddress: () => signerAddress } as Parameters<typeof sui>[0]['signer'],
+        currency: USDC,
+        signer: {
+          toSuiAddress: () => signerAddress,
+          signPersonalMessage: (bytes: Uint8Array) => signer.signPersonalMessage(bytes),
+        } as Parameters<typeof sui>[0]['signer'],
         execute: async (tx) => {
           const result = await executeTx(client, signer, () => tx);
-          return { digest: result.digest, effects: result.effects };
+          return { digest: result.digest };
         },
       })],
     });

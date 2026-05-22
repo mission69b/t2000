@@ -1,7 +1,7 @@
 import { Mppx } from 'mppx/nextjs';
-import { sui } from '@suimpp/mpp/server';
+import { sui, USDC } from '@suimpp/mpp/server';
 import type { PaymentReport } from '@suimpp/mpp/server';
-import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
+import { TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
 import { getDigestStore } from './upstash-digest-store';
@@ -26,7 +26,7 @@ function createMppx() {
   return Mppx.create({
     realm: 'mpp.t2000.ai',
     methods: [sui({
-      currency: SUI_USDC_TYPE,
+      currency: USDC,
       recipient: TREASURY_ADDRESS,
       network: NETWORK,
       store: getDigestStore(),

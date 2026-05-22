@@ -12,6 +12,10 @@ export class KeypairSigner implements TransactionSigner {
     return this.keypair.signTransaction(txBytes);
   }
 
+  async signPersonalMessage(messageBytes: Uint8Array): Promise<{ signature: string; bytes: string }> {
+    return this.keypair.signPersonalMessage(messageBytes);
+  }
+
   /** Access the underlying keypair for APIs that still require it directly. */
   getKeypair(): Ed25519Keypair {
     return this.keypair;
