@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@mysten/sui': ^2.11.0
+  '@mysten/sui': ^2.17.0
   '@mysten/bcs': ^2.0.1
   '@pythnetwork/pyth-sui-js': 2.2.0
 
@@ -19,11 +19,11 @@ importers:
   .:
     devDependencies:
       '@mysten/sui':
-        specifier: ^2.11.0
-        version: 2.11.0(typescript@5.9.3)
+        specifier: ^2.17.0
+        version: 2.17.0(typescript@5.9.3)
       '@mysten/suins':
         specifier: ^1.1.1
-        version: 1.1.1(@mysten/sui@2.11.0(typescript@5.9.3))
+        version: 1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))
       prettier:
         specifier: ^3
         version: 3.8.1
@@ -83,8 +83,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@9.39.4(jiti@2.6.1))
       '@mysten/sui':
-        specifier: ^2.11.0
-        version: 2.11.0(typescript@5.9.3)
+        specifier: ^2.17.0
+        version: 2.17.0(typescript@5.9.3)
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.2.2
@@ -119,8 +119,8 @@ importers:
   apps/web:
     dependencies:
       '@mysten/sui':
-        specifier: ^2.11.0
-        version: 2.11.0(typescript@5.9.3)
+        specifier: ^2.17.0
+        version: 2.17.0(typescript@5.9.3)
       '@vercel/analytics':
         specifier: ^1.6.1
         version: 1.6.1(next@16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -174,8 +174,8 @@ importers:
         specifier: ^7
         version: 7.10.1(@types/node@20.19.37)
       '@mysten/sui':
-        specifier: ^2.11.0
-        version: 2.11.0(typescript@5.9.3)
+        specifier: ^2.17.0
+        version: 2.17.0(typescript@5.9.3)
       '@t2000/mcp':
         specifier: workspace:*
         version: link:../mcp
@@ -239,7 +239,7 @@ importers:
         version: 3.0.10
       '@mysten-incubation/memwal':
         specifier: 0.0.4
-        version: 0.0.4(@mysten/seal@1.1.3(@mysten/sui@2.11.0(typescript@5.9.3)))(@mysten/sui@2.11.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)
+        version: 0.0.4(@mysten/seal@1.1.3(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)
       '@types/node':
         specifier: ^20
         version: 20.19.37
@@ -293,19 +293,19 @@ importers:
         version: 1.4.8(axios@1.15.2)(typescript@5.9.3)
       '@mysten/payment-kit':
         specifier: ^0.1.6
-        version: 0.1.6(@mysten/sui@2.11.0(typescript@5.9.3))
+        version: 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/sui':
-        specifier: ^2.11.0
-        version: 2.11.0(typescript@5.9.3)
+        specifier: ^2.17.0
+        version: 2.17.0(typescript@5.9.3)
       '@mysten/suins':
         specifier: ^1.1.1
-        version: 1.1.1(@mysten/sui@2.11.0(typescript@5.9.3))
+        version: 1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/zklogin':
         specifier: ^0.8.1
         version: 0.8.1(typescript@5.9.3)
       '@naviprotocol/lending':
         specifier: ^1.4.0
-        version: 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.11.0(typescript@5.9.3))(typescript@5.9.3)
+        version: 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.17.0(typescript@5.9.3))(typescript@5.9.3)
       '@pythnetwork/pyth-sui-js':
         specifier: 2.2.0
         version: 2.2.0(typescript@5.9.3)
@@ -1104,7 +1104,7 @@ packages:
     resolution: {integrity: sha512-HBvq2ipq/gJoAWrn7oNHVCaMypTE7/9AtFwk8YSqd9njwpYqssGZ/18B3S8orzZdDsQmRSbgRDcnEZ8xwozaKg==}
     peerDependencies:
       '@mysten/seal': '>=1.1.0'
-      '@mysten/sui': ^2.11.0
+      '@mysten/sui': ^2.17.0
       '@mysten/walrus': '>=1.0.3'
       ai: '>=4.0.0'
       zod: ^3.23.0
@@ -1125,25 +1125,28 @@ packages:
   '@mysten/payment-kit@0.1.6':
     resolution: {integrity: sha512-HZgdeiVL/DhmaRnbG+ta/A1FTxrMLFVc+KEkQAXVzUaTv6gkIXlUMiyWVWWMIeajhtR+oCgq8ARjo6yPs9zLbQ==}
     peerDependencies:
-      '@mysten/sui': ^2.11.0
+      '@mysten/sui': ^2.17.0
 
   '@mysten/seal@1.1.3':
     resolution: {integrity: sha512-HS54mkWEkd6ENl4U94jorwYzahTSSxWiFiDKbYFw+SFEIc4HoqSg2dULKI1WUi6nw8eWYcw/XobeNOlm3Ss5CQ==}
     peerDependencies:
-      '@mysten/sui': ^2.11.0
+      '@mysten/sui': ^2.17.0
 
-  '@mysten/sui@2.11.0':
-    resolution: {integrity: sha512-MuqbFf5buLpHoTujKF8mHnMHRJ+MpiaN0Ruoi+gr3+Gho0h5njMRv0jpso37THAQSc5Cwc8JbT+uY59OXk47Zw==}
+  '@mysten/sui@2.17.0':
+    resolution: {integrity: sha512-TrS1BCPm4V6rC69MBejmcqnKIyJ5t1iksax4XA9jWarZxAAp9LMmdxEBebejyDT/yAJxYIf3fNm5WBkHE2qnIw==}
     engines: {node: '>=22'}
 
   '@mysten/suins@1.1.1':
     resolution: {integrity: sha512-b3sJe/trqxnMpvo/zxHJPokQkc4ujJmDEvKhASngJjMmeRdDe7+Hduo7GzEqM9QhPgVy/p4nl/3zLlCHn0HZOw==}
     engines: {node: '>=16'}
     peerDependencies:
-      '@mysten/sui': ^2.11.0
+      '@mysten/sui': ^2.17.0
 
   '@mysten/utils@0.3.1':
     resolution: {integrity: sha512-36KhxG284uhDdSnlkyNaS6fzKTX9FpP2WQWOwUKIRsqQFFIm2ooCf2TP1IuqrtMpkairwpiWkAS0eg7cpemVzg==}
+
+  '@mysten/utils@0.3.3':
+    resolution: {integrity: sha512-gVHn5toh24eXXLEyBknwwM2F/tbDgqPX0yj77KtHjuoYUallcQ9vSwGfGsAy39IcTB259Yprt/ZOEwdup+zrpA==}
 
   '@mysten/zklogin@0.8.1':
     resolution: {integrity: sha512-df3g8RxU/x6gi+uU371nmv1zcJD7iRaeFRsp3JREafnpl6DarKd1br6eFF8tGrrIhwBEtSmjcENivaw/YDwrLw==}
@@ -1155,7 +1158,7 @@ packages:
   '@naviprotocol/lending@1.4.0':
     resolution: {integrity: sha512-LHM3MRMSIyNr5hIXDszMDUZTqf86pThNoouMCIuZ51Jf1YjEDN4d1kH5Po7LrrowE8LJrSXoddl6Zg8RkjUmWw==}
     peerDependencies:
-      '@mysten/sui': ^2.11.0
+      '@mysten/sui': ^2.17.0
 
   '@next/env@16.2.1':
     resolution: {integrity: sha512-n8P/HCkIWW+gVal2Z8XqXJ6aB3J0tuM29OcHpCsobWlChH/SITBs1DFBk/HajgrwDkqqBXPbuUuzgDvUekREPg==}
@@ -4440,7 +4443,7 @@ snapshots:
 
   '@cetusprotocol/aggregator-sdk@1.4.8(axios@1.15.2)(typescript@5.9.3)':
     dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@pythnetwork/hermes-client': 3.1.0(axios@1.15.2)
       bip39: 3.1.0
       dotenv: 16.6.1
@@ -4950,10 +4953,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mysten-incubation/memwal@0.0.4(@mysten/seal@1.1.3(@mysten/sui@2.11.0(typescript@5.9.3)))(@mysten/sui@2.11.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)':
+  '@mysten-incubation/memwal@0.0.4(@mysten/seal@1.1.3(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@mysten/seal': 1.1.3(@mysten/sui@2.11.0(typescript@5.9.3))
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/seal': 1.1.3(@mysten/sui@2.17.0(typescript@5.9.3))
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@noble/ed25519': 2.3.0
       '@noble/hashes': 2.0.1
     optionalDependencies:
@@ -4970,23 +4973,23 @@ snapshots:
       '@mysten/utils': 0.3.1
       '@scure/base': 2.0.0
 
-  '@mysten/payment-kit@0.1.6(@mysten/sui@2.11.0(typescript@5.9.3))':
+  '@mysten/payment-kit@0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))':
     dependencies:
       '@mysten/bcs': 2.0.3
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
 
-  '@mysten/seal@1.1.3(@mysten/sui@2.11.0(typescript@5.9.3))':
+  '@mysten/seal@1.1.3(@mysten/sui@2.17.0(typescript@5.9.3))':
     dependencies:
       '@mysten/bcs': 2.0.3
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@noble/curves': 2.0.1
       '@noble/hashes': 2.0.1
 
-  '@mysten/sui@2.11.0(typescript@5.9.3)':
+  '@mysten/sui@2.17.0(typescript@5.9.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.13.2)
       '@mysten/bcs': 2.0.3
-      '@mysten/utils': 0.3.1
+      '@mysten/utils': 0.3.3
       '@noble/curves': 2.0.1
       '@noble/hashes': 2.0.1
       '@protobuf-ts/grpcweb-transport': 2.11.1
@@ -5004,9 +5007,9 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@mysten/suins@1.1.1(@mysten/sui@2.11.0(typescript@5.9.3))':
+  '@mysten/suins@1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))':
     dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       axios: 1.15.2
       axios-retry: 4.5.0(axios@1.15.2)
     transitivePeerDependencies:
@@ -5016,9 +5019,13 @@ snapshots:
     dependencies:
       '@scure/base': 2.0.0
 
+  '@mysten/utils@0.3.3':
+    dependencies:
+      '@scure/base': 2.0.0
+
   '@mysten/zklogin@0.8.1(typescript@5.9.3)':
     dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
@@ -5031,10 +5038,10 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
-  '@naviprotocol/lending@1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.11.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@naviprotocol/lending@1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.17.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@mysten/bcs': 2.0.2
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@pythnetwork/pyth-sui-js': 2.2.0(typescript@5.9.3)
       bignumber.js: 9.1.2
       lodash.camelcase: 4.3.0
@@ -5186,7 +5193,7 @@ snapshots:
 
   '@pythnetwork/pyth-sui-js@2.2.0(typescript@5.9.3)':
     dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@pythnetwork/price-service-client': 1.9.0
       buffer: 6.0.3
     transitivePeerDependencies:
@@ -5334,7 +5341,7 @@ snapshots:
 
   '@suimpp/mpp@0.7.0(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))':
     dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
       zod: 4.4.3
     transitivePeerDependencies:
@@ -5352,7 +5359,7 @@ snapshots:
 
   '@suimpp/mpp@0.7.0(@modelcontextprotocol/sdk@1.28.0(zod@4.4.3))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.4.3))':
     dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
       mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@4.4.3))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.4.3))
       zod: 4.4.3
     transitivePeerDependencies:
