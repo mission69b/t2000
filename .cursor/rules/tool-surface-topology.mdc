@@ -1,0 +1,114 @@
+# Tool Surface Topology
+
+Codifies where each user-facing financial operation lives across the 5 surfaces — SDK, CLI, MCP, Skills, Engine — and the load-bearing fact about how `@t2000/mcp` consumes them.
+
+## Why this rule exists
+
+S.256 (2026-05-22) caught an audit-framing bug in S.255 §5: the assumption that S.245's engine-side `pay_api` removal had cascaded to `@t2000/mcp` via auto-flow through `buildMcpTools` / `registerEngineTools`. **No such auto-flow exists.** A junior reader (or future agent) trusting that framing would have shipped a duplicate of the already-existing `t2000_pay` tool. This rule pre-empts that bug class by making the topology explicit.
+
+Re-read before:
+- Adding a new user-facing operation (must land on every appropriate surface)
+- Removing an operation from one surface (verify which other surfaces depend on it)
+- Reasoning about "where does `<operation>` live?" / "what does `@t2000/mcp` consume?"
+
+## The cross-surface map
+
+5 surfaces, 1 source of truth: **`packages/sdk/src/t2000.ts` (the `T2000` class)**. Every other surface wraps it.
+
+| Operation | SDK method | CLI command | MCP tool | Skill | Engine tool (host-injected via `getDefaultTools()`) |
+|---|---|---|---|---|---|
+| Save | `T2000.save()` | `t2000 save` | `t2000_save` | `t2000-skills/skills/t2000-save/SKILL.md` | `save_deposit` (`tools/save.ts`) |
+| Withdraw | `T2000.withdraw()` | `t2000 withdraw` | `t2000_withdraw` | `t2000-skills/skills/t2000-withdraw/SKILL.md` | `withdraw` (`tools/withdraw.ts`) |
+| Borrow | `T2000.borrow()` | `t2000 borrow` | `t2000_borrow` | `t2000-skills/skills/t2000-borrow/SKILL.md` | `borrow` (`tools/borrow.ts`) |
+| Repay | `T2000.repay()` | `t2000 repay` | `t2000_repay` | `t2000-skills/skills/t2000-repay/SKILL.md` | `repay_debt` (`tools/repay.ts`) |
+| Send | `T2000.send()` | `t2000 send` | `t2000_send` | `t2000-skills/skills/t2000-send/SKILL.md` | `send_transfer` (`tools/transfer.ts`) |
+| Swap | `T2000.swap()` | `t2000 swap` | `t2000_swap` | (none — used inside `t2000-rebalance`) | `swap_execute` (`tools/swap.ts`) |
+| Pay (MPP) | `T2000.pay()` | `t2000 pay` | `t2000_pay` | `t2000-skills/skills/t2000-pay/SKILL.md` | ❌ deleted S.245 (revival = V07F Stream A audric-side, NOT engine-side) |
+| Stake (vSUI) | `T2000.stakeVSui()` | `t2000 stake` | `t2000_stake` | (none) | `volo_stake` (`tools/volo-stake.ts`) |
+| Unstake (vSUI) | `T2000.unstakeVSui()` | `t2000 unstake` | `t2000_unstake` | (none) | `volo_unstake` (`tools/volo-unstake.ts`) |
+| Claim rewards | `T2000.claimRewards()` | `t2000 claim` | `t2000_claim_rewards` | (none) | `claim_rewards` (`tools/claim.ts`) |
+| Compound (harvest) | `T2000.compoundRewards()` | (none) | (none) | (none) | `harvest_rewards` (`tools/harvest-rewards.ts`) |
+
+The table is exhaustive for the user-facing **financial** operations as of S.256. Purely-read tools (`balance`, `positions`, `rates`, `health`, etc.) follow the same pattern but aren't tabulated — same `T2000.<method>()` ↔ `t2000_<method>` shape applies.
+
+## The MCP wiring fact (load-bearing)
+
+**`@t2000/mcp` wraps the SDK directly. It does NOT consume from `@t2000/engine`'s tool registry.**
+
+`packages/mcp/src/index.ts` startup:
+
+```typescript
+const agent = await createAgent(opts?.keyPath);     // T2000 instance from @t2000/sdk
+const server = new McpServer({ name: 't2000', ... });
+registerReadTools(server, agent);                   // ./tools/read.ts
+registerWriteTools(server, agent);                  // ./tools/write.ts
+registerSafetyTools(server, agent);                 // ./tools/safety.ts
+registerPrompts(server);                            // ./prompts.ts (workflow prompts)
+registerSkillPrompts(server);                       // ./skills-prompts.ts (Skills as MCP prompts)
+```
+
+Inside each registration function, every tool is a thin wrapper: `agent.<sdkMethod>(...)`. There is no engine import path. `buildMcpTools` / `registerEngineTools` exports from `@t2000/engine` exist for OTHER consumers (audric/web pre-S.253 used them; deleted with the apps/web archive). They are NOT used by `@t2000/mcp`.
+
+Implication: an operation can vanish from the engine (S.245 deleted `pay_api` + `mpp_services`) without affecting `@t2000/mcp`. Conversely, adding an engine tool does NOT auto-expose it via MCP — you must add it to `packages/mcp/src/tools/{read,write}.ts` separately.
+
+## The Skills wiring fact
+
+**Skills are MCP prompts, not a separate runtime.**
+
+Per SPEC v0.7a 6C: `t2000-skills/skills/<name>/SKILL.md` files are baked into `@t2000/mcp` at build time via `tsup`'s `define: { __BAKED_SKILLS__: ... }` and exposed via `registerSkillPrompts(server)` as MCP prompts named `skill-<short-name>`. The engine no longer ships a YAML recipe runtime (deleted v0.7a Phase 6, May 2026). Skills guide the LLM; the engine just runs whichever tools the LLM picks.
+
+Implication: adding a new skill = drop a `SKILL.md` + bump `@t2000/mcp` (the build re-bakes the manifest). No engine change needed. No MCP tool registration needed. The skill auto-becomes a prompt named `skill-<your-name>`.
+
+## Adding a new operation — the surface-by-surface checklist
+
+When a new user-facing op lands (rare — maybe once a quarter):
+
+1. **SDK** — add `T2000.<op>()` to `packages/sdk/src/t2000.ts`. This is the source of truth. Every other surface wraps this.
+2. **CLI** — add `packages/cli/src/commands/<op>.ts` calling `agent.<op>()`. Match the style of existing commands in that folder.
+3. **MCP** — add a `server.tool('t2000_<op>', ...)` block in `packages/mcp/src/tools/{read|write}.ts` calling `agent.<op>()`. Wrap writes in `mutex.run(...)`. Add tests next to it (`<file>.test.ts`).
+4. **Skill** (optional) — add `t2000-skills/skills/t2000-<op>/SKILL.md` if the op benefits from LLM guidance. Pure CRUD writes often don't need a skill; multi-step flows (`t2000-rebalance`, `t2000-account-report`) do.
+5. **Engine** (optional) — add a tool in `packages/engine/src/tools/<op>.ts` if Audric chat needs to invoke it. Engine tools are independent of MCP tools — see the load-bearing fact above. Engine tool name (`<verb>_<noun>` snake_case) does NOT have to match the MCP tool name (`t2000_<verb>` prefix).
+6. **Release** — `gh workflow run release.yml --field bump=minor` (new operation = minor bump). Bumps SDK + CLI + MCP + Engine together. Skills change requires `@t2000/mcp` rebuild only.
+
+## What's banned
+
+```typescript
+// ❌ Importing engine into the MCP package — it doesn't, never has, and shouldn't.
+// packages/mcp/src/tools/write.ts
+import { findTool } from '@t2000/engine';
+const handler = findTool('save_deposit'); // wrong layer
+
+// ✅ Wrap the SDK directly.
+import type { T2000 } from '@t2000/sdk';
+async ({ amount, asset }) => agent.save({ amount, asset });
+```
+
+```typescript
+// ❌ Trying to "expose engine tools" via MCP using buildMcpTools.
+// @t2000/mcp does not do this. If you find yourself reaching for these
+// exports inside packages/mcp/, you are in the wrong file.
+import { buildMcpTools, registerEngineTools } from '@t2000/engine';
+```
+
+```typescript
+// ❌ Assuming engine deletion cascades to MCP (S.255 §5 made this assumption).
+// Engine and MCP have independent tool registries. They both wrap the same SDK.
+// Deleting from one does NOT delete from the other.
+```
+
+```typescript
+// ❌ Writing skills as standalone runtimes.
+// They are MCP prompts. The engine has no recipe runtime since v0.7a Phase 6
+// (May 2026). Add SKILL.md, rebuild @t2000/mcp, done.
+```
+
+## Cross-references
+
+- MCP package entry → `packages/mcp/src/index.ts`
+- MCP read tools → `packages/mcp/src/tools/read.ts`
+- MCP write tools → `packages/mcp/src/tools/write.ts`
+- Skills baking → `packages/mcp/src/skills-prompts.ts` + `tsup.config.ts` `define`
+- SDK source of truth → `packages/sdk/src/t2000.ts`
+- Engine tool registry → `packages/engine/src/tools/index.ts` + `getDefaultTools()`
+- The S.256 audit that motivated this rule → `audric-build-tracker.md` S.256
+- Engine import contract → `CLAUDE.md` "Engine (`@t2000/engine`)" section
