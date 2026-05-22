@@ -637,6 +637,7 @@ export const WRITE_APPENDER_REGISTRY: {
       providers,
       inputCoin: ctx.chainedCoin,
       precomputedRoute: input.precomputedRoute,
+      sponsoredContext: ctx.sponsoredContext,
     });
     if (!ctx.isOutputConsumed) {
       tx.transferObjects([result.coin], ctx.sender);

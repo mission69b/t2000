@@ -674,6 +674,144 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
     expect(findRoutersSpy).not.toHaveBeenCalled();
     expect(result.usedPrecomputedRoute).toBe(true);
   });
+
+  // [S.260 regression / 2026-05-23]
+  // Asserts: SUI-source wallet-mode swap under `sponsoredContext: true`
+  // routes through `selectSuiCoin` with `useGasCoin: false`. Without this,
+  // `coinWithBalance({ type: SUI })` defaults to `useGasCoin: true` which
+  // emits a `GasCoin` reference inside the PTB body — Enoki rejects with
+  // HTTP 400 "Cannot use GasCoin as a transaction argument". 2.14.0 shipped
+  // this regression and broke audric/web-v2 SUI→USDC swaps + swap+save
+  // bundles. The check below inspects the resulting PTB's CoinWithBalance
+  // intent: `data.type === SUI_TYPE_NORMALIZED` means `useGasCoin: false`
+  // was passed (resolver sources from coin objects + AB); `data.type ===
+  // 'gas'` would mean the bug.
+  const SUI_TYPE = '0x2::sui::SUI';
+  // `coinWithBalance` calls `normalizeStructTag` so the intent stores the
+  // full 64-char form: `0x000...002::sui::SUI`. Compare against that.
+  const SUI_TYPE_NORMALIZED =
+    '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+
+  it('SUI source under sponsoredContext: true emits CoinWithBalance with useGasCoin=false (no GasCoin reference)', async () => {
+    mockCetus({
+      findRouters: async () => ({
+        amountIn: '1000000000', // 1 SUI in MIST
+        amountOut: '1060000', // ~1.06 USDC at 6 decimals
+        insufficientLiquidity: false,
+        deviationRatio: 0.001,
+        paths: [{ provider: 'CETUS' }],
+      }),
+    });
+    const { addSwapToTx } = await import('./cetus-swap.js');
+    const { Transaction } = await import('@mysten/sui/transactions');
+
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    // Wallet has 5 SUI total — well above the 1 SUI swap input.
+    const client = mockClient([
+      { coinObjectId: '0x' + '1'.repeat(64), balance: '5000000000' },
+    ]);
+
+    await addSwapToTx(tx, client, VALID_ADDRESS, {
+      from: SUI_TYPE,
+      to: USDC_TYPE,
+      amount: 1,
+      sponsoredContext: true,
+    });
+
+    type IntentCommand = {
+      $kind: '$Intent';
+      $Intent: { name: string; data: { type: string; balance: bigint } };
+    };
+    const data = tx.getData();
+    const cwbIntent = data.commands.find(
+      (c): c is IntentCommand =>
+        (c as { $kind?: string }).$kind === '$Intent' &&
+        (c as IntentCommand).$Intent?.name === 'CoinWithBalance',
+    );
+    expect(cwbIntent).toBeDefined();
+    // Asserts useGasCoin: false — the normalized SUI type (NOT 'gas') is
+    // stored. See @mysten/sui/transactions/intents/CoinWithBalance.ts L44:
+    //   `type: coinType === SUI_TYPE && useGasCoin ? 'gas' : coinType`
+    expect(cwbIntent?.$Intent.data.type).toBe(SUI_TYPE_NORMALIZED);
+    expect(cwbIntent?.$Intent.data.type).not.toBe('gas');
+  });
+
+  it('SUI source under sponsoredContext: false (default) splits from tx.gas (self-funded path)', async () => {
+    mockCetus({
+      findRouters: async () => ({
+        amountIn: '1000000000',
+        amountOut: '1060000',
+        insufficientLiquidity: false,
+        deviationRatio: 0.001,
+        paths: [{ provider: 'CETUS' }],
+      }),
+    });
+    const { addSwapToTx } = await import('./cetus-swap.js');
+    const { Transaction } = await import('@mysten/sui/transactions');
+
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const client = mockClient([
+      { coinObjectId: '0x' + '1'.repeat(64), balance: '5000000000' },
+    ]);
+
+    await addSwapToTx(tx, client, VALID_ADDRESS, {
+      from: SUI_TYPE,
+      to: USDC_TYPE,
+      amount: 1,
+      // sponsoredContext omitted (defaults to false — CLI / direct sign path)
+    });
+
+    // Self-funded path: selectSuiCoin uses `tx.splitCoins(tx.gas, [amount])`
+    // — no CoinWithBalance intent should be present for SUI.
+    type IntentCommand = {
+      $kind: '$Intent';
+      $Intent: { name: string; data: { type: string } };
+    };
+    const data = tx.getData();
+    const suiCwbIntent = data.commands.find(
+      (c): c is IntentCommand =>
+        (c as { $kind?: string }).$kind === '$Intent' &&
+        (c as IntentCommand).$Intent?.name === 'CoinWithBalance' &&
+        (c as IntentCommand).$Intent?.data?.type === SUI_TYPE_NORMALIZED,
+    );
+    expect(suiCwbIntent).toBeUndefined();
+  });
+
+  it('non-SUI source under sponsoredContext: true uses generic selectAndSplitCoin (unchanged behavior)', async () => {
+    mockCetus();
+    const { addSwapToTx } = await import('./cetus-swap.js');
+    const { Transaction } = await import('@mysten/sui/transactions');
+
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const client = mockClient([
+      { coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' },
+    ]);
+
+    await addSwapToTx(tx, client, VALID_ADDRESS, {
+      from: USDC_TYPE,
+      to: USDT_TYPE,
+      amount: 5,
+      sponsoredContext: true,
+    });
+
+    // USDC source: CoinWithBalance intent uses USDC type (no gas-coin
+    // path possible since coin type isn't SUI). sponsoredContext is a
+    // no-op for non-SUI assets — verifies the SUI branch is bounded.
+    type IntentCommand = {
+      $kind: '$Intent';
+      $Intent: { name: string; data: { type: string } };
+    };
+    const data = tx.getData();
+    const cwbIntent = data.commands.find(
+      (c): c is IntentCommand =>
+        (c as { $kind?: string }).$kind === '$Intent' &&
+        (c as IntentCommand).$Intent?.name === 'CoinWithBalance',
+    );
+    expect(cwbIntent?.$Intent.data.type).toBe(USDC_TYPE);
+  });
 });
 
 describe('isPrecomputedRouteCompatibleWithProviders (Bug A helper)', () => {

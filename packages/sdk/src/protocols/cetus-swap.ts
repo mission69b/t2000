@@ -413,14 +413,18 @@ export async function buildSwapTx(params: {
  *   split. This is the SPEC 7 multi-write enabler ("withdraw → swap →
  *   save" without intermediate wallet materialization).
  *
- * **SUI in wallet mode:** routes through `selectAndSplitCoin` like every
- * other token, which uses `coinWithBalance` to pull from the user's SUI
- * (coin objects + address balance) — NOT from `tx.gas`. This is correct
- * for sponsored flows (Enoki owns `tx.gas`). For non-sponsored flows
- * where `tx.gas` IS the user's SUI, the caller should pre-build the
- * inputCoin via `tx.splitCoins(tx.gas, [rawAmount])[0]` and pass it via
- * chain mode instead. (`T2000.swap()` already handles this internally —
- * direct SDK users go through the high-level class, not this appender.)
+ * **SUI in wallet mode:** ALWAYS sources through `selectSuiCoin` (which
+ * routes via `coinWithBalance({ type: SUI, useGasCoin: false })` under
+ * sponsored flows, OR `tx.splitCoins(tx.gas, ...)` under self-funded
+ * flows). The caller MUST set `sponsoredContext` correctly — otherwise
+ * sponsored swaps with SUI source fail with `Cannot use GasCoin as a
+ * transaction argument` (Enoki owns `tx.gas`, the PTB body referencing
+ * it as an argument is invalid for sponsorship). 2.14.0 shipped without
+ * this branch and broke audric/web-v2 SUI→USDC swaps; restored in 2.14.1
+ * (S.260). For non-sponsored flows (CLI), `T2000.swap()` pre-builds the
+ * inputCoin via `tx.splitCoins(tx.gas, [rawAmount])[0]` and uses chain
+ * mode, sidestepping wallet-mode entirely — this branch is a defensive
+ * safety net for future direct SDK users who pass SUI in wallet mode.
  *
  * **`swapAll` semantics (wallet mode):** if the requested raw amount
  * is >= the wallet's total `from` balance, the appender consumes the
@@ -473,6 +477,19 @@ export async function addSwapToTx(
      * config (the route data already encodes the chosen DEX path).
      */
     precomputedRoute?: SwapRouteResult;
+    /**
+     * Whether this swap is being built inside a sponsored-tx flow (Enoki)
+     * vs self-funded (CLI / direct sign). Load-bearing for SUI-source
+     * swaps in wallet mode: under sponsored flows, `tx.gas` belongs to
+     * the sponsor and CANNOT be referenced as a transaction argument
+     * (Sui protocol rejects with `Cannot use GasCoin as a transaction
+     * argument`). When `true`, SUI source routes through `selectSuiCoin`
+     * with `useGasCoin: false` so the resolver sources from the user's
+     * SUI coin objects + address balance instead. Defaults to `false`
+     * (back-compat — pre-2.14.1 behavior). Audric/web-v2's compose path
+     * threads this through via `composeTx({ sponsoredContext: true })`.
+     */
+    sponsoredContext?: boolean;
   },
 ): Promise<{
   coin: TransactionObjectArgument;
@@ -506,16 +523,36 @@ export async function addSwapToTx(
   if (input.inputCoin) {
     inputCoin = input.inputCoin;
     effectiveRaw = requestedRaw;
+  } else if (fromType === '0x2::sui::SUI') {
+    // SUI source needs special handling: under sponsored flows (Enoki),
+    // referencing `tx.gas` as a transaction argument is forbidden (sponsor
+    // owns the gas coin). `selectSuiCoin` does the right thing for both
+    // sponsored (uses `coinWithBalance({ useGasCoin: false })`) and
+    // self-funded (splits from `tx.gas` directly). The 2.14.0 release
+    // shipped without this branch and broke audric/web-v2 SUI→USDC swaps
+    // ("Cannot use GasCoin as a transaction argument" from Enoki); fixed
+    // in 2.14.1 (S.260).
+    const { selectSuiCoin } = await import('../wallet/coinSelection.js');
+    const result = await selectSuiCoin(
+      tx,
+      client,
+      address,
+      requestedRaw,
+      input.sponsoredContext ?? false,
+    );
+    inputCoin = result.coin;
+    effectiveRaw = result.effectiveAmount;
   } else {
-    // Delegate to the canonical wallet-mode prelude. Pre-flights against
-    // `getBalance().totalBalance` (sums coins + address balance) and
-    // returns a `coinWithBalance({ type, balance })` argument. Multi-write
-    // bundles that consume the same input asset across legs (swap+save,
-    // swap+send) get correct merge/split dedup automatically because the
-    // `@mysten/sui` resolver batches all `coinWithBalance` intents for a
-    // given coin type into a single merge at `tx.build()` time. Replaces
-    // the per-PTB merge cache that was load-bearing pre-2026-05-22 (when
-    // `selectAndSplitCoin` emitted explicit `mergeCoins` itself).
+    // Non-SUI wallet-mode source — delegate to the canonical prelude.
+    // Pre-flights against `getBalance().totalBalance` (coins + address
+    // balance) and returns a `coinWithBalance({ type, balance })` arg.
+    // Multi-write bundles that consume the same input asset across legs
+    // (swap+save, swap+send) get correct merge/split dedup automatically
+    // because the `@mysten/sui` resolver batches all `coinWithBalance`
+    // intents for a given coin type into a single merge at `tx.build()`
+    // time. Replaces the per-PTB merge cache that was load-bearing
+    // pre-2026-05-22 (when `selectAndSplitCoin` emitted explicit
+    // `mergeCoins` itself).
     const { selectAndSplitCoin } = await import('../wallet/coinSelection.js');
     const result = await selectAndSplitCoin(tx, client, address, fromType, requestedRaw);
     inputCoin = result.coin;
