@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`spec/reference/CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-05-22 (post-S.245 — `pay_api` + `mpp_services` deleted; engine 2.12.0, all 4 packages aligned, 35 tools / 14 MCP prompts, stream checkpoint store landed)
+> Last verified: 2026-05-23 (post-S.258 — t2000@2.14.0 ships SPEC 26 revert in gateway + address-balance migration via `coinWithBalance` across SDK + true gasless MPP via `SuiGrpcClient` build path; first ever truly-gasless mainnet MPP CLI smokes ✅)
 
 ---
 
@@ -51,11 +51,11 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `1.22.1` |
-| `@t2000/engine` | `1.22.1` |
-| `@t2000/cli` | `1.22.1` |
-| `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `1.22.1` |
+| `@t2000/sdk` | `2.14.0` |
+| `@t2000/engine` | `2.14.0` |
+| `@t2000/cli` | `2.14.0` |
+| `@suimpp/mpp` | `0.7.0` |
+| `@t2000/mcp` | `2.14.0` |
 | Agent Skills | `3.0` |
 
 ---
@@ -655,7 +655,7 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `1.22.1` |
+| Version | `2.14.0` |
 | Description | Agent engine for conversational finance — implements Audric Intelligence (the moat) |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
