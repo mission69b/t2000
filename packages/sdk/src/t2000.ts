@@ -218,6 +218,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     const signer = this._signer;
     const signerAddress = signer.getAddress();
 
+    let paymentDigest: string | undefined;
+
     const mppx = Mppx.create({
       polyfill: false,
       methods: [sui({
@@ -229,6 +231,7 @@ export class T2000 extends EventEmitter<T2000Events> {
         } as Parameters<typeof sui>[0]['signer'],
         execute: async (tx) => {
           const result = await executeTx(client, signer, () => tx);
+          paymentDigest = result.digest;
           return { digest: result.digest };
         },
       })],
@@ -253,8 +256,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       body = null;
     }
 
-    const receiptHeader = response.headers.get('x-payment-receipt');
-    const paid = !!receiptHeader;
+    const paid = !!paymentDigest;
 
     if (paid) {
       this.enforcer.recordUsage(options.maxPrice ?? 1.0);
@@ -265,8 +267,8 @@ export class T2000 extends EventEmitter<T2000Events> {
       body,
       paid,
       cost: paid ? (options.maxPrice ?? undefined) : undefined,
-      receipt: receiptHeader
-        ? { reference: receiptHeader, timestamp: new Date().toISOString() }
+      receipt: paymentDigest
+        ? { reference: paymentDigest, timestamp: new Date().toISOString() }
         : undefined,
     };
   }
