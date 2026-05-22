@@ -1,7 +1,7 @@
 import { chargeCustom } from '@/lib/gateway';
 import { env } from '@/lib/env';
 
-export const POST = chargeCustom('0.005', async (bodyText) => {
+export const POST = chargeCustom('0.01', async (bodyText) => {
   const { url } = JSON.parse(bodyText);
   if (!url) {
     return Response.json({ error: 'Missing required field: url' }, { status: 400 });

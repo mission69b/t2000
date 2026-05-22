@@ -17,7 +17,7 @@ function fromBase64(str: string | null | undefined): string {
   try { return Buffer.from(str, 'base64').toString('utf-8'); } catch { return str; }
 }
 
-export const POST = chargeCustom('0.005', async (bodyText) => {
+export const POST = chargeCustom('0.01', async (bodyText) => {
   const body = JSON.parse(bodyText) as Record<string, unknown>;
 
   const encoded = {

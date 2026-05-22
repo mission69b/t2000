@@ -2,7 +2,7 @@ import { chargeProxy } from '@/lib/gateway';
 import { env } from '@/lib/env';
 
 export const POST = chargeProxy(
-  '0.005',
+  '0.01',
   `https://api.openweathermap.org/data/2.5/forecast?appid=${env.OPENWEATHER_API_KEY}&units=metric`,
   {},
   {

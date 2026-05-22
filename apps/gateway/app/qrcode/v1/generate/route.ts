@@ -1,6 +1,6 @@
 import { chargeCustom } from '@/lib/gateway';
 
-export const POST = chargeCustom('0.005', async (bodyText) => {
+export const POST = chargeCustom('0.01', async (bodyText) => {
   const { data, size = '300x300', format = 'png' } = JSON.parse(bodyText);
   if (!data) {
     return Response.json({ error: 'Missing required field: data' }, { status: 400 });
