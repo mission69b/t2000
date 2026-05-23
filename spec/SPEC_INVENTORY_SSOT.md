@@ -1,6 +1,6 @@
 # SPEC Inventory — Single Source of Truth
 
-> **Last refreshed:** 2026-05-23 ~20:35 AEST after S.280 (PIPELINE-AUDIT-PHASE-2 S1 — blockvision-prices.ts split). `spec/active/AUDIT_ON_CHAIN_PIPELINE_2026-05-23.md` mutated in place with a ship-log appendix marking S1 ✅ shipped (S2/S3/S5 still pending). The audit doc is gitignored (founder-local), so file counts unchanged. Patch release v2.19.2. Last `spec/` tracked-file mutation was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
+> **Last refreshed:** 2026-05-23 ~21:05 AEST after S.281 (PIPELINE-AUDIT-PHASE-2 S2 — `lib/portfolio-data.ts` renamed to `lib/navi-positions.ts` in audric web-v2; `portfolio.ts` + `profile-portfolio.ts` kept). `spec/active/AUDIT_ON_CHAIN_PIPELINE_2026-05-23.md` mutated in place again — ship log now marks S1 + S2 ✅ shipped (S3/S5 still pending). Audric-only commit; no engine bump. The audit doc is gitignored (founder-local), so tracked file counts unchanged. Earlier today: S.280 (PIPELINE-AUDIT-PHASE-2 S1, patch v2.19.2). Last `spec/` tracked-file mutation was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
 > **Purpose:** answer "what's actually in `spec/` right now, what's drifted, what's archive-ready" in one read. Run a fresh sweep against this table at the start of any session that touches `spec/`.
 > **Companion:** `spec/README.md` (the layout + promotion rules contract).
 
