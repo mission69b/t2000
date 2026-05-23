@@ -78,7 +78,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
     template: z.enum(CANVAS_TEMPLATES).describe('Which canvas template to render'),
     params: z
       .object({
-        period: z.enum(['1m', '3m', '6m', '1y']).optional().describe('Time period for time-based templates'),
+        period: z.enum(['1m', '3m', '6m', '1y']).nullable().describe('Time period for time-based templates. Pass null for templates that do not use a time window.'),
         address: z
           .string()
           .optional()
@@ -86,7 +86,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
             'Sui address for the six address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio). Defaults to the signed-in user; pass an explicit address to inspect a contact, watched wallet, or any other public address.',
           ),
       })
-      .optional(),
+      .nullable(),
   }),
   isReadOnly: true,
 

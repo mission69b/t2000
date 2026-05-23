@@ -99,15 +99,15 @@ export const addRecipientTool = defineTool({
     name: z
       .string()
       .min(1)
-      .optional()
-      .describe('Optional nickname for the contact ("Mom"). Omit to let the user fill the form.'),
+      .nullable()
+      .describe('Optional nickname for the contact ("Mom"). Pass null to let the user fill the form.'),
     identifier: z
       .string()
       .min(1)
-      .optional()
+      .nullable()
       .describe(
         'Optional polymorphic identifier (Audric handle, SuiNS name, or 0x address). ' +
-          'Omit to let the user fill the form.',
+          'Pass null to let the user fill the form.',
       ),
   }),
   // Permission: read-only from the engine's perspective. The HOST writes

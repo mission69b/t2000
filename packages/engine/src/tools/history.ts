@@ -268,13 +268,13 @@ export const transactionHistoryTool = defineTool({
       .describe('Sui address (0x…) or SuiNS name (e.g. "alex.sui") to query history FOR. When omitted, defaults to the signed-in user\'s wallet. Pass this when the user asks about a contact\'s, watched address\'s, or any other public wallet\'s history.'),
     counterparty: z
       .string()
-      .optional()
-      .describe('Sui address (0x…) or SuiNS name (e.g. "alex.sui") to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries. Compares against `tx.recipient` (case-insensitive).'),
-    date: z.string().optional().describe('Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.'),
-    action: z.enum(HISTORY_ACTIONS).optional().describe('Filter by action: send, lending, swap, or transaction.'),
-    minUsd: z.number().min(0).optional().describe('Minimum transaction amount in USD. Use this for "transactions over $X" — the amount is converted to USD using the asset price snapshot.'),
-    assetSymbol: z.string().optional().describe('Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI", "LOFI"). Matches `tx.asset` exactly.'),
-    direction: z.enum(['in', 'out']).optional().describe('Filter by user-side balance flow: "in" = received, "out" = spent.'),
+      .nullable()
+      .describe('Sui address (0x…) or SuiNS name (e.g. "alex.sui") to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries. Pass null when no counterparty filter is needed.'),
+    date: z.string().nullable().describe('Specific date to search for transactions (YYYY-MM-DD format). Pass null when no date filter is needed.'),
+    action: z.enum(HISTORY_ACTIONS).nullable().describe('Filter by action: send, lending, swap, or transaction. Pass null when no action filter is needed.'),
+    minUsd: z.number().min(0).nullable().describe('Minimum transaction amount in USD. Use this for "transactions over $X". Pass null when no minimum filter is needed.'),
+    assetSymbol: z.string().nullable().describe('Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI", "LOFI"). Pass null when no asset filter is needed.'),
+    direction: z.enum(['in', 'out']).nullable().describe('Filter by user-side balance flow: "in" = received, "out" = spent. Pass null when no direction filter is needed.'),
   }),
   isReadOnly: true,
   maxResultSizeChars: 8_000,
@@ -329,9 +329,9 @@ export const transactionHistoryTool = defineTool({
     context,
   ): Promise<{ data: Record<string, unknown>; displayText: string }> {
     const limit = input.limit ?? 10;
-    const action = input.action as HistoryAction | undefined;
+    const action = (input.action ?? undefined) as HistoryAction | undefined;
     const assetSymbol = input.assetSymbol?.toLowerCase();
-    const direction = input.direction;
+    const direction = input.direction ?? undefined;
     const minUsd = input.minUsd;
 
     /**

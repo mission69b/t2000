@@ -29,7 +29,15 @@ describe('create_payment_link tool — contract', () => {
   });
 
   it('accepts valid input with amount', () => {
-    const result = createPaymentLinkTool.inputSchema.safeParse({ amount: 25.50 });
+    // [P2.1 — 2026-05-24] label/memo/expiresInHours converted from
+    // `.optional()` to `.nullable()` for OpenAI strict-mode / Qwen-with-
+    // constrained-decoding compatibility. They're now required-but-nullable.
+    const result = createPaymentLinkTool.inputSchema.safeParse({
+      amount: 25.50,
+      label: null,
+      memo: null,
+      expiresInHours: null,
+    });
     expect(result.success).toBe(true);
   });
 

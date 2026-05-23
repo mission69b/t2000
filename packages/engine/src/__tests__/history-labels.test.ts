@@ -19,6 +19,20 @@ const baseCtx = {
   suiRpcUrl: 'https://stub',
 } as Parameters<typeof transactionHistoryTool.call>[1];
 
+// [P2.1 / S.288 — 2026-05-24] `.optional()` → `.nullable()` conversion
+// made these filter fields required-but-nullable. Spread `EMPTY_FILTERS`
+// into every test call to satisfy the new schema without per-test
+// boilerplate. Semantically equivalent to "no filters" (each field is
+// null = LLM has no preference).
+const EMPTY_FILTERS = {
+  counterparty: null,
+  date: null,
+  action: null,
+  minUsd: null,
+  assetSymbol: null,
+  direction: null,
+} as const;
+
 interface MoveCmd {
   package: string;
   module: string;
@@ -82,7 +96,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '-10000000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions[0].action).toBe('lending');
     expect(data.transactions[0].label).toBe('deposit');
@@ -96,7 +110,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '10000000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { label?: string }[] };
     expect(data.transactions[0].label).toBe('withdraw');
   });
@@ -114,7 +128,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '-5000000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { digest: string; label?: string }[] };
     const byDigest = Object.fromEntries(data.transactions.map((t) => [t.digest, t.label]));
     expect(byDigest['0xb']).toBe('borrow');
@@ -129,7 +143,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '-1000000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { label?: string }[] };
     expect(data.transactions[0].label).toBe('payment_link');
   });
@@ -152,7 +166,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '25000000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { digest: string; label?: string }[] };
     const byDigest = Object.fromEntries(data.transactions.map((t) => [t.digest, t.label]));
     expect(byDigest['0xgen-out']).toBe('deposit');
@@ -170,7 +184,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         ],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions[0].action).toBe('send');
     expect(data.transactions[0].label).toBe('send');
@@ -184,7 +198,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions[0].action).toBe('transaction');
     expect(data.transactions[0].label).toBe('spam_token');
@@ -203,7 +217,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '-10000000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10, action: 'lending' }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS, action: 'lending' }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions.length).toBe(1);
     expect(data.transactions[0].action).toBe('lending');
@@ -227,7 +241,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         cmdField: 'transactions',
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions[0].action).toBe('lending');
     expect(data.transactions[0].label).toBe('deposit');
@@ -258,7 +272,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         ],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions[0].action).toBe('swap');
     expect(data.transactions[0].label).toBe('swap');
@@ -283,7 +297,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         ],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as {
       transactions: { amount?: number; asset?: string; direction?: string; label?: string }[];
     };
@@ -302,7 +316,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '5000000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as {
       transactions: { amount?: number; asset?: string; direction?: string; label?: string }[];
     };
@@ -323,7 +337,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         ],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as {
       transactions: { amount?: number; asset?: string; direction?: string; recipient?: string }[];
     };
@@ -346,7 +360,7 @@ describe('[v1.5.3] transaction_history label classifier', () => {
         balanceChanges: [{ owner: ADDR, coinType: SUI, amount: '-5000' }],
       }),
     ]);
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions[0].action).toBe('lending');
     // No deposit/withdraw classification — tiebreaker skipped.

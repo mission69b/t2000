@@ -113,8 +113,8 @@ export const ratesInfoTool = defineTool({
   inputSchema: z.object({
     assets: z
       .array(z.string())
-      .optional()
-      .describe('Filter to specific asset symbols (e.g. ["USDC"], ["USDC","USDT","USDSUI"]). Case-insensitive.'),
+      .nullable()
+      .describe('Filter to specific asset symbols (e.g. ["USDC"], ["USDC","USDT","USDSUI"]). Case-insensitive. Pass null to return rates for all NAVI markets.'),
     stableOnly: z
       .boolean()
       .optional()
@@ -131,7 +131,7 @@ export const ratesInfoTool = defineTool({
 
   async call(input, context) {
     const opts = {
-      assets: input.assets,
+      assets: input.assets ?? undefined,
       stableOnly: input.stableOnly,
       topN: input.topN ?? 8,
     };

@@ -528,7 +528,7 @@ describe('health_check', () => {
 
 describe('rates_info', () => {
   it('uses MCP when NAVI connection is available', async () => {
-    const result = await ratesInfoTool.call({}, mcpContext());
+    const result = await ratesInfoTool.call({ assets: null }, mcpContext());
     const data = result.data as Record<string, { saveApy: number; borrowApy: number }>;
 
     expect(data.SUI).toBeDefined();
@@ -540,7 +540,7 @@ describe('rates_info', () => {
   });
 
   it('falls back to SDK when no MCP connection', async () => {
-    const result = await ratesInfoTool.call({}, sdkContext());
+    const result = await ratesInfoTool.call({ assets: null }, sdkContext());
     const data = result.data as Record<string, { saveApy: number; borrowApy: number }>;
 
     expect(data.SUI.saveApy).toBe(0.0325);
@@ -551,7 +551,7 @@ describe('rates_info', () => {
 
   it('rates_info does not require walletAddress for MCP path', async () => {
     const ctxNoAddr: ToolContext = { mcpManager: manager, walletAddress: '0xany' };
-    const result = await ratesInfoTool.call({}, ctxNoAddr);
+    const result = await ratesInfoTool.call({ assets: null }, ctxNoAddr);
     const data = result.data as Record<string, { saveApy: number }>;
     expect(data.SUI.saveApy).toBeCloseTo(0.0325);
   });

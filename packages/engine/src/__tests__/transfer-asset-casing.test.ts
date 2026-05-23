@@ -123,7 +123,7 @@ describe('[F10] send_transfer accepts mixed-case asset symbols', () => {
     it('routes "USDsui" through to agent.send with asset="USDsui" (preserves mixed case)', async () => {
       const spy = makeSendSpy();
       await sendTransferTool.call(
-        { to: VALID_RECIPIENT, amount: 1, asset: 'USDsui' },
+        { to: VALID_RECIPIENT, amount: 1, asset: 'USDsui', memo: null },
         makeCtx(spy),
       );
       expect(spy.capturedAsset).toBe('USDsui');
@@ -132,7 +132,7 @@ describe('[F10] send_transfer accepts mixed-case asset symbols', () => {
     it('routes "usdsui" → "USDsui" (canonical resolution)', async () => {
       const spy = makeSendSpy();
       await sendTransferTool.call(
-        { to: VALID_RECIPIENT, amount: 1, asset: 'usdsui' },
+        { to: VALID_RECIPIENT, amount: 1, asset: 'usdsui', memo: null },
         makeCtx(spy),
       );
       expect(spy.capturedAsset).toBe('USDsui');
@@ -141,7 +141,7 @@ describe('[F10] send_transfer accepts mixed-case asset symbols', () => {
     it('routes "USDE" → "USDe"', async () => {
       const spy = makeSendSpy();
       await sendTransferTool.call(
-        { to: VALID_RECIPIENT, amount: 1, asset: 'USDE' },
+        { to: VALID_RECIPIENT, amount: 1, asset: 'USDE', memo: null },
         makeCtx(spy),
       );
       expect(spy.capturedAsset).toBe('USDe');
@@ -149,7 +149,7 @@ describe('[F10] send_transfer accepts mixed-case asset symbols', () => {
 
     it('defaults to USDC when asset is omitted', async () => {
       const spy = makeSendSpy();
-      await sendTransferTool.call({ to: VALID_RECIPIENT, amount: 1 }, makeCtx(spy));
+      await sendTransferTool.call({ to: VALID_RECIPIENT, amount: 1, memo: null }, makeCtx(spy));
       expect(spy.capturedAsset).toBe('USDC');
     });
   });

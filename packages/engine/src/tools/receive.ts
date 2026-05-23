@@ -3,9 +3,9 @@ import { defineTool } from '../v2/define-tool.js';
 
 const PaymentLinkSchema = z.object({
   amount: z.number().positive().describe('Amount in USDC (required). Ask the user if not specified.'),
-  label: z.string().optional().describe('Human-readable label e.g. "Consulting fee March"'),
-  memo: z.string().optional().describe('Optional note shown to the payer'),
-  expiresInHours: z.number().positive().optional().describe('Hours until the link expires. Omit for permanent links.'),
+  label: z.string().nullable().describe('Human-readable label e.g. "Consulting fee March". Pass null for an unlabelled link.'),
+  memo: z.string().nullable().describe('Optional note shown to the payer. Pass null when no memo is needed.'),
+  expiresInHours: z.number().positive().nullable().describe('Hours until the link expires. Pass null for permanent links.'),
 });
 
 function internalHeaders(context: { walletAddress?: string; env?: import('../types.js').ToolContextEnv; signal?: AbortSignal }) {

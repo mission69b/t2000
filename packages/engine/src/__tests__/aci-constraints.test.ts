@@ -13,6 +13,17 @@ const baseCtx = {
   suiRpcUrl: 'https://stub',
 } as Parameters<typeof transactionHistoryTool.call>[1];
 
+// [P2.1 / S.288 — 2026-05-24] `.optional()` → `.nullable()` conversion
+// made these filter fields required-but-nullable. See history-labels.test.ts.
+const EMPTY_FILTERS = {
+  counterparty: null,
+  date: null,
+  action: null,
+  minUsd: null,
+  assetSymbol: null,
+  direction: null,
+} as const;
+
 describe('[v1.4 ACI] transaction_history — action filter + 30-day default', () => {
   beforeEach(() => {
     const now = Date.now();
@@ -53,14 +64,14 @@ describe('[v1.4 ACI] transaction_history — action filter + 30-day default', ()
   });
 
   it('drops transactions older than 30 days when no date is supplied', async () => {
-    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: Array<{ digest: string }>; lookbackDays: number };
     expect(data.lookbackDays).toBe(30);
     expect(data.transactions.find((t) => t.digest.endsWith('45'))).toBeUndefined();
   });
 
   it('filters by action when supplied', async () => {
-    const res = await transactionHistoryTool.call({ limit: 10, action: 'lending' }, baseCtx);
+    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS, action: 'lending' }, baseCtx);
     const data = res.data as { transactions: Array<{ action: string }>; action: string };
     expect(data.action).toBe('lending');
     for (const t of data.transactions) expect(t.action).toBe('lending');

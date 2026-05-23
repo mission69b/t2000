@@ -42,8 +42,8 @@ export const sendTransferTool = defineTool({
       ),
     memo: z
       .string()
-      .optional()
-      .describe('Optional note attached to the transfer (shown in transaction receipt)'),
+      .nullable()
+      .describe('Optional note attached to the transfer (shown in transaction receipt). Pass null when no memo is needed.'),
   }),
   isReadOnly: false,
   permissionLevel: 'confirm',
