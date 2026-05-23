@@ -75,10 +75,6 @@ describe('resolveUsdValue', () => {
   it('returns 0 when no amount present', () => {
     expect(resolveUsdValue('save_deposit', {}, priceCache)).toBe(0);
   });
-
-  it('uses price for volo_stake (SUI)', () => {
-    expect(resolveUsdValue('volo_stake', { amount: 10 }, priceCache)).toBe(35);
-  });
 });
 
 describe('toolNameToOperation', () => {
@@ -89,8 +85,6 @@ describe('toolNameToOperation', () => {
     expect(toolNameToOperation('repay_debt')).toBe('repay');
     expect(toolNameToOperation('withdraw')).toBe('withdraw');
     expect(toolNameToOperation('swap_execute')).toBe('swap');
-    expect(toolNameToOperation('volo_stake')).toBe('save');
-    expect(toolNameToOperation('volo_unstake')).toBe('withdraw');
   });
 
   it('returns undefined for unknown tool names', () => {

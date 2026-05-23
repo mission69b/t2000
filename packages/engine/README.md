@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Four systems work together: Agent Harness (31 tools — 21 read, 10 write), Reasoning Engine (14 guards across 3 priority tiers), Memory (MemWal vector store), and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Four systems work together: Agent Harness (26 tools — 18 read, 8 write), Reasoning Engine (12 guards across 3 priority tiers), Memory (MemWal vector store), and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 `AISDKEngine` orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop. (The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine `v2.0.0` (2026-05-17); `AISDKEngine` is the only engine, wrapping Vercel AI SDK v6's `streamText` while preserving the same public API surface.)
 
@@ -35,12 +35,12 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 ## Audric Intelligence — the 5 systems
 
-> _Not a chatbot. A financial agent._ Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 35 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
+> _Not a chatbot. A financial agent._ Four systems work together to **understand** the user's money, **reason** about decisions, **act** through 26 financial tools in one conversation, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
-| 🎛️ **Agent Harness** | 31 tools (21 read + 10 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
-| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
+| 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
+| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 12 guards (11 pre-exec + 1 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
 | 📓 **AdviceLog** | Remembers what it told you. | Every recommendation logged (`record_advice` audric tool); last 30 days hydrated each turn so the chat never contradicts itself | _Audric-side_: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |

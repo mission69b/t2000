@@ -52,7 +52,7 @@ export const myTool = buildTool({
 ## Write tool patterns
 
 1. `permissionLevel: 'confirm'`, `isReadOnly: false`.
-2. Set `flags.mutating: true` and the relevant flags (`requiresBalance`, `affectsHealth`, `irreversible`, `costAware`).
+2. Set `flags.mutating: true` and the relevant flags (`requiresBalance`, `affectsHealth`, `irreversible`).
 3. The `call()` for a `confirm` tool is **never invoked** under audric/web (the host executes via sponsored-tx flow). It's there for CLI / non-sponsored runtimes.
 4. Implement `preflight(input)` for cheap input validation that fails closed BEFORE the user is asked to confirm.
 5. Modifiable fields are sourced from `tool-modifiable-fields.ts` — add an entry there if the user should be able to edit `amount` / `to` / etc. before confirming.
@@ -80,7 +80,6 @@ Without `maxResultSizeChars`, large results (e.g. portfolio with 100+ tokens) bl
 | `affectsHealth` | Borrow/repay — engine fetches HF before/after |
 | `irreversible` | Drives stronger confirm UX (e.g. send_transfer) |
 | `producesArtifact` | Tool emits a canvas/card — drives result extraction |
-| `costAware` | Engine factors USD value into permission resolver (B.4) |
 | `maxRetries` | Override default retry count |
 
 ## Preflight validation

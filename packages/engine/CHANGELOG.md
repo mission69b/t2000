@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.18.1 — 2026-05-23 — S.277 residue cleanup
+
+Follow-up patch to 2.18.0. The original cut missed mirroring the S.245 pattern: deleting a tool should also scrub it from the parallel registries that key on tool names. This patch closes those gaps. No behavior change for any consumer that already migrated to 2.18.0 — all deletions here are dead branches (the tool names referenced are no longer registered, so lookups for them never happened).
+
+### What's gone (engine-internal dead branches)
+
+| File | What was dead |
+|---|---|
+| `prompt/index.ts` (`DEFAULT_SYSTEM_PROMPT`) | 5 steers naming `volo_stats` / `volo_stake` / `protocol_deep_dive` — the engine's default system prompt told the LLM to call tools that no longer exist. Audric overrides the prompt so audric was unaffected; CLI / MCP / future hosts would have hit the steer. |
+| `v2/tool-policy.ts` (`TOOL_POLICY`) | 5 entries for `volo_stats`, `web_search`, `protocol_deep_dive`, `volo_stake`, `volo_unstake`. |
+| `permission-rules.ts` (`TOOL_TO_OPERATION` + `resolveUsdValue`) | `volo_stake` / `volo_unstake` from operation map + USD value switch. |
+| `describe-action.ts` (`describeAction`) | `volo_stake` / `volo_unstake` switch cases. |
+| `tools/tool-modifiable-fields.ts` (`TOOL_MODIFIABLE_FIELDS`) | `volo_stake` / `volo_unstake` entries + doc comment. |
+
+### Tests pruned
+
+- `__tests__/permission-rules.test.ts` — 1 `volo_stake` resolveUsdValue test + 2 entries from the toolNameToOperation expectation.
+- `tools/tool-modifiable-fields.test.ts` — 3 tests (1 `volo_stake` registry entry assertion + 2 "does NOT override" tests for volo_stake / volo_unstake).
+
+Net: 1322 → 1319 tests, all passing.
+
+### Comment scrubs (no behavior change)
+
+- `compose-bundle.ts` L123 — dropped "volo_stake / volo_unstake chained — Phase 5+" bullet from VALID_PAIRS doc.
+- `streaming.ts` L89 — dropped `protocol_deep_dive` from `tool_progress` long-running-tools example list.
+
+### Why this is a patch (not minor)
+
+Every removal is a dead branch. The tools were already gone in 2.18.0; these registries / map entries / switch cases for them were never reached. Cleanup; no API surface change.
+
+### Why this slipped past the 2.18.0 ship
+
+S.277 mirrored the S.245 pattern at the surface level (tool file deletes + index.ts + audric host wiring + system prompt) but missed the parallel-registry sweep that S.245 properly did (S.245's changelog explicitly lists `permission-rules.ts`, `describe-action.ts`, `v2/tool-policy.ts` updates). Self-audit before the next backlog item (S.272) caught it.
+
 ## 2.18.0 — 2026-05-23 — "Earns Its Keep" audit: 5 tools + 2 dead guards + 1 dead flag cut (S.277)
 
 **Breaking for direct importers only.** No production Audric consumer of the cut tools — every cut surface was either already filtered out (web_search) or had no Audric chip / product slot (Volo trio, protocol_deep_dive).

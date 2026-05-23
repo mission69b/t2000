@@ -171,8 +171,6 @@ const TOOL_TO_OPERATION: Record<string, PermissionOperation> = {
   borrow: 'borrow',
   repay_debt: 'repay',
   swap_execute: 'swap',
-  volo_stake: 'save',
-  volo_unstake: 'withdraw',
 };
 
 export function toolNameToOperation(toolName: string): PermissionOperation | undefined {
@@ -208,10 +206,6 @@ export function resolveUsdValue(
       if (fromAsset === 'USDC' || fromAsset === 'USDT') return amount;
       return amount * (priceCache.get(fromAsset) ?? 0);
     }
-
-    case 'volo_stake':
-    case 'volo_unstake':
-      return safeNum(input.amount) * (priceCache.get('SUI') ?? 0);
 
     default:
       return 0;

@@ -145,10 +145,7 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   rates_info: READ_DEFAULT,
   swap_quote: { ...READ_DEFAULT, cacheable: false }, // quotes go stale
   transaction_history: READ_DEFAULT,
-  volo_stats: READ_DEFAULT,
-  web_search: READ_DEFAULT,
   explain_tx: READ_DEFAULT,
-  protocol_deep_dive: READ_DEFAULT,
   token_prices: { ...READ_DEFAULT, cacheable: false }, // prices go stale
   spending_analytics: READ_DEFAULT,
   yield_summary: READ_DEFAULT,
@@ -169,8 +166,6 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   claim_rewards: WRITE_CONFIRM,
   harvest_rewards: WRITE_CONFIRM,
   swap_execute: WRITE_CONFIRM,
-  volo_stake: WRITE_CONFIRM,
-  volo_unstake: WRITE_CONFIRM,
 
   // Explicit-only write tools (LLM never auto-dispatches; user must
   // initiate from a UI surface)

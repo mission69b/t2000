@@ -487,10 +487,9 @@ export interface PendingActionStep {
    * `composeTx({ steps })` call must thread `priorOutputs[N]` into this
    * step's appender as `inputCoin` (chain mode), skipping the wallet
    * pre-fetch path. The producer at index `N` MUST be a tool that
-   * returns a coin handle (`withdraw`, `borrow`, `swap_execute`,
-   * `volo_stake`, `volo_unstake`); the consumer at this index MUST be
-   * a tool that accepts an input coin (`save_deposit`, `repay_debt`,
-   * `send_transfer`, `swap_execute`, `volo_stake`, `volo_unstake`).
+   * returns a coin handle (`withdraw`, `borrow`, `swap_execute`);
+   * the consumer at this index MUST be a tool that accepts an input
+   * coin (`save_deposit`, `repay_debt`, `send_transfer`, `swap_execute`).
    *
    * Populated by `composeBundleFromToolResults` for whitelisted
    * producer→consumer pairs (see `compose-bundle.ts` `VALID_PAIRS`).
@@ -613,9 +612,9 @@ export interface PendingAction {
    * been updated read `toolName`/`toolUseId`/`input` (which mirror
    * `steps[0]`); newer hosts iterate `steps`.
    *
-   * Bundleable tools (v1): `save_deposit`, `withdraw`, `borrow`,
-   * `repay_debt`, `send_transfer`, `swap_execute`, `claim_rewards`,
-   * `volo_stake`, `volo_unstake`.
+   * Bundleable tools (post-S.277): `save_deposit`, `withdraw`, `borrow`,
+   * `repay_debt`, `send_transfer`, `swap_execute`, `claim_rewards`.
+   * (`volo_stake` / `volo_unstake` were bundleable in v1 but cut in S.277.)
    */
   steps?: PendingActionStep[];
   /**

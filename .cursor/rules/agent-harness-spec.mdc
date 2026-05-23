@@ -82,9 +82,9 @@ Every turn's system prompt embeds a `<financial_context>` block built from the d
 
 `ToolContext.portfolioCache` is a per-request `Map<address, AddressPortfolio>` that lets multiple read tools in the same turn share a BlockVision response (avoids 200–500ms RTT amplification).
 
-### `protocol_deep_dive` exception
+### DefiLlama dependency — removed in v2.18.0 (S.277)
 
-This tool is the lone production consumer of `api.llama.fi` (DefiLlama) and stays that way. No other tool may call DefiLlama.
+Pre-S.277, `protocol_deep_dive` was the lone production consumer of `api.llama.fi`. The tool was cut as part of the "Earns Its Keep" audit (no Audric chip / product slot for protocol metadata; `rates_info` covers the in-product safety lens). The engine no longer talks to DefiLlama — if a future tool needs protocol metadata, route through BlockVision or add a vetted source through the canonical fetcher pattern.
 
 ## Spec 3 (upcoming)
 

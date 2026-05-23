@@ -11,10 +11,11 @@
  * `harvest_rewards`, `volo_stake`, `volo_unstake`, `save_contact`. The
  * rule was being enforced verbally but not structurally.
  *
- * S.269 item 6 (2026-05-23): `save_contact` was deleted from the engine
- * (dead tool — host-side Prisma persistence with no engine-owned
- * effect; the user surface is the audric send screen, not the LLM).
- * The other 5 stay — their preflight smokes remain below.
+ * Post-S.269 + S.277: `save_contact` (S.269 item 6, dead host-side tool)
+ * and Volo trio (S.277 "Earns Its Keep" cut) were deleted from the engine.
+ * Surviving write tools with preflight smokes below: `save_deposit`,
+ * `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`,
+ * `harvest_rewards`, `swap_execute`.
  *
  * This test exists so a future write tool added without preflight
  * fails CI immediately, instead of slipping through review and

@@ -27,9 +27,6 @@ describe('getModifiableFields — back-compat (no input)', () => {
     expect(getModifiableFields('swap_execute')).toBe(
       TOOL_MODIFIABLE_FIELDS.swap_execute,
     );
-    expect(getModifiableFields('volo_stake')).toBe(
-      TOOL_MODIFIABLE_FIELDS.volo_stake,
-    );
   });
 });
 
@@ -78,17 +75,5 @@ describe('getModifiableFields — F-11 asset override (USDC vs USDsui)', () => {
     const fields = getModifiableFields('swap_execute', { from: 'USDC', to: 'SUI', amount: 1, asset: 'USDsui' });
     const amountField = fields?.find((f) => f.name === 'amount');
     expect(amountField?.asset).toBeUndefined();
-  });
-
-  it('does NOT override asset on volo_stake (hardcoded SUI)', () => {
-    const fields = getModifiableFields('volo_stake', { amount: 1, asset: 'USDsui' });
-    const amountField = fields?.find((f) => f.name === 'amount');
-    expect(amountField?.asset).toBe('SUI');
-  });
-
-  it('does NOT override asset on volo_unstake (hardcoded vSUI)', () => {
-    const fields = getModifiableFields('volo_unstake', { amount: 1, asset: 'USDsui' });
-    const amountField = fields?.find((f) => f.name === 'amount');
-    expect(amountField?.asset).toBe('vSUI');
   });
 });

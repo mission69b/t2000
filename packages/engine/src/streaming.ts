@@ -86,8 +86,8 @@ export type SSEEvent =
   // update_todo tool call. Mirrors EngineEvent.todo_update.
   | { type: 'todo_update'; items: TodoItem[]; toolUseId: string }
   // [SPEC 8 v0.5.1] tool_progress mid-execution signal from long-running
-  // tools (Cetus swap_execute, protocol_deep_dive, portfolio_analysis).
-  // Engine wiring lands with the Cetus integration in a follow-on slice.
+  // tools (Cetus swap_execute, portfolio_analysis). Engine wiring lands
+  // with the Cetus integration in a follow-on slice.
   | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
   // [SPEC 9 v0.1.3 P9.4] Inline-form structured input event. Engine
   // emits when a tool's preflight returns `needsInput`; host renders

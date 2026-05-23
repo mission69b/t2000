@@ -187,6 +187,19 @@ const engine = new AISDKEngine({
 > links absorb the invoicing use case (label/memo encode invoice
 > context). 35 → 31 tools.
 >
+> **S.277 (2026-05-23):** "Earns Its Keep" audit cut 5 tools + 2 dead
+> guards (engine 2.18.0). Volo trio (`volo_stats`, `volo_stake`,
+> `volo_unstake`) — no Audric chip / product slot for liquid staking;
+> `harvest_rewards` routes vSUI via Cetus, not Volo. `web_search`
+> (Brave-backed) — gateway path uses Vercel AI Gateway's
+> `perplexity_search` instead. `protocol_deep_dive` (DefiLlama) —
+> `rates_info` covers the in-product safety lens; engine no longer
+> talks to `api.llama.fi`. 2 dead guards removed (`guardCostWarning`,
+> `guardArtifactPreview`) — both unreachable post-S.245. `explain_tx`
+> kept but description tightened to "arbitrary external digest only".
+> SDK + CLI + MCP retain Volo for non-Audric consumers. 31 → 26 tools
+> (18 read + 8 write), 14 → 12 guards.
+>
 > **S.269 item 6 (2026-05-23):** `save_contact` (write) deleted as part of
 > the template-divergence cleanup slice. Engine-side dead tool — host-side
 > Prisma persistence with no engine-owned effect; the user surface is the

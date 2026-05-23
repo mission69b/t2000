@@ -64,7 +64,7 @@
 | `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
 | `@t2000/engine`     | Published       | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
-| `@t2000/mcp`        | Published       | MCP server — 37 tools + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport |
+| `@t2000/mcp`        | Published       | MCP server — wraps the engine's tool registry (26 tools post-S.277) + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport. The MCP package exports its own `t2000_*` wrappers + retains Volo paths for non-Audric consumers (Cursor / Claude Desktop). |
 | `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
 | `@suimpp/discovery` | Published       | Sui-specific discovery validation — OpenAPI checks + 402 probe                    |
 | `mppx`              | External (wevm) | MPP protocol middleware — 402 challenge/credential flow                           |
@@ -815,8 +815,8 @@ All write operations serialize structurally — `confirm`-tier writes yield a `p
 
 | System | Owns | Implementation files |
 |---|---|---|
-| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `v2/tool-wrapper.ts`, `tools/*` |
-| ⚡ **Reasoning Engine** | Adaptive thinking, 14 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
+| 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `v2/tool-wrapper.ts`, `tools/*` |
+| ⚡ **Reasoning Engine** | Adaptive thinking, 12 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
 | 🧠 **Silent Profile** | Daily on-chain snapshot + Claude-inferred profile, injected as `<financial_context>` block | audric-side: `UserFinancialProfile`, `UserFinancialContext`, `buildFinancialContextBlock()`, `buildProfileContext()` |
 | 🔗 **Chain Memory** | 7 classifiers extract `ChainFact` rows from on-chain history; injected silently | audric-side: classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
 | 📓 **AdviceLog** | Every recommendation logged (`record_advice` audric-side tool); last 30 days hydrated each turn | audric-side: `AdviceLog` Prisma model + `buildAdviceContext()` |
@@ -888,7 +888,7 @@ Tool dispatch in `AISDKEngine`:
 | `pending_rewards`         |                         |
 
 
-24 read tools, 11 write tools, **35 total**. (Reads went 23 → 24 in SPEC 10 May 2026 with `resolve_suins` for the Audric Passport identity layer; reads → 25 + writes → 12 in S.119 May 2026 with `pending_rewards` + `harvest_rewards` — the NAVI rewards preview + the single-PTB compound that claims, swaps each non-USDC reward to USDC, and deposits into NAVI savings. S.245 May 2026 deleted `pay_api` + `mpp_services` per V07E_D_QUESTION_AUDITS D-2 reframe → current 24 reads / 11 writes.) Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
+18 read tools, 8 write tools, **26 total**. (Reads went 23 → 24 in SPEC 10 May 2026 with `resolve_suins` for the Audric Passport identity layer; reads → 25 + writes → 12 in S.119 May 2026 with `pending_rewards` + `harvest_rewards` — the NAVI rewards preview + the single-PTB compound that claims, swaps each non-USDC reward to USDC, and deposits into NAVI savings. S.245 May 2026 deleted `pay_api` + `mpp_services` → 24 reads / 11 writes / 35 total. S.269 May 2026 deleted `save_contact` + 3 invoice tools → 21 reads / 10 writes / 31 total. S.277 May 2026 — "Earns Its Keep" audit, engine 2.18.0 — cut Volo trio + `web_search` + `protocol_deep_dive` → current 18 reads / 8 writes / 26 total.) Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions` (allowance contract dormant), `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't sign without user presence under zkLogin), `pause_pattern`, `pattern_status` (proposal pipeline removed; classifiers stay as silent context). See the S.0–S.12 entries in `audric-build-tracker.md`.
 >
@@ -899,7 +899,7 @@ Tool dispatch in `AISDKEngine`:
 The engine includes a three-layer reasoning system (extended thinking always on for Sonnet/Opus):
 
 1. **Adaptive thinking** (`classify-effort.ts`) — routes queries to `low`/`medium`/`high`/`max` thinking effort. `low` routes to Haiku; `max` reserved for Opus
-2. **Guard runner** (`guards.ts`) — 14 guards across 3 priority tiers (Safety > Financial > UX): 12 pre-execution gates (`input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`, `cost_warning`) + 2 post-execution hints (`artifact_preview`, `stale_data`). First block wins; warnings/hints are injected back into the LLM context.
+2. **Guard runner** (`guards.ts`) — 12 guards across 3 priority tiers (Safety > Financial > UX): 11 pre-execution gates (`input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`) + 1 post-execution hint (`stale_data`). First block wins; warnings/hints are injected back into the LLM context. (Pre-S.277 had 14 guards; `cost_warning` and `artifact_preview` removed in engine 2.18.0 as dead code post-S.245 `pay_api` and image-output tool cuts.)
 3. **Skills** (`t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp`) — 14 markdown playbooks exposed to MCP clients as `skill-<name>` prompts. The 6 multi-step skills (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save section, `t2000-send` with offer-save-contact) absorbed the orchestration that pre-Phase 6 lived in YAML recipes. The runtime recipe registry was deleted v0.7a Phase 6 (May 2026); skills guide the LLM via prose, the engine just runs the tools the LLM picks.
 
 Additional features:
@@ -1055,7 +1055,7 @@ Spec 2 swapped the data layer + added boot-time orientation:
 
 | Change | Why |
 |---|---|
-| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net post-v1.4: 29 → 23 read tools, 40 → 34 total. SPEC 10 added `resolve_suins` (→ 24 reads / 35 total). S.119 + Track B added `pending_rewards` + `harvest_rewards` → current 25 reads / 12 writes / **37 total**. |
+| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net post-v1.4: 29 → 23 read tools, 40 → 34 total. SPEC 10 added `resolve_suins` (→ 24 reads / 35 total). S.119 + Track B added `pending_rewards` + `harvest_rewards` (→ 25 reads / 12 writes / 37 total). S.245 deleted `pay_api` + `mpp_services` (→ 35). S.269 deleted `save_contact` + 3 invoice tools (→ 31). S.277 (engine 2.18.0) "Earns Its Keep" audit deleted Volo trio + `web_search` + `protocol_deep_dive` → current 18 reads / 8 writes / **26 total**. Engine no longer talks to `api.llama.fi` (S.277 removed the last DefiLlama caller). |
 | **Sticky-positive cache + retry/circuit breaker** for BlockVision (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) | BlockVision started returning 429s under load; the cache no longer overwrites known-good positive values with degraded zeros. |
 | **`<financial_context>` block** injected at every engine boot from the daily `UserFinancialContext` snapshot | Every chat starts oriented — no warm-up tool calls before useful answers. Silent Profile system. |
 | **`attemptId` keyed resume** — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
@@ -1093,8 +1093,8 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 | System | One-line pitch | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 37 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (25 read + 12 write) |
-| ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 14 guards, prompt caching. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
+| 🎛️ **Agent Harness** | 26 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (18 read + 8 write) |
+| ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 12 guards, prompt caching. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
 | 🧠 **Silent Profile** | Knows your finances — daily on-chain snapshot + chat-inferred profile, injected silently. | `UserFinancialProfile` + `UserFinancialContext` + `buildFinancialContextBlock()` + 02:00 UTC cron |
 | 🔗 **Chain Memory** | Remembers what you do on-chain — 7 classifiers, no proposals, silent context. | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |
 | 📓 **AdviceLog** | Remembers what it told you — last 30 days hydrated each turn, no two contradictory answers. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |

@@ -55,10 +55,6 @@ export function describeAction(tool: Tool, call: PendingToolCall): string {
       const slippagePct = ((input.slippage as number) ?? 0.01) * 100;
       return `Swap ${amt} ${from} for ${to} (${slippagePct}% max slippage)`;
     }
-    case 'volo_stake':
-      return `Stake ${input.amount} SUI for vSUI`;
-    case 'volo_unstake':
-      return `Unstake ${input.amount === 'all' ? 'all' : input.amount} vSUI`;
     default:
       return `Execute ${tool.name}`;
   }

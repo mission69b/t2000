@@ -40,12 +40,6 @@ export const TOOL_MODIFIABLE_FIELDS: Record<string, PendingActionModifiableField
   repay_debt: [
     { name: 'amount', kind: 'amount', asset: 'USDC' },
   ],
-  volo_stake: [
-    { name: 'amount', kind: 'amount', asset: 'SUI' },
-  ],
-  volo_unstake: [
-    { name: 'amount', kind: 'amount', asset: 'vSUI' },
-  ],
 };
 
 /**
@@ -57,7 +51,6 @@ export const TOOL_MODIFIABLE_FIELDS: Record<string, PendingActionModifiableField
  * Other amount-bearing tools are excluded by design:
  *  - `send_transfer` / `swap_execute` — no asset on the amount field
  *    (the UI shows the input-side asset from the tx itself).
- *  - `volo_stake` / `volo_unstake` — hardcoded SUI / vSUI single-asset.
  */
 const ASSET_OVERRIDABLE_TOOLS = new Set<string>([
   'save_deposit',

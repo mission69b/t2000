@@ -120,7 +120,6 @@ export const MAX_BUNDLE_OPS = 4;
  *   `from`. Could be added in Phase 1.
  * - `claim_rewards → *` — produces N reward coins, structurally
  *   different. Phase 5+.
- * - Anything with `volo_stake` / `volo_unstake` chained — Phase 5+.
  */
 export const VALID_PAIRS: ReadonlySet<string> = new Set([
   'swap_execute->send_transfer',
