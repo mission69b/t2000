@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ContactManager } from './contacts.js';
+import { ContactManager, _resetContactsDeprecationWarning } from './contacts.js';
 
 const VALID_ADDRESS = '0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e';
 const VALID_ADDRESS_2 = '0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b69b739c3e62';
@@ -168,12 +168,65 @@ describe('ContactManager', () => {
       expect(() => manager.resolve('Nobody')).toThrow('not a valid Sui address or saved contact');
     });
 
-    it('throws with helpful add hint', () => {
-      expect(() => manager.resolve('Nobody')).toThrow('t2000 contacts add Nobody');
+    it('throws with helpful add hint pointing to SuiNS first', () => {
+      // [S.279] Error message now leads with the SuiNS migration path
+      // and the legacy `contacts add` route is footnoted as deprecated.
+      try {
+        manager.resolve('Nobody');
+        throw new Error('expected throw');
+      } catch (err) {
+        const msg = (err as Error).message;
+        expect(msg).toContain('SuiNS name');
+        expect(msg).toContain('alex.sui');
+        expect(msg).toContain('t2000 contacts add Nobody');
+        expect(msg).toContain('deprecated');
+      }
     });
 
     it('validates raw addresses', () => {
       expect(() => manager.resolve('0xinvalid')).toThrow();
+    });
+  });
+
+  describe('deprecation warning (S.279)', () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      _resetContactsDeprecationWarning();
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('warns once when a contact alias is resolved', () => {
+      manager.add('Tom', VALID_ADDRESS);
+      manager.resolve('Tom');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const msg = warnSpy.mock.calls[0][0] as string;
+      expect(msg).toContain('DEPRECATION');
+      expect(msg).toContain('contacts.json');
+      expect(msg).toContain('SuiNS');
+    });
+
+    it('only warns ONCE per process across multiple resolves', () => {
+      manager.add('Tom', VALID_ADDRESS);
+      manager.add('Alice', VALID_ADDRESS_2);
+      manager.resolve('Tom');
+      manager.resolve('Alice');
+      manager.resolve('Tom');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT warn when resolving a raw 0x address', () => {
+      manager.resolve(VALID_ADDRESS);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('does NOT warn when resolution throws (unknown name)', () => {
+      expect(() => manager.resolve('Nobody')).toThrow();
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 

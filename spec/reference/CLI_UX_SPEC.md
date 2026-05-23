@@ -82,14 +82,28 @@ Supported assets: USDC (default), USDT, SUI, USDe, USDsui.
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
-### `t2000 send <amount> USDC to <address>`
+### `t2000 send <amount> [asset] [to] <recipient>`
+
+`<recipient>` accepts (in priority order):
+
+1. **0x address** — used directly, no network round-trip.
+2. **SuiNS name** — `alex.sui`, `team.alex.sui`, etc. Resolved via mainnet RPC (`suix_resolveNameServiceAddress`).
+3. **Saved contact alias** — `~/.t2000/contacts.json` (DEPRECATED; warns once per process; sunset target = next major).
 
 ```
-  ✓ Sent $10.00 USDC → 0x8b3e...d412
+  ✓ Sent $10.00 USDC → alex.sui (0x8b3e...d412)
   Gas:      0.0050 SUI (self-funded)
   Balance:  $90.00
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
+
+When the recipient is a bare 0x address with no SuiNS reverse-lookup, the receipt shows the truncated hex only (the CLI does NOT do reverse SuiNS lookups on send — adds a network round-trip for no UX win).
+
+```
+  ✓ Sent $10.00 USDC → 0x8b3e...d412
+```
+
+When the recipient is a deprecated contact alias, the receipt still shows the alias (no behavior change) but a one-shot DEPRECATION warning prints to stderr the first time a contact resolves in the process.
 
 ### `t2000 receive`
 

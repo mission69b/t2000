@@ -1,14 +1,14 @@
 # SPEC Inventory — Single Source of Truth
 
-> **Last refreshed:** 2026-05-23 ~19:00 AEST after S.278 ship (SPEC 272 Lever 1 SHIPPED; moved from `active/` → `active/shipping/` with Lever 2 + 3 deferred).
+> **Last refreshed:** 2026-05-23 ~19:25 AEST after S.279 ship (CLI-CONTACTS-CLEANUP — SuiNS in `T2000.send()` + SuiNS resolver promoted engine→SDK). No SPEC-file changes; backlog row promoted to shipped. Last `spec/` mutation was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
 > **Purpose:** answer "what's actually in `spec/` right now, what's drifted, what's archive-ready" in one read. Run a fresh sweep against this table at the start of any session that touches `spec/`.
 > **Companion:** `spec/README.md` (the layout + promotion rules contract).
 
 ---
 
-## 0. TL;DR — current state (post-S.278 ship)
+## 0. TL;DR — current state (post-S.279 ship — no `spec/` mutation; counts unchanged from S.278)
 
-The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added one shipping/ entry. `spec/active/` now holds **5 working files** + 2 subdirs (harness + shipping with 2 entries).
+The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added one shipping/ entry. S.279 (2026-05-23 ~19:25 AEST — CLI-CONTACTS-CLEANUP) made no `spec/` changes — it's an HANDOFF backlog item that shipped without a SPEC artifact (same pattern as S.277). `spec/active/` still holds **5 working files** + 2 subdirs (harness + shipping with 2 entries).
 
 | Bucket | Count | State |
 |---|---|---|

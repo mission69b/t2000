@@ -20,6 +20,12 @@ import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
 import { getDecimalsForCoinType, resolveSymbol } from './token-registry.js';
+import {
+  SUI_ADDRESS_REGEX,
+  SuinsNotRegisteredError,
+  looksLikeSuiNs,
+  resolveSuinsViaRpc,
+} from './utils/suins.js';
 // [B5 v2 / 2026-04-30] No fee imports — CLI / direct SDK is fee-free. Consumer
 // apps (Audric) own fee policy via `addFeeTransfer` from `./protocols/protocolFee.js`.
 import * as yieldTracker from './protocols/yieldTracker.js';
@@ -573,7 +579,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
     }
 
-    const resolved = this.contacts.resolve(params.to);
+    const resolved = await this.resolveRecipient(params.to);
     const sendAmount = params.amount;
     const sendTo = resolved.address;
 
@@ -592,10 +598,64 @@ export class T2000 extends EventEmitter<T2000Events> {
       amount: sendAmount,
       to: resolved.address,
       contactName: resolved.contactName,
+      suinsName: resolved.suinsName,
       gasCost: gasResult.gasCostSui,
       gasCostUnit: 'SUI',
       balance,
     };
+  }
+
+  /**
+   * [S.279 / CLI-CONTACTS-CLEANUP — 2026-05-23] Resolve a recipient
+   * string into a canonical 0x address, trying each shape in priority
+   * order:
+   *   1. **hex** — `0x…` is used directly (no RPC round-trip).
+   *   2. **SuiNS** — `alex.sui` resolves via `suix_resolveNameServiceAddress`.
+   *   3. **saved contact** — `ContactManager.resolve()` falls back to the
+   *      legacy `~/.t2000/contacts.json` alias map. Deprecated; the
+   *      manager surfaces a one-time `console.warn` when this path fires.
+   *
+   * Returns `{ address, suinsName?, contactName? }` so `send()` can stamp
+   * the name source on the receipt without re-resolving.
+   *
+   * Throws `T2000Error('SUINS_NOT_REGISTERED', …)` for well-formed but
+   * unregistered SuiNS names (vs. propagating the engine-style
+   * `SuinsNotRegisteredError` — keeps the SDK's error surface
+   * `T2000Error`-only, consistent with every other write helper).
+   */
+  private async resolveRecipient(
+    input: string,
+  ): Promise<{ address: string; contactName?: string; suinsName?: string }> {
+    const trimmed = input.trim();
+    if (SUI_ADDRESS_REGEX.test(trimmed)) {
+      // Path 1 — already a hex address. ContactManager.resolve also
+      // accepts hex, but routing through it adds a disk read for nothing.
+      return { address: trimmed.toLowerCase() };
+    }
+    if (looksLikeSuiNs(trimmed)) {
+      // Path 2 — SuiNS lookup. Falls through to ContactManager only if
+      // the name is well-formed but unregistered AND the user happens
+      // to have a contact alias with the exact same string (vanishingly
+      // rare — `.sui` suffixes are reserved-looking).
+      try {
+        const name = trimmed.toLowerCase();
+        const address = await resolveSuinsViaRpc(name);
+        if (!address) {
+          throw new SuinsNotRegisteredError(name);
+        }
+        return { address: address.toLowerCase(), suinsName: name };
+      } catch (err) {
+        if (err instanceof SuinsNotRegisteredError) {
+          throw new T2000Error(
+            'SUINS_NOT_REGISTERED',
+            err.message,
+          );
+        }
+        throw err;
+      }
+    }
+    // Path 3 — saved contact alias (deprecated; ContactManager warns).
+    return this.contacts.resolve(input);
   }
 
   async balance(): Promise<BalanceResponse> {

@@ -64,6 +64,19 @@ export {
 export type { Operation } from './constants.js';
 export { validateAddress, truncateAddress, normalizeCoinType } from './utils/sui.js';
 export {
+  SUI_ADDRESS_REGEX,
+  SUI_ADDRESS_STRICT_REGEX,
+  SUINS_NAME_REGEX,
+  InvalidAddressError,
+  SuinsNotRegisteredError,
+  SuinsRpcError,
+  looksLikeSuiNs,
+  resolveSuinsViaRpc,
+  resolveAddressToSuinsViaRpc,
+  normalizeAddressInput,
+} from './utils/suins.js';
+export type { NormalizedAddress } from './utils/suins.js';
+export {
   KNOWN_TARGETS,
   LABEL_PATTERNS,
   classifyAction,

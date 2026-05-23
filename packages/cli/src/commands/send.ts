@@ -14,15 +14,17 @@ export function parseSendArgs(args: string[]): { amount: number; asset: string; 
   if (filtered.length >= 2) {
     return { amount: parseFloat(filtered[0]), asset: 'USDC', recipient: filtered[filtered.length - 1] };
   }
-  throw new Error('Usage: t2000 send <amount> [asset] [to] <address_or_contact>');
+  // [S.279] Recipient can be a hex address, a SuiNS name (alex.sui), or a
+  // legacy contacts.json alias (deprecated).
+  throw new Error('Usage: t2000 send <amount> [asset] [to] <0x-address|suins-name|contact>');
 }
 
 export function registerSend(program: Command) {
   program
     .command('send')
     .argument('<amount>', 'Amount to send')
-    .argument('[args...]', 'Asset, "to" keyword, and recipient address or contact name')
-    .description('Send USDC (or other asset) to an address or contact name')
+    .argument('[args...]', 'Asset, "to" keyword, and recipient (0x address, SuiNS name like alex.sui, or saved contact)')
+    .description('Send USDC (or other asset) to a 0x address, SuiNS name, or saved contact')
     .option('--key <path>', 'Key file path')
     .action(async (amount: string, args: string[], opts: { key?: string }) => {
       try {
@@ -42,9 +44,15 @@ export function registerSend(program: Command) {
         }
 
         printBlank();
-        const displayTo = result.contactName
-          ? `${result.contactName} (${truncateAddress(result.to)})`
-          : truncateAddress(result.to);
+        // [S.279] Display priority: SuiNS name > contact alias > truncated hex.
+        let displayTo: string;
+        if (result.suinsName) {
+          displayTo = `${result.suinsName} (${truncateAddress(result.to)})`;
+        } else if (result.contactName) {
+          displayTo = `${result.contactName} (${truncateAddress(result.to)})`;
+        } else {
+          displayTo = truncateAddress(result.to);
+        }
         printSuccess(`Sent ${formatUsd(result.amount)} ${asset.toUpperCase()} → ${displayTo}`);
         printKeyValue('Gas', `${result.gasCost.toFixed(4)} ${result.gasCostUnit}`);
         printKeyValue('Balance', formatUsd(result.balance.available) + ' USDC');

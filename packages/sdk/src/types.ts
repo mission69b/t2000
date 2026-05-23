@@ -28,7 +28,13 @@ export interface SendResult {
   tx: string;
   amount: number;
   to: string;
+  /** Set when the recipient was resolved via the legacy `contacts.json` alias. */
   contactName?: string;
+  /**
+   * [S.279] Set when the recipient was resolved via SuiNS (e.g. `alex.sui`).
+   * CLI receipts render "Sent to alex.sui (0xabc...)" when present.
+   */
+  suinsName?: string;
   gasCost: number;
   gasCostUnit: string;
   balance: BalanceResponse;

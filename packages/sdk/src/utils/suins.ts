@@ -1,0 +1,266 @@
+// ---------------------------------------------------------------------------
+// Sui address + SuiNS normalization — single source of truth.
+//
+// [S.279 / CLI-CONTACTS-CLEANUP — 2026-05-23] Promoted from the engine
+// (`packages/engine/src/sui/address.ts`) to the SDK so the CLI's
+// `T2000.send()` can accept SuiNS names (`alex.sui`) the same way the
+// engine's read tools already do. The engine now re-exports from this
+// module — one canonical resolver, zero drift risk.
+//
+// Background. Six engine read tools (balance, health, savings, history,
+// activity-summary, portfolio-analysis) accept an optional `address`
+// parameter so the LLM can inspect any public Sui wallet. Each tool calls
+// `normalizeAddressInput()` to accept either `0x...` or `alex.sui` and
+// returns a structured `{ address, suinsName, raw }` triple. The SDK's
+// `T2000.send()` now uses the same primitive, so a CLI user can run
+// `t2000 send alex.sui 10 USDC` without looking up the hex address first.
+//
+// Single source of truth — see `.cursor/rules/single-source-of-truth.mdc`
+// and `.cursor/rules/engineering-principles.mdc` Principle 2.
+// ---------------------------------------------------------------------------
+
+const SUI_MAINNET_URL = 'https://fullnode.mainnet.sui.io:443';
+
+/**
+ * Canonical 0x-address shape. Loose lower bound (>= 1 hex char) so
+ * pre-v1.0 short addresses still validate; tools that need a full 64-hex
+ * address can additionally check `length === 66`. Case-insensitive on
+ * the `0x` prefix because some upstream callers (and historic tests)
+ * uppercase the prefix as part of address normalization tests; the
+ * normalizer always returns the lowercased canonical form regardless.
+ */
+export const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{1,64}$/i;
+
+/**
+ * Strict canonical 0x-address shape (66 chars total). Used by the
+ * resolver's "looks like" check to disambiguate "user pasted an
+ * address" vs "user typed a SuiNS name".
+ */
+export const SUI_ADDRESS_STRICT_REGEX = /^0x[a-fA-F0-9]{64}$/i;
+
+/**
+ * Mirrors the pattern in `audric/apps/web-v2/lib/suins-cache.ts` so the
+ * host-side send executor and the engine-side read normalizer agree on
+ * what counts as a SuiNS name. SuiNS allows nested labels (`team.alex.sui`)
+ * but every label must use only `[a-z0-9-]`.
+ */
+export const SUINS_NAME_REGEX = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/;
+
+export class InvalidAddressError extends Error {
+  constructor(public readonly raw: string) {
+    super(
+      `"${raw}" isn't a valid Sui address or SuiNS name. ` +
+        `Pass a 0x-prefixed hex address (e.g. 0x40cd…3e62) or a SuiNS name ending in .sui (e.g. alex.sui).`,
+    );
+    this.name = 'InvalidAddressError';
+  }
+}
+
+export class SuinsNotRegisteredError extends Error {
+  constructor(public readonly name_: string) {
+    super(
+      `"${name_}" isn't a registered SuiNS name. Double-check the spelling, ` +
+        `or paste the full Sui address (0x… 64 hex characters).`,
+    );
+    this.name = 'SuinsNotRegisteredError';
+  }
+}
+
+export class SuinsRpcError extends Error {
+  constructor(public readonly name_: string, detail: string) {
+    super(`SuiNS lookup failed for "${name_}" (${detail}). Try again, or paste the full Sui address.`);
+    this.name = 'SuinsRpcError';
+  }
+}
+
+/**
+ * Returns true if `value` looks like a SuiNS name (case-insensitive).
+ * Cheap synchronous check — use to avoid an unnecessary RPC round-trip
+ * for inputs that obviously aren't names (0x addresses, contact handles).
+ */
+export function looksLikeSuiNs(value: string): boolean {
+  if (!value) return false;
+  return SUINS_NAME_REGEX.test(value.trim().toLowerCase());
+}
+
+/**
+ * Resolve a SuiNS name to its on-chain Sui address via the public
+ * `suix_resolveNameServiceAddress` JSON-RPC method. Returns `null` if
+ * the name resolves to no address (= not registered or expired). Throws
+ * `SuinsRpcError` on RPC/network failure.
+ *
+ * The host SHOULD pass a `rpcUrl` that includes any vendor key (e.g.
+ * audric's BlockVision-keyed URL) so the call benefits from the host's
+ * paid retry/cache budget. Falls back to the public mainnet endpoint.
+ */
+export async function resolveSuinsViaRpc(
+  rawName: string,
+  ctx: { suiRpcUrl?: string; signal?: AbortSignal } = {},
+): Promise<string | null> {
+  const name = rawName.trim().toLowerCase();
+  if (!SUINS_NAME_REGEX.test(name)) {
+    throw new InvalidAddressError(rawName);
+  }
+
+  const url = ctx.suiRpcUrl || SUI_MAINNET_URL;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'suix_resolveNameServiceAddress',
+        params: [name],
+      }),
+      signal: ctx.signal ?? AbortSignal.timeout(8_000),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new SuinsRpcError(name, msg);
+  }
+
+  if (!res.ok) {
+    throw new SuinsRpcError(name, `HTTP ${res.status}`);
+  }
+
+  let body: { result?: string | null; error?: { code: number; message: string } };
+  try {
+    body = (await res.json()) as typeof body;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new SuinsRpcError(name, `JSON parse failed: ${msg}`);
+  }
+
+  if (body.error) {
+    throw new SuinsRpcError(name, body.error.message);
+  }
+
+  // result is the 0x…64-hex address, or null when the name has never
+  // been registered (or has expired and the record was reaped).
+  return body.result ?? null;
+}
+
+/**
+ * Reverse-resolve a 0x address to its registered SuiNS names via
+ * `suix_resolveNameServiceNames`. Returns the names sorted by the
+ * registry (the first entry is conventionally the user's "primary"
+ * name on dApps that show one), or `[]` when the address has no
+ * SuiNS records. Throws `SuinsRpcError` on RPC/network failure.
+ *
+ * Why this is its own helper (not folded into `normalizeAddressInput`):
+ * a reverse lookup adds a second RPC round-trip per tool call. We don't
+ * want every read tool that takes an `address` to silently double its
+ * latency. The lookup primitive is opt-in via the `resolve_suins` tool;
+ * normalizers stay forward-only.
+ */
+export async function resolveAddressToSuinsViaRpc(
+  rawAddress: string,
+  ctx: { suiRpcUrl?: string; signal?: AbortSignal } = {},
+): Promise<string[]> {
+  const address = rawAddress.trim().toLowerCase();
+  if (!SUI_ADDRESS_REGEX.test(address)) {
+    throw new InvalidAddressError(rawAddress);
+  }
+
+  const url = ctx.suiRpcUrl || SUI_MAINNET_URL;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'suix_resolveNameServiceNames',
+        params: [address],
+      }),
+      signal: ctx.signal ?? AbortSignal.timeout(8_000),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new SuinsRpcError(address, msg);
+  }
+
+  if (!res.ok) {
+    throw new SuinsRpcError(address, `HTTP ${res.status}`);
+  }
+
+  // SuiNS reverse-lookup returns a paginated page object. We don't
+  // bother paginating because (a) the LLM consumer only needs the
+  // primary name, and (b) addresses with >50 names are vanishingly
+  // rare. The first page (default 50) is the canonical view.
+  let body: {
+    result?: { data: string[]; nextCursor: string | null; hasNextPage: boolean };
+    error?: { code: number; message: string };
+  };
+  try {
+    body = (await res.json()) as typeof body;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new SuinsRpcError(address, `JSON parse failed: ${msg}`);
+  }
+
+  if (body.error) {
+    throw new SuinsRpcError(address, body.error.message);
+  }
+
+  return body.result?.data ?? [];
+}
+
+export interface NormalizedAddress {
+  /**
+   * Canonical 0x-prefixed lowercase hex address. Always set on success.
+   * Tools should use this for any downstream query (BlockVision, NAVI,
+   * positionFetcher, etc.) and for cache keys.
+   */
+  address: string;
+  /**
+   * The user-facing name when the input was resolved via SuiNS, otherwise
+   * `null`. Tools should stamp this on result data so card titles can
+   * render "Balance · obehi.sui" instead of "Balance · 0x1234…abcd".
+   */
+  suinsName: string | null;
+  /**
+   * The original input (pre-normalization). Useful for error narration —
+   * "I tried to resolve `Obehi.Sui` and …" reads better than the
+   * post-trim/lowercase form.
+   */
+  raw: string;
+}
+
+/**
+ * Canonical normalizer. Accepts a 0x address OR a SuiNS name; returns
+ * a structured `NormalizedAddress`. Throws:
+ *   - `InvalidAddressError` if the input matches neither shape.
+ *   - `SuinsNotRegisteredError` if the SuiNS name is well-formed but
+ *     resolves to null (= not registered).
+ *   - `SuinsRpcError` if the RPC fails.
+ *
+ * Every read tool (engine) and write helper (SDK `T2000.send()`) that
+ * accepts a user-supplied recipient MUST call this helper before any
+ * downstream lookup. Doing the check inline (1) duplicates the regex,
+ * (2) silently rejects SuiNS names, (3) makes cache keys inconsistent
+ * across tools.
+ */
+export async function normalizeAddressInput(
+  value: string,
+  ctx: { suiRpcUrl?: string; signal?: AbortSignal } = {},
+): Promise<NormalizedAddress> {
+  const trimmed = value.trim();
+  if (SUI_ADDRESS_REGEX.test(trimmed)) {
+    return { address: trimmed.toLowerCase(), suinsName: null, raw: value };
+  }
+  if (looksLikeSuiNs(trimmed)) {
+    const name = trimmed.toLowerCase();
+    const address = await resolveSuinsViaRpc(name, ctx);
+    if (!address) {
+      throw new SuinsNotRegisteredError(name);
+    }
+    return { address: address.toLowerCase(), suinsName: name, raw: value };
+  }
+  throw new InvalidAddressError(value);
+}
