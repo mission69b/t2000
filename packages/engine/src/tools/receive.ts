@@ -30,6 +30,23 @@ function internalHeaders(context: { walletAddress?: string; env?: Record<string,
   };
 }
 
+// [S.267 — 2026-05-23] Failure-path observability. Pre-S.267 every tool
+// in this file silently returned `{ data: null, displayText: 'Failed…' }`
+// on HTTP error or network failure, leaving the LLM to rephrase the
+// generic message as "unexpected result." That made auth-threading
+// regressions (S.267 itself: AUDRIC_INTERNAL_KEY not threaded through
+// audric web-v2's ToolContext.env → 401 → silent failure) invisible
+// in production logs. One grep-friendly line per failure surfaces the
+// class of bug at the next regression.
+function logReceiveFailure(
+  tool: string,
+  url: string,
+  status: number | 'network',
+  detail: string,
+) {
+  console.warn(`[receive] tool=${tool} status=${status} url=${url} detail=${detail}`);
+}
+
 export const createPaymentLinkTool = defineTool({
   name: 'create_payment_link',
   description:
@@ -53,6 +70,7 @@ export const createPaymentLinkTool = defineTool({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
+        logReceiveFailure('create_payment_link', `${apiUrl}/api/internal/payments`, res.status, err.error ?? '(no body)');
         return { data: null, displayText: err.error ?? 'Failed to create payment link.' };
       }
 
@@ -72,7 +90,8 @@ export const createPaymentLinkTool = defineTool({
         data: link,
         displayText: `Payment link created for ${amountStr}${link.label ? ` — ${link.label}` : ''}. Payers can connect their wallet, scan the QR code, or send manually. Share: ${link.url}`,
       };
-    } catch {
+    } catch (e) {
+      logReceiveFailure('create_payment_link', `${apiUrl}/api/internal/payments`, 'network', e instanceof Error ? e.message : String(e));
       return { data: null, displayText: 'Failed to create payment link.' };
     }
   },
@@ -97,7 +116,10 @@ export const listPaymentLinksTool = defineTool({
         headers: internalHeaders(context),
       });
 
-      if (!res.ok) return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
+      if (!res.ok) {
+        logReceiveFailure('list_payment_links', `${apiUrl}/api/internal/payments?type=link`, res.status, '(no body parse on list path)');
+        return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
+      }
 
       const raw = await res.json() as { payments: unknown[] };
       const links = raw.payments;
@@ -106,7 +128,8 @@ export const listPaymentLinksTool = defineTool({
         data: { links },
         displayText: count === 0 ? 'No payment links yet.' : `${count} payment link${count !== 1 ? 's' : ''} found.`,
       };
-    } catch {
+    } catch (e) {
+      logReceiveFailure('list_payment_links', `${apiUrl}/api/internal/payments?type=link`, 'network', e instanceof Error ? e.message : String(e));
       return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
     }
   },
@@ -135,6 +158,7 @@ export const createInvoiceTool = defineTool({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
+        logReceiveFailure('create_invoice', `${apiUrl}/api/internal/payments`, res.status, err.error ?? '(no body)');
         return { data: null, displayText: err.error ?? 'Failed to create invoice.' };
       }
 
@@ -154,7 +178,8 @@ export const createInvoiceTool = defineTool({
         data: invoice,
         displayText: `Invoice created for $${invoice.amount.toFixed(2)} ${invoice.currency}${dueStr} — ${invoice.label}. Payers can connect their wallet, scan the QR code, or send manually. Share: ${invoice.url}`,
       };
-    } catch {
+    } catch (e) {
+      logReceiveFailure('create_invoice', `${apiUrl}/api/internal/payments`, 'network', e instanceof Error ? e.message : String(e));
       return { data: null, displayText: 'Failed to create invoice.' };
     }
   },
@@ -185,6 +210,7 @@ export const cancelPaymentLinkTool = defineTool({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
+        logReceiveFailure('cancel_payment_link', `${apiUrl}/api/internal/payments`, res.status, err.error ?? '(no body)');
         return { data: null, displayText: err.error ?? 'Failed to cancel payment link.' };
       }
 
@@ -193,7 +219,8 @@ export const cancelPaymentLinkTool = defineTool({
         data: result,
         displayText: `Payment link ${result.slug} cancelled.`,
       };
-    } catch {
+    } catch (e) {
+      logReceiveFailure('cancel_payment_link', `${apiUrl}/api/internal/payments`, 'network', e instanceof Error ? e.message : String(e));
       return { data: null, displayText: 'Failed to cancel payment link.' };
     }
   },
@@ -224,6 +251,7 @@ export const cancelInvoiceTool = defineTool({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
+        logReceiveFailure('cancel_invoice', `${apiUrl}/api/internal/payments`, res.status, err.error ?? '(no body)');
         return { data: null, displayText: err.error ?? 'Failed to cancel invoice.' };
       }
 
@@ -232,7 +260,8 @@ export const cancelInvoiceTool = defineTool({
         data: result,
         displayText: `Invoice ${result.slug} cancelled.`,
       };
-    } catch {
+    } catch (e) {
+      logReceiveFailure('cancel_invoice', `${apiUrl}/api/internal/payments`, 'network', e instanceof Error ? e.message : String(e));
       return { data: null, displayText: 'Failed to cancel invoice.' };
     }
   },
@@ -257,7 +286,10 @@ export const listInvoicesTool = defineTool({
         headers: internalHeaders(context),
       });
 
-      if (!res.ok) return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
+      if (!res.ok) {
+        logReceiveFailure('list_invoices', `${apiUrl}/api/internal/payments?type=invoice`, res.status, '(no body parse on list path)');
+        return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
+      }
 
       const raw = await res.json() as { payments: unknown[] };
       const invoices = raw.payments;
@@ -266,7 +298,8 @@ export const listInvoicesTool = defineTool({
         data: { invoices },
         displayText: count === 0 ? 'No invoices yet.' : `${count} invoice${count !== 1 ? 's' : ''} found.`,
       };
-    } catch {
+    } catch (e) {
+      logReceiveFailure('list_invoices', `${apiUrl}/api/internal/payments?type=invoice`, 'network', e instanceof Error ? e.message : String(e));
       return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
     }
   },
