@@ -71,6 +71,17 @@ function createMockAgent() {
       add: vi.fn().mockReturnValue({ action: 'added' }),
       remove: vi.fn().mockReturnValue(true),
     },
+    // [S.279.1] MCP t2000_send dryRun now uses the public
+    // T2000.resolveRecipient — must be mocked here too. Same priority
+    // order as production (hex > SuiNS > contact).
+    resolveRecipient: vi.fn().mockImplementation(async (input: string) => {
+      const trimmed = input.trim();
+      if (trimmed.startsWith('0x')) return { address: trimmed.toLowerCase() };
+      if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/.test(trimmed.toLowerCase())) {
+        return { address: '0xresolvedfromsuins', suinsName: trimmed.toLowerCase() };
+      }
+      throw new Error(`"${input}" is not a valid Sui address or saved contact.`);
+    }),
     allRatesAcrossAssets: vi.fn().mockResolvedValue([
       { protocol: 'navi', asset: 'USDC', rates: { saveApy: 4.08, borrowApy: 4.94 } },
     ]),

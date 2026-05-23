@@ -257,7 +257,7 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
 
   server.tool(
     't2000_contacts',
-    'List saved contacts (name → address mappings). Use contact names with t2000_send instead of raw addresses. Use t2000_contact_add to save new contacts.',
+    'DEPRECATED — List saved local contacts (~/.t2000/contacts.json name → address mappings). The local contact map is being sunset; the canonical name system is SuiNS (e.g. alex.sui — resolved by t2000_send automatically). This tool will be removed in the next major SDK release. Prefer pasting 0x addresses or using SuiNS names directly with t2000_send.',
     {},
     async () => {
       try {

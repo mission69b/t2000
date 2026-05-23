@@ -622,8 +622,16 @@ export class T2000 extends EventEmitter<T2000Events> {
    * unregistered SuiNS names (vs. propagating the engine-style
    * `SuinsNotRegisteredError` — keeps the SDK's error surface
    * `T2000Error`-only, consistent with every other write helper).
+   *
+   * [S.279.1 / 2026-05-23 — patch v2.19.1] Promoted from `private` to
+   * `public` so MCP's `t2000_send` dryRun preview path can share the
+   * same resolution logic as the live execute path. Pre-2.19.1 the
+   * MCP dryRun called `agent.contacts.resolve(to)` directly, which
+   * rejected SuiNS names — preview-then-execute flows broke for
+   * `alex.sui`-style recipients. SSOT: never let preview and execute
+   * resolve the same input differently.
    */
-  private async resolveRecipient(
+  async resolveRecipient(
     input: string,
   ): Promise<{ address: string; contactName?: string; suinsName?: string }> {
     const trimmed = input.trim();

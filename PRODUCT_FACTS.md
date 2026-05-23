@@ -202,7 +202,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 |---------|--------|-------|
 | init | `t2000 init` | Options: `--name <name>` |
 | balance | `t2000 balance` | Options: `--show-limits` |
-| send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
+| send | `t2000 send <amount> [asset] [to] <recipient>` | `to` keyword optional. `<recipient>` accepts (in priority order) 0x address, SuiNS name like `alex.sui`, or saved contact alias. Saved contacts deprecated since v2.19.0 — use SuiNS. |
 | save | `t2000 save <amount> [--asset USDC\|USDsui]` | Deposits **USDC or USDsui** to NAVI lending (default USDC, v0.51.1+ accepts `--asset USDsui`). Alias: `supply`. `amount` accepts `all`. |
 | withdraw | `t2000 withdraw <amount> [--asset TOKEN]` | Withdraws from NAVI lending. `amount` accepts `all`. `--asset` for specific token. |
 | borrow | `t2000 borrow <amount> [--asset USDC\|USDsui]` | Borrow USDC or USDsui (v0.51.1+ accepts `--asset USDsui`). |
@@ -223,9 +223,9 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | export | `t2000 export` | Options: `--yes` to skip confirmation |
 | import | `t2000 import` | |
 | lock | `t2000 lock` | Clear saved session |
-| contacts | `t2000 contacts` | List saved contacts |
-| contacts add | `t2000 contacts add <name> <address>` | Save a named contact |
-| contacts remove | `t2000 contacts remove <name>` | Remove a contact |
+| contacts | `t2000 contacts` | **DEPRECATED v2.19.0+** — local contact aliases sunset in next major. Use SuiNS instead. |
+| contacts add | `t2000 contacts add <name> <address>` | **DEPRECATED v2.19.0+** — fires one-shot stderr warning. |
+| contacts remove | `t2000 contacts remove <name>` | **DEPRECATED v2.19.0+**. |
 | claim-rewards | `t2000 claim-rewards` | Claim pending protocol rewards |
 | swap | `t2000 swap <amount> <from> [for] <to>` | Swap tokens via Cetus Aggregator. Options: `--slippage <pct>` (default: 1%) |
 | swap-quote | `t2000 swap-quote <amount> <from> [for] <to>` | Preview swap quote (read-only, no execution) |

@@ -27,16 +27,22 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_send',
-    'Send USDC to a Sui address or contact name. Amount is in dollars. Subject to per-transaction and daily send limits. Set dryRun: true to preview without signing.',
+    'Send USDC (or another supported asset) to a 0x Sui address, a SuiNS name (e.g. alex.sui), or a saved contact alias. Amount is in dollars. Subject to per-transaction and daily send limits. Set dryRun: true to preview without signing. SuiNS is the preferred name path; saved contacts (~/.t2000/contacts.json) are deprecated and will be removed in the next major SDK release.',
     {
-      to: z.string().describe("Recipient Sui address (0x...) or contact name (e.g. 'Tom')"),
+      to: z.string().describe("Recipient: 0x Sui address, SuiNS name like 'alex.sui', or saved contact name. SuiNS preferred; contact aliases are deprecated."),
       amount: z.number().describe('Amount in dollars to send'),
       asset: z.string().optional().describe('Asset to send (default: USDC)'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
     async ({ to, amount, asset, dryRun }) => {
       try {
-        const resolved = agent.contacts.resolve(to);
+        // [S.279.1 / 2026-05-23 — patch v2.19.1] Use the same public
+        // resolveRecipient() that agent.send() uses internally so that
+        // dryRun preview + live execute always resolve identically.
+        // Pre-2.19.1 the dryRun called agent.contacts.resolve() directly,
+        // which rejected SuiNS names — preview-then-execute flows broke
+        // for `alex.sui`-style recipients.
+        const resolved = await agent.resolveRecipient(to);
 
         if (dryRun) {
           agent.enforcer.check({ operation: 'send', amount });
@@ -52,6 +58,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
                 amount,
                 to: resolved.address,
                 contactName: resolved.contactName,
+                suinsName: resolved.suinsName,
                 asset: asset ?? 'USDC',
                 currentBalance: balance.available,
                 balanceAfter: balance.available - amount,
@@ -391,7 +398,7 @@ Common examples:
 
   server.tool(
     't2000_contact_add',
-    'Save a contact name → Sui address mapping. After saving, use the name with t2000_send instead of pasting addresses. Example: save "Tom" as 0x1234... then send to "Tom".',
+    'DEPRECATED — Save a contact name → Sui address mapping to ~/.t2000/contacts.json. The local-file contact map is being sunset; the canonical name system is SuiNS (register your-name.sui at https://suins.io once and every Sui app resolves it). Use this tool only if the recipient has no SuiNS name AND you need a memorable local alias. Will be removed in the next major SDK release.',
     {
       name: z.string().describe('Contact name (e.g. "Tom", "Alice")'),
       address: z.string().describe('Sui wallet address (0x...)'),
@@ -408,7 +415,7 @@ Common examples:
 
   server.tool(
     't2000_contact_remove',
-    'Remove a saved contact by name.',
+    'DEPRECATED — Remove a saved local contact by name. The local-file contact map is being sunset; will be removed entirely in the next major SDK release.',
     {
       name: z.string().describe('Contact name to remove'),
     },

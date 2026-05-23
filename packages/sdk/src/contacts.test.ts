@@ -10,14 +10,22 @@ const VALID_ADDRESS_2 = '0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b
 describe('ContactManager', () => {
   let dir: string;
   let manager: ContactManager;
+  let globalWarnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 't2000-contacts-test-'));
     manager = new ContactManager(dir);
+    // [S.279.1] Suppress the once-per-process deprecation warning by
+    // default so non-deprecation tests don't print stderr noise. Tests
+    // that explicitly verify the warning (see 'deprecation warning'
+    // describe block) install their own spy that overrides this one.
+    _resetContactsDeprecationWarning();
+    globalWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
+    globalWarnSpy.mockRestore();
   });
 
   describe('add', () => {
@@ -227,6 +235,23 @@ describe('ContactManager', () => {
     it('does NOT warn when resolution throws (unknown name)', () => {
       expect(() => manager.resolve('Nobody')).toThrow();
       expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    // [S.279.1] Writing to the deprecated map is itself a use of the
+    // deprecated path — warn on add() too, not just resolve().
+    it('[S.279.1] warns on add() — first contact written to disk', () => {
+      manager.add('NewContact', VALID_ADDRESS);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const msg = warnSpy.mock.calls[0][0] as string;
+      expect(msg).toContain('DEPRECATION');
+      expect(msg).toContain('SuiNS');
+    });
+
+    it('[S.279.1] add() + subsequent resolve() share the one-shot flag', () => {
+      manager.add('NewContact', VALID_ADDRESS);
+      manager.resolve('NewContact');
+      // Both deprecated paths fired, but the warn only printed once.
+      expect(warnSpy).toHaveBeenCalledTimes(1);
     });
   });
 

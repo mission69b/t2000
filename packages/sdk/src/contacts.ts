@@ -72,6 +72,11 @@ export class ContactManager {
     const existed = key in this.contacts;
     this.contacts[key] = { name, address: normalized };
     this.save();
+    // [S.279.1 / 2026-05-23] Writing to the deprecated map is itself a
+    // use of the deprecated path — warn the first time a process adds
+    // a contact so users see the migration steer immediately, not later
+    // when they `send` to the alias for the first time.
+    warnContactsDeprecation();
     return { action: existed ? 'updated' : 'added' };
   }
 

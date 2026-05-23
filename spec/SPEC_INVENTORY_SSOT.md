@@ -1,6 +1,6 @@
 # SPEC Inventory — Single Source of Truth
 
-> **Last refreshed:** 2026-05-23 ~19:25 AEST after S.279 ship (CLI-CONTACTS-CLEANUP — SuiNS in `T2000.send()` + SuiNS resolver promoted engine→SDK). No SPEC-file changes; backlog row promoted to shipped. Last `spec/` mutation was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
+> **Last refreshed:** 2026-05-23 ~20:10 AEST after S.279.1 (S.279 self-audit + residue cleanup — patch v2.19.1). No `spec/` mutation; backlog/patch shipped without a SPEC artifact (same pattern as S.277.1). Last `spec/` mutation was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
 > **Purpose:** answer "what's actually in `spec/` right now, what's drifted, what's archive-ready" in one read. Run a fresh sweep against this table at the start of any session that touches `spec/`.
 > **Companion:** `spec/README.md` (the layout + promotion rules contract).
 

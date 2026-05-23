@@ -36,8 +36,11 @@ const agent = await T2000.create({ pin: 'my-secret' });
 const balance = await agent.balance();
 console.log(`$${balance.available} USDC available`);
 
-// Send USDC
+// Send USDC — recipient can be a 0x address, a SuiNS name, or a saved contact alias
 await agent.send({ to: '0x...', amount: 10 });
+await agent.send({ to: 'alex.sui', amount: 10 });    // SuiNS — resolved on-chain
+// Legacy contact aliases (~/.t2000/contacts.json) still work but emit a deprecation
+// warning on first use per process. Sunset target: next major SDK release.
 
 // Save (earn yield — auto-selects best rate via NAVI)
 await agent.save({ amount: 50 });
@@ -88,7 +91,8 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 |--------|-------------|---------|
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
-| `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
+| `agent.send({ to, amount, asset? })` | Transfer USDC (or other supported asset) to a 0x address, SuiNS name (`alex.sui`), or saved contact alias. Priority: hex > SuiNS > contact. `SendResult.suinsName` / `.contactName` flag which path resolved. | `SendResult` |
+| `agent.resolveRecipient(input)` | Public resolver — same hex / SuiNS / contact priority used by `send()`. Useful for dryRun previews where you need the resolved address before committing. | `{ address, suinsName?, contactName? }` |
 | `agent.receive({ amount?, currency?, memo?, label? })` | Generate payment request with Payment Kit URI (`sui:pay?...`), nonce for duplicate prevention | `PaymentRequest` |
 | `agent.save({ amount, asset?, protocol? })` | Deposit **USDC or USDsui** to NAVI savings (v0.51.0+). `asset` defaults to `'USDC'`. Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
 | `agent.withdraw({ amount, asset? })` | Withdraw from savings. `amount` can be `'all'`. Optional `asset` (default: USDC; also supports USDsui plus legacy USDe / SUI). | `WithdrawResult` |
@@ -285,10 +289,11 @@ Swap uses Cetus Aggregator V3. Per-call `overlayFee` is opt-in — the SDK and C
 import { T2000Error } from '@t2000/sdk';
 
 try {
-  await agent.send({ to: '0x...', amount: 1000 });
+  await agent.send({ to: 'alex.sui', amount: 1000 });
 } catch (e) {
   if (e instanceof T2000Error) {
-    console.log(e.code);    // 'INSUFFICIENT_BALANCE'
+    console.log(e.code);
+    // 'INSUFFICIENT_BALANCE' | 'SUINS_NOT_REGISTERED' | 'CONTACT_NOT_FOUND' | …
     console.log(e.message); // Human-readable message
   }
 }

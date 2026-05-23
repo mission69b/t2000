@@ -63,6 +63,25 @@ function createMockAgent() {
         throw new T2000Error('CONTACT_NOT_FOUND', `"${nameOrAddress}" is not a valid Sui address or saved contact.`);
       }),
     },
+    // [S.279.1] Mirror the public T2000.resolveRecipient priority order:
+    // hex > SuiNS (`.sui` suffix) > contact alias. The MCP `t2000_send`
+    // dryRun path now uses this directly so preview + execute agree.
+    // (Test fixtures use non-hex placeholders like '0xrecipient' for
+    // brevity, so we keep the loose 0x-startsWith check that matches the
+    // pre-S.279.1 ContactManager.resolve mock — production T2000 enforces
+    // strict hex via SUI_ADDRESS_REGEX.)
+    resolveRecipient: vi.fn().mockImplementation(async (input: string) => {
+      const trimmed = input.trim();
+      if (trimmed.startsWith('0x')) return { address: trimmed.toLowerCase() };
+      if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/.test(trimmed.toLowerCase())) {
+        if (trimmed.toLowerCase() === 'unregistered.sui') {
+          throw new T2000Error('SUINS_NOT_REGISTERED', `"${trimmed}" isn't a registered SuiNS name.`);
+        }
+        return { address: '0xresolvedfromsuins', suinsName: trimmed.toLowerCase() };
+      }
+      if (trimmed.toLowerCase() === 'tom') return { address: '0xrecipient', contactName: 'Tom' };
+      throw new T2000Error('CONTACT_NOT_FOUND', `"${input}" is not a valid Sui address or saved contact.`);
+    }),
     pay: vi.fn().mockResolvedValue({
       status: 200, body: { data: 'paid content' }, paid: true, cost: 0.01,
       receipt: { reference: '0xdigest123', timestamp: new Date().toISOString() },
@@ -153,6 +172,37 @@ describe('write tools', () => {
       const handler = tools.get('t2000_send')!;
       const result = await handler({ to: 'Unknown', amount: 10 });
       expect(result.isError).toBe(true);
+    });
+
+    // [S.279.1] Regression tests — preview-then-execute flows must work
+    // for SuiNS recipients. Pre-2.19.1 the dryRun path called
+    // ContactManager.resolve directly, which rejected `.sui` names with
+    // CONTACT_NOT_FOUND even though the live execute path resolved them
+    // correctly. Now both paths share agent.resolveRecipient.
+    it('[S.279.1] resolves SuiNS name in dryRun preview', async () => {
+      const handler = tools.get('t2000_send')!;
+      const result = await handler({ to: 'alex.sui', amount: 10, dryRun: true });
+      expect(result.isError).toBeFalsy();
+      const data = JSON.parse(result.content[0].text);
+      expect(data.preview).toBe(true);
+      expect(data.to).toBe('0xresolvedfromsuins');
+      expect(data.suinsName).toBe('alex.sui');
+      expect(data.contactName).toBeUndefined();
+      expect(agent.send).not.toHaveBeenCalled();
+    });
+
+    it('[S.279.1] surfaces SUINS_NOT_REGISTERED in dryRun', async () => {
+      const handler = tools.get('t2000_send')!;
+      const result = await handler({ to: 'unregistered.sui', amount: 10, dryRun: true });
+      expect(result.isError).toBe(true);
+      const data = JSON.parse(result.content[0].text);
+      expect(data.code).toBe('SUINS_NOT_REGISTERED');
+    });
+
+    it('[S.279.1] live send to SuiNS recipient still flows through agent.send', async () => {
+      const handler = tools.get('t2000_send')!;
+      await handler({ to: 'alex.sui', amount: 10, dryRun: false });
+      expect(agent.send).toHaveBeenCalledWith({ to: 'alex.sui', amount: 10, asset: undefined });
     });
 
     it('should return safeguard error when locked', async () => {

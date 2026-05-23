@@ -180,13 +180,17 @@ t2000 init
 |---------|-------------|
 | `t2000 earn` | Show all earning opportunities — savings yield |
 
-### Contacts
+### Contacts (DEPRECATED — sunset in next major)
+
+The local `~/.t2000/contacts.json` alias map is being retired. **Use SuiNS instead**: register `your-name.sui` once at https://suins.io and every Sui app — including `t2000 send` — resolves it automatically. The first time a process resolves or writes a legacy contact alias, the CLI prints a one-shot deprecation warning to stderr.
 
 | Command | Description |
 |---------|-------------|
-| `t2000 contacts` | List saved contacts |
-| `t2000 contacts add <name> <address>` | Save a named contact |
+| `t2000 contacts` | List saved contacts (deprecated) |
+| `t2000 contacts add <name> <address>` | Save a named contact (deprecated; warns once) |
 | `t2000 contacts remove <name>` | Remove a contact |
+
+`t2000 send` accepts SuiNS names natively — `t2000 send 10 USDC to alex.sui` works with no setup. Priority order for the recipient argument: `0x` address > SuiNS name > saved contact alias.
 
 ### Safeguards
 
