@@ -1,19 +1,19 @@
 # SPEC Inventory — Single Source of Truth
 
-> **Last refreshed:** 2026-05-23 ~17:30 AEST after S.277 ship (audit doc archived to `archive/v07e/`).
+> **Last refreshed:** 2026-05-23 ~19:00 AEST after S.278 ship (SPEC 272 Lever 1 SHIPPED; moved from `active/` → `active/shipping/` with Lever 2 + 3 deferred).
 > **Purpose:** answer "what's actually in `spec/` right now, what's drifted, what's archive-ready" in one read. Run a fresh sweep against this table at the start of any session that touches `spec/`.
 > **Companion:** `spec/README.md` (the layout + promotion rules contract).
 
 ---
 
-## 0. TL;DR — current state (post-2026-05-23 cleanup)
+## 0. TL;DR — current state (post-S.278 ship)
 
-The cleanup pass on 2026-05-23 archived **19 files** + deleted 1 stub. `spec/active/` now holds **5 working files** + 2 subdirs (harness + shipping).
+The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added one shipping/ entry. `spec/active/` now holds **5 working files** + 2 subdirs (harness + shipping with 2 entries).
 
 | Bucket | Count | State |
 |---|---|---|
 | ✅ Genuinely active (in flight or pending decision) | **5** | In `spec/active/` |
-| 🚀 Shipping (first phase shipped, follow-ups open) | **1** | In `spec/active/shipping/` (SPEC 30) |
+| 🚀 Shipping (first phase shipped, follow-ups open) | **2** | In `spec/active/shipping/` (SPEC 30, SPEC 272) |
 | 🟡 Long-lived harness specs (gitignored) | **3** | In `spec/active/harness/` |
 | 📦 Archived 2026-05-23 cleanup | **19** | Now in `spec/archive/<version>/` |
 | 🗑️ Deleted (dead stub) | **1** | SPEC 38b (S.253 absorbed its scope) |
@@ -64,11 +64,12 @@ The cleanup pass on 2026-05-23 archived **19 files** + deleted 1 stub. `spec/act
 
 - `active/SPEC_38b_CODE_HYGIENE.md` (STUB v0.0) — sister to 38a, intended to flesh out post-v0.7c. The S.253 archive absorbed most of what it would have targeted; founder ratified the delete on 2026-05-23.
 
-### 1.2 `spec/active/shipping/` (1 file)
+### 1.2 `spec/active/shipping/` (2 files)
 
 | File | Status | Action |
 |---|---|---|
 | `SPEC_30_CROSS_REPO_SECURITY_REVIEW.md` | 🟢 SHIPPING | KEEP. Phase 1A-1C SHIPPED + URGENT BLOCK SHIPPED. Phase 2-10 spun out to follow-up SPECs (31-36) for founder triage. |
+| `SPEC_272_CRON_RATE_LIMITS.md` | 🟢 SHIPPING (NEW 2026-05-23) | Lever 1 SHIPPED via S.278 (cron user-batching N=10/M=500ms). Lever 2 + 3 DEFERRED pending 3-day post-deploy metric review. Decision gate documented at top of the SPEC. Promote to `archive/v07e/` once Lever 2 + 3 explicitly retired OR shipped. |
 
 ### 1.3 `spec/active/harness/` (3 files — gitignored, long-lived)
 
@@ -121,7 +122,7 @@ The 2026-05-23 cleanup moved 19 archive-ready specs + deleted 1 stub. Before/aft
 
 **Before:** 27 files in `spec/active/` (top level), most of them remnants of fully-shipped SPECs.
 
-**After:** `spec/active/` holds exactly:
+**After (2026-05-23 ~19:00 AEST post-S.278):** `spec/active/` holds exactly:
 
 ```
 AUDIT_ENGINE_FN_INJECTION_REFACTOR.md     # M2 backlog
@@ -131,9 +132,10 @@ V07E_STALE_FINCONTEXT_WRITE_REFUSAL.md     # Phase 2 column drop pending (D8)
 V07F_FORWARD_MAP.md                        # Audric Store SPEC placeholder
 harness/                                   # 3 long-lived (gitignored)
 shipping/SPEC_30_CROSS_REPO_SECURITY_REVIEW.md
+shipping/SPEC_272_CRON_RATE_LIMITS.md      # NEW — Lever 1 SHIPPED, 2+3 deferred
 ```
 
-**5 active files + 3 harness + 1 shipping = clean working set.** Plus `spec/SPEC_INVENTORY_SSOT.md` (this doc, tracked) at the spec root for cross-session SSOT.
+**5 active files + 3 harness + 2 shipping = clean working set.** Plus `spec/SPEC_INVENTORY_SSOT.md` (this doc, tracked) at the spec root for cross-session SSOT.
 
 The exact list of moved files is in §1.1.b above.
 
