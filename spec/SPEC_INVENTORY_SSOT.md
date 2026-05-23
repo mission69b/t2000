@@ -1,18 +1,18 @@
 # SPEC Inventory — Single Source of Truth
 
-> **Last refreshed:** 2026-05-23 ~21:45 AEST after S.283 (PIPELINE-AUDIT-PHASE-2 S5 closed as NO-OP — hypothesis disproven on read-through; the 9 BV protocols were deliberately pruned DOWN from 26 for burst-safety per `protocols.ts` header, not aspirationally added). **PIPELINE-AUDIT-PHASE-2 is now COMPLETE** (S1 + S2 + S3 shipped; S5 closed as no-op; S4 + S6 + S7 already deferred/rejected at audit time). `spec/active/AUDIT_ON_CHAIN_PIPELINE_2026-05-23.md` ship log + recommendation matrix + §8 recommendation summary all updated in place. Docs-only change; no code touched, no engine bump. The audit doc is gitignored (founder-local), so tracked file counts unchanged. Earlier today: S.282 (S3 canvases), S.281 (S2 rename), S.280 (S1 split, patch v2.19.2). Last `spec/` tracked-file mutation was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
+> **Last refreshed:** 2026-05-24 ~09:45 AEST after S.285 ship — added `spec/active/SPEC_AUDRIC_STREAM_RESUME.md` (v0.1 DRAFT) capturing the P2.2 deferral from the AI SDK Hardening Phase 2 ship. Founder triage pending on §4 (Option 3 spike vs Option 2 host-side store). `spec/active/` now holds **6** working files + 2 subdirs. Earlier today: S.285 itself was a code ship with no SPEC artifact (4/5 Phase 2 items shipped + engine v2.19.3 cut). Yesterday (2026-05-23): S.283 closed PIPELINE-AUDIT-PHASE-2 S5 as no-op (PIPELINE-AUDIT-PHASE-2 complete); S.282 (S3 canvases), S.281 (S2 rename), S.280 (S1 split, patch v2.19.2). Last `spec/` tracked-file mutation before today was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
 > **Purpose:** answer "what's actually in `spec/` right now, what's drifted, what's archive-ready" in one read. Run a fresh sweep against this table at the start of any session that touches `spec/`.
 > **Companion:** `spec/README.md` (the layout + promotion rules contract).
 
 ---
 
-## 0. TL;DR — current state (post-S.279 ship — no `spec/` mutation; counts unchanged from S.278)
+## 0. TL;DR — current state (post-S.285 ship — added SPEC_AUDRIC_STREAM_RESUME.md as v0.1 DRAFT)
 
-The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added one shipping/ entry. S.279 (2026-05-23 ~19:25 AEST — CLI-CONTACTS-CLEANUP) made no `spec/` changes — it's an HANDOFF backlog item that shipped without a SPEC artifact (same pattern as S.277). `spec/active/` still holds **5 working files** + 2 subdirs (harness + shipping with 2 entries).
+The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added one shipping/ entry. S.279 (CLI-CONTACTS-CLEANUP) and S.285 (AI SDK Hardening Phase 2 — 4/5 items shipped) made no archive moves; S.285 added one NEW draft. `spec/active/` now holds **6 working files** + 2 subdirs.
 
 | Bucket | Count | State |
 |---|---|---|
-| ✅ Genuinely active (in flight or pending decision) | **5** | In `spec/active/` |
+| ✅ Genuinely active (in flight or pending decision) | **6** | In `spec/active/` (new: SPEC_AUDRIC_STREAM_RESUME.md, v0.1 DRAFT) |
 | 🚀 Shipping (first phase shipped, follow-ups open) | **2** | In `spec/active/shipping/` (SPEC 30, SPEC 272) |
 | 🟡 Long-lived harness specs (gitignored) | **3** | In `spec/active/harness/` |
 | 📦 Archived 2026-05-23 cleanup | **19** | Now in `spec/archive/<version>/` |
@@ -24,15 +24,16 @@ The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added 
 
 ## 1. The full inventory
 
-### 1.1 `spec/active/` (current state — 5 files)
+### 1.1 `spec/active/` (current state — 6 files)
 
 | # | File | Status | Why it's still active |
 |---|---|---|---|
 | 1 | `AUDIT_ENGINE_FN_INJECTION_REFACTOR.md` | 🟢 ACTIVE | M2 backlog row in `audric/HANDOFF_NEXT_AGENT.md` (rank 17). Re-baseline scope first — most legacy `apps/web` rewrites died with S.253. Audit-only; no code changes yet. |
 | 2 | `AUDIT_ON_CHAIN_PIPELINE_2026-05-23.md` | 🟢 ACTIVE | PIPELINE-AUDIT-PHASE-2 backlog row (rank 7.5). Phase 1 audit (read-only) shipped 2026-05-23. Phase 2 (decision) + Phase 3 (migration) pending founder triage on the recommendation. |
 | 3 | `SPEC_31_SCOPING.md` | 🟢 ACTIVE | Founder triage pending to lock SPEC scope (CSP polish). Agent-only ready-to-ship once locked. M1 backlog row (rank 14). |
-| 4 | `V07E_STALE_FINCONTEXT_WRITE_REFUSAL.md` | 🟢 ACTIVE | Phase 1 SHIPPED via S.242 (Path 6 locked). **Phase 2 still pending:** Q2 (Prisma migration timing for column drop) + Q3 (audit coverage) unlocked. **D8** in handoff backlog (rank 19.9). ~20 min impl. |
-| 5 | `V07F_FORWARD_MAP.md` | 🟢 ACTIVE | REFRAMED 2026-05-22 (S.245). New scope = Audric Store SPEC clean-slate Commerce design. Stays as forward-looking placeholder until Audric Store SPEC kickoff (D3/D4 rank 21-22). |
+| 4 | `SPEC_AUDRIC_STREAM_RESUME.md` | 🟢 ACTIVE (v0.1 DRAFT, NEW 2026-05-24) | Captures the P2.2 deferral from AI SDK Hardening Phase 2 (S.285) as a designable slice. Host-side UIMessage checkpoint store to enable page-reload / cold-start chat resume. **Founder triage pending on §4 Q1** (greenlight `@vercel/resumable-stream` 2hr spike vs proceed directly with custom Option 2 store). ~3 dev days end-to-end across 5 phases. |
+| 5 | `V07E_STALE_FINCONTEXT_WRITE_REFUSAL.md` | 🟢 ACTIVE | Phase 1 SHIPPED via S.242 (Path 6 locked). **Phase 2 still pending:** Q2 (Prisma migration timing for column drop) + Q3 (audit coverage) unlocked. **D8** in handoff backlog (rank 19.9). ~20 min impl. |
+| 6 | `V07F_FORWARD_MAP.md` | 🟢 ACTIVE | REFRAMED 2026-05-22 (S.245). New scope = Audric Store SPEC clean-slate Commerce design. Stays as forward-looking placeholder until Audric Store SPEC kickoff (D3/D4 rank 21-22). |
 
 ### 1.1.b `spec/active/` — what was archived in the 2026-05-23 cleanup pass
 
