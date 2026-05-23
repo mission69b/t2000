@@ -40,6 +40,7 @@ describe('[v0.48 — bug 2] render_canvas address scope', () => {
     'portfolio_timeline',
     'spending_breakdown',
     'full_portfolio', // [v0.49] extended to multi-panel capstone
+    'receive_address', // [S.266] extended to wallet receive QR canvas
   ] as const)(
     'template=%s',
     (template) => {
@@ -234,8 +235,8 @@ describe('[v0.49] health_simulator seeds neutral defaults for watched addresses'
  * address to them — even though those templates ignore the address
  * entirely.
  *
- * The canvas tool now scopes the normalization to the six
- * address-aware templates only.
+ * The canvas tool now scopes the normalization to the seven
+ * address-aware templates only (S.266 added `receive_address`).
  */
 describe('[v1.2.1 — bug fix] non-address-aware templates ignore params.address', () => {
   it('yield_projector does NOT throw on malformed params.address', async () => {
