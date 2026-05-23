@@ -41,6 +41,7 @@ infra/.env.infra
 # handoff/build-tracker archives, founder one-offs) stays local-only.
 spec/*
 !spec/README.md
+!spec/SPEC_INVENTORY_SSOT.md
 !spec/active/
 !spec/archive/
 !spec/reference/

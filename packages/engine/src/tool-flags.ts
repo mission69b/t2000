@@ -12,7 +12,8 @@ import type { Tool, ToolFlags } from './types.js';
  *   affectsHealth   — can change borrow health factor
  *   irreversible    — physical mail, external transfers — can't undo
  *   producesArtifact — returns images, documents, generated content
- *   costAware       — has a monetary cost the user should know about
+ *                     (no current consumer; reserved for Audric Store
+ *                     primitives in the upcoming Commerce SPEC)
  *   maxRetries      — max calls with same input (default: unlimited for reads, 1 for writes)
  *   bundleable      — [SPEC 7 Layer 2] can participate in a multi-write Payment
  *                     Intent. Set on every confirm-tier write whose on-chain effect
@@ -27,14 +28,15 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   borrow:          { mutating: true, affectsHealth: true, bundleable: true },
   repay_debt:      { mutating: true, requiresBalance: true, bundleable: true },
   claim_rewards:   { mutating: true, bundleable: true },
-  volo_stake:      { mutating: true, requiresBalance: true, bundleable: true },
-  volo_unstake:    { mutating: true, bundleable: true },
 
   // [SIMPLIFICATION DAY 7] Removed flag entries for deleted tools:
   //   create_schedule, cancel_schedule (DCA schedules retired)
   //   toggle_allowance, update_daily_limit, update_permissions (allowance dormant)
   // [S.269 item 6 — 2026-05-23] Removed flag entry for deleted save_contact
   //   (dead tool — host-side Prisma persistence, no engine effect).
+  // [S.277 — 2026-05-23] Removed flag entries for deleted Volo trio
+  //   (volo_stake, volo_unstake — "Earns Its Keep" audit; SDK retains
+  //   the capability for CLI/MCP consumers).
 
   // Receive tools — create/cancel mutate server state
   create_payment_link: { mutating: true },
@@ -71,11 +73,11 @@ export function getToolFlags(name: string): ToolFlags {
  * "PAYMENT INTENT" sections (see `t2000-rebalance` / `t2000-save` /
  * `t2000-withdraw` SKILL.md files).
  *
- * The set is the 9 confirm-tier write tools whose on-chain effect is
- * fully expressible at compose time:
+ * The set is the 7 confirm-tier write tools whose on-chain effect is
+ * fully expressible at compose time (post-S.277; Volo trio cut):
  *
  *   save_deposit, withdraw, borrow, repay_debt, send_transfer,
- *   swap_execute, claim_rewards, volo_stake, volo_unstake.
+ *   swap_execute, claim_rewards.
  */
 export function isBundleableTool(name: string): boolean {
   return TOOL_FLAGS[name]?.bundleable === true;

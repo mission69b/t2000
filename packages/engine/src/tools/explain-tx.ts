@@ -24,7 +24,7 @@ interface ExplainedTx {
 export const explainTxTool = defineTool({
   name: 'explain_tx',
   description:
-    'Explain a Sui transaction in plain English. Provide a transaction digest and get a human-readable breakdown of what happened — transfers, swaps, deposits, etc.',
+    'Decode an ARBITRARY Sui transaction digest (one the user pasted, received from a friend, or pulled off a block explorer) into plain English — transfers, swaps, deposits, status, gas. Use ONLY when the user supplies a specific tx digest from outside Audric. For the user\'s OWN recent activity, use `transaction_history` instead — it already decodes their txs with friendlier symbols, timestamps, and grouping. Do not call `explain_tx` to "verify" a write the user just made through Audric (the engine\'s post-write refresh + receipt card already handle that).',
   inputSchema,
   isReadOnly: true,
   async call(input, context) {

@@ -13,13 +13,13 @@
  *   - `guard-financial-context-seed.test.ts` → balance_required + health_factor
  *   - `v2/guard-runner.test.ts`        → input_validation (preflight)
  *
- * This file covers the remaining 7 gates:
+ * This file covers the remaining gates (cost_warning + artifact_preview
+ * removed in S.277 — both were dead code after pay_api / image-tool
+ * cuts):
  *   - retry_blocked         (safety)   — pass + block
  *   - irreversibility       (safety)   — pass×2 + hint
  *   - large_transfer        (financial) — pass×2 + hint + warn
  *   - slippage_warning      (financial) — pass×2 + hint
- *   - cost_warning          (ux)        — pass×2 + hint
- *   - artifact_preview      (ux, post-exec) — null + hint×2
  *   - stale_data            (ux, post-exec) — null + hint
  *
  * Note on "4 outcomes per guard": the plan's acceptance framing is
@@ -36,7 +36,6 @@ import {
   runGuards,
   createGuardRunnerState,
   extractConversationText,
-  guardArtifactPreview,
   guardStaleData,
   type GuardConfig,
 } from '../guards.js';
@@ -59,8 +58,6 @@ function only(...enabled: Array<keyof GuardConfig>): GuardConfig {
     slippage: false,
     staleData: false,
     irreversibility: false,
-    artifactPreview: false,
-    costWarning: false,
     retryProtection: false,
     inputValidation: false,
     addressSource: false,
@@ -371,118 +368,7 @@ describe('slippage_warning (financial guard)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. cost_warning (ux) — pass×2 | hint
-// ---------------------------------------------------------------------------
-
-describe('cost_warning (ux guard)', () => {
-  const costAwareTool = defineTool({
-    name: 'pay_api',
-    description: 'pay',
-    inputSchema: z.object({ url: z.string() }),
-    isReadOnly: false,
-    flags: { mutating: true, costAware: true },
-    call: async () => ({ data: {} }),
-  });
-  const nonCostAwareTool = defineTool({
-    name: 'save_deposit',
-    description: 'save',
-    inputSchema: z.object({ amount: z.number() }),
-    isReadOnly: false,
-    flags: { mutating: true /* costAware: false */ },
-    call: async () => ({ data: {} }),
-  });
-
-  it('passes when tool is NOT flagged costAware', () => {
-    const result = runGuards(
-      nonCostAwareTool,
-      makeCall('save_deposit', { amount: 100 }),
-      createGuardRunnerState(),
-      only('costWarning'),
-      makeConvCtx({ userText: 'go ahead' }),
-    );
-    expect(result.blocked).toBe(false);
-    expect(result.events.find((e) => e.gate === 'cost_warning')).toBeUndefined();
-  });
-
-  it('passes when costAware AND conversation mentions cost ($, fee, pay, etc.)', () => {
-    const result = runGuards(
-      costAwareTool,
-      makeCall('pay_api', { url: 'https://x' }),
-      createGuardRunnerState(),
-      only('costWarning'),
-      makeConvCtx({ fullText: 'This will cost $0.50 USDC' }),
-    );
-    expect(result.blocked).toBe(false);
-    expect(result.events.find((e) => e.gate === 'cost_warning')).toBeUndefined();
-  });
-
-  it('emits hint when costAware AND no cost mention in conversation', () => {
-    const result = runGuards(
-      costAwareTool,
-      makeCall('pay_api', { url: 'https://x' }),
-      createGuardRunnerState(),
-      only('costWarning'),
-      makeConvCtx({ fullText: 'just go ahead with the request' }),
-    );
-    expect(result.blocked).toBe(false);
-    const event = result.events.find((e) => e.gate === 'cost_warning');
-    expect(event?.verdict).toBe('hint');
-    expect(event?.tier).toBe('ux');
-    expect(event?.message).toMatch(/monetary cost/i);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 6. artifact_preview (ux, post-execution) — null | hint(image) | hint(PDF)
-// ---------------------------------------------------------------------------
-
-describe('artifact_preview (post-execution UX guard)', () => {
-  it('returns null when result has no image/PDF artifact', () => {
-    const result = guardArtifactPreview({ status: 'ok', data: { total: 42 } });
-    expect(result).toBeNull();
-  });
-
-  it('returns null for non-object results (string, number, null)', () => {
-    expect(guardArtifactPreview('plain text')).toBeNull();
-    expect(guardArtifactPreview(42)).toBeNull();
-    expect(guardArtifactPreview(null)).toBeNull();
-  });
-
-  it('emits hint when result.url is an image (png/jpg/jpeg/webp/gif/svg)', () => {
-    for (const ext of ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']) {
-      const result = guardArtifactPreview({ url: `https://x/foo.${ext}` });
-      expect(result).not.toBeNull();
-      expect(result?._gate).toBe('artifact_preview');
-      expect(result?._hint).toMatch(/Show this to the user/i);
-    }
-  });
-
-  it('emits hint when result has an images array', () => {
-    const result = guardArtifactPreview({ images: ['https://x/a.png'] });
-    expect(result).not.toBeNull();
-    expect(result?._gate).toBe('artifact_preview');
-  });
-
-  it('emits hint when result.image_url is set (regardless of extension)', () => {
-    const result = guardArtifactPreview({ image_url: 'https://x/no-ext' });
-    expect(result).not.toBeNull();
-    expect(result?._gate).toBe('artifact_preview');
-  });
-
-  it('emits hint when result.url is a PDF', () => {
-    const result = guardArtifactPreview({ url: 'https://x/report.pdf' });
-    expect(result).not.toBeNull();
-    expect(result?._gate).toBe('artifact_preview');
-  });
-
-  it('handles URLs with query strings (image?token=...)', () => {
-    const result = guardArtifactPreview({ url: 'https://x/foo.png?signed=1' });
-    expect(result).not.toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 7. stale_data (ux, post-execution) — null | hint
+// 5. stale_data (ux, post-execution) — null | hint
 // ---------------------------------------------------------------------------
 
 describe('stale_data (post-execution UX guard)', () => {

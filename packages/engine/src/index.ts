@@ -169,7 +169,6 @@ export {
   updateGuardStateAfterToolResult,
   extractTrustedAddressesFromResult,
   extractConversationText,
-  guardArtifactPreview,
   guardStaleData,
 } from './guards.js';
 export type {
@@ -400,11 +399,8 @@ export {
   ratesInfoTool,
   transactionHistoryTool,
   swapQuoteTool,
-  voloStatsTool,
-  webSearchTool,
   explainTxTool,
   portfolioAnalysisTool,
-  protocolDeepDiveTool,
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
@@ -429,8 +425,6 @@ export {
   repayDebtTool,
   claimRewardsTool,
   swapExecuteTool,
-  voloStakeTool,
-  voloUnstakeTool,
 } from './tools/index.js';
 
 // All default tools
@@ -551,11 +545,10 @@ export type {
 } from './audric-api.js';
 
 // [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed from the engine.
-// Spot prices live on `tokenPricesTool` (BlockVision); protocol metadata
-// stays on `protocolDeepDiveTool` (already re-exported above via
-// `tools/index.js`), which still talks to `api.llama.fi` directly
-// inside its handler — that's the lone surviving production dependency
-// on DefiLlama.
+// Spot prices live on `tokenPricesTool` (BlockVision). The surviving
+// DefiLlama caller — `protocolDeepDiveTool` — was cut in S.277 (engine
+// 2.18.0, "Earns Its Keep" audit). The engine no longer talks to
+// `api.llama.fi`.
 export { tokenPricesTool } from './tools/token-prices.js';
 
 // System prompt

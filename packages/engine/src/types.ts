@@ -923,7 +923,6 @@ export interface ToolFlags {
   affectsHealth?: boolean;
   irreversible?: boolean;
   producesArtifact?: boolean;
-  costAware?: boolean;
   maxRetries?: number;
   /**
    * [SPEC 7 v0.4 Layer 2] Opt-in: this write tool can participate in a
@@ -931,9 +930,9 @@ export interface ToolFlags {
    * in a single assistant turn AND every block resolves to a `confirm`-tier
    * write tool with `bundleable: true`, the engine collapses them into one
    * `pending_action` with `steps[]` instead of yielding N times. Default
-   * `false` — silently opt-out. v1 set: `save_deposit`, `withdraw`,
-   * `borrow`, `repay_debt`, `send_transfer`, `swap_execute`,
-   * `claim_rewards`, `volo_stake`, `volo_unstake`.
+   * `false` — silently opt-out. Post-S.277 set: `save_deposit`,
+   * `withdraw`, `borrow`, `repay_debt`, `send_transfer`, `swap_execute`,
+   * `claim_rewards` (volo_stake / volo_unstake cut in S.277).
    *
    * **Permanently non-bundleable:** (none today; `save_contact` was
    *  the historical exception, deleted in S.269 item 6 — 2026-05-23.)

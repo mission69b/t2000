@@ -31,8 +31,6 @@ import { updateTodoTool } from './update-todo.js';
 import { withdrawTool } from './withdraw.js';
 import { claimRewardsTool } from './claim.js';
 import { harvestRewardsTool } from './harvest-rewards.js';
-import { voloStakeTool } from './volo-stake.js';
-import { voloUnstakeTool } from './volo-unstake.js';
 
 // Opt-in write tools that hosts append to `getDefaultTools()`. They're
 // NOT in `WRITE_TOOLS` (the default-export list), but they ARE write
@@ -112,31 +110,6 @@ describe('preflight smoke — newly-covered tools (SPEC 30 Phase 1B follow-up)',
     });
     it('accepts defaults (no input)', () => {
       expect(harvestRewardsTool.preflight!({}).valid).toBe(true);
-    });
-  });
-
-  describe('volo_stake', () => {
-    it('rejects sub-1-SUI amounts', () => {
-      expect(voloStakeTool.preflight!({ amount: 0.5 }).valid).toBe(false);
-    });
-    it('rejects unreasonable amounts', () => {
-      expect(voloStakeTool.preflight!({ amount: 100_000_000 }).valid).toBe(false);
-    });
-    it('accepts 1+ SUI', () => {
-      expect(voloStakeTool.preflight!({ amount: 1 }).valid).toBe(true);
-      expect(voloStakeTool.preflight!({ amount: 100 }).valid).toBe(true);
-    });
-  });
-
-  describe('volo_unstake', () => {
-    it('accepts "all"', () => {
-      expect(voloUnstakeTool.preflight!({ amount: 'all' }).valid).toBe(true);
-    });
-    it('rejects negative amount', () => {
-      expect(voloUnstakeTool.preflight!({ amount: -1 }).valid).toBe(false);
-    });
-    it('accepts positive number', () => {
-      expect(voloUnstakeTool.preflight!({ amount: 5 }).valid).toBe(true);
     });
   });
 

@@ -161,21 +161,19 @@ const engine = new AISDKEngine({
 // use the in-memory default; multi-instance hosts (audric on Vercel) inject Upstash.
 ```
 
-## Built-in Tools (31 — was 35 pre-S.269)
+## Built-in Tools (26 — was 31 pre-S.277)
 
-### Read (21, parallel, auto-approved)
+### Read (18, parallel, auto-approved)
 `render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`,
-`transaction_history`, `swap_quote`, `volo_stats`, `web_search`,
-`explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `token_prices`,
-`create_payment_link`, `list_payment_links`, `cancel_payment_link`,
-`spending_analytics`, `yield_summary`, `activity_summary`, `resolve_suins`,
-`pending_rewards`
+`transaction_history`, `swap_quote`, `explain_tx`, `portfolio_analysis`,
+`token_prices`, `create_payment_link`, `list_payment_links`,
+`cancel_payment_link`, `spending_analytics`, `yield_summary`,
+`activity_summary`, `resolve_suins`, `pending_rewards`
 
-### Write (10, structurally serial, confirmation required)
+### Write (8, structurally serial, confirmation required)
 `save_deposit` (USDC + USDsui), `withdraw`, `send_transfer`,
 `borrow` (USDC + USDsui), `repay_debt` (USDC + USDsui — same asset as borrow),
-`claim_rewards`, `harvest_rewards`, `swap_execute`, `volo_stake`,
-`volo_unstake`
+`claim_rewards`, `harvest_rewards`, `swap_execute`
 
 > **S.245 (2026-05-22):** `pay_api` (write) + `mpp_services` (read) deleted
 > per V07E_D_QUESTION_AUDITS D-2 reframe. The legacy MPP gateway
@@ -193,6 +191,16 @@ const engine = new AISDKEngine({
 > the template-divergence cleanup slice. Engine-side dead tool — host-side
 > Prisma persistence with no engine-owned effect; the user surface is the
 > audric send screen, not the LLM.
+>
+> **S.277 (2026-05-23):** "Earns Its Keep" audit cut 5 tools from the
+> engine surface — `volo_stats` / `volo_stake` / `volo_unstake` (no
+> Audric chip / product slot; SDK + CLI + MCP retain Volo for non-Audric
+> consumers), `web_search` (Brave-backed; gateway path uses Vercel AI
+> Gateway's `perplexity_search`), `protocol_deep_dive` (DefiLlama-backed;
+> rates_info is the in-product proxy). Also dropped: 2 dead guards
+> (`costWarning`, `artifactPreview`) + the `costAware` flag. `explain_tx`
+> kept but description tightened to "arbitrary external digest only". Net
+> 31 → 26 engine tools. See `spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md`.
 
 > Write serialization is structural in v2 — no in-process mutex. Confirm-tier
 > writes yield a `pending_action` event, the host round-trips through user

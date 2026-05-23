@@ -13,13 +13,8 @@ import { repayDebtTool } from './repay.js';
 import { claimRewardsTool } from './claim.js';
 import { swapExecuteTool } from './swap.js';
 import { swapQuoteTool } from './swap-quote.js';
-import { voloStakeTool } from './volo-stake.js';
-import { voloUnstakeTool } from './volo-unstake.js';
-import { voloStatsTool } from './volo-stats.js';
-import { webSearchTool } from './web-search.js';
 import { explainTxTool } from './explain-tx.js';
 import { portfolioAnalysisTool } from './portfolio-analysis.js';
-import { protocolDeepDiveTool } from './protocol-deep-dive.js';
 import {
   createPaymentLinkTool,
   listPaymentLinksTool,
@@ -55,11 +50,11 @@ import { updateTodoTool } from './update-todo.js';
 // adopts; other hosts follow when ready.
 import { addRecipientTool } from './add-recipient.js';
 // [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed. The
-// BlockVision-backed `token_prices` tool covers spot prices; the
-// surviving DefiLlama dependency is `protocol_deep_dive`, which holds
-// onto its own `api.llama.fi` calls (TVL/fees/audit metadata) and is
-// the lone production consumer of the upstream API. See
-// AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md §"Day 3" for context.
+// BlockVision-backed `token_prices` tool covers spot prices. The
+// surviving DefiLlama dependency lived on `protocol_deep_dive` until
+// S.277 — that tool was cut as part of the "Earns Its Keep" audit
+// (AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md). The engine no longer has
+// any caller of `api.llama.fi`.
 import { tokenPricesTool } from './token-prices.js';
 
 // [SIMPLIFICATION DAY 7] Removed 9 tools to align engine with chat-first thesis:
@@ -88,7 +83,20 @@ import { tokenPricesTool } from './token-prices.js';
 // intent the LLM sees.
 // [S.269 item 6 — 2026-05-23] save_contact tool deleted (was a dead
 // host-side write). WRITE_TOOLS dropped from 11 → 10.
-// **Current count: 21 reads + 10 writes = 31 tools.**
+// [S.277 — 2026-05-23] "Earns Its Keep" audit cut 5 tools:
+// (a) Volo trio (`volo_stats`/`volo_stake`/`volo_unstake`) — vSUI
+// liquid staking has no Audric chip + no product slot in the 5 named
+// products (Passport/Intelligence/Finance/Pay/Store); rewards harvest
+// still handles vSUI via Cetus, not Volo. SDK + CLI + MCP retain the
+// capability for non-Audric consumers.
+// (b) `web_search` — Brave-backed; already filtered out in audric
+// production (gateway path uses Vercel AI Gateway's `perplexity_search`).
+// (c) `protocol_deep_dive` — DefiLlama-backed; system prompt re-routes
+// "is X safe?" queries to `rates_info` (NAVI APYs are the only
+// protocol-safety dimension Audric needs in-product).
+// READ_TOOLS dropped from 21 → 18; WRITE_TOOLS dropped from 10 → 8.
+// **Current count: 18 reads + 8 writes = 26 tools.**
+// See AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md for the full lens.
 
 export const READ_TOOLS: Tool[] = [
   renderCanvasTool,
@@ -98,11 +106,8 @@ export const READ_TOOLS: Tool[] = [
   ratesInfoTool,
   transactionHistoryTool,
   swapQuoteTool,
-  voloStatsTool,
-  webSearchTool,
   explainTxTool,
   portfolioAnalysisTool,
-  protocolDeepDiveTool,
   tokenPricesTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
@@ -123,8 +128,6 @@ export const WRITE_TOOLS: Tool[] = [
   claimRewardsTool,
   harvestRewardsTool,
   swapExecuteTool,
-  voloStakeTool,
-  voloUnstakeTool,
 ];
 
 export function getDefaultTools(): Tool[] {
@@ -146,13 +149,8 @@ export {
   claimRewardsTool,
   swapExecuteTool,
   swapQuoteTool,
-  voloStakeTool,
-  voloUnstakeTool,
-  voloStatsTool,
-  webSearchTool,
   explainTxTool,
   portfolioAnalysisTool,
-  protocolDeepDiveTool,
   tokenPricesTool,
   createPaymentLinkTool,
   listPaymentLinksTool,

@@ -89,8 +89,6 @@ export interface GuardConfig {
   slippage?: boolean;
   staleData?: boolean;
   irreversibility?: boolean;
-  artifactPreview?: boolean;
-  costWarning?: boolean;
   retryProtection?: boolean;
   inputValidation?: boolean;
   /**
@@ -143,8 +141,6 @@ export const DEFAULT_GUARD_CONFIG: GuardConfig = {
   slippage: true,
   staleData: true,
   irreversibility: true,
-  artifactPreview: true,
-  costWarning: true,
   retryProtection: true,
   inputValidation: true,
   addressSource: true,
@@ -476,28 +472,6 @@ function guardSlippage(
     gate: 'slippage_warning',
     tier: 'financial',
     message: 'State the expected output amount to the user before executing the swap.',
-  };
-}
-
-function guardCostWarning(
-  tool: Tool,
-  _call: PendingToolCall,
-  conversationText: string,
-): GuardResult {
-  if (!tool.flags.costAware) {
-    return { verdict: 'pass', gate: 'cost_warning', tier: 'ux' };
-  }
-
-  const hasCostMention = /\$\d+\.?\d*|cost|fee|charge|price|pay/i.test(conversationText);
-  if (hasCostMention) {
-    return { verdict: 'pass', gate: 'cost_warning', tier: 'ux' };
-  }
-
-  return {
-    verdict: 'hint',
-    gate: 'cost_warning',
-    tier: 'ux',
-    message: 'This action has a monetary cost. Confirm the user is aware before proceeding.',
   };
 }
 
@@ -898,26 +872,13 @@ function guardAddressScope(
 // Post-execution guards — run after tool result is available
 // ---------------------------------------------------------------------------
 
-export function guardArtifactPreview(result: unknown): GuardInjection | null {
-  if (!result || typeof result !== 'object') return null;
-  const r = result as Record<string, unknown>;
-
-  const hasImage =
-    (typeof r.url === 'string' && /\.(png|jpg|jpeg|webp|gif|svg)(\?|$)/i.test(r.url))
-    || (Array.isArray(r.images) && r.images.length > 0)
-    || typeof r.image_url === 'string';
-
-  const hasPdf = typeof r.url === 'string' && /\.pdf(\?|$)/i.test(r.url);
-
-  if (hasImage || hasPdf) {
-    return {
-      _gate: 'artifact_preview',
-      _hint: 'Show this to the user before proceeding. Output as ![description](url).',
-    };
-  }
-
-  return null;
-}
+// [S.277 — 2026-05-23] `guardArtifactPreview` deleted. It looked for
+// image/PDF URLs in tool results to prompt the LLM "show this to the
+// user" — a v0.5-era affordance for the pay_api / image-generation
+// path. That tool was cut in S.245 (V07E_D_QUESTION_AUDITS D-2);
+// post-cut, no engine tool produces image/PDF results, so the guard
+// always returned null. Hand-back: capability returns as an Audric
+// Store primitive (clean-slate, not a port). See AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md.
 
 export function guardStaleData(toolFlags: ToolFlags): GuardInjection | null {
   if (!toolFlags.mutating) return null;
@@ -1130,10 +1091,11 @@ export function runGuards(
     results.push(guardSlippage(tool, call, conversationContext.lastAssistantText));
   }
 
-  // Tier 3: UX guards
-  if (config.costWarning !== false) {
-    results.push(guardCostWarning(tool, call, conversationContext.fullText));
-  }
+  // [S.277] Tier 3 UX guards previously included `guardCostWarning`
+  // (paired with the `costAware` tool flag — for pay_api). Both were
+  // deleted when pay_api was cut (S.245). No remaining tool sets
+  // `flags.costAware`, so the guard always passed; deleting both
+  // removes the dead-code branch.
 
   // Process results — first block wins, collect all hints/warnings
   const events: GuardEvent[] = results

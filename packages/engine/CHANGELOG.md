@@ -1,5 +1,64 @@
 # Changelog
 
+## 2.18.0 — 2026-05-23 — "Earns Its Keep" audit: 5 tools + 2 dead guards + 1 dead flag cut (S.277)
+
+**Breaking for direct importers only.** No production Audric consumer of the cut tools — every cut surface was either already filtered out (web_search) or had no Audric chip / product slot (Volo trio, protocol_deep_dive).
+
+### What's gone — engine tools (5 cut: 3 write + 2 read)
+
+| Removed | Kind | Why cut (audit verdict) |
+|---|---|---|
+| `volo_stats` | Read | Liquid-staking-rate explainer. No Audric chip, no product slot in the 5 named products. Rewards harvest still handles vSUI via Cetus, not Volo. |
+| `volo_stake` | Write | Stake SUI → vSUI. Same as above; no Audric surface. |
+| `volo_unstake` | Write | Unstake vSUI → SUI. Same as above. |
+| `web_search` | Read | Brave-backed. Audric production already filtered it out — gateway path uses Vercel AI Gateway's `perplexity_search` (paid by gateway, no env). The engine tool was dead code in prod. |
+| `protocol_deep_dive` | Read | DefiLlama-backed protocol metadata. Audric's protocol-safety lens is "is NAVI live + healthy + paying APY" — `rates_info` answers that without `api.llama.fi`. Cut removes engine's last DefiLlama caller. |
+
+### Net tool count
+
+`READ_TOOLS` 21 → 18 · `WRITE_TOOLS` 10 → 8 · **Total 31 → 26.**
+
+### What's kept — but rethought
+
+| Tool | Change |
+|---|---|
+| `explain_tx` | Description tightened: now reads "decode an ARBITRARY Sui tx digest the user pasted / received from outside Audric. For the user's own recent activity, use `transaction_history`." Audric system prompt's primary steer (`For explaining a transaction, use explain_tx.`) was dropped — LLM picks it up only when a digest is in the user's message. Tool stays, use case narrows. |
+
+### What's gone — guards (2 dead, 1 dead flag)
+
+- **`guardCostWarning` + `costWarning` config field + `flags.costAware`** — paired with `pay_api` (cut in S.245). No remaining tool sets `costAware`, so the guard always passed. Deleted as dead code.
+- **`guardArtifactPreview` + `artifactPreview` config field** — looked for image/PDF URLs in tool results. No engine tool produces image/PDF results post-S.245; the guard always returned null. Deleted as dead code. The image/PDF generation capability returns as a clean-slate Audric Store primitive (NOT a port).
+
+### Files deleted
+
+- `packages/engine/src/tools/volo-stake.ts`
+- `packages/engine/src/tools/volo-unstake.ts`
+- `packages/engine/src/tools/volo-stats.ts`
+- `packages/engine/src/tools/web-search.ts`
+- `packages/engine/src/tools/protocol-deep-dive.ts`
+
+### Files edited
+
+- `packages/engine/src/tools/index.ts` — dropped 5 imports + 5 re-exports + 5 READ_TOOLS/WRITE_TOOLS entries; tool count comment 31 → 26.
+- `packages/engine/src/index.ts` — dropped 5 top-level re-exports + `guardArtifactPreview` re-export + DefiLlama-caller comment scrub.
+- `packages/engine/src/guards.ts` — deleted `guardCostWarning` + `guardArtifactPreview` functions + 2 `GuardConfig` fields + 2 `DEFAULT_GUARD_CONFIG` defaults + their call sites in `runGuards`.
+- `packages/engine/src/tool-flags.ts` — dropped `volo_stake` + `volo_unstake` flag entries + `costAware` from the flag-meanings doc; bundleable set 9 → 7.
+- `packages/engine/src/types.ts` — dropped `costAware?` from `ToolFlags` + scrubbed Volo from bundleability doc.
+- `packages/engine/src/tools/preflight-coverage.test.ts` — dropped Volo imports + 2 describe blocks.
+- `packages/engine/src/__tests__/guards-coverage.test.ts` — dropped `guardArtifactPreview` import + cost_warning + artifact_preview describe blocks + 2 GuardConfig disable keys.
+- `packages/engine/src/tools/explain-tx.ts` — tightened description (use case narrowed to arbitrary external digests).
+- `packages/engine/package.json` — version 2.17.0 → 2.18.0; description updated (31 tools / 14 guards → 26 tools / 12 guards).
+
+### What's NOT cut (deliberately)
+
+- `@t2000/sdk` Volo capability (`T2000.stakeVSui`, `T2000.unstakeVSui`, `protocols/volo.ts`, `composeTx` Volo branches). The SDK retains it for **CLI** consumers (`t2000 stake` / `t2000 unstake`) and **MCP** consumers (`t2000_stake` / `t2000_unstake` exposed to Cursor / Claude Desktop). Only Audric's surface area shrinks.
+- `harvestRewardsTool` / `claimRewardsTool` / `pendingRewardsTool`. Verified before cut: NAVI rewards include vSUI, but the harvest leg swaps vSUI → USDC via **Cetus** (`COIN_REGISTRY` tradeable list — `harvest-rewards.ts:34-35`), not Volo. Cutting Volo does not regress harvest.
+- `perplexity_search` (audric-side, Vercel AI Gateway tool). It replaced `web_search` in S.172 / Phase 2 D-19; this PR just deletes the now-orphan engine tool that was already filtered out.
+
+### Rationale
+
+See [`AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md`](../../spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md) for the full audit lens — every component evaluated against Audric's 5 named products (Passport · Intelligence · Finance · Pay · Store).
+
 ## 2.12.0 — 2026-05-22 — `pay_api` + `mpp_services` deleted (S.245 / V07E_D_QUESTION_AUDITS D-2 reframe)
 
 **Breaking for direct importers only.** No known production consumers — audric/web-v2 already cleaned up in the paired commit; legacy audric/apps/web is post-rewrite zombie code scheduled for v0.7e Phase 5 deletion.
