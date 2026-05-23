@@ -16,6 +16,17 @@ export const CANVAS_TEMPLATES = [
   'spending_breakdown',
   'watch_address',
   'full_portfolio',
+  // [S.266 — 2026-05-23] receive_address — wallet address + open-receive
+  // QR (no fixed amount). Canonical surface for the Audric Pay "Receive"
+  // chip. Pre-S.266 the chip's prompt ("Show my wallet address and a QR
+  // code so someone can pay me") routed through `create_payment_link`
+  // which requires an amount, so the LLM correctly refused and offered a
+  // payment-link-with-amount as the only QR-generating path. This
+  // template fills the gap by surfacing the existing `SuiPayQr({
+  // amount: null })` primitive that already powers `audric.ai/[username]`
+  // through the canonical render_canvas tool. Address-aware via
+  // `params.address` (defaults to signed-in user).
+  'receive_address',
 ] as const;
 
 export type CanvasTemplate = (typeof CANVAS_TEMPLATES)[number];
@@ -37,6 +48,7 @@ const CANVAS_TITLES: Record<CanvasTemplate, string> = {
   spending_breakdown: 'Spending Breakdown',
   watch_address: 'Watch Address',
   full_portfolio: 'Full Portfolio Overview',
+  receive_address: 'Receive Address',
 };
 
 // ---------------------------------------------------------------------------
@@ -57,8 +69,9 @@ Use when the user asks for a visual chart, simulator, or financial overview. Pic
 - spending_breakdown — spending by service category (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user)
 - watch_address — portfolio overview for any public Sui address (WORKS NOW — pass \`params.address\`)
 - full_portfolio — 4-panel overview: savings, health, activity, spending (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user)
+- receive_address — wallet address + open-receive QR code (WORKS NOW — defaults to the signed-in user). Use this when the user asks "how do I get paid", "show me my receive QR", "what's my wallet address", or taps the "Receive" chip. The QR is open-receive (no fixed amount) — wallets that scan it will prompt the payer for the amount. For a fixed-amount payment link, use the \`create_payment_link\` tool instead.
 
-When the user asks to inspect a saved contact or watched address — e.g. "show funkii's activity heatmap", "what's funkii's portfolio look like", "spending breakdown for 0x40cd…", "give me a full portfolio overview of 0x40cd…" — pass that wallet's address as \`params.address\`. Six of the eight templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio) will scope their data fetch to that address; only the pure client-side simulators (yield_projector, dca_planner) ignore params.address.
+When the user asks to inspect a saved contact or watched address — e.g. "show funkii's activity heatmap", "what's funkii's portfolio look like", "spending breakdown for 0x40cd…", "give me a full portfolio overview of 0x40cd…" — pass that wallet's address as \`params.address\`. Seven of the nine templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio, receive_address) will scope their data fetch to that address; only the pure client-side simulators (yield_projector, dca_planner) ignore params.address.
 
 Always prefer the canvas for visualisation requests. After rendering, offer to explain what the user sees.`,
   inputSchema: z.object({
@@ -104,6 +117,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
       'spending_breakdown',
       'activity_heatmap',
       'health_simulator',
+      'receive_address',
     ]);
     let suinsName: string | null = null;
     let resolvedParamAddress: string | null = null;
@@ -329,6 +343,44 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
         displayText: isSelfRender
           ? `Opened Activity Heatmap for your wallet. Click any day to explore transactions.`
           : `Opened Activity Heatmap for ${addrLabel}. Click any day to explore that address's transactions.`,
+      };
+    }
+
+    // [S.266 — 2026-05-23] Receive address — wallet 0x + open-receive QR.
+    // Address-aware (defaults to signed-in user). Pure client-side render
+    // — the audric web component composes the address text + QR primitive
+    // (`SuiPayQr({ amount: null })`) + a copy button. No server fetch
+    // needed; the address itself IS the payload.
+    if (template === 'receive_address') {
+      const { address, isSelfRender, suinsName: resolvedSuins } = resolveAddressTarget();
+      if (!address) {
+        return {
+          data: {
+            __canvas: true,
+            template,
+            title,
+            templateData: { available: false, message: 'Receive Address needs an address.' },
+          },
+          displayText: 'Receive Address requires an address.',
+        };
+      }
+      const addrLabel = formatAddrLabel(address, resolvedSuins);
+      const titleSuffix = isSelfRender ? '' : ` — ${addrLabel}`;
+      return {
+        data: {
+          __canvas: true,
+          template,
+          title: `${title}${titleSuffix}`,
+          templateData: {
+            available: true,
+            address,
+            isSelfRender,
+            suinsName: resolvedSuins,
+          },
+        },
+        displayText: isSelfRender
+          ? `Here's your wallet address and an open-receive QR — anyone can scan to send you USDC, SUI, or any supported token. (Wallets will prompt the payer for the amount.) For a fixed-amount payment link, ask me to create one.`
+          : `Opened Receive Address card for ${addrLabel}. Anyone can scan this QR to send tokens to that wallet.`,
       };
     }
 
