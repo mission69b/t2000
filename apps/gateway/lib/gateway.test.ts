@@ -1,4 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
+
+// `gateway.ts` imports `./log-payment`, which imports `./prisma`, which
+// imports the generated `@prisma/client/default` module. CI doesn't run
+// `prisma generate` for the gateway package before tests, so the
+// transitive resolution fails with `Cannot find module '.prisma/client/default'`.
+// `fetchWithRetry` itself is pure (no DB access) — mocking the prisma
+// module short-circuits the import chain. Mirrors the same pattern
+// `log-payment.test.ts` uses.
+vi.mock('./prisma', () => ({
+  prisma: {
+    mppPayment: { create: vi.fn() },
+  },
+}));
+
 import { fetchWithRetry } from './gateway';
 
 function mockResponse(status: number, body: unknown = {}): Response {
