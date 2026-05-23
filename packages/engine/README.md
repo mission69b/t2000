@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Four systems work together: Agent Harness (34 tools — 24 read, 10 write), Reasoning Engine (14 guards across 3 priority tiers), Memory (MemWal vector store), and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Four systems work together: Agent Harness (31 tools — 21 read, 10 write), Reasoning Engine (14 guards across 3 priority tiers), Memory (MemWal vector store), and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 `AISDKEngine` orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop. (The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine `v2.0.0` (2026-05-17); `AISDKEngine` is the only engine, wrapping Vercel AI SDK v6's `streamText` while preserving the same public API surface.)
 
@@ -39,7 +39,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
-| 🎛️ **Agent Harness** | 34 tools (24 read + 10 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
+| 🎛️ **Agent Harness** | 31 tools (21 read + 10 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -108,7 +108,7 @@ AISDKEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (23 — parallel, auto-approved)
+### Read Tools (21 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
@@ -124,18 +124,15 @@ AISDKEngine.submitMessage()
 | `portfolio_analysis` | Portfolio breakdown with diversification insights |
 | `protocol_deep_dive` | Deep protocol analysis — TVL, yields, risks, alternatives (lone surviving DefiLlama dependency) |
 | `token_prices` | Current USD prices for Sui tokens (BlockVision; optional 24h change). Replaces deleted `defillama_token_prices` and `defillama_price_change`. |
-| `create_payment_link` | Create a shareable USDC payment link |
-| `list_payment_links` | List payment links with statuses |
-| `cancel_payment_link` | Cancel an active payment link |
-| `create_invoice` | Create a formal invoice with due date and line items |
-| `list_invoices` | List invoices with statuses |
-| `cancel_invoice` | Cancel an unpaid invoice |
+| `create_payment_link` | Create a shareable USDC payment link. Also handles invoice intents — set label/memo to encode invoice context (e.g. label="Web design — March 2026", memo="Net 30"). |
+| `list_payment_links` | List payment links with statuses (covers invoice listing intents too). |
+| `cancel_payment_link` | Cancel an active payment link (covers invoice cancellation intents too). |
 | `spending_analytics` | Spending breakdown by service/category over time period |
 | `yield_summary` | Yield earned + projections with sparkline data |
 | `activity_summary` | Activity breakdown by action type |
 | `render_canvas` | Generate interactive HTML canvas visualizations |
 
-### Write Tools (11 — serial, confirmation required)
+### Write Tools (10 — serial, confirmation required)
 
 | Tool | Description |
 |------|-------------|
@@ -182,8 +179,17 @@ AISDKEngine.submitMessage()
 >
 > S.269 item 6 (2026-05-23) deletes `save_contact` (engine-side dead
 > tool — host-side Prisma persistence with no engine-owned effect; the
-> user surface is the audric send screen, not the LLM). Net post-S.269:
-> **24 reads + 10 writes = 34 tools** (current).
+> user surface is the audric send screen, not the LLM). Net post-S.269
+> item 6: 24 reads + 10 writes = 34 tools.
+>
+> S.269 item 7 / V07E_INVOICE_DEPRECATION (2026-05-23) deletes 3
+> invoice tools — `create_invoice`, `list_invoices`, `cancel_invoice` —
+> plus the `InvoiceSchema` Zod definition. Payment links absorb the
+> invoicing use case (label/memo encode context). The 3 surviving
+> payment-link tool descriptions were re-written to route invoice
+> intents (`"create an invoice"`, `"bill a client"`, `"send an
+> invoice"`) to `create_payment_link`. Engine bumped 2.16.0 → 2.17.0.
+> Net post-S.269 item 7: **21 reads + 10 writes = 31 tools** (current).
 
 ## Recent Upgrades — Spec 1 (Correctness) + Spec 2 (Intelligence)
 

@@ -39,8 +39,6 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   // Receive tools — create/cancel mutate server state
   create_payment_link: { mutating: true },
   cancel_payment_link: { mutating: true },
-  create_invoice:      { mutating: true },
-  cancel_invoice:      { mutating: true },
 };
 
 /**

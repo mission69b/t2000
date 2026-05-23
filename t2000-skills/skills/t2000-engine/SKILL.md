@@ -161,15 +161,15 @@ const engine = new AISDKEngine({
 // use the in-memory default; multi-instance hosts (audric on Vercel) inject Upstash.
 ```
 
-## Built-in Tools (35 — was 37 pre-S.245)
+## Built-in Tools (31 — was 35 pre-S.269)
 
-### Read (24, parallel, auto-approved)
+### Read (21, parallel, auto-approved)
 `render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`,
 `transaction_history`, `swap_quote`, `volo_stats`, `web_search`,
 `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `token_prices`,
 `create_payment_link`, `list_payment_links`, `cancel_payment_link`,
-`create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`,
-`yield_summary`, `activity_summary`, `resolve_suins`, `pending_rewards`
+`spending_analytics`, `yield_summary`, `activity_summary`, `resolve_suins`,
+`pending_rewards`
 
 ### Write (10, structurally serial, confirmation required)
 `save_deposit` (USDC + USDsui), `withdraw`, `send_transfer`,
@@ -181,6 +181,13 @@ const engine = new AISDKEngine({
 > per V07E_D_QUESTION_AUDITS D-2 reframe. The legacy MPP gateway
 > capability returns as a Commerce primitive in the upcoming Audric Store
 > SPEC — clean-slate redesign, not a port of the legacy 3-leg apps/web flow.
+>
+> **S.269 (2026-05-23):** `save_contact` deleted (engine-side dead — host
+> owns Prisma persistence). V07E_INVOICE_DEPRECATION (item 7 of S.269)
+> deleted 3 invoice tools — `create_invoice`, `list_invoices`,
+> `cancel_invoice` — and the `InvoiceSchema` Zod definition. Payment
+> links absorb the invoicing use case (label/memo encode invoice
+> context). 35 → 31 tools.
 >
 > **S.269 item 6 (2026-05-23):** `save_contact` (write) deleted as part of
 > the template-divergence cleanup slice. Engine-side dead tool — host-side

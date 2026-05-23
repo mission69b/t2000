@@ -24,9 +24,6 @@ import {
   createPaymentLinkTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
-  createInvoiceTool,
-  cancelInvoiceTool,
-  listInvoicesTool,
 } from './receive.js';
 import { renderCanvasTool } from './canvas.js';
 import { spendingAnalyticsTool } from './spending.js';
@@ -82,7 +79,16 @@ import { tokenPricesTool } from './token-prices.js';
 // [S.245 — 2026-05-22] V07E_D_QUESTION_AUDITS D-2 reframe deleted
 // pay_api + mpp_services from the engine entirely. Capabilities return
 // as Commerce primitives in Audric Store SPEC (clean-slate redesign,
-// not a port). **Current count: 24 reads + 11 writes = 35 tools.**
+// not a port). 35 tools.
+// [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] Deleted 3
+// invoice tools (create_invoice / list_invoices / cancel_invoice) +
+// InvoiceSchema from receive.ts. Payment links cover the invoicing
+// use case (set label/memo to encode invoice context). The 3
+// payment-link tools have been re-described to handle any invoice
+// intent the LLM sees.
+// [S.269 item 6 — 2026-05-23] save_contact tool deleted (was a dead
+// host-side write). WRITE_TOOLS dropped from 11 → 10.
+// **Current count: 21 reads + 10 writes = 31 tools.**
 
 export const READ_TOOLS: Tool[] = [
   renderCanvasTool,
@@ -100,10 +106,7 @@ export const READ_TOOLS: Tool[] = [
   tokenPricesTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
-  listInvoicesTool,
-  cancelInvoiceTool,
   createPaymentLinkTool,
-  createInvoiceTool,
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
@@ -154,9 +157,6 @@ export {
   createPaymentLinkTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
-  createInvoiceTool,
-  cancelInvoiceTool,
-  listInvoicesTool,
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,

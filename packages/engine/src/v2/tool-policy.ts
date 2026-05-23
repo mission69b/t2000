@@ -156,11 +156,8 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   resolve_suins: READ_DEFAULT,
   render_canvas: READ_DEFAULT,
   list_payment_links: READ_DEFAULT,
-  list_invoices: READ_DEFAULT,
   create_payment_link: READ_DEFAULT,
-  create_invoice: READ_DEFAULT,
   cancel_payment_link: READ_DEFAULT,
-  cancel_invoice: READ_DEFAULT,
 
   // Write tools — confirm tier (USD resolver may downgrade to auto for small
   // amounts; engine's buildNeedsApproval handles the per-call override)
