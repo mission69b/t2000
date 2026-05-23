@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Four systems work together: Agent Harness (35 tools — 24 read, 11 write), Reasoning Engine (14 guards across 3 priority tiers), Memory (MemWal vector store), and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Four systems work together: Agent Harness (34 tools — 24 read, 10 write), Reasoning Engine (14 guards across 3 priority tiers), Memory (MemWal vector store), and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 `AISDKEngine` orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop. (The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine `v2.0.0` (2026-05-17); `AISDKEngine` is the only engine, wrapping Vercel AI SDK v6's `streamText` while preserving the same public API surface.)
 
@@ -39,7 +39,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
-| 🎛️ **Agent Harness** | 35 tools (24 read + 11 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
+| 🎛️ **Agent Harness** | 34 tools (24 read + 10 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -148,7 +148,6 @@ AISDKEngine.submitMessage()
 | `swap_execute` | Swap any token pair via Cetus Aggregator (20+ DEXs) |
 | `volo_stake` | Stake SUI for vSUI (VOLO liquid staking) |
 | `volo_unstake` | Unstake vSUI back to SUI |
-| `save_contact` | Save a contact name + address for quick sends |
 
 > Note: `record_advice` is an Audric-local tool registered in
 > `audric/apps/web-v2/lib/audric/moat-context.ts` (post-v0.7e Phase 5; previously `audric/apps/web/lib/engine/advice-tool.ts`), not part of the engine package.
@@ -179,7 +178,12 @@ AISDKEngine.submitMessage()
 > and 1 write tool (`pay_api`) per V07E_D_QUESTION_AUDITS D-2 reframe. The legacy MPP
 > gateway capability returns as a Commerce primitive in the upcoming Audric Store SPEC —
 > clean-slate redesign, not a port of the legacy 3-leg apps/web flow.
-> Net post-S.245: **24 reads + 11 writes = 35 tools** (current).
+> Net post-S.245: **24 reads + 11 writes = 35 tools**.
+>
+> S.269 item 6 (2026-05-23) deletes `save_contact` (engine-side dead
+> tool — host-side Prisma persistence with no engine-owned effect; the
+> user surface is the audric send screen, not the LLM). Net post-S.269:
+> **24 reads + 10 writes = 34 tools** (current).
 
 ## Recent Upgrades — Spec 1 (Correctness) + Spec 2 (Intelligence)
 

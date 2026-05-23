@@ -16,8 +16,7 @@ import type { Tool, ToolFlags } from './types.js';
  *   maxRetries      — max calls with same input (default: unlimited for reads, 1 for writes)
  *   bundleable      — [SPEC 7 Layer 2] can participate in a multi-write Payment
  *                     Intent. Set on every confirm-tier write whose on-chain effect
- *                     is fully expressible at compose time. Excluded: `save_contact`
- *                     (Postgres-only, no on-chain effect).
+ *                     is fully expressible at compose time.
  */
 export const TOOL_FLAGS: Record<string, ToolFlags> = {
   // Write tools — financial (bundleable — SPEC 7 Layer 2)
@@ -31,12 +30,11 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   volo_stake:      { mutating: true, requiresBalance: true, bundleable: true },
   volo_unstake:    { mutating: true, bundleable: true },
 
-  // Write tools — lightweight (no financial guards, NOT bundleable — Postgres only)
-  save_contact:    {},
-
   // [SIMPLIFICATION DAY 7] Removed flag entries for deleted tools:
   //   create_schedule, cancel_schedule (DCA schedules retired)
   //   toggle_allowance, update_daily_limit, update_permissions (allowance dormant)
+  // [S.269 item 6 — 2026-05-23] Removed flag entry for deleted save_contact
+  //   (dead tool — host-side Prisma persistence, no engine effect).
 
   // Receive tools — create/cancel mutate server state
   create_payment_link: { mutating: true },

@@ -171,16 +171,21 @@ const engine = new AISDKEngine({
 `create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`,
 `yield_summary`, `activity_summary`, `resolve_suins`, `pending_rewards`
 
-### Write (11, structurally serial, confirmation required)
+### Write (10, structurally serial, confirmation required)
 `save_deposit` (USDC + USDsui), `withdraw`, `send_transfer`,
 `borrow` (USDC + USDsui), `repay_debt` (USDC + USDsui — same asset as borrow),
 `claim_rewards`, `harvest_rewards`, `swap_execute`, `volo_stake`,
-`volo_unstake`, `save_contact`
+`volo_unstake`
 
 > **S.245 (2026-05-22):** `pay_api` (write) + `mpp_services` (read) deleted
 > per V07E_D_QUESTION_AUDITS D-2 reframe. The legacy MPP gateway
 > capability returns as a Commerce primitive in the upcoming Audric Store
 > SPEC — clean-slate redesign, not a port of the legacy 3-leg apps/web flow.
+>
+> **S.269 item 6 (2026-05-23):** `save_contact` (write) deleted as part of
+> the template-divergence cleanup slice. Engine-side dead tool — host-side
+> Prisma persistence with no engine-owned effect; the user surface is the
+> audric send screen, not the LLM.
 
 > Write serialization is structural in v2 — no in-process mutex. Confirm-tier
 > writes yield a `pending_action` event, the host round-trips through user

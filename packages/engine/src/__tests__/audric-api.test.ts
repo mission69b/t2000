@@ -12,7 +12,8 @@ describe('audric-api', () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    delete process.env.T2000_AUDRIC_API;
+    // S.269 item 4 (2026-05-23): legacy `T2000_AUDRIC_API` alias removed.
+    // Hosts now thread `AUDRIC_INTERNAL_API_URL` only (canonical name).
     delete process.env.AUDRIC_INTERNAL_API_URL;
     delete process.env.NEXT_PUBLIC_APP_URL;
   });
@@ -31,22 +32,22 @@ describe('audric-api', () => {
 
     it('prefers context env over process.env', () => {
       process.env.AUDRIC_INTERNAL_API_URL = 'https://from-process.example';
-      expect(getAudricApiBase({ T2000_AUDRIC_API: 'https://from-context.example' }))
+      expect(getAudricApiBase({ AUDRIC_INTERNAL_API_URL: 'https://from-context.example' }))
         .toBe('https://from-context.example');
     });
 
-    it('falls back to legacy AUDRIC_INTERNAL_API_URL env var', () => {
+    it('falls back to AUDRIC_INTERNAL_API_URL process env when no context', () => {
       process.env.AUDRIC_INTERNAL_API_URL = 'https://legacy.example';
       expect(getAudricApiBase()).toBe('https://legacy.example');
     });
 
     it('strips trailing slashes', () => {
-      expect(getAudricApiBase({ T2000_AUDRIC_API: 'https://api.example/' }))
+      expect(getAudricApiBase({ AUDRIC_INTERNAL_API_URL: 'https://api.example/' }))
         .toBe('https://api.example');
     });
 
     it('treats blank strings as unset', () => {
-      expect(getAudricApiBase({ T2000_AUDRIC_API: '   ' })).toBeNull();
+      expect(getAudricApiBase({ AUDRIC_INTERNAL_API_URL: '   ' })).toBeNull();
     });
   });
 
@@ -94,7 +95,7 @@ describe('audric-api', () => {
       }) as typeof fetch;
 
       const result = await fetchAudricPortfolio(ADDRESS, {
-        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_API_URL: 'https://api.example',
       });
 
       expect(result).not.toBeNull();
@@ -111,7 +112,7 @@ describe('audric-api', () => {
     it('returns null when the audric route 5xxs', async () => {
       global.fetch = vi.fn(async () => new Response('boom', { status: 503 })) as typeof fetch;
       const result = await fetchAudricPortfolio(ADDRESS, {
-        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_API_URL: 'https://api.example',
       });
       expect(result).toBeNull();
     });
@@ -121,7 +122,7 @@ describe('audric-api', () => {
         throw new Error('network down');
       }) as typeof fetch;
       const result = await fetchAudricPortfolio(ADDRESS, {
-        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_API_URL: 'https://api.example',
       });
       expect(result).toBeNull();
     });
@@ -155,7 +156,7 @@ describe('audric-api', () => {
       global.fetch = fetchSpy;
 
       const before = Date.now();
-      await fetchAudricPortfolio(ADDRESS, { T2000_AUDRIC_API: 'https://api.example' });
+      await fetchAudricPortfolio(ADDRESS, { AUDRIC_INTERNAL_API_URL: 'https://api.example' });
       const after = Date.now();
 
       const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
@@ -187,7 +188,7 @@ describe('audric-api', () => {
       global.fetch = fetchSpy;
 
       await fetchAudricPortfolio(ADDRESS, {
-        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_API_URL: 'https://api.example',
         AUDRIC_INTERNAL_KEY: 'secret-key-abc',
       });
 
@@ -203,7 +204,7 @@ describe('audric-api', () => {
       )) as unknown as typeof fetch;
       global.fetch = fetchSpy;
 
-      await fetchAudricPortfolio(ADDRESS, { T2000_AUDRIC_API: 'https://api.example' });
+      await fetchAudricPortfolio(ADDRESS, { AUDRIC_INTERNAL_API_URL: 'https://api.example' });
 
       const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
       const headers = (mock.calls[0][1]?.headers ?? {}) as Record<string, string>;
@@ -243,7 +244,7 @@ describe('audric-api', () => {
       }) as typeof fetch;
 
       const result = await fetchAudricHistory(ADDRESS, { limit: 20 }, {
-        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_API_URL: 'https://api.example',
       });
 
       expect(result).not.toBeNull();
@@ -264,7 +265,7 @@ describe('audric-api', () => {
       global.fetch = fetchSpy;
 
       const before = Date.now();
-      await fetchAudricHistory(ADDRESS, { limit: 5 }, { T2000_AUDRIC_API: 'https://api.example' });
+      await fetchAudricHistory(ADDRESS, { limit: 5 }, { AUDRIC_INTERNAL_API_URL: 'https://api.example' });
       const after = Date.now();
 
       const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
@@ -291,7 +292,7 @@ describe('audric-api', () => {
       global.fetch = fetchSpy;
 
       await fetchAudricHistory(ADDRESS, {}, {
-        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_API_URL: 'https://api.example',
         AUDRIC_INTERNAL_KEY: 'secret-key-xyz',
       });
 
@@ -303,14 +304,14 @@ describe('audric-api', () => {
     it('returns null on HTTP error and null on network failure', async () => {
       global.fetch = vi.fn(async () => new Response('', { status: 500 })) as typeof fetch;
       expect(
-        await fetchAudricHistory(ADDRESS, {}, { T2000_AUDRIC_API: 'https://api.example' }),
+        await fetchAudricHistory(ADDRESS, {}, { AUDRIC_INTERNAL_API_URL: 'https://api.example' }),
       ).toBeNull();
 
       global.fetch = vi.fn(async () => {
         throw new Error('boom');
       }) as typeof fetch;
       expect(
-        await fetchAudricHistory(ADDRESS, {}, { T2000_AUDRIC_API: 'https://api.example' }),
+        await fetchAudricHistory(ADDRESS, {}, { AUDRIC_INTERNAL_API_URL: 'https://api.example' }),
       ).toBeNull();
     });
   });

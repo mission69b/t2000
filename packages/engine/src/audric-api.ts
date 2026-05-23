@@ -8,18 +8,24 @@
 // the dashboard, and the daily cron all see identical numbers. This file
 // is the engine's thin client for those routes.
 //
-// Activation: set `T2000_AUDRIC_API` (preferred) or fall back to
-// `AUDRIC_INTERNAL_API_URL` / `NEXT_PUBLIC_APP_URL`. When neither is
-// available — e.g. CLI, MCP server, or any non-Audric embedding — the
-// helpers return `null` and callers MUST use their existing in-engine
-// path. This preserves the engine's standalone usability.
+// Activation: set `AUDRIC_INTERNAL_API_URL` (canonical) or fall back to
+// `NEXT_PUBLIC_APP_URL`. When neither is available — e.g. CLI, MCP
+// server, or any non-Audric embedding — the helpers return `null` and
+// callers MUST use their existing in-engine path. This preserves the
+// engine's standalone usability.
+//
+// S.269 item 4 (2026-05-23) deleted the legacy `T2000_AUDRIC_API` alias
+// (typed-context path AND `process.env` fallback). Pre-deletion the
+// alias was a dead path: every modern host (audric/web-v2) threads
+// `AUDRIC_INTERNAL_API_URL` directly. Removing the alias cuts a tier
+// of "I'll search both names" complexity from every call site.
 //
 // All calls inherit the request `AbortSignal` from `ToolContext.signal`
 // so engine-level cancellation propagates to in-flight HTTP fetches.
 // ---------------------------------------------------------------------------
 
 import type { AddressPortfolio, DefiSummary, PortfolioCoin } from './blockvision-prices.js';
-import type { ServerPositionData } from './types.js';
+import type { ServerPositionData, ToolContextEnv } from './types.js';
 
 const FETCH_TIMEOUT_MS = 6_000;
 
@@ -29,21 +35,15 @@ const FETCH_TIMEOUT_MS = 6_000;
  * callers MUST treat this as "use in-engine fallback path".
  *
  * Lookup order (first defined wins):
- *   1. `env.T2000_AUDRIC_API`              — canonical override
- *   2. `process.env.T2000_AUDRIC_API`      — same, picked up directly
- *   3. `env.AUDRIC_INTERNAL_API_URL`       — legacy alias from audric host
- *   4. `process.env.AUDRIC_INTERNAL_API_URL`
- *   5. `process.env.NEXT_PUBLIC_APP_URL`   — last-ditch host hint
+ *   1. `env.AUDRIC_INTERNAL_API_URL`       — canonical typed-context path
+ *   2. `process.env.AUDRIC_INTERNAL_API_URL`
+ *   3. `process.env.NEXT_PUBLIC_APP_URL`   — last-ditch host hint
  */
-export function getAudricApiBase(env?: Record<string, string>): string | null {
-  const fromEnv =
-    env?.T2000_AUDRIC_API ??
-    env?.AUDRIC_INTERNAL_API_URL ??
-    null;
+export function getAudricApiBase(env?: ToolContextEnv): string | null {
+  const fromEnv = env?.AUDRIC_INTERNAL_API_URL ?? null;
   if (fromEnv && fromEnv.trim().length > 0) return fromEnv.replace(/\/$/, '');
 
   const fromProcess =
-    process.env.T2000_AUDRIC_API ??
     process.env.AUDRIC_INTERNAL_API_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
     null;
@@ -113,7 +113,7 @@ export interface AudricPortfolioResult {
  */
 export async function fetchAudricPortfolio(
   address: string,
-  env?: Record<string, string>,
+  env?: ToolContextEnv,
   signal?: AbortSignal,
 ): Promise<AudricPortfolioResult | null> {
   const base = getAudricApiBase(env);
@@ -267,7 +267,7 @@ export interface AudricHistoryRecord {
 export async function fetchAudricHistory(
   address: string,
   opts: { limit?: number },
-  env?: Record<string, string>,
+  env?: ToolContextEnv,
   signal?: AbortSignal,
 ): Promise<AudricHistoryRecord[] | null> {
   const base = getAudricApiBase(env);

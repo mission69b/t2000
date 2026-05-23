@@ -174,7 +174,6 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   swap_execute: WRITE_CONFIRM,
   volo_stake: WRITE_CONFIRM,
   volo_unstake: WRITE_CONFIRM,
-  save_contact: WRITE_CONFIRM,
 
   // Explicit-only write tools (LLM never auto-dispatches; user must
   // initiate from a UI surface)

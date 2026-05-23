@@ -21,7 +21,7 @@ const InvoiceSchema = z.object({
   })).optional().describe('Line items. If omitted, a single line item matching the total is implied.'),
 });
 
-function internalHeaders(context: { walletAddress?: string; env?: Record<string, string | undefined>; signal?: AbortSignal }) {
+function internalHeaders(context: { walletAddress?: string; env?: import('../types.js').ToolContextEnv; signal?: AbortSignal }) {
   const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
   return {
     'Content-Type': 'application/json',

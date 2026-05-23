@@ -537,7 +537,7 @@ describe('sse-format-adapter — data-{name} side-channel dispatch', () => {
             type: 'data-pending-input',
             data: {
               inputId: 'in-1',
-              toolName: 'save_contact',
+              toolName: 'add_recipient',
               toolUseId: 'c1',
               schema: { fields: [{ name: 'name', kind: 'text', label: 'Name' }] },
               description: 'Add contact',

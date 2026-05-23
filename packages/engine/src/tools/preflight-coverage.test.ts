@@ -11,6 +11,11 @@
  * `harvest_rewards`, `volo_stake`, `volo_unstake`, `save_contact`. The
  * rule was being enforced verbally but not structurally.
  *
+ * S.269 item 6 (2026-05-23): `save_contact` was deleted from the engine
+ * (dead tool — host-side Prisma persistence with no engine-owned
+ * effect; the user surface is the audric send screen, not the LLM).
+ * The other 5 stay — their preflight smokes remain below.
+ *
  * This test exists so a future write tool added without preflight
  * fails CI immediately, instead of slipping through review and
  * costing a real preflight bug at execution time. Each preflight gets
@@ -28,7 +33,6 @@ import { claimRewardsTool } from './claim.js';
 import { harvestRewardsTool } from './harvest-rewards.js';
 import { voloStakeTool } from './volo-stake.js';
 import { voloUnstakeTool } from './volo-unstake.js';
-import { saveContactTool } from './contacts.js';
 
 // Opt-in write tools that hosts append to `getDefaultTools()`. They're
 // NOT in `WRITE_TOOLS` (the default-export list), but they ARE write
@@ -136,24 +140,4 @@ describe('preflight smoke — newly-covered tools (SPEC 30 Phase 1B follow-up)',
     });
   });
 
-  describe('save_contact', () => {
-    it('rejects empty name', () => {
-      const r = saveContactTool.preflight!({
-        name: '   ',
-        address: '0x' + 'a'.repeat(64),
-      });
-      expect(r.valid).toBe(false);
-    });
-    it('rejects malformed address', () => {
-      const r = saveContactTool.preflight!({ name: 'Mom', address: '0xnope' });
-      expect(r.valid).toBe(false);
-    });
-    it('accepts valid name + address', () => {
-      const r = saveContactTool.preflight!({
-        name: 'Mom',
-        address: '0x' + 'a'.repeat(64),
-      });
-      expect(r.valid).toBe(true);
-    });
-  });
 });

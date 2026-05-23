@@ -615,8 +615,7 @@ export interface PendingAction {
    *
    * Bundleable tools (v1): `save_deposit`, `withdraw`, `borrow`,
    * `repay_debt`, `send_transfer`, `swap_execute`, `claim_rewards`,
-   * `volo_stake`, `volo_unstake`. Non-bundleable: `save_contact`
-   * (Postgres only).
+   * `volo_stake`, `volo_unstake`.
    */
   steps?: PendingActionStep[];
   /**
@@ -778,6 +777,44 @@ export interface ToolResult<T = unknown> {
   displayText?: string;
 }
 
+/**
+ * Strongly-typed env contract for engine tools (S.269 item 3 — 2026-05-23).
+ *
+ * Pre-S.269 this was `Record<string, string>` — any string key, no
+ * autocomplete, no typo protection. A typo or missing key from a host
+ * silently degraded the tool to its fallback path (e.g. audric/web-v2
+ * shipped a payment-link bug for weeks because `AUDRIC_INTERNAL_KEY`
+ * wasn't threaded through `ToolContext.env` — the engine read
+ * `context.env?.AUDRIC_INTERNAL_KEY` and got `undefined` silently).
+ *
+ * Every key here MUST stay optional — the type protects against typos,
+ * not absence. CLI / MCP hosts threading no env at all stay valid;
+ * audric/web-v2 threads all three. Tools that depend on a key still
+ * gate on `if (!context.env?.X) return null` and degrade gracefully
+ * (or surface a `displayText` explaining the degradation).
+ *
+ * **Adding a new key:** add the field here with a doc comment, then
+ * thread it from every host that needs it. The TS compiler enforces
+ * the threading at the host side (assignment to `ToolContext.env`
+ * fails if you misspell the key).
+ */
+export interface ToolContextEnv {
+  /** Audric internal API base URL (e.g. `https://audric.ai`).
+   *  Read by `receive.ts`, `portfolio-analysis.ts`, `yield-summary.ts`,
+   *  `spending.ts`, `activity-summary.ts`, `audric-api.ts`. Hosts:
+   *  audric/web-v2 (required for the engine's audric-backed read +
+   *  payment-link tools to function). */
+  AUDRIC_INTERNAL_API_URL?: string;
+  /** Audric internal-API shared key for `x-internal-key` header
+   *  authentication. Read by every audric-backed tool above.
+   *  Hosts: audric/web-v2 (required; pairs with the URL). */
+  AUDRIC_INTERNAL_KEY?: string;
+  /** Brave Search API key — backs the `web_search` tool.
+   *  Read by `web-search.ts`. Hosts: audric/web-v2 (optional;
+   *  absent → web_search returns "not available"). */
+  BRAVE_API_KEY?: string;
+}
+
 export interface ToolContext {
   agent?: unknown; // T2000 instance — typed loosely to avoid circular dep at type level
   mcpManager?: unknown; // McpClientManager — typed loosely to avoid circular dep
@@ -786,8 +823,8 @@ export interface ToolContext {
   serverPositions?: ServerPositionData; // Pre-fetched positions from the server (avoids stale MCP data)
   /** Fresh on-chain position reader — bypasses MCP caching. If provided, read tools prefer this. */
   positionFetcher?: (address: string) => Promise<ServerPositionData>;
-  /** Environment variables passed to tools (e.g. API keys not in process.env) */
-  env?: Record<string, string>;
+  /** Environment variables passed to tools (e.g. API keys not in process.env). See `ToolContextEnv` for the typed key contract. */
+  env?: ToolContextEnv;
   signal?: AbortSignal;
   /** Token symbol → USD price map for USD-aware permission resolution (B.4). */
   priceCache?: Map<string, number>;
@@ -898,8 +935,8 @@ export interface ToolFlags {
    * `borrow`, `repay_debt`, `send_transfer`, `swap_execute`,
    * `claim_rewards`, `volo_stake`, `volo_unstake`.
    *
-   * **Permanently non-bundleable:**
-   *  - `save_contact` — Postgres-only, no on-chain effect.
+   * **Permanently non-bundleable:** (none today; `save_contact` was
+   *  the historical exception, deleted in S.269 item 6 — 2026-05-23.)
    */
   bundleable?: boolean;
 }
@@ -1002,8 +1039,8 @@ export interface EngineConfig {
   toolChoice?: ToolChoice;
   thinking?: ThinkingConfig;
   outputConfig?: OutputConfig;
-  /** Environment variables forwarded to tool context (API keys, URLs). */
-  env?: Record<string, string>;
+  /** Environment variables forwarded to tool context (API keys, URLs). See `ToolContextEnv` for the typed key contract. */
+  env?: ToolContextEnv;
   costTracker?: {
     budgetLimitUsd?: number;
     inputCostPerToken?: number;

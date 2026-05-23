@@ -16,7 +16,6 @@ import { swapQuoteTool } from './swap-quote.js';
 import { voloStakeTool } from './volo-stake.js';
 import { voloUnstakeTool } from './volo-unstake.js';
 import { voloStatsTool } from './volo-stats.js';
-import { saveContactTool } from './contacts.js';
 import { webSearchTool } from './web-search.js';
 import { explainTxTool } from './explain-tx.js';
 import { portfolioAnalysisTool } from './portfolio-analysis.js';
@@ -123,7 +122,6 @@ export const WRITE_TOOLS: Tool[] = [
   swapExecuteTool,
   voloStakeTool,
   voloUnstakeTool,
-  saveContactTool,
 ];
 
 export function getDefaultTools(): Tool[] {
@@ -153,7 +151,6 @@ export {
   portfolioAnalysisTool,
   protocolDeepDiveTool,
   tokenPricesTool,
-  saveContactTool,
   createPaymentLinkTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,

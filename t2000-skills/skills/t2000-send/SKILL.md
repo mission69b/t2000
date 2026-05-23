@@ -67,9 +67,11 @@ saved contact), offer to save it:
 
 > "Want to save 0x8b3e…d412 as a contact? Say `yes <name>` to save."
 
-If the user provides a name, call `save_contact` (engine) or
-`t2000 contacts add <name> <address>` (CLI). This makes future sends to
-the same person work by name (`t2000 send 10 USDC to <name>`).
+If the user provides a name, call `t2000 contacts add <name> <address>`
+(CLI). This makes future sends to the same person work by name
+(`t2000 send 10 USDC to <name>`). The engine no longer ships a
+`save_contact` tool — contacts are CLI-only state today; audric users
+manage contacts via the send screen.
 
 **Do not auto-save** without asking — the user might not want every
 one-off recipient cluttering their contacts list.
@@ -83,7 +85,8 @@ When called inside the Audric chat agent:
 3. Emit `send_transfer({ to, amount, asset })` as the write tool_use.
 4. After the send settles, if the recipient was a raw address not already
    in contacts, surface the "save as contact?" prompt to the user (see
-   above). The user confirms in the next turn; engine emits `save_contact`.
+   above). The user confirms in the next turn; the host (CLI / audric)
+   handles persistence — the engine has no contact-write tool.
 
 Sends are **single-write** — never bundle with another write in a
 Payment Intent. Each transfer is its own intent.
