@@ -356,6 +356,21 @@ export type { AISDKAnthropicProviderConfig } from './providers/ai-sdk-anthropic.
 export { AISDKEngine, TOOL_POLICY, getToolPolicy, registerToolPolicy } from './v2/index.js';
 export type { AISDKEngineConfig, ToolPolicy } from './v2/index.js';
 
+// [v2.20.0 / SPEC_AI_SDK_HARDENING P3.4 — 2026-05-24] Step-finish handler
+// for hosts composing `Experimental_Agent` directly. Bundles the four
+// post-step concerns the legacy `AISDKEngine.submitMessage` path runs
+// automatically: (1) `updateGuardStateAfterToolResult` for every tool
+// outcome (swap_quote tracker, balance freshness, retry counts), (2)
+// `extractTrustedAddressesFromResult` for `lookup_user` / `resolve_suins`
+// outputs, (3) SessionSpend USD accumulation + `onAutoExecuted` host
+// hook for successful writes, (4) `clearPortfolioCacheFor` +
+// `clearDefiCacheFor` post-write cache invalidation. Audric/web-v2
+// uses this on its `Experimental_Agent` to eliminate the drift surface
+// vs the engine path (CLI / MCP / tests). See
+// `packages/engine/src/v2/step-finish.ts` for the full implementation.
+export { buildStepFinishHandler } from './v2/step-finish.js';
+export type { StepFinishMutableState } from './v2/step-finish.js';
+
 // [v2.11.0 / SPEC v0.7c Phase 2 Day 2e] Host-side composition primitives.
 // Lets audric `web-v2` build `new Experimental_Agent({...})` directly
 // without going through `AISDKEngine.submitMessage()`. See D-15 lock.
