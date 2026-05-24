@@ -228,6 +228,110 @@ describe('[v0.49] health_simulator seeds neutral defaults for watched addresses'
 });
 
 /**
+ * [Bug fix — 2026-05-24] positionFetcher fallback when `serverPositions`
+ * is unset.
+ *
+ * The production smoke caught yield_projector rendering with hardcoded
+ * defaults ($1000 USDC at 4.5% APY) instead of the user's actual
+ * position. Root cause: audric/web-v2 wires `positionFetcher` but
+ * doesn't pre-fetch into `context.serverPositions` (legacy apps/web
+ * pre-fetched synchronously; web-v2 prefers lazy fetch). The canvas
+ * tool read `context.serverPositions` directly → undefined → fallback.
+ *
+ * Fix: lazy resolver `getSelfPositions()` reads `serverPositions` when
+ * present (preserves legacy host behavior) and falls back to
+ * `positionFetcher(walletAddress)` when absent. Try/catch wraps the
+ * fetch so failures degrade to the pre-fix default behavior with a
+ * warning log.
+ *
+ * Below: three regression tests covering yield_projector,
+ * health_simulator self-render, and the positionFetcher-throws case.
+ */
+describe('[Bug fix — 2026-05-24] positionFetcher fallback when serverPositions is unset', () => {
+  const fetcherPositions = {
+    savings: 1234,
+    borrows: 500,
+    pendingRewards: 0,
+    healthFactor: 2.5,
+    maxBorrow: 100,
+    supplies: [],
+    borrows_detail: [],
+    savingsRate: 0.0674, // 6.74% — the USDsui rate from the production smoke
+  };
+  const ctxWithFetcher = {
+    walletAddress: USER_ADDR,
+    positionFetcher: async () => fetcherPositions,
+    // NOTE: no serverPositions — this is the audric/web-v2 pattern
+  } as Parameters<typeof renderCanvasTool.call>[1];
+
+  interface YieldProjectorResult {
+    data: {
+      templateData: {
+        available: boolean;
+        initialAmount: number;
+        initialApy: number;
+      };
+    };
+  }
+
+  it('yield_projector seeds from positionFetcher when serverPositions is absent (the smoke fix)', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'yield_projector', params: null },
+      ctxWithFetcher,
+    )) as YieldProjectorResult;
+    // Pre-fix: would default to $1000 @ 4.50% (no positions).
+    // Post-fix: reflects the fetcher-provided savings + rate.
+    expect(res.data.templateData.initialAmount).toBe(1234);
+    expect(res.data.templateData.initialApy).toBeCloseTo(6.74, 1);
+  });
+
+  it('health_simulator self-render seeds from positionFetcher when serverPositions is absent', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'health_simulator', params: null },
+      ctxWithFetcher,
+    )) as HealthSimulatorResult;
+    expect(res.data.templateData.initialCollateral).toBe(1234);
+    expect(res.data.templateData.initialDebt).toBe(500);
+    expect(res.data.templateData.currentHf).toBe(2.5);
+    expect(res.data.templateData.isSelfRender).toBe(true);
+  });
+
+  it('falls back to neutral defaults when positionFetcher throws', async () => {
+    const ctxThrowing = {
+      walletAddress: USER_ADDR,
+      positionFetcher: async () => {
+        throw new Error('upstream BlockVision 429');
+      },
+    } as Parameters<typeof renderCanvasTool.call>[1];
+
+    const res = (await renderCanvasTool.call(
+      { template: 'yield_projector', params: null },
+      ctxThrowing,
+    )) as YieldProjectorResult;
+    // Same defaults as pre-fix behavior — graceful degradation.
+    expect(res.data.templateData.initialAmount).toBe(1000);
+    expect(res.data.templateData.initialApy).toBeCloseTo(4.5, 1);
+  });
+
+  it('prefers `serverPositions` over `positionFetcher` when BOTH are set (legacy host path)', async () => {
+    const ctxBoth = {
+      walletAddress: USER_ADDR,
+      serverPositions: { ...fetcherPositions, savings: 9999 },
+      positionFetcher: async () => {
+        throw new Error('should not be called');
+      },
+    } as Parameters<typeof renderCanvasTool.call>[1];
+
+    const res = (await renderCanvasTool.call(
+      { template: 'yield_projector', params: null },
+      ctxBoth,
+    )) as YieldProjectorResult;
+    // serverPositions wins — fetcher is the fallback, not an override.
+    expect(res.data.templateData.initialAmount).toBe(9999);
+  });
+});
+
+/**
  * [v1.2.1 — bug fix] Non-address-aware templates must NOT trigger
  * address normalization, even when the LLM accidentally passes a
  * `params.address`. Pre-fix, `yield_projector` and `dca_planner` would
