@@ -202,8 +202,17 @@ Redis (Upstash) is the runtime store for the chunks themselves, owned by `resuma
 - ✅ POST `/api/chat/[id]/stop`: `publishAbort(currentActiveStreamId)` fans out to all instances. Receiver count logged.
 - ✅ GET `/api/chat/[id]/stream`: `[stream-resume] resume_attempt` + `resume_success` telemetry log lines.
 - ✅ `[consumeSseStream] streamId=X chatId=Y` proof log added so production logs can definitively answer "did the resumable producer actually start" without inferring from 204s downstream.
-- ✅ Tests: 6 new vitest tests in `lib/stream-abort.test.ts` covering the local dispatch path (handler register/fire/isolate/cleanup, exception swallowing, late-publish safety).
+- ✅ Tests: 7 vitest tests in `lib/stream-abort.test.ts` covering the local dispatch path (handler register/fire/isolate/cleanup, exception swallowing, late-publish safety, idempotency).
 - Phase 3 telemetry hooks into `console.info` + Vercel log aggregation rather than a separate metric pipeline. Sufficient for the SPEC's "did the feature work?" question; can promote to a dedicated metric pipeline later if signal quality demands.
+
+#### Phase 3 self-audit fixes (2026-05-24, audric `2239d30`)
+
+Two bugs surfaced in a post-commit self-audit; both fixed in a follow-up:
+
+1. **Double-fire in `publishAbort`** — local short-circuit fired the handler AND then published to Redis. The Redis fanout looped back to the same instance's `pSubscribe`, which found the handler still in the dispatch map and fired it again. `AbortController.abort()` is idempotent so this was log noise + duplicate handler invocation, not a correctness bug, but worth fixing. Resolution: one-shot dispatch via delete-before-fire in BOTH the local short-circuit and the `pSubscribe` callback.
+2. **Fire-and-forget `publishAbort` in stop route** — the publish Promise used `.then().catch()` without `await` and without `waitUntil()`. Vercel may terminate the function after `Response.json` returns, killing an in-flight Redis publish before it reaches the server. For same-instance abort this didn't matter (local handler fires synchronously); for cross-instance abort it meant the LLM kept running on the other instance until natural completion — defeating the Phase 3 cost-optimisation purpose. Resolution: await the publish (~50ms added to stop response).
+
+Regression test added (`publishAbort is idempotent — second call does not re-fire handler`) to lock the dispatch-table-delete-before-fire invariant.
 
 ### Phase 4 — Production soak observation + stale-stop guard (optional, pending)
 
