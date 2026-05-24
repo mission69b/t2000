@@ -1,6 +1,6 @@
 # SPEC — AI SDK Hardening
 
-> **Status:** SHIPPING · drafted 2026-05-24 · revised 2026-05-24 (Phase 5 batch P5.2+P5.3+P5.4 shipped, then P5.1 shipped, then P5.6 shipped — **Phase 5 closed**) · author: agent (Opus 4.7)
+> **Status:** SHIPPING · drafted 2026-05-24 · revised 2026-05-24 (Phase 5 closed, Phase 6 closed, P3.2 closed — **3 of 7 phases shipped + 1/4 of Phase 3**) · author: agent (Opus 4.7)
 > **Local-only?** No — this SPEC is tracked. `audric-build-tracker.md` references stay founder-local.
 > **Promoted from:** `.cursor/plans/ai_sdk_hardening_bc37c5e8.plan.md` (the working plan that drove this work — original is the source of truth for full per-item rationale + AI SDK doc citations).
 > **Why tracked:** the plan has 7 phases / 32 items across ~3 weeks of work. Multiple agents and sessions will work on it. Without a tracked SPEC, the next agent risks re-shipping completed phases (the exact failure mode that triggered this promotion).
@@ -50,16 +50,18 @@ Audric commits: `45a457f` (P2.3+P2.4+P2.5), then `0e3812f`/`6dca31d`/`afa83cb`/`
 - ✅ **P5.1** Edit user message + re-send + `truncateMessagesAfter` server helper + 5 chat-persistence integration tests (11 cases) folded in (S.291, audric `9029eb1`). Includes a `bundle-status.ts` extraction so `isBundleSpent` is unit-testable. Self-audit caught + fixed a legacy-schema edge case (penultimate `{role, content}` without `id` would have triggered a full-chat wipe; now skipped with a warn log).
 - ✅ **P5.6** Surface live HF/APY metadata through `buildAudricToolMetadata` + PermissionCard (S.292). New `lib/audric/live-data.ts` host-side enrichment module replicates the engine's `enrichPendingActionWithLiveData` subset (the engine's helper is unreachable from web-v2's `Experimental_Agent` path). `currentHF` / `projectedHF` / `borrowApyBps` thread through `tool-input-available` → `parseAudricMetadata` → `PermissionCard` → `renderPreviewBody`, lighting up the existing HFRow / APYRow rich previews. 19 unit tests for `projectHF` + `computeMetadataEnrichment` cover the 8-tool decision matrix + graceful degradation. **Quote-refresh UI + per-reward breakdown + cetusRoute deferred to backlog per Round 3 trim** — first-time borrowers (no existing position) still see the existing "Variable rate" disclaimer rather than a live APY.
 
-### Phase 6 — Error handling alignment ⏳ PENDING
+### Phase 6 — Error handling alignment ✅ SHIPPED 2026-05-24 (S.298)
 
-- ⏳ **P6.1** `onError` callback on `createUIMessageStreamResponse` (server-side error sanitization seam)
-- ⏳ **P6.2** Client `useChat({ onError })` with banner+toast UX decision
-- ⏳ **P6.3** Replace string-heuristic error classification with typed AI SDK error classes (`APICallError`, `NoSuchToolError`, `ToolExecutionError`, `InvalidToolInputError`, `RetryError`)
+- ✅ **P6.1** `onError` callback on `createUIMessageStream` (the correct seam — plan said `createUIMessageStreamResponse` but AI SDK types put `onError` on the stream constructor, NOT the response wrapper; corrected during implementation)
+- ✅ **P6.2** Client `useChat({ onError })` minimal observability hook — banner-only UX (finance app · recovery via P5.1 Edit + P5.4 Regenerate is the gentle path · revisit if telemetry shows banner blindness)
+- ✅ **P6.3** Replace string-heuristic error classification with typed AI SDK error classes — `classifyStreamError()` does `isInstance` first (RetryError / APICallError with status-code switch / NoSuchToolError / InvalidToolInputError / InvalidToolApprovalError / ToolCallNotFoundForApprovalError), falls back to the heuristic sanitizer for raw strings. Back-compat `sanitizeStreamErrorMessage(raw)` preserved for the engine-chunk error path. 29 unit tests; 64/64 lib/audric tests pass.
 
-### Phase 3 — Best-practice alignment ⏳ PENDING
+Audric commit: `ab4f789`. No engine bump (host-only). No new dependencies.
+
+### Phase 3 — Best-practice alignment 🟡 IN PROGRESS
 
 - ⏳ **P3.1** `prepareStep.activeTools` (intent classifier v1 cuts 26 → 5-8 tools per turn)
-- ⏳ **P3.2** Enable `experimental_repairToolCall` on `Experimental_Agent`
+- ✅ **P3.2** Enable `experimental_repairToolCall` on `Experimental_Agent` (S.300 — 2026-05-24). `lib/audric/tool-call-repair.ts` factors the callback: `NoSuchToolError` returns null (model re-plans), `InvalidToolInputError` does a single structured-output `generateText` call with the tool's JSON Schema + the validation error and returns the repaired `toolCall.input`. Graceful null-fallback whenever the secondary call itself fails. 10 unit tests. Stale `Option B (post-P3.2)` comment in `BundleBuffer.flush()` updated to note the seam is now wired (the BundleBuffer A→B swap stays as a follow-up; it needs bundle-aware context, not just schema validation).
 - ⏳ **P3.3** Wire McpPromptAdapter to populate `skillRecipeBlock` (or delete `t2000-skills/` — decide during implementation; recommendation: wire it, it's the moat we advertise)
 - ⏳ **P3.4** Unify post-write logic via engine `onStepFinish` (eliminate engine ↔ host PWR drift)
 
