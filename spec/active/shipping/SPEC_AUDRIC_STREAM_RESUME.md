@@ -1,9 +1,10 @@
 # SPEC — Audric Stream Resume (host-side, using `resumable-stream` + `useChat({ resume: true })`)
 
-> **Status:** v0.3 SHIPPING (Phase 1 + 2 LANDED) · drafted 2026-05-24 (v0.1) · revised 2026-05-24 (v0.2 — major correction after AI SDK doc review) · revised 2026-05-24 (v0.3 — Phase 1 + Phase 2 SHIPPED + feature flag DROPPED) · author: agent (Opus 4.7)
+> **Status:** v0.4 SHIPPING (Phase 1 + 2 + 3 LANDED) · drafted 2026-05-24 (v0.1) · revised 2026-05-24 (v0.2 — major correction after AI SDK doc review) · revised 2026-05-24 (v0.3 — Phase 1 + Phase 2 SHIPPED + feature flag DROPPED) · revised 2026-05-24 (v0.4 — Phase 3 cross-instance abort + telemetry SHIPPED) · author: agent (Opus 4.7)
 > **Companion to:** AI SDK Hardening Phase 2 (S.285) — captures the P2.2 deferral as a standalone designable slice
-> **Decision gate:** Phase 3 (telemetry + soak) pending. No founder Qs open.
+> **Decision gate:** Phase 4 (production soak observation + stale-stop guard) optional. No blocking Qs.
 > **Local-only?** No — this SPEC is tracked. `audric-build-tracker.md` references stay founder-local.
+> **What changed from v0.3:** Phase 3 shipped end-to-end. New `lib/stream-abort.ts` module provides cross-instance abort signal via Redis pub/sub (`stream:abort:{streamId}` channel + `PSUBSCRIBE` pattern + in-memory dispatch). POST `/api/chat` threads `abortController.signal` into `audricAgent.stream` so stop genuinely cancels the LLM call. Telemetry log lines added at every key point (`[consumeSseStream]`, `[stream-resume] resume_attempt/resume_success/producer_completed_after_disconnect`, `[stream-abort] stop_explicit/aborting`). 6 new vitest tests cover the local dispatch path.
 > **What changed from v0.2:** the `AUDRIC_STREAM_RESUME_ENABLED` flag was dropped because the natural gates (`REDIS_URL` presence + `Chat.activeStreamId` column existence) already cover what the flag was protecting. Build script now runs `prisma migrate deploy && next build` on Vercel so the column lands atomically with each deploy. Phase 2 client wiring shipped in the same commit as Phase 1 cleanup.
 > **What changed from v0.1:** the v0.1 design was over-engineered — I planned a custom Redis-LIST replay store and a 5-phase plan with a 2hr spike. AI SDK ships first-class support via the `resumable-stream` npm package + `consumeSseStream` callback + `useChat({ resume })` option. v0.2 adopts that pattern. Total sizing drops from ~3 dev days to ~1 day; the spike phase is gone; the in-flight tool detection phase is gone (producer completes naturally on the server via Next.js `after()`).
 
@@ -192,12 +193,23 @@ Redis (Upstash) is the runtime store for the chunks themselves, owned by `resuma
 - ✅ `handleStop` callback calls `useChat.stop()` (local disconnect) + `fetch("/api/chat/[id]/stop", { method: "POST" })` (server-side `activeStreamId` clear).
 - Deferred to Phase 3: passing `chat.activeStreamId` from server-rendered chat data into the shell for the stale-stop guard. Phase 2 skips the guard (the route's JSDoc documents this is the conservative default — without it, a double-tap could race a new turn; not a correctness bug, just a minor UX glitch).
 
-### Phase 3 — Telemetry + production soak (~½ day, pending)
+### Phase 3 — Cross-instance abort + telemetry ✅ SHIPPED 2026-05-24 (S.289)
 
-- Telemetry: `resume_attempt_count`, `resume_success_count` (vs 204), `stop_explicit_count`, `producer_completed_after_disconnect_count` (the win metric — proves the feature is doing its job). Existing `audricObservabilityMiddleware` is the right place if it can carry these counters; otherwise a thin `lib/audric/telemetry.ts` helper.
-- AbortController plumbing to actually cancel the LLM call on explicit stop (Phase 2 stop only clears `activeStreamId`; producer runs to natural completion + `onFinish` saves the full message).
-- Stale-stop guard: surface `activeStreamId` to the client via server-rendered chat data so the stop request can include it.
-- 24h soak on preview deploys with engineering-only access, then 48h prod monitoring.
+- ✅ `lib/stream-abort.ts` (NEW): `subscribeToAbort` + `publishAbort` backed by Redis pub/sub on `stream:abort:{streamId}` channel. One `PSUBSCRIBE stream:abort:*` per warm instance + in-memory dispatch `Map<streamId, handler>`. Memoised init + subscribe Promise so concurrent callers can't double-subscribe.
+- ✅ POST `/api/chat`: passes `abortController.signal` to `audricAgent.stream({ abortSignal })`. The same controller's signal was already in ToolContext for tools — one controller, both LLM AND tools cancel on stop.
+- ✅ consumeSseStream registers the abort handler after both Redis sentinel + DB write succeed. Order matters: by the time `activeStreamId` is readable from DB, the dispatch table on this instance has the handler. Stop fan-out from another instance arrives via the pattern subscription.
+- ✅ onFinish tears down the subscription on natural completion + logs `[stream-resume] producer_completed_after_disconnect=ok` (the win metric).
+- ✅ POST `/api/chat/[id]/stop`: `publishAbort(currentActiveStreamId)` fans out to all instances. Receiver count logged.
+- ✅ GET `/api/chat/[id]/stream`: `[stream-resume] resume_attempt` + `resume_success` telemetry log lines.
+- ✅ `[consumeSseStream] streamId=X chatId=Y` proof log added so production logs can definitively answer "did the resumable producer actually start" without inferring from 204s downstream.
+- ✅ Tests: 6 new vitest tests in `lib/stream-abort.test.ts` covering the local dispatch path (handler register/fire/isolate/cleanup, exception swallowing, late-publish safety).
+- Phase 3 telemetry hooks into `console.info` + Vercel log aggregation rather than a separate metric pipeline. Sufficient for the SPEC's "did the feature work?" question; can promote to a dedicated metric pipeline later if signal quality demands.
+
+### Phase 4 — Production soak observation + stale-stop guard (optional, pending)
+
+- **Stale-stop guard**: surface `chat.activeStreamId` to the chat shell via server-rendered chat page data so the stop POST body can carry it. Closes a minor double-tap UX race (Phase 3 stop sends empty body; the route's compare-and-set guard handles the common case correctly but a rare double-tap could clear a newly auto-fired turn's id).
+- **48h prod soak**: monitor the new telemetry log lines on Vercel. Confirm `[consumeSseStream]` fires on every successful turn, `resume_success` fires when real reload-mid-stream happens, `stop_explicit` correlates with actual user gestures.
+- **Token cost validation**: pull Anthropic API spend before/after Phase 3 to confirm stop genuinely cuts cost (the SPEC's biggest user-invisible win).
 - If clean: promote SPEC to `spec/archive/v07e/` (engine version stays where it is — this is host-only).
 
 ---
