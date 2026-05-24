@@ -147,6 +147,11 @@ Read `spec/README.md` (internal) for the spec/active vs archive vs reference lay
 | `spec/archive/v07a/BENEFITS_SPEC_v07a.md` | v0.7a engine drain — SHIPPED 2026-05-18 (historical reference) | Engine architecture context |
 | `spec/reference/CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
 | `spec/reference/PRODUCT_SPEC.md` (local-only) | Product reference | Product decisions |
+| `spec/reference/CANVAS_VS_ARTIFACT.md` | LOCKED — canvases stay as inline read-only; `render_artifact` ships as a separate tool when Audric Store Phase 5 lands | Before proposing artifact migration or new generated-content surfaces |
+| `spec/reference/PRISMA_VS_DRIZZLE.md` | LOCKED — Audric stays on Prisma; do not re-litigate without new evidence | Before proposing ORM migration |
+| `spec/reference/LONG_RUNNING_WORKFLOWS.md` | LOCKED — chat stays inline; workflows fit when Audric Store generation tasks (10s-2min) ship | Before proposing workflow infrastructure for chat |
+| `spec/reference/LLM_CACHING_DECISION.md` | LOCKED — AI Gateway prompt cache only; Redis response cache structurally unsafe for finance content | Before proposing LLM response caching |
+| `spec/reference/MCP_PROMPTS_INTEGRATION_DECISION.md` | DORMANT BY DESIGN — `McpPromptAdapter` + `skillRecipeBlock` stays unwired; "speak any Sui protocol's MCP" extension point | Before proposing wiring or deleting the seam |
 | `spec/runbooks/RUNBOOK_*.md` | Operational runbooks (parent-sui, SPEC 7/9/18-20/37 closeout, BV outage drill) | Operational work |
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
 | `.cursor/rules/single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement | Portfolio/wallet/positions reads |
