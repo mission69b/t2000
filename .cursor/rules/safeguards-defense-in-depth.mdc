@@ -48,7 +48,7 @@ Adding a new guard:
 
 ## USD-aware permission resolver (B.4)
 
-`resolvePermissionTier(operation, amountUsd, config)` dynamically downgrades a write's permission level based on USD value. The resolver is **active in audric/web today** (P2.6 UC4b confirmed via live run: a 1.27 SUI / ~$1.20 swap auto-executed under the `conservative` preset).
+`resolvePermissionTier(operation, amountUsd, config)` dynamically downgrades a write's permission level based on USD value. The resolver is **computed every turn and persisted to `TurnMetrics` for analytics**, but **auto-execute is structurally disabled under web-v2's client-signed zkLogin** — `packages/engine/src/v2/need-approval.ts:113-115` short-circuits to "needs approval" when `!ctx.agent`, and web-v2 has no server-side signing agent. Every write in the shipping app requires a Passport confirm tap by design (per Audric Passport's "you decide" trust pillar). The resolver branch below documents the design as it would behave for hosts that DO inject a server-signing agent (e.g., the `@t2000/cli` engine usage where the engine itself signs).
 
 ```typescript
 // packages/engine/src/permission-rules.ts
@@ -80,17 +80,16 @@ PERMISSION_PRESETS = {
 4. Cumulative daily spend > `autonomousDailyLimit` downgrades any `auto` to `confirm` (runtime safety net).
 5. `borrow` always confirms (`autoBelow: 0` across every preset) — debt is too consequential to silently take on.
 
-**Audric/web's wiring (today):**
+**Audric/web-v2's wiring (today):**
 - The session permission preset is plumbed through to the engine via `ToolContext.permissionConfig` + `priceCache`.
 - Default is `conservative` for new accounts (set in user settings; settable to `balanced` / `aggressive`).
-- Sub-threshold writes auto-execute via the same sponsored-tx path; the user sees the receipt only after on-chain settlement.
-- `attemptId` is still stamped on auto-executed writes so audit + rollback paths work identically to confirm-tier.
+- `resolvePermissionTier()` is called every turn and the resolved tier is recorded on `TurnMetrics` for analytics + future audit, but the resolution is **inert** at execution time — every write goes to confirm-tier via the `!ctx.agent` short-circuit in `need-approval.ts`. The user always sees a PermissionCard tap-to-confirm.
+- `attemptId` is still stamped on every write (auto resolution would also stamp it; the inert path stamps it identically).
 
-**Trust model under zkLogin:**
-- Auto-execution does NOT bypass user consent — the user opted into the preset (and thus into "small writes happen without a tap"). Tap-to-confirm is recoverable per-operation by toggling to `conservative`+raising thresholds, or by switching to `balanced` for a higher per-op tap-to-confirm baseline.
-- Each leg still flows through the same Enoki-sponsored builder; auto-execute changes WHO presses the button (engine vs. user), not WHAT gets signed.
+**Trust model under zkLogin (Passport):**
+- Audric Passport's trust pillar is "you decide — Audric never moves money on its own." Sub-threshold auto-execute would create the implicit promise "Audric usually asks, but sometimes just acts" — the worst possible UX for a finance product. The architectural decision (locked Round 3, 2026-05-24 — see `SPEC_AI_SDK_HARDENING.md` P4.7) is to commit fully: **every write taps**. The B.4 resolver stays in code because (a) it's tested + cheap to keep, (b) `@t2000/cli` engine consumers with a server-signing agent DO honor it, (c) future host architectures (server-side signing audric variants) could re-activate it.
 
-**When NOT to auto-execute (engineering rule):**
+**When NOT to auto-execute (engineering rule, applies to non-web-v2 consumers):**
 - Don't add a new write tool whose preset entry has `autoBelow > 0` without a guard that re-validates fresh balance / health-factor at execute time. The `<financial_context>` snapshot is daily; small auto-writes that race a position change can wedge HF if you trust stale data.
 
 ## Tool result budgeting (B.2)

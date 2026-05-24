@@ -65,7 +65,7 @@ onAutoExecuted?: (info: { toolName: string; usdValue: number; walletAddress?: st
 ```
 
 Fires after a write tool successfully executes (whether server-side or client-confirmed). Hosts use it to:
-- Update `sessionSpendUsd` (drives B.4 USD-aware permission gating).
+- Update `sessionSpendUsd` — drives the B.4 USD-aware permission gating analytics. Note: in audric/web-v2 the gating itself is inert at execute time (every write taps to confirm by design under zkLogin per Round 3 P4.7 decision; see `safeguards-defense-in-depth.mdc`), but the spend ledger increment is still load-bearing for analytics + audit + future host variants that DO inject a server-signing agent.
 - Emit telemetry / record `AdviceLog`.
 
 ## Spec 2 — Intelligence (`AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`, local-only)
