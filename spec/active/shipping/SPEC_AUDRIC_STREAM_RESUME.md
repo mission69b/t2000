@@ -1,9 +1,10 @@
 # SPEC — Audric Stream Resume (host-side, using `resumable-stream` + `useChat({ resume: true })`)
 
-> **Status:** v0.2 DRAFT · drafted 2026-05-24 (v0.1) · revised 2026-05-24 (v0.2 — major correction after AI SDK doc review) · author: agent (Opus 4.7)
+> **Status:** v0.3 SHIPPING (Phase 1 + 2 LANDED) · drafted 2026-05-24 (v0.1) · revised 2026-05-24 (v0.2 — major correction after AI SDK doc review) · revised 2026-05-24 (v0.3 — Phase 1 + Phase 2 SHIPPED + feature flag DROPPED) · author: agent (Opus 4.7)
 > **Companion to:** AI SDK Hardening Phase 2 (S.285) — captures the P2.2 deferral as a standalone designable slice
-> **Decision gate:** founder triage required on §6 (3 open Qs — significantly reduced from v0.1's 6 after the doc review)
+> **Decision gate:** Phase 3 (telemetry + soak) pending. No founder Qs open.
 > **Local-only?** No — this SPEC is tracked. `audric-build-tracker.md` references stay founder-local.
+> **What changed from v0.2:** the `AUDRIC_STREAM_RESUME_ENABLED` flag was dropped because the natural gates (`REDIS_URL` presence + `Chat.activeStreamId` column existence) already cover what the flag was protecting. Build script now runs `prisma migrate deploy && next build` on Vercel so the column lands atomically with each deploy. Phase 2 client wiring shipped in the same commit as Phase 1 cleanup.
 > **What changed from v0.1:** the v0.1 design was over-engineered — I planned a custom Redis-LIST replay store and a 5-phase plan with a 2hr spike. AI SDK ships first-class support via the `resumable-stream` npm package + `consumeSseStream` callback + `useChat({ resume })` option. v0.2 adopts that pattern. Total sizing drops from ~3 dev days to ~1 day; the spike phase is gone; the in-flight tool detection phase is gone (producer completes naturally on the server via Next.js `after()`).
 
 ---
@@ -166,42 +167,51 @@ Redis (Upstash) is the runtime store for the chunks themselves, owned by `resuma
 
 ## 5. Phase plan
 
-### Phase 1 — Server-side wiring + stop endpoint (~1 day, ships behind feature flag)
+### Phase 1 — Server-side wiring + stop endpoint ✅ SHIPPED 2026-05-24 (S.287)
 
-- Install `resumable-stream` in audric/web-v2 (`pnpm add resumable-stream`).
-- Add `activeStreamId String?` to the `Chat` Prisma model + run migration on dev / staging / prod databases.
-- Configure `createResumableStreamContext({ waitUntil: after, publisher, subscriber })` using the generic Upstash adapter on top of the existing `env.REDIS_URL` client (the same client S.285 wired for rate limit).
-- Wire `consumeSseStream` callback in `apps/web-v2/app/api/chat/route.ts` POST handler.
-- Add new `apps/web-v2/app/api/chat/[id]/stream/route.ts` GET handler (returns 204 when no active stream, replay otherwise).
-- Add new `apps/web-v2/app/api/chat/[id]/stop/route.ts` POST handler (cancel + clear).
-- Feature flag: `env.AUDRIC_STREAM_RESUME_ENABLED === 'true'` (off in production, on in preview deploys for dogfooding).
-- Tests: vitest integration for the 3 routes (POST creates streamId; GET returns 204 then streams; stop clears). Use the resumable-stream library's test utilities if available, otherwise mock the Upstash client.
+- ✅ Install `resumable-stream@2.2.12` in audric/web-v2.
+- ✅ Add `activeStreamId String?` to the `Chat` Prisma model + migration file `20260524000000_stream_resume_add_active_stream_id`.
+- ✅ `createResumableStreamContext({ waitUntil: after, publisher, subscriber })` in `lib/resumable-stream.ts` using node-redis clients routed through the env gate.
+- ✅ `consumeSseStream` callback wired in `apps/web-v2/app/api/chat/route.ts` (sequential awaits eliminate the 3 races caught in the self-audit — see S.287).
+- ✅ `apps/web-v2/app/api/chat/[id]/stream/route.ts` GET handler (returns 204 / streams).
+- ✅ `apps/web-v2/app/api/chat/[id]/stop/route.ts` POST handler (compare-and-set clear of `activeStreamId`).
+- ~~Feature flag~~ → DROPPED (see Phase 1.5).
+- ✅ Tests: `lib/resumable-stream.test.ts` (4 tests covering the Redis-URL gate + memoisation matrix).
 
-### Phase 2 — Client-side enablement + stop button rewire (~½ day, ships behind same flag)
+### Phase 1.5 — Drop the feature flag ✅ SHIPPED 2026-05-24 (folded into Phase 2 commit)
 
-- Wire `resume: true` in `useChat` invocation in the chat shell (specific file TBD — check `apps/web-v2/components/audric/` for the chat root component).
-- Rewire the stop button to call `POST /api/chat/[id]/stop` before invoking local `stop()`.
-- Pass `chat.activeStreamId` from server-rendered chat data into the shell (so stop endpoint can include it as the "stale stop request" guard per AI SDK doc).
-- Manual smoke: kill SSE mid-response on preview (DevTools → Network → throttle to offline, then back online; or close + reopen tab).
+- ✅ Remove `AUDRIC_STREAM_RESUME_ENABLED` from `lib/env.ts`.
+- ✅ Strip the flag check from `lib/resumable-stream.ts` (now just gates on `REDIS_URL`).
+- ✅ Add `prisma migrate deploy && next build` to web-v2 build script so the column always lands before code touches it on every Vercel deploy.
+- Rationale: the flag was protecting against (a) Redis being unconfigured and (b) the column not existing yet. (a) is already covered by the `REDIS_URL` presence check in `getResumableStreamContext`. (b) is now structurally impossible because the build script runs the migration before any code that touches the column. A third gate was complexity without preventing any failure mode.
 
-### Phase 3 — Telemetry + production flag-flip (~½ day, ship behind flag → flip)
+### Phase 2 — Client-side enablement + stop button ✅ SHIPPED 2026-05-24
+
+- ✅ `useChat({ resume: true })` in `app/chat/audric-chat-client.tsx` (the `AudricChatPanel` inner component, line 497 — the chat shell file was `audric-chat-client.tsx`, not `components/audric/chat-shell.tsx` as v0.2 guessed).
+- ✅ Replaced the disabled-Send button with a real Stop button (visible only when `status === "streaming" | "submitted"`) — toggles via the existing `isStreaming` flag.
+- ✅ `handleStop` callback calls `useChat.stop()` (local disconnect) + `fetch("/api/chat/[id]/stop", { method: "POST" })` (server-side `activeStreamId` clear).
+- Deferred to Phase 3: passing `chat.activeStreamId` from server-rendered chat data into the shell for the stale-stop guard. Phase 2 skips the guard (the route's JSDoc documents this is the conservative default — without it, a double-tap could race a new turn; not a correctness bug, just a minor UX glitch).
+
+### Phase 3 — Telemetry + production soak (~½ day, pending)
 
 - Telemetry: `resume_attempt_count`, `resume_success_count` (vs 204), `stop_explicit_count`, `producer_completed_after_disconnect_count` (the win metric — proves the feature is doing its job). Existing `audricObservabilityMiddleware` is the right place if it can carry these counters; otherwise a thin `lib/audric/telemetry.ts` helper.
-- 24h soak on preview deploys with engineering-only access.
-- Flip `AUDRIC_STREAM_RESUME_ENABLED=true` in production. Monitor 48h.
-- If clean: remove flag, mark SPEC shipped, promote to `spec/archive/` (engine version stays where it is — this is host-only).
+- AbortController plumbing to actually cancel the LLM call on explicit stop (Phase 2 stop only clears `activeStreamId`; producer runs to natural completion + `onFinish` saves the full message).
+- Stale-stop guard: surface `activeStreamId` to the client via server-rendered chat data so the stop request can include it.
+- 24h soak on preview deploys with engineering-only access, then 48h prod monitoring.
+- If clean: promote SPEC to `spec/archive/v07e/` (engine version stays where it is — this is host-only).
 
 ---
 
-## 6. Open questions for founder triage
+## 6. Open questions — all resolved
 
-| # | Question | Recommendation |
+| # | Question | Resolution |
 |---|---|---|
-| Q1 | Is the chat-shell file `components/audric/chat-shell.tsx` or something else? (Need exact path before Phase 2.) | Agent will read the file tree in audric/apps/web-v2 at Phase 2 start. Not a founder Q — just a TODO marker. |
-| Q2 | Per AI SDK doc: stream resumption changes `stop()` semantics. Audric's current stop button (if there is one — need to check `useChat` usage) will continue using bytes even after user clicks stop unless we wire the dedicated endpoint. Does the founder accept this as a Phase 1 requirement (must ship the stop endpoint in the same wave) OR is it acceptable to ship Phase 1 without it and ship Phase 2's stop rewire as a fast-follow? | **Ship the stop endpoint in Phase 1 (same wave).** Without it, every "stop" click is silently a "keep generating" click — that's a worse trust signal than not having stream resume at all. The endpoint is ~30 LoC; not worth saving for a follow-up. |
-| Q3 | Should the engine's `StreamCheckpointStore` be removed since audric (the only production host) won't use it? | NO — keep it. CLI / MCP / engine tests use it; removing it churns a published `@t2000/engine` API for zero audric benefit. |
+| Q1 | Is the chat-shell file `components/audric/chat-shell.tsx` or something else? | RESOLVED at Phase 2 — it's `app/chat/audric-chat-client.tsx` (the `AudricChatPanel` inner component). |
+| Q2 | Stream resumption changes `stop()` semantics. Ship the dedicated stop endpoint in Phase 1, or as fast-follow? | RESOLVED in Phase 1 — endpoint shipped in S.287 alongside the resume wire. |
+| Q3 | Should the engine's `StreamCheckpointStore` be removed since audric won't use it? | NO — keep it. CLI / MCP / engine tests use it; removing it churns a published `@t2000/engine` API for zero audric benefit. |
+| Q4 | Why the `AUDRIC_STREAM_RESUME_ENABLED` feature flag? | RESOLVED — dropped in v0.3. The `REDIS_URL` presence check + `prisma migrate deploy` in the build script already provide the natural gates; the flag was complexity without a corresponding failure mode it prevented.
 
-(v0.1 had Q1 Phase 0 spike — DROPPED, the AI SDK doc validates the integration. Q3 TTL — DROPPED, the library handles it. Q3 per-IP vs per-user — DROPPED, the chat-id-keyed model uses zkLogin user implicitly via the existing chat ACL. Q4 replay UX feel — DROPPED, the producer-keeps-running model means replay IS live, not synthetic-fast-replay. Only the genuine architectural Qs remain.)
+(v0.1 had a Phase 0 spike — DROPPED, the AI SDK doc validates the integration. Q3 TTL — DROPPED, the library handles it. Q3 per-IP vs per-user — DROPPED, the chat-id-keyed model uses zkLogin user implicitly via the existing chat ACL. Q4 replay UX feel — DROPPED, the producer-keeps-running model means replay IS live, not synthetic-fast-replay.)
 
 ---
 

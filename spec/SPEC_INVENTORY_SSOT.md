@@ -1,14 +1,14 @@
 # SPEC Inventory — Single Source of Truth
 
-> **Last refreshed:** 2026-05-24 ~10:30 AEST after S.287 Phase 1 ship — `SPEC_AUDRIC_STREAM_RESUME.md` promoted `spec/active/` → `spec/active/shipping/`. Phase 1 (server-side wiring + 3 routes + Prisma migration) is now tracked git history per the `spec/active/*` gitignore policy. Phase 2 (client opt-in + stop-button rewire) + Phase 3 (telemetry + production flag-flip) still pending. `spec/active/` now holds **5** working files + 2 subdirs (was 6 — SPEC promoted out). `spec/active/shipping/` now holds **3** files (was 2). Earlier today: S.285 (AI SDK Hardening Phase 2 code ship), S.286 (SPEC drafted v0.1 → v0.2). Yesterday (2026-05-23): S.283 closed PIPELINE-AUDIT-PHASE-2 S5 as no-op (PIPELINE-AUDIT-PHASE-2 complete); S.282 (S3 canvases), S.281 (S2 rename), S.280 (S1 split, patch v2.19.2). Last `spec/` tracked-file mutation before today was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
+> **Last refreshed:** 2026-05-24 ~10:55 AEST after S.288 Phase 2 ship — `SPEC_AUDRIC_STREAM_RESUME.md` v0.3 marks Phase 1 + Phase 2 both shipped + the `AUDRIC_STREAM_RESUME_ENABLED` flag dropped. Only Phase 3 (telemetry, AbortController, soak) remains. The SPEC stays in `spec/active/shipping/` until Phase 3 closes. No tracked-file count change. Earlier today: S.287 Phase 1 ship + SPEC promotion (`spec/active/` → `shipping/`), S.286 (SPEC v0.1 → v0.2), S.285 (AI SDK Hardening Phase 2 code ship). Yesterday (2026-05-23): S.283 closed PIPELINE-AUDIT-PHASE-2 S5 as no-op (PIPELINE-AUDIT-PHASE-2 complete); S.282 (S3 canvases), S.281 (S2 rename), S.280 (S1 split, patch v2.19.2). Last `spec/` tracked-file mutation before today was S.278 (SPEC 272 Lever 1 moved to `active/shipping/`).
 > **Purpose:** answer "what's actually in `spec/` right now, what's drifted, what's archive-ready" in one read. Run a fresh sweep against this table at the start of any session that touches `spec/`.
 > **Companion:** `spec/README.md` (the layout + promotion rules contract).
 
 ---
 
-## 0. TL;DR — current state (post-S.287 ship — SPEC_AUDRIC_STREAM_RESUME Phase 1 shipped, promoted to shipping/)
+## 0. TL;DR — current state (post-S.288 — SPEC_AUDRIC_STREAM_RESUME Phase 2 shipped + flag dropped; only Phase 3 remains)
 
-The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added one shipping/ entry. S.286 added one NEW draft (SPEC_AUDRIC_STREAM_RESUME v0.1 → v0.2). S.287 SHIPPED Phase 1 and promoted the SPEC to `spec/active/shipping/`. `spec/active/` (top level) now holds **5 working files** + 2 subdirs; `spec/active/shipping/` holds **3 files**.
+The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added one shipping/ entry. S.286 added one NEW draft (SPEC_AUDRIC_STREAM_RESUME v0.1 → v0.2). S.287 SHIPPED Phase 1 and promoted the SPEC to `spec/active/shipping/`. S.288 SHIPPED Phase 2 + dropped the `AUDRIC_STREAM_RESUME_ENABLED` flag (founder-driven cleanup). `spec/active/` (top level) holds **5 working files** + 2 subdirs; `spec/active/shipping/` holds **3 files** (unchanged from S.287).
 
 | Bucket | Count | State |
 |---|---|---|
@@ -72,7 +72,7 @@ The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added 
 |---|---|---|
 | `SPEC_30_CROSS_REPO_SECURITY_REVIEW.md` | 🟢 SHIPPING | KEEP. Phase 1A-1C SHIPPED + URGENT BLOCK SHIPPED. Phase 2-10 spun out to follow-up SPECs (31-36) for founder triage. |
 | `SPEC_272_CRON_RATE_LIMITS.md` | 🟢 SHIPPING (NEW 2026-05-23) | Lever 1 SHIPPED via S.278 (cron user-batching N=10/M=500ms). Lever 2 + 3 DEFERRED pending 3-day post-deploy metric review. Decision gate documented at top of the SPEC. Promote to `archive/v07e/` once Lever 2 + 3 explicitly retired OR shipped. |
-| `SPEC_AUDRIC_STREAM_RESUME.md` | 🟢 SHIPPING (NEW 2026-05-24, v0.2) | Phase 1 SHIPPED via S.287 (server-side wiring + 3 routes + Prisma migration `20260524000000_stream_resume_add_active_stream_id` + `resumable-stream@2.2.12` install + `AUDRIC_STREAM_RESUME_ENABLED` flag, off by default). Phase 2 (client opt-in via `useChat({ resume: true })` + stop-button rewire) + Phase 3 (telemetry + production flag-flip + 48h soak) PENDING. Promote to `archive/<version>/` once Phase 3 completes (production flag-flip + clean soak). |
+| `SPEC_AUDRIC_STREAM_RESUME.md` | 🟢 SHIPPING (v0.3 — 2026-05-24) | Phase 1 SHIPPED via S.287 (server-side wiring + 3 routes + Prisma migration `20260524000000_stream_resume_add_active_stream_id` + `resumable-stream@2.2.12`). Phase 2 SHIPPED via S.288 (`useChat({ resume: true })` + real Stop button + handleStop callback). Phase 1.5 SHIPPED via S.288 (dropped `AUDRIC_STREAM_RESUME_ENABLED` flag; added `prisma migrate deploy` to build script). Phase 3 PENDING (AbortController for true LLM cancel + stale-stop guard via server-rendered activeStreamId + telemetry + 24h preview soak + 48h prod monitoring). Promote to `archive/v07e/` once Phase 3 completes. |
 
 ### 1.3 `spec/active/harness/` (3 files — gitignored, long-lived)
 
