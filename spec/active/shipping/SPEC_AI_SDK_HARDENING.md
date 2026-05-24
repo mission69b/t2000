@@ -1,6 +1,6 @@
 # SPEC — AI SDK Hardening
 
-> **Status:** SHIPPING · drafted 2026-05-24 · revised 2026-05-24 (Phase 5 batch P5.2+P5.3+P5.4 shipped, then P5.1 shipped) · author: agent (Opus 4.7)
+> **Status:** SHIPPING · drafted 2026-05-24 · revised 2026-05-24 (Phase 5 batch P5.2+P5.3+P5.4 shipped, then P5.1 shipped, then P5.6 shipped — **Phase 5 closed**) · author: agent (Opus 4.7)
 > **Local-only?** No — this SPEC is tracked. `audric-build-tracker.md` references stay founder-local.
 > **Promoted from:** `.cursor/plans/ai_sdk_hardening_bc37c5e8.plan.md` (the working plan that drove this work — original is the source of truth for full per-item rationale + AI SDK doc citations).
 > **Why tracked:** the plan has 7 phases / 32 items across ~3 weeks of work. Multiple agents and sessions will work on it. Without a tracked SPEC, the next agent risks re-shipping completed phases (the exact failure mode that triggered this promotion).
@@ -41,14 +41,14 @@ Audric commit: `6f9d940`. Live smoke green at 08:33 AEST. No engine bump.
 
 Audric commits: `45a457f` (P2.3+P2.4+P2.5), then `0e3812f`/`6dca31d`/`afa83cb`/`2a8922e`/`2239d30` for the SPEC_AUDRIC_STREAM_RESUME phases. Engine bumped 2.19.2 → 2.19.3.
 
-### Phase 5 — Chat UX gaps 🟡 IN PROGRESS 2026-05-24
+### Phase 5 — Chat UX gaps ✅ SHIPPED 2026-05-24 (S.290 + S.291 + S.292)
 
 - ✅ **P5.5** Stop button + abort plumbing — shipped via `SPEC_AUDRIC_STREAM_RESUME` Phase 2 (S.288 client wiring) + Phase 3 (S.289 cross-instance abort). Cross-references the same `useChat` invocation.
 - ✅ **P5.2** Copy buttons on user + assistant rows — `getMessageText` helper + `MessageAction` wiring (S.290, audric `313f6ed`)
 - ✅ **P5.3** Vote hydration from `GET /api/vote` on chat mount — batched fetch + `initialVote` prop on `MessageVoteThumbs` (S.290, audric `313f6ed`)
 - ✅ **P5.4** Regenerate action on last assistant row — `useChat.regenerate()` no-args (S.290, audric `313f6ed`). Per-message regenerate (with `messageId`) deferred to P5.1 / Edit territory.
 - ✅ **P5.1** Edit user message + re-send + `truncateMessagesAfter` server helper + 5 chat-persistence integration tests (11 cases) folded in (S.291, audric `9029eb1`). Includes a `bundle-status.ts` extraction so `isBundleSpent` is unit-testable. Self-audit caught + fixed a legacy-schema edge case (penultimate `{role, content}` without `id` would have triggered a full-chat wipe; now skipped with a warn log).
-- ⏳ **P5.6** Surface engine metadata (HF/APY/per-reward) through `buildAudricToolMetadata` + PermissionCard (separate PR, ~1d; quote-refresh UI deferred to backlog per Round 3 trim). **Phase 5's last remaining item.**
+- ✅ **P5.6** Surface live HF/APY metadata through `buildAudricToolMetadata` + PermissionCard (S.292). New `lib/audric/live-data.ts` host-side enrichment module replicates the engine's `enrichPendingActionWithLiveData` subset (the engine's helper is unreachable from web-v2's `Experimental_Agent` path). `currentHF` / `projectedHF` / `borrowApyBps` thread through `tool-input-available` → `parseAudricMetadata` → `PermissionCard` → `renderPreviewBody`, lighting up the existing HFRow / APYRow rich previews. 19 unit tests for `projectHF` + `computeMetadataEnrichment` cover the 8-tool decision matrix + graceful degradation. **Quote-refresh UI + per-reward breakdown + cetusRoute deferred to backlog per Round 3 trim** — first-time borrowers (no existing position) still see the existing "Variable rate" disclaimer rather than a live APY.
 
 ### Phase 6 — Error handling alignment ⏳ PENDING
 
