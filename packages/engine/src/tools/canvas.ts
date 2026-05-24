@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '../v2/define-tool.js';
 import { normalizeAddressInput } from '../sui/address.js';
-import type { ServerPositionData, ToolResult } from '../types.js';
+import type { ToolResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Template catalogue
@@ -165,62 +165,6 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
     const formatAddrLabel = (address: string, suins: string | null): string =>
       suins ?? `${address.slice(0, 6)}…${address.slice(-4)}`;
 
-    /**
-     * [Bug fix — 2026-05-24] Lazy positions resolver with positionFetcher
-     * fallback for hosts that wire `positionFetcher` but don't pre-fetch
-     * into `context.serverPositions` (audric/web-v2's pattern post-v0.7e
-     * Phase 5 — the legacy apps/web pre-fetched synchronously at route
-     * setup, web-v2 prefers lazy fetch via positionFetcher).
-     *
-     * Pre-fix: when `serverPositions` was unset, `yield_projector` /
-     * `health_simulator` / `dca_planner` (and the self-rendered
-     * `full_portfolio`) all fell back to hardcoded $1000/4.5% defaults.
-     * A user asking the LLM "project yield on my $20.64 USDsui at 6.74%"
-     * saw a canvas showing $1000 USDC at 4.5% APY — confusing and
-     * obviously divorced from their actual position.
-     *
-     * Post-fix: the canvas tool reads positions lazily, preferring the
-     * pre-set value (legacy hosts' pattern) but falling back to
-     * `positionFetcher(walletAddress)` when absent. The audric/web-v2
-     * positionFetcher routes through the canonical `getPortfolio()`
-     * reader which is pre-warmed at request setup (`prewarmPortfolio()`),
-     * so the fallback fetch hits the in-flight Promise cache — net
-     * cost ~zero on the hot path.
-     *
-     * Per-call memoization: cached after the first resolve so multiple
-     * branches that read positions within one canvas invocation don't
-     * trigger multiple fetches (though in practice each template hits
-     * only one branch).
-     *
-     * Try/catch wraps the fetch — a positionFetcher failure degrades to
-     * the same defaults as the pre-fix behavior, just with a warning
-     * log so we can see it in production.
-     */
-    let cachedSelfPositions: ServerPositionData | null | undefined =
-      context.serverPositions;
-    const getSelfPositions = async (): Promise<ServerPositionData | null> => {
-      if (cachedSelfPositions !== undefined) {
-        return cachedSelfPositions ?? null;
-      }
-      if (context.positionFetcher && context.walletAddress) {
-        try {
-          cachedSelfPositions = await context.positionFetcher(
-            context.walletAddress,
-          );
-          return cachedSelfPositions ?? null;
-        } catch (err) {
-          console.warn(
-            '[render_canvas] positionFetcher fallback failed:',
-            err,
-          );
-          cachedSelfPositions = null;
-          return null;
-        }
-      }
-      cachedSelfPositions = null;
-      return null;
-    };
-
     // Full portfolio — 4-panel capstone with live position data
     if (template === 'full_portfolio') {
       /**
@@ -246,7 +190,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
       }
       const addrLabel = formatAddrLabel(address, resolvedSuins);
       const titleSuffix = isSelfRender ? '' : ` — ${addrLabel}`;
-      const pos = isSelfRender ? await getSelfPositions() : null;
+      const pos = isSelfRender ? context.serverPositions : null;
       const rate = normalizeSavingsRate(pos?.savingsRate);
       const savings = pos?.savings ?? 0;
       const borrows = pos?.borrows ?? 0;
@@ -440,14 +384,8 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
       };
     }
 
-    // Strategy simulators — client-side, seed with live position data.
-    // [Bug fix — 2026-05-24] `getSelfPositions()` reads from
-    // `context.serverPositions` when present (legacy hosts' pattern)
-    // and lazily falls back to `context.positionFetcher` otherwise
-    // (audric/web-v2's pattern). Pre-fix all four strategy simulators
-    // silently defaulted to hardcoded $1000/4.5% when serverPositions
-    // wasn't pre-set — see helper docstring above for the full incident.
-    const positions = await getSelfPositions();
+    // Strategy simulators — client-side, seed with live position data
+    const positions = context.serverPositions;
     const savingsRate = normalizeSavingsRate(positions?.savingsRate);
     const healthFactor = positions?.healthFactor ?? null;
     const totalSavings = positions?.savings ?? 0;
