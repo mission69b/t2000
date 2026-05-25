@@ -133,3 +133,205 @@ describe('composeBundleFromToolResults — D-6.1 approvalId alias invariant', ()
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// SPEC_AI_SDK_HARDENING P7.2 — inputCoinFromStep population invariant
+// ---------------------------------------------------------------------------
+//
+// `composeBundleFromToolResults` must populate `step.inputCoinFromStep = i - 1`
+// for adjacent steps whose (producer, consumer) pair is in `VALID_PAIRS`
+// AND whose producer-output asset aligns with consumer-input asset
+// (`shouldChainCoin`). The audric host marker layer then forwards this
+// field through to the SDK's `composeTx.WriteStep[]` so chain-mode
+// coin-handoff actually fires on-chain.
+//
+// Without this, chained-asset bundles fall back to wallet-mode pre-fetches
+// that fail for assets not yet in the wallet (e.g. `swap_execute(USDC →
+// USDsui) → save_deposit(USDsui)` reverts at PREPARE because USDsui
+// isn't already in the wallet — the swap's output hasn't transferred yet).
+//
+// Pinning this invariant here catches the regression at the source. The
+// host-side plumbing (chat route marker assembly → audric-chat-client
+// dispatch → /api/transactions/prepare bundleStepSchema →
+// buildBundleSteps) is structurally pass-through and trusted via
+// typecheck.
+// ---------------------------------------------------------------------------
+
+const withdrawMock = defineTool({
+  name: 'withdraw',
+  description: 'mock withdraw for chain-mode test',
+  inputSchema: z.object({ amount: z.number(), asset: z.string() }),
+  call: noopCall,
+  isReadOnly: false,
+  flags: { mutating: true, bundleable: true },
+});
+
+const swapExecuteMock = defineTool({
+  name: 'swap_execute',
+  description: 'mock swap_execute for chain-mode test',
+  inputSchema: z.object({
+    from: z.string(),
+    to: z.string(),
+    amount: z.number(),
+  }),
+  call: noopCall,
+  isReadOnly: false,
+  flags: { mutating: true, bundleable: true },
+});
+
+void withdrawMock;
+void swapExecuteMock;
+
+describe('composeBundleFromToolResults — P7.2 chain-mode inputCoinFromStep', () => {
+  it('populates inputCoinFromStep on consumer for whitelisted, asset-aligned pair', () => {
+    // `swap_execute(USDC → USDsui) → save_deposit(USDsui)` — the
+    // canonical chained-asset bundle that motivated SPEC 13.
+    const action = composeBundleFromToolResults({
+      pendingWrites: [
+        {
+          id: 'toolu_swap_1',
+          name: 'swap_execute',
+          input: { from: 'USDC', to: 'USDsui', amount: 50 },
+        },
+        {
+          id: 'toolu_save_2',
+          name: 'save_deposit',
+          input: { amount: 50, asset: 'USDsui' },
+        },
+      ],
+      readResults: [],
+      assistantContent: [],
+      completedResults: [],
+      turnIndex: 0,
+    });
+
+    expect(action.steps?.[0].inputCoinFromStep).toBeUndefined();
+    expect(action.steps?.[1].inputCoinFromStep).toBe(0);
+  });
+
+  it('does NOT populate inputCoinFromStep when assets misalign', () => {
+    // `withdraw(USDC) → swap_execute(SUI → USDC)` — pair IS in the
+    // whitelist (`withdraw → swap_execute`) but the swap's `from: SUI`
+    // doesn't match withdraw's USDC output. Chain mode must NOT fire.
+    const action = composeBundleFromToolResults({
+      pendingWrites: [
+        {
+          id: 'toolu_wd_1',
+          name: 'withdraw',
+          input: { amount: 10, asset: 'USDC' },
+        },
+        {
+          id: 'toolu_swap_2',
+          name: 'swap_execute',
+          input: { from: 'SUI', to: 'USDC', amount: 1 },
+        },
+      ],
+      readResults: [],
+      assistantContent: [],
+      completedResults: [],
+      turnIndex: 0,
+    });
+
+    expect(action.steps?.[0].inputCoinFromStep).toBeUndefined();
+    expect(action.steps?.[1].inputCoinFromStep).toBeUndefined();
+  });
+
+  it('does NOT populate inputCoinFromStep for non-whitelisted pair', () => {
+    // `save_deposit → send_transfer` — not in `VALID_PAIRS` (save is
+    // not a producer in the whitelist). Same-asset (USDC) but pair is
+    // outside the safe set, so chain mode must not fire.
+    const action = composeBundleFromToolResults({
+      pendingWrites: [
+        {
+          id: 'toolu_save_1',
+          name: 'save_deposit',
+          input: { amount: 10, asset: 'USDC' },
+        },
+        {
+          id: 'toolu_send_2',
+          name: 'send_transfer',
+          input: { amount: 5, asset: 'USDC', to: '0x1234' },
+        },
+      ],
+      readResults: [],
+      assistantContent: [],
+      completedResults: [],
+      turnIndex: 0,
+    });
+
+    expect(action.steps?.[0].inputCoinFromStep).toBeUndefined();
+    expect(action.steps?.[1].inputCoinFromStep).toBeUndefined();
+  });
+
+  it('populates inputCoinFromStep across multiple chained pairs in a 3-op DAG', () => {
+    // `withdraw(USDC) → swap_execute(USDC → SUI) → send_transfer(SUI)`
+    // — both adjacent pairs are whitelisted AND asset-aligned. SPEC 13
+    // Phase 2 raised the cap to 3 specifically for this shape; SPEC 13
+    // Phase 3a (1.15.0) raised it to 4 with DAG-aware semantics.
+    const action = composeBundleFromToolResults({
+      pendingWrites: [
+        {
+          id: 'toolu_wd_1',
+          name: 'withdraw',
+          input: { amount: 10, asset: 'USDC' },
+        },
+        {
+          id: 'toolu_swap_2',
+          name: 'swap_execute',
+          input: { from: 'USDC', to: 'SUI', amount: 10 },
+        },
+        {
+          id: 'toolu_send_3',
+          name: 'send_transfer',
+          input: { amount: 1, asset: 'SUI', to: '0x1234' },
+        },
+      ],
+      readResults: [],
+      assistantContent: [],
+      completedResults: [],
+      turnIndex: 0,
+    });
+
+    expect(action.steps?.[0].inputCoinFromStep).toBeUndefined();
+    expect(action.steps?.[1].inputCoinFromStep).toBe(0);
+    expect(action.steps?.[2].inputCoinFromStep).toBe(1);
+  });
+
+  it('forward-only reference: every populated value is < its step index', () => {
+    // Defensive against a future refactor that accidentally introduces
+    // backward references — the SDK's `composeTx` would throw
+    // `CHAIN_MODE_INVALID` but pinning here surfaces the regression at
+    // the engine-test layer.
+    const action = composeBundleFromToolResults({
+      pendingWrites: [
+        {
+          id: 'toolu_wd_1',
+          name: 'withdraw',
+          input: { amount: 10, asset: 'USDC' },
+        },
+        {
+          id: 'toolu_swap_2',
+          name: 'swap_execute',
+          input: { from: 'USDC', to: 'SUI', amount: 10 },
+        },
+        {
+          id: 'toolu_send_3',
+          name: 'send_transfer',
+          input: { amount: 1, asset: 'SUI', to: '0x1234' },
+        },
+      ],
+      readResults: [],
+      assistantContent: [],
+      completedResults: [],
+      turnIndex: 0,
+    });
+
+    for (let i = 0; i < (action.steps?.length ?? 0); i++) {
+      const ref = action.steps?.[i].inputCoinFromStep;
+      if (typeof ref === 'number') {
+        expect(ref).toBeGreaterThanOrEqual(0);
+        expect(ref).toBeLessThan(i);
+      }
+    }
+  });
+});
