@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { McpClientManager, McpResponseCache } from '../mcp/client.js';
 import { adaptMcpTool, adaptAllMcpTools, adaptAllServerTools } from '../mcp/tool-adapter.js';
 
+import { getToolPolicy } from '../v2/tool-policy.js';
+
 // ---------------------------------------------------------------------------
 // Helper: create a mock MCP server + linked in-memory transports
 // ---------------------------------------------------------------------------
@@ -183,25 +185,30 @@ describe('adaptMcpTool', () => {
   it('creates a namespaced engine Tool', () => {
     const conn = manager.getConnection('navi')!;
     const mcpTool = conn.tools.find((t) => t.name === 'get_balance')!;
-    const engineTool = adaptMcpTool(mcpTool, { manager, serverName: 'navi' });
+    const adapted = adaptMcpTool(mcpTool, { manager, serverName: 'navi' });
 
-    expect(engineTool.name).toBe('navi_get_balance');
-    expect(engineTool.isReadOnly).toBe(true);
-    expect(engineTool.permissionLevel).toBe('auto');
-    expect(engineTool.isConcurrencySafe).toBe(true);
-    expect(engineTool.description).toBe('Get account balance');
+    expect(adapted.name).toBe('navi_get_balance');
+    const policy = getToolPolicy(adapted.name);
+    expect(policy.isReadOnly).toBe(true);
+    expect(policy.permissionLevel).toBe('auto');
+    expect(adapted.tool.description).toBe('Get account balance');
   });
 
   it('calls the MCP server when invoked', async () => {
     const conn = manager.getConnection('navi')!;
     const mcpTool = conn.tools.find((t) => t.name === 'get_balance')!;
-    const engineTool = adaptMcpTool(mcpTool, {
+    const adapted = adaptMcpTool(mcpTool, {
       manager,
       serverName: 'navi',
     });
 
-    const result = await engineTool.call({ address: '0x123' }, {});
-    const data = result.data as { available: number; address: string };
+    // [P4.1 / v3.0.0] MCP adapter tools don't go through wrapEngineExecute
+    // (they have no preflight / guards plumbed in). Invoke `execute` directly.
+    const result = await (adapted.tool.execute as (
+      input: unknown,
+      opts: { experimental_context?: unknown },
+    ) => Promise<unknown>)({ address: '0x123' }, {});
+    const data = result as { available: number; address: string };
     expect(data.available).toBe(100);
     expect(data.address).toBe('0x123');
   });
@@ -209,30 +216,31 @@ describe('adaptMcpTool', () => {
   it('propagates errors from the MCP server', async () => {
     const conn = manager.getConnection('navi')!;
     const mcpTool = conn.tools.find((t) => t.name === 'failing_tool')!;
-    const engineTool = adaptMcpTool(mcpTool, { manager, serverName: 'navi' });
+    const adapted = adaptMcpTool(mcpTool, { manager, serverName: 'navi' });
 
-    const result = await engineTool.call({}, {});
-    expect(result.data).toEqual({ error: 'Something went wrong' });
+    const result = await (adapted.tool.execute as (
+      input: unknown,
+      opts: { experimental_context?: unknown },
+    ) => Promise<unknown>)({}, {});
+    expect(result).toEqual({ error: 'Something went wrong' });
   });
 
-  it('respects per-tool overrides', () => {
+  it('respects per-tool description override', () => {
+    // [P4.1 / v3.0.0 / 2026-05-25] permissionLevel + isReadOnly overrides
+    // were removed from McpToolAdapterConfig — policy now lives in the
+    // central TOOL_POLICY registry. Only `description` remains as an
+    // adapter-time override (purely cosmetic for the LLM).
     const conn = manager.getConnection('navi')!;
     const mcpTool = conn.tools.find((t) => t.name === 'get_balance')!;
-    const engineTool = adaptMcpTool(mcpTool, {
+    const adapted = adaptMcpTool(mcpTool, {
       manager,
       serverName: 'navi',
       toolOverrides: {
-        get_balance: {
-          isReadOnly: false,
-          permissionLevel: 'confirm',
-          description: 'Custom description',
-        },
+        get_balance: { description: 'Custom description' },
       },
     });
 
-    expect(engineTool.isReadOnly).toBe(false);
-    expect(engineTool.permissionLevel).toBe('confirm');
-    expect(engineTool.description).toBe('Custom description');
+    expect(adapted.tool.description).toBe('Custom description');
   });
 });
 
@@ -271,17 +279,18 @@ describe('adaptAllMcpTools', () => {
 
   it('adapts all tools from a server', () => {
     const tools = adaptAllMcpTools({ manager, serverName: 'navi' });
-    expect(tools.length).toBe(3);
-    expect(tools.map((t) => t.name)).toEqual([
+    const names = Object.keys(tools);
+    expect(names.length).toBe(3);
+    expect(names.sort()).toEqual([
+      'navi_failing_tool',
       'navi_get_balance',
       'navi_get_rates',
-      'navi_failing_tool',
     ]);
   });
 
-  it('returns empty array for disconnected server', () => {
+  it('returns empty ToolSet for disconnected server', () => {
     const tools = adaptAllMcpTools({ manager, serverName: 'nonexistent' });
-    expect(tools).toEqual([]);
+    expect(tools).toEqual({});
   });
 
   it('adaptAllServerTools works across multiple servers', async () => {
@@ -306,11 +315,11 @@ describe('adaptAllMcpTools', () => {
     });
 
     const allTools = adaptAllServerTools(manager);
-    const names = allTools.map((t) => t.name);
+    const names = Object.keys(allTools);
     expect(names).toContain('navi_get_balance');
     expect(names).toContain('navi_get_rates');
     expect(names).toContain('cetus_get_quote');
-    expect(allTools.length).toBe(4); // 3 from navi + 1 from cetus
+    expect(names.length).toBe(4); // 3 from navi + 1 from cetus
 
     await client2.close();
   });

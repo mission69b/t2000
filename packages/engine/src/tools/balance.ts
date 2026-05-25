@@ -1,7 +1,11 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
-import { defineTool } from '../v2/define-tool.js';
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
+import type { ToolContext, ToolResult } from '../types.js';
 import type { McpClientManager } from '../mcp/client.js';
 import { NAVI_SERVER_NAME, NaviTools } from '../navi/config.js';
 import {
@@ -111,24 +115,24 @@ async function loadPortfolio(
   return portfolio;
 }
 
-export const balanceCheckTool = defineTool({
-  name: 'balance_check',
-  description:
-    'Get the full balance breakdown for the signed-in user OR any public Sui address or SuiNS name. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC and/or USDsui deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, saveableUsdc (USDC wallet balance available to save), and saveableUsdsui (USDsui wallet balance available to save — surfaces only when > 0). IMPORTANT: wallet holdings like GOLD, SUI, USDT, USDe are NOT savings positions and are NOT saveable — only USDC and USDsui can be saved/borrowed. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
-  inputSchema: z.object({
-    address: z
-      .string()
-      .optional()
-      .describe('Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.'),
-  }),
-  isReadOnly: true,
-  // [v1.4 BlockVision] Wallet contents change after every send / swap /
-  // save / etc. and the price half of this result is sourced from
-  // BlockVision's Indexer REST API. Microcompact must NEVER dedupe these
-  // calls — each one reflects a different on-chain + market snapshot.
-  cacheable: false,
+const balanceInputSchema = z.object({
+  address: z
+    .string()
+    .optional()
+    .describe(
+      'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
+    ),
+});
 
-  async call(input, context) {
+type BalanceInput = z.infer<typeof balanceInputSchema>;
+
+const balanceDescription =
+  'Get the full balance breakdown for the signed-in user OR any public Sui address or SuiNS name. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC and/or USDsui deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, saveableUsdc (USDC wallet balance available to save), and saveableUsdsui (USDsui wallet balance available to save — surfaces only when > 0). IMPORTANT: wallet holdings like GOLD, SUI, USDT, USDe are NOT savings positions and are NOT saveable — only USDC and USDsui can be saved/borrowed. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.';
+
+async function balanceCallBody(
+  input: BalanceInput,
+  context: ToolContext,
+): Promise<ToolResult<unknown>> {
     /**
      * [v0.49] Address-scope: tool now accepts an optional `address` param
      * so the LLM can inspect any public Sui wallet (contacts, watched
@@ -536,6 +540,14 @@ export const balanceCheckTool = defineTool({
         suinsName,
       },
       displayText: `Balance: $${sdkTotal.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}.${sdkDefiSummaryText} ${sdkSaveableUsdsui > 0 ? `Saveable: ${sdkSaveableUsdc.toFixed(2)} USDC + ${sdkSaveableUsdsui.toFixed(sdkSaveableUsdsui < 1 ? 4 : 2)} USDsui (only USDC and USDsui can be saved/borrowed).` : `Saveable USDC (only USDC and USDsui can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`}`,
-    };
-  },
+  };
+}
+
+export const balanceCheckTool = tool({
+  description: balanceDescription,
+  inputSchema: balanceInputSchema,
+  needsApproval: buildNeedsApproval('balance_check'),
+  execute: wrapEngineExecute<BalanceInput, unknown>('balance_check', {
+    call: balanceCallBody,
+  }),
 });

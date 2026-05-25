@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderCanvasTool } from '../tools/canvas.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
+import type { ToolContext } from '../types.js';
 /**
  * [v0.48 — bug 2] Regression suite for canvas address scoping.
  *
@@ -22,7 +24,7 @@ const FUNKII_ADDR = `0x${'b'.repeat(64)}`;
 
 const baseCtx = {
   walletAddress: USER_ADDR,
-} as Parameters<typeof renderCanvasTool.call>[1];
+} as unknown as ToolContext;
 
 interface CanvasResult {
   data: {
@@ -45,13 +47,13 @@ describe('[v0.48 — bug 2] render_canvas address scope', () => {
     'template=%s',
     (template) => {
       it('falls back to context.walletAddress when params.address is omitted', async () => {
-        const res = (await renderCanvasTool.call({ template, params: null }, baseCtx)) as CanvasResult;
+        const res = (await callToolBody(renderCanvasTool, { template, params: null }, baseCtx)) as CanvasResult;
         expect(res.data.templateData.address).toBe(USER_ADDR);
         expect(res.data.templateData.isSelfRender).toBe(true);
       });
 
       it('honors explicit params.address (the fix)', async () => {
-        const res = (await renderCanvasTool.call(
+        const res = (await callToolBody(renderCanvasTool, 
           { template, params: { address: FUNKII_ADDR, period: null } },
           baseCtx,
         )) as CanvasResult;
@@ -60,7 +62,7 @@ describe('[v0.48 — bug 2] render_canvas address scope', () => {
       });
 
       it('appends a truncated-address suffix to the title for non-self renders', async () => {
-        const res = (await renderCanvasTool.call(
+        const res = (await callToolBody(renderCanvasTool, 
           { template, params: { address: FUNKII_ADDR, period: null } },
           baseCtx,
         )) as CanvasResult;
@@ -69,7 +71,7 @@ describe('[v0.48 — bug 2] render_canvas address scope', () => {
       });
 
       it('keeps the title clean (no suffix) for self renders', async () => {
-        const res = (await renderCanvasTool.call(
+        const res = (await callToolBody(renderCanvasTool, 
           { template, params: { address: USER_ADDR, period: null } },
           baseCtx,
         )) as CanvasResult;
@@ -77,15 +79,15 @@ describe('[v0.48 — bug 2] render_canvas address scope', () => {
       });
 
       it('returns an "address required" stub when no address is available anywhere', async () => {
-        const res = (await renderCanvasTool.call(
+        const res = (await callToolBody(renderCanvasTool, 
           { template, params: null },
-          { walletAddress: undefined } as Parameters<typeof renderCanvasTool.call>[1],
+          { walletAddress: undefined } as unknown as ToolContext,
         )) as CanvasResult;
         expect(res.data.templateData.available).toBe(false);
       });
 
       it('case-insensitive equality decides isSelfRender', async () => {
-        const res = (await renderCanvasTool.call(
+        const res = (await callToolBody(renderCanvasTool, 
           { template, params: { address: USER_ADDR.toUpperCase(), period: null } },
           baseCtx,
         )) as CanvasResult;
@@ -152,10 +154,10 @@ describe('[v0.49] full_portfolio does not bleed user positions into watched-addr
   const ctxWithPos = {
     walletAddress: USER_ADDR,
     serverPositions: userPositions,
-  } as Parameters<typeof renderCanvasTool.call>[1];
+  } as unknown as ToolContext;
 
   it('seeds user positions when rendering for the signed-in user', async () => {
-    const res = (await renderCanvasTool.call(
+    const res = (await callToolBody(renderCanvasTool, 
       { template: 'full_portfolio', params: null },
       ctxWithPos,
     )) as FullPortfolioResult;
@@ -166,7 +168,7 @@ describe('[v0.49] full_portfolio does not bleed user positions into watched-addr
   });
 
   it('zeroes out positions when rendering for a watched address (the v0.49 fix)', async () => {
-    const res = (await renderCanvasTool.call(
+    const res = (await callToolBody(renderCanvasTool, 
       { template: 'full_portfolio', params: { address: FUNKII_ADDR, period: null } },
       ctxWithPos,
     )) as FullPortfolioResult;
@@ -191,10 +193,10 @@ describe('[v0.49] health_simulator seeds neutral defaults for watched addresses'
   const ctxWithPos = {
     walletAddress: USER_ADDR,
     serverPositions: userPositions,
-  } as Parameters<typeof renderCanvasTool.call>[1];
+  } as unknown as ToolContext;
 
   it('seeds the simulator with the signed-in user\'s position for self renders', async () => {
-    const res = (await renderCanvasTool.call(
+    const res = (await callToolBody(renderCanvasTool, 
       { template: 'health_simulator', params: null },
       ctxWithPos,
     )) as HealthSimulatorResult;
@@ -205,7 +207,7 @@ describe('[v0.49] health_simulator seeds neutral defaults for watched addresses'
   });
 
   it('seeds neutral defaults when a watched-address override is passed', async () => {
-    const res = (await renderCanvasTool.call(
+    const res = (await callToolBody(renderCanvasTool, 
       { template: 'health_simulator', params: { address: FUNKII_ADDR, period: null } },
       ctxWithPos,
     )) as HealthSimulatorResult;
@@ -218,7 +220,7 @@ describe('[v0.49] health_simulator seeds neutral defaults for watched addresses'
   });
 
   it('appends a truncated-address suffix to the simulator title for non-self renders', async () => {
-    const res = (await renderCanvasTool.call(
+    const res = (await callToolBody(renderCanvasTool, 
       { template: 'health_simulator', params: { address: FUNKII_ADDR, period: null } },
       ctxWithPos,
     )) as HealthSimulatorResult;
@@ -240,7 +242,7 @@ describe('[v0.49] health_simulator seeds neutral defaults for watched addresses'
  */
 describe('[v1.2.1 — bug fix] non-address-aware templates ignore params.address', () => {
   it('yield_projector does NOT throw on malformed params.address', async () => {
-    const res = (await renderCanvasTool.call(
+    const res = (await callToolBody(renderCanvasTool, 
       { template: 'yield_projector', params: { address: 'not-an-address-at-all', period: null } },
       baseCtx,
     )) as CanvasResult;
@@ -251,7 +253,7 @@ describe('[v1.2.1 — bug fix] non-address-aware templates ignore params.address
   it('dca_planner does NOT throw on a SuiNS name (no RPC round-trip)', async () => {
     // Even if the SuiNS RPC would succeed, dca_planner doesn't use
     // the address — it should never be called.
-    const res = (await renderCanvasTool.call(
+    const res = (await callToolBody(renderCanvasTool, 
       { template: 'dca_planner', params: { address: 'some.sui', period: null } },
       baseCtx,
     )) as CanvasResult;

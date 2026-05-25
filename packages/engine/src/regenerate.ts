@@ -49,7 +49,6 @@ import {
   computeRegenerateFields,
 } from './compose-bundle.js';
 import { describeAction } from './describe-action.js';
-import { findTool } from './tool.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
 import type { AISDKEngine } from './v2/engine.js';
@@ -57,8 +56,8 @@ import type {
   ContentBlock,
   Message,
   PendingAction,
+  PendingToolCall,
 } from './types.js';
-import type { PendingToolCall } from './orchestration.js';
 
 /**
  * One event in the `timelineEvents[]` array returned to the host.
@@ -179,10 +178,6 @@ export async function regenerateBundle(
   }
 
   const messages = engine.getMessages();
-  // `getTools()` returns `readonly Tool[]`; `composeBundleFromToolResults`
-  // takes a mutable `Tool[]` slot but never mutates it, so the spread is
-  // a typing concession rather than a defensive copy.
-  const tools = [...engine.getTools()];
 
   // Locate the original tool_use blocks for each regenerateInput id and
   // pull the (toolName, input) pair so we can re-execute. Reads that
@@ -354,7 +349,6 @@ export async function regenerateBundle(
     try {
       newPendingAction = composeBundleFromToolResults({
         pendingWrites,
-        tools,
         readResults,
         assistantContent,
         completedResults,
@@ -374,20 +368,18 @@ export async function regenerateBundle(
     // identical tool_use_id (so `assistantContent` pairing on
     // resume stays intact), recomputed regenerate fields off the
     // fresh reads.
-    const tool = findTool(tools, action.toolName);
-    if (!tool) {
-      return {
-        success: false,
-        reason: 'engine_error',
-        message: `Unknown tool '${action.toolName}' in single-write rebuild`,
-      };
-    }
+    //
+    // [P4.1 Phase C — 2026-05-25] Drop the `findTool(tools, name)`
+    // guard; `describeAction` now takes the tool name directly, so a
+    // missing entry only matters for downstream metadata lookups
+    // (modifiableFields + flags) which already handle unknown names
+    // gracefully.
     const call: PendingToolCall = {
       id: action.toolUseId,
       name: action.toolName,
       input: action.input,
     };
-    const description = describeAction(tool, call);
+    const description = describeAction(action.toolName, call);
     const modifiableFields = getModifiableFields(action.toolName, action.input);
     const { canRegenerate, regenerateToolUseIds, quoteAge } =
       computeRegenerateFields(readResults);

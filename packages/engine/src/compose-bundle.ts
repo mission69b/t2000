@@ -35,8 +35,8 @@
  * returns a typed `PendingAction`.
  */
 import { randomUUID } from 'node:crypto';
-import { findTool } from './tool.js';
 import { describeAction } from './describe-action.js';
+import { isBundleableTool } from './tool-flags.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
 import { getTelemetrySink } from './telemetry.js';
@@ -45,9 +45,8 @@ import type {
   ContentBlock,
   PendingAction,
   PendingActionStep,
-  Tool,
+  PendingToolCall,
 } from './types.js';
-import type { PendingToolCall } from './orchestration.js';
 
 /**
  * [Phase 0 → Phase 3a / SPEC 13] Maximum number of writes per atomic bundle.
@@ -287,8 +286,6 @@ export function computeRegenerateFields(
 export interface BundleCompositionInput {
   /** All confirm-tier bundleable writes the LLM emitted in this turn. MUST be ≥2. */
   pendingWrites: PendingToolCall[];
-  /** Tools registered with the engine — for description + modifiableFields lookup. */
-  tools: Tool[];
   /**
    * Same-turn earlier read tool_use ids + their results, in the order they
    * landed. The helper extracts `regenerateInput.toolUseIds` from this set
@@ -336,24 +333,28 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
   }
 
   const steps: PendingActionStep[] = input.pendingWrites.map((call) => {
-    const tool = findTool(input.tools, call.name);
-    if (!tool) {
-      throw new Error(`Unknown tool '${call.name}' in bundle composition`);
-    }
     // [SPEC 7 P2.3 audit fix — BUG 13] Defensive check. The engine.ts
-    // permission-gate already filters with
-    // `every((w) => w.tool.flags?.bundleable === true)` before calling
-    // this helper, but a future call site (CLI, server-task) could miss
-    // it. Failing fast here catches the bug before producing a malformed
-    // bundle that the host's `composeTx({ steps })` would reject downstream.
-    if (tool.flags?.bundleable !== true) {
+    // permission-gate already filters with `isBundleableTool(name)`
+    // before calling this helper, but a future call site (CLI,
+    // server-task) could miss it. Failing fast here catches the bug
+    // before producing a malformed bundle that the host's
+    // `composeTx({ steps })` would reject downstream.
+    //
+    // [P4.1 Phase C — 2026-05-25] Refactored to look up bundleability
+    // by NAME via the TOOL_FLAGS registry directly. Previously this
+    // function received a `Tool[]` and called `findTool(tools, name)`
+    // for each entry; with the move to native AI SDK tools (ToolSet
+    // shape), tool instances no longer carry a `name` or `flags` field
+    // on the object — that metadata lives in the engine's central
+    // policy/flags registries, looked up by name.
+    if (!isBundleableTool(call.name)) {
       throw new Error(
         `Tool '${call.name}' is not bundleable. Set ToolFlags.bundleable=true ` +
         'in tool-flags.ts before including it in a bundle. ' +
         'See SPEC 7 § "Layer 2 — Bundleable tools (v1)".',
       );
     }
-    const description = describeAction(tool, call);
+    const description = describeAction(call.name, call);
     const modifiableFields = getModifiableFields(call.name, call.input);
     // [SPEC 20.2 / D-1 (a)] Thread the matching swap_quote's serialized
     // route into `step.cetusRoute` for swap_execute steps. No-match is

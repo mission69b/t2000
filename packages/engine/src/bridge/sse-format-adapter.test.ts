@@ -16,9 +16,8 @@
 //     doesn't notice when a Phase 5+ engine code path optionally emits
 //     via `createUIMessageStream` instead of EngineEvent directly.
 //   • Engine side-channel `data-{name}` parts route to the right
-//     SSEEvent variant for all 9 categories (canvas, pending_action,
-//     todo_update, proactive_text, harness_shape, stream_state,
-//     tool_progress, pending_input, error).
+//     SSEEvent variant for all 7 categories (canvas, pending_action,
+//     proactive_text, harness_shape, stream_state, tool_progress, error).
 //   • Block-index tracking matches event-bridge.ts behaviour.
 //   • <eval_summary> parser fires on reasoning-end.
 //   • Error normalisation handles UIMessage-shaped error parts.
@@ -427,28 +426,6 @@ describe('sse-format-adapter — data-{name} side-channel dispatch', () => {
     expect(out[0].action.toolName).toBe('save_deposit');
   });
 
-  it('routes data-todo-update → todo_update SSEEvent', async () => {
-    const out = await collect(
-      bridgeUIMessageStream(
-        iterate<UIMessageStreamPart>([
-          {
-            type: 'data-todo-update',
-            data: {
-              items: [
-                { id: '1', label: 'check balance', status: 'in_progress' },
-                { id: '2', label: 'compute HF', status: 'pending' },
-              ],
-              toolUseId: 'c1',
-            },
-          },
-        ]),
-      ),
-    );
-    expectEvent(out[0], 'todo_update');
-    expect(out[0].items).toHaveLength(2);
-    expect(out[0].toolUseId).toBe('c1');
-  });
-
   it('routes data-tool-progress → tool_progress SSEEvent (with optional pct)', async () => {
     const out = await collect(
       bridgeUIMessageStream(
@@ -527,30 +504,6 @@ describe('sse-format-adapter — data-{name} side-channel dispatch', () => {
       ),
     );
     expect(out.map((e) => (e as { state: string }).state)).toEqual(['routing', 'quoting']);
-  });
-
-  it('routes data-pending-input → pending_input SSEEvent', async () => {
-    const out = await collect(
-      bridgeUIMessageStream(
-        iterate<UIMessageStreamPart>([
-          {
-            type: 'data-pending-input',
-            data: {
-              inputId: 'in-1',
-              toolName: 'add_recipient',
-              toolUseId: 'c1',
-              schema: { fields: [{ name: 'name', kind: 'text', label: 'Name' }] },
-              description: 'Add contact',
-              assistantContent: [],
-              completedResults: [],
-            },
-          },
-        ]),
-      ),
-    );
-    expectEvent(out[0], 'pending_input');
-    expect(out[0].inputId).toBe('in-1');
-    expect(out[0].description).toBe('Add contact');
   });
 
   it('drops data-compaction (telemetry-only, no wire bytes)', async () => {

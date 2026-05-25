@@ -66,7 +66,6 @@ import type {
   Message,
   PendingAction,
   PermissionResponse,
-  Tool as LegacyTool,
   ToolContext,
 } from '../types.js';
 import {
@@ -74,14 +73,12 @@ import {
   buildSystemForStream as buildSystemForStreamHelper,
 } from './system-prompt-cache.js';
 import { buildAnthropicProviderOptions } from '../providers/ai-sdk-message-conversion.js';
-import { toAISDKTools } from './tool-wrapper.js';
 import { buildToolContext } from './tool-context.js';
 import { enrichPendingActionWithLiveData } from './enrich-pending-action.js';
 import type { InternalContext } from './internal-context.js';
 import { translate, createBridgeState } from '../bridge/event-bridge.js';
 import { buildStepFinishHandler, type StepFinishMutableState } from './step-finish.js';
 import { createGuardRunnerState, type GuardRunnerState } from '../guards.js';
-import { findTool } from '../tool.js';
 import { CostTracker, type CostSnapshot } from '../cost.js';
 import { describeAction } from '../describe-action.js';
 import { getModifiableFields } from '../tools/tool-modifiable-fields.js';
@@ -344,8 +341,8 @@ export class AISDKEngine {
    *
    * SPEC 37 v0.7a Phase 2 Day 10-12 — drop-in compatibility shim.
    */
-  getTools(): readonly LegacyTool[] {
-    return this.config.tools ?? [];
+  getTools(): ToolSet {
+    return this.config.tools ?? {};
   }
 
   /**
@@ -399,29 +396,63 @@ export class AISDKEngine {
     input: unknown,
     options: { signal?: AbortSignal } = {},
   ): Promise<{ data: unknown; isError: boolean }> {
-    const tool = findTool(this.config.tools ?? [], toolName);
+    const tools = this.config.tools ?? {};
+    const tool = tools[toolName];
     if (!tool) {
       throw new Error(`invokeReadTool: tool not found: ${toolName}`);
     }
-    if (!tool.isReadOnly) {
+
+    const policy = getToolPolicy(toolName);
+    if (policy.permissionLevel !== 'auto') {
       throw new Error(
         `invokeReadTool: tool is not read-only: ${toolName} (write tools must go through the permission gate)`,
       );
     }
 
-    const parsed = tool.inputSchema.safeParse(input);
-    if (!parsed.success) {
-      throw new Error(
-        `invokeReadTool: invalid input for ${toolName}: ${parsed.error.issues.map((i) => i.message).join(', ')}`,
-      );
+    const schema = (tool as { inputSchema?: { safeParse(v: unknown): { success: boolean; data?: unknown; error?: { issues: { message: string }[] } } } }).inputSchema;
+    let parsedInput: unknown = input;
+    if (schema && typeof schema.safeParse === 'function') {
+      const parsed = schema.safeParse(input);
+      if (!parsed.success) {
+        throw new Error(
+          `invokeReadTool: invalid input for ${toolName}: ${parsed.error!.issues.map((i) => i.message).join(', ')}`,
+        );
+      }
+      parsedInput = parsed.data;
     }
 
     const signal = options.signal ?? new AbortController().signal;
-    const context: ToolContext = buildToolContext(this.config, { signal });
+    const toolContext: ToolContext = buildToolContext(this.config, { signal });
+
+    const internal: InternalContext = {
+      toolContext,
+      guardState: this.guardState,
+      guardConfig: this.config.guards,
+      contacts: this.config.contacts ?? [],
+      walletAddress: this.config.walletAddress,
+      config: {
+        onAutoExecuted: this.config.onAutoExecuted,
+        onGuardFired: this.config.onGuardFired,
+        postWriteRefresh: this.config.postWriteRefresh,
+        permissionConfig: this.config.permissionConfig,
+        priceCache: this.config.priceCache,
+      },
+      getMessages: () => this.messages,
+    };
+
+    const execute = (tool as { execute?: (input: unknown, opts: { toolCallId: string; abortSignal: AbortSignal; experimental_context: InternalContext; messages: unknown[] }) => Promise<unknown> }).execute;
+    if (!execute) {
+      throw new Error(`invokeReadTool: tool ${toolName} has no execute function`);
+    }
 
     try {
-      const result = await tool.call(parsed.data, context);
-      return { data: result.data, isError: false };
+      const result = await execute(parsedInput, {
+        toolCallId: `invokeReadTool:${toolName}:${Date.now()}`,
+        abortSignal: signal,
+        experimental_context: internal,
+        messages: [],
+      });
+      return { data: result, isError: false };
     } catch (err) {
       return {
         data: { error: err instanceof Error ? err.message : 'Tool execution failed' },
@@ -657,7 +688,7 @@ export class AISDKEngine {
     };
 
     const onStepFinish = buildStepFinishHandler(
-      this.config.tools ?? [],
+      tools,
       internal,
       this.stepFinishMutable,
     );
@@ -742,43 +773,6 @@ export class AISDKEngine {
    * sessions until then; the wallet-allowlist gate makes this a
    * non-issue for soak).
    */
-  async *resumeWithInput(
-    _pendingInput: unknown,
-    _values: Record<string, unknown>,
-  ): AsyncGenerator<EngineEvent> {
-    // [v2.0.1 — 2026-05-17] Stub for the pending_input flow.
-    //
-    // AISDKEngine does not yet support `needsInput` preflight verdicts +
-    // the resulting `pending_input` -> `resumeWithInput` round-trip.
-    // The legacy `QueryEngine` implemented this; `AISDKEngine` does not.
-    //
-    // Today, the ONLY built-in tool that produces `pending_input` is
-    // `add_recipient` (opt-in via host — exported as
-    // `addRecipientTool` from `@t2000/engine`). Audric gates exposure
-    // behind `NEXT_PUBLIC_HARNESS_V9`. When that flag is unset (the
-    // default) no tool ever produces `pending_input` and this method
-    // is never reached.
-    //
-    // We surface this gap as a clear engine error rather than a silent
-    // type cast in the host, so any future host that ships pending_input
-    // gets a precise diagnostic instead of a runtime crash deeper in
-    // the stream pipeline.
-    //
-    // Removal plan: implement properly in a follow-up release once the
-    // first host needs the feature.
-    yield {
-      type: 'error',
-      error: new Error(
-        'AISDKEngine.resumeWithInput: pending_input flow is not yet ' +
-          'implemented in v2.x. The only built-in tool that produces ' +
-          'pending_input is `add_recipient` (opt-in). Hosts that need this ' +
-          'feature should pin to engine v1.38.5 until pending_input lands in ' +
-          'a future v2.x release. See packages/engine/src/v2/engine.ts.',
-      ),
-    };
-    yield { type: 'turn_complete', stopReason: 'error' };
-  }
-
   async *resumeWithToolResult(
     action: PendingAction,
     response: PermissionResponse,
@@ -1048,7 +1042,7 @@ export class AISDKEngine {
     };
 
     const onStepFinish = buildStepFinishHandler(
-      this.config.tools ?? [],
+      tools,
       internal,
       this.stepFinishMutable,
     );
@@ -1355,10 +1349,27 @@ export class AISDKEngine {
         .join(',')}}`;
     };
 
-    /** Look up the legacy tool to check isReadOnly + isConcurrencySafe. */
+    /**
+     * Tool dedup eligibility — auto-tier AND concurrency-safe.
+     *
+     * [P4.1 / v3.0.0 / 2026-05-25] Reverted from `cacheable === true`
+     * back to `isConcurrencySafe`. `cacheable` is a CROSS-TURN concept
+     * (microcompact uses it to dedup across the conversation history);
+     * `isConcurrencySafe` is a WITHIN-STEP concept (per-step dedup of
+     * duplicate concurrent tool_use blocks). They overlap for most
+     * tools but diverge for mutable reads like `balance_check`:
+     * cacheable=false (state may change between turns) but
+     * isConcurrencySafe=true (two parallel calls in the SAME step
+     * return the same value).
+     *
+     * `isConcurrencySafe` defaults to `isReadOnly` per ToolPolicy.
+     */
     const isSafeToDedupTool = (name: string): boolean => {
-      const t = findTool(this.config.tools ?? [], name);
-      return !!(t?.isReadOnly && t?.isConcurrencySafe);
+      const tools = this.config.tools ?? {};
+      if (!tools[name]) return false;
+      const policy = getToolPolicy(name);
+      const concurrencySafe = policy.isConcurrencySafe ?? policy.isReadOnly;
+      return policy.permissionLevel === 'auto' && concurrencySafe;
     };
 
     for await (const event of stream.fullStream) {
@@ -1488,7 +1499,8 @@ export class AISDKEngine {
     // unconditionally before closing the SSE stream.
     if (pendingApprovalToolCallId) {
       const cached = toolCallCache.get(pendingApprovalToolCallId);
-      const tool = cached ? findTool(this.config.tools ?? [], cached.name) : undefined;
+      const tools = this.config.tools ?? {};
+      const tool = cached ? tools[cached.name] : undefined;
 
       if (!cached || !tool) {
         // Defensive fallback — emit an error event so audric can
@@ -1510,12 +1522,12 @@ export class AISDKEngine {
       // needsApproval wiring. Surface as error so the drift is
       // visible in TurnMetrics instead of silently fabricating a
       // confirm card for a non-write.
-      const policy = getToolPolicy(tool.name);
+      const policy = getToolPolicy(cached.name);
       if (policy.permissionLevel === 'auto') {
         yield {
           type: 'error',
           error: new Error(
-            `AISDKEngine: tool-approval-request fired for auto-tier tool '${tool.name}'. ` +
+            `AISDKEngine: tool-approval-request fired for auto-tier tool '${cached.name}'. ` +
               `Tool policy registry drift — check tool-policy.ts.`,
           ),
         };
@@ -1524,7 +1536,7 @@ export class AISDKEngine {
 
       const turnIndex = this.messages.filter((m) => m.role === 'assistant').length;
       const attemptId = crypto.randomUUID();
-      const modifiableFields = getModifiableFields(tool.name, cached.input);
+      const modifiableFields = getModifiableFields(cached.name, cached.input);
 
       // [SPEC 37 v0.7a Week 4 cleanup — Day 14a / 2026-05-16] Stamp live
       // NAVI data (borrowApyBps for borrow/repay, currentHF for borrow/
@@ -1534,18 +1546,18 @@ export class AISDKEngine {
       // unavailable or the cache lookup errors, the helper returns `{}`
       // and the V2 component falls back to honest degradation.
       const liveData = await enrichPendingActionWithLiveData(
-        tool.name,
+        cached.name,
         cached.input,
         internal.toolContext,
       );
 
       const action: PendingAction = {
-        toolName: tool.name,
+        toolName: cached.name,
         toolUseId: pendingApprovalToolCallId,
         input: cached.input,
-        description: describeAction(tool, {
+        description: describeAction(cached.name, {
           id: pendingApprovalToolCallId,
-          name: tool.name,
+          name: cached.name,
           input: cached.input,
         }),
         assistantContent: normalizeAssistantContentForAnthropic(assistantBlocks),
@@ -1577,29 +1589,36 @@ export class AISDKEngine {
   // -------------------------------------------------------------------
 
   /**
-   * [v2.10.0 / SPEC v0.7c Day 2c++ Batch 1] Build the `ToolSet` passed
-   * to `streamText({ tools })`. Merges:
+   * Build the `ToolSet` passed to `streamText({ tools })`. Merges:
    *
-   *  1. Engine-native `config.tools` (wrapped via `toAISDKTools` so
-   *     guards + permissions + preflight + result budgeting all fire).
+   *  1. Engine-native `config.tools` (a `ToolSet` of AI SDK native
+   *     `tool({...})` instances; guards + permissions + preflight + result
+   *     budgeting all fire via `wrapEngineExecute` inside each tool).
    *  2. Host-supplied `config.gatewayTools` (passed verbatim — these
    *     are managed tools like `gateway.tools.perplexitySearch()` that
    *     execute provider-side and don't go through the engine's
    *     wrappers).
    *
    * Engine tools take precedence on name collision — guarantees an
-   * engine-registered name (e.g. an existing `web_search`) can't be
-   * silently shadowed by a gateway tool with the same key.
+   * engine-registered name can't be silently shadowed by a gateway
+   * tool with the same key.
+   *
+   * [P4.1 Phase C — 2026-05-25] Now a direct merge. Pre-Phase-C this
+   * function walked a legacy `Tool[]` and threaded it through
+   * `applyNativeToolOverrides` + `wrapLegacyTool` to bridge the AI SDK
+   * shape. After every in-tree tool migrated to native `tool({...})`,
+   * `config.tools` IS the `ToolSet` already — no wrapping, no overlay
+   * lookup, no reference-keyed override map.
    */
   private buildToolSet(): ToolSet {
-    const engineTools = toAISDKTools(this.config.tools ?? []) as ToolSet;
+    const engineTools = this.config.tools ?? {};
     if (!this.config.gatewayTools) {
       return engineTools;
     }
     return {
       ...this.config.gatewayTools,
       ...engineTools,
-    } as ToolSet;
+    };
   }
 
   /**
@@ -1809,7 +1828,3 @@ function normalizeAssistantContentForAnthropic(
 // from '../tool.js'` with `import { tool } from '../v2/index.js'`.
 // ---------------------------------------------------------------------------
 export { tool } from 'ai';
-
-// Legacy Tool type re-export for compat during migration. Day 9 swaps
-// audric-side imports to AI SDK's `Tool` type from `ai` directly.
-export type { LegacyTool };

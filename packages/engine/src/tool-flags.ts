@@ -1,4 +1,4 @@
-import type { Tool, ToolFlags } from './types.js';
+import type { ToolFlags } from './types.js';
 
 /**
  * Central registry of tool flags for the guard runner (RE-2.2).
@@ -28,6 +28,7 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   borrow:          { mutating: true, affectsHealth: true, bundleable: true },
   repay_debt:      { mutating: true, requiresBalance: true, bundleable: true },
   claim_rewards:   { mutating: true, bundleable: true },
+  harvest_rewards: { mutating: true, requiresBalance: true, bundleable: true },
 
   // [SIMPLIFICATION DAY 7] Removed flag entries for deleted tools:
   //   create_schedule, cancel_schedule (DCA schedules retired)
@@ -44,19 +45,11 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
 };
 
 /**
- * Apply flags from the central registry to a tool array.
- * Tools not in the registry get empty flags (read-only tools).
- */
-export function applyToolFlags<T extends Tool>(tools: T[]): T[] {
-  return tools.map((tool) => {
-    const flags = TOOL_FLAGS[tool.name];
-    if (!flags) return tool;
-    return { ...tool, flags: { ...tool.flags, ...flags } };
-  });
-}
-
-/**
  * Get flags for a tool by name. Returns empty flags if not registered.
+ *
+ * [P4.1 / v3.0.0 / 2026-05-25] `applyToolFlags(tools: Tool[]): Tool[]`
+ * was removed — every tool is now a native AI SDK `tool()` and reads
+ * flags by name from this registry at the engine's guard-runner site.
  */
 export function getToolFlags(name: string): ToolFlags {
   return TOOL_FLAGS[name] ?? {};

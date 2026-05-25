@@ -1,6 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import { getPendingRewardsByAddress, type PendingReward } from '@t2000/sdk';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 3 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 interface PendingRewardsResult {
   rewards: PendingReward[];
@@ -39,17 +45,20 @@ function formatAmount(amount: number): string {
   return amount.toExponential(2);
 }
 
-export const pendingRewardsTool = defineTool({
-  name: 'pending_rewards',
-  description:
-    "Inspect unclaimed protocol rewards for the signed-in user without claiming them. Returns a per-asset breakdown — symbol, amount, USD value (when oracle prices are known) — plus the total claimable USD. Use BEFORE calling claim_rewards or harvest_rewards so you can tell the user exactly what's claimable; if zero rewards or NAVI is degraded, surface that truthfully instead of jumping to a write. Read-only, never opens a confirm card.",
-  inputSchema: z.object({}),
-  isReadOnly: true,
-  // Rewards accrue continuously and are zeroed on claim — never dedupe
-  // across turns within the same session.
-  cacheable: false,
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const pendingRewardsDescription =
+  "Inspect unclaimed protocol rewards for the signed-in user without claiming them. Returns a per-asset breakdown — symbol, amount, USD value (when oracle prices are known) — plus the total claimable USD. Use BEFORE calling claim_rewards or harvest_rewards so you can tell the user exactly what's claimable; if zero rewards or NAVI is degraded, surface that truthfully instead of jumping to a write. Read-only, never opens a confirm card.";
 
-  async call(_input, context) {
+const pendingRewardsInputSchema = z.object({});
+
+type PendingRewardsInput = z.infer<typeof pendingRewardsInputSchema>;
+
+async function pendingRewardsCallBody(
+  _input: PendingRewardsInput,
+  context: ToolContext,
+): Promise<ToolResult<PendingRewardsResult>> {
     // [Track B follow-up / 2026-05-08] Two equally-valid paths:
     //   - Agent path (CLI / standalone): `context.agent.getPendingRewards()`.
     //   - Stateless path (audric): `getPendingRewardsByAddress(walletAddress, suiRpcUrl)`.
@@ -136,5 +145,16 @@ export const pendingRewardsTool = defineTool({
       degradationReason: null,
     };
     return { data, displayText };
-  },
+}
+
+export const pendingRewardsTool = tool({
+  description: pendingRewardsDescription,
+  inputSchema: pendingRewardsInputSchema,
+  needsApproval: buildNeedsApproval('pending_rewards'),
+  execute: wrapEngineExecute<PendingRewardsInput, PendingRewardsResult>(
+    'pending_rewards',
+    {
+      call: pendingRewardsCallBody,
+    },
+  ),
 });

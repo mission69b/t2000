@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { explainTxTool } from '../tools/explain-tx.js';
 import type { ToolContext } from '../types.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
 /**
  * Bug C regression coverage: the EXPLAIN TRANSACTION card was rendering
  * raw on-chain Move type segments (e.g. `0x...::cert::CERT` → "CERT")
@@ -52,9 +53,9 @@ describe('explain_tx tool — symbol resolution (Bug C)', () => {
       timestampMs: '1745000000000',
     });
 
-    const result = await explainTxTool.call(
+    const result = await callToolBody(explainTxTool, 
       { digest: 'CwTo4jy3aaabbbbccccddddeeeeffffgggghhhhiiiijjjjkkkk' },
-      {} as ToolContext,
+      {} as unknown as ToolContext,
     );
 
     const data = result.data as { effects: Array<{ type: string; description: string }>; summary: string };
@@ -80,9 +81,9 @@ describe('explain_tx tool — symbol resolution (Bug C)', () => {
       timestampMs: '1745000000000',
     });
 
-    const result = await explainTxTool.call(
+    const result = await callToolBody(explainTxTool, 
       { digest: 'aaabbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmm' },
-      {} as ToolContext,
+      {} as unknown as ToolContext,
     );
 
     const data = result.data as { effects: Array<{ description: string }> };
@@ -103,9 +104,9 @@ describe('explain_tx tool — symbol resolution (Bug C)', () => {
       timestampMs: '1745000000000',
     });
 
-    const result = await explainTxTool.call(
+    const result = await callToolBody(explainTxTool, 
       { digest: 'beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef' },
-      {} as ToolContext,
+      {} as unknown as ToolContext,
     );
 
     const data = result.data as { effects: Array<{ description: string }> };

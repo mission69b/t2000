@@ -1,5 +1,10 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 3 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import {
   fetchAddressPortfolio,
   fetchAddressDefiPortfolio,
@@ -8,7 +13,11 @@ import {
 } from '../blockvision-prices.js';
 import { fetchAudricPortfolio } from '../audric-api.js';
 import { normalizeAddressInput } from '../sui/address.js';
-import type { ServerPositionData } from '../types.js';
+import type {
+  ServerPositionData,
+  ToolContext,
+  ToolResult,
+} from '../types.js';
 
 const inputSchema = z.object({
   address: z
@@ -77,13 +86,18 @@ interface PortfolioResult {
 
 const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
 
-export const portfolioAnalysisTool = defineTool({
-  name: 'portfolio_analysis',
-  description:
-    'Analyze portfolio allocation, risk exposure, and yield optimization for the signed-in user OR any public Sui address or SuiNS name. Shows asset breakdown, diversification score, health factor assessment, and actionable suggestions. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to analyze a contact / watched / public wallet.',
-  inputSchema,
-  isReadOnly: true,
-  async call(input, context) {
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const portfolioAnalysisDescription =
+  'Analyze portfolio allocation, risk exposure, and yield optimization for the signed-in user OR any public Sui address or SuiNS name. Shows asset breakdown, diversification score, health factor assessment, and actionable suggestions. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to analyze a contact / watched / public wallet.';
+
+type PortfolioAnalysisInput = z.infer<typeof inputSchema>;
+
+async function portfolioAnalysisCallBody(
+  input: PortfolioAnalysisInput,
+  context: ToolContext,
+): Promise<ToolResult<PortfolioResult>> {
     // [v1.2 SuiNS] Normalize the user-supplied address (0x or *.sui).
     let suinsName: string | null = null;
     let address: string | undefined;
@@ -384,5 +398,16 @@ export const portfolioAnalysisTool = defineTool({
       data: result,
       displayText: `${topLine}\n${insightLines}`,
     };
-  },
+}
+
+export const portfolioAnalysisTool = tool({
+  description: portfolioAnalysisDescription,
+  inputSchema,
+  needsApproval: buildNeedsApproval('portfolio_analysis'),
+  execute: wrapEngineExecute<PortfolioAnalysisInput, PortfolioResult>(
+    'portfolio_analysis',
+    {
+      call: portfolioAnalysisCallBody,
+    },
+  ),
 });

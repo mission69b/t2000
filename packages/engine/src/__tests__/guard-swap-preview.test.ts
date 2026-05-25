@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
 import {
   runGuards,
   createGuardRunnerState,
@@ -7,8 +6,8 @@ import {
   extractConversationText,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
-import { defineTool } from '../v2/define-tool.js';
-import type { PendingToolCall } from '../orchestration.js';
+import { makeGuardView } from './_helpers/call-tool-body.js';
+import type { PendingToolCall } from '../types.js';
 
 /**
  * Regression tests for the swap-preview guard.
@@ -21,37 +20,17 @@ import type { PendingToolCall } from '../orchestration.js';
  * amount) within the recent window.
  */
 
-const swapExecute = defineTool({
-  name: 'swap_execute',
-  description: 'swap',
-  inputSchema: z.object({
-    from: z.string(),
-    to: z.string(),
-    amount: z.number().positive(),
-    byAmountIn: z.boolean().optional(),
-  }),
-  isReadOnly: false,
-  flags: { mutating: true, requiresBalance: true },
+const swapExecute = makeGuardView('swap_execute', {
   preflight: (input) => {
-    if (input.from.toLowerCase() === input.to.toLowerCase()) {
-      return { valid: false, error: `Cannot swap ${input.from} to itself.` };
+    const i = input as { from: string; to: string };
+    if (i.from.toLowerCase() === i.to.toLowerCase()) {
+      return { valid: false, error: `Cannot swap ${i.from} to itself.` };
     }
     return { valid: true };
   },
-  call: async () => ({ data: {} }),
 });
 
-const swapQuote = defineTool({
-  name: 'swap_quote',
-  description: 'quote',
-  inputSchema: z.object({
-    from: z.string(),
-    to: z.string(),
-    amount: z.number().positive(),
-  }),
-  isReadOnly: true,
-  call: async () => ({ data: {} }),
-});
+const swapQuote = makeGuardView('swap_quote');
 
 function makeCall(input: Record<string, unknown>): PendingToolCall {
   return { id: 'tool_use_1', name: 'swap_execute', input };
@@ -192,14 +171,7 @@ describe('guardSwapPreview (swap_execute requires recent swap_quote)', () => {
   });
 
   it('does not run on non-swap_execute tools', () => {
-    const otherTool = defineTool({
-      name: 'send_transfer',
-      description: 'send',
-      inputSchema: z.object({ to: z.string(), amount: z.number(), asset: z.string().optional() }),
-      isReadOnly: false,
-      flags: { mutating: true, requiresBalance: true },
-      call: async () => ({ data: {} }),
-    });
+    const otherTool = makeGuardView('send_transfer');
 
     const result = runGuards(
       otherTool,

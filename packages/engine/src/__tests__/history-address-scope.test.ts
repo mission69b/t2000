@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { transactionHistoryTool } from '../tools/history.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
+import type { ToolContext } from '../types.js';
 /**
  * [v0.48 — bug 1] Regression suite for address-scoped transaction history.
  *
@@ -33,7 +35,7 @@ const USDC = '0x2::usdc::USDC';
 const baseCtx = {
   walletAddress: USER_ADDR,
   suiRpcUrl: 'https://stub',
-} as Parameters<typeof transactionHistoryTool.call>[1];
+} as unknown as ToolContext;
 
 // [P2.1 / S.288 — 2026-05-24] `.optional()` → `.nullable()` conversion
 // made these filter fields required-but-nullable. Spread `EMPTY_FILTERS`
@@ -121,7 +123,7 @@ describe('[v0.48 — bug 1] transaction_history address scope', () => {
       toTxs: [],
     });
 
-    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
+    const res = await callToolBody(transactionHistoryTool, { limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { digest: string }[]; isSelfQuery: boolean; address: string };
     expect(data.transactions[0]?.digest).toBe('0xself-out');
     expect(data.isSelfQuery).toBe(true);
@@ -160,7 +162,7 @@ describe('[v0.48 — bug 1] transaction_history address scope', () => {
       );
     }) as typeof fetch;
 
-    const res = await transactionHistoryTool.call(
+    const res = await callToolBody(transactionHistoryTool, 
       { limit: 10, ...EMPTY_FILTERS, address: FUNKII_ADDR },
       baseCtx,
     );
@@ -187,7 +189,7 @@ describe('[v0.48 — bug 1] transaction_history address scope', () => {
       toTxs: [sharedTx],
     });
 
-    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
+    const res = await callToolBody(transactionHistoryTool, { limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { digest: string }[] };
     const sharedRows = data.transactions.filter((t) => t.digest === '0xshared');
     expect(sharedRows.length).toBe(1);
@@ -211,7 +213,7 @@ describe('[v0.48 — bug 1] transaction_history address scope', () => {
       ],
     });
 
-    const res = await transactionHistoryTool.call({ limit: 10, ...EMPTY_FILTERS }, baseCtx);
+    const res = await callToolBody(transactionHistoryTool, { limit: 10, ...EMPTY_FILTERS }, baseCtx);
     const data = res.data as { transactions: { digest: string }[] };
     const digests = data.transactions.map((t) => t.digest);
     expect(digests).toContain('0xinbound');
@@ -219,7 +221,7 @@ describe('[v0.48 — bug 1] transaction_history address scope', () => {
 
   it('exposes filter metadata on the result for the frontend card', async () => {
     mockFetchByDirection({ fromTxs: [], toTxs: [] });
-    const res = await transactionHistoryTool.call(
+    const res = await callToolBody(transactionHistoryTool, 
       { limit: 5, ...EMPTY_FILTERS, address: FUNKII_ADDR, counterparty: STRANGER_ADDR },
       baseCtx,
     );
@@ -265,7 +267,7 @@ describe('[v0.48 — bug 1] transaction_history counterparty filter', () => {
       toTxs: [],
     });
 
-    const res = await transactionHistoryTool.call(
+    const res = await callToolBody(transactionHistoryTool, 
       { limit: 10, ...EMPTY_FILTERS, counterparty: FUNKII_ADDR.toUpperCase() },
       baseCtx,
     );
@@ -300,7 +302,7 @@ describe('[v0.48 — bug 1] transaction_history counterparty filter', () => {
       toTxs: [],
     });
 
-    const res = await transactionHistoryTool.call(
+    const res = await callToolBody(transactionHistoryTool, 
       { limit: 10, ...EMPTY_FILTERS, counterparty: FUNKII_ADDR },
       baseCtx,
     );

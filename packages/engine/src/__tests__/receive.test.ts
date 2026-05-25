@@ -1,30 +1,36 @@
 import { describe, it, expect } from 'vitest';
 import { createPaymentLinkTool, listPaymentLinksTool, cancelPaymentLinkTool } from '../tools/receive.js';
 
+import { legacyToolView } from './_helpers/call-tool-body.js';
+import { zodSchemaOf } from './_helpers/call-tool-body.js';
+
+const createPaymentLinkView = legacyToolView(createPaymentLinkTool, 'create_payment_link');
+const listPaymentLinksView = legacyToolView(listPaymentLinksTool, 'list_payment_links');
+const cancelPaymentLinkView = legacyToolView(cancelPaymentLinkTool, 'cancel_payment_link');
 describe('create_payment_link tool — contract', () => {
   it('has correct name', () => {
-    expect(createPaymentLinkTool.name).toBe('create_payment_link');
+    expect(createPaymentLinkView.name).toBe('create_payment_link');
   });
 
   it('is a read-only tool (auto permission — no on-chain tx)', () => {
-    expect(createPaymentLinkTool.isReadOnly).toBe(true);
+    expect(createPaymentLinkView.isReadOnly).toBe(true);
   });
 
   it('requires amount in JSON schema', () => {
-    const required = createPaymentLinkTool.jsonSchema.required as string[];
+    const required = createPaymentLinkView.jsonSchema.required as string[];
     expect(required).toContain('amount');
   });
 
   it('amount is required in Zod schema (rejects missing amount)', () => {
-    const result = createPaymentLinkTool.inputSchema.safeParse({ label: 'test' });
+    const result = zodSchemaOf(createPaymentLinkTool).safeParse({ label: 'test' });
     expect(result.success).toBe(false);
   });
 
   it('amount must be positive in Zod schema', () => {
-    const zero = createPaymentLinkTool.inputSchema.safeParse({ amount: 0 });
+    const zero = zodSchemaOf(createPaymentLinkTool).safeParse({ amount: 0 });
     expect(zero.success).toBe(false);
 
-    const negative = createPaymentLinkTool.inputSchema.safeParse({ amount: -5 });
+    const negative = zodSchemaOf(createPaymentLinkTool).safeParse({ amount: -5 });
     expect(negative.success).toBe(false);
   });
 
@@ -32,7 +38,7 @@ describe('create_payment_link tool — contract', () => {
     // [P2.1 — 2026-05-24] label/memo/expiresInHours converted from
     // `.optional()` to `.nullable()` for OpenAI strict-mode / Qwen-with-
     // constrained-decoding compatibility. They're now required-but-nullable.
-    const result = createPaymentLinkTool.inputSchema.safeParse({
+    const result = zodSchemaOf(createPaymentLinkTool).safeParse({
       amount: 25.50,
       label: null,
       memo: null,
@@ -42,7 +48,7 @@ describe('create_payment_link tool — contract', () => {
   });
 
   it('accepts all optional fields', () => {
-    const result = createPaymentLinkTool.inputSchema.safeParse({
+    const result = zodSchemaOf(createPaymentLinkTool).safeParse({
       amount: 100,
       label: 'Consulting fee',
       memo: 'March 2026',
@@ -66,11 +72,11 @@ describe('create_payment_link tool — contract', () => {
 
 describe('list / cancel tools — contract', () => {
   it('list_payment_links is read-only', () => {
-    expect(listPaymentLinksTool.isReadOnly).toBe(true);
+    expect(listPaymentLinksView.isReadOnly).toBe(true);
   });
 
   it('cancel_payment_link is read-only (API call, not on-chain)', () => {
-    expect(cancelPaymentLinkTool.isReadOnly).toBe(true);
+    expect(cancelPaymentLinkView.isReadOnly).toBe(true);
   });
 
   // [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23]

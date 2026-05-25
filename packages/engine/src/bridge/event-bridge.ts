@@ -43,18 +43,17 @@
 //   `pending_action` orchestration path; engine code calls the AI SDK's
 //   `addToolApprovalResponse` from outside the bridge.
 // • Does NOT emit proactive_text / harness_shape / stream_state /
-//   tool_progress / pending_input / compaction. Those are emitted by
+//   tool_progress / compaction. Those are emitted by
 //   engine code OUTSIDE the LLM stream — outer loop interleaves them
 //   with bridge output.
-// • DOES emit canvas + todo_update side-channel events on `tool-result`
-//   when the unwrapped tool payload carries the engine's `__canvas` /
-//   `__todoUpdate` sentinel. Mirrors QueryEngine's emission at
-//   engine.ts:1505-1523 / 1927-1945. Pre-Day-17b the bridge dropped
-//   them silently, which broke live canvas rendering for every
-//   AISDKEngine session (portfolio_timeline + activity_heatmap rendered
-//   the tool tile but no card). Tool-wrapper.ts's `return result.data`
-//   unwrap is the partner fix: the bridge expects the unwrapped shape
-//   where `__canvas` sits at the top level.
+// • DOES emit canvas side-channel events on `tool-result` when the
+//   unwrapped tool payload carries the engine's `__canvas` sentinel.
+//   Mirrors QueryEngine's emission at engine.ts:1505-1523. Pre-Day-17b
+//   the bridge dropped them silently, which broke live canvas rendering
+//   for every AISDKEngine session (portfolio_timeline + activity_heatmap
+//   rendered the tool tile but no card). Tool-wrapper.ts's `return
+//   result.data` unwrap is the partner fix: the bridge expects the
+//   unwrapped shape where `__canvas` sits at the top level.
 // • Does NOT stamp `attemptId`. Per `agent-harness-spec.mdc` Item 3,
 //   `attemptId` is stamped by the engine at `pending_action` emit time.
 //   Bridge never emits `pending_action`; constraint is met by construction.
@@ -86,7 +85,7 @@
 //     tool-approval-request) silently drop.
 // ---------------------------------------------------------------------------
 
-import type { EngineEvent, StopReason, TodoItem } from '../types.js';
+import type { EngineEvent, StopReason } from '../types.js';
 import { parseEvalSummary } from '../eval-summary.js';
 import type {
   AISDKFinishReason,
@@ -219,19 +218,18 @@ export function translate(event: AISDKStreamEvent, state: BridgeState): EngineEv
       ];
 
       // Side-channel parity with legacy QueryEngine. The legacy
-      // engine emits a `canvas` / `todo_update` EngineEvent IN ADDITION
-      // to the `tool_result` event whenever a tool result carries the
-      // `__canvas` / `__todoUpdate` sentinel (see engine.ts:1505-1523
-      // and 1927-1945 for the originals). Hosts (audric) rely on those
-      // side-channel events to synthesize CanvasTimelineBlock /
-      // TodoTimelineBlock entries on the wire — without them the live
+      // engine emits a `canvas` EngineEvent IN ADDITION to the
+      // `tool_result` event whenever a tool result carries the
+      // `__canvas` sentinel (see engine.ts:1505-1523 for the original).
+      // Hosts (audric) rely on this side-channel event to synthesize a
+      // CanvasTimelineBlock entry on the wire — without it the live
       // SSE stream lands a tool_result tile but never a canvas card.
       //
       // The bridge must mirror that behavior or the AISDKEngine path
-      // silently drops every canvas + todo emission. (Pre-Day-17b
-      // production smoke caught the resulting "🖼️ DRAW CANVAS" badge
-      // landing without an actual canvas render — both portfolio_timeline
-      // and activity_heatmap rendered the tool tile but no card.)
+      // silently drops every canvas emission. (Pre-Day-17b production
+      // smoke caught the resulting "🖼️ DRAW CANVAS" badge landing
+      // without an actual canvas render — both portfolio_timeline and
+      // activity_heatmap rendered the tool tile but no card.)
       //
       // `event.output` is the unwrapped data the tool returned via
       // tool-wrapper.ts's `return result.data`. So `result.__canvas`
@@ -246,13 +244,6 @@ export function translate(event: AISDKStreamEvent, state: BridgeState): EngineEv
             template: String(rec.template ?? ''),
             title: String(rec.title ?? ''),
             data: rec.templateData ?? null,
-            toolUseId: event.toolCallId,
-          });
-        }
-        if (rec.__todoUpdate === true && Array.isArray(rec.items)) {
-          out.push({
-            type: 'todo_update',
-            items: rec.items as TodoItem[],
             toolUseId: event.toolCallId,
           });
         }

@@ -33,10 +33,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { AISDKEngine, type AISDKEngineConfig } from './engine.js';
-import { defineTool } from './define-tool.js';
+import {
+  defineToolForTest as defineTool,
+  asToolSet,
+  type TestDefinedTool,
+} from '../__tests__/_helpers/call-tool-body.js';
 import { DEFAULT_GUARD_CONFIG, type GuardConfig } from '../guards.js';
 import { DEFAULT_PERMISSION_CONFIG } from '../permission-rules.js';
-import type { EngineEvent, Tool as LegacyTool, ToolContext } from '../types.js';
+import type { EngineEvent, ToolContext } from '../types.js';
+type LegacyTool = TestDefinedTool;
 
 const RUN_REAL = process.env.RUN_REAL_API_TESTS === '1' && !!process.env.ANTHROPIC_API_KEY;
 const API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -115,7 +120,7 @@ describe('v2 e2e — Day 2 surface (tool dispatch)', () => {
 
       const engine = new AISDKEngine({
         ...baseConfig(API_KEY!),
-        tools: [lookupTool],
+        tools: asToolSet(lookupTool),
         systemPrompt:
           'You are a token-info bot. When the user asks about a token, ALWAYS call the lookup_fact tool with the token name. Then narrate what the tool returned in one sentence.',
       });
@@ -197,7 +202,7 @@ describe('v2 e2e — Day 3 surface (onAutoExecuted + sessionSpend tracking)', ()
       const recipient = '0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c';
       const engine = new AISDKEngine({
         ...baseConfig(API_KEY!),
-        tools: [writeTool],
+        tools: asToolSet(writeTool),
         permissionConfig: DEFAULT_PERMISSION_CONFIG,
         priceCache: new Map([['USDC', 1]]),
         guards,
@@ -253,7 +258,7 @@ describe('v2 e2e — Day 3 surface (guard pipeline blocking)', () => {
 
       const engine = new AISDKEngine({
         ...baseConfig(API_KEY!),
-        tools: [failingTool],
+        tools: asToolSet(failingTool),
         guards: DEFAULT_GUARD_CONFIG,
         systemPrompt:
           'You are a test bot. When asked to call always_fail, do so once with x="anything", then narrate the result.',

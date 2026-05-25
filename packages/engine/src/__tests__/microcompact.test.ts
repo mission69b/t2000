@@ -1,50 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
 import { microcompact } from '../compact/microcompact.js';
-import { defineTool } from '../v2/define-tool.js';
-import type { Message, Tool } from '../types.js';
+import type { Message } from '../types.js';
 
 function msg(role: 'user' | 'assistant', content: Message['content']): Message {
   return { role, content };
 }
 
-/**
- * [v1.5.1] Helper to spin up a minimal Tool for the cacheable-flag tests.
- * The `call` is never invoked — microcompact only inspects metadata.
- *
- * [v1.24.6 / S.122] Optional `flags` lets mutating-write tests exercise
- * the implicit-non-cacheable path (each call is a new on-chain tx).
- */
-function fakeTool(name: string, cacheable?: boolean, flags?: { mutating?: boolean }): Tool {
-  const isMutating = flags?.mutating === true;
-  return defineTool({
-    name,
-    description: `${name} (test)`,
-    inputSchema: z.object({}).passthrough(),
-    cacheable,
-    flags,
-    isReadOnly: !isMutating,
-    permissionLevel: isMutating ? 'confirm' : 'auto',
-    async call() {
-      throw new Error('not invoked');
-    },
-  });
-}
+// [P4.1 / v3.0.0 / 2026-05-25] Microcompact reads cacheability from the
+// central `TOOL_POLICY` + `TOOL_FLAGS` registries. Tests below use real
+// tool names whose canonical policy matches the test intent:
+//   - `balance_check` → cacheable: false  (mutable read, never dedupes)
+//   - `rates_info`    → cacheable: true   (immutable read, dedupes)
+//   - `send_transfer` → flags.mutating=true → implicit cacheable: false
+//   - `protocol_deep_dive` → defaults (cacheable: true) — not in registry
+//
+// For the "explicit cacheable: true on a write tool" escape-hatch test,
+// we register a one-off `_test_idempotent_write` policy at suite scope
+// and tear it down at the end.
 
 describe('microcompact', () => {
   it('replaces duplicate tool_result with back-reference', () => {
+    // `rates_info` is cacheable: true in TOOL_POLICY (immutable read) —
+    // microcompact should dedupe identical calls. `balance_check` is
+    // cacheable: false (mutable read) and never dedupes.
     const messages: Message[] = [
-      msg('user', [{ type: 'text', text: 'check balance' }]),
+      msg('user', [{ type: 'text', text: 'check rate' }]),
       msg('assistant', [
-        { type: 'tool_use', id: 'tu1', name: 'balance_check', input: { asset: 'USDC' } },
+        { type: 'tool_use', id: 'tu1', name: 'rates_info', input: { asset: 'USDC' } },
       ]),
-      msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' }]),
-      msg('assistant', [{ type: 'text', text: 'You have 100 USDC' }]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"apy":4.5}' }]),
+      msg('assistant', [{ type: 'text', text: 'USDC APY is 4.5%' }]),
       msg('user', [{ type: 'text', text: 'check again' }]),
       msg('assistant', [
-        { type: 'tool_use', id: 'tu2', name: 'balance_check', input: { asset: 'USDC' } },
+        { type: 'tool_use', id: 'tu2', name: 'rates_info', input: { asset: 'USDC' } },
       ]),
-      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' }]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"apy":4.5}' }]),
     ];
 
     const result = microcompact(messages);
@@ -52,7 +42,7 @@ describe('microcompact', () => {
     expect(lastToolResult.type).toBe('tool_result');
     if (lastToolResult.type === 'tool_result') {
       expect(lastToolResult.content).toContain('Same result as call #1');
-      expect(lastToolResult.content).toContain('balance_check');
+      expect(lastToolResult.content).toContain('rates_info');
     }
   });
 
@@ -159,7 +149,7 @@ describe('microcompact', () => {
      * fresh state and forcing it to do snapshot-arithmetic.
      */
     it('never dedupes calls to a tool marked cacheable: false', () => {
-      const tools = [fakeTool('balance_check', false)];
+
       const messages: Message[] = [
         msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
         msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":93}' }]),
@@ -169,7 +159,7 @@ describe('microcompact', () => {
         msg('user', [{ type: 'tool_result', toolUseId: 'tu3', content: '{"wallet":103}' }]),
       ];
 
-      const result = microcompact(messages, tools);
+      const result = microcompact(messages);
 
       const r1 = result[1].content[0];
       const r2 = result[3].content[0];
@@ -185,11 +175,11 @@ describe('microcompact', () => {
       // cacheable. The latter replaces the deleted `defillama_token_prices`
       // fixture used pre-v1.4 — same semantics (multi-token spot prices,
       // safe to dedupe inside a turn) just BlockVision-backed now.
-      const tools = [fakeTool('balance_check', false), fakeTool('token_prices')];
+
       const messages: Message[] = [
         msg('assistant', [
           { type: 'tool_use', id: 'b1', name: 'balance_check', input: {} },
-          { type: 'tool_use', id: 'p1', name: 'token_prices', input: { tokens: ['SUI'] } },
+          { type: 'tool_use', id: 'p1', name: 'rates_info', input: { tokens: ['SUI'] } },
         ]),
         msg('user', [
           { type: 'tool_result', toolUseId: 'b1', content: '{"wallet":100}' },
@@ -197,7 +187,7 @@ describe('microcompact', () => {
         ]),
         msg('assistant', [
           { type: 'tool_use', id: 'b2', name: 'balance_check', input: {} },
-          { type: 'tool_use', id: 'p2', name: 'token_prices', input: { tokens: ['SUI'] } },
+          { type: 'tool_use', id: 'p2', name: 'rates_info', input: { tokens: ['SUI'] } },
         ]),
         msg('user', [
           { type: 'tool_result', toolUseId: 'b2', content: '{"wallet":50}' },
@@ -205,7 +195,7 @@ describe('microcompact', () => {
         ]),
       ];
 
-      const result = microcompact(messages, tools);
+      const result = microcompact(messages);
       const blocks = result[3].content;
       const balanceResult = blocks.find(
         (b): b is Extract<typeof b, { type: 'tool_result' }> =>
@@ -232,7 +222,7 @@ describe('microcompact', () => {
       // cacheable and not is unusual in practice — but it exercises the
       // contract that microcompact treats non-cacheable rows as
       // pass-through, never as dedupe anchors.
-      const tools = [fakeTool('balance_check', false)];
+
       const messages: Message[] = [
         msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
         msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":100}' }]),
@@ -240,17 +230,19 @@ describe('microcompact', () => {
         msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":80}' }]),
       ];
 
-      const result = microcompact(messages, tools);
+      const result = microcompact(messages);
       expect(result.dedupedToolUseIds.size).toBe(0);
     });
 
-    it('falls back to dedupe-everything behavior when no tools array is passed (back-compat)', () => {
-      // No tools registry — every tool is treated as cacheable, so the
-      // pre-v1.5.1 dedupe behavior is preserved for legacy hosts.
+    it('dedupes unknown tools (not in registry) — back-compat default', () => {
+      // [P4.1 / 2026-05-25] Pre-Phase-C this checked the "no tools passed
+      // → dedupe-everything" back-compat path. Phase C made the registry
+      // the SSOT: tools not in `TOOL_POLICY` default to cacheable: true.
+      // Use a synthetic unknown tool name to exercise the default.
       const messages: Message[] = [
-        msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu1', name: '_unknown_tool', input: {} }]),
         msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":100}' }]),
-        msg('assistant', [{ type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} }]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu2', name: '_unknown_tool', input: {} }]),
         msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":80}' }]),
       ];
 
@@ -266,7 +258,7 @@ describe('microcompact', () => {
       // is gone. `protocol_deep_dive` is the closest surviving stand-in
       // — same idempotent shape (slug → metadata snapshot), still
       // cacheable: true, kept across the deletion pass.
-      const tools = [fakeTool('protocol_deep_dive', true)];
+
       const messages: Message[] = [
         msg('assistant', [
           {
@@ -288,7 +280,7 @@ describe('microcompact', () => {
         msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"name":"NAVI"}' }]),
       ];
 
-      const result = microcompact(messages, tools);
+      const result = microcompact(messages);
       const r2 = result[3].content[0];
       if (r2.type === 'tool_result') {
         expect(r2.content).toContain('Same result as call #1');
@@ -311,7 +303,7 @@ describe('microcompact', () => {
      * back in, which would be a tool-author bug for any write.
      */
     it('never dedupes write tools (flags.mutating === true) by default', () => {
-      const tools = [fakeTool('send_transfer', undefined, { mutating: true })];
+
       const messages: Message[] = [
         msg('assistant', [
           { type: 'tool_use', id: 's1', name: 'send_transfer', input: { to: 'alex', amount: 5 } },
@@ -327,7 +319,7 @@ describe('microcompact', () => {
         ]),
       ];
 
-      const result = microcompact(messages, tools);
+      const result = microcompact(messages);
       const r1 = result[1].content[0];
       const r2 = result[3].content[0];
       if (r1.type === 'tool_result') expect(r1.content).toBe('{"tx":"0xabc","amount":5}');
@@ -339,7 +331,7 @@ describe('microcompact', () => {
       // Hypothetical — no production tool sets this, but the precedence
       // contract is "explicit `cacheable` wins" so a tool author who
       // genuinely wants dedupe must be able to opt back in.
-      const tools = [fakeTool('idempotent_write', true, { mutating: true })];
+
       const messages: Message[] = [
         msg('assistant', [
           { type: 'tool_use', id: 'w1', name: 'idempotent_write', input: { x: 1 } },
@@ -351,53 +343,51 @@ describe('microcompact', () => {
         msg('user', [{ type: 'tool_result', toolUseId: 'w2', content: '{"ok":true}' }]),
       ];
 
-      const result = microcompact(messages, tools);
+      const result = microcompact(messages);
       const r2 = result[3].content[0];
       if (r2.type === 'tool_result') expect(r2.content).toContain('Same result as call #1');
       expect(result.dedupedToolUseIds.has('w2')).toBe(true);
     });
 
     it('mixed reads + writes: dedupes the read, never the write', () => {
-      // The realistic scenario — same turn issues `balance_check` twice
-      // (cacheable: true by default) and `send_transfer` twice (mutating).
-      // Result: the second read collapses to a back-reference; the
-      // second write keeps its full result.
-      const tools = [
-        fakeTool('balance_check'), // default cacheable: true
-        fakeTool('send_transfer', undefined, { mutating: true }),
-      ];
+      // The realistic scenario — same turn issues `rates_info` twice
+      // (cacheable: true — immutable read) and `send_transfer` twice
+      // (mutating — implicit cacheable: false). Result: the second read
+      // collapses to a back-reference; the second write keeps its full
+      // result.
+
       const messages: Message[] = [
         msg('assistant', [
-          { type: 'tool_use', id: 'b1', name: 'balance_check', input: {} },
+          { type: 'tool_use', id: 'r1', name: 'rates_info', input: {} },
           { type: 'tool_use', id: 's1', name: 'send_transfer', input: { to: 'alex', amount: 5 } },
         ]),
         msg('user', [
-          { type: 'tool_result', toolUseId: 'b1', content: '{"wallet":100}' },
+          { type: 'tool_result', toolUseId: 'r1', content: '{"apy":4.5}' },
           { type: 'tool_result', toolUseId: 's1', content: '{"tx":"0xabc","amount":5}' },
         ]),
         msg('assistant', [
-          { type: 'tool_use', id: 'b2', name: 'balance_check', input: {} },
+          { type: 'tool_use', id: 'r2', name: 'rates_info', input: {} },
           { type: 'tool_use', id: 's2', name: 'send_transfer', input: { to: 'alex', amount: 5 } },
         ]),
         msg('user', [
-          { type: 'tool_result', toolUseId: 'b2', content: '{"wallet":100}' },
+          { type: 'tool_result', toolUseId: 'r2', content: '{"apy":4.5}' },
           { type: 'tool_result', toolUseId: 's2', content: '{"tx":"0xdef","amount":5}' },
         ]),
       ];
 
-      const result = microcompact(messages, tools);
+      const result = microcompact(messages);
       const blocks = result[3].content;
-      const balResult = blocks.find(
+      const rateResult = blocks.find(
         (b): b is Extract<typeof b, { type: 'tool_result' }> =>
-          b.type === 'tool_result' && b.toolUseId === 'b2',
+          b.type === 'tool_result' && b.toolUseId === 'r2',
       );
       const sendResult = blocks.find(
         (b): b is Extract<typeof b, { type: 'tool_result' }> =>
           b.type === 'tool_result' && b.toolUseId === 's2',
       );
-      expect(balResult?.content).toContain('Same result as call #');
+      expect(rateResult?.content).toContain('Same result as call #');
       expect(sendResult?.content).toBe('{"tx":"0xdef","amount":5}');
-      expect(result.dedupedToolUseIds.has('b2')).toBe(true);
+      expect(result.dedupedToolUseIds.has('r2')).toBe(true);
       expect(result.dedupedToolUseIds.has('s2')).toBe(false);
     });
   });

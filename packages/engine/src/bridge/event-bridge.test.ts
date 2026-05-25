@@ -514,11 +514,10 @@ describe('bridgeAISDKStream — tool calls', () => {
 
   // -------------------------------------------------------------------
   // [Day 17b] Side-channel parity with legacy QueryEngine:
-  // tool-result events whose output carries the engine's `__canvas` /
-  // `__todoUpdate` sentinel MUST emit an additional `canvas` /
-  // `todo_update` EngineEvent. Pre-fix the bridge silently dropped
-  // them, which broke every AISDKEngine canvas render in production
-  // smoke. See engine.ts:1505-1523 / 1927-1945 for the originals.
+  // tool-result events whose output carries the engine's `__canvas`
+  // sentinel MUST emit an additional `canvas` EngineEvent. Pre-fix the
+  // bridge silently dropped them, which broke every AISDKEngine canvas
+  // render in production smoke. See engine.ts:1505-1523 for the original.
   // -------------------------------------------------------------------
 
   it('emits a canvas event in addition to tool_result when output has __canvas: true', async () => {
@@ -557,34 +556,7 @@ describe('bridgeAISDKStream — tool calls', () => {
     expect(canvas.toolUseId).toBe('call-canvas');
   });
 
-  it('emits a todo_update event in addition to tool_result when output has __todoUpdate: true', async () => {
-    const items = [
-      { id: '1', label: 'Save 50 USDC', status: 'completed' as const },
-      { id: '2', label: 'Send 10 USDC', status: 'in_progress' as const },
-    ];
-    const events = await collect(
-      bridgeAISDKStream(
-        iterate<AISDKStreamEvent>([
-          {
-            type: 'tool-result',
-            toolCallId: 'call-todo',
-            toolName: 'update_todo',
-            input: { items },
-            output: { __todoUpdate: true, items },
-            dynamic: true,
-          },
-        ]),
-      ),
-    );
-    expect(events).toHaveLength(2);
-    expectEvent(events[0], 'tool_result');
-    expectEvent(events[1], 'todo_update');
-    const todo = events[1] as { type: 'todo_update'; items: unknown[]; toolUseId: string };
-    expect(todo.items).toEqual(items);
-    expect(todo.toolUseId).toBe('call-todo');
-  });
-
-  it('does NOT emit canvas / todo_update for ordinary tool results without sentinel', async () => {
+  it('does NOT emit canvas for ordinary tool results without sentinel', async () => {
     const events = await collect(
       bridgeAISDKStream(
         iterate<AISDKStreamEvent>([
@@ -620,28 +592,7 @@ describe('bridgeAISDKStream — tool calls', () => {
         ),
       );
       expect(events.filter((e) => e.type === 'canvas')).toHaveLength(0);
-      expect(events.filter((e) => e.type === 'todo_update')).toHaveLength(0);
     }
-  });
-
-  it('does NOT emit todo_update when __todoUpdate is true but items is not an array', async () => {
-    // Mirrors the legacy QueryEngine guard at engine.ts:1517 — the
-    // sentinel alone isn't sufficient; items must be a real array.
-    const events = await collect(
-      bridgeAISDKStream(
-        iterate<AISDKStreamEvent>([
-          {
-            type: 'tool-result',
-            toolCallId: 'call-bad-todo',
-            toolName: 'update_todo',
-            input: {},
-            output: { __todoUpdate: true, items: 'not-an-array' },
-            dynamic: true,
-          },
-        ]),
-      ),
-    );
-    expect(events.filter((e) => e.type === 'todo_update')).toHaveLength(0);
   });
 
   it('coerces missing template/title strings to empty when canvas output is malformed', async () => {

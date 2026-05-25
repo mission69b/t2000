@@ -24,7 +24,7 @@ describe('[SPEC 23B-N3] spending_analytics description — canvas-preference dir
   });
 
   it('lists at least one of the visual-query phrasings the LLM should pattern-match on', () => {
-    const desc = spendingAnalyticsTool.description.toLowerCase();
+    const desc = (spendingAnalyticsTool.description ?? '').toLowerCase();
     const phrasings = [
       'show me',
       'breakdown',

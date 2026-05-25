@@ -29,8 +29,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { AISDKEngine, type AISDKEngineConfig } from './engine.js';
-import { defineTool } from './define-tool.js';
-import type { EngineEvent, Tool as LegacyTool } from '../types.js';
+import {
+  defineToolForTest as defineTool,
+  asToolSet,
+  type TestDefinedTool,
+} from '../__tests__/_helpers/call-tool-body.js';
+import type { EngineEvent } from '../types.js';
+type LegacyTool = TestDefinedTool;
 import {
   setWalletCacheStore,
   resetWalletCacheStore,
@@ -142,7 +147,7 @@ describe('AISDKEngine — v2.10.0 gatewayTools merge', () => {
   it('merges gatewayTools and engine tools into one ToolSet', () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [engineToolFactory('balance_check')],
+      tools: asToolSet(engineToolFactory('balance_check')),
       // biome-ignore lint/suspicious/noExplicitAny: stub shape
       gatewayTools: {
         perplexity_search: gatewayToolStub('perplexity') as any,
@@ -159,7 +164,7 @@ describe('AISDKEngine — v2.10.0 gatewayTools merge', () => {
     const engineTool = engineToolFactory('web_search');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [engineTool],
+      tools: asToolSet(engineTool),
       gatewayTools: {
         // biome-ignore lint/suspicious/noExplicitAny: stub shape
         web_search: gatewayToolStub('overridden') as any,
@@ -178,7 +183,7 @@ describe('AISDKEngine — v2.10.0 gatewayTools merge', () => {
   it('returns engine tools unchanged when gatewayTools is absent (backward compat)', () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [engineToolFactory('balance_check')],
+      tools: asToolSet(engineToolFactory('balance_check')),
     });
 
     const tools = (engine as unknown as { buildToolSet: () => Record<string, unknown> })
@@ -233,7 +238,7 @@ describe('AISDKEngine — Day 2 tool dispatch via legacy wrapper', () => {
 
       const engine = new AISDKEngine({
         ...baseConfig(API_KEY!),
-        tools: [echoTool],
+        tools: asToolSet(echoTool),
         systemPrompt:
           'You are a test agent. When the user asks you to echo something, ALWAYS call the echo_test tool with that text. Do not respond with text directly first.',
       });
@@ -279,7 +284,7 @@ describe('AISDKEngine — Day 2 tool dispatch via legacy wrapper', () => {
 
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [failingPreflightTool],
+      tools: asToolSet(failingPreflightTool),
     });
 
     // Just verify the engine constructed cleanly with the wrapped tool.
@@ -349,15 +354,14 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     });
   }
 
-  it('getTools() returns the registered tool array (read-only)', () => {
+  it('getTools() returns the registered ToolSet (read-only)', () => {
     const echo = makeEchoTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [echo],
+      tools: asToolSet(echo),
     });
     const tools = engine.getTools();
-    expect(tools.length).toBe(1);
-    expect(tools[0]?.name).toBe('echo_test');
+    expect(Object.keys(tools)).toEqual(['echo_test']);
   });
 
   it('invokeReadTool threads mcpManager from config to ToolContext (Day 13 fix)', async () => {
@@ -383,16 +387,16 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     const sentinelMcpManager = { __sentinel: 'mcp-manager-passed-through' } as never;
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [probeTool],
+      tools: asToolSet(probeTool),
       mcpManager: sentinelMcpManager,
     });
     await engine.invokeReadTool('probe_mcp_manager', {});
     expect(observedMcpManager).toBe(sentinelMcpManager);
   });
 
-  it('getTools() returns empty array when no tools configured', () => {
+  it('getTools() returns empty ToolSet when no tools configured', () => {
     const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
-    expect(engine.getTools().length).toBe(0);
+    expect(Object.keys(engine.getTools()).length).toBe(0);
   });
 
   it('getUsage() starts at zero', () => {
@@ -410,7 +414,7 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     const echo = makeEchoTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [echo],
+      tools: asToolSet(echo),
     });
     const result = await engine.invokeReadTool('echo_test', { message: 'hello' });
     expect(result.isError).toBe(false);
@@ -426,7 +430,7 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     const write = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [write],
+      tools: asToolSet(write),
     });
     await expect(engine.invokeReadTool('write_only_test', {})).rejects.toThrow(/not read-only/);
   });
@@ -435,7 +439,7 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     const echo = makeEchoTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [echo],
+      tools: asToolSet(echo),
     });
     await expect(
       // missing required `message` field
@@ -447,7 +451,7 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     const failing = makeFailingTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [failing],
+      tools: asToolSet(failing),
     });
     const result = await engine.invokeReadTool('failing_read', {});
     expect(result.isError).toBe(true);
@@ -567,7 +571,7 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
     const writeTool = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [writeTool],
+      tools: asToolSet(writeTool),
     });
 
     // Stream parts: text-delta → tool-call → tool-approval-request →
@@ -660,7 +664,7 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
     const writeTool = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [writeTool],
+      tools: asToolSet(writeTool),
     });
 
     const action: PendingAction = {
@@ -785,7 +789,7 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
     const writeTool = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [writeTool],
+      tools: asToolSet(writeTool),
     });
 
     const events: EngineEvent[] = [];
@@ -819,7 +823,7 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
     const writeTool = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [writeTool],
+      tools: asToolSet(writeTool),
     });
 
     // [v2.0.4] When approved, the engine re-invokes streamText to
@@ -922,7 +926,7 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
     const writeTool = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [writeTool],
+      tools: asToolSet(writeTool),
     });
 
     const action = makeBundleAction();
@@ -1074,7 +1078,7 @@ describe('AISDKEngine — resume-path cache invalidation (v2.0.4 follow-up to v2
   it('invalidates wallet + DeFi caches for a successful single-write resume', async () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [makeWriteTool()],
+      tools: asToolSet(makeWriteTool()),
     });
 
     try {
@@ -1100,7 +1104,7 @@ describe('AISDKEngine — resume-path cache invalidation (v2.0.4 follow-up to v2
   it('does NOT invalidate caches when the user declines (no on-chain change to invalidate)', async () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [makeWriteTool()],
+      tools: asToolSet(makeWriteTool()),
     });
 
     for await (const _ of engine.resumeWithToolResult(makeSingleWriteAction(), {
@@ -1118,7 +1122,7 @@ describe('AISDKEngine — resume-path cache invalidation (v2.0.4 follow-up to v2
   it('does NOT invalidate caches when the single-write executionResult signals failure', async () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [makeWriteTool()],
+      tools: asToolSet(makeWriteTool()),
     });
 
     try {
@@ -1145,7 +1149,7 @@ describe('AISDKEngine — resume-path cache invalidation (v2.0.4 follow-up to v2
   it('invalidates caches for a bundle resume when ANY step succeeded', async () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [makeWriteTool()],
+      tools: asToolSet(makeWriteTool()),
     });
 
     const bundleAction: import('../types.js').PendingAction = {
@@ -1223,7 +1227,7 @@ describe('AISDKEngine — resume-path cache invalidation (v2.0.4 follow-up to v2
   it('does NOT invalidate caches when EVERY bundle step failed (sponsor revert)', async () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [makeWriteTool()],
+      tools: asToolSet(makeWriteTool()),
     });
 
     const bundleAction: import('../types.js').PendingAction = {
@@ -1347,7 +1351,7 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
     const send = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [balanceCheck, send],
+      tools: asToolSet(balanceCheck, send),
     });
 
     // Stream simulates the exact "Save $50 USDC" failure pattern:
@@ -1443,7 +1447,7 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
     const send = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [send],
+      tools: asToolSet(send),
     });
 
     withStubbedModel(engine, [
@@ -1541,7 +1545,7 @@ describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', 
     const balanceCheck = makeReadTool('balance_check');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [balanceCheck],
+      tools: asToolSet(balanceCheck),
       // Force exactly 1 LLM round — without this, AI SDK runs a
       // follow-up turn after tool execution, the stub returns the
       // same chunks again, and we double-count every tool_start.
@@ -1600,7 +1604,7 @@ describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', 
     const balanceCheck = makeReadTool('balance_check');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [balanceCheck],
+      tools: asToolSet(balanceCheck),
       maxTurns: 1,
     });
 
@@ -1636,7 +1640,7 @@ describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', 
     const unsafeRead = makeUnsafeReadTool('unsafe_read');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [unsafeRead],
+      tools: asToolSet(unsafeRead),
       maxTurns: 1,
     });
 
@@ -1731,7 +1735,7 @@ describe('AISDKEngine — Day 13.7 regression: persist assistant message on clea
     const balanceCheck = makeReadTool('balance_check');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [balanceCheck],
+      tools: asToolSet(balanceCheck),
       maxTurns: 1,
     });
 
@@ -1779,7 +1783,7 @@ describe('AISDKEngine — Day 13.7 regression: persist assistant message on clea
   it('pushes assistant message on a text-only turn (no tools)', async () => {
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [],
+      tools: asToolSet(),
       maxTurns: 1,
     });
 
@@ -1828,7 +1832,7 @@ describe('AISDKEngine — Day 13.7 regression: persist assistant message on clea
 
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [saveDeposit],
+      tools: asToolSet(saveDeposit),
       maxTurns: 1,
     });
 
@@ -1939,7 +1943,7 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
     const balanceCheck = makeReadTool('balance_check');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [balanceCheck],
+      tools: asToolSet(balanceCheck),
       maxTurns: 1,
     });
     withStubbedModel(engine, [
@@ -2002,7 +2006,7 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
     const saveDeposit = makeWriteTool('save_deposit');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [balanceCheck, saveDeposit],
+      tools: asToolSet(balanceCheck, saveDeposit),
       maxTurns: 2,
     });
 
@@ -2120,7 +2124,7 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
     const balanceCheck = makeReadTool('balance_check');
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
-      tools: [balanceCheck],
+      tools: asToolSet(balanceCheck),
       maxTurns: 1,
     });
 
@@ -2251,7 +2255,7 @@ describe('AISDKEngine — Day 14a: live NAVI data on pending_action (borrowApyBp
       const borrowTool = makeBorrowTool();
       const engine = new AISDKEngine({
         ...baseConfig('sk-test-fake-key-not-used'),
-        tools: [borrowTool],
+        tools: asToolSet(borrowTool),
         mcpManager: { __mock: 'mcp' } as unknown as AISDKEngineConfig['mcpManager'],
       });
 
@@ -2302,7 +2306,7 @@ describe('AISDKEngine — Day 14a: live NAVI data on pending_action (borrowApyBp
       const saveTool = makeSaveTool();
       const engine = new AISDKEngine({
         ...baseConfig('sk-test-fake-key-not-used'),
-        tools: [saveTool],
+        tools: asToolSet(saveTool),
         mcpManager: { __mock: 'mcp' } as unknown as AISDKEngineConfig['mcpManager'],
       });
 
@@ -2357,7 +2361,7 @@ describe('AISDKEngine — Day 14a: live NAVI data on pending_action (borrowApyBp
       const borrowTool = makeBorrowTool();
       const engine = new AISDKEngine({
         ...baseConfig('sk-test-fake-key-not-used'),
-        tools: [borrowTool],
+        tools: asToolSet(borrowTool),
         mcpManager: { __mock: 'mcp' } as unknown as AISDKEngineConfig['mcpManager'],
       });
 
@@ -2409,7 +2413,7 @@ describe('AISDKEngine — Day 14a: live NAVI data on pending_action (borrowApyBp
       const borrowTool = makeBorrowTool();
       const engine = new AISDKEngine({
         ...baseConfig('sk-test-fake-key-not-used'),
-        tools: [borrowTool],
+        tools: asToolSet(borrowTool),
         // No mcpManager — audric not threading MCP this turn
       });
 

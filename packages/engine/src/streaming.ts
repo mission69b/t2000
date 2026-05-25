@@ -24,10 +24,9 @@
 //     audric switched to raw-event iteration before this deletion.
 // ---------------------------------------------------------------------------
 
-import type { HarnessShape, PendingAction, StopReason, TodoItem } from './types.js';
+import type { HarnessShape, PendingAction, StopReason } from './types.js';
 import type { EvaluationItem } from './eval-summary.js';
 import type { ProactiveType } from './proactive-marker.js';
-import type { FormSchema } from './pending-input.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
@@ -82,36 +81,10 @@ export type SSEEvent =
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
   | { type: 'error'; message: string }
   | { type: 'canvas'; template: string; data: unknown; title: string; toolUseId: string }
-  // [SPEC 8 v0.5.1] todo_update side-channel event paired to every
-  // update_todo tool call. Mirrors EngineEvent.todo_update.
-  | { type: 'todo_update'; items: TodoItem[]; toolUseId: string }
   // [SPEC 8 v0.5.1] tool_progress mid-execution signal from long-running
   // tools (Cetus swap_execute, portfolio_analysis). Engine wiring lands
   // with the Cetus integration in a follow-on slice.
   | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
-  // [SPEC 9 v0.1.3 P9.4] Inline-form structured input event. Engine
-  // emits when a tool's preflight returns `needsInput`; host renders
-  // a typed form against `schema.fields` and POSTs values back via
-  // `/api/engine/resume-with-input`. Wire-compatible upgrade of the
-  // SPEC 8 v0.5.1 D2 reservation — `schema` narrows from `unknown`
-  // to `FormSchema`; the additional `toolName` / `toolUseId` /
-  // `description` fields are new; the round-trip state (`assistantContent`
-  // / `completedResults`) is carried on the wire so stateless hosts
-  // can persist + echo back on resume.
-  | {
-      type: 'pending_input';
-      inputId: string;
-      toolName: string;
-      toolUseId: string;
-      schema: FormSchema;
-      description?: string;
-      assistantContent: unknown[];
-      completedResults: Array<{
-        toolUseId: string;
-        content: string;
-        isError: boolean;
-      }>;
-    }
   // [SPEC 9 v0.1.1 P9.2] Proactive insight marker payload. Mirrors
   // EngineEvent.proactive_text — see types.ts for full contract. Hosts
   // apply `✦ ADDED BY AUDRIC` lockup styling on the text TimelineBlock

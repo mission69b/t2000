@@ -1,7 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 2 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import { fetchTokenPrices } from '../blockvision-prices.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // [v1.4 — Day 2] BlockVision-backed unified price tool.
@@ -19,24 +24,32 @@ import { fetchTokenPrices } from '../blockvision-prices.js';
 // untouched — protocol-level safety data has no BlockVision equivalent.
 // ---------------------------------------------------------------------------
 
-export const tokenPricesTool = defineTool({
-  name: 'token_prices',
-  description:
-    'Get current USD prices for Sui tokens, with optional 24h change. Accepts full coin type strings (e.g. "0x2::sui::SUI"). Returns price per token and (when requested) 24h change percentage. Use for "what is X worth?" or "did Y move today?". For balance + portfolio rendering, prefer balance_check / portfolio_analysis instead — they bundle the same prices into the standard cards.',
-  inputSchema: z.object({
-    coinTypes: z
-      .array(z.string())
-      .min(1)
-      .max(10)
-      .describe('Array of Sui coin type strings (max 10 per call).'),
-    include24hChange: z
-      .boolean()
-      .optional()
-      .describe('When true, include 24h change percentage per token in the output.'),
-  }),
-  isReadOnly: true,
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const tokenPricesDescription =
+  'Get current USD prices for Sui tokens, with optional 24h change. Accepts full coin type strings (e.g. "0x2::sui::SUI"). Returns price per token and (when requested) 24h change percentage. Use for "what is X worth?" or "did Y move today?". For balance + portfolio rendering, prefer balance_check / portfolio_analysis instead — they bundle the same prices into the standard cards.';
 
-  async call(input, context) {
+const tokenPricesInputSchema = z.object({
+  coinTypes: z
+    .array(z.string())
+    .min(1)
+    .max(10)
+    .describe('Array of Sui coin type strings (max 10 per call).'),
+  include24hChange: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true, include 24h change percentage per token in the output.',
+    ),
+});
+
+type TokenPricesInput = z.infer<typeof tokenPricesInputSchema>;
+
+async function tokenPricesCallBody(
+  input: TokenPricesInput,
+  context: ToolContext,
+): Promise<ToolResult<unknown>> {
     const prices = await fetchTokenPrices(input.coinTypes, context.blockvisionApiKey, { retryStats: context.retryStats });
 
     const results = input.coinTypes.map((coinType) => {
@@ -78,5 +91,13 @@ export const tokenPricesTool = defineTool({
         })
         .join(', '),
     };
-  },
+}
+
+export const tokenPricesTool = tool({
+  description: tokenPricesDescription,
+  inputSchema: tokenPricesInputSchema,
+  needsApproval: buildNeedsApproval('token_prices'),
+  execute: wrapEngineExecute<TokenPricesInput, unknown>('token_prices', {
+    call: tokenPricesCallBody,
+  }),
 });

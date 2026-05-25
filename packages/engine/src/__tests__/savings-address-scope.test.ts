@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { savingsInfoTool } from '../tools/savings.js';
 import type { ServerPositionData } from '../types.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
+import type { ToolContext } from '../types.js';
 /**
  * [v0.49] Regression suite for address-scoped savings_info.
  *
@@ -30,7 +32,7 @@ function ctx(opts: { wallet?: string } = {}) {
   return {
     walletAddress: opts.wallet === undefined ? USER_ADDR : opts.wallet,
     positionFetcher,
-  } as Parameters<typeof savingsInfoTool.call>[1];
+  } as unknown as ToolContext;
 }
 
 interface SavingsResult {
@@ -44,21 +46,21 @@ describe('[v0.49] savings_info address scope', () => {
   });
 
   it('defaults to context.walletAddress when input.address is omitted', async () => {
-    const res = (await savingsInfoTool.call({}, ctx())) as SavingsResult;
+    const res = (await callToolBody(savingsInfoTool, {}, ctx())) as SavingsResult;
     expect(res.data.address).toBe(USER_ADDR);
     expect(res.data.isSelfQuery).toBe(true);
     expect(positionFetcher).toHaveBeenCalledWith(USER_ADDR);
   });
 
   it('honors explicit input.address (the fix)', async () => {
-    const res = (await savingsInfoTool.call({ address: FUNKII_ADDR }, ctx())) as SavingsResult;
+    const res = (await callToolBody(savingsInfoTool, { address: FUNKII_ADDR }, ctx())) as SavingsResult;
     expect(res.data.address).toBe(FUNKII_ADDR);
     expect(res.data.isSelfQuery).toBe(false);
     expect(positionFetcher).toHaveBeenCalledWith(FUNKII_ADDR);
   });
 
   it('case-insensitive equality decides isSelfQuery', async () => {
-    const res = (await savingsInfoTool.call(
+    const res = (await callToolBody(savingsInfoTool, 
       { address: USER_ADDR.toUpperCase() },
       ctx(),
     )) as SavingsResult;
@@ -66,7 +68,7 @@ describe('[v0.49] savings_info address scope', () => {
   });
 
   it('prefixes the displayText with a truncated-address subject for non-self queries', async () => {
-    const res = (await savingsInfoTool.call(
+    const res = (await callToolBody(savingsInfoTool, 
       { address: FUNKII_ADDR },
       ctx(),
     )) as SavingsResult;

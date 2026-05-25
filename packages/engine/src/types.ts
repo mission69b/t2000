@@ -1,5 +1,4 @@
-import type { z } from 'zod';
-import type { FormSchema } from './pending-input.js';
+import type { ToolSet } from 'ai';
 
 // ---------------------------------------------------------------------------
 // Messages — provider-agnostic conversation format
@@ -20,6 +19,16 @@ export type ContentBlock =
 export interface Message {
   role: 'user' | 'assistant';
   content: ContentBlock[];
+}
+
+// ---------------------------------------------------------------------------
+// Pending tool call — accumulated from provider events
+// ---------------------------------------------------------------------------
+
+export interface PendingToolCall {
+  id: string;
+  name: string;
+  input: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -198,16 +207,6 @@ export type EngineEvent =
       markerCount: number;
     }
   /**
-   * [SPEC 8 v0.5.1] Side-channel event paired to every `update_todo` tool
-   * call. Hosts render the persistent todo card from this event (NOT from
-   * the tool_result — see `tools/update-todo.ts` § "side-channel" for
-   * rationale). Carries the full items array so the host can
-   * unconditionally replace its rendered list (the tool is idempotent —
-   * each call replaces the previous state). `toolUseId` lets the host
-   * key the render cell to the originating tool call.
-   */
-  | { type: 'todo_update'; items: TodoItem[]; toolUseId: string }
-  /**
    * [SPEC 8 v0.5.1] Mid-execution progress signal from a long-running tool
    * (Cetus swap_execute 2-5s, protocol_deep_dive 3-8s, portfolio_analysis
    * 1-2s). Tools opt in by calling `context.progress?.(msg, pct?)` from
@@ -224,64 +223,6 @@ export type EngineEvent =
    */
   | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
   /**
-   * [SPEC 9 v0.1.3 P9.4] Inline-form structured input event. Emitted when a
-   * tool's preflight returns `needsInput` — the engine pauses the turn,
-   * stores the pending state on the QueryEngine instance keyed by `inputId`,
-   * and waits for the host to call `engine.resumeWithInput(inputId, values)`
-   * with the user's submitted form values. The schema is the typed shape
-   * defined in `pending-input.ts` (closed list of field kinds).
-   *
-   * Upgraded from the SPEC 8 v0.5.1 D2 forward-compat reservation (which
-   * carried `schema: unknown` + a `prompt?: string` placeholder). The
-   * upgrade is wire-compatible: the new shape is a SUPERSET of the
-   * reservation — `schema` narrows from `unknown` to `FormSchema`, and the
-   * additional `toolName` / `toolUseId` / `description` fields are new.
-   * Legacy hosts that no-op on `pending_input` keep working.
-   */
-  | {
-      type: 'pending_input';
-      /** UUID v4 stamped per-emit. Host posts back keyed on this. */
-      inputId: string;
-      /** Tool that requested the input — useful for host debug logs + fallback caption. */
-      toolName: string;
-      /** Original `tool_use_id` from the LLM's call — preserved for the resumed tool_result. */
-      toolUseId: string;
-      /** Form schema (typed — see `pending-input.ts`). */
-      schema: FormSchema;
-      /** Optional human-readable description rendered above the form (e.g. "Add a new contact"). */
-      description?: string;
-      /**
-       * Assistant message blocks captured at pause time. Hosts that
-       * re-instantiate `QueryEngine` per-request (e.g. audric) MUST
-       * persist these alongside the rest of the `PendingInput` payload
-       * and echo them back on `resumeWithInput` so the conversation
-       * stays well-formed.
-       *
-       * Mirrors `pending_action.action.assistantContent` — same
-       * round-trip pattern. In-process hosts can ignore the field
-       * (the engine also stashes the state on `this.pendingInputs`
-       * keyed by `inputId`).
-       *
-       * Typed as `unknown[]` to avoid pulling `ContentBlock` into
-       * `pending-input.ts` and creating a type-import cycle.
-       */
-      assistantContent: unknown[];
-      /**
-       * Tool results from reads that completed BEFORE the paused tool
-       * call (same turn). On resume the engine merges these with the
-       * resumed tool's result into ONE `user`-role message — keeps
-       * Anthropic's "every tool_use must have a tool_result in the next
-       * user message" invariant satisfied.
-       *
-       * Mirrors the round-trip half of `PendingAction.completedResults`.
-       */
-      completedResults: Array<{
-        toolUseId: string;
-        content: string;
-        isError: boolean;
-      }>;
-    }
-  /**
    * [SPEC 8 v0.5.1 B3.2] One-shot per-turn declaration of which adaptive
    * harness shape this turn is running under. Emitted at the start of
    * `submitMessage` BEFORE `agentLoop` begins (not on `resumeWithToolResult`
@@ -289,10 +230,9 @@ export type EngineEvent =
    *
    * Derived from `classifyEffort()` on the host side: `low → 'lean'`,
    * `medium → 'standard'`, `high → 'rich'`, `max → 'max'`. Hosts use it
-   * to (a) pre-allocate UI affordances (todo surface for `rich+`),
+   * to (a) pre-allocate UI affordances,
    * (b) stamp `TurnMetrics.harnessShape` for dashboard segmentation,
-   * and (c) gate optional features (e.g. forbid `update_todo` rendering
-   * on `lean` even if a misbehaving LLM emits one).
+   * and (c) gate optional features.
    *
    * If absent, hosts MUST default to `'legacy'` for telemetry purposes
    * (existing engines that don't emit this event are pre-SPEC-8). The
@@ -382,9 +322,8 @@ export type EngineEvent =
 /**
  * [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — driven by `classifyEffort()`,
  * pinned per-turn at turn start. Each shape implies a different
- * `thinking.budget_tokens` cap, soft block limit, and `update_todo`
- * permission. See SPEC 8 § "Adaptive thresholds: harness shape gate"
- * for the canonical mapping.
+ * `thinking.budget_tokens` cap and soft block limit. See SPEC 8
+ * § "Adaptive thresholds: harness shape gate" for the canonical mapping.
  */
 export type HarnessShape = 'lean' | 'standard' | 'rich' | 'max';
 
@@ -405,23 +344,6 @@ export function harnessShapeForEffort(effort: ThinkingEffort): HarnessShape {
     case 'max':
       return 'max';
   }
-}
-
-/**
- * [SPEC 8 v0.5.1] One row in an `update_todo` payload. Mirrored from
- * `packages/engine/src/tools/update-todo.ts`. Kept here so hosts that
- * consume `EngineEvent` don't need to depend on the tool module.
- *
- * [SPEC 9 v0.1.3 P9.3] `persist?: boolean` — when true, hosts wired
- * for goal storage (audric) write a long-lived `Goal` row from this
- * item. Engine is unaware of how the host persists; this flag just
- * passes through on the `todo_update` side-channel event.
- */
-export interface TodoItem {
-  id: string;
-  label: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  persist?: boolean;
 }
 
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
@@ -941,55 +863,18 @@ export interface ToolFlags {
 
 export type PreflightResult =
   | { valid: true }
-  | { valid: false; error: string }
-  // [SPEC 9 v0.1.3 P9.4] Tool needs structured input before it can run.
-  // Engine yields `pending_input` (with the schema below) and pauses the
-  // turn; the host renders the form, the user fills it, the host calls
-  // `engine.resumeWithInput(inputId, values)` to feed values back as the
-  // tool's input. Distinct from `{ valid: false, error }` — that pushes a
-  // tool_result error back to the LLM so it can re-ask; this PAUSES the
-  // engine and waits for a separate user-supplied payload.
-  //
-  // Note: `valid: false` sits on this branch too because the tool's
-  // `call()` body MUST NOT run with the original (incomplete) input. The
-  // engine treats this branch as "valid pause request" and never fires
-  // the `error` narration path.
-  | {
-      valid: false;
-      needsInput: {
-        schema: FormSchema;
-        description?: string;
-      };
-    };
+  | { valid: false; error: string };
 
-export interface Tool<TInput = unknown, TOutput = unknown> {
-  name: string;
-  description: string;
-  inputSchema: z.ZodType<TInput>;
-  jsonSchema: ToolJsonSchema;
-  call(input: TInput, context: ToolContext): Promise<ToolResult<TOutput>>;
-  isConcurrencySafe: boolean;
-  isReadOnly: boolean;
-  permissionLevel: PermissionLevel;
-  flags: ToolFlags;
-  preflight?: (input: unknown) => PreflightResult;
-  /** Max chars for the serialized tool result. Truncated with a re-call hint when exceeded. */
-  maxResultSizeChars?: number;
-  /** Custom truncation strategy. Falls back to generic slice + hint when omitted. */
-  summarizeOnTruncate?: (result: string, maxChars: number) => string;
-  /**
-   * [v1.5.1] Whether `microcompact` may dedupe this tool's results across
-   * multiple calls with identical input. Default `true` — most tools are
-   * effectively pure within a session (price lookups, protocol info,
-   * yield pools). Set to `false` for tools whose result depends on
-   * mutable on-chain state and therefore changes after writes
-   * (`balance_check`, `savings_info`, `health_check`,
-   * `transaction_history`). Non-cacheable tools are excluded from the
-   * `seen` map entirely, so neither this call nor any later call with
-   * the same input gets replaced with a "[Same result …]" back-reference.
-   */
-  cacheable?: boolean;
-}
+// [P4.1 / v3.0.0 / 2026-05-25] The legacy `Tool` interface (with `.call()`
+// + `.name` + `.permissionLevel`) was removed. Every engine tool is now
+// a native AI SDK `tool({...})` shaped object. Per-tool metadata that
+// used to live here lives in central registries:
+//   - permissionLevel / isReadOnly / isConcurrencySafe / cacheable /
+//     maxResultSizeChars → `v2/tool-policy.ts` (`TOOL_POLICY`)
+//   - flags                                                  → `tool-flags.ts` (`TOOL_FLAGS`)
+//   - preflight                                              → attached on the AI SDK
+//     execute function as `__t2000_preflight` via `wrapEngineExecute`
+// Hosts that need a tool type import `Tool` / `ToolSet` from `'ai'`.
 
 // ---------------------------------------------------------------------------
 // Thinking configuration (Anthropic extended thinking / adaptive)
@@ -1027,7 +912,16 @@ export interface EngineConfig {
   serverPositions?: ServerPositionData; // Pre-fetched positions from the host app
   /** Fresh on-chain position reader — called per tool invocation, bypasses MCP caching. */
   positionFetcher?: (address: string) => Promise<ServerPositionData>;
-  tools?: Tool[];
+  /**
+   * Tools the engine dispatches. Accepts an AI SDK `ToolSet`
+   * (`Record<string, AISDKTool>`) directly — no wrapping or conversion.
+   *
+   * [P4.1 Phase C — 2026-05-25] Pre-Phase-C this was a legacy `Tool[]`
+   * the engine fed through `toAISDKTools`/`wrapLegacyTool`. After every
+   * in-tree tool migrated to native AI SDK shape, the conversion layer
+   * dropped out and this type became `ToolSet` directly.
+   */
+  tools?: ToolSet;
   systemPrompt?: SystemPrompt;
   model?: string;
   maxTurns?: number;

@@ -108,8 +108,8 @@ const TABS: TerminalTab[] = [
     lines: [
       { text: "$ node engine-demo.mjs", color: "white", delay: 0 },
       { text: "", delay: 300 },
-      { text: "  import { QueryEngine } from '@t2000/engine'", color: "dim", delay: 200 },
-      { text: "  const engine = new QueryEngine({ tools: 37 })", color: "dim", delay: 200 },
+      { text: "  import { AISDKEngine } from '@t2000/engine'", color: "dim", delay: 200 },
+      { text: "  const engine = new AISDKEngine({ tools: 26 })", color: "dim", delay: 200 },
       { text: "", delay: 300 },
       { text: "  → Classifying effort...", color: "dim", delay: 400 },
       { text: "  ✓ Effort: moderate — matched skill: swap-and-save", color: "green", delay: 350 },

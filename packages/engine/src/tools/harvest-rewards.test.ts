@@ -19,6 +19,9 @@ import { describe, it, expect } from 'vitest';
 import type { PendingReward } from '@t2000/sdk';
 import { harvestRewardsTool, narrateHarvestResult } from './harvest-rewards.js';
 
+import { callToolBody, legacyToolView, zodSchemaOf } from '../__tests__/_helpers/call-tool-body.js';
+
+const harvestRewardsView = legacyToolView(harvestRewardsTool, 'harvest_rewards');
 interface HarvestRewardsResultShape {
   success: boolean;
   tx: string | null;
@@ -45,32 +48,32 @@ interface HarvestRewardsResultShape {
 
 describe('harvest_rewards tool registration', () => {
   it('is registered as a confirm-level write (never auto-executes)', () => {
-    expect(harvestRewardsTool.isReadOnly).toBe(false);
-    expect(harvestRewardsTool.permissionLevel).toBe('confirm');
-    expect(harvestRewardsTool.flags?.mutating).toBe(true);
+    expect(harvestRewardsView.isReadOnly).toBe(false);
+    expect(harvestRewardsView.permissionLevel).toBe('confirm');
+    expect(harvestRewardsView.flags?.mutating).toBe(true);
   });
 
   it('has no required inputs (the chip can call with literal `{}`)', () => {
     // Empty object should pass validation.
-    const parsed = harvestRewardsTool.inputSchema.safeParse({});
+    const parsed = zodSchemaOf(harvestRewardsTool).safeParse({});
     expect(parsed.success).toBe(true);
   });
 
   it('accepts optional slippage in the [0.001, 0.05] range', () => {
-    expect(harvestRewardsTool.inputSchema.safeParse({ slippage: 0.005 }).success).toBe(true);
-    expect(harvestRewardsTool.inputSchema.safeParse({ slippage: 0.05 }).success).toBe(true);
-    expect(harvestRewardsTool.inputSchema.safeParse({ slippage: 0.0009 }).success).toBe(false);
-    expect(harvestRewardsTool.inputSchema.safeParse({ slippage: 0.06 }).success).toBe(false);
+    expect(zodSchemaOf(harvestRewardsTool).safeParse({ slippage: 0.005 }).success).toBe(true);
+    expect(zodSchemaOf(harvestRewardsTool).safeParse({ slippage: 0.05 }).success).toBe(true);
+    expect(zodSchemaOf(harvestRewardsTool).safeParse({ slippage: 0.0009 }).success).toBe(false);
+    expect(zodSchemaOf(harvestRewardsTool).safeParse({ slippage: 0.06 }).success).toBe(false);
   });
 
   it('accepts optional minRewardUsd >= 0 (0 disables the dust floor)', () => {
-    expect(harvestRewardsTool.inputSchema.safeParse({ minRewardUsd: 0 }).success).toBe(true);
-    expect(harvestRewardsTool.inputSchema.safeParse({ minRewardUsd: 0.05 }).success).toBe(true);
-    expect(harvestRewardsTool.inputSchema.safeParse({ minRewardUsd: -1 }).success).toBe(false);
+    expect(zodSchemaOf(harvestRewardsTool).safeParse({ minRewardUsd: 0 }).success).toBe(true);
+    expect(zodSchemaOf(harvestRewardsTool).safeParse({ minRewardUsd: 0.05 }).success).toBe(true);
+    expect(zodSchemaOf(harvestRewardsTool).safeParse({ minRewardUsd: -1 }).success).toBe(false);
   });
 
   it('returns a pre-confirm narration shell (post-confirm narration is built in narrateHarvestResult)', async () => {
-    const result = await harvestRewardsTool.call({}, {});
+    const result = await callToolBody(harvestRewardsTool, {}, {});
     expect(result.displayText).toContain('harvest');
     expect(result.displayText).toMatch(/claim|swap|deposit/i);
     const data = result.data as { success: boolean; degraded: boolean; expectedUsdcDeposited: number };

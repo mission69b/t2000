@@ -1,5 +1,116 @@
 # Changelog
 
+## 3.0.0 — 2026-05-25 — AI SDK Hardening P4.1 — `defineTool` → native `tool()` migration
+
+**MAJOR.** Public API surface narrows. Every production tool now ships in native AI SDK `tool()` shape; `defineTool()` and the legacy `Tool` interface are deleted from the public API. Bundleability + cacheability + concurrency-safety + per-tool flags move to NAME-keyed lookups via the central `tool-policy.ts` + `tool-flags.ts` registries — tool objects no longer carry that metadata.
+
+Why now: `Tool` was a 2024-era handcrafted interface that predated the AI SDK Tool primitive. Keeping both shapes forced every consumer (engine, audric, CLI, MCP) to know about `applyToolFlags()` + `toAISDKTools()` wrappers + `Tool[]` arrays AND the AI SDK `ToolSet` object shape. Collapsing to one shape removes ~600 LoC of adapter code and aligns every host with the AI SDK convention.
+
+### Breaking — removed exports
+
+- `Tool` (the legacy engine `Tool<TInput, TOutput>` interface — types.ts)
+- `defineTool` (the v2 tool factory — `v2/define-tool.ts`)
+- `applyToolFlags` (legacy `Tool[]` → flagged `Tool[]` mapper — `tool-flags.ts`)
+- `toAISDKTools` / `wrapLegacyTool` (legacy `Tool[]` → AI SDK `ToolSet` adapter — `v2/tool-wrapper.ts`)
+- `TxMutex` + `runTools` (legacy orchestration — `orchestration.ts`)
+- `EarlyToolDispatcher` (legacy streaming dispatcher — `early-dispatcher.ts`)
+- `QueryEngine` + `AnthropicProvider` aliases (deleted in 2.0.0; references purged from comments + dist)
+- `READ_TOOLS` / `WRITE_TOOLS` (legacy `Tool[]` arrays — `tools/index.ts`)
+- `findTool` / `toolsToDefinitions` (consumer-facing `Tool[]` helpers)
+- `budgetToolResult` (legacy result budgeting — replaced by per-tool `maxResultSizeChars` inside `wrapEngineExecute`)
+- `buildMcpTools` / `registerEngineTools` / `McpToolDescriptor` (server-side MCP adapter — superseded by `McpClientManager` for the client direction; no remaining consumers in the server direction)
+- `ToolSchema` / `ToolDefinitionResult` (replaced by AI SDK's `inputSchema` + `Tool['execute']` return type)
+- `EngineEvent.type === 'pending_input'` (`pending_input.ts` + the dead SPEC 9 v0.1.2 reserved event)
+
+### Breaking — removed tools
+
+- `add_recipient` (dead — audric persists contacts host-side via Prisma; engine tool was never wired into a host)
+- `update_todo` (dead — audric narrates plans via harness timeline + bundle Confirm card; the LLM-driven todo list never earned its rendering complexity in production)
+
+### Breaking — renamed exports
+
+- `READ_TOOLS: Tool[]` → `READ_TOOL_SET: ToolSet` + `READ_TOOL_NAMES: readonly string[]`
+- `WRITE_TOOLS: Tool[]` → `WRITE_TOOL_SET: ToolSet` + `WRITE_TOOL_NAMES: readonly string[]`
+- `getDefaultTools(): Tool[]` → `getDefaultTools(): ToolSet` (returns a fresh merged object each call)
+
+### Breaking — signature changes
+
+- `BundleCompositionInput.tools: Tool[]` removed (bundle composer resolves bundleability + modifiableFields + descriptions by NAME via central registries).
+- `PendingToolCall` shape narrowed to `{id, name, input}` — the optional `tool: Tool` field is gone (same reason as above).
+- `buildStepFinishHandler(tools: ToolSet, ...)` — was `Tool[]`. Existence check now reads `tools[name] !== undefined`.
+- Host-side dispatchers (audric/web-v2's `dispatch-intents.ts` + `post-write-refresh.ts` ported in M2): `registry: Map<string, Tool>` → `registry: ToolSet`; `tool.call(input, ctx)` → `tool.execute(input, { toolCallId, messages: [], experimental_context: internalContext })`.
+
+### Tool author migration
+
+`defineTool({ name, description, schema, permissionLevel, isReadOnly, call, preflight })` → `tool({ description, inputSchema, needsApproval, execute })`:
+
+```ts
+// BEFORE (deleted)
+export const myTool = defineTool({
+  name: 'my_tool',
+  description: 'Reads X',
+  permissionLevel: 'auto',
+  isReadOnly: true,
+  schema: MyInputSchema,
+  preflight: (input) => ({ valid: true }),
+  call: async (input, ctx) => ({ data: { ... }, displayText: '...' }),
+});
+
+// AFTER (native AI SDK)
+import { tool } from 'ai';
+import { wrapEngineExecute } from '@t2000/engine';
+
+export const myTool = tool({
+  description: 'Reads X',
+  inputSchema: MyInputSchema,
+  execute: wrapEngineExecute<MyInput, MyOutput>('my_tool', {
+    preflight: (input) => ({ valid: true }),
+    call: async (input, ctx) => ({ data: { ... }, displayText: '...' }),
+  }),
+});
+```
+
+Then register the tool's policy + flags in the central registries (`v2/tool-policy.ts` + `tool-flags.ts`) under the tool name. The factory + central-registry split lets `wrapEngineExecute` resolve `needsApproval` + guard injection + USD-aware permission gating without the tool object having to carry that metadata.
+
+### Host migration (audric, gateway, CLI)
+
+- Replace `toAISDKTools([...READ_TOOLS, ...WRITE_TOOLS])` with `{ ...READ_TOOL_SET, ...WRITE_TOOL_SET }` (or `getDefaultTools()`).
+- Replace `applyToolFlags(WRITE_TOOLS).find(t => t.name === name)` with a `WRITE_TOOL_NAMES`-derived `Set<string>` check + central-registry lookups (`isBundleableTool(name)`, `getToolFlags(name)`, `getToolPolicy(name)`).
+- Replace `tool.call(input, ctx)` (legacy adapter shape) with `tool.execute(input, { toolCallId, messages, experimental_context: internalContext })` (native AI SDK shape). The InternalContext envelope is `buildInternalContext({...})` from the same module.
+- Drop `BundleCompositionInput.tools` from `composeBundleFromToolResults({...})` call sites.
+- Drop the `tool` reference field from any `PendingToolCall` literal you construct.
+
+audric/web-v2 v0.2.0-phase2-day2a-prereq+ ships the host-side reference impl (`apps/web-v2/app/api/chat/route.ts` + `lib/audric/{dispatch-intents,post-write-refresh,system-prompt}.ts`).
+
+### Retained — kept for back-compat
+
+- `ToolDefinition` (used by `LLMProvider` interface). The `LLMProvider` pathway is itself dead code (the v2 engine wraps AI SDK's `streamText` directly; the legacy provider abstraction has zero remaining consumers). Targeted for v3.1.x cleanup.
+- `ToolContext` + `EngineConfig` + `InternalContext` + `buildInternalContext` + `asInternalContext` + `tryGetInternalContext` — all preserved verbatim. Hosts threading the experimental_context envelope are unaffected.
+- `wrapEngineExecute(name, { preflight, call })` — public helper for new tool authors. Runs preflight → guards → call body, returns `result.data` directly. Sets non-enumerable `__t2000_callBody` + `__t2000_preflight` properties on the returned execute function so test helpers can invoke the body bypassing the wrap layer (production code never reads these — they're test-only side doors).
+
+### Internal — same major
+
+- `compose-bundle.ts`, `microcompact.ts`, `describe-action.ts`, `guards.ts`, `v2/engine.ts`, `v2/step-finish.ts`, `v2/guard-runner.ts` all refactored to NAME-keyed lookups via central registries. No `Tool` import remaining anywhere in the engine source tree.
+- `isSafeToDedupTool` in `v2/engine.ts` corrected to use `policy.isConcurrencySafe ?? policy.isReadOnly` (within-step dedupe semantic) instead of `policy.cacheable === true` (cross-turn dedupe semantic). Pre-fix `balance_check` lost concurrency-safe dedupe within a step when payment-link policies set `cacheable: false`.
+- `create_payment_link` + `cancel_payment_link` policies explicitly set `cacheable: false` + `isConcurrencySafe: false`. They're auto-tier (no user tap) but each invocation produces fresh state (new URL on create, distinct row on cancel) — collapsing them would lie to the user.
+- Test suite refactored via test-only helper adapter (`__tests__/_helpers/call-tool-body.ts` — `defineToolForTest` + `legacyToolView` + `makeGuardView` + `asToolSet` + `callToolBody` + `callToolPreflight` + `zodSchemaOf`) so the existing 1262-test suite continues to typecheck + run unchanged. Adapter is test-only by construction (lives under `__tests__/_helpers/`, not exported from `index.ts`).
+
+### Verification
+
+- Engine: 1262 tests passed, 10 skipped (`RUN_REAL`-gated real-API tests), 0 failures. Typecheck + lint + build clean (364KB ESM + 204KB d.ts).
+- audric/web-v2: 179 tests passed (host-side smoke). Typecheck + lint clean.
+- CLI: 35 tests passed. Typecheck clean.
+- MCP: 130 tests passed. Typecheck clean.
+
+### Cross-references
+
+- SPEC entry: `spec/active/shipping/SPEC_AI_SDK_HARDENING.md` § Phase 4 P4.1.
+- Test helper: `packages/engine/src/__tests__/_helpers/call-tool-body.ts`.
+- Wrap helper: `packages/engine/src/v2/tool-helpers.ts` (`wrapEngineExecute`).
+- Central registries: `packages/engine/src/v2/tool-policy.ts` (`TOOL_POLICY`, `getToolPolicy`, `registerToolPolicy`), `packages/engine/src/tool-flags.ts` (`TOOL_FLAGS`, `getToolFlags`, `isBundleableTool`).
+
+---
+
 ## 2.18.1 — 2026-05-23 — S.277 residue cleanup
 
 Follow-up patch to 2.18.0. The original cut missed mirroring the S.245 pattern: deleting a tool should also scrub it from the parallel registries that key on tool names. This patch closes those gaps. No behavior change for any consumer that already migrated to 2.18.0 — all deletions here are dead branches (the tool names referenced are no longer registered, so lookups for them never happened).

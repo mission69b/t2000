@@ -38,7 +38,7 @@ function ctx(over: Partial<ToolContext> = {}): ToolContext {
     retryStats: { attemptCount: 1 },
     portfolioCache: new Map(),
     ...over,
-  } as ToolContext;
+  } as unknown as ToolContext;
 }
 
 const HAPPY_RATES = {

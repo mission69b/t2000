@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { activitySummaryTool } from '../tools/activity-summary.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
+import type { ToolContext } from '../types.js';
 /**
  * [v0.49] Regression suite for address-scoped activity_summary.
  *
@@ -30,7 +32,7 @@ function ctx(wallet: string | undefined = USER_ADDR) {
     walletAddress: wallet,
     env: { AUDRIC_INTERNAL_API_URL: API_URL },
     signal: undefined,
-  } as Parameters<typeof activitySummaryTool.call>[1];
+  } as unknown as ToolContext;
 }
 
 describe('[v0.49] activity_summary address scope', () => {
@@ -49,7 +51,7 @@ describe('[v0.49] activity_summary address scope', () => {
   });
 
   it('defaults to context.walletAddress when input.address is omitted', async () => {
-    const res = await activitySummaryTool.call({}, ctx());
+    const res = await callToolBody(activitySummaryTool, {}, ctx());
     expect(res.data.address).toBe(USER_ADDR);
     expect(res.data.isSelfQuery).toBe(true);
     const url = fetchMock.mock.calls[0]![0] as string;
@@ -57,7 +59,7 @@ describe('[v0.49] activity_summary address scope', () => {
   });
 
   it('honors explicit input.address (the fix)', async () => {
-    const res = await activitySummaryTool.call({ address: FUNKII_ADDR }, ctx());
+    const res = await callToolBody(activitySummaryTool, { address: FUNKII_ADDR }, ctx());
     expect(res.data.address).toBe(FUNKII_ADDR);
     expect(res.data.isSelfQuery).toBe(false);
     const url = fetchMock.mock.calls[0]![0] as string;
@@ -66,13 +68,13 @@ describe('[v0.49] activity_summary address scope', () => {
   });
 
   it('sends the signed-in user as x-sui-address (auth caller) even for non-self queries', async () => {
-    await activitySummaryTool.call({ address: FUNKII_ADDR }, ctx());
+    await callToolBody(activitySummaryTool, { address: FUNKII_ADDR }, ctx());
     const init = fetchMock.mock.calls[0]![1] as RequestInit;
     expect((init.headers as Record<string, string>)['x-sui-address']).toBe(USER_ADDR);
   });
 
   it('case-insensitive equality decides isSelfQuery', async () => {
-    const res = await activitySummaryTool.call(
+    const res = await callToolBody(activitySummaryTool, 
       { address: USER_ADDR.toUpperCase() },
       ctx(),
     );
@@ -80,7 +82,7 @@ describe('[v0.49] activity_summary address scope', () => {
   });
 
   it('prefixes the displayText with a truncated-address subject for non-self queries', async () => {
-    const res = await activitySummaryTool.call({ address: FUNKII_ADDR }, ctx());
+    const res = await callToolBody(activitySummaryTool, { address: FUNKII_ADDR }, ctx());
     expect(res.displayText).toContain(FUNKII_ADDR.slice(0, 6));
     expect(res.displayText).toContain(FUNKII_ADDR.slice(-4));
   });
@@ -89,8 +91,8 @@ describe('[v0.49] activity_summary address scope', () => {
     const noWalletCtx = {
       env: { AUDRIC_INTERNAL_API_URL: API_URL },
       signal: undefined,
-    } as Parameters<typeof activitySummaryTool.call>[1];
-    const res = await activitySummaryTool.call({}, noWalletCtx);
+    } as unknown as ToolContext;
+    const res = await callToolBody(activitySummaryTool, {}, noWalletCtx);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(res.data.totalTransactions).toBe(0);
   });

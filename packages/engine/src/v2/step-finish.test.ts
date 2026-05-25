@@ -18,8 +18,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import type { StepResult, ToolSet } from 'ai';
-import { defineTool } from './define-tool.js';
-import type { Tool as LegacyTool } from '../types.js';
+import {
+  defineToolForTest as defineTool,
+  asToolSet,
+  type TestDefinedTool,
+} from '../__tests__/_helpers/call-tool-body.js';
+type LegacyTool = TestDefinedTool;
 import { createGuardRunnerState, DEFAULT_GUARD_CONFIG } from '../guards.js';
 import { DEFAULT_PERMISSION_CONFIG } from '../permission-rules.js';
 import { buildStepFinishHandler, type StepFinishMutableState } from './step-finish.js';
@@ -155,7 +159,7 @@ describe('buildStepFinishHandler', () => {
     const tool = makeWriteTool('send_transfer');
     const internal = makeInternal({ onAutoExecuted });
     const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-    const handler = buildStepFinishHandler([tool], internal, mutable);
+    const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
     const step = makeStep([
       {
@@ -185,7 +189,7 @@ describe('buildStepFinishHandler', () => {
     const tool = makeReadTool('balance_check');
     const internal = makeInternal({ onAutoExecuted });
     const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-    const handler = buildStepFinishHandler([tool], internal, mutable);
+    const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
     const step = makeStep([
       {
@@ -207,7 +211,7 @@ describe('buildStepFinishHandler', () => {
     const tool = makeWriteTool('send_transfer');
     const internal = makeInternal({ onAutoExecuted });
     const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-    const handler = buildStepFinishHandler([tool], internal, mutable);
+    const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
     const step = makeStep(
       [],
@@ -231,7 +235,7 @@ describe('buildStepFinishHandler', () => {
     const tool = makeWriteTool('send_transfer');
     const internal = makeInternal();
     const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-    const handler = buildStepFinishHandler([tool], internal, mutable);
+    const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
     const step1 = makeStep([
       {
@@ -268,7 +272,7 @@ describe('buildStepFinishHandler', () => {
     const tool = makeWriteTool('send_transfer');
     const internal = makeInternal({ onAutoExecuted });
     const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-    const handler = buildStepFinishHandler([tool], internal, mutable);
+    const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
     const step = makeStep([
       {
@@ -328,7 +332,7 @@ describe('buildStepFinishHandler', () => {
       const tool = makeWriteTool('send_transfer');
       const internal = makeInternal();
       const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-      const handler = buildStepFinishHandler([tool], internal, mutable);
+      const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
       const step = makeStep([
         {
@@ -353,7 +357,7 @@ describe('buildStepFinishHandler', () => {
       const tool = makeReadTool('balance_check');
       const internal = makeInternal();
       const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-      const handler = buildStepFinishHandler([tool], internal, mutable);
+      const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
       const step = makeStep([
         {
@@ -375,7 +379,7 @@ describe('buildStepFinishHandler', () => {
       const tool = makeWriteTool('send_transfer');
       const internal = makeInternal();
       const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-      const handler = buildStepFinishHandler([tool], internal, mutable);
+      const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
       const step = makeStep(
         [],
@@ -400,7 +404,7 @@ describe('buildStepFinishHandler', () => {
       const tool = makeWriteTool('send_transfer');
       const internal = makeInternal({ walletAddress: undefined });
       const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-      const handler = buildStepFinishHandler([tool], internal, mutable);
+      const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
       const step = makeStep([
         {
@@ -432,7 +436,7 @@ describe('buildStepFinishHandler', () => {
       const tool = makeWriteTool('send_transfer');
       const internal = makeInternal();
       const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-      const handler = buildStepFinishHandler([tool], internal, mutable);
+      const handler = buildStepFinishHandler(asToolSet(tool), internal, mutable);
 
       const step = makeStep([
         {
@@ -455,7 +459,7 @@ describe('buildStepFinishHandler', () => {
     const writeTool = makeWriteTool('send_transfer');
     const internal = makeInternal();
     const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-    const handler = buildStepFinishHandler([readTool, writeTool], internal, mutable);
+    const handler = buildStepFinishHandler(asToolSet(readTool, writeTool), internal, mutable);
 
     // Pre-state: balance tracker has never read.
     expect(internal.guardState.balanceTracker.hasEverRead()).toBe(false);

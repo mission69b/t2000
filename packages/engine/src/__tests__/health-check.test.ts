@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { healthCheckTool } from '../tools/health.js';
 import type { ToolContext, ServerPositionData } from '../types.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
 /**
  * Build a ToolContext that exercises the `positionFetcher` branch — we
  * don't want the test to depend on the SDK or NAVI MCP being wired up.
@@ -32,14 +33,14 @@ describe('health_check tool — zero-debt regression coverage', () => {
   // status as 'healthy', and have the UI / LLM branch on null.
 
   it('sends healthFactor=null when borrowed is 0', async () => {
-    const result = await healthCheckTool.call({}, ctxFor({ savings: 10, borrows: 0 }));
+    const result = await callToolBody(healthCheckTool, {}, ctxFor({ savings: 10, borrows: 0 }));
     const data = result.data as { healthFactor: number | null; status: string };
     expect(data.healthFactor).toBeNull();
     expect(data.status).toBe('healthy');
   });
 
   it('treats sub-cent dust debt as no-debt (healthy + null HF)', async () => {
-    const result = await healthCheckTool.call(
+    const result = await callToolBody(healthCheckTool, 
       {},
       ctxFor({ savings: 10, borrows: 0.000018, healthFactor: 0.0001 }),
     );
@@ -49,7 +50,7 @@ describe('health_check tool — zero-debt regression coverage', () => {
   });
 
   it('preserves real HF when there is real debt', async () => {
-    const result = await healthCheckTool.call(
+    const result = await callToolBody(healthCheckTool, 
       {},
       ctxFor({ savings: 10, borrows: 1, healthFactor: 8.49 }),
     );
@@ -59,7 +60,7 @@ describe('health_check tool — zero-debt regression coverage', () => {
   });
 
   it('flags real critical HF (< 1.2) only when there is real debt', async () => {
-    const result = await healthCheckTool.call(
+    const result = await callToolBody(healthCheckTool, 
       {},
       ctxFor({ savings: 10, borrows: 5, healthFactor: 1.05 }),
     );
@@ -68,14 +69,14 @@ describe('health_check tool — zero-debt regression coverage', () => {
   });
 
   it('display text says "no debt" instead of a misleading "0.00" when borrowed=0', async () => {
-    const result = await healthCheckTool.call({}, ctxFor({ savings: 10, borrows: 0 }));
+    const result = await callToolBody(healthCheckTool, {}, ctxFor({ savings: 10, borrows: 0 }));
     expect(result.displayText).toContain('∞');
     expect(result.displayText?.toLowerCase()).toContain('no debt');
     expect(result.displayText).not.toContain('0.00');
   });
 
   it('never produces "Critical 0.00" for a no-debt account', async () => {
-    const result = await healthCheckTool.call({}, ctxFor({ savings: 10, borrows: 0 }));
+    const result = await callToolBody(healthCheckTool, {}, ctxFor({ savings: 10, borrows: 0 }));
     expect(result.displayText).not.toMatch(/critical/i);
   });
 });
@@ -92,7 +93,7 @@ describe('health_check tool — zero-debt regression coverage', () => {
 
 describe('health_check tool — Day 14b per-asset arrays (positionFetcher)', () => {
   it('emits suppliedAssets + borrowedAssets re-keyed from ServerPositionData', async () => {
-    const result = await healthCheckTool.call(
+    const result = await callToolBody(healthCheckTool, 
       {},
       ctxFor({
         savings: 22.67,
@@ -121,7 +122,7 @@ describe('health_check tool — Day 14b per-asset arrays (positionFetcher)', () 
   });
 
   it('emits empty arrays when ServerPositionData supplies/borrows_detail are empty', async () => {
-    const result = await healthCheckTool.call({}, ctxFor({ savings: 0, borrows: 0 }));
+    const result = await callToolBody(healthCheckTool, {}, ctxFor({ savings: 0, borrows: 0 }));
     const data = result.data as {
       suppliedAssets: unknown[];
       borrowedAssets: unknown[];
@@ -134,7 +135,7 @@ describe('health_check tool — Day 14b per-asset arrays (positionFetcher)', () 
     // [Day 14b polish] NAVI leaves dust after partial repays. Without
     // the dust filter, audric would render rows like "USDe $0.00" /
     // "USDsui $0.00" that the aggregate already collapses to "$0.00".
-    const result = await healthCheckTool.call(
+    const result = await callToolBody(healthCheckTool, 
       {},
       ctxFor({
         savings: 5000.001, // ~5000 + dust
@@ -164,7 +165,7 @@ describe('health_check tool — Day 14b per-asset arrays (positionFetcher)', () 
   });
 
   it('preserves the aggregated totals alongside the per-asset arrays (backward-compat)', async () => {
-    const result = await healthCheckTool.call(
+    const result = await callToolBody(healthCheckTool, 
       {},
       ctxFor({
         savings: 22.67,

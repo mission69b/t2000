@@ -1,5 +1,11 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 5 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { PreflightResult, ToolContext, ToolResult } from '../types.js';
 import { requireAgent } from './utils.js';
 // [v2.0.3 / 2026-05-17] Sub-cent residual debt is treated as zero —
 // otherwise the LLM narrates "Remaining debt is minimal at $0.001"
@@ -9,32 +15,46 @@ import { DEBT_DUST_USD } from '../dust.js';
 
 const REPAY_ASSETS = ['USDC', 'USDsui'] as const;
 
-export const repayDebtTool = defineTool({
-  name: 'repay_debt',
-  description:
-    'Repay outstanding USDC or USDsui debt. Always call balance_check first to know the debt amount + which asset is owed (savings_info shows per-asset borrow positions). ' +
-    'Pass asset="USDC" or asset="USDsui" to target a specific debt. When omitted, repays the highest-APY borrow first. ' +
-    'Important: a USDsui debt MUST be repaid with USDsui (and USDC debt with USDC) — the SDK fetches the correct coin type for the targeted asset, but the user must hold enough of that stable in their wallet. ' +
-    'If the user has only the wrong stable, do NOT auto-swap — tell them to swap manually first. Returns tx hash, amount repaid, asset, and remaining debt. ' +
-    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "repay debt then withdraw the rest"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
-  inputSchema: z.object({
-    amount: z.number().positive().describe('Exact amount to repay (in units of the chosen asset; call balance_check first)'),
-    asset: z.enum(REPAY_ASSETS).optional().describe('Asset of the borrow being repaid. "USDC" or "USDsui". When omitted, repays the highest-APY borrow first.'),
-  }),
-  isReadOnly: false,
-  permissionLevel: 'confirm',
-  flags: { mutating: true, requiresBalance: true },
-  preflight: (input) => {
-    if (input.asset) {
-      const allowed = (REPAY_ASSETS as readonly string[]).map((a) => a.toUpperCase());
-      if (!allowed.includes(input.asset.toUpperCase())) {
-        return { valid: false, error: `Only USDC or USDsui repays are supported. Got: "${input.asset}"` };
-      }
-    }
-    return { valid: true };
-  },
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const repayDebtDescription =
+  'Repay outstanding USDC or USDsui debt. Always call balance_check first to know the debt amount + which asset is owed (savings_info shows per-asset borrow positions). ' +
+  'Pass asset="USDC" or asset="USDsui" to target a specific debt. When omitted, repays the highest-APY borrow first. ' +
+  'Important: a USDsui debt MUST be repaid with USDsui (and USDC debt with USDC) — the SDK fetches the correct coin type for the targeted asset, but the user must hold enough of that stable in their wallet. ' +
+  'If the user has only the wrong stable, do NOT auto-swap — tell them to swap manually first. Returns tx hash, amount repaid, asset, and remaining debt. ' +
+  'Payment Intent: composable — when paired with another composable write in the same request (e.g. "repay debt then withdraw the rest"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.';
 
-  async call(input, context) {
+const repayDebtInputSchema = z.object({
+  amount: z.number().positive().describe('Exact amount to repay (in units of the chosen asset; call balance_check first)'),
+  asset: z.enum(REPAY_ASSETS).optional().describe('Asset of the borrow being repaid. "USDC" or "USDsui". When omitted, repays the highest-APY borrow first.'),
+});
+
+type RepayDebtInput = z.infer<typeof repayDebtInputSchema>;
+
+interface RepayDebtOutput {
+  success: boolean;
+  tx: string;
+  amount: number;
+  asset: string;
+  remainingDebt: number;
+  gasCost?: number;
+}
+
+function repayDebtPreflight(input: RepayDebtInput): PreflightResult {
+  if (input.asset) {
+    const allowed = (REPAY_ASSETS as readonly string[]).map((a) => a.toUpperCase());
+    if (!allowed.includes(input.asset.toUpperCase())) {
+      return { valid: false, error: `Only USDC or USDsui repays are supported. Got: "${input.asset}"` };
+    }
+  }
+  return { valid: true };
+}
+
+async function repayDebtCallBody(
+  input: RepayDebtInput,
+  context: ToolContext,
+): Promise<ToolResult<RepayDebtOutput>> {
     const agent = requireAgent(context);
     const asset = input.asset as 'USDC' | 'USDsui' | undefined;
     const result = await agent.repay({ amount: input.amount, asset });
@@ -63,5 +83,17 @@ export const repayDebtTool = defineTool({
         ? `Repaid ${result.amount.toFixed(2)} ${repaidAsset} — no remaining debt (tx: ${result.tx.slice(0, 8)}…)`
         : `Repaid ${result.amount.toFixed(2)} ${repaidAsset} — remaining debt: $${cleanRemainingDebt.toFixed(2)} (tx: ${result.tx.slice(0, 8)}…)`,
     };
-  },
+}
+
+export const repayDebtTool = tool({
+  description: repayDebtDescription,
+  inputSchema: repayDebtInputSchema,
+  needsApproval: buildNeedsApproval('repay_debt'),
+  execute: wrapEngineExecute<RepayDebtInput, RepayDebtOutput>(
+    'repay_debt',
+    {
+      preflight: repayDebtPreflight,
+      call: repayDebtCallBody,
+    },
+  ),
 });

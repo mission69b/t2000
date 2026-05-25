@@ -1,6 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import { getDecimalsForCoinType, resolveSymbol } from '@t2000/sdk';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 3 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 const inputSchema = z.object({
   digest: z.string().describe('Sui transaction digest to explain'),
@@ -21,13 +27,18 @@ interface ExplainedTx {
   summary: string;
 }
 
-export const explainTxTool = defineTool({
-  name: 'explain_tx',
-  description:
-    'Decode an ARBITRARY Sui transaction digest (one the user pasted, received from a friend, or pulled off a block explorer) into plain English — transfers, swaps, deposits, status, gas. Use ONLY when the user supplies a specific tx digest from outside Audric. For the user\'s OWN recent activity, use `transaction_history` instead — it already decodes their txs with friendlier symbols, timestamps, and grouping. Do not call `explain_tx` to "verify" a write the user just made through Audric (the engine\'s post-write refresh + receipt card already handle that).',
-  inputSchema,
-  isReadOnly: true,
-  async call(input, context) {
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const explainTxDescription =
+  'Decode an ARBITRARY Sui transaction digest (one the user pasted, received from a friend, or pulled off a block explorer) into plain English — transfers, swaps, deposits, status, gas. Use ONLY when the user supplies a specific tx digest from outside Audric. For the user\'s OWN recent activity, use `transaction_history` instead — it already decodes their txs with friendlier symbols, timestamps, and grouping. Do not call `explain_tx` to "verify" a write the user just made through Audric (the engine\'s post-write refresh + receipt card already handle that).';
+
+type ExplainTxInput = z.infer<typeof inputSchema>;
+
+async function explainTxCallBody(
+  input: ExplainTxInput,
+  context: ToolContext,
+): Promise<ToolResult<ExplainedTx>> {
     const rpcUrl = context.suiRpcUrl ?? 'https://fullnode.mainnet.sui.io:443';
 
     const res = await fetch(rpcUrl, {
@@ -141,5 +152,13 @@ export const explainTxTool = defineTool({
       data: result,
       displayText: `**Tx ${input.digest.slice(0, 8)}...** (${status})\nSender: ${sender}\nGas: ${result.gasUsed}\n${summary}`,
     };
-  },
+}
+
+export const explainTxTool = tool({
+  description: explainTxDescription,
+  inputSchema,
+  needsApproval: buildNeedsApproval('explain_tx'),
+  execute: wrapEngineExecute<ExplainTxInput, ExplainedTx>('explain_tx', {
+    call: explainTxCallBody,
+  }),
 });

@@ -1,8 +1,17 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import { fetchRates } from '../navi/reads.js';
-// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
-import { defineTool } from '../v2/define-tool.js';
-import { hasNaviMcpGlobal, getMcpManager, hasAgent, requireAgent } from './utils.js';
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import {
+  hasNaviMcpGlobal,
+  getMcpManager,
+  hasAgent,
+  requireAgent,
+} from './utils.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 // [v1.4 — Day 3] DefiLlama fallback removed. The two upstream tiers
 // (NAVI MCP + SDK agent) cover every authenticated and read-only-system
@@ -91,8 +100,6 @@ function applyFilters(
   } else if (opts.stableOnly) {
     entries = entries.filter(([sym]) => isStable(sym));
   }
-  // Sort by save APY desc so `topN` picks the best yields when no
-  // explicit `assets` filter was supplied.
   entries.sort(([, a], [, b]) => b.saveApy - a.saveApy);
   if (opts.topN && opts.topN > 0) {
     entries = entries.slice(0, opts.topN);
@@ -102,62 +109,91 @@ function applyFilters(
 
 function formatRatesSummary(rates: RateMap): string {
   return Object.entries(rates)
-    .map(([asset, r]) => `${asset}: Save ${(r.saveApy * 100).toFixed(2)}% / Borrow ${(r.borrowApy * 100).toFixed(2)}%`)
+    .map(
+      ([asset, r]) =>
+        `${asset}: Save ${(r.saveApy * 100).toFixed(2)}% / Borrow ${(r.borrowApy * 100).toFixed(2)}%`,
+    )
     .join(', ');
 }
 
-export const ratesInfoTool = defineTool({
-  name: 'rates_info',
-  description:
-    'NAVI Protocol lending markets ONLY (single-sided save/borrow, no impermanent-loss risk). Use this for stablecoin and bluechip lending yields. Renders a rich rates card. Filter args: `assets` (specific symbols like ["USDC"]), `stableOnly` (true to show only USD-pegged assets), `topN` (max rows in card, default 8, max 50).',
-  inputSchema: z.object({
-    assets: z
-      .array(z.string())
-      .nullable()
-      .describe('Filter to specific asset symbols (e.g. ["USDC"], ["USDC","USDT","USDSUI"]). Case-insensitive. Pass null to return rates for all NAVI markets.'),
-    stableOnly: z
-      .boolean()
-      .optional()
-      .describe('When true, return only stablecoin markets (USDC, USDT, USDSUI, USDY, suiUSDT, etc.). Ignored when `assets` is supplied.'),
-    topN: z
-      .number()
-      .int()
-      .min(1)
-      .max(50)
-      .optional()
-      .describe('Cap the number of rows in the card (default 8, max 50). Use 50 to render the full NAVI catalog.'),
+// ---------------------------------------------------------------------------
+// Shared definition (single source of truth for native + legacy shapes)
+// ---------------------------------------------------------------------------
+
+const ratesInputSchema = z.object({
+  assets: z
+    .array(z.string())
+    .nullable()
+    .describe(
+      'Filter to specific asset symbols (e.g. ["USDC"], ["USDC","USDT","USDSUI"]). Case-insensitive. Pass null to return rates for all NAVI markets.',
+    ),
+  stableOnly: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true, return only stablecoin markets (USDC, USDT, USDSUI, USDY, suiUSDT, etc.). Ignored when `assets` is supplied.',
+    ),
+  topN: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .optional()
+    .describe(
+      'Cap the number of rows in the card (default 8, max 50). Use 50 to render the full NAVI catalog.',
+    ),
+});
+
+type RatesInput = z.infer<typeof ratesInputSchema>;
+
+const ratesDescription =
+  'NAVI Protocol lending markets ONLY (single-sided save/borrow, no impermanent-loss risk). Use this for stablecoin and bluechip lending yields. Renders a rich rates card. Filter args: `assets` (specific symbols like ["USDC"]), `stableOnly` (true to show only USD-pegged assets), `topN` (max rows in card, default 8, max 50).';
+
+async function ratesCallBody(
+  input: RatesInput,
+  context: ToolContext,
+): Promise<ToolResult<RateMap>> {
+  const opts = {
+    assets: input.assets ?? undefined,
+    stableOnly: input.stableOnly,
+    topN: input.topN ?? 8,
+  };
+
+  if (hasNaviMcpGlobal(context)) {
+    const all = await fetchRates(getMcpManager(context));
+    const filtered = applyFilters(all, opts);
+    return { data: filtered, displayText: formatRatesSummary(filtered) };
+  }
+
+  if (hasAgent(context)) {
+    const agent = requireAgent(context);
+    const all = await agent.rates();
+    const filtered = applyFilters(all, opts);
+    return { data: filtered, displayText: formatRatesSummary(filtered) };
+  }
+
+  // [v1.4 — Day 3] No third tier. Both upstream paths are unavailable —
+  // surface that honestly so the LLM can route the user (e.g. "try again
+  // in a moment") instead of fabricating a number from a deprecated vendor.
+  throw new Error(
+    'rates_info: NAVI lending data is currently unavailable. Try again shortly.',
+  );
+}
+
+export const ratesInfoTool = tool({
+  description: ratesDescription,
+  inputSchema: ratesInputSchema,
+  needsApproval: buildNeedsApproval('rates_info'),
+  execute: wrapEngineExecute<RatesInput, RateMap>('rates_info', {
+    call: ratesCallBody,
   }),
-  isReadOnly: true,
-
-  async call(input, context) {
-    const opts = {
-      assets: input.assets ?? undefined,
-      stableOnly: input.stableOnly,
-      topN: input.topN ?? 8,
-    };
-
-    if (hasNaviMcpGlobal(context)) {
-      const all = await fetchRates(getMcpManager(context));
-      const filtered = applyFilters(all, opts);
-      return { data: filtered, displayText: formatRatesSummary(filtered) };
-    }
-
-    if (hasAgent(context)) {
-      const agent = requireAgent(context);
-      const all = await agent.rates();
-      const filtered = applyFilters(all, opts);
-      return { data: filtered, displayText: formatRatesSummary(filtered) };
-    }
-
-    // [v1.4 — Day 3] No third tier. Both upstream paths are unavailable
-    // — surface that honestly so the LLM can route the user (e.g. "try
-    // again in a moment") instead of fabricating a number from a
-    // deprecated vendor.
-    throw new Error(
-      'rates_info: NAVI lending data is currently unavailable. Try again shortly.',
-    );
-  },
 });
 
 // Exported for testing.
-export const _internal = { applyFilters, isStable, STABLECOIN_SYMBOLS, expandAliases, TOKEN_ALIASES };
+export const _internal = {
+  applyFilters,
+  isStable,
+  STABLECOIN_SYMBOLS,
+  expandAliases,
+  TOKEN_ALIASES,
+};

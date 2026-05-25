@@ -26,7 +26,7 @@ Without the bridge, we'd have to coordinate engine + audric/web releases. With i
 
 2. **Wire-format SSOT.** Both bridges emit `EngineEvent` / `SSEEvent` typed values. The actual byte serialisation lives in `streaming.ts:serializeSSE` — the bridges never hand-roll bytes. This is non-negotiable: any new wire-format authority is a regression.
 
-3. **Engine side-channel events.** `canvas`, `pending_action`, `todo_update`, `proactive_text`, `harness_shape`, `stream_state`, `tool_progress`, `pending_input`, `compaction` are all emitted by engine orchestration code OUTSIDE the LLM stream. The Phase-1 picture: outer engine generator interleaves these with bridge output. The Phase-5 picture: engine code writes them as `data-{name}` UIMessage parts via the `createUIMessageStream` writer; sse-format-adapter dispatches them on the way out.
+3. **Engine side-channel events.** `canvas`, `pending_action`, `proactive_text`, `harness_shape`, `stream_state`, `tool_progress`, `compaction` are all emitted by engine orchestration code OUTSIDE the LLM stream. The Phase-1 picture: outer engine generator interleaves these with bridge output. The Phase-5 picture: engine code writes them as `data-{name}` UIMessage parts via the `createUIMessageStream` writer; sse-format-adapter dispatches them on the way out.
 
 4. **Forward-compatibility.** Both bridges silently drop unknown event types. Adding new translations later is purely additive.
 

@@ -1,3 +1,4 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import {
   getSwapQuote,
@@ -5,9 +6,14 @@ import {
   T2000Error,
   type SwapQuoteResult,
 } from '@t2000/sdk';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 3 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import { getTelemetrySink } from '../telemetry.js';
 import { getWalletAddress } from './utils.js';
+import type { ToolContext } from '../types.js';
 
 // [Bug A fix / 2026-05-10] Module-scoped one-shot cache for the sponsored
 // providers list. The Cetus aggregator's `getProvidersExcluding` is a
@@ -42,47 +48,32 @@ export type SwapQuoteToolResult =
   | SwapQuoteResult
   | { error: string; errorCode: 'ASSET_NOT_SUPPORTED' | 'SWAP_FAILED'; hint: string; recoverable: true };
 
-export const swapQuoteTool = defineTool({
-  name: 'swap_quote',
-  description:
-    'Get a swap quote without executing. Shows expected output amount, price impact, and route. Use before swap_execute to preview a trade.',
-  inputSchema: z.object({
-    from: z.string().describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
-    to: z.string().describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),
-    amount: z.number().positive().describe('Amount to swap'),
-    byAmountIn: z.boolean().optional().describe('true = fixed input (default), false = fixed output'),
-  }),
-  isReadOnly: true,
-  // [SPEC 20.2 / D-1 (a) follow-on, 2026-05-10] Quote results MUST NOT be
-  // cross-turn deduped by microcompact. Every call legitimately produces a
-  // new result — pool reserves move per block, slippage windows update, the
-  // best route can shift if liquidity moves, and the result's `discoveredAt`
-  // timestamp is different per call by definition.
-  //
-  // Pre-fix: microcompact's default `cacheable: true` replaced the second
-  // identical-input swap_quote tool_result with a `[Same result as call #N
-  // — swap_quote with identical inputs. Result unchanged.]` placeholder.
-  // The placeholder lied — the route and `discoveredAt` had legitimately
-  // updated. Audric's bundle fast-path (which reads quote results from the
-  // persisted ledger to thread `step.cetusRoute`) lost the fresh route and
-  // had to fall back to whichever earlier same-input call WAS preserved
-  // (the "first-seen" anchor, often >30s old → rejected by audric's
-  // `isCetusRouteFresh` 30s gate → fast path missed → bundle paid full
-  // ~400-500ms `findSwapRoute()` round-trip at confirm time).
-  //
-  // Production smoke trace (2026-05-10, session s_1778362657811_c0ed9009a5fb):
-  //   T0     swap_quote(USDC,SUI,0.5)              → route X discovered
-  //   T0+34s swap_quote(USDC,SUI,0.5) [bundle]     → route Y discovered (FRESH)
-  //   T0+50s "Confirm" → fast-path walks history   → walker sees placeholder
-  //                                                   on route Y, falls back
-  //                                                   to route X (52s old)
-  //   T0+52s prepare → cetusRoute STALE → fallback → no perf win
-  //
-  // With `cacheable: false`: route Y stays as full content in the ledger,
-  // walker finds it (~18s old), passes the freshness gate, fast path fires.
-  cacheable: false,
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const swapQuoteDescription =
+  'Get a swap quote without executing. Shows expected output amount, price impact, and route. Use before swap_execute to preview a trade.';
 
-  async call(input, context): Promise<{ data: SwapQuoteToolResult; displayText: string }> {
+const swapQuoteInputSchema = z.object({
+  from: z
+    .string()
+    .describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
+  to: z
+    .string()
+    .describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),
+  amount: z.number().positive().describe('Amount to swap'),
+  byAmountIn: z
+    .boolean()
+    .optional()
+    .describe('true = fixed input (default), false = fixed output'),
+});
+
+type SwapQuoteInput = z.infer<typeof swapQuoteInputSchema>;
+
+async function swapQuoteCallBody(
+  input: SwapQuoteInput,
+  context: ToolContext,
+): Promise<{ data: SwapQuoteToolResult; displayText: string }> {
     const walletAddress = context.agent
       ? (context.agent as { address(): string }).address()
       : getWalletAddress(context);
@@ -164,5 +155,16 @@ export const swapQuoteTool = defineTool({
       // know how to give a useful recovery hint for.
       throw err;
     }
-  },
+}
+
+export const swapQuoteTool = tool({
+  description: swapQuoteDescription,
+  inputSchema: swapQuoteInputSchema,
+  needsApproval: buildNeedsApproval('swap_quote'),
+  execute: wrapEngineExecute<SwapQuoteInput, SwapQuoteToolResult>(
+    'swap_quote',
+    {
+      call: swapQuoteCallBody,
+    },
+  ),
 });

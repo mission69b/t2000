@@ -4,9 +4,14 @@
  * Extracted from `engine.ts` in SPEC 7 P2.3 so both the legacy
  * single-write yield path AND the new bundle-composer (`compose-bundle.ts`)
  * can derive per-step descriptions from the same source.
+ *
+ * [P4.1 Phase C — 2026-05-25] Refactored to take `toolName: string`
+ * instead of `tool: Tool`. The function only ever read `tool.name`, so
+ * the dependency on the legacy `Tool` shape was incidental. After the
+ * AI SDK Hardening rewrite, callers pass tool names directly (looked up
+ * from the dispatched tool-call event or bundle composition input).
  */
-import type { Tool } from './types.js';
-import type { PendingToolCall } from './orchestration.js';
+import type { PendingToolCall } from './types.js';
 
 function resolveTokenSymbol(nameOrType: string): string {
   if (!nameOrType.includes('::')) return nameOrType;
@@ -14,9 +19,9 @@ function resolveTokenSymbol(nameOrType: string): string {
   return parts[parts.length - 1];
 }
 
-export function describeAction(tool: Tool, call: PendingToolCall): string {
+export function describeAction(toolName: string, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
-  switch (tool.name) {
+  switch (toolName) {
     case 'save_deposit': {
       // [1.13.1] Per the savings-usdc-only.mdc strategic exception, save_deposit
       // accepts both USDC and USDsui. The previous hardcoded 'USDC' rendered
@@ -56,6 +61,6 @@ export function describeAction(tool: Tool, call: PendingToolCall): string {
       return `Swap ${amt} ${from} for ${to} (${slippagePct}% max slippage)`;
     }
     default:
-      return `Execute ${tool.name}`;
+      return `Execute ${toolName}`;
   }
 }

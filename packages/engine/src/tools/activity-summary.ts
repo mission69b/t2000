@@ -1,7 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 5 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import { normalizeAddressInput } from '../sui/address.js';
-import type { ToolResult } from '../types.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 interface ActionBreakdown {
   action: string;
@@ -21,25 +26,31 @@ interface ActivitySummary {
   suinsName?: string | null;
 }
 
-export const activitySummaryTool = defineTool({
-  name: 'activity_summary',
-  description:
-    'Returns a categorised DeFi activity summary for the signed-in user OR any public Sui address or SuiNS name: transaction count, breakdown by action type (saves, sends, borrows, repayments, swaps, payments), total moved, net savings change, and yield earned. Use when the user asks about activity, transaction history summary, or what someone has done recently. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
-  inputSchema: z.object({
-    period: z
-      .enum(['week', 'month', 'year', 'all'])
-      .optional()
-      .describe('Time period. Defaults to current month.'),
-    address: z
-      .string()
-      .optional()
-      .describe(
-        'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
-      ),
-  }),
-  isReadOnly: true,
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const activitySummaryDescription =
+  'Returns a categorised DeFi activity summary for the signed-in user OR any public Sui address or SuiNS name: transaction count, breakdown by action type (saves, sends, borrows, repayments, swaps, payments), total moved, net savings change, and yield earned. Use when the user asks about activity, transaction history summary, or what someone has done recently. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.';
 
-  async call(input, context): Promise<ToolResult<ActivitySummary>> {
+const activitySummaryInputSchema = z.object({
+  period: z
+    .enum(['week', 'month', 'year', 'all'])
+    .optional()
+    .describe('Time period. Defaults to current month.'),
+  address: z
+    .string()
+    .optional()
+    .describe(
+      'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
+    ),
+});
+
+type ActivitySummaryInput = z.infer<typeof activitySummaryInputSchema>;
+
+async function activitySummaryCallBody(
+  input: ActivitySummaryInput,
+  context: ToolContext,
+): Promise<ToolResult<ActivitySummary>> {
     const period = input.period ?? 'month';
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
 
@@ -116,5 +127,14 @@ export const activitySummaryTool = defineTool({
     } catch {
       return { data: empty, displayText: 'Error fetching activity summary.' };
     }
-  },
+}
+
+export const activitySummaryTool = tool({
+  description: activitySummaryDescription,
+  inputSchema: activitySummaryInputSchema,
+  needsApproval: buildNeedsApproval('activity_summary'),
+  execute: wrapEngineExecute<ActivitySummaryInput, ActivitySummary>(
+    'activity_summary',
+    { call: activitySummaryCallBody },
+  ),
 });

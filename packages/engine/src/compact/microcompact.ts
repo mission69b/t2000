@@ -1,4 +1,6 @@
-import type { Message, ContentBlock, Tool } from '../types.js';
+import type { Message, ContentBlock } from '../types.js';
+import { getToolPolicy } from '../v2/tool-policy.js';
+import { getToolFlags } from '../tool-flags.js';
 
 /**
  * [v1.4 Item 4] Side-channel return from `microcompact` so callers can
@@ -46,35 +48,34 @@ export interface MicrocompactResult extends Array<Message> {
  * tool_result block was replaced with a back-reference this pass.
  *
  * @param messages — conversation ledger to compact.
- * @param tools    — optional tool registry consulted to resolve the
- *                   per-tool `cacheable` flag. Omit to dedupe every
- *                   tool (legacy behavior — back-compat).
+ *
+ * [P4.1 / v3.0.0 / 2026-05-25] The `tools?: readonly Tool[]` parameter
+ * was removed. Cacheability is now resolved by tool name from the central
+ * `TOOL_POLICY` + `TOOL_FLAGS` registries — no per-call wiring needed.
  */
 export function microcompact(
   messages: readonly Message[],
-  tools?: readonly Tool[],
 ): MicrocompactResult {
   const seen = new Map<string, { turnIndex: number }>();
   let toolUseIndex = 0;
 
   const toolUseInputs = new Map<string, string>();
-  // Map tool name → cacheable flag. Default behavior (no entry, or
-  // `cacheable === undefined`) is `true` — back-compat with hosts that
-  // don't pass a tools array. EXCEPT: write tools (`flags.mutating: true`)
-  // default to `false` because each call produces a new on-chain tx
-  // (S.122).
+  // Resolve per-tool cacheable lazily by name. Default: `true` (back-compat
+  // with hosts that never pass tool metadata). Write tools (`flags.mutating
+  // === true`) default to `false` because each call produces a NEW on-chain
+  // transaction (S.122). Explicit `cacheable` on the policy entry wins.
   const cacheableByName = new Map<string, boolean>();
-  if (tools) {
-    for (const t of tools) {
-      const explicit = t.cacheable;
-      const isMutating = t.flags?.mutating === true;
-      // Resolve precedence: explicit `cacheable` > mutating-implied-false
-      // > default true. A write tool that explicitly opts back in (rare,
-      // arguably a bug) is honored — the rule is "don't surprise the
-      // tool author," not "block them from doing it."
-      cacheableByName.set(t.name, explicit ?? !isMutating);
-    }
-  }
+  const resolveCacheable = (name: string): boolean => {
+    const cached = cacheableByName.get(name);
+    if (cached !== undefined) return cached;
+    const policy = getToolPolicy(name);
+    const flags = getToolFlags(name);
+    const explicit = policy.cacheable;
+    const isMutating = flags.mutating === true;
+    const resolved = explicit ?? !isMutating;
+    cacheableByName.set(name, resolved);
+    return resolved;
+  };
   const dedupedToolUseIds = new Set<string>();
 
   // Resolve tool name from a tool_use_id — cached lookup so each result
@@ -107,7 +108,7 @@ export function microcompact(
       // *cacheable* call with the same key would erroneously dedupe
       // against this fresh result.
       const toolName = toolNameById.get(block.toolUseId);
-      if (toolName && cacheableByName.get(toolName) === false) {
+      if (toolName && !resolveCacheable(toolName)) {
         toolUseIndex++;
         return block;
       }

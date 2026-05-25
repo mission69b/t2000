@@ -1,6 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import type { PendingReward } from '@t2000/sdk';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 5 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { ToolContext, ToolResult } from '../types.js';
 import { requireAgent } from './utils.js';
 
 interface ClaimRewardsResult {
@@ -25,21 +31,21 @@ function formatAmount(amount: number): string {
   return amount.toExponential(2);
 }
 
-export const claimRewardsTool = defineTool({
-  name: 'claim_rewards',
-  description:
-    'Claim all pending protocol rewards across lending adapters. Returns the claimed reward breakdown (per-asset symbol + amount), total USD value (best effort — may be 0 when oracle prices are unavailable), and the on-chain tx hash. When the rewards list is empty the response will explicitly say "no pending rewards"; when it is non-empty narrate the per-symbol amounts even if totalValueUsd is 0 (the on-chain credit still happened). ' +
-    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "claim rewards and stake them"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
-  inputSchema: z.object({}),
-  isReadOnly: false,
-  permissionLevel: 'confirm',
-  flags: { mutating: true },
-  // claim_rewards has no inputs — preflight is structural (satisfies the
-  // "every write tool MUST implement preflight" rule in
-  // safeguards-defense-in-depth.mdc) and will receive any future inputs.
-  preflight: () => ({ valid: true }),
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const claimRewardsDescription =
+  'Claim all pending protocol rewards across lending adapters. Returns the claimed reward breakdown (per-asset symbol + amount), total USD value (best effort — may be 0 when oracle prices are unavailable), and the on-chain tx hash. When the rewards list is empty the response will explicitly say "no pending rewards"; when it is non-empty narrate the per-symbol amounts even if totalValueUsd is 0 (the on-chain credit still happened). ' +
+  'Payment Intent: composable — when paired with another composable write in the same request (e.g. "claim rewards and stake them"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.';
 
-  async call(_input, context) {
+const claimRewardsInputSchema = z.object({});
+
+type ClaimRewardsInput = z.infer<typeof claimRewardsInputSchema>;
+
+async function claimRewardsCallBody(
+  _input: ClaimRewardsInput,
+  context: ToolContext,
+): Promise<ToolResult<ClaimRewardsResult>> {
     const agent = requireAgent(context);
     let result;
     try {
@@ -114,5 +120,20 @@ export const claimRewardsTool = defineTool({
       degradationReason: null,
     };
     return { data, displayText };
-  },
+}
+
+export const claimRewardsTool = tool({
+  description: claimRewardsDescription,
+  inputSchema: claimRewardsInputSchema,
+  needsApproval: buildNeedsApproval('claim_rewards'),
+  execute: wrapEngineExecute<ClaimRewardsInput, ClaimRewardsResult>(
+    'claim_rewards',
+    {
+      // claim_rewards has no inputs — preflight is structural (satisfies the
+      // "every write tool MUST implement preflight" rule in
+      // safeguards-defense-in-depth.mdc) and will receive any future inputs.
+      preflight: () => ({ valid: true }),
+      call: claimRewardsCallBody,
+    },
+  ),
 });

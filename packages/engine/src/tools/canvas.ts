@@ -1,7 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 2 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import { normalizeAddressInput } from '../sui/address.js';
-import type { ToolResult } from '../types.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Template catalogue
@@ -55,9 +60,10 @@ const CANVAS_TITLES: Record<CanvasTemplate, string> = {
 // render_canvas tool
 // ---------------------------------------------------------------------------
 
-export const renderCanvasTool = defineTool({
-  name: 'render_canvas',
-  description: `Renders an interactive financial canvas inline in the chat.
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const renderCanvasDescription = `Renders an interactive financial canvas inline in the chat.
 
 Use when the user asks for a visual chart, simulator, or financial overview. Pick the most relevant template:
 
@@ -73,24 +79,36 @@ Use when the user asks for a visual chart, simulator, or financial overview. Pic
 
 When the user asks to inspect a saved contact or watched address — e.g. "show funkii's activity heatmap", "what's funkii's portfolio look like", "spending breakdown for 0x40cd…", "give me a full portfolio overview of 0x40cd…" — pass that wallet's address as \`params.address\`. Seven of the nine templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio, receive_address) will scope their data fetch to that address; only the pure client-side simulators (yield_projector, dca_planner) ignore params.address.
 
-Always prefer the canvas for visualisation requests. After rendering, offer to explain what the user sees.`,
-  inputSchema: z.object({
-    template: z.enum(CANVAS_TEMPLATES).describe('Which canvas template to render'),
-    params: z
-      .object({
-        period: z.enum(['1m', '3m', '6m', '1y']).nullable().describe('Time period for time-based templates. Pass null for templates that do not use a time window.'),
-        address: z
-          .string()
-          .optional()
-          .describe(
-            'Sui address for the six address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio). Defaults to the signed-in user; pass an explicit address to inspect a contact, watched wallet, or any other public address.',
-          ),
-      })
-      .nullable(),
-  }),
-  isReadOnly: true,
+Always prefer the canvas for visualisation requests. After rendering, offer to explain what the user sees.`;
 
-  async call(input, context): Promise<ToolResult<unknown>> {
+const renderCanvasInputSchema = z.object({
+  template: z
+    .enum(CANVAS_TEMPLATES)
+    .describe('Which canvas template to render'),
+  params: z
+    .object({
+      period: z
+        .enum(['1m', '3m', '6m', '1y'])
+        .nullable()
+        .describe(
+          'Time period for time-based templates. Pass null for templates that do not use a time window.',
+        ),
+      address: z
+        .string()
+        .optional()
+        .describe(
+          'Sui address for the six address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio). Defaults to the signed-in user; pass an explicit address to inspect a contact, watched wallet, or any other public address.',
+        ),
+    })
+    .nullable(),
+});
+
+type RenderCanvasInput = z.infer<typeof renderCanvasInputSchema>;
+
+async function renderCanvasCallBody(
+  input: RenderCanvasInput,
+  context: ToolContext,
+): Promise<ToolResult<unknown>> {
     const { template, params } = input;
     const title = CANVAS_TITLES[template];
 
@@ -473,5 +491,13 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
       },
       displayText: `Canvas template "${template}" is not yet available.`,
     };
-  },
+}
+
+export const renderCanvasTool = tool({
+  description: renderCanvasDescription,
+  inputSchema: renderCanvasInputSchema,
+  needsApproval: buildNeedsApproval('render_canvas'),
+  execute: wrapEngineExecute<RenderCanvasInput, unknown>('render_canvas', {
+    call: renderCanvasCallBody,
+  }),
 });

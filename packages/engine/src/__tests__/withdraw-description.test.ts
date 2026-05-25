@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { withdrawTool } from '../tools/withdraw.js';
 
+import { legacyToolView } from './_helpers/call-tool-body.js';
+
+const withdrawView = legacyToolView(withdrawTool, 'withdraw');
 // SPEC 7 P2.7 soak finding F8 (2026-05-02): the pre-fix description claimed
 // "Legacy positions in other assets (USDe, SUI) can still be withdrawn if
 // the user has them" — true for the SDK single-write path but FALSE for the
@@ -31,7 +34,7 @@ describe('[F8] withdraw tool description — USDC + USDsui only, no legacy claim
   });
 
   it('asset jsonSchema description constrains to USDC + USDsui', () => {
-    const props = withdrawTool.jsonSchema.properties as Record<string, { description?: string }>;
+    const props = withdrawView.jsonSchema.properties as Record<string, { description?: string }>;
     expect(props.asset?.description).toMatch(/USDC.*USDsui/);
     expect(props.asset?.description).not.toMatch(/USDe|SUI/);
   });

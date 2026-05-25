@@ -21,20 +21,16 @@
 // What this module does NOT do:
 //   - It does NOT update guard state after the call. That's
 //     `step-finish.ts`'s job — see `updateGuardStateAfterToolResult`.
-//   - It does NOT translate the `needsInput` (pause-and-prompt) verdict
-//     to AI SDK semantics. The wrapper handles that case separately
-//     (today: throws "not yet supported in v2"; Day 4+ adds proper
-//     `needsInput` handling alongside the per-tool migration).
 // ---------------------------------------------------------------------------
 
 import {
   runGuards,
   type GuardCheckResult,
   type GuardInjection,
+  type GuardToolView,
 } from '../guards.js';
 import { extractConversationText } from '../guards.js';
-import type { Tool as LegacyTool } from '../types.js';
-import type { PendingToolCall } from '../orchestration.js';
+import type { PendingToolCall } from '../types.js';
 import type { InternalContext } from './internal-context.js';
 
 /**
@@ -67,12 +63,6 @@ export interface GuardRunnerOutcome {
    * via AI SDK content blocks); collected here so the data is available.
    */
   injections: GuardInjection[];
-  /**
-   * `true` when `tool.preflight` returned `needsInput` — the legacy
-   * pause-and-prompt mode. v2 doesn't support this yet (only used by
-   * `add_recipient` today). Wrapper throws a clear error when seen.
-   */
-  needsStructuredInput: boolean;
 }
 
 /**
@@ -85,12 +75,12 @@ export interface GuardRunnerOutcome {
  * `EngineConfig.guards` is omitted.
  */
 export function runGuardsForTool(
-  tool: LegacyTool,
+  tool: GuardToolView,
   call: PendingToolCall,
   internal: InternalContext,
 ): GuardRunnerOutcome {
   if (!internal.guardConfig) {
-    return { allowed: true, injections: [], needsStructuredInput: false };
+    return { allowed: true, injections: [] };
   }
 
   const conversationContext = extractConversationText(internal.getMessages() as Array<{ role: string; content: unknown }>);
@@ -108,30 +98,18 @@ export function runGuardsForTool(
     },
   );
 
-  if (result.needsInput) {
-    return {
-      allowed: false,
-      blockReason: result.needsInput.description ?? 'Tool requires structured input',
-      blockGate: 'pending_input',
-      injections: result.injections,
-      needsStructuredInput: true,
-    };
-  }
-
   if (result.blocked) {
     return {
       allowed: false,
       blockReason: result.blockReason,
       blockGate: result.blockGate,
       injections: result.injections,
-      needsStructuredInput: false,
     };
   }
 
   return {
     allowed: true,
     injections: result.injections,
-    needsStructuredInput: false,
   };
 }
 

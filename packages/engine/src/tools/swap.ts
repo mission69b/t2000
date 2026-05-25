@@ -1,6 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import { T2000Error } from '@t2000/sdk';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 6 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { PreflightResult, ToolContext, ToolResult } from '../types.js';
 import { getTelemetrySink } from '../telemetry.js';
 import { requireAgent } from './utils.js';
 
@@ -32,29 +38,34 @@ export type SwapExecuteToolResult =
   | SwapExecuteSuccessData
   | { error: string; errorCode: 'ASSET_NOT_SUPPORTED' | 'SWAP_FAILED'; hint: string; recoverable: true };
 
-export const swapExecuteTool = defineTool({
-  name: 'swap_execute',
-  description:
-    'Swap tokens on Sui via Cetus Aggregator (20+ DEXs). Supports any token pair with liquidity. Use user-friendly names (SUI, USDC, CETUS, DEEP, etc.) or full coin types. ' +
-    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "swap to USDC and save", "swap and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
-  inputSchema: z.object({
-    from: z.string().describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
-    to: z.string().describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),
-    amount: z.number().positive().describe('Amount to swap'),
-    byAmountIn: z.boolean().optional().describe('true = fixed input amount (default), false = fixed output amount'),
-    slippage: z.number().min(0.001).max(0.05).optional().describe('Max slippage (default 0.01 = 1%, max 5%)'),
-  }),
-  isReadOnly: false,
-  permissionLevel: 'confirm',
-  flags: { mutating: true, requiresBalance: true },
-  preflight: (input) => {
-    if (input.from.toLowerCase() === input.to.toLowerCase()) {
-      return { valid: false, error: `Cannot swap ${input.from} to itself.` };
-    }
-    return { valid: true };
-  },
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const swapExecuteDescription =
+  'Swap tokens on Sui via Cetus Aggregator (20+ DEXs). Supports any token pair with liquidity. Use user-friendly names (SUI, USDC, CETUS, DEEP, etc.) or full coin types. ' +
+  'Payment Intent: composable — when paired with another composable write in the same request (e.g. "swap to USDC and save", "swap and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.';
 
-  async call(input, context): Promise<{ data: SwapExecuteToolResult; displayText: string }> {
+const swapExecuteInputSchema = z.object({
+  from: z.string().describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
+  to: z.string().describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),
+  amount: z.number().positive().describe('Amount to swap'),
+  byAmountIn: z.boolean().optional().describe('true = fixed input amount (default), false = fixed output amount'),
+  slippage: z.number().min(0.001).max(0.05).optional().describe('Max slippage (default 0.01 = 1%, max 5%)'),
+});
+
+type SwapExecuteInput = z.infer<typeof swapExecuteInputSchema>;
+
+function swapExecutePreflight(input: SwapExecuteInput): PreflightResult {
+  if (input.from.toLowerCase() === input.to.toLowerCase()) {
+    return { valid: false, error: `Cannot swap ${input.from} to itself.` };
+  }
+  return { valid: true };
+}
+
+async function swapExecuteCallBody(
+  input: SwapExecuteInput,
+  context: ToolContext,
+): Promise<ToolResult<SwapExecuteToolResult>> {
     const agent = requireAgent(context);
     // [Backlog 2a / 2026-05-04] swap_execute end-to-end timing baseline.
     // Times the SDK `agent.swap()` call which wraps findSwapRoute +
@@ -110,5 +121,17 @@ export const swapExecuteTool = defineTool({
 
       throw err;
     }
-  },
+}
+
+export const swapExecuteTool = tool({
+  description: swapExecuteDescription,
+  inputSchema: swapExecuteInputSchema,
+  needsApproval: buildNeedsApproval('swap_execute'),
+  execute: wrapEngineExecute<SwapExecuteInput, SwapExecuteToolResult>(
+    'swap_execute',
+    {
+      preflight: swapExecutePreflight,
+      call: swapExecuteCallBody,
+    },
+  ),
 });

@@ -3,6 +3,9 @@ import { pendingRewardsTool } from './pending-rewards.js';
 import type { ToolContext } from '../types.js';
 import * as sdk from '@t2000/sdk';
 
+import { callToolBody, legacyToolView } from '../__tests__/_helpers/call-tool-body.js';
+
+const pendingRewardsView = legacyToolView(pendingRewardsTool, 'pending_rewards');
 /**
  * [S18-F20] Tests for the new `pending_rewards` read-only tool.
  *
@@ -31,8 +34,8 @@ function makeFailingAgent(code: string | undefined, message: string) {
 
 describe('pending_rewards tool', () => {
   it('is registered as a read-only inspector (never opens a confirm card)', () => {
-    expect(pendingRewardsTool.isReadOnly).toBe(true);
-    expect(pendingRewardsTool.cacheable).toBe(false); // rewards accrue continuously
+    expect(pendingRewardsView.isReadOnly).toBe(true);
+    expect(pendingRewardsView.cacheable).toBe(false); // rewards accrue continuously
   });
 
   it('narrates per-asset breakdown with priced enrichment', async () => {
@@ -42,7 +45,7 @@ describe('pending_rewards tool', () => {
     ]);
     const priceCache = new Map<string, number>([['VSUI', 0.95], ['NAVX', 0.10]]);
 
-    const result = await pendingRewardsTool.call({}, { agent, priceCache });
+    const result = await callToolBody(pendingRewardsTool, {}, { agent, priceCache });
     const data = result.data as { rewards: Array<{ symbol: string; estimatedValueUsd: number }>; totalValueUsd: number; degraded: boolean };
 
     expect(data.degraded).toBe(false);
@@ -55,7 +58,7 @@ describe('pending_rewards tool', () => {
 
   it('handles empty list explicitly without claiming', async () => {
     const agent = makeAgent([]);
-    const result = await pendingRewardsTool.call({}, { agent });
+    const result = await callToolBody(pendingRewardsTool, {}, { agent });
     expect(result.displayText).toBe('No pending rewards.');
     const data = result.data as { rewards: unknown[]; totalValueUsd: number; degraded: boolean };
     expect(data.rewards).toHaveLength(0);
@@ -66,7 +69,7 @@ describe('pending_rewards tool', () => {
   it('surfaces NAVI degradation truthfully (the whole point of S18-F20)', async () => {
     const agent = makeFailingAgent('PROTOCOL_UNAVAILABLE', 'NAVI rewards lookup failed: 503 Service Unavailable');
 
-    const result = await pendingRewardsTool.call({}, { agent });
+    const result = await callToolBody(pendingRewardsTool, {}, { agent });
     const data = result.data as { degraded: boolean; degradationReason: string; rewards: unknown[]; totalValueUsd: number };
 
     expect(result.displayText).toContain('NAVI');
@@ -81,7 +84,7 @@ describe('pending_rewards tool', () => {
   it('surfaces unknown errors as a protocol error (not silently empty)', async () => {
     const agent = makeFailingAgent(undefined, 'Some completely unexpected RPC failure');
 
-    const result = await pendingRewardsTool.call({}, { agent });
+    const result = await callToolBody(pendingRewardsTool, {}, { agent });
     const data = result.data as { degraded: boolean; degradationReason: string };
 
     expect(result.displayText).toContain('protocol error');
@@ -95,7 +98,7 @@ describe('pending_rewards tool', () => {
     ]);
     const priceCache = new Map<string, number>([['VSUI', 999]]); // would override if recompute
 
-    const result = await pendingRewardsTool.call({}, { agent, priceCache });
+    const result = await callToolBody(pendingRewardsTool, {}, { agent, priceCache });
     const data = result.data as { totalValueUsd: number };
     expect(data.totalValueUsd).toBeCloseTo(5.55, 2);
   });
@@ -105,7 +108,7 @@ describe('pending_rewards tool', () => {
       { protocol: 'navi', asset: '5', coinType: '0xabc::weird::WEIRD', symbol: 'WEIRD', amount: 1.5, estimatedValueUsd: 0 },
     ]);
 
-    const result = await pendingRewardsTool.call({}, { agent });
+    const result = await callToolBody(pendingRewardsTool, {}, { agent });
     expect(result.displayText).toContain('1.5 WEIRD');
     expect(result.displayText).not.toContain('total');
     const data = result.data as { totalValueUsd: number };
@@ -137,9 +140,9 @@ describe('pending_rewards tool — audric path (no agent, walletAddress only)', 
     const ctx = {
       walletAddress: '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc',
       suiRpcUrl: 'https://fullnode.mainnet.sui.io:443',
-    } as ToolContext;
+    } as unknown as ToolContext;
 
-    const result = await pendingRewardsTool.call({}, ctx);
+    const result = await callToolBody(pendingRewardsTool, {}, ctx);
     const data = result.data as { rewards: unknown[]; degraded: boolean };
 
     expect(stub).toHaveBeenCalledWith(
@@ -160,9 +163,9 @@ describe('pending_rewards tool — audric path (no agent, walletAddress only)', 
 
     const ctx = {
       walletAddress: '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc',
-    } as ToolContext;
+    } as unknown as ToolContext;
 
-    const result = await pendingRewardsTool.call({}, ctx);
+    const result = await callToolBody(pendingRewardsTool, {}, ctx);
     const data = result.data as { degraded: boolean; degradationReason: string };
 
     expect(result.displayText).toContain('NAVI');
@@ -172,7 +175,7 @@ describe('pending_rewards tool — audric path (no agent, walletAddress only)', 
   });
 
   it('throws a clear error when neither agent nor walletAddress is present', async () => {
-    const result = await pendingRewardsTool.call({}, {} as ToolContext);
+    const result = await callToolBody(pendingRewardsTool, {}, {} as unknown as ToolContext);
     const data = result.data as { degraded: boolean; degradationReason: string };
     // The catch path treats this as a degraded outcome (truthful surface,
     // never a silent empty-list).
@@ -192,9 +195,9 @@ describe('pending_rewards tool — audric path (no agent, walletAddress only)', 
       agent,
       walletAddress: '0xdeadbeef',
       suiRpcUrl: 'https://fullnode.mainnet.sui.io:443',
-    } as ToolContext;
+    } as unknown as ToolContext;
 
-    const result = await pendingRewardsTool.call({}, ctx);
+    const result = await callToolBody(pendingRewardsTool, {}, ctx);
     const data = result.data as { rewards: Array<{ amount: number }> };
 
     expect(stub).not.toHaveBeenCalled();

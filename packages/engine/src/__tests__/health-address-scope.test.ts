@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { healthCheckTool } from '../tools/health.js';
 import type { ServerPositionData } from '../types.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
+import type { ToolContext } from '../types.js';
 /**
  * [v0.49] Regression suite for address-scoped health_check.
  *
@@ -29,7 +31,7 @@ function ctx(opts: { wallet?: string } = {}) {
   return {
     walletAddress: opts.wallet === undefined ? USER_ADDR : opts.wallet,
     positionFetcher,
-  } as Parameters<typeof healthCheckTool.call>[1];
+  } as unknown as ToolContext;
 }
 
 interface HealthResult {
@@ -43,14 +45,14 @@ describe('[v0.49] health_check address scope', () => {
   });
 
   it('defaults to context.walletAddress when input.address is omitted', async () => {
-    const res = (await healthCheckTool.call({}, ctx())) as HealthResult;
+    const res = (await callToolBody(healthCheckTool, {}, ctx())) as HealthResult;
     expect(res.data.address).toBe(USER_ADDR);
     expect(res.data.isSelfQuery).toBe(true);
     expect(positionFetcher).toHaveBeenCalledWith(USER_ADDR);
   });
 
   it('honors explicit input.address (the fix)', async () => {
-    const res = (await healthCheckTool.call({ address: FUNKII_ADDR }, ctx())) as HealthResult;
+    const res = (await callToolBody(healthCheckTool, { address: FUNKII_ADDR }, ctx())) as HealthResult;
     expect(res.data.address).toBe(FUNKII_ADDR);
     expect(res.data.isSelfQuery).toBe(false);
     expect(positionFetcher).toHaveBeenCalledWith(FUNKII_ADDR);
@@ -58,7 +60,7 @@ describe('[v0.49] health_check address scope', () => {
   });
 
   it('case-insensitive equality decides isSelfQuery', async () => {
-    const res = (await healthCheckTool.call(
+    const res = (await callToolBody(healthCheckTool, 
       { address: USER_ADDR.toUpperCase() },
       ctx(),
     )) as HealthResult;
@@ -66,7 +68,7 @@ describe('[v0.49] health_check address scope', () => {
   });
 
   it('prefixes the displayText with a truncated-address subject for non-self queries', async () => {
-    const res = (await healthCheckTool.call(
+    const res = (await callToolBody(healthCheckTool, 
       { address: FUNKII_ADDR },
       ctx(),
     )) as HealthResult;
@@ -75,7 +77,7 @@ describe('[v0.49] health_check address scope', () => {
   });
 
   it('keeps the self subject clean (no truncated address) for self queries', async () => {
-    const res = (await healthCheckTool.call({}, ctx())) as HealthResult;
+    const res = (await callToolBody(healthCheckTool, {}, ctx())) as HealthResult;
     expect(res.displayText.startsWith('Health Factor:')).toBe(true);
     expect(res.displayText).not.toContain(USER_ADDR.slice(0, 6));
   });

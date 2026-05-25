@@ -52,6 +52,7 @@ vi.mock('../audric-api.js', () => ({
 
 import { portfolioAnalysisTool } from '../tools/portfolio-analysis.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
 interface PortfolioResultData {
   totalValue: number;
   walletValue: number;
@@ -85,7 +86,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
   });
 
   it('totalValue includes DeFi: $228 wallet + $1,569 Cetus = $1,797 (the bug-report wallet)', async () => {
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
     expect(data.walletValue).toBeCloseTo(226.91, 1);
     expect(data.defiValue).toBeCloseTo(1569.46, 1);
@@ -97,7 +98,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
   });
 
   it('exposes per-protocol DeFi as synthetic allocations so the pie reflects reality', async () => {
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
     const cetusEntry = data.allocations.find((a) => a.symbol === 'Cetus DeFi');
     expect(cetusEntry).toBeDefined();
@@ -110,7 +111,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
   });
 
   it('does NOT misclassify the wallet as FAITH-concentrated when DeFi is the bulk', async () => {
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
     const faithEntry = data.allocations.find((a) => a.symbol === 'FAITH');
     expect(faithEntry).toBeDefined();
@@ -122,7 +123,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
   });
 
   it('displayText surfaces DeFi to the LLM so it can narrate accurately', async () => {
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     expect(result.displayText).toContain('DeFi:');
     expect(result.displayText).toContain('1569.46');
   });
@@ -135,7 +136,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
       pricedAt: Date.now(),
       source: 'partial' as const,
     });
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
     expect(data.defiSource).toBe('partial');
     const partialInsight = data.insights.find((i) => i.message.toLowerCase().includes('partial'));
@@ -153,7 +154,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
       pricedAt: Date.now(),
       source: 'degraded' as const,
     });
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
     expect(data.defiSource).toBe('degraded');
     const degradedInsight = data.insights.find((i) => i.message.toLowerCase().includes('could not be loaded'));
@@ -164,7 +165,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
   it('falls back gracefully when fetchAddressDefiPortfolio throws', async () => {
     const { fetchAddressDefiPortfolio } = await import('../blockvision-prices.js');
     (fetchAddressDefiPortfolio as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('blockvision 429'));
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
     // Wallet value still surfaces; defi defaults to 0 + 'degraded'.
     expect(data.walletValue).toBeGreaterThan(0);
@@ -229,7 +230,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
       source: 'partial-stale' as const,
     });
 
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
 
     expect(fetchAddressDefiPortfolio).toHaveBeenCalledTimes(1);
@@ -261,7 +262,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
       defiSource: 'partial' as const,
     });
 
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
 
     expect(fetchAddressDefiPortfolio).not.toHaveBeenCalled();
@@ -290,7 +291,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
       defiSource: 'partial-stale' as const,
     });
 
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
 
     expect(fetchAddressDefiPortfolio).not.toHaveBeenCalled();
@@ -325,7 +326,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
       source: 'blockvision' as const,
     });
 
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
 
     expect(fetchAddressDefiPortfolio).toHaveBeenCalledTimes(1);
@@ -353,7 +354,7 @@ describe('portfolio_analysis — DeFi inclusion (Bug 2026-04-28)', () => {
       defiValueUsd: 1600,
       defiSource: 'blockvision' as const,
     });
-    const result = await portfolioAnalysisTool.call({}, ctx());
+    const result = await callToolBody(portfolioAnalysisTool, {}, ctx());
     const data = result.data as PortfolioResultData;
     expect(data.defiValue).toBe(1600);
     // The direct DeFi fetcher must NOT be called when the audric

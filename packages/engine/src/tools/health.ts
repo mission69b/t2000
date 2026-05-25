@@ -1,13 +1,18 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import { fetchHealthFactor } from '../navi/reads.js';
-// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 2 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
 import { normalizeAddressInput } from '../sui/address.js';
 // [v2.0.3 / 2026-05-17] Threshold hoisted to ../dust.ts when repay.ts
 // became the 4th consumer; rationale + cross-file usage notes live
 // there.
 import { DEBT_DUST_USD } from '../dust.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 function hfStatus(hf: number, borrowed: number): string {
   // Zero (or dust-only) debt accounts are maximally safe — math says HF=∞,
@@ -52,22 +57,27 @@ function displayHfText(
   return `${subject}: ${hf.toFixed(2)} (${status})`;
 }
 
-export const healthCheckTool = defineTool({
-  name: 'health_check',
-  description:
-    'Check the lending health factor for the signed-in user OR any public Sui address or SuiNS name: current HF ratio, total supplied collateral, total borrowed, max additional borrow capacity, and liquidation threshold. HF < 1.5 is risky, < 1.2 is critical. When the address has no debt the tool returns healthFactor=null (semantically infinity) — render that as "Healthy" / ∞, never as 0 or "Critical". Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
-  inputSchema: z.object({
-    address: z
-      .string()
-      .optional()
-      .describe('Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.'),
-  }),
-  isReadOnly: true,
-  // [v1.5.1] Health factor changes on every borrow / repay / collateral
-  // movement and even passively as oracle prices update. Never dedupe.
-  cacheable: false,
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const healthCheckDescription =
+  'Check the lending health factor for the signed-in user OR any public Sui address or SuiNS name: current HF ratio, total supplied collateral, total borrowed, max additional borrow capacity, and liquidation threshold. HF < 1.5 is risky, < 1.2 is critical. When the address has no debt the tool returns healthFactor=null (semantically infinity) — render that as "Healthy" / ∞, never as 0 or "Critical". Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.';
 
-  async call(input, context) {
+const healthCheckInputSchema = z.object({
+  address: z
+    .string()
+    .optional()
+    .describe(
+      'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
+    ),
+});
+
+type HealthCheckInput = z.infer<typeof healthCheckInputSchema>;
+
+async function healthCheckCallBody(
+  input: HealthCheckInput,
+  context: ToolContext,
+): Promise<ToolResult<unknown>> {
     /**
      * [v0.49] Address-scope: tool now accepts an optional `address` param
      * so the LLM can inspect any public Sui wallet's NAVI lending
@@ -190,5 +200,13 @@ export const healthCheckTool = defineTool({
       },
       displayText: displayHfText(transportHf, borrowed, status, true, undefined, suinsName),
     };
-  },
+}
+
+export const healthCheckTool = tool({
+  description: healthCheckDescription,
+  inputSchema: healthCheckInputSchema,
+  needsApproval: buildNeedsApproval('health_check'),
+  execute: wrapEngineExecute<HealthCheckInput, unknown>('health_check', {
+    call: healthCheckCallBody,
+  }),
 });

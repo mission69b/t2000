@@ -1,4 +1,19 @@
 // Types
+//
+// [P4.1 / v3.0.0 / 2026-05-25] `Tool` (legacy engine interface with
+// `.call()` + `.name`) is no longer re-exported. Hosts that need a
+// tool type import `Tool` / `ToolSet` directly from the `ai` package —
+// every engine tool is now a native AI SDK `tool({...})`. `ToolFlags`
+// / `PreflightResult` / `ToolResult` / `ToolContext` stay exported
+// because tool-author code (in audric and future SDK consumers) still
+// wires `wrapEngineExecute` against them.
+//
+// `ToolDefinition` stays exported because the `LLMProvider` /
+// `ChatParams` contract still references it. The `LLMProvider`
+// pathway (custom provider impl) is unused by every current host
+// (audric, CLI, MCP all use `AISDKEngine` directly) and is a
+// candidate for removal in v3.1.x — when that lands `ToolDefinition`
+// goes with it.
 export type {
   Message,
   ContentBlock,
@@ -8,7 +23,6 @@ export type {
   PendingAction,
   PendingActionStep,
   PendingActionModifiableField,
-  Tool,
   ToolFlags,
   PreflightResult,
   ToolResult,
@@ -86,22 +100,9 @@ export type {
   RegenerateTimelineEvent,
 } from './regenerate.js';
 
-// Tool helpers (canonical factory is `defineTool` below; legacy
-// `buildTool` + `BuildToolOptions` were retired in Phase 2 Day 20b).
-export { toolsToDefinitions, findTool } from './tool.js';
-
-// [SPEC 37 v0.7a Phase 2 / 2026-05-16 → 2026-05-17] The canonical tool
-// factory. Zod `inputSchema` is the single source of truth — the JSON
-// schema sent to Anthropic is auto-generated via zod-to-json-schema, so
-// the Zod schema and the JSON schema can't drift. Both engines consume
-// the returned `Tool` identically. See PHASE_2_TOOL_MIGRATION_BACKLOG.md
-// + packages/engine/src/v2/define-tool.ts.
-export { defineTool } from './v2/define-tool.js';
-export type { DefineToolOptions } from './v2/define-tool.js';
-
-// Orchestration
-export { TxMutex, runTools, budgetToolResult } from './orchestration.js';
-export type { PendingToolCall } from './orchestration.js';
+// [P4.1 / 2026-05-25] Pending tool call shape — surfaced to hosts that
+// build PendingActions outside the engine (compose-bundle consumers).
+export type { PendingToolCall } from './types.js';
 
 // Cost tracking
 export { CostTracker } from './cost.js';
@@ -157,7 +158,7 @@ export { MemorySessionStore } from './session.js';
 export type { SessionData, SessionStore } from './session.js';
 
 // Tool flags (RE-2.1) + bundleable predicate (SPEC 7 P2.5)
-export { TOOL_FLAGS, applyToolFlags, getToolFlags, isBundleableTool } from './tool-flags.js';
+export { TOOL_FLAGS, getToolFlags, isBundleableTool } from './tool-flags.js';
 
 // Guard runner (RE-2.2)
 export {
@@ -214,20 +215,6 @@ export {
 } from './proactive-marker.js';
 export type { ProactiveMarker, ProactiveType } from './proactive-marker.js';
 
-// [SPEC 9 v0.1.3 P9.4] Inline-form structured input primitive. Tools
-// that need user-supplied fields before they can run return
-// `{ valid: false, needsInput: { schema, description } }` from preflight;
-// the engine yields `pending_input`; the host renders the form; the
-// host calls `engine.resumeWithInput(pendingInput, values)` to feed
-// validated values back as the tool's input.
-export type {
-  FormFieldKind,
-  FormField,
-  FormSchema,
-  PendingInput,
-  PendingInputState,
-} from './pending-input.js';
-
 // Prompt caching
 export { buildCachedSystemPrompt } from './prompt/cache.js';
 
@@ -254,9 +241,6 @@ export type { CompactOptions, ContextBudgetConfig } from './context.js';
 // Microcompact (B.3)
 export { microcompact } from './compact/microcompact.js';
 
-// Early tool dispatch (B.1)
-export { EarlyToolDispatcher } from './early-dispatcher.js';
-
 // Permission rules (B.4)
 export {
   resolvePermissionTier,
@@ -272,8 +256,11 @@ export type {
 } from './permission-rules.js';
 
 // MCP server adapter
-export { buildMcpTools, registerEngineTools } from './mcp/index.js';
-export type { McpToolDescriptor } from './mcp/index.js';
+// [P4.1 / v3.0.0 / 2026-05-25] `buildMcpTools` + `registerEngineTools`
+// + `McpToolDescriptor` removed (zero live consumers + threaded the
+// deleted legacy `Tool.call(input, ctx)` shape). Hosts wanting to wrap
+// engine tools as MCP tools either consume AI SDK `tool()` instances
+// directly OR use `@t2000/mcp` which wraps the SDK directly.
 
 // MCP client
 export { McpClientManager, McpResponseCache } from './mcp/client.js';
@@ -375,16 +362,16 @@ export type { StepFinishMutableState } from './v2/step-finish.js';
 // Lets audric `web-v2` build `new Experimental_Agent({...})` directly
 // without going through `AISDKEngine.submitMessage()`. See D-15 lock.
 //
-// - `toAISDKTools` wraps `LegacyTool[]` into AI SDK `ToolSet` with guards
-//   + preflight + USD-aware permissions preserved (same wrapping the
-//   engine class uses internally).
 // - `buildToolContext` builds a fresh `ToolContext` per turn from a
 //   config + per-turn input (same helper the engine uses internally).
 // - `buildInternalContext` constructs the `experimental_context` envelope
 //   tools see in their `.execute()` call. Mirrors the engine's internal
 //   construction at `v2/engine.ts` ~L643 — exposed so hosts can compose
 //   without re-implementing.
-export { toAISDKTools } from './v2/tool-wrapper.js';
+//
+// [P4.1 / v3.0.0 / 2026-05-25] `toAISDKTools` removed — every tool now
+// ships in native AI SDK `tool()` shape, so hosts merge `ToolSet` objects
+// directly (`{ ...READ_TOOL_SET, ...WRITE_TOOL_SET }`).
 export { buildToolContext } from './v2/tool-context.js';
 export {
   buildInternalContext,
@@ -406,7 +393,8 @@ export type { CanvasTemplate } from './tools/canvas.js';
 
 // Built-in tools — reads
 export {
-  READ_TOOLS,
+  READ_TOOL_SET,
+  READ_TOOL_NAMES,
   renderCanvasTool,
   balanceCheckTool,
   savingsInfoTool,
@@ -420,19 +408,12 @@ export {
   yieldSummaryTool,
   activitySummaryTool,
   resolveSuinsTool,
-  // [SPEC 8 v0.5.1] update_todo is exported but NOT in READ_TOOLS — hosts
-  // opt in via [...getDefaultTools(), updateTodoTool].
-  updateTodoTool,
-  // [SPEC 9 v0.1.3 P9.4] add_recipient is also opt-in — hosts that
-  // don't yet render `pending_input` forms shouldn't expose it.
-  addRecipientTool,
 } from './tools/index.js';
-export type { TodoItem } from './types.js';
-export type { TodoItem as UpdateTodoItem, UpdateTodoInput } from './tools/update-todo.js';
 
 // Built-in tools — writes
 export {
-  WRITE_TOOLS,
+  WRITE_TOOL_SET,
+  WRITE_TOOL_NAMES,
   saveDepositTool,
   withdrawTool,
   sendTransferTool,

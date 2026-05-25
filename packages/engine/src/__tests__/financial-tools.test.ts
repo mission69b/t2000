@@ -4,6 +4,11 @@ import { saveDepositTool } from '../tools/save.js';
 import { borrowTool } from '../tools/borrow.js';
 import { repayDebtTool } from '../tools/repay.js';
 
+import { callToolBody, legacyToolView } from './_helpers/call-tool-body.js';
+
+const saveDepositView = legacyToolView(saveDepositTool, 'save_deposit');
+const borrowView = legacyToolView(borrowTool, 'borrow');
+const repayDebtView = legacyToolView(repayDebtTool, 'repay_debt');
 // [v0.51.0] save_deposit and borrow now accept USDC OR USDsui (strategic
 // exception — see .cursor/rules/savings-usdc-only.mdc). Every other asset must
 // still be rejected. The Zod schema ships an `enum` so TypeScript also blocks
@@ -21,20 +26,20 @@ describe('save_deposit tool', () => {
     // compile time — the test exists to verify the runtime guard is also
     // wired up (defense in depth for the LLM bypassing the schema).
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    const result = saveDepositTool.preflight?.(badInput);
+    const result = saveDepositView.preflight?.(badInput);
     expect(result?.valid).toBe(false);
     if (result && !result.valid && 'error' in result) expect(result.error).toContain('USDC or USDsui');
   });
 
   it('runtime preflight rejects SUI', async () => {
     const badInput = { amount: 1, asset: 'SUI' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    const result = saveDepositTool.preflight?.(badInput);
+    const result = saveDepositView.preflight?.(badInput);
     expect(result?.valid).toBe(false);
   });
 
   it('runtime preflight rejects USDe (other stable still blocked)', async () => {
     const badInput = { amount: 5, asset: 'USDe' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    const result = saveDepositTool.preflight?.(badInput);
+    const result = saveDepositView.preflight?.(badInput);
     expect(result?.valid).toBe(false);
   });
 
@@ -42,36 +47,36 @@ describe('save_deposit tool', () => {
     // If the LLM somehow bypassed both the JSON schema enum AND the
     // preflight, the SDK still throws T2000Error('INVALID_ASSET').
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    await expect(saveDepositTool.call(badInput, {})).rejects.toThrow(T2000Error);
+    await expect(callToolBody(saveDepositTool, badInput, {})).rejects.toThrow(T2000Error);
     try {
-      await saveDepositTool.call(badInput, {});
+      await callToolBody(saveDepositTool, badInput, {});
     } catch (e) {
       expect((e as T2000Error).code).toBe('INVALID_ASSET');
     }
   });
 
   it('preflight accepts USDC', () => {
-    expect(saveDepositTool.preflight?.({ amount: 10, asset: 'USDC' })).toEqual({ valid: true });
+    expect(saveDepositView.preflight?.({ amount: 10, asset: 'USDC' })).toEqual({ valid: true });
   });
 
   it('preflight accepts USDsui (strategic exception)', () => {
-    expect(saveDepositTool.preflight?.({ amount: 10, asset: 'USDsui' })).toEqual({ valid: true });
+    expect(saveDepositView.preflight?.({ amount: 10, asset: 'USDsui' })).toEqual({ valid: true });
   });
 
   it('preflight accepts omitted asset (defaults to USDC)', () => {
-    expect(saveDepositTool.preflight?.({ amount: 10 })).toEqual({ valid: true });
+    expect(saveDepositView.preflight?.({ amount: 10 })).toEqual({ valid: true });
   });
 
   it('is a write tool with confirm permission', () => {
-    expect(saveDepositTool.isReadOnly).toBe(false);
-    expect(saveDepositTool.permissionLevel).toBe('confirm');
+    expect(saveDepositView.isReadOnly).toBe(false);
+    expect(saveDepositView.permissionLevel).toBe('confirm');
   });
 
   it('asset parameter is optional in schema and enum-constrained', () => {
-    const props = saveDepositTool.jsonSchema.properties as Record<string, { type?: string; description?: string; enum?: string[] }>;
+    const props = saveDepositView.jsonSchema.properties as Record<string, { type?: string; description?: string; enum?: string[] }>;
     expect(props.asset).toBeDefined();
     expect(props.asset.enum).toEqual(['USDC', 'USDsui']);
-    const required = (saveDepositTool.jsonSchema.required ?? []) as string[];
+    const required = (saveDepositView.jsonSchema.required ?? []) as string[];
     expect(required).not.toContain('asset');
   });
 });
@@ -83,42 +88,42 @@ describe('borrow tool', () => {
 
   it('runtime preflight rejects USDT', async () => {
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    const result = borrowTool.preflight?.(badInput);
+    const result = borrowView.preflight?.(badInput);
     expect(result?.valid).toBe(false);
     if (result && !result.valid && 'error' in result) expect(result.error).toContain('USDC or USDsui');
   });
 
   it('runtime preflight rejects SUI', async () => {
     const badInput = { amount: 1, asset: 'SUI' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    const result = borrowTool.preflight?.(badInput);
+    const result = borrowView.preflight?.(badInput);
     expect(result?.valid).toBe(false);
   });
 
   it('SDK assertAllowedAsset rejects USDT at call() — backstop after preflight', async () => {
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    await expect(borrowTool.call(badInput, {})).rejects.toThrow(T2000Error);
+    await expect(callToolBody(borrowTool, badInput, {})).rejects.toThrow(T2000Error);
     try {
-      await borrowTool.call(badInput, {});
+      await callToolBody(borrowTool, badInput, {});
     } catch (e) {
       expect((e as T2000Error).code).toBe('INVALID_ASSET');
     }
   });
 
   it('preflight accepts USDC and USDsui', () => {
-    expect(borrowTool.preflight?.({ amount: 10, asset: 'USDC' })).toEqual({ valid: true });
-    expect(borrowTool.preflight?.({ amount: 10, asset: 'USDsui' })).toEqual({ valid: true });
+    expect(borrowView.preflight?.({ amount: 10, asset: 'USDC' })).toEqual({ valid: true });
+    expect(borrowView.preflight?.({ amount: 10, asset: 'USDsui' })).toEqual({ valid: true });
   });
 
   it('is a write tool with confirm permission', () => {
-    expect(borrowTool.isReadOnly).toBe(false);
-    expect(borrowTool.permissionLevel).toBe('confirm');
+    expect(borrowView.isReadOnly).toBe(false);
+    expect(borrowView.permissionLevel).toBe('confirm');
   });
 
   it('asset parameter is optional in schema and enum-constrained', () => {
-    const props = borrowTool.jsonSchema.properties as Record<string, { type?: string; description?: string; enum?: string[] }>;
+    const props = borrowView.jsonSchema.properties as Record<string, { type?: string; description?: string; enum?: string[] }>;
     expect(props.asset).toBeDefined();
     expect(props.asset.enum).toEqual(['USDC', 'USDsui']);
-    const required = (borrowTool.jsonSchema.required ?? []) as string[];
+    const required = (borrowView.jsonSchema.required ?? []) as string[];
     expect(required).not.toContain('asset');
   });
 });
@@ -136,27 +141,27 @@ describe('repay_debt tool', () => {
 
   it('runtime preflight rejects USDT', async () => {
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
-    const result = repayDebtTool.preflight?.(badInput);
+    const result = repayDebtView.preflight?.(badInput);
     expect(result?.valid).toBe(false);
     if (result && !result.valid && 'error' in result) expect(result.error).toContain('USDC or USDsui');
   });
 
   it('preflight accepts USDC, USDsui, and omitted asset', () => {
-    expect(repayDebtTool.preflight?.({ amount: 10, asset: 'USDC' })).toEqual({ valid: true });
-    expect(repayDebtTool.preflight?.({ amount: 10, asset: 'USDsui' })).toEqual({ valid: true });
-    expect(repayDebtTool.preflight?.({ amount: 10 })).toEqual({ valid: true });
+    expect(repayDebtView.preflight?.({ amount: 10, asset: 'USDC' })).toEqual({ valid: true });
+    expect(repayDebtView.preflight?.({ amount: 10, asset: 'USDsui' })).toEqual({ valid: true });
+    expect(repayDebtView.preflight?.({ amount: 10 })).toEqual({ valid: true });
   });
 
   it('is a write tool with confirm permission', () => {
-    expect(repayDebtTool.isReadOnly).toBe(false);
-    expect(repayDebtTool.permissionLevel).toBe('confirm');
+    expect(repayDebtView.isReadOnly).toBe(false);
+    expect(repayDebtView.permissionLevel).toBe('confirm');
   });
 
   it('asset parameter is optional in schema and enum-constrained', () => {
-    const props = repayDebtTool.jsonSchema.properties as Record<string, { type?: string; description?: string; enum?: string[] }>;
+    const props = repayDebtView.jsonSchema.properties as Record<string, { type?: string; description?: string; enum?: string[] }>;
     expect(props.asset).toBeDefined();
     expect(props.asset.enum).toEqual(['USDC', 'USDsui']);
-    const required = (repayDebtTool.jsonSchema.required ?? []) as string[];
+    const required = (repayDebtView.jsonSchema.required ?? []) as string[];
     expect(required).not.toContain('asset');
   });
 
@@ -198,7 +203,7 @@ describe('repay_debt tool', () => {
         gasCost: 0.001,
         asset: 'USDC',
       });
-      const out = await repayDebtTool.call(
+      const out = await callToolBody(repayDebtTool, 
         { amount: 0.5, asset: 'USDC' },
         ctx as never,
       );
@@ -217,7 +222,7 @@ describe('repay_debt tool', () => {
         gasCost: 0.001,
         asset: 'USDC',
       });
-      const out = await repayDebtTool.call(
+      const out = await callToolBody(repayDebtTool, 
         { amount: 0.5, asset: 'USDC' },
         ctx as never,
       );
@@ -234,7 +239,7 @@ describe('repay_debt tool', () => {
         gasCost: 0.001,
         asset: 'USDsui',
       });
-      const out = await repayDebtTool.call(
+      const out = await callToolBody(repayDebtTool, 
         { amount: 1, asset: 'USDsui' },
         ctx as never,
       );

@@ -50,6 +50,7 @@ import { swapQuoteTool } from '../tools/swap-quote.js';
 import { swapExecuteTool } from '../tools/swap.js';
 import type { ToolContext } from '../types.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
 interface SpySink {
   counter: ReturnType<typeof vi.fn>;
   histogram: ReturnType<typeof vi.fn>;
@@ -94,7 +95,7 @@ const FAKE_SWAP_RESULT = {
 function makeQuoteContext(): ToolContext {
   return {
     walletAddress: '0xa11ce',
-  } as ToolContext;
+  } as unknown as ToolContext;
 }
 
 function makeExecuteContext(swapImpl: () => Promise<typeof FAKE_SWAP_RESULT>): ToolContext {
@@ -104,7 +105,7 @@ function makeExecuteContext(swapImpl: () => Promise<typeof FAKE_SWAP_RESULT>): T
       address: () => '0xa11ce',
       swap: swapImpl,
     } as unknown as ToolContext['agent'],
-  } as ToolContext;
+  } as unknown as ToolContext;
 }
 
 describe('swap_quote telemetry (Backlog 2a)', () => {
@@ -123,7 +124,7 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
   it('emits cetus.find_route_ms histogram and {outcome=success} counter on success', async () => {
     mockedGetSwapQuote.mockResolvedValueOnce(FAKE_QUOTE);
 
-    const result = await swapQuoteTool.call(
+    const result = await callToolBody(swapQuoteTool, 
       { from: 'USDC', to: 'USDsui', amount: 5 },
       makeQuoteContext(),
     );
@@ -160,7 +161,7 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
   it('forwards sponsor-safe providers allow-list to SDK getSwapQuote (Bug A fix)', async () => {
     mockedGetSwapQuote.mockResolvedValueOnce(FAKE_QUOTE);
 
-    await swapQuoteTool.call(
+    await callToolBody(swapQuoteTool, 
       { from: 'USDC', to: 'GOLD', amount: 1 },
       makeQuoteContext(),
     );
@@ -181,7 +182,7 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
     mockedGetSwapQuote.mockRejectedValueOnce(boom);
 
     await expect(
-      swapQuoteTool.call(
+      callToolBody(swapQuoteTool, 
         { from: 'USDC', to: 'USDsui', amount: 5 },
         makeQuoteContext(),
       ),
@@ -211,7 +212,7 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
 
     for (const err of errors) {
       mockedGetSwapQuote.mockRejectedValueOnce(err);
-      const result = await swapQuoteTool.call(
+      const result = await callToolBody(swapQuoteTool, 
         { from: err.message.split(': ')[1].split('.')[0], to: 'USDC', amount: 1 },
         makeQuoteContext(),
       );
@@ -229,7 +230,7 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
     const noRoute = new T2000Error('SWAP_FAILED', 'No swap route found for OBSCURE -> USDC.');
     mockedGetSwapQuote.mockRejectedValueOnce(noRoute);
 
-    const result = await swapQuoteTool.call(
+    const result = await callToolBody(swapQuoteTool, 
       { from: 'OBSCURE', to: 'USDC', amount: 1 },
       makeQuoteContext(),
     );
@@ -248,7 +249,7 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
     // Generic errors aren't soft-handled — they re-throw. The dispatcher's
     // `.catch` plus the audric process handler keep the process alive.
     await expect(
-      swapQuoteTool.call(
+      callToolBody(swapQuoteTool, 
         { from: 'USDC', to: 'USDsui', amount: 1 },
         makeQuoteContext(),
       ),
@@ -261,7 +262,7 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
       return FAKE_QUOTE;
     });
 
-    await swapQuoteTool.call(
+    await callToolBody(swapQuoteTool, 
       { from: 'USDC', to: 'USDsui', amount: 5 },
       makeQuoteContext(),
     );
@@ -286,7 +287,7 @@ describe('swap_execute telemetry (Backlog 2a)', () => {
   it('emits cetus.swap_execute_total_ms histogram and {outcome=success} counter on success', async () => {
     const ctx = makeExecuteContext(async () => FAKE_SWAP_RESULT);
 
-    const result = await swapExecuteTool.call(
+    const result = await callToolBody(swapExecuteTool, 
       { from: 'USDC', to: 'USDsui', amount: 5 },
       ctx,
     );
@@ -315,7 +316,7 @@ describe('swap_execute telemetry (Backlog 2a)', () => {
     });
 
     await expect(
-      swapExecuteTool.call(
+      callToolBody(swapExecuteTool, 
         { from: 'USDC', to: 'USDsui', amount: 5 },
         ctx,
       ),
@@ -338,7 +339,7 @@ describe('swap_execute telemetry (Backlog 2a)', () => {
       throw err;
     });
 
-    const result = await swapExecuteTool.call(
+    const result = await callToolBody(swapExecuteTool, 
       { from: 'SSUI', to: 'USDC', amount: 1 },
       ctx,
     );

@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { savingsInfoTool } from '../tools/savings.js';
 import type { ServerPositionData } from '../types.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
+import type { ToolContext } from '../types.js';
 // SPEC 7 P2.7 soak finding F9 (2026-05-02): a NAVI position whose `amount`
 // is non-zero but rounds to 0 raw units after `addWithdrawToTx`'s dust-buffer
 // math throws `NO_COLLATERAL: Nothing to withdraw for X on NAVI`. The fix
@@ -15,7 +17,7 @@ function ctx(positionFetcher: (addr: string) => Promise<ServerPositionData>) {
   return {
     walletAddress: USER_ADDR,
     positionFetcher,
-  } as Parameters<typeof savingsInfoTool.call>[1];
+  } as unknown as ToolContext;
 }
 
 interface SavingsResult {
@@ -52,7 +54,7 @@ describe('[F9] savings_info filters phantom-dust positions (raw amount === 0)', 
       }),
     );
 
-    const res = (await savingsInfoTool.call({}, ctx(fetcher))) as SavingsResult;
+    const res = (await callToolBody(savingsInfoTool, {}, ctx(fetcher))) as SavingsResult;
 
     expect(res.data.positions).toHaveLength(1);
     expect(res.data.positions[0].symbol).toBe('USDC');
@@ -78,7 +80,7 @@ describe('[F9] savings_info filters phantom-dust positions (raw amount === 0)', 
       }),
     );
 
-    const res = (await savingsInfoTool.call({}, ctx(fetcher))) as SavingsResult;
+    const res = (await callToolBody(savingsInfoTool, {}, ctx(fetcher))) as SavingsResult;
 
     expect(res.data.positions).toHaveLength(2);
     const usdsui = res.data.positions.find((p) => p.symbol === 'USDsui');
@@ -105,7 +107,7 @@ describe('[F9] savings_info filters phantom-dust positions (raw amount === 0)', 
       }),
     );
 
-    const res = (await savingsInfoTool.call({}, ctx(fetcher))) as SavingsResult;
+    const res = (await callToolBody(savingsInfoTool, {}, ctx(fetcher))) as SavingsResult;
 
     expect(res.data.fundStatus.supplied).toBeCloseTo(50.5, 4);
     expect(res.data.fundStatus.apy).toBeCloseTo(0.046, 4);
@@ -132,7 +134,7 @@ describe('[F9] savings_info filters phantom-dust positions (raw amount === 0)', 
       }),
     );
 
-    const res = (await savingsInfoTool.call({}, ctx(fetcher))) as SavingsResult;
+    const res = (await callToolBody(savingsInfoTool, {}, ctx(fetcher))) as SavingsResult;
 
     expect(res.data.positions).toHaveLength(1);
     expect(res.data.positions[0].symbol).toBe('USDC');
@@ -158,7 +160,7 @@ describe('[F9] savings_info filters phantom-dust positions (raw amount === 0)', 
       }),
     );
 
-    const res = (await savingsInfoTool.call({}, ctx(fetcher))) as SavingsResult;
+    const res = (await callToolBody(savingsInfoTool, {}, ctx(fetcher))) as SavingsResult;
 
     const borrows = res.data.positions.filter((p) => p.type === 'borrow');
     expect(borrows).toHaveLength(1);

@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
 import {
   runGuards,
   createGuardRunnerState,
   extractConversationText,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
-import { defineTool } from '../v2/define-tool.js';
-import type { PendingToolCall } from '../orchestration.js';
+import { makeGuardView } from './_helpers/call-tool-body.js';
+import type { PendingToolCall } from '../types.js';
 
 /**
  * Regression tests for the asset-intent guard.
@@ -18,18 +17,7 @@ import type { PendingToolCall } from '../orchestration.js';
  * LLM is forced to re-issue with `asset: "SUI"`.
  */
 
-const sendTransfer = defineTool({
-  name: 'send_transfer',
-  description: 'send',
-  inputSchema: z.object({
-    to: z.string(),
-    amount: z.number(),
-    asset: z.string().optional(),
-  }),
-  isReadOnly: false,
-  flags: { mutating: true, irreversible: true, requiresBalance: true },
-  call: async () => ({ data: {} }),
-});
+const sendTransfer = makeGuardView('send_transfer');
 
 const KNOWN = '0x231455f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb896cd';
 
@@ -151,14 +139,7 @@ describe('guardAssetIntent (send_transfer asset safety)', () => {
   });
 
   it('does not run on non-send_transfer tools', () => {
-    const otherTool = defineTool({
-      name: 'save_deposit',
-      description: 's',
-      inputSchema: z.object({ amount: z.number() }),
-      isReadOnly: false,
-      flags: { mutating: true, requiresBalance: true },
-      call: async () => ({ data: {} }),
-    });
+    const otherTool = makeGuardView('save_deposit');
 
     const result = runGuards(
       otherTool,

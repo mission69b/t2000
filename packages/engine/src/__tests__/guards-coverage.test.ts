@@ -31,7 +31,6 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
 import {
   runGuards,
   createGuardRunnerState,
@@ -39,8 +38,8 @@ import {
   guardStaleData,
   type GuardConfig,
 } from '../guards.js';
-import { defineTool } from '../v2/define-tool.js';
-import type { PendingToolCall } from '../orchestration.js';
+import { makeGuardView } from './_helpers/call-tool-body.js';
+import type { PendingToolCall } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -106,14 +105,8 @@ function makeConvCtx(opts: {
 // ---------------------------------------------------------------------------
 
 describe('retry_blocked (safety guard)', () => {
-  const payApi = defineTool({
-    name: 'pay_api',
-    description: 'pay',
-    inputSchema: z.object({ url: z.string() }),
-    isReadOnly: false,
-    flags: { mutating: true },
-    call: async () => ({ data: {} }),
-  });
+  // pay_api was deleted in S.245; stub with send_transfer flags shape.
+  const payApi = { name: 'pay_api', flags: { mutating: true } };
 
   it('passes when the tool has not been called before (no retry history)', () => {
     const state = createGuardRunnerState();
@@ -171,22 +164,8 @@ describe('retry_blocked (safety guard)', () => {
 // ---------------------------------------------------------------------------
 
 describe('irreversibility (safety guard)', () => {
-  const irreversibleTool = defineTool({
-    name: 'send_transfer',
-    description: 'send',
-    inputSchema: z.object({ to: z.string(), amount: z.number() }),
-    isReadOnly: false,
-    flags: { mutating: true, irreversible: true },
-    call: async () => ({ data: {} }),
-  });
-  const reversibleTool = defineTool({
-    name: 'save_deposit',
-    description: 'save',
-    inputSchema: z.object({ amount: z.number() }),
-    isReadOnly: false,
-    flags: { mutating: true /* irreversible: false (default) */ },
-    call: async () => ({ data: {} }),
-  });
+  const irreversibleTool = makeGuardView('send_transfer');
+  const reversibleTool = makeGuardView('save_deposit');
 
   it('passes when the tool is NOT flagged irreversible', () => {
     const result = runGuards(
@@ -233,22 +212,8 @@ describe('irreversibility (safety guard)', () => {
 // ---------------------------------------------------------------------------
 
 describe('large_transfer (financial guard)', () => {
-  const sendTransfer = defineTool({
-    name: 'send_transfer',
-    description: 'send',
-    inputSchema: z.object({ to: z.string(), amount: z.number() }),
-    isReadOnly: false,
-    flags: { mutating: true },
-    call: async () => ({ data: {} }),
-  });
-  const otherWrite = defineTool({
-    name: 'save_deposit',
-    description: 'save',
-    inputSchema: z.object({ amount: z.number() }),
-    isReadOnly: false,
-    flags: { mutating: true },
-    call: async () => ({ data: {} }),
-  });
+  const sendTransfer = makeGuardView('send_transfer');
+  const otherWrite = makeGuardView('save_deposit');
 
   it('passes on non-send_transfer tools regardless of amount', () => {
     const result = runGuards(
@@ -310,22 +275,8 @@ describe('large_transfer (financial guard)', () => {
 // ---------------------------------------------------------------------------
 
 describe('slippage_warning (financial guard)', () => {
-  const swapExecute = defineTool({
-    name: 'swap_execute',
-    description: 'swap',
-    inputSchema: z.object({ from: z.string(), to: z.string(), amount: z.number() }),
-    isReadOnly: false,
-    flags: { mutating: true },
-    call: async () => ({ data: {} }),
-  });
-  const nonSwap = defineTool({
-    name: 'save_deposit',
-    description: 'save',
-    inputSchema: z.object({ amount: z.number() }),
-    isReadOnly: false,
-    flags: { mutating: true },
-    call: async () => ({ data: {} }),
-  });
+  const swapExecute = makeGuardView('swap_execute');
+  const nonSwap = makeGuardView('save_deposit');
 
   it('passes on non-swap_execute tools regardless of assistant text', () => {
     const result = runGuards(

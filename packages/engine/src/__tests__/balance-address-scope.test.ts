@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { balanceCheckTool } from '../tools/balance.js';
 import type { ServerPositionData } from '../types.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
+import type { ToolContext } from '../types.js';
 /**
  * [v0.49] Regression suite for address-scoped balance_check.
  *
@@ -70,7 +72,7 @@ function ctx(opts: { wallet?: string; positionFetcher?: typeof positionFetcher }
     mcpManager: baseMcp as unknown,
     positionFetcher: opts.positionFetcher ?? positionFetcher,
     blockvisionApiKey: 'test',
-  } as Parameters<typeof balanceCheckTool.call>[1];
+  } as unknown as ToolContext;
 }
 
 interface BalanceResult {
@@ -93,13 +95,13 @@ describe('[v0.49] balance_check address scope', () => {
   });
 
   it('defaults to context.walletAddress when input.address is omitted', async () => {
-    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    const res = (await callToolBody(balanceCheckTool, {}, ctx())) as BalanceResult;
     expect(res.data.address).toBe(USER_ADDR);
     expect(res.data.isSelfQuery).toBe(true);
   });
 
   it('honors explicit input.address (the fix)', async () => {
-    const res = (await balanceCheckTool.call(
+    const res = (await callToolBody(balanceCheckTool, 
       { address: FUNKII_ADDR },
       ctx(),
     )) as BalanceResult;
@@ -108,14 +110,14 @@ describe('[v0.49] balance_check address scope', () => {
   });
 
   it('passes the target address to positionFetcher (not context.walletAddress)', async () => {
-    await balanceCheckTool.call({ address: FUNKII_ADDR }, ctx());
+    await callToolBody(balanceCheckTool, { address: FUNKII_ADDR }, ctx());
     expect(positionFetcher).toHaveBeenCalledWith(FUNKII_ADDR);
     expect(positionFetcher).not.toHaveBeenCalledWith(USER_ADDR);
   });
 
   it('passes the target address to fetchAddressPortfolio', async () => {
     const { fetchAddressPortfolio } = await import('../blockvision-prices.js');
-    await balanceCheckTool.call({ address: FUNKII_ADDR }, ctx());
+    await callToolBody(balanceCheckTool, { address: FUNKII_ADDR }, ctx());
     // [SPEC 8 v0.5.1 B3.2] 4th arg is the retryStats opts bag — the test
     // ctx() doesn't set retryStats, so it forwards as undefined.
     expect(fetchAddressPortfolio).toHaveBeenCalledWith(
@@ -127,7 +129,7 @@ describe('[v0.49] balance_check address scope', () => {
   });
 
   it('case-insensitive equality decides isSelfQuery', async () => {
-    const res = (await balanceCheckTool.call(
+    const res = (await callToolBody(balanceCheckTool, 
       { address: USER_ADDR.toUpperCase() },
       ctx(),
     )) as BalanceResult;
@@ -135,7 +137,7 @@ describe('[v0.49] balance_check address scope', () => {
   });
 
   it('prefixes the displayText with a truncated-address subject for non-self queries', async () => {
-    const res = (await balanceCheckTool.call(
+    const res = (await callToolBody(balanceCheckTool, 
       { address: FUNKII_ADDR },
       ctx(),
     )) as BalanceResult;
@@ -144,7 +146,7 @@ describe('[v0.49] balance_check address scope', () => {
   });
 
   it('omits the address subject from displayText for self queries', async () => {
-    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    const res = (await callToolBody(balanceCheckTool, {}, ctx())) as BalanceResult;
     expect(res.displayText.startsWith('Balance:')).toBe(true);
     expect(res.displayText).not.toContain(USER_ADDR.slice(0, 6));
   });
@@ -173,7 +175,7 @@ describe('[v0.49] balance_check address scope', () => {
     }) as unknown as typeof fetch;
 
     try {
-      const res = (await balanceCheckTool.call(
+      const res = (await callToolBody(balanceCheckTool, 
         { address: 'obehi.sui' },
         ctx(),
       )) as BalanceResult & { data: { suinsName?: string | null } };
@@ -206,9 +208,9 @@ describe('[v0.49] balance_check address scope', () => {
           stables: 0,
         }),
       },
-    } as Parameters<typeof balanceCheckTool.call>[1];
+    } as unknown as ToolContext;
     await expect(
-      balanceCheckTool.call({ address: FUNKII_ADDR }, sdkOnlyCtx),
+      callToolBody(balanceCheckTool, { address: FUNKII_ADDR }, sdkOnlyCtx),
     ).rejects.toThrow(/cannot inspect/i);
   });
 });
@@ -233,7 +235,7 @@ describe('[v0.50] balance_check DeFi rollup', () => {
       source: 'blockvision',
     });
 
-    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    const res = (await callToolBody(balanceCheckTool, {}, ctx())) as BalanceResult;
     // Wallet portfolio (12.345678 USDC) + savings (1000) + defi (8559.5) = 9571.84...
     expect(res.data.defi).toBeCloseTo(8559.5, 2);
     expect(res.data.defiByProtocol).toEqual({ cetus: 5000, suilend: 3000, scallop: 559.5 });
@@ -242,14 +244,14 @@ describe('[v0.50] balance_check DeFi rollup', () => {
   });
 
   it('keeps total = wallet+savings when DeFi reports zero', async () => {
-    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    const res = (await callToolBody(balanceCheckTool, {}, ctx())) as BalanceResult;
     expect(res.data.defi).toBe(0);
     expect(res.data.total).toBeCloseTo(12.345678 + 1000, 2);
   });
 
   it('passes the target address (not user address) to the DeFi fetcher', async () => {
     const { fetchAddressDefiPortfolio } = await import('../blockvision-prices.js');
-    await balanceCheckTool.call({ address: FUNKII_ADDR }, ctx());
+    await callToolBody(balanceCheckTool, { address: FUNKII_ADDR }, ctx());
     // [SPEC 8 v0.5.1 B3.2] 3rd arg is `priceHints` (default {}), 4th is
     // the retryStats opts bag.
     expect(fetchAddressDefiPortfolio).toHaveBeenCalledWith(
@@ -274,7 +276,7 @@ describe('[v0.50] balance_check DeFi rollup', () => {
       pricedAt: Date.now(),
       source: 'blockvision',
     });
-    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    const res = (await callToolBody(balanceCheckTool, {}, ctx())) as BalanceResult;
     expect(res.displayText).toMatch(/DeFi positions/);
     expect(res.displayText).toContain('suilend');
     expect(res.displayText).toContain('250.00');

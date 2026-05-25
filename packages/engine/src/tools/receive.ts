@@ -1,5 +1,11 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 4 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 const PaymentLinkSchema = z.object({
   amount: z.number().positive().describe('Amount in USDC (required). Ask the user if not specified.'),
@@ -34,14 +40,18 @@ function logReceiveFailure(
   console.warn(`[receive] tool=${tool} status=${status} url=${url} detail=${detail}`);
 }
 
-export const createPaymentLinkTool = defineTool({
-  name: 'create_payment_link',
-  description:
-    'Create a shareable payment link so someone can send USDC to the user. Amount is required — ask the user for the amount if not specified. Returns a URL the user can share. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", "create an invoice", "bill a client", "send an invoice", or similar — payment links cover the invoicing use case. Set the label/memo to encode invoice context (e.g. label="Web design — March 2026", memo="Net 30").',
-  inputSchema: PaymentLinkSchema,
-  isReadOnly: true,
+// ---------------------------------------------------------------------------
+// Shared business logic — same bodies back the native + legacy exports
+// ---------------------------------------------------------------------------
+const createPaymentLinkDescription =
+  'Create a shareable payment link so someone can send USDC to the user. Amount is required — ask the user for the amount if not specified. Returns a URL the user can share. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", "create an invoice", "bill a client", "send an invoice", or similar — payment links cover the invoicing use case. Set the label/memo to encode invoice context (e.g. label="Web design — March 2026", memo="Net 30").';
 
-  async call(input, context) {
+type CreatePaymentLinkInput = z.infer<typeof PaymentLinkSchema>;
+
+async function createPaymentLinkCallBody(
+  input: CreatePaymentLinkInput,
+  context: ToolContext,
+): Promise<ToolResult<unknown>> {
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Payment link creation is not available.' };
@@ -81,17 +91,19 @@ export const createPaymentLinkTool = defineTool({
       logReceiveFailure('create_payment_link', `${apiUrl}/api/internal/payments`, 'network', e instanceof Error ? e.message : String(e));
       return { data: null, displayText: 'Failed to create payment link.' };
     }
-  },
-});
+}
 
-export const listPaymentLinksTool = defineTool({
-  name: 'list_payment_links',
-  description:
-    'List the user\'s payment links — active, paid, expired, and cancelled. Use when the user asks "show my payment links", "show my invoices", "what payment links do I have", or wants to check payment / invoice status. Payment links cover the invoicing use case (use create_payment_link for any "bill a client" or "send an invoice" intent).',
-  inputSchema: z.object({}),
-  isReadOnly: true,
+const listPaymentLinksDescription =
+  'List the user\'s payment links — active, paid, expired, and cancelled. Use when the user asks "show my payment links", "show my invoices", "what payment links do I have", or wants to check payment / invoice status. Payment links cover the invoicing use case (use create_payment_link for any "bill a client" or "send an invoice" intent).';
 
-  async call(_input, context) {
+const listPaymentLinksInputSchema = z.object({});
+
+type ListPaymentLinksInput = z.infer<typeof listPaymentLinksInputSchema>;
+
+async function listPaymentLinksCallBody(
+  _input: ListPaymentLinksInput,
+  context: ToolContext,
+): Promise<ToolResult<unknown>> {
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: { links: [] }, displayText: 'No payment links found.' };
@@ -119,19 +131,23 @@ export const listPaymentLinksTool = defineTool({
       logReceiveFailure('list_payment_links', `${apiUrl}/api/internal/payments?type=link`, 'network', e instanceof Error ? e.message : String(e));
       return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
     }
-  },
+}
+
+const cancelPaymentLinkDescription =
+  'Cancel an active payment link so it can no longer be used. Use when the user says "cancel my payment link", "delete my payment link", "cancel my invoice", "delete invoice", or "remove the link [slug/label]". Ask for the slug if ambiguous — use list_payment_links first to find it. (Payment links cover the invoicing use case post-V07E_INVOICE_DEPRECATION.)';
+
+const cancelPaymentLinkInputSchema = z.object({
+  slug: z
+    .string()
+    .describe('The slug of the payment link to cancel (e.g. "LzLawhY7")'),
 });
 
-export const cancelPaymentLinkTool = defineTool({
-  name: 'cancel_payment_link',
-  description:
-    'Cancel an active payment link so it can no longer be used. Use when the user says "cancel my payment link", "delete my payment link", "cancel my invoice", "delete invoice", or "remove the link [slug/label]". Ask for the slug if ambiguous — use list_payment_links first to find it. (Payment links cover the invoicing use case post-V07E_INVOICE_DEPRECATION.)',
-  inputSchema: z.object({
-    slug: z.string().describe('The slug of the payment link to cancel (e.g. "LzLawhY7")'),
-  }),
-  isReadOnly: true,
+type CancelPaymentLinkInput = z.infer<typeof cancelPaymentLinkInputSchema>;
 
-  async call(input, context) {
+async function cancelPaymentLinkCallBody(
+  input: CancelPaymentLinkInput,
+  context: ToolContext,
+): Promise<ToolResult<unknown>> {
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Payment link cancellation is not available.' };
@@ -160,5 +176,34 @@ export const cancelPaymentLinkTool = defineTool({
       logReceiveFailure('cancel_payment_link', `${apiUrl}/api/internal/payments`, 'network', e instanceof Error ? e.message : String(e));
       return { data: null, displayText: 'Failed to cancel payment link.' };
     }
-  },
+}
+
+export const createPaymentLinkTool = tool({
+  description: createPaymentLinkDescription,
+  inputSchema: PaymentLinkSchema,
+  needsApproval: buildNeedsApproval('create_payment_link'),
+  execute: wrapEngineExecute<CreatePaymentLinkInput, unknown>(
+    'create_payment_link',
+    { call: createPaymentLinkCallBody },
+  ),
+});
+
+export const listPaymentLinksTool = tool({
+  description: listPaymentLinksDescription,
+  inputSchema: listPaymentLinksInputSchema,
+  needsApproval: buildNeedsApproval('list_payment_links'),
+  execute: wrapEngineExecute<ListPaymentLinksInput, unknown>(
+    'list_payment_links',
+    { call: listPaymentLinksCallBody },
+  ),
+});
+
+export const cancelPaymentLinkTool = tool({
+  description: cancelPaymentLinkDescription,
+  inputSchema: cancelPaymentLinkInputSchema,
+  needsApproval: buildNeedsApproval('cancel_payment_link'),
+  execute: wrapEngineExecute<CancelPaymentLinkInput, unknown>(
+    'cancel_payment_link',
+    { call: cancelPaymentLinkCallBody },
+  ),
 });

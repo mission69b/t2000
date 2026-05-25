@@ -1,5 +1,36 @@
-import type { Tool } from '../types.js';
-import { applyToolFlags } from '../tool-flags.js';
+// ---------------------------------------------------------------------------
+// tools/index.ts — tool registry (ToolSet shape, post-P4.1 Phase C)
+// ---------------------------------------------------------------------------
+//
+// [SPEC AI SDK HARDENING P4.1 Phase C — 2026-05-25] After every in-tree
+// tool migrated to AI SDK native `tool({...})`, this file stopped being
+// a `Tool[]` registry and became a `ToolSet` (Record<name, AISDKTool>)
+// registry. Three things drove the change:
+//
+//   1. The native `tool({...})` factory's output doesn't carry a `name`
+//      field — names are the keys in a `ToolSet`. Storing tools in an
+//      array required reintroducing the legacy `Tool` shape, defeating
+//      the migration.
+//   2. AI SDK's `streamText({ tools })` consumes `ToolSet` directly,
+//      with no intermediate wrapping. The engine's `buildToolSet()`
+//      now spreads `READ_TOOL_SET` + `WRITE_TOOL_SET` straight into
+//      the agent.
+//   3. The previous `applyToolFlags` indirection (legacy `Tool[]` →
+//      flags-attached `Tool[]`) was dead at runtime: guards look up
+//      flags by name via `getToolFlags(name)` regardless of any
+//      per-instance `flags` field.
+//
+// Tool METADATA (flags, policy, modifiable fields) lives in sidecar
+// registries keyed by name:
+//   - `TOOL_FLAGS` (./tool-flags.ts)        — bundleability, mutating, etc.
+//   - `TOOL_POLICY` (./v2/tool-policy.ts)   — permission level, cacheable
+//   - `getModifiableFields` (./tools/tool-modifiable-fields.ts)
+//
+// The guard runner synthesizes a `GuardToolView` ({name, flags, preflight})
+// per dispatch — it does NOT iterate this file.
+// ---------------------------------------------------------------------------
+
+import type { ToolSet } from 'ai';
 import { balanceCheckTool } from './balance.js';
 import { savingsInfoTool } from './savings.js';
 import { healthCheckTool } from './health.js';
@@ -25,113 +56,98 @@ import { spendingAnalyticsTool } from './spending.js';
 import { yieldSummaryTool } from './yield-summary.js';
 import { activitySummaryTool } from './activity-summary.js';
 import { resolveSuinsTool } from './resolve-suins.js';
-// [S18-F20] Read-only inspector for pending NAVI lending rewards.
-// Companion to claim_rewards (read → write split) so the LLM can
-// disclose what's claimable BEFORE asking for a confirm card.
-// Also feeds the harvest_rewards compound tool.
 import { pendingRewardsTool } from './pending-rewards.js';
-// [Track B / 2026-05-08] Compound write — claim NAVI rewards, swap each
-// non-USDC reward to USDC inline, deposit to NAVI savings. Single PTB,
-// single confirm card, atomic settlement. Powers the audric "🌾 HARVEST"
-// chip under Save.
 import { harvestRewardsTool, narrateHarvestResult } from './harvest-rewards.js';
-// [SPEC 8 v0.5.1] update_todo is opt-in — NOT included in READ_TOOLS.
-// Hosts adopt by appending `updateTodoTool` to their tool list:
-//   tools: [...getDefaultTools(), updateTodoTool]
-// This keeps the existing audric/web call sites zero-risk until the
-// SPEC 8 host wiring (P3.3) lands.
-import { updateTodoTool } from './update-todo.js';
-// [SPEC 9 v0.1.3 P9.4] add_recipient is opt-in for the same reason —
-// hosts that don't yet render `pending_input` forms shouldn't expose
-// the tool to the LLM (they'd receive an event they can't handle).
-// Adopt by appending `addRecipientTool` to the tool list:
-//   tools: [...getDefaultTools(), addRecipientTool]
-// Once audric's form renderer + resume endpoint ship, audric/web
-// adopts; other hosts follow when ready.
-import { addRecipientTool } from './add-recipient.js';
-// [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed. The
-// BlockVision-backed `token_prices` tool covers spot prices. The
-// surviving DefiLlama dependency lived on `protocol_deep_dive` until
-// S.277 — that tool was cut as part of the "Earns Its Keep" audit
-// (AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md). The engine no longer has
-// any caller of `api.llama.fi`.
 import { tokenPricesTool } from './token-prices.js';
 
-// [SIMPLIFICATION DAY 7] Removed 9 tools to align engine with chat-first thesis:
-//   - allowance_status, toggle_allowance, update_daily_limit, update_permissions
-//     (allowance contract dormant; agent autonomy under zkLogin was theatre)
-//   - create_schedule, list_schedules, cancel_schedule
-//     (DCA/scheduled actions can't execute without user online to sign)
-//   - pause_pattern, pattern_status
-//     (pattern detection as proposals removed; classifiers stay as pure fns)
-//
-// [v1.4 — Day 3] All 7 defillama_* LLM tools deleted (Day 2: prices/
-// change → BlockVision; Day 3: yield-pools/protocol-info/chain-tvl/
-// protocol-fees/sui-protocols deleted, no replacement). v1.4 left the
-// engine at 23 reads + 11 writes = 34 tools. SPEC 10 (May 2026) added
-// resolve_suins (→ 24 reads / 35 total). S.119 added pending_rewards
-// + Track B added harvest_rewards → bumped to 25 reads + 12 writes = 37.
-// [S.245 — 2026-05-22] V07E_D_QUESTION_AUDITS D-2 reframe deleted
-// pay_api + mpp_services from the engine entirely. Capabilities return
-// as Commerce primitives in Audric Store SPEC (clean-slate redesign,
-// not a port). 35 tools.
-// [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] Deleted 3
-// invoice tools (create_invoice / list_invoices / cancel_invoice) +
-// InvoiceSchema from receive.ts. Payment links cover the invoicing
-// use case (set label/memo to encode invoice context). The 3
-// payment-link tools have been re-described to handle any invoice
-// intent the LLM sees.
-// [S.269 item 6 — 2026-05-23] save_contact tool deleted (was a dead
-// host-side write). WRITE_TOOLS dropped from 11 → 10.
-// [S.277 — 2026-05-23] "Earns Its Keep" audit cut 5 tools:
-// (a) Volo trio (`volo_stats`/`volo_stake`/`volo_unstake`) — vSUI
-// liquid staking has no Audric chip + no product slot in the 5 named
-// products (Passport/Intelligence/Finance/Pay/Store); rewards harvest
-// still handles vSUI via Cetus, not Volo. SDK + CLI + MCP retain the
-// capability for non-Audric consumers.
-// (b) `web_search` — Brave-backed; already filtered out in audric
-// production (gateway path uses Vercel AI Gateway's `perplexity_search`).
-// (c) `protocol_deep_dive` — DefiLlama-backed; system prompt re-routes
-// "is X safe?" queries to `rates_info` (NAVI APYs are the only
-// protocol-safety dimension Audric needs in-product).
-// READ_TOOLS dropped from 21 → 18; WRITE_TOOLS dropped from 10 → 8.
-// **Current count: 18 reads + 8 writes = 26 tools.**
-// See AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md for the full lens.
+// ---------------------------------------------------------------------------
+// Tool name catalogues (single source of truth for "what's a read?",
+// "what's a write?"). Hosts that need to iterate by capability use these
+// instead of inspecting `TOOL_POLICY` entries one at a time.
+// ---------------------------------------------------------------------------
 
-export const READ_TOOLS: Tool[] = [
-  renderCanvasTool,
-  balanceCheckTool,
-  savingsInfoTool,
-  healthCheckTool,
-  ratesInfoTool,
-  transactionHistoryTool,
-  swapQuoteTool,
-  explainTxTool,
-  portfolioAnalysisTool,
-  tokenPricesTool,
-  listPaymentLinksTool,
-  cancelPaymentLinkTool,
-  createPaymentLinkTool,
-  spendingAnalyticsTool,
-  yieldSummaryTool,
-  activitySummaryTool,
-  resolveSuinsTool,
-  pendingRewardsTool,
-];
+export const READ_TOOL_NAMES = [
+  'render_canvas',
+  'balance_check',
+  'savings_info',
+  'health_check',
+  'rates_info',
+  'transaction_history',
+  'swap_quote',
+  'explain_tx',
+  'portfolio_analysis',
+  'token_prices',
+  'list_payment_links',
+  'cancel_payment_link',
+  'create_payment_link',
+  'spending_analytics',
+  'yield_summary',
+  'activity_summary',
+  'resolve_suins',
+  'pending_rewards',
+] as const;
 
-export const WRITE_TOOLS: Tool[] = [
-  saveDepositTool,
-  withdrawTool,
-  sendTransferTool,
-  borrowTool,
-  repayDebtTool,
-  claimRewardsTool,
-  harvestRewardsTool,
-  swapExecuteTool,
-];
+export const WRITE_TOOL_NAMES = [
+  'save_deposit',
+  'withdraw',
+  'send_transfer',
+  'borrow',
+  'repay_debt',
+  'claim_rewards',
+  'harvest_rewards',
+  'swap_execute',
+] as const;
 
-export function getDefaultTools(): Tool[] {
-  return applyToolFlags([...READ_TOOLS, ...WRITE_TOOLS]);
+export type ReadToolName = (typeof READ_TOOL_NAMES)[number];
+export type WriteToolName = (typeof WRITE_TOOL_NAMES)[number];
+export type ToolName = ReadToolName | WriteToolName;
+
+// ---------------------------------------------------------------------------
+// ToolSet registries — pass directly to AI SDK `streamText({ tools })`
+// ---------------------------------------------------------------------------
+
+export const READ_TOOL_SET: ToolSet = {
+  render_canvas: renderCanvasTool,
+  balance_check: balanceCheckTool,
+  savings_info: savingsInfoTool,
+  health_check: healthCheckTool,
+  rates_info: ratesInfoTool,
+  transaction_history: transactionHistoryTool,
+  swap_quote: swapQuoteTool,
+  explain_tx: explainTxTool,
+  portfolio_analysis: portfolioAnalysisTool,
+  token_prices: tokenPricesTool,
+  list_payment_links: listPaymentLinksTool,
+  cancel_payment_link: cancelPaymentLinkTool,
+  create_payment_link: createPaymentLinkTool,
+  spending_analytics: spendingAnalyticsTool,
+  yield_summary: yieldSummaryTool,
+  activity_summary: activitySummaryTool,
+  resolve_suins: resolveSuinsTool,
+  pending_rewards: pendingRewardsTool,
+};
+
+export const WRITE_TOOL_SET: ToolSet = {
+  save_deposit: saveDepositTool,
+  withdraw: withdrawTool,
+  send_transfer: sendTransferTool,
+  borrow: borrowTool,
+  repay_debt: repayDebtTool,
+  claim_rewards: claimRewardsTool,
+  harvest_rewards: harvestRewardsTool,
+  swap_execute: swapExecuteTool,
+};
+
+/**
+ * The full default ToolSet — every in-tree read + write the engine
+ * dispatches by default. Hosts that want a custom subset can spread
+ * `READ_TOOL_SET` + their own writes, or pick by name from either set.
+ *
+ * Returns a fresh object on each call so host-side spread (`{ ...host,
+ * ...getDefaultTools() }`) doesn't accidentally mutate shared state.
+ */
+export function getDefaultTools(): ToolSet {
+  return { ...READ_TOOL_SET, ...WRITE_TOOL_SET };
 }
 
 export {
@@ -162,6 +178,4 @@ export {
   pendingRewardsTool,
   harvestRewardsTool,
   narrateHarvestResult,
-  updateTodoTool,
-  addRecipientTool,
 };

@@ -1,7 +1,11 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
-import { defineTool } from '../v2/define-tool.js';
-import type { ToolResult } from '../types.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 4 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { ToolContext, ToolResult } from '../types.js';
 
 interface YieldSummary {
   today: number;
@@ -14,14 +18,20 @@ interface YieldSummary {
   sparkline: number[];
 }
 
-export const yieldSummaryTool = defineTool({
-  name: 'yield_summary',
-  description:
-    'Returns yield earnings breakdown: today, this week, this month, all-time, current APY, deposited amount, projected yearly earnings, and a monthly sparkline. Use when the user asks about yield, earnings, or how much they have earned.',
-  inputSchema: z.object({}),
-  isReadOnly: true,
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const yieldSummaryDescription =
+  'Returns yield earnings breakdown: today, this week, this month, all-time, current APY, deposited amount, projected yearly earnings, and a monthly sparkline. Use when the user asks about yield, earnings, or how much they have earned.';
 
-  async call(_input, context): Promise<ToolResult<YieldSummary>> {
+const yieldSummaryInputSchema = z.object({});
+
+type YieldSummaryInput = z.infer<typeof yieldSummaryInputSchema>;
+
+async function yieldSummaryCallBody(
+  _input: YieldSummaryInput,
+  context: ToolContext,
+): Promise<ToolResult<YieldSummary>> {
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     const address = context.walletAddress;
 
@@ -68,5 +78,14 @@ export const yieldSummaryTool = defineTool({
     } catch {
       return { data: empty, displayText: 'Error fetching yield summary.' };
     }
-  },
+}
+
+export const yieldSummaryTool = tool({
+  description: yieldSummaryDescription,
+  inputSchema: yieldSummaryInputSchema,
+  needsApproval: buildNeedsApproval('yield_summary'),
+  execute: wrapEngineExecute<YieldSummaryInput, YieldSummary>(
+    'yield_summary',
+    { call: yieldSummaryCallBody },
+  ),
 });

@@ -3,6 +3,9 @@ import { swapQuoteTool } from './swap-quote.js';
 import { microcompact } from '../compact/microcompact.js';
 import type { Message } from '../types.js';
 
+import { legacyToolView } from '../__tests__/_helpers/call-tool-body.js';
+
+const swapQuoteView = legacyToolView(swapQuoteTool, 'swap_quote');
 function msg(role: 'user' | 'assistant', content: Message['content']): Message {
   return { role, content };
 }
@@ -22,7 +25,7 @@ describe('swap_quote tool — cacheable: false contract', () => {
   // Regression history: production smoke 2026-05-10, session
   // s_1778362657811_c0ed9009a5fb. See the comment block in swap-quote.ts.
   it('declares cacheable: false on the tool config', () => {
-    expect(swapQuoteTool.cacheable).toBe(false);
+    expect(swapQuoteView.cacheable).toBe(false);
   });
 
   it('microcompact preserves every identical-input swap_quote tool_result', () => {
@@ -32,7 +35,11 @@ describe('swap_quote tool — cacheable: false contract', () => {
     // replaced with a back-reference placeholder pointing at msg[1] (the
     // single swap's quote, ~52s older), and the audric walker would lose
     // the only fresh route in the ledger.
-    const tools = [swapQuoteTool];
+    // [P4.1 / v3.0.0 / 2026-05-25] microcompact() no longer takes a
+    // tools arg — cacheability is resolved from the central
+    // TOOL_POLICY by tool name. `swapQuoteTool` import is kept for
+    // its side effect of registering the policy at module load.
+    void swapQuoteTool;
     const messages: Message[] = [
       msg('assistant', [
         {
@@ -66,7 +73,7 @@ describe('swap_quote tool — cacheable: false contract', () => {
       ]),
     ];
 
-    const result = microcompact(messages, tools);
+    const result = microcompact(messages);
 
     const r1 = result[1].content[0];
     const r2 = result[3].content[0];

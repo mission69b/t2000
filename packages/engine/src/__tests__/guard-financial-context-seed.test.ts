@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
 import {
   runGuards,
   createGuardRunnerState,
@@ -7,8 +6,8 @@ import {
   DEFAULT_GUARD_CONFIG,
   BalanceTracker,
 } from '../guards.js';
-import { defineTool } from '../v2/define-tool.js';
-import type { PendingToolCall } from '../orchestration.js';
+import { makeGuardView } from './_helpers/call-tool-body.js';
+import type { PendingToolCall } from '../types.js';
 
 /**
  * F2 / v1.11 — Financial-context seed regression tests.
@@ -28,29 +27,8 @@ import type { PendingToolCall } from '../orchestration.js';
  * guards trust the snapshot.
  */
 
-const SAVE = defineTool({
-  name: 'save_deposit',
-  description: 'save',
-  inputSchema: z.object({
-    amount: z.number(),
-    asset: z.string().optional(),
-  }),
-  isReadOnly: false,
-  flags: { mutating: true, requiresBalance: true },
-  call: async () => ({ data: {} }),
-});
-
-const BORROW = defineTool({
-  name: 'borrow',
-  description: 'borrow',
-  inputSchema: z.object({
-    amount: z.number(),
-    asset: z.string().optional(),
-  }),
-  isReadOnly: false,
-  flags: { mutating: true, requiresBalance: true, affectsHealth: true },
-  call: async () => ({ data: {} }),
-});
+const SAVE = makeGuardView('save_deposit');
+const BORROW = makeGuardView('borrow');
 
 function makeCall(name: string, input: Record<string, unknown>): PendingToolCall {
   return { id: 'tool_use_1', name, input };

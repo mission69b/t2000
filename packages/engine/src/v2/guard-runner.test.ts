@@ -9,7 +9,6 @@
 //   - undefined guardConfig → no guards run, call allowed
 //   - block verdict → returns { allowed: false, blockReason, blockGate }
 //   - pass verdict with injections → returns { allowed: true, injections }
-//   - needsInput verdict → returns { allowed: false, needsStructuredInput: true }
 //
 // Integration with the wrapper (i.e., guards actually blocking a tool
 // call inside execute()) is covered by tool-wrapper.test.ts.
@@ -17,11 +16,21 @@
 
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { defineTool } from './define-tool.js';
-import type { Tool as LegacyTool } from '../types.js';
+import {
+  defineToolForTest as defineTool,
+  makeGuardView,
+  type TestDefinedTool,
+} from '../__tests__/_helpers/call-tool-body.js';
+type LegacyTool = TestDefinedTool;
 import { createGuardRunnerState, DEFAULT_GUARD_CONFIG } from '../guards.js';
 import { runGuardsForTool, GuardBlockedError } from './guard-runner.js';
 import type { InternalContext } from './internal-context.js';
+
+// Register `read_test` + `write_test` flags + policy at module load
+// so `makeGuardView('read_test')` / `('write_test')` resolve to the
+// shapes these tests expect.
+makeReadTool();
+makeWriteTool();
 
 function makeReadTool(): LegacyTool {
   return defineTool({
@@ -73,35 +82,38 @@ function makeInternal(overrides: Partial<InternalContext> = {}): InternalContext
 
 describe('runGuardsForTool', () => {
   it('returns { allowed: true, injections: [] } when guardConfig is undefined', () => {
-    const tool = makeReadTool();
+    // [P4.1 / v3.0.0 / 2026-05-25] runGuardsForTool takes a `GuardToolView`
+    // (`{name, flags, preflight?}`) — not a full Tool. Build the view from
+    // a real registered name so flags match production behaviour.
+    const view = makeGuardView('read_test');
     const internal = makeInternal({ guardConfig: undefined });
 
-    const out = runGuardsForTool(tool, { id: 'c1', name: tool.name, input: { x: 'a' } }, internal);
+    const out = runGuardsForTool(view, { id: 'c1', name: view.name, input: { x: 'a' } }, internal);
 
     expect(out.allowed).toBe(true);
     expect(out.injections).toEqual([]);
-    expect(out.needsStructuredInput).toBe(false);
   });
 
   it('runs DEFAULT_GUARD_CONFIG without blocking a read tool with valid input', () => {
-    const tool = makeReadTool();
+    const view = makeGuardView('read_test');
     const internal = makeInternal({ guardConfig: DEFAULT_GUARD_CONFIG });
 
-    const out = runGuardsForTool(tool, { id: 'c2', name: tool.name, input: { x: 'a' } }, internal);
+    const out = runGuardsForTool(view, { id: 'c2', name: view.name, input: { x: 'a' } }, internal);
 
     expect(out.allowed).toBe(true);
   });
 
   it('blocks when tool.preflight returns invalid', () => {
-    const tool: LegacyTool = {
-      ...makeWriteTool(),
+    const view = makeGuardView('write_test', {
       preflight: () => ({ valid: false, error: 'amount must be positive' }),
-    };
+    });
+    // Ensure flags include mutating: true so the write-tier guards see it
+    // as a write. `make*Tool` factories registered flags above.
     const internal = makeInternal({ guardConfig: DEFAULT_GUARD_CONFIG });
 
     const out = runGuardsForTool(
-      tool,
-      { id: 'c3', name: tool.name, input: { amount: -1 } },
+      view,
+      { id: 'c3', name: view.name, input: { amount: -1 } },
       internal,
     );
 
@@ -110,23 +122,6 @@ describe('runGuardsForTool', () => {
     expect(out.blockReason).toContain('amount must be positive');
   });
 
-  it('returns needsStructuredInput when preflight returns needsInput', () => {
-    const tool: LegacyTool = {
-      ...makeWriteTool(),
-      preflight: () =>
-        ({
-          valid: false,
-          needsInput: { schema: { fields: [] }, description: 'need a name' },
-        }) as ReturnType<NonNullable<LegacyTool['preflight']>>,
-    };
-    const internal = makeInternal({ guardConfig: DEFAULT_GUARD_CONFIG });
-
-    const out = runGuardsForTool(tool, { id: 'c4', name: tool.name, input: {} }, internal);
-
-    expect(out.allowed).toBe(false);
-    expect(out.needsStructuredInput).toBe(true);
-    expect(out.blockGate).toBe('pending_input');
-  });
 });
 
 describe('GuardBlockedError', () => {

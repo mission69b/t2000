@@ -1,5 +1,18 @@
-import type { Tool, ToolFlags } from './types.js';
-import type { PendingToolCall } from './orchestration.js';
+import type { ToolFlags, PreflightResult, PendingToolCall } from './types.js';
+
+/**
+ * Minimal tool view consumed by the guard runner. The engine synthesizes
+ * one of these at dispatch time in `v2/tool-helpers.ts` `wrapEngineExecute`
+ * (name from policy lookup, flags from `TOOL_FLAGS`, preflight from the
+ * tool's own factory options). Decoupled from any concrete tool shape so
+ * guards work against native AI SDK tools, CLI tool views, or anything
+ * else that can produce `{name, flags, preflight}`.
+ */
+export interface GuardToolView {
+  name: string;
+  flags: ToolFlags;
+  preflight?: (input: unknown) => PreflightResult;
+}
 
 // ---------------------------------------------------------------------------
 // Guard types
@@ -29,18 +42,6 @@ export interface GuardCheckResult {
   blockGate?: string;
   injections: GuardInjection[];
   events: GuardEvent[];
-  /**
-   * [SPEC 9 v0.1.3 P9.4] Set when the tool's preflight returned
-   * `needsInput` instead of either valid or error. The engine consults
-   * this BEFORE checking `blocked`: if present, the engine yields a
-   * `pending_input` event and pauses the turn. Distinct from `blocked`
-   * because the engine should NOT push a tool_result error back to the
-   * LLM — the turn is intentionally paused, not failed.
-   */
-  needsInput?: {
-    schema: import('./pending-input.js').FormSchema;
-    description?: string;
-  };
 }
 
 export interface GuardEvent {
@@ -293,7 +294,7 @@ export class SwapQuoteTracker {
 // ---------------------------------------------------------------------------
 
 function guardRetryProtection(
-  tool: Tool,
+  tool: GuardToolView,
   call: PendingToolCall,
   retryTracker: RetryTracker,
 ): GuardResult {
@@ -310,7 +311,7 @@ function guardRetryProtection(
 }
 
 function guardIrreversibility(
-  tool: Tool,
+  tool: GuardToolView,
   _call: PendingToolCall,
   conversationText: string,
 ): GuardResult {
@@ -336,7 +337,7 @@ function guardIrreversibility(
 }
 
 function guardBalanceValidation(
-  tool: Tool,
+  tool: GuardToolView,
   _call: PendingToolCall,
   balanceTracker: BalanceTracker,
 ): GuardResult {
@@ -366,7 +367,7 @@ function guardBalanceValidation(
 }
 
 function guardHealthFactor(
-  tool: Tool,
+  tool: GuardToolView,
   _call: PendingToolCall,
   lastHealthFactor: number | null,
   config: { warnBelow: number; blockBelow: number },
@@ -406,7 +407,7 @@ function guardHealthFactor(
 }
 
 function guardLargeTransfer(
-  tool: Tool,
+  tool: GuardToolView,
   call: PendingToolCall,
   config: { warnAbove: number; strongWarnAbove: number },
 ): GuardResult {
@@ -447,7 +448,7 @@ function guardLargeTransfer(
 }
 
 function guardSlippage(
-  tool: Tool,
+  tool: GuardToolView,
   _call: PendingToolCall,
   lastAssistantText: string,
 ): GuardResult {
@@ -525,7 +526,7 @@ const NON_USDC_TOKEN_WORDS: ReadonlyArray<{ symbol: string; pattern: RegExp }> =
 ];
 
 function guardAssetIntent(
-  tool: Tool,
+  tool: GuardToolView,
   call: PendingToolCall,
   userText: string,
 ): GuardResult {
@@ -581,7 +582,7 @@ function guardAssetIntent(
 // ---------------------------------------------------------------------------
 
 function guardSwapPreview(
-  tool: Tool,
+  tool: GuardToolView,
   call: PendingToolCall,
   swapQuoteTracker: SwapQuoteTracker,
 ): GuardResult {
@@ -616,7 +617,7 @@ function guardSwapPreview(
 }
 
 function guardAddressSource(
-  tool: Tool,
+  tool: GuardToolView,
   call: PendingToolCall,
   userText: string,
   contacts: ReadonlyArray<{ name: string; address: string }>,
@@ -807,7 +808,7 @@ const READ_TOOLS_WITH_ADDRESS_PARAM = new Set([
 const SUI_ADDRESS_IN_TEXT_REGEX = /0x[a-fA-F0-9]{60,64}/g;
 
 function guardAddressScope(
-  tool: Tool,
+  tool: GuardToolView,
   call: PendingToolCall,
   userText: string,
   walletAddress: string | undefined,
@@ -923,7 +924,7 @@ export function createGuardRunnerState(): GuardRunnerState {
 }
 
 export function runGuards(
-  tool: Tool,
+  tool: GuardToolView,
   call: PendingToolCall,
   state: GuardRunnerState,
   config: GuardConfig,
@@ -969,51 +970,9 @@ export function runGuards(
   };
 
   // Tier 0: Input validation (preflight) — runs first, invalid input = immediate block.
-  // [SPEC 9 v0.1.3 P9.4] When preflight returns `needsInput`, the engine
-  // pauses the turn instead of feeding an error back to the LLM. Surfaced
-  // via a discrete `needsInput` field on the result; the engine consults
-  // it BEFORE the `blocked` check.
   if (config.inputValidation !== false && tool.preflight) {
     const check = tool.preflight(call.input);
     if (!check.valid) {
-      // Branch A: tool wants structured input — pause the turn, don't block.
-      // [SPEC 9 v0.1.3 P9.4] Reuse the existing `pass` verdict for the
-      // "pause for user input" case. Strictly speaking the call doesn't
-      // pass (it pauses), but adding a 5th verdict ('pause') would force
-      // every host that switches on `GuardVerdict` to add a new branch.
-      // Hosts that segment dashboards on "pause-for-input rate" can key
-      // on the dedicated `audric.harness.pending_input_emitted_count`
-      // telemetry counter the engine fires on this branch.
-      if ('needsInput' in check && check.needsInput) {
-        const event: GuardEvent = {
-          timestamp: now,
-          toolName: tool.name,
-          toolUseId: call.id,
-          gate: 'input_validation',
-          verdict: 'pass',
-          tier: 'safety',
-          message: check.needsInput.description,
-        };
-        fire('pass', 'safety', 'input_validation', false);
-        return {
-          blocked: false,
-          injections: [],
-          events: [event],
-          needsInput: check.needsInput,
-        };
-      }
-      // Branch B: classical block — bad input the LLM should re-ask.
-      // We've already handled the `needsInput` branch above, so this is
-      // the `{ valid: false; error: string }` branch. Narrow explicitly.
-      if (!('error' in check)) {
-        // Unreachable — needsInput branch already returned. Defensive throw
-        // so a future PreflightResult union extension fails loudly here
-        // instead of silently dropping into the block branch with an
-        // undefined message.
-        throw new Error(
-          `Preflight returned a non-needsInput, non-error invalid result for tool ${tool.name}`,
-        );
-      }
       const event: GuardEvent = {
         timestamp: now,
         toolName: tool.name,
@@ -1149,7 +1108,7 @@ export function runGuards(
 
 export function updateGuardStateAfterToolResult(
   toolName: string,
-  tool: Tool | undefined,
+  tool: GuardToolView | undefined,
   input: unknown,
   result: unknown,
   isError: boolean,

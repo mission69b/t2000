@@ -14,6 +14,7 @@ import { healthCheckTool } from '../tools/health.js';
 import { ratesInfoTool } from '../tools/rates.js';
 import { resetNaviCacheStore } from '../navi/cache.js';
 
+import { callToolBody } from './_helpers/call-tool-body.js';
 // Reset the NAVI read cache between every test — prevents cached results
 // from a successful test feeding into a test that uses a different mock server
 // (e.g. the "Infinity HF" test uses its own noDebtMgr but would get stale
@@ -284,7 +285,7 @@ describe('hasNaviMcp', () => {
 
 describe('balance_check', () => {
   it('uses MCP when NAVI connection is available', async () => {
-    const result = await balanceCheckTool.call({}, mcpContext());
+    const result = await callToolBody(balanceCheckTool, {}, mcpContext());
     const data = result.data as unknown as Record<string, number>;
 
     expect(data.savings).toBe(5000);
@@ -295,7 +296,7 @@ describe('balance_check', () => {
   });
 
   it('falls back to SDK when no MCP connection', async () => {
-    const result = await balanceCheckTool.call({}, sdkContext());
+    const result = await callToolBody(balanceCheckTool, {}, sdkContext());
     const data = result.data as unknown as Record<string, number>;
 
     expect(data.available).toBe(500);
@@ -318,7 +319,7 @@ describe('balance_check', () => {
       }),
     };
     const ctx: ToolContext = { agent: agentWithObjReserve };
-    const result = await balanceCheckTool.call({}, ctx);
+    const result = await callToolBody(balanceCheckTool, {}, ctx);
     const data = result.data as unknown as Record<string, number>;
 
     expect(data.gasReserve).toBeCloseTo(0.18);
@@ -326,7 +327,7 @@ describe('balance_check', () => {
   });
 
   it('throws when neither MCP nor SDK is available', async () => {
-    await expect(balanceCheckTool.call({}, {})).rejects.toThrow(/agent/i);
+    await expect(callToolBody(balanceCheckTool, {}, {})).rejects.toThrow(/agent/i);
   });
 
   // [v0.53.4] DeFi caveat regression suite — pinpoints the four-state
@@ -345,7 +346,7 @@ describe('balance_check', () => {
         pricedAt: Date.now(),
         source: 'blockvision',
       };
-      const result = await balanceCheckTool.call({}, mcpContext());
+      const result = await callToolBody(balanceCheckTool, {}, mcpContext());
       expect(result.displayText).toContain('Other DeFi positions');
       expect(result.displayText).toContain('$1234.56');
       expect(result.displayText).not.toContain('UNAVAILABLE');
@@ -359,7 +360,7 @@ describe('balance_check', () => {
         pricedAt: Date.now(),
         source: 'blockvision',
       };
-      const result = await balanceCheckTool.call({}, mcpContext());
+      const result = await callToolBody(balanceCheckTool, {}, mcpContext());
       expect(result.displayText).not.toContain('UNAVAILABLE');
       expect(result.displayText).not.toContain('UNKNOWN');
       expect(result.displayText).not.toContain('DeFi positions:');
@@ -372,7 +373,7 @@ describe('balance_check', () => {
         pricedAt: Date.now(),
         source: 'partial',
       };
-      const result = await balanceCheckTool.call({}, mcpContext());
+      const result = await callToolBody(balanceCheckTool, {}, mcpContext());
       expect(result.displayText).toContain('Other DeFi positions');
       expect(result.displayText).toContain('$500.00');
       expect(result.displayText).toContain('partial');
@@ -389,7 +390,7 @@ describe('balance_check', () => {
         pricedAt: Date.now(),
         source: 'partial',
       };
-      const result = await balanceCheckTool.call({}, mcpContext());
+      const result = await callToolBody(balanceCheckTool, {}, mcpContext());
       expect(result.displayText).toContain('UNKNOWN');
       expect(result.displayText).toContain('Do NOT');
       expect(result.displayText).toMatch(/\$0|no DeFi positions/);
@@ -403,7 +404,7 @@ describe('balance_check', () => {
         pricedAt: Date.now(),
         source: 'degraded',
       };
-      const result = await balanceCheckTool.call({}, mcpContext());
+      const result = await callToolBody(balanceCheckTool, {}, mcpContext());
       expect(result.displayText).toContain('UNAVAILABLE');
       expect(result.displayText).toContain('Do NOT');
       expect(result.displayText).toContain('temporarily unknown');
@@ -417,7 +418,7 @@ describe('balance_check', () => {
 
 describe('savings_info', () => {
   it('uses MCP when NAVI connection is available', async () => {
-    const result = await savingsInfoTool.call({}, mcpContext());
+    const result = await callToolBody(savingsInfoTool, {}, mcpContext());
     const data = result.data as {
       positions: unknown[];
       earnings: { supplied: number; currentApy: number };
@@ -431,7 +432,7 @@ describe('savings_info', () => {
   });
 
   it('falls back to SDK when no MCP connection', async () => {
-    const result = await savingsInfoTool.call({}, sdkContext());
+    const result = await callToolBody(savingsInfoTool, {}, sdkContext());
     const data = result.data as {
       earnings: { totalYieldEarned: number; currentApy: number };
       fundStatus: { earnedAllTime: number };
@@ -449,7 +450,7 @@ describe('savings_info', () => {
 
 describe('health_check', () => {
   it('uses MCP when NAVI connection is available', async () => {
-    const result = await healthCheckTool.call({}, mcpContext());
+    const result = await callToolBody(healthCheckTool, {}, mcpContext());
     const data = result.data as {
       healthFactor: number;
       supplied: number;
@@ -466,7 +467,7 @@ describe('health_check', () => {
   });
 
   it('falls back to SDK when no MCP connection', async () => {
-    const result = await healthCheckTool.call({}, sdkContext());
+    const result = await callToolBody(healthCheckTool, {}, sdkContext());
     const data = result.data as {
       healthFactor: number;
       maxBorrow: number;
@@ -507,7 +508,7 @@ describe('health_check', () => {
     });
 
     const ctx: ToolContext = { mcpManager: noDebtMgr, walletAddress: '0xuser123' };
-    const result = await healthCheckTool.call({}, ctx);
+    const result = await callToolBody(healthCheckTool, {}, ctx);
     const data = result.data as { healthFactor: number | null; status: string };
 
     // Health tool now sends `null` (not `Infinity`) for no-debt accounts —
@@ -528,7 +529,7 @@ describe('health_check', () => {
 
 describe('rates_info', () => {
   it('uses MCP when NAVI connection is available', async () => {
-    const result = await ratesInfoTool.call({ assets: null }, mcpContext());
+    const result = await callToolBody(ratesInfoTool, { assets: null }, mcpContext());
     const data = result.data as Record<string, { saveApy: number; borrowApy: number }>;
 
     expect(data.SUI).toBeDefined();
@@ -540,7 +541,7 @@ describe('rates_info', () => {
   });
 
   it('falls back to SDK when no MCP connection', async () => {
-    const result = await ratesInfoTool.call({ assets: null }, sdkContext());
+    const result = await callToolBody(ratesInfoTool, { assets: null }, sdkContext());
     const data = result.data as Record<string, { saveApy: number; borrowApy: number }>;
 
     expect(data.SUI.saveApy).toBe(0.0325);
@@ -551,7 +552,7 @@ describe('rates_info', () => {
 
   it('rates_info does not require walletAddress for MCP path', async () => {
     const ctxNoAddr: ToolContext = { mcpManager: manager, walletAddress: '0xany' };
-    const result = await ratesInfoTool.call({ assets: null }, ctxNoAddr);
+    const result = await callToolBody(ratesInfoTool, { assets: null }, ctxNoAddr);
     const data = result.data as Record<string, { saveApy: number }>;
     expect(data.SUI.saveApy).toBeCloseTo(0.0325);
   });

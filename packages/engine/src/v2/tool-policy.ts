@@ -62,8 +62,7 @@ export interface ToolPolicy {
   /**
    * `true` if the tool can run in parallel with other reads of the same
    * tool. Defaults to `isReadOnly`. Set to `false` for read tools that
-   * must serialise (e.g., `add_recipient` returns `needsInput` from
-   * preflight to pause the turn for an inline form).
+   * must serialise.
    */
   isConcurrencySafe?: boolean;
 
@@ -153,8 +152,23 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   resolve_suins: READ_DEFAULT,
   render_canvas: READ_DEFAULT,
   list_payment_links: READ_DEFAULT,
-  create_payment_link: READ_DEFAULT,
-  cancel_payment_link: READ_DEFAULT,
+  // [P4.1 audit / 2026-05-25] `create_payment_link` + `cancel_payment_link`
+  // ARE auto-tier (no user tap — they create / cancel server-side rows,
+  // not on-chain writes) but each call produces fresh state (new
+  // payment-link URL on create, distinct row on cancel). We keep
+  // `isReadOnly: true` per the legacy permission semantic ("no user tap
+  // needed"), but explicitly override:
+  //   - `cacheable: false` so microcompact never dedupes a second
+  //     identical "create payment link for $10" — second call must produce
+  //     a new URL. Same drift class as the S.122 `send_transfer` dedupe
+  //     bug, just on a host-side write.
+  //   - `isConcurrencySafe: false` so the engine's per-step dedup never
+  //     collapses two parallel `create_payment_link` calls. Two parallel
+  //     creates yield two URLs by design; deduping would lie to the user.
+  // `flags.mutating: true` (set in `tool-flags.ts`) drives write-side
+  // guard runs; the policy + flags work together for the full picture.
+  create_payment_link: { ...READ_DEFAULT, cacheable: false, isConcurrencySafe: false },
+  cancel_payment_link: { ...READ_DEFAULT, cacheable: false, isConcurrencySafe: false },
 
   // Write tools — confirm tier (USD resolver may downgrade to auto for small
   // amounts; engine's buildNeedsApproval handles the per-call override)

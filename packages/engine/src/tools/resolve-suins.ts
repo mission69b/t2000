@@ -1,5 +1,10 @@
+import { tool } from 'ai';
 import { z } from 'zod';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 2 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import {
   resolveSuinsViaRpc,
   resolveAddressToSuinsViaRpc,
@@ -7,6 +12,11 @@ import {
   SUINS_NAME_REGEX,
   SuinsRpcError,
 } from '../sui/address.js';
+import type {
+  ToolContext,
+  ToolResult,
+  PreflightResult,
+} from '../types.js';
 
 // ---------------------------------------------------------------------------
 // resolve_suins — SuiNS lookup primitive (forward + reverse)
@@ -62,47 +72,49 @@ interface ResolveSuinsResult {
   primary?: string | null;
 }
 
-export const resolveSuinsTool = defineTool({
-  name: 'resolve_suins',
-  description:
-    'Look up SuiNS records on-chain — works in BOTH directions. ' +
-    'FORWARD: pass a SuiNS name (e.g. "alex.sui") to get the 0x address it resolves to. ' +
-    'REVERSE: pass a Sui 0x address to get the SuiNS name(s) registered for it (returns the ' +
-    'primary name + the full list). ' +
-    '\n\nUse this WHENEVER the user mentions a `.sui` name OR asks "what\'s the SuiNS for 0x…", ' +
-    '"does 0x… have a name", "who is 0x…". You MUST call this tool — never guess from saved ' +
-    'contacts (a contact named "alex" is NOT the same as the SuiNS name "alex.sui"; verify on-chain). ' +
-    'Never use `web_search` for SuiNS — web_search doesn\'t index the SuiNS registry, but this tool ' +
-    'queries the canonical on-chain RPC. ' +
-    '\n\nReturns `{ direction, address, registered }` for forward, ' +
-    '`{ direction, names, primary }` for reverse. Empty `names: []` means the address has no SuiNS records. ' +
-    '\n\nNOTE: For money-flow questions about a `.sui` name ("what\'s alex.sui\'s balance / portfolio / ' +
-    'health / transactions"), call the relevant read tool directly with `address: "alex.sui"` — those ' +
-    'tools normalize SuiNS internally, so an explicit `resolve_suins` round-trip is wasted.',
-  inputSchema,
-  isReadOnly: true,
-  // Lookups map to (address|name) pairs on a per-block basis. Cheap and
-  // deterministic for a given block — safe to dedupe within a turn.
-  cacheable: true,
-  preflight: (input) => {
-    const trimmed = input.query?.trim().toLowerCase();
-    if (!trimmed) {
-      return { valid: false, error: 'query is required' };
-    }
-    const isAddress = SUI_ADDRESS_REGEX.test(trimmed);
-    const isName = SUINS_NAME_REGEX.test(trimmed);
-    if (!isAddress && !isName) {
-      return {
-        valid: false,
-        error:
-          `"${input.query}" doesn't look like a SuiNS name or a Sui address. ` +
-          `Pass either a name ending in .sui (e.g. alex.sui) or a 0x-prefixed hex address.`,
-      };
-    }
-    return { valid: true };
-  },
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const resolveSuinsDescription =
+  'Look up SuiNS records on-chain — works in BOTH directions. ' +
+  'FORWARD: pass a SuiNS name (e.g. "alex.sui") to get the 0x address it resolves to. ' +
+  'REVERSE: pass a Sui 0x address to get the SuiNS name(s) registered for it (returns the ' +
+  'primary name + the full list). ' +
+  '\n\nUse this WHENEVER the user mentions a `.sui` name OR asks "what\'s the SuiNS for 0x…", ' +
+  '"does 0x… have a name", "who is 0x…". You MUST call this tool — never guess from saved ' +
+  'contacts (a contact named "alex" is NOT the same as the SuiNS name "alex.sui"; verify on-chain). ' +
+  'Never use `web_search` for SuiNS — web_search doesn\'t index the SuiNS registry, but this tool ' +
+  'queries the canonical on-chain RPC. ' +
+  '\n\nReturns `{ direction, address, registered }` for forward, ' +
+  '`{ direction, names, primary }` for reverse. Empty `names: []` means the address has no SuiNS records. ' +
+  '\n\nNOTE: For money-flow questions about a `.sui` name ("what\'s alex.sui\'s balance / portfolio / ' +
+  'health / transactions"), call the relevant read tool directly with `address: "alex.sui"` — those ' +
+  'tools normalize SuiNS internally, so an explicit `resolve_suins` round-trip is wasted.';
 
-  async call(input, context) {
+type ResolveSuinsInput = z.infer<typeof inputSchema>;
+
+function resolveSuinsPreflight(input: ResolveSuinsInput): PreflightResult {
+  const trimmed = input.query?.trim().toLowerCase();
+  if (!trimmed) {
+    return { valid: false, error: 'query is required' };
+  }
+  const isAddress = SUI_ADDRESS_REGEX.test(trimmed);
+  const isName = SUINS_NAME_REGEX.test(trimmed);
+  if (!isAddress && !isName) {
+    return {
+      valid: false,
+      error:
+        `"${input.query}" doesn't look like a SuiNS name or a Sui address. ` +
+        `Pass either a name ending in .sui (e.g. alex.sui) or a 0x-prefixed hex address.`,
+    };
+  }
+  return { valid: true };
+}
+
+async function resolveSuinsCallBody(
+  input: ResolveSuinsInput,
+  context: ToolContext,
+): Promise<ToolResult<ResolveSuinsResult>> {
     const query = input.query.trim().toLowerCase();
     const isAddress = SUI_ADDRESS_REGEX.test(query);
 
@@ -153,5 +165,17 @@ export const resolveSuinsTool = defineTool({
       }
       throw err;
     }
-  },
+}
+
+export const resolveSuinsTool = tool({
+  description: resolveSuinsDescription,
+  inputSchema,
+  needsApproval: buildNeedsApproval('resolve_suins'),
+  execute: wrapEngineExecute<ResolveSuinsInput, ResolveSuinsResult>(
+    'resolve_suins',
+    {
+      preflight: resolveSuinsPreflight,
+      call: resolveSuinsCallBody,
+    },
+  ),
 });

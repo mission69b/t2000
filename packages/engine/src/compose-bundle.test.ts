@@ -29,8 +29,8 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { composeBundleFromToolResults } from './compose-bundle.js';
-import { defineTool } from './v2/define-tool.js';
-import type { PendingToolCall } from './orchestration.js';
+import { defineToolForTest as defineTool } from './__tests__/_helpers/call-tool-body.js';
+import type { PendingToolCall } from './types.js';
 
 const noopCall = async () => ({ ok: true as const, data: {} });
 
@@ -58,7 +58,12 @@ const sendTransferMock = defineTool({
   flags: { mutating: true, bundleable: true },
 });
 
-const tools = [saveDepositMock, sendTransferMock];
+// composeBundleFromToolResults no longer takes a `tools` arg
+// (P4.1 Phase C — it reads bundleable flag from the central registry by
+// tool name). Keep the stubs alive so the policy registry is updated by
+// `defineToolForTest`'s side effect at module load.
+void saveDepositMock;
+void sendTransferMock;
 
 const pendingWrites: PendingToolCall[] = [
   {
@@ -77,7 +82,6 @@ describe('composeBundleFromToolResults — D-6.1 approvalId alias invariant', ()
   it('mirrors attemptId 1:1 on every step and at top level', () => {
     const action = composeBundleFromToolResults({
       pendingWrites,
-      tools,
       readResults: [],
       assistantContent: [],
       completedResults: [],
@@ -110,7 +114,6 @@ describe('composeBundleFromToolResults — D-6.1 approvalId alias invariant', ()
   it('uses valid UUID v4 format for both fields', () => {
     const action = composeBundleFromToolResults({
       pendingWrites,
-      tools,
       readResults: [],
       assistantContent: [],
       completedResults: [],

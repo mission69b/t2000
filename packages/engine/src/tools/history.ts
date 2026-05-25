@@ -1,3 +1,4 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import {
   classifyTransaction,
@@ -5,10 +6,15 @@ import {
   type ClassifyBalanceChange,
   type TxDirection,
 } from '@t2000/sdk';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 3 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
 import { requireAgent } from './utils.js';
 import { fetchAudricHistory } from '../audric-api.js';
 import { normalizeAddressInput } from '../sui/address.js';
+import type { ToolContext } from '../types.js';
 
 type RpcBalanceChange = ClassifyBalanceChange;
 
@@ -247,87 +253,76 @@ const DEFAULT_LOOKBACK_DAYS = 30;
 // and *.sui names; `normalizeAddressInput` validates and resolves at the
 // top of `call()`.
 
-export const transactionHistoryTool = defineTool({
-  name: 'transaction_history',
-  description:
-    'Retrieve recent transaction history (last 30 days by default): sends, saves, withdrawals, borrows, repayments, swaps, and rewards claims. Renders a rich transaction card.\n\n' +
-    'By default, queries the SIGNED-IN USER\'S history. To inspect another wallet (a saved contact, a watched address, any public Sui address), pass `address` — e.g. user asks "show funkii\'s recent transactions" with funkii at 0x40cd…3e62, call with `address: "0x40cd…3e62"`. To filter the user\'s own history to a specific counterparty (user asks "show transactions WITH funkii"), pass `counterparty` — keeps the query rooted in the user\'s wallet but shows only rows where funkii is the recipient or sender.\n\n' +
-    'Filter args: `date` (YYYY-MM-DD), `action` (send/lending/swap), `minUsd` (minimum amount in USD — use this for "transactions over $X" instead of post-filtering), `assetSymbol` (e.g. "USDC", "SUI"), `direction` ("in" or "out"). The card itself respects all filters — never re-list the rows in narration.\n\n' +
-    'Internally queries both `FromAddress` and `ToAddress` filters in parallel and dedupes by digest, so pure-receive transactions (someone sends to the queried address with no balance-affecting outbound) are no longer dropped.',
-  inputSchema: z.object({
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(50)
-      .optional()
-      .describe('Maximum number of transactions to return (1-50, default 10)'),
-    address: z
-      .string()
-      .optional()
-      .describe('Sui address (0x…) or SuiNS name (e.g. "alex.sui") to query history FOR. When omitted, defaults to the signed-in user\'s wallet. Pass this when the user asks about a contact\'s, watched address\'s, or any other public wallet\'s history.'),
-    counterparty: z
-      .string()
-      .nullable()
-      .describe('Sui address (0x…) or SuiNS name (e.g. "alex.sui") to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries. Pass null when no counterparty filter is needed.'),
-    date: z.string().nullable().describe('Specific date to search for transactions (YYYY-MM-DD format). Pass null when no date filter is needed.'),
-    action: z.enum(HISTORY_ACTIONS).nullable().describe('Filter by action: send, lending, swap, or transaction. Pass null when no action filter is needed.'),
-    minUsd: z.number().min(0).nullable().describe('Minimum transaction amount in USD. Use this for "transactions over $X". Pass null when no minimum filter is needed.'),
-    assetSymbol: z.string().nullable().describe('Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI", "LOFI"). Pass null when no asset filter is needed.'),
-    direction: z.enum(['in', 'out']).nullable().describe('Filter by user-side balance flow: "in" = received, "out" = spent. Pass null when no direction filter is needed.'),
-  }),
-  isReadOnly: true,
-  maxResultSizeChars: 8_000,
-  // [v1.5.1] New transactions land continuously. Even with an explicit
-  // `date` filter the dedupe is wrong post-write because the just-
-  // executed write may now be in history. Never dedupe.
-  cacheable: false,
-  /**
-   * [v1.5.2] Custom truncation that preserves the structured shape.
-   *
-   * The default `budgetToolResult` slices the JSON string at the byte
-   * limit, appends a "[Truncated…]" note, and tries `JSON.parse` — which
-   * always fails for sliced JSON, so the engine falls back to returning
-   * the raw string. The frontend's `transaction_history` card renderer
-   * then sees `typeof data !== 'object'` and bails, so the rich card
-   * never renders even though the LLM has the full text.
-   *
-   * Strategy: progressively halve the `transactions` array until the
-   * serialized payload fits, then stamp `_truncated: true` and the
-   * original length so the LLM knows to recall with `limit` if it needs
-   * older entries. Result is always valid JSON, always object-shaped.
-   */
-  summarizeOnTruncate(serialized, maxChars) {
-    type ParsedHistory = {
-      transactions: unknown[];
-      count: number;
-      [k: string]: unknown;
-    };
-    let parsed: ParsedHistory;
-    try {
-      parsed = JSON.parse(serialized) as ParsedHistory;
-    } catch {
-      return JSON.stringify({
-        transactions: [],
-        count: 0,
-        _truncated: true,
-        _note: 'Result exceeded size budget and could not be summarized.',
-      });
-    }
-    const original = Array.isArray(parsed.transactions) ? parsed.transactions : [];
-    let trimmed = original.slice();
-    let payload = JSON.stringify({ ...parsed, transactions: trimmed, _truncated: true, _originalCount: original.length });
-    while (payload.length > maxChars && trimmed.length > 1) {
-      trimmed = trimmed.slice(0, Math.max(1, Math.floor(trimmed.length / 2)));
-      payload = JSON.stringify({ ...parsed, transactions: trimmed, _truncated: true, _originalCount: original.length });
-    }
-    return payload;
-  },
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const transactionHistoryDescription =
+  'Retrieve recent transaction history (last 30 days by default): sends, saves, withdrawals, borrows, repayments, swaps, and rewards claims. Renders a rich transaction card.\n\n' +
+  'By default, queries the SIGNED-IN USER\'S history. To inspect another wallet (a saved contact, a watched address, any public Sui address), pass `address` — e.g. user asks "show funkii\'s recent transactions" with funkii at 0x40cd…3e62, call with `address: "0x40cd…3e62"`. To filter the user\'s own history to a specific counterparty (user asks "show transactions WITH funkii"), pass `counterparty` — keeps the query rooted in the user\'s wallet but shows only rows where funkii is the recipient or sender.\n\n' +
+  'Filter args: `date` (YYYY-MM-DD), `action` (send/lending/swap), `minUsd` (minimum amount in USD — use this for "transactions over $X" instead of post-filtering), `assetSymbol` (e.g. "USDC", "SUI"), `direction` ("in" or "out"). The card itself respects all filters — never re-list the rows in narration.\n\n' +
+  'Internally queries both `FromAddress` and `ToAddress` filters in parallel and dedupes by digest, so pure-receive transactions (someone sends to the queried address with no balance-affecting outbound) are no longer dropped.';
 
-  async call(
-    input,
-    context,
-  ): Promise<{ data: Record<string, unknown>; displayText: string }> {
+const transactionHistoryInputSchema = z.object({
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .optional()
+    .describe('Maximum number of transactions to return (1-50, default 10)'),
+  address: z
+    .string()
+    .optional()
+    .describe(
+      'Sui address (0x…) or SuiNS name (e.g. "alex.sui") to query history FOR. When omitted, defaults to the signed-in user\'s wallet. Pass this when the user asks about a contact\'s, watched address\'s, or any other public wallet\'s history.',
+    ),
+  counterparty: z
+    .string()
+    .nullable()
+    .describe(
+      'Sui address (0x…) or SuiNS name (e.g. "alex.sui") to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries. Pass null when no counterparty filter is needed.',
+    ),
+  date: z
+    .string()
+    .nullable()
+    .describe(
+      'Specific date to search for transactions (YYYY-MM-DD format). Pass null when no date filter is needed.',
+    ),
+  action: z
+    .enum(HISTORY_ACTIONS)
+    .nullable()
+    .describe(
+      'Filter by action: send, lending, swap, or transaction. Pass null when no action filter is needed.',
+    ),
+  minUsd: z
+    .number()
+    .min(0)
+    .nullable()
+    .describe(
+      'Minimum transaction amount in USD. Use this for "transactions over $X". Pass null when no minimum filter is needed.',
+    ),
+  assetSymbol: z
+    .string()
+    .nullable()
+    .describe(
+      'Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI", "LOFI"). Pass null when no asset filter is needed.',
+    ),
+  direction: z
+    .enum(['in', 'out'])
+    .nullable()
+    .describe(
+      'Filter by user-side balance flow: "in" = received, "out" = spent. Pass null when no direction filter is needed.',
+    ),
+});
+
+type TransactionHistoryInput = z.infer<
+  typeof transactionHistoryInputSchema
+>;
+
+async function transactionHistoryCallBody(
+  input: TransactionHistoryInput,
+  context: ToolContext,
+): Promise<{ data: Record<string, unknown>; displayText: string }> {
     const limit = input.limit ?? 10;
     const action = (input.action ?? undefined) as HistoryAction | undefined;
     const assetSymbol = input.assetSymbol?.toLowerCase();
@@ -554,5 +549,16 @@ export const transactionHistoryTool = defineTool({
       },
       displayText: `${filtered.length} transaction(s) in the last ${DEFAULT_LOOKBACK_DAYS} days`,
     };
-  },
+}
+
+export const transactionHistoryTool = tool({
+  description: transactionHistoryDescription,
+  inputSchema: transactionHistoryInputSchema,
+  needsApproval: buildNeedsApproval('transaction_history'),
+  execute: wrapEngineExecute<
+    TransactionHistoryInput,
+    Record<string, unknown>
+  >('transaction_history', {
+    call: transactionHistoryCallBody,
+  }),
 });

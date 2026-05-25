@@ -51,9 +51,9 @@
 // • Reuses `serializeSSE` from `streaming.ts` — the wire format itself
 //   stays where it always lived; this adapter only normalises shape.
 // • Handles engine side-channel events via the `data-{name}` convention
-//   (`data-canvas`, `data-pending-action`, `data-todo-update`,
-//   `data-proactive-text`, `data-harness-shape`, `data-stream-state`,
-//   `data-tool-progress`, `data-pending-input`, `data-compaction`).
+//   (`data-canvas`, `data-pending-action`, `data-proactive-text`,
+//   `data-harness-shape`, `data-stream-state`, `data-tool-progress`,
+//   `data-compaction`).
 //   Phase-5 engine code writes these via `writer.write({ type:
 //   'data-canvas', data: { template, data, title, toolUseId } })`.
 //
@@ -89,9 +89,8 @@
 
 import { parseEvalSummary } from '../eval-summary.js';
 import { serializeSSE, type SSEEvent } from '../streaming.js';
-import type { PendingAction, TodoItem, HarnessShape } from '../types.js';
+import type { PendingAction, HarnessShape } from '../types.js';
 import type { ProactiveType } from '../proactive-marker.js';
-import type { FormSchema } from '../pending-input.js';
 import type { AISDKFinishReason, UIMessageStreamPart } from './ai-sdk-types.js';
 import { mapFinishReason } from './event-bridge.js';
 
@@ -299,11 +298,6 @@ function translateDataPart(part: UIMessageStreamPart): SSEEvent[] {
       ];
     }
 
-    case 'todo-update': {
-      const t = data as { items: TodoItem[]; toolUseId: string };
-      return [{ type: 'todo_update', items: t.items, toolUseId: t.toolUseId }];
-    }
-
     case 'tool-progress': {
       const p = data as {
         toolUseId: string;
@@ -352,30 +346,6 @@ function translateDataPart(part: UIMessageStreamPart): SSEEvent[] {
         state: 'routing' | 'quoting' | 'confirming' | 'settling' | 'done';
       };
       return [{ type: 'stream_state', state: s.state }];
-    }
-
-    case 'pending-input': {
-      const pi = data as {
-        inputId: string;
-        toolName: string;
-        toolUseId: string;
-        schema: FormSchema;
-        description?: string;
-        assistantContent: unknown[];
-        completedResults: Array<{ toolUseId: string; content: string; isError: boolean }>;
-      };
-      return [
-        {
-          type: 'pending_input',
-          inputId: pi.inputId,
-          toolName: pi.toolName,
-          toolUseId: pi.toolUseId,
-          schema: pi.schema,
-          ...(pi.description !== undefined ? { description: pi.description } : {}),
-          assistantContent: pi.assistantContent,
-          completedResults: pi.completedResults,
-        },
-      ];
     }
 
     case 'compaction':

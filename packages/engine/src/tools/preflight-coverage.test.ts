@@ -26,48 +26,28 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { WRITE_TOOLS } from './index.js';
-import { addRecipientTool } from './add-recipient.js';
-import { updateTodoTool } from './update-todo.js';
+import { WRITE_TOOL_NAMES, WRITE_TOOL_SET } from './index.js';
 import { withdrawTool } from './withdraw.js';
 import { claimRewardsTool } from './claim.js';
 import { harvestRewardsTool } from './harvest-rewards.js';
 
-// Opt-in write tools that hosts append to `getDefaultTools()`. They're
-// NOT in `WRITE_TOOLS` (the default-export list), but they ARE write
-// tools (`isReadOnly: false`) and therefore subject to the same
-// "every write tool MUST implement preflight" rule. Lock them
-// alongside WRITE_TOOLS so a future opt-in write tool added without
-// preflight is caught by this test.
-const OPT_IN_WRITE_TOOLS = [addRecipientTool, updateTodoTool];
-const ALL_WRITE_TOOLS = [...WRITE_TOOLS, ...OPT_IN_WRITE_TOOLS];
+import { legacyToolView } from '../__tests__/_helpers/call-tool-body.js';
+
+const withdrawView = legacyToolView(withdrawTool, 'withdraw');
+const claimRewardsView = legacyToolView(claimRewardsTool, 'claim_rewards');
+const harvestRewardsView = legacyToolView(harvestRewardsTool, 'harvest_rewards');
 
 describe('preflight coverage — every write tool implements preflight', () => {
-  it('every WRITE_TOOLS entry has a preflight function', () => {
+  it('every write tool exposes a preflight function via the test view', () => {
+    // [P4.1 / v3.0.0 / 2026-05-25] Preflight no longer lives on the
+    // native AI SDK tool itself; it's attached as a non-enumerable
+    // `__t2000_preflight` property on `execute` by `wrapEngineExecute`.
+    // `legacyToolView(tool, name).preflight` reads through that side door.
     const missing: string[] = [];
-    for (const tool of WRITE_TOOLS) {
-      if (typeof tool.preflight !== 'function') missing.push(tool.name);
-    }
-    expect(missing).toEqual([]);
-  });
-
-  it('every OPT-IN write tool also has a preflight function', () => {
-    const missing: string[] = [];
-    for (const tool of OPT_IN_WRITE_TOOLS) {
-      if (tool.isReadOnly) continue; // belt-and-suspenders
-      if (typeof tool.preflight !== 'function') missing.push(tool.name);
-    }
-    expect(missing).toEqual([]);
-  });
-
-  it('every write tool (default + opt-in) has a preflight function', () => {
-    // Belt-and-suspenders: combined assertion catches any future write
-    // tool added to either list. If the previous two specs pass and this
-    // one fails, something is structurally wrong with the import wiring.
-    const missing: string[] = [];
-    for (const tool of ALL_WRITE_TOOLS) {
-      if (tool.isReadOnly) continue;
-      if (typeof tool.preflight !== 'function') missing.push(tool.name);
+    for (const name of WRITE_TOOL_NAMES) {
+      const tool = WRITE_TOOL_SET[name];
+      const view = legacyToolView(tool, name);
+      if (typeof view.preflight !== 'function') missing.push(name);
     }
     expect(missing).toEqual([]);
   });
@@ -76,41 +56,41 @@ describe('preflight coverage — every write tool implements preflight', () => {
 describe('preflight smoke — newly-covered tools (SPEC 30 Phase 1B follow-up)', () => {
   describe('withdraw', () => {
     it('rejects negative amount', () => {
-      const r = withdrawTool.preflight!({ amount: -1 });
+      const r = withdrawView.preflight!({ amount: -1 });
       expect(r.valid).toBe(false);
     });
     it('rejects unsupported asset', () => {
-      const r = withdrawTool.preflight!({ amount: 10, asset: 'GOLD' });
+      const r = withdrawView.preflight!({ amount: 10, asset: 'GOLD' });
       expect(r.valid).toBe(false);
       if (!r.valid && 'error' in r) expect(r.error).toMatch(/USDC and USDsui/);
     });
     it('accepts USDC default', () => {
-      const r = withdrawTool.preflight!({ amount: 10 });
+      const r = withdrawView.preflight!({ amount: 10 });
       expect(r.valid).toBe(true);
     });
     it('accepts USDsui (case insensitive)', () => {
-      const r = withdrawTool.preflight!({ amount: 10, asset: 'usdsui' });
+      const r = withdrawView.preflight!({ amount: 10, asset: 'usdsui' });
       expect(r.valid).toBe(true);
     });
   });
 
   describe('claim_rewards', () => {
     it('preflight is a no-op (no inputs to validate) and accepts empty input', () => {
-      const r = claimRewardsTool.preflight!({});
+      const r = claimRewardsView.preflight!({});
       expect(r.valid).toBe(true);
     });
   });
 
   describe('harvest_rewards', () => {
     it('rejects out-of-range slippage', () => {
-      expect(harvestRewardsTool.preflight!({ slippage: 0.0001 }).valid).toBe(false);
-      expect(harvestRewardsTool.preflight!({ slippage: 0.5 }).valid).toBe(false);
+      expect(harvestRewardsView.preflight!({ slippage: 0.0001 }).valid).toBe(false);
+      expect(harvestRewardsView.preflight!({ slippage: 0.5 }).valid).toBe(false);
     });
     it('rejects negative minRewardUsd', () => {
-      expect(harvestRewardsTool.preflight!({ minRewardUsd: -1 }).valid).toBe(false);
+      expect(harvestRewardsView.preflight!({ minRewardUsd: -1 }).valid).toBe(false);
     });
     it('accepts defaults (no input)', () => {
-      expect(harvestRewardsTool.preflight!({}).valid).toBe(true);
+      expect(harvestRewardsView.preflight!({}).valid).toBe(true);
     });
   });
 

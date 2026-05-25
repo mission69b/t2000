@@ -6,7 +6,7 @@
 //
 //   > "Bridge translators must mirror EVERY side-channel event the legacy
 //   >  engine emits. The Phase 1 bridge implementation focused on
-//   >  `tool_result` parity and silently dropped `canvas` + `todo_update`.
+//   >  `tool_result` parity and silently dropped `canvas`.
 //   >  There's no test that catches 'engine yields N events but bridge
 //   >  yields M < N' for the same input — only per-event correctness tests."
 //
@@ -84,7 +84,6 @@ const BRIDGE_EMITS = new Set<EngineEvent['type']>([
   'tool_start',
   'tool_result',
   'canvas',
-  'todo_update',
   'usage',
   'turn_complete',
   'error',
@@ -100,10 +99,6 @@ const OUTER_ENGINE_EMITS = new Set<EngineEvent['type']>([
   // and cannot know whether a tool needs `confirm` vs `auto` — that
   // decision lives in `resolvePermissionTier` and `runGuards`, both outer.
   'pending_action',
-  // Side-channel input form. Emitted by the engine when a tool's preflight
-  // returns `needsInput`. The bridge is stateless; the engine owns the
-  // pending state map keyed by `inputId`.
-  'pending_input',
   // Tool-side progress events. Tools call `context.progress?.(msg, pct)`
   // from inside their `call` impl; engine queues + yields. Bridge never
   // sees these because they don't flow through the AI SDK stream.
@@ -191,19 +186,6 @@ const BRIDGE_EMIT_FIXTURES: Record<
     } as AISDKStreamEvent,
     expectedType: 'canvas',
   }),
-  todo_update: () => ({
-    input: {
-      type: 'tool-result',
-      toolName: 'update_todo',
-      toolCallId: 'tc-todo',
-      input: {},
-      output: {
-        __todoUpdate: true,
-        items: [{ id: '1', content: 'task', status: 'pending' }],
-      },
-    } as AISDKStreamEvent,
-    expectedType: 'todo_update',
-  }),
   usage: () => ({
     input: {
       type: 'finish',
@@ -224,7 +206,6 @@ const BRIDGE_EMIT_FIXTURES: Record<
   // Outer-engine-owned: no fixture, marked null. The union-coverage
   // assertion uses these entries to prove the variant is acknowledged.
   pending_action: null,
-  pending_input: null,
   tool_progress: null,
   compaction: null,
   proactive_text: null,

@@ -51,14 +51,15 @@ import {
   updateGuardStateAfterToolResult,
   extractTrustedAddressesFromResult,
   extractConversationText,
+  type GuardToolView,
 } from '../guards.js';
 import { resolveUsdValue } from '../permission-rules.js';
-import { findTool } from '../tool.js';
 import {
   clearPortfolioCacheFor,
   clearDefiCacheFor,
 } from '../blockvision-prices.js';
-import type { Tool as LegacyTool } from '../types.js';
+import { getToolPolicy } from './tool-policy.js';
+import { getToolFlags } from '../tool-flags.js';
 import type { InternalContext } from './internal-context.js';
 
 /**
@@ -90,7 +91,7 @@ export interface StepFinishMutableState {
  * Returns a callback with the AI SDK signature: `(step) => void | Promise<void>`.
  */
 export function buildStepFinishHandler(
-  tools: ReadonlyArray<LegacyTool>,
+  tools: ToolSet,
   internal: InternalContext,
   mutable: StepFinishMutableState,
 ): (step: StepResult<ToolSet>) => Promise<void> {
@@ -135,11 +136,16 @@ export function buildStepFinishHandler(
 
     for (const outcome of outcomes) {
       const { toolName, input, result, isError } = outcome;
-      const tool = findTool(tools as LegacyTool[], toolName);
+      const toolExists = tools[toolName] !== undefined;
+      const toolView: GuardToolView | undefined = toolExists
+        ? { name: toolName, flags: getToolFlags(toolName) }
+        : undefined;
+      const isWriteTool =
+        toolExists && getToolPolicy(toolName).permissionLevel !== 'auto';
 
       updateGuardStateAfterToolResult(
         toolName,
-        tool,
+        toolView,
         input,
         result,
         isError,
@@ -177,8 +183,7 @@ export function buildStepFinishHandler(
       //     doesn't care about USD-aware accounting.
       if (
         !isError &&
-        tool &&
-        !tool.isReadOnly &&
+        isWriteTool &&
         internal.config.permissionConfig &&
         internal.config.priceCache
       ) {
@@ -227,7 +232,7 @@ export function buildStepFinishHandler(
       //    address-only, so its staleness window is narrower and the
       //    invalidation surface is more complex. Tracked for v2.0.3
       //    if savings_info post-write staleness shows up in soak.
-      if (!isError && tool && !tool.isReadOnly && internal.walletAddress) {
+      if (!isError && isWriteTool && internal.walletAddress) {
         const address = internal.walletAddress;
         Promise.resolve()
           .then(() =>

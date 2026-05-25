@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { claimRewardsTool } from '../tools/claim.js';
 import type { ToolContext } from '../types.js';
 
+import { callToolBody, legacyToolView } from './_helpers/call-tool-body.js';
+
+const claimRewardsView = legacyToolView(claimRewardsTool, 'claim_rewards');
 /**
  * Build a minimal mock T2000-shaped agent that returns whatever
  * `claimRewards()` payload the test wants. We bypass the real SDK
@@ -31,7 +34,7 @@ describe('claim_rewards tool', () => {
       gasCost: 0.001,
     });
 
-    const result = await claimRewardsTool.call({}, { agent });
+    const result = await callToolBody(claimRewardsTool, {}, { agent });
 
     expect(result.displayText).toContain('vSUI');
     expect(result.displayText).toContain('0.0165');
@@ -57,7 +60,7 @@ describe('claim_rewards tool', () => {
     });
 
     const priceCache = new Map<string, number>([['VSUI', 0.95]]);
-    const result = await claimRewardsTool.call({}, { agent, priceCache });
+    const result = await callToolBody(claimRewardsTool, {}, { agent, priceCache });
 
     const data = result.data as { totalValueUsd: number; rewards: Array<{ estimatedValueUsd: number }> };
     expect(data.totalValueUsd).toBeCloseTo(0.095, 4);
@@ -83,7 +86,7 @@ describe('claim_rewards tool', () => {
       gasCost: 0,
     });
 
-    const result = await claimRewardsTool.call({}, { agent });
+    const result = await callToolBody(claimRewardsTool, {}, { agent });
 
     expect(result.displayText).toContain('1.5 UNKNOWN_TOKEN');
     expect(result.displayText).not.toContain('$');
@@ -110,7 +113,7 @@ describe('claim_rewards tool', () => {
     });
 
     const priceCache = new Map<string, number>([['VSUI', 999]]); // would override if we mistakenly recompute
-    const result = await claimRewardsTool.call({}, { agent, priceCache });
+    const result = await callToolBody(claimRewardsTool, {}, { agent, priceCache });
 
     const data = result.data as { totalValueUsd: number };
     expect(data.totalValueUsd).toBeCloseTo(1.23, 4);
@@ -125,7 +128,7 @@ describe('claim_rewards tool', () => {
       gasCost: 0,
     });
 
-    const result = await claimRewardsTool.call({}, { agent });
+    const result = await callToolBody(claimRewardsTool, {}, { agent });
     expect(result.displayText).toBe('No pending rewards to claim.');
     const data = result.data as { tx: string | null };
     expect(data.tx).toBeNull();
@@ -144,15 +147,15 @@ describe('claim_rewards tool', () => {
     });
 
     const priceCache = new Map<string, number>([['A', 1.5], ['B', 2.5]]);
-    const result = await claimRewardsTool.call({}, { agent, priceCache });
+    const result = await callToolBody(claimRewardsTool, {}, { agent, priceCache });
     const data = result.data as { totalValueUsd: number };
     expect(data.totalValueUsd).toBeCloseTo(1.5 + 5.0, 4);
   });
 
   it('keeps the tool marked as a confirm-level write with mutating flag', () => {
-    expect(claimRewardsTool.isReadOnly).toBe(false);
-    expect(claimRewardsTool.permissionLevel).toBe('confirm');
-    expect(claimRewardsTool.flags?.mutating).toBe(true);
+    expect(claimRewardsView.isReadOnly).toBe(false);
+    expect(claimRewardsView.permissionLevel).toBe('confirm');
+    expect(claimRewardsView.flags?.mutating).toBe(true);
   });
 
   // [S18-F20] When NAVI's read endpoint is degraded, agent.claimRewards()
@@ -172,7 +175,7 @@ describe('claim_rewards tool', () => {
       },
     } as unknown as ToolContext['agent'];
 
-    const result = await claimRewardsTool.call({}, { agent });
+    const result = await callToolBody(claimRewardsTool, {}, { agent });
 
     expect(result.displayText).toContain('NAVI');
     expect(result.displayText).toContain('degraded');
@@ -190,7 +193,7 @@ describe('claim_rewards tool', () => {
       },
     } as unknown as ToolContext['agent'];
 
-    const result = await claimRewardsTool.call({}, { agent });
+    const result = await callToolBody(claimRewardsTool, {}, { agent });
 
     expect(result.displayText).toContain('protocol error');
     const data = result.data as { degraded: boolean; success: boolean };

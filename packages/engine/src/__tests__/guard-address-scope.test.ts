@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
 import {
   runGuards,
   createGuardRunnerState,
   extractConversationText,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
-import { defineTool } from '../v2/define-tool.js';
-import type { PendingToolCall } from '../orchestration.js';
+import { makeGuardView } from './_helpers/call-tool-body.js';
+import type { PendingToolCall } from '../types.js';
 
 /**
  * Regression tests for the address-scope guard.
@@ -19,37 +18,9 @@ import type { PendingToolCall } from '../orchestration.js';
  * LLM is forced to re-issue with `address: "0x40cd..."`.
  */
 
-const balanceCheck = defineTool({
-  name: 'balance_check',
-  description: 'check balance',
-  inputSchema: z.object({
-    address: z.string().optional(),
-  }),
-  isReadOnly: true,
-  call: async () => ({ data: {} }),
-});
-
-const portfolioAnalysis = defineTool({
-  name: 'portfolio_analysis',
-  description: 'portfolio',
-  inputSchema: z.object({
-    address: z.string().optional(),
-  }),
-  isReadOnly: true,
-  call: async () => ({ data: {} }),
-});
-
-const swapQuote = defineTool({
-  name: 'swap_quote',
-  description: 'swap quote',
-  inputSchema: z.object({
-    from: z.string(),
-    to: z.string(),
-    amount: z.number(),
-  }),
-  isReadOnly: true,
-  call: async () => ({ data: {} }),
-});
+const balanceCheck = makeGuardView('balance_check');
+const portfolioAnalysis = makeGuardView('portfolio_analysis');
+const swapQuote = makeGuardView('swap_quote');
 
 const SIGNED_IN_USER = '0x1111111111111111111111111111111111111111111111111111111111111111';
 const WATCHED = '0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b69b739c3e62';

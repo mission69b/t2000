@@ -1,6 +1,12 @@
+import { tool } from 'ai';
 import { z } from 'zod';
 import type { PendingReward } from '@t2000/sdk';
-import { defineTool } from '../v2/define-tool.js';
+// [SPEC AI SDK HARDENING P4.1 Batch 6 / 2026-05-25] Native AI SDK shape.
+import {
+  wrapEngineExecute,
+  buildNeedsApproval,
+} from '../v2/tool-helpers.js';
+import type { PreflightResult, ToolContext, ToolResult } from '../types.js';
 
 /**
  * [Track B / 2026-05-08] `harvest_rewards` — single-PTB compound flow.
@@ -93,46 +99,51 @@ function formatAmount(amount: number): string {
   return amount.toExponential(2);
 }
 
-export const harvestRewardsTool = defineTool({
-  name: 'harvest_rewards',
-  description:
-    'Compound write: claim all NAVI rewards, swap each non-USDC reward to USDC inline, deposit the merged USDC into NAVI savings. ONE confirm card, atomic settlement (every leg lands or none of them do). Use when the user wants their rewards to keep earning yield (the common case). Prefer `claim_rewards` instead when the user explicitly wants to RECEIVE the reward token (e.g. "I want my NAVX in my wallet"). Untradeable rewards get transferred back to wallet automatically — they don\'t block the harvest. Dust rewards (< $0.01) likewise. ' +
-    'Returns a plan: claimed[], swaps[] (with expected USDC out per leg), skipped[] (with reason), expectedUsdcDeposited, plus the on-chain tx hash. ' +
-    'Permission: always `confirm` — never auto-executes regardless of preset, because the bundle includes a swap + deposit and the user should see the breakdown.',
-  inputSchema: z.object({
-    slippage: z
-      .number()
-      .min(0.001)
-      .max(0.05)
-      .optional()
-      .describe('Per-swap slippage tolerance (0.001–0.05). Defaults to 0.01 (1%).'),
-    minRewardUsd: z
-      .number()
-      .min(0)
-      .optional()
-      .describe(
-        'USD floor for "is this worth swapping?". Rewards below this transfer to wallet instead of being swapped. Default $0.01. Pass 0 to disable.',
-      ),
-  }),
-  isReadOnly: false,
-  permissionLevel: 'confirm',
-  flags: { mutating: true },
-  preflight: (input) => {
-    if (input.slippage !== undefined) {
-      if (input.slippage < 0.001 || input.slippage > 0.05) {
-        return {
-          valid: false,
-          error: 'Slippage must be between 0.001 (0.1%) and 0.05 (5%).',
-        };
-      }
-    }
-    if (input.minRewardUsd !== undefined && input.minRewardUsd < 0) {
-      return { valid: false, error: 'minRewardUsd cannot be negative.' };
-    }
-    return { valid: true };
-  },
+// ---------------------------------------------------------------------------
+// Shared business logic — same body backs the native + legacy exports
+// ---------------------------------------------------------------------------
+const harvestRewardsDescription =
+  'Compound write: claim all NAVI rewards, swap each non-USDC reward to USDC inline, deposit the merged USDC into NAVI savings. ONE confirm card, atomic settlement (every leg lands or none of them do). Use when the user wants their rewards to keep earning yield (the common case). Prefer `claim_rewards` instead when the user explicitly wants to RECEIVE the reward token (e.g. "I want my NAVX in my wallet"). Untradeable rewards get transferred back to wallet automatically — they don\'t block the harvest. Dust rewards (< $0.01) likewise. ' +
+  'Returns a plan: claimed[], swaps[] (with expected USDC out per leg), skipped[] (with reason), expectedUsdcDeposited, plus the on-chain tx hash. ' +
+  'Permission: always `confirm` — never auto-executes regardless of preset, because the bundle includes a swap + deposit and the user should see the breakdown.';
 
-  async call(input, context) {
+const harvestRewardsInputSchema = z.object({
+  slippage: z
+    .number()
+    .min(0.001)
+    .max(0.05)
+    .optional()
+    .describe('Per-swap slippage tolerance (0.001–0.05). Defaults to 0.01 (1%).'),
+  minRewardUsd: z
+    .number()
+    .min(0)
+    .optional()
+    .describe(
+      'USD floor for "is this worth swapping?". Rewards below this transfer to wallet instead of being swapped. Default $0.01. Pass 0 to disable.',
+    ),
+});
+
+type HarvestRewardsInput = z.infer<typeof harvestRewardsInputSchema>;
+
+function harvestRewardsPreflight(input: HarvestRewardsInput): PreflightResult {
+  if (input.slippage !== undefined) {
+    if (input.slippage < 0.001 || input.slippage > 0.05) {
+      return {
+        valid: false,
+        error: 'Slippage must be between 0.001 (0.1%) and 0.05 (5%).',
+      };
+    }
+  }
+  if (input.minRewardUsd !== undefined && input.minRewardUsd < 0) {
+    return { valid: false, error: 'minRewardUsd cannot be negative.' };
+  }
+  return { valid: true };
+}
+
+async function harvestRewardsCallBody(
+  input: HarvestRewardsInput,
+  context: ToolContext,
+): Promise<ToolResult<HarvestRewardsResult>> {
     // The actual on-chain execution happens host-side via composeTx +
     // sponsored-tx flow. The engine tool's job is to:
     //   1. Validate input.
@@ -181,7 +192,19 @@ export const harvestRewardsTool = defineTool({
       'wallet so nothing is lost.';
 
     return { data, displayText };
-  },
+}
+
+export const harvestRewardsTool = tool({
+  description: harvestRewardsDescription,
+  inputSchema: harvestRewardsInputSchema,
+  needsApproval: buildNeedsApproval('harvest_rewards'),
+  execute: wrapEngineExecute<HarvestRewardsInput, HarvestRewardsResult>(
+    'harvest_rewards',
+    {
+      preflight: harvestRewardsPreflight,
+      call: harvestRewardsCallBody,
+    },
+  ),
 });
 
 /**
