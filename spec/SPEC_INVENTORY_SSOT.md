@@ -77,10 +77,11 @@ The 2026-05-23 cleanup pass archived **19 files** + deleted 1 stub. S.278 added 
 | `active/shipping/SPEC_AI_SDK_HARDENING.md` | `archive/v07f/` (NEW) | ✅ CLOSED 2026-05-25 (S.319). 6/7 phases SHIPPED; Phase 7 P7.1+P7.2+P7.3+P7.4 SHIPPED; P7.5 cleanly DEFERRED (trigger criteria NOT hit by V3-SMOKE-5 — chain-mode bundle executed atomically with no surfaced user confusion). V3 prod smoke (founder, audric.ai, ~16:00-16:40 AEST) verified all 6 items PASS. Three follow-up findings classified as pre-existing audric/web-v2 host bugs (not v3 regressions); tracked in build tracker forward backlog. |
 | `active/shipping/SPEC_AI_SDK_HARDENING_V3_SMOKE.md` | `archive/v07f/` (NEW) | Companion smoke checklist for v3.0.0/v3.1.0/S.314 surface. PASSED 2026-05-25 (S.319). Stays as reference template for the NEXT major engine release smoke. |
 
-### 1.2 `spec/active/shipping/` (6 files — both AI SDK Hardening specs archived in S.319)
+### 1.2 `spec/active/shipping/` (7 files — Agentic Stack SPEC promoted in S.321)
 
 | File | Status | Action |
 |---|---|---|
+| `SPEC_AGENTIC_STACK.md` | 🟢 SHIPPING (NEW 2026-05-25) | Phase 1 SHIPPED via S.321 (`@t2000/*@3.2.0` — CLI/SDK Tier 1: 4 SDK fixes + 6 CLI fixes + 24 new tests + manual smoke PASS). Phases 2-5 pending. Phase 2 (Skills modernization) + Phase 3 (One-Prompt Install) bundled next; Phase 4 (MPP recipes) parallel; Phase 5 (Marketing sweep) closes. Anchored on `spec/active/CLI_ARCH_REVIEW_2026-05-25.md` + `spec/active/SDK_ARCH_REVIEW_2026-05-25.md`. Locked decisions: hosting at `t2000.ai/skills/*`, HTTP MCP DEFERRED to standalone SPEC, gateway simplification DEFERRED to `SPEC_GATEWAY_SIMPLIFICATION`. |
 | `SPEC_30_CROSS_REPO_SECURITY_REVIEW.md` | 🟢 SHIPPING | KEEP. Phase 1A-1C SHIPPED + URGENT BLOCK SHIPPED. Phase 2-10 spun out to follow-up SPECs (31-36) for founder triage. |
 | `SPEC_272_CRON_RATE_LIMITS.md` | 🟢 SHIPPING (NEW 2026-05-23) | Lever 1 SHIPPED via S.278 (cron user-batching N=10/M=500ms). Lever 2 + 3 DEFERRED pending 3-day post-deploy metric review. Decision gate documented at top of the SPEC. Promote to `archive/v07e/` once Lever 2 + 3 explicitly retired OR shipped. |
 | `SPEC_SDK_v3_SMOKE.md` | 🟢 ACTIVE (NEW 2026-05-25) | SMOKE-2 slice for `@t2000/sdk@3.1.0`. 5 items — install + version, `T2000.fromPrivateKey()` + balance, `composeTx({steps})` single-write, chain-mode `inputCoinFromStep` (P7.2), `deserializeCetusRoute` roundtrip (P7.3). ~8-10 min. Archive after PASSED. |

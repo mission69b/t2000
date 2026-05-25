@@ -4,10 +4,10 @@ import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl, formatApyPercent } from '../output.js';
 
-type SaveAsset = 'USDC' | 'USDsui';
-const SAVE_ASSETS: readonly SaveAsset[] = ['USDC', 'USDsui'] as const;
+export type SaveAsset = 'USDC' | 'USDsui';
+export const SAVE_ASSETS: readonly SaveAsset[] = ['USDC', 'USDsui'] as const;
 
-function resolveSaveAsset(input: string | undefined): SaveAsset {
+export function resolveSaveAsset(input: string | undefined): SaveAsset {
   if (!input) return 'USDC';
   const match = SAVE_ASSETS.find((a) => a.toLowerCase() === input.toLowerCase());
   if (!match) {
@@ -57,18 +57,14 @@ export function registerSave(program: Command) {
     }
   };
 
+  // [SPEC_AGENTIC_STACK P1 / CLI F3 — 2026-05-25]
+  // Removed the `t2000 supply` alias. `save` is the canonical (and only) verb
+  // for depositing into NAVI lending. The alias added noise to help output and
+  // matched a common DeFi term (Aave/Compound "supply") that doesn't fit the
+  // Audric Finance vocabulary (which leads with "save").
   program
     .command('save')
     .description('Deposit USDC or USDsui into NAVI lending to earn yield')
-    .argument('<amount>', 'Amount of the chosen asset to save (or "all")')
-    .option('--key <path>', 'Key file path')
-    .option('--protocol <name>', 'Protocol to use (e.g. navi)')
-    .option('--asset <symbol>', 'Asset to save: USDC (default) or USDsui')
-    .action(action);
-
-  program
-    .command('supply')
-    .description('Deposit USDC or USDsui into NAVI lending (alias for save)')
     .argument('<amount>', 'Amount of the chosen asset to save (or "all")')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi)')

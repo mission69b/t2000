@@ -3,10 +3,10 @@ import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
-type BorrowAsset = 'USDC' | 'USDsui';
-const BORROW_ASSETS: readonly BorrowAsset[] = ['USDC', 'USDsui'] as const;
+export type BorrowAsset = 'USDC' | 'USDsui';
+export const BORROW_ASSETS: readonly BorrowAsset[] = ['USDC', 'USDsui'] as const;
 
-function resolveBorrowAsset(input: string | undefined): BorrowAsset {
+export function resolveBorrowAsset(input: string | undefined): BorrowAsset {
   if (!input) return 'USDC';
   const match = BORROW_ASSETS.find((a) => a.toLowerCase() === input.toLowerCase());
   if (!match) {

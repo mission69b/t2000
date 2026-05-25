@@ -3,10 +3,10 @@ import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
-type RepayAsset = 'USDC' | 'USDsui';
-const REPAY_ASSETS: readonly RepayAsset[] = ['USDC', 'USDsui'] as const;
+export type RepayAsset = 'USDC' | 'USDsui';
+export const REPAY_ASSETS: readonly RepayAsset[] = ['USDC', 'USDsui'] as const;
 
-function resolveRepayAsset(input: string | undefined): RepayAsset | undefined {
+export function resolveRepayAsset(input: string | undefined): RepayAsset | undefined {
   if (!input) return undefined;
   const match = REPAY_ASSETS.find((a) => a.toLowerCase() === input.toLowerCase());
   if (!match) {

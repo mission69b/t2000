@@ -72,8 +72,26 @@ export const SUPPORTED_ASSETS = {
 } as const;
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
-export type StableAsset = 'USDC';
-export const STABLE_ASSETS: readonly StableAsset[] = ['USDC'] as const;
+
+// [SPEC_AGENTIC_STACK P1 / SDK F3 — 2026-05-25]
+// `StableAsset` = "what we treat as worth $1 for wallet pricing and balance roll-up".
+// Pre-Phase 1: USDC only — left USDsui wallet holdings invisible to balance.ts.
+// Phase 1: widened to USDC + USDsui (both are NAVI-native stables with $1 peg).
+// USDT / USDe stay OUT of this set deliberately — they are stables, but the
+// codebase has never priced them at $1, and adding them here would require
+// auditing balance.ts callers downstream. Keep the carve minimal.
+export type StableAsset = 'USDC' | 'USDsui';
+export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDsui'] as const;
+
+// [SPEC_AGENTIC_STACK P1 / SDK F4 — 2026-05-25]
+// `SaveableAsset` = "what you can deposit into a NAVI lending pool to earn yield".
+// Semantically distinct from STABLE_ASSETS even though the sets are identical today:
+// if USDe-on-NAVI lands in the future, USDe would join STABLE_ASSETS but NOT
+// SAVEABLE_ASSETS until the NAVI USDe pool is verified live.
+// See `.cursor/rules/savings-usdc-only.mdc` for the rule that gates additions.
+export type SaveableAsset = 'USDC' | 'USDsui';
+export const SAVEABLE_ASSETS: readonly SaveableAsset[] = ['USDC', 'USDsui'] as const;
+
 export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_ASSETS) as SupportedAsset[];
 
 // ---------------------------------------------------------------------------

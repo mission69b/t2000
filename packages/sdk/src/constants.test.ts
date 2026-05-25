@@ -3,8 +3,56 @@ import {
   OPERATION_ASSETS,
   isAllowedAsset,
   assertAllowedAsset,
+  STABLE_ASSETS,
+  SAVEABLE_ASSETS,
+  type StableAsset,
+  type SaveableAsset,
 } from './constants.js';
 import { T2000Error } from './errors.js';
+
+// [SPEC_AGENTIC_STACK P1 / SDK F3 + F4 — 2026-05-25]
+// Phase 1 widened STABLE_ASSETS (USDC → USDC + USDsui) and added a new
+// SAVEABLE_ASSETS export. These tests pin both sets so future widenings of
+// either don't silently leak into the other (e.g. USDe joining STABLE_ASSETS
+// without a NAVI pool would NOT belong in SAVEABLE_ASSETS until the pool is live).
+describe('STABLE_ASSETS', () => {
+  it('contains exactly USDC + USDsui', () => {
+    expect(STABLE_ASSETS).toEqual(['USDC', 'USDsui']);
+  });
+
+  it('is readonly at the type level', () => {
+    const assets: readonly StableAsset[] = STABLE_ASSETS;
+    expect(assets.length).toBe(2);
+  });
+
+  it('every entry matches the StableAsset union', () => {
+    for (const a of STABLE_ASSETS) {
+      const narrow: StableAsset = a;
+      expect(['USDC', 'USDsui']).toContain(narrow);
+    }
+  });
+});
+
+describe('SAVEABLE_ASSETS', () => {
+  it('contains exactly USDC + USDsui (NAVI-pool-backed stables)', () => {
+    expect(SAVEABLE_ASSETS).toEqual(['USDC', 'USDsui']);
+  });
+
+  it('matches OPERATION_ASSETS.save (single source of truth)', () => {
+    expect(SAVEABLE_ASSETS).toEqual(OPERATION_ASSETS.save);
+  });
+
+  it('matches OPERATION_ASSETS.borrow (saveable == borrowable today)', () => {
+    expect(SAVEABLE_ASSETS).toEqual(OPERATION_ASSETS.borrow);
+  });
+
+  it('every entry matches the SaveableAsset union', () => {
+    for (const a of SAVEABLE_ASSETS) {
+      const narrow: SaveableAsset = a;
+      expect(['USDC', 'USDsui']).toContain(narrow);
+    }
+  });
+});
 
 // [v0.51.0] OPERATION_ASSETS gained USDsui as a strategic exception alongside
 // USDC for save + borrow. Every other asset (USDT, USDe, SUI, ETH, GOLD, NAVX,

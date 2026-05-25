@@ -8,7 +8,7 @@ import { registerInit } from './commands/init.js';
 import { registerSend } from './commands/send.js';
 import { registerBalance } from './commands/balance.js';
 import { registerAddress } from './commands/address.js';
-import { registerDeposit } from './commands/deposit.js';
+import { registerFund } from './commands/fund.js';
 import { registerHistory } from './commands/history.js';
 import { registerExport } from './commands/exportKey.js';
 import { registerImport } from './commands/importKey.js';
@@ -49,18 +49,22 @@ export function createProgram(): Command {
     .addHelpText('after', `
 Examples:
   $ t2000 init                    Create a new Agentic Wallet
+  $ t2000 fund                    Show how to fund your wallet
   $ t2000 balance                 Show wallet balance
-  $ t2000 save 100                Save $100 to earn yield
-  $ t2000 send 50 to 0xabc...    Send $50 USDC
+  $ t2000 save 100                Save $100 USDC to earn yield
+  $ t2000 save 50 --asset USDsui  Save 50 USDsui to NAVI
+  $ t2000 send 50 to 0xabc...     Send $50 USDC
+  $ t2000 receive --amount 25     Generate a payment link
+  $ t2000 swap 100 USDC SUI       Swap 100 USDC for SUI
   $ t2000 borrow 200              Borrow $200 against savings
   $ t2000 pay openai ...          Pay for an API via MPP gateway
-  $ t2000 mcp install             Install MCP for AI platforms`);
+  $ t2000 mcp install             Connect Claude / Cursor / Windsurf`);
 
   registerInit(program);
   registerSend(program);
   registerBalance(program);
   registerAddress(program);
-  registerDeposit(program);
+  registerFund(program);
   registerHistory(program);
   registerExport(program);
   registerImport(program);

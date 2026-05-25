@@ -516,53 +516,30 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
+  /**
+   * [SPEC_AGENTIC_STACK P1 / SDK F2 — 2026-05-25]
+   * Thin wrapper around the standalone `getSwapQuote()`. Pre-Phase 1 this method
+   * was ~50 LoC duplicating `swap-quote.ts` — missing `serializedRoute` (SPEC 20.2
+   * fast-path) and the `providers` allow-list (Bug A fix / Pyth-dependent
+   * provider filter for sponsored callers). Routing both API surfaces through
+   * one implementation ensures fixes land for both.
+   */
   async swapQuote(params: {
     from: string;
     to: string;
     amount: number;
     byAmountIn?: boolean;
+    providers?: string[];
   }): Promise<SwapQuoteResult> {
-    const { findSwapRoute, resolveTokenType } = await import('./protocols/cetus-swap.js');
-
-    const fromType = resolveTokenType(params.from);
-    const toType = resolveTokenType(params.to);
-    if (!fromType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${params.from}. Provide the full coin type.`);
-    if (!toType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${params.to}. Provide the full coin type.`);
-
-    const byAmountIn = params.byAmountIn ?? true;
-
-    const fromDecimals = getDecimalsForCoinType(fromType);
-    const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
-
-    const route = await findSwapRoute({
+    const { getSwapQuote } = await import('./swap-quote.js');
+    return getSwapQuote({
       walletAddress: this._address,
-      from: fromType,
-      to: toType,
-      amount: rawAmount,
-      byAmountIn,
+      from: params.from,
+      to: params.to,
+      amount: params.amount,
+      byAmountIn: params.byAmountIn,
+      providers: params.providers,
     });
-
-    if (!route) throw new T2000Error('SWAP_NO_ROUTE', `No swap route found for ${params.from} -> ${params.to}.`);
-    if (route.insufficientLiquidity) throw new T2000Error('SWAP_NO_ROUTE', `Insufficient liquidity for ${params.from} -> ${params.to}.`);
-
-    const toDecimals = getDecimalsForCoinType(toType);
-    const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
-    const toAmount = Number(route.amountOut) / 10 ** toDecimals;
-
-    const routeDesc = route.routerData.paths
-      ?.map((p) => p.provider)
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(' + ') ?? 'Cetus Aggregator';
-
-    return {
-      fromToken: params.from,
-      toToken: params.to,
-      fromAmount,
-      toAmount,
-      priceImpact: route.priceImpact,
-      route: routeDesc,
-    };
   }
 
   // -- Wallet --
@@ -718,6 +695,17 @@ export class T2000 extends EventEmitter<T2000Events> {
         `USDC contract: ${SUPPORTED_ASSETS.USDC.type}`,
       ].join('\n'),
     };
+  }
+
+  /**
+   * [SPEC_AGENTIC_STACK P1 / SDK F2 (CLI rename support) — 2026-05-25]
+   * Preferred alias of `deposit()`. The CLI surface is `t2000 fund` post-Phase 1
+   * (more intuitive than "deposit" which sounds like a NAVI lending action).
+   * `deposit()` stays as the canonical method name for back-compat; it is NOT
+   * deprecated. This wrapper exists so SDK consumers can mirror CLI naming.
+   */
+  async fund(): Promise<DepositInfo> {
+    return this.deposit();
   }
 
   receive(params?: { amount?: number; currency?: string; memo?: string; label?: string }): PaymentRequest {
@@ -1601,10 +1589,15 @@ export class T2000 extends EventEmitter<T2000Events> {
     const result = await yieldTracker.getEarnings(this.client, this._address);
 
     if (result.totalYieldEarned > 0) {
+      // [SPEC_AGENTIC_STACK P1 / SDK F1 — 2026-05-25] Removed stray `/ 100`.
+      // `result.currentApy` is already a decimal (0.046 = 4.6%) — pre-fix this
+      // emitted 0.00046 to `yield` event subscribers, masking the real APY 100x.
+      // Matches what `EarningsResult.currentApy` declares + what `fundStatus()`
+      // returns + what NAVI's MCP rate endpoint serves.
       this.emit('yield', {
         earned: result.dailyEarning,
         total: result.totalYieldEarned,
-        apy: result.currentApy / 100,
+        apy: result.currentApy,
         timestamp: Date.now(),
       });
     }

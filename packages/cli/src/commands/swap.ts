@@ -4,6 +4,38 @@ import { T2000 } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
+/**
+ * Parses `t2000 swap <amount> <from> [for] <to>` positional args.
+ *
+ * Accepts two forms:
+ *   - `t2000 swap 100 USDC SUI`        → no keyword
+ *   - `t2000 swap 100 USDC for SUI`    → with "for" keyword (case-insensitive)
+ *
+ * Returns `{ amount, from, to }` or throws with a `Usage:` hint when invalid.
+ */
+export function parseSwapArgs(
+  amountStr: string,
+  from: string,
+  toKeywordOrTo: string,
+  to: string | undefined,
+): { amount: number; from: string; to: string } {
+  const amount = parseFloat(amountStr);
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error('Amount must be a positive number');
+  }
+
+  if (toKeywordOrTo?.toLowerCase() === 'for' && !to) {
+    throw new Error('Usage: t2000 swap <amount> <from> [for] <to>');
+  }
+  const actualTo = to ?? toKeywordOrTo;
+
+  if (!actualTo) {
+    throw new Error('Usage: t2000 swap <amount> <from> [for] <to>');
+  }
+
+  return { amount, from, to: actualTo };
+}
+
 export function registerSwap(program: Command) {
   program
     .command('swap')
@@ -16,15 +48,7 @@ export function registerSwap(program: Command) {
     .option('--key <path>', 'Key file path')
     .action(async (amountStr: string, from: string, toKeywordOrTo: string, to: string | undefined, opts: { key?: string; slippage?: string }) => {
       try {
-        const amount = parseFloat(amountStr);
-        if (isNaN(amount) || amount <= 0) {
-          throw new Error('Amount must be a positive number');
-        }
-
-        if (toKeywordOrTo?.toLowerCase() === 'for' && !to) {
-          throw new Error('Usage: t2000 swap <amount> <from> [for] <to>');
-        }
-        const actualTo = to ?? toKeywordOrTo;
+        const { amount, to: actualTo } = parseSwapArgs(amountStr, from, toKeywordOrTo, to);
 
         const slippage = Math.min(parseFloat(opts.slippage ?? '1') / 100, 0.05);
 

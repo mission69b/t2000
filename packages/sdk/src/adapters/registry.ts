@@ -3,7 +3,12 @@ import type {
   LendingRates,
   AdapterPositions,
 } from './types.js';
-import { STABLE_ASSETS } from '../constants.js';
+// [SPEC_AGENTIC_STACK P1 / SDK F4 — 2026-05-25]
+// Iterate `SAVEABLE_ASSETS` (semantically "what NAVI accepts as collateral / deposit").
+// Pre-F4 we iterated STABLE_ASSETS which meant the same thing pre-Phase 1 (USDC only),
+// but the sets diverge as future stables join the wallet pricing set without
+// necessarily having a NAVI pool. See constants.ts JSDoc.
+import { SAVEABLE_ASSETS } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
 export class ProtocolRegistry {
@@ -61,7 +66,7 @@ export class ProtocolRegistry {
   async bestSaveRateAcrossAssets(): Promise<{ adapter: LendingAdapter; rate: LendingRates; asset: string }> {
     const candidates: Array<{ adapter: LendingAdapter; rate: LendingRates; asset: string }> = [];
 
-    for (const asset of STABLE_ASSETS) {
+    for (const asset of SAVEABLE_ASSETS) {
       for (const adapter of this.lending.values()) {
         if (!adapter.supportedAssets.includes(asset)) continue;
         if (!adapter.capabilities.includes('save')) continue;
@@ -83,7 +88,7 @@ export class ProtocolRegistry {
   async allRatesAcrossAssets(): Promise<Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }>> {
     const results: Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }> = [];
     const seen = new Set<string>();
-    for (const asset of STABLE_ASSETS) {
+    for (const asset of SAVEABLE_ASSETS) {
       if (seen.has(asset)) continue;
       seen.add(asset);
       for (const adapter of this.lending.values()) {

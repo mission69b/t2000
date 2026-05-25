@@ -136,7 +136,7 @@ See the [MCP setup guide](../../docs/mcp-setup.md) for manual configuration.
 | `t2000 balance` | Show available USDC + savings + gas reserve |
 | `t2000 balance --show-limits` | Include maxWithdraw, maxBorrow, and health factor |
 | `t2000 address` | Show wallet address |
-| `t2000 deposit` | Show funding instructions |
+| `t2000 fund` | Show how to fund your Agentic Wallet (receive address + supported networks) |
 | `t2000 import` | Import an existing wallet from private key |
 | `t2000 export` | Export private key (bech32 `suiprivkey1...` format) |
 | `t2000 history` | Transaction history |
@@ -281,11 +281,16 @@ Audric (the consumer product on top of the SDK) charges a small overlay fee on s
 ## Examples
 
 ```bash
-# Full DeFi cycle
+# Full DeFi cycle (USDC)
 t2000 save all               # Deposit all available USDC
 t2000 borrow 40              # Borrow against it
 t2000 repay 40               # Pay it back
 t2000 withdraw all            # Get everything out (USDC by default; pass --asset USDsui for USDsui)
+
+# Save / borrow / repay in USDsui (strategic stable, v0.51.0+)
+t2000 save 50 --asset USDsui          # Deposit USDsui to NAVI
+t2000 borrow 20 --asset USDsui        # Borrow USDsui against collateral
+t2000 repay all --asset USDsui        # Repay all USDsui debts (must match borrow asset)
 
 # Automation-friendly (no prompts, JSON output)
 t2000 balance --json

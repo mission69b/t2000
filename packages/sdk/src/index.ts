@@ -51,9 +51,10 @@ export {
   CLOCK_ID,
   DEFAULT_NETWORK,
 } from './constants.js';
-export type { SupportedAsset, StableAsset } from './constants.js';
+export type { SupportedAsset, StableAsset, SaveableAsset } from './constants.js';
 export {
   STABLE_ASSETS,
+  SAVEABLE_ASSETS,
   ALL_NAVI_ASSETS,
   GAS_RESERVE_MIN,
   CETUS_USDC_SUI_POOL,
