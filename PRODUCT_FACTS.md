@@ -43,7 +43,7 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 - The phrase **"4 systems"** is canonical — never list 3, never list 5. _(v0.7d Phase 6 Block A — 2026-05-21 — absorbed former "Silent Profile" + "Chain Memory" into a single MemWal-backed "Memory" system. Pre-Block A docs still mention 5; the canonical is 4.)_
 - Always use the system names exactly as written: `Agent Harness`, `Reasoning Engine`, `Memory (MemWal)`, `AdviceLog`.
 - The Reasoning Engine has **12 guards** (11 pre-exec gates + 1 post-exec hint) across **3 priority tiers** (Safety > Financial > UX). Multi-step orchestration moved to **14 skills** (markdown playbooks in `t2000-skills/skills/`, shipped via `@t2000/mcp` as MCP prompts; pre-v0.7a these were 6 YAML recipes — runtime deleted Phase 6, May 2026). (Pre-S.277 had 14 guards; `cost_warning` + `artifact_preview` removed 2026-05-23 as dead code post-S.245 / image-output cuts.)
-- The Agent Harness has **26 tools** (18 read + 8 write). (Pre-S.245 had 37; `pay_api` + `mpp_services` removed 2026-05-22 → 35. S.269 removed `save_contact` + 3 invoice tools → 31. S.277 cut Volo trio + `web_search` + `protocol_deep_dive` 2026-05-23 → 26.)
+- The Agent Harness has **26 tools** (18 read + 8 write). (Pre-S.245 had 37; `pay_api` + `mpp_services` removed 2026-05-22 → 35. S.269 removed `save_contact` + 3 invoice tools → 31. S.277 cut Volo trio + `web_search` + `protocol_deep_dive` 2026-05-23 → 26. Engine count unchanged by S.323 — Volo was already cut from the engine; S.323 removed the residual SDK + CLI + MCP surfaces.)
 
 ---
 
@@ -86,8 +86,6 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 | Send | — | Free | |
 | Receive | — | Free | Payment request generation is local; uses Sui Payment Kit (`sui:pay?` URIs) for QR codes |
 | Swap | 10 | 0.1% | Audric overlay fee on swap (Cetus `overlayFeeReceiver` = `T2000_OVERLAY_FEE_WALLET`); Cetus Aggregator network fees still apply |
-| Stake (vSUI) | — | Free | VOLO protocol fees only |
-| Unstake (vSUI) | — | Free | |
 | Pay (MPP) | — | Free | Agent pays the API price, no t2000 surcharge |
 
 Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, `T2000_OVERLAY_FEE_WALLET`.
@@ -139,7 +137,6 @@ t2000 uses an MCP-first integration model for DeFi protocol reads, with thin tra
 |---------|------|-------------|--------|
 | NAVI (`navi`) | Lending | save, withdraw, borrow, repay; claim rewards | Built-in |
 | Cetus Aggregator V3 | Swap | Multi-DEX swap routing (20+ DEXs); t2000 **0.1% overlay** on swaps (`overlayFeeRate` / `overlayFeeReceiver`) | Built-in |
-| VOLO | Liquid Staking | Stake SUI → vSUI, unstake vSUI → SUI | Built-in |
 | BlockVision | Market Data | Wallet portfolio + multi-token spot price + 24h change (Indexer REST API) | Built-in (engine) |
 | DefiLlama | Market Data | Protocol-level deep dive (TVL, fees, yields) — narrow scope, lone consumer is `protocol_deep_dive` | Built-in (engine) |
 
@@ -148,7 +145,6 @@ t2000 uses an MCP-first integration model for DeFi protocol reads, with thin tra
 - CLI `--protocol <name>` flag on save/withdraw/borrow/repay to pin a specific protocol
 - Third-party adapters can be registered via `agent.registerAdapter(new MyAdapter())`
 - Cetus SDK (`@cetusprotocol/aggregator-sdk`) is isolated to `packages/sdk/src/protocols/cetus-swap.ts`
-- VOLO uses thin tx builders (direct Move calls) — no SDK dependency
 - BlockVision: `api.blockvision.org/v2` (`fetchAddressPortfolio`, `fetchTokenPrices`); requires `BLOCKVISION_API_KEY`
 - DefiLlama: `api.llama.fi` only (the legacy `coins.llama.fi` + `yields.llama.fi` paths were retired with the v0.47.0 BlockVision swap)
 
@@ -229,8 +225,6 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | claim-rewards | `t2000 claim-rewards` | Claim pending protocol rewards |
 | swap | `t2000 swap <amount> <from> [for] <to>` | Swap tokens via Cetus Aggregator. Options: `--slippage <pct>` (default: 1%) |
 | swap-quote | `t2000 swap-quote <amount> <from> [for] <to>` | Preview swap quote (read-only, no execution) |
-| stake | `t2000 stake <amount>` | Stake SUI for vSUI (VOLO liquid staking, min 1 SUI) |
-| unstake | `t2000 unstake <amount>` | Unstake vSUI back to SUI. `amount` accepts `all` |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -292,22 +286,6 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
   ✓ Swapped 10 SUI for 38.4200 USDC
   Route:  SUI → USDC (Cetus)
   Gas:    0.0031 SUI
-  Tx:  https://suiscan.xyz/mainnet/tx/<digest>
-```
-
-**stake:**
-```
-  ✓ Staked 5 SUI for 4.7619 vSUI
-  ✓ APY: 3.85%
-  Gas:    0.0028 SUI
-  Tx:  https://suiscan.xyz/mainnet/tx/<digest>
-```
-
-**unstake:**
-```
-  ✓ Unstaked 4.7619 vSUI
-  ✓ Received 5.0500 SUI
-  Gas:    0.0028 SUI
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
 
@@ -380,13 +358,6 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | Method | Params | Returns |
 |--------|--------|---------|
 | `swap()` | `{ from, to, amount, byAmountIn?, slippage? }` | `SwapResult` |
-
-### Liquid Staking (VOLO)
-
-| Method | Params | Returns |
-|--------|--------|---------|
-| `stakeVSui()` | `{ amount }` | `StakeVSuiResult` |
-| `unstakeVSui()` | `{ amount: number \| 'all' }` | `UnstakeVSuiResult` |
 
 ### Info
 
@@ -486,18 +457,6 @@ interface SwapResult {
   fromToken: string; toToken: string;
   fromAmount: number; toAmount: number;
   priceImpact: number; route: string;
-  gasCost: number;
-}
-
-interface StakeVSuiResult {
-  success: boolean; tx: string;
-  amountSui: number; vSuiReceived: number;
-  apy: number; gasCost: number;
-}
-
-interface UnstakeVSuiResult {
-  success: boolean; tx: string;
-  vSuiAmount: number; suiReceived: number;
   gasCost: number;
 }
 
@@ -734,9 +693,9 @@ Two correctness/intelligence upgrades shipped on top of the 5-system base. Both 
 | `transaction_history` | `claim_rewards` |
 | `swap_quote` | `harvest_rewards` |
 | `volo_stats` | `swap_execute` |
-| `web_search` | `volo_stake` |
-| `explain_tx` | `volo_unstake` |
-| `portfolio_analysis` | `save_contact` |
+| `web_search` | `save_contact` |
+| `explain_tx` | |
+| `portfolio_analysis` | |
 | `protocol_deep_dive` | |
 | `token_prices` | |
 | `create_payment_link` | |

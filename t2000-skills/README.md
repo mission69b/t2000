@@ -1,6 +1,6 @@
 # t2000 Agent Skills
 
-Agent Skills for the [t2000](https://t2000.ai) Agentic Wallet on Sui. Install once and your AI agent gains the ability to check balances, send payments, earn yield, borrow, swap, stake, and pay for MPP API services — all on Sui.
+Agent Skills for the [t2000](https://t2000.ai) Agentic Wallet on Sui. Install once and your AI agent gains the ability to check balances, send payments, earn yield, borrow, swap, and pay for MPP API services — all on Sui.
 
 ## One-Prompt Install (recommended)
 
@@ -52,7 +52,6 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 | `t2000-borrow` | "borrow 40 USDC", "take out a loan", "borrow against savings" |
 | `t2000-repay` | "repay my loan", "pay back..." |
 | `t2000-swap` | "swap 100 USDC for SUI", "trade", "convert tokens" |
-| `t2000-stake` | "stake SUI", "liquid staking", "vSUI" |
 | `t2000-yields` | "best yield?", "compare APYs", "where to park USDC" |
 | `t2000-pay` | "call that paid API", "pay for MPP service" |
 | `t2000-contacts` | "add contact", "send to alice", "list contacts" |

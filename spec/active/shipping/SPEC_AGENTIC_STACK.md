@@ -31,7 +31,7 @@ flowchart LR
     CLI --> SDK["@t2000/sdk"]
     MCP --> Engine["@t2000/engine"]
     Engine --> SDK
-    SDK --> Sui["Sui mainnet · NAVI · Cetus · VOLO"]
+    SDK --> Sui["Sui mainnet · NAVI · Cetus"]
     User -->|"MPP recipes curl t2000.ai/skills/mpp-*.md"| MPP["MPP Gateway mpp.t2000.ai"]
 ```
 
@@ -65,10 +65,10 @@ Implements Tier 1 picks from [spec/active/CLI_ARCH_REVIEW_2026-05-25.md](../CLI_
 
 Brought `t2000-skills/` to Circle-pattern-aware but NOT Circle-clone. Lighter touch — minimum Rules block added only to the 5 high-impact write skills (`save`, `borrow`, `send`, `repay`, `withdraw`); read-only / advisory skills left as-is.
 
-**Skills ADDED (4 net-new — 14 → 18 total):**
+**Skills ADDED (4 net-new — 14 → 18 total; then 18 → 17 in S.323 with `t2000-stake` deletion):**
 - `t2000-swap` — Cetus aggregator wrapper, preview rules, price-impact thresholds.
-- `t2000-stake` — VOLO liquid staking (SUI → vSUI), explicit comparison vs NAVI save.
-- `t2000-yields` — APY comparison across NAVI USDC / USDsui / VOLO.
+- ~~`t2000-stake` — VOLO liquid staking (SUI → vSUI), explicit comparison vs NAVI save.~~ **Deleted in S.323 / 2026-05-25 — full Volo removal across SDK + CLI + MCP. vSUI remains as a passive token (NAVI reward, Cetus swap target).**
+- `t2000-yields` — APY comparison across NAVI USDC / USDsui (Volo column removed in S.323).
 - `t2000-setup` — one-prompt install entry point (consumed by Phase 3's curl flow).
 
 **Rules blocks added to 5 existing skills:**

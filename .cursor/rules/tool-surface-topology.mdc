@@ -24,12 +24,12 @@ Re-read before:
 | Send | `T2000.send()` | `t2000 send` | `t2000_send` | `t2000-skills/skills/t2000-send/SKILL.md` | `send_transfer` (`tools/transfer.ts`) |
 | Swap | `T2000.swap()` | `t2000 swap` | `t2000_swap` | (none — used inside `t2000-rebalance`) | `swap_execute` (`tools/swap.ts`) |
 | Pay (MPP) | `T2000.pay()` | `t2000 pay` | `t2000_pay` | `t2000-skills/skills/t2000-pay/SKILL.md` | ❌ deleted S.245 (revival = V07F Stream A audric-side, NOT engine-side) |
-| Stake (vSUI) | `T2000.stakeVSui()` | `t2000 stake` | `t2000_stake` | (none) | `volo_stake` (`tools/volo-stake.ts`) |
-| Unstake (vSUI) | `T2000.unstakeVSui()` | `t2000 unstake` | `t2000_unstake` | (none) | `volo_unstake` (`tools/volo-unstake.ts`) |
 | Claim rewards | `T2000.claimRewards()` | `t2000 claim` | `t2000_claim_rewards` | (none) | `claim_rewards` (`tools/claim.ts`) |
 | Compound (harvest) | `T2000.compoundRewards()` | (none) | (none) | (none) | `harvest_rewards` (`tools/harvest-rewards.ts`) |
 
-The table is exhaustive for the user-facing **financial** operations as of S.256. Purely-read tools (`balance`, `positions`, `rates`, `health`, etc.) follow the same pattern but aren't tabulated — same `T2000.<method>()` ↔ `t2000_<method>` shape applies.
+The table is exhaustive for the user-facing **financial** operations as of S.323. Purely-read tools (`balance`, `positions`, `rates`, `health`, etc.) follow the same pattern but aren't tabulated — same `T2000.<method>()` ↔ `t2000_<method>` shape applies.
+
+> **S.323 (2026-05-25):** Removed the Stake/Unstake (vSUI / VOLO) rows from this table. S.277 cut Volo from the engine; S.323 cut it from SDK + CLI + MCP. vSUI remains as a passive token (NAVI reward, Cetus swap target) but t2000 no longer exposes any way to mint/redeem it.
 
 ## The MCP wiring fact (load-bearing)
 

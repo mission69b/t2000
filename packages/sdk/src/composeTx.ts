@@ -77,10 +77,6 @@ import {
 import { addHarvestToTx } from './protocols/navi-harvest.js';
 import type { PendingReward } from './adapters/types.js';
 import { addSwapToTx, type SwapRouteResult } from './protocols/cetus-swap.js';
-import {
-  addStakeVSuiToTx,
-  addUnstakeVSuiToTx,
-} from './protocols/volo.js';
 import { addSendToTx } from './wallet/send.js';
 import { selectAndSplitCoin, selectSuiCoin } from './wallet/coinSelection.js';
 import { resolveTokenType, getDecimalsForCoinType, SUI_TYPE } from './token-registry.js';
@@ -89,8 +85,13 @@ import { T2000Error } from './errors.js';
 import { validateAddress } from './utils/sui.js';
 
 /**
- * Canonical write tools. The 10 tools that can be composed into a PTB
- * (Track B 2026-05-08 added `harvest_rewards`).
+ * Canonical write tools. The 8 tools that can be composed into a PTB.
+ *
+ * History:
+ * - 2026-05-08 (Track B): added `harvest_rewards` (compound macro).
+ * - 2026-05-25 (S.323): removed `volo_stake` / `volo_unstake` — full Volo
+ *   cut across SDK/CLI/MCP after the engine cut Volo in S.277. vSUI
+ *   remains as a passive token (NAVI reward, Cetus swap target).
  *
  * Excluded by design:
  * - `save_contact` — no on-chain leg (Prisma-only).
@@ -103,11 +104,7 @@ export type WriteToolName =
   | 'send_transfer'
   | 'swap_execute'
   | 'claim_rewards'
-  // [Track B / 2026-05-08] Compound: claim NAVI rewards → swap each non-USDC
-  // reward to USDC inline → deposit into NAVI USDC pool. ONE confirm card.
-  | 'harvest_rewards'
-  | 'volo_stake'
-  | 'volo_unstake';
+  | 'harvest_rewards';
 
 // Per-tool input contracts. Match the engine tool input schemas, not the
 // audric host's loosely-typed `params` blob — the registry is the typed
@@ -175,14 +172,6 @@ export interface HarvestRewardsInput {
   minRewardUsd?: number;
 }
 
-export interface VoloStakeInput {
-  amountSui: number;
-}
-
-export interface VoloUnstakeInput {
-  amountVSui: number | 'all';
-}
-
 /**
  * Discriminated union mapping `toolName` → `input`. Used to type
  * `WriteStep` so consumers get autocomplete + compile-time validation
@@ -212,9 +201,7 @@ export type WriteStep =
   // one PTB. Doesn't accept `inputCoinFromStep` because it's the only
   // step in the bundle (it's a "macro" appender, not a chainable producer
   // or consumer).
-  | { toolName: 'harvest_rewards'; input: HarvestRewardsInput }
-  | { toolName: 'volo_stake'; input: VoloStakeInput; inputCoinFromStep?: number }
-  | { toolName: 'volo_unstake'; input: VoloUnstakeInput; inputCoinFromStep?: number };
+  | { toolName: 'harvest_rewards'; input: HarvestRewardsInput };
 
 export interface ComposeTxOptions {
   sender: string;
@@ -328,9 +315,7 @@ export type StepPreview =
         reason: 'untradeable' | 'dust' | 'no-route';
       }>;
       expectedUsdcDeposited: number;
-    }
-  | { toolName: 'volo_stake'; effectiveAmountMist: bigint }
-  | { toolName: 'volo_unstake'; effectiveAmountMist: bigint | 'all' };
+    };
 
 export interface ComposeTxResult {
   tx: Transaction;
@@ -394,8 +379,9 @@ export interface AppenderContext {
  * downstream consumer's `chainedCoin`. Terminal consumers
  * (`save_deposit`, `repay_debt`, `send_transfer`) omit it.
  *
- * `swap_execute`, `volo_stake`, and `volo_unstake` are dual-mode —
- * they accept `chainedCoin` AND populate `outputCoin`.
+ * `swap_execute` is the only dual-mode tool — it accepts `chainedCoin`
+ * AND populates `outputCoin`. (`volo_stake` / `volo_unstake` were also
+ * dual-mode prior to S.323 / 2026-05-25; cut with the full Volo removal.)
  */
 export interface AppenderResult<TPreview extends StepPreview> {
   preview: TPreview;
@@ -456,7 +442,7 @@ function resolveSaveableAsset(asset: 'USDC' | 'USDsui' | undefined): 'USDC' | 'U
 /**
  * The typed registry. Each entry is a wallet-mode dispatcher that takes
  * (tx, input, ctx) and returns a per-step preview. Compile-time check
- * that all 10 `WriteToolName` values have an entry — TypeScript will
+ * that all 8 `WriteToolName` values have an entry — TypeScript will
  * fail the build if a tool is missing.
  */
 export const WRITE_APPENDER_REGISTRY: {
@@ -468,8 +454,6 @@ export const WRITE_APPENDER_REGISTRY: {
   swap_execute: AppenderFn<SwapExecuteInput, Extract<StepPreview, { toolName: 'swap_execute' }>>;
   claim_rewards: AppenderFn<ClaimRewardsInput, Extract<StepPreview, { toolName: 'claim_rewards' }>>;
   harvest_rewards: AppenderFn<HarvestRewardsInput, Extract<StepPreview, { toolName: 'harvest_rewards' }>>;
-  volo_stake: AppenderFn<VoloStakeInput, Extract<StepPreview, { toolName: 'volo_stake' }>>;
-  volo_unstake: AppenderFn<VoloUnstakeInput, Extract<StepPreview, { toolName: 'volo_unstake' }>>;
 } = {
   save_deposit: async (tx, input, ctx) => {
     const asset = resolveSaveableAsset(input.asset);
@@ -691,42 +675,7 @@ export const WRITE_APPENDER_REGISTRY: {
     };
   },
 
-  volo_stake: async (tx, input, ctx) => {
-    if (input.amountSui <= 0) {
-      throw new T2000Error('INVALID_AMOUNT', 'Stake amount must be greater than zero');
-    }
-    const amountMist = BigInt(Math.floor(input.amountSui * 1e9));
-    const result = await addStakeVSuiToTx(tx, ctx.client, ctx.sender, {
-      amountMist,
-      inputCoin: ctx.chainedCoin,
-    });
-    if (!ctx.isOutputConsumed) {
-      tx.transferObjects([result.coin], ctx.sender);
-    }
-    return {
-      preview: { toolName: 'volo_stake', effectiveAmountMist: result.effectiveAmountMist },
-      outputCoin: result.coin,
-    };
-  },
-
-  volo_unstake: async (tx, input, ctx) => {
-    const amountMist =
-      input.amountVSui === 'all' ? 'all' : BigInt(Math.floor(input.amountVSui * 1e9));
-    if (amountMist !== 'all' && amountMist <= 0n) {
-      throw new T2000Error('INVALID_AMOUNT', 'Unstake amount must be greater than zero');
-    }
-    const result = await addUnstakeVSuiToTx(tx, ctx.client, ctx.sender, {
-      amountMist,
-      inputCoin: ctx.chainedCoin,
-    });
-    if (!ctx.isOutputConsumed) {
-      tx.transferObjects([result.coin], ctx.sender);
-    }
-    return {
-      preview: { toolName: 'volo_unstake', effectiveAmountMist: result.effectiveAmountMist },
-      outputCoin: result.coin,
-    };
-  },
+  // [S.323 / 2026-05-25] volo_stake / volo_unstake appenders removed.
 };
 
 // Reference unused import to suppress noUnusedLocals; SUI_TYPE is used
@@ -852,7 +801,7 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
         `Step ${i} (${step.toolName}) references step ${idx} (${producer.toolName}) as ` +
         `producer, but '${producer.toolName}' is a terminal consumer that does not ` +
         `produce a chainable coin handle. Allowed producers: withdraw, borrow, ` +
-        `swap_execute, volo_stake, volo_unstake.`,
+        `swap_execute.`,
       );
     }
 

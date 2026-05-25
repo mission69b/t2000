@@ -102,7 +102,9 @@ AISDKEngine.submitMessage()
 | `tools/swap.ts` | `swapExecuteTool` | Cetus Aggregator multi-DEX swap |
 | `prompt.ts` | `DEFAULT_SYSTEM_PROMPT` | Audric system prompt |
 
-> **S.277 (2026-05-23, engine 2.18.0) cut 5 tools + 2 dead guards** in the "Earns Its Keep" audit: `volo_stats` / `volo_stake` / `volo_unstake` (no Audric chip; `harvest_rewards` routes vSUI via Cetus), `web_search` (already filtered in audric prod via Vercel AI Gateway), `protocol_deep_dive` (DefiLlama-backed; `rates_info` covers the in-product safety lens). Engine no longer talks to `api.llama.fi`. SDK + CLI + MCP retain Volo helpers for non-Audric consumers. See `spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md` for the full audit.
+> **S.277 (2026-05-23, engine 2.18.0) cut 5 tools + 2 dead guards** in the "Earns Its Keep" audit: `volo_stats` / `volo_stake` / `volo_unstake` (no Audric chip; `harvest_rewards` routes vSUI via Cetus), `web_search` (already filtered in audric prod via Vercel AI Gateway), `protocol_deep_dive` (DefiLlama-backed; `rates_info` covers the in-product safety lens). Engine no longer talks to `api.llama.fi`. See `spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md` for the full audit.
+>
+> **S.323 (2026-05-25) full Volo removal across SDK + CLI + MCP.** The "non-Audric consumer retention" justification from S.277 didn't hold up — there are no non-Audric consumers, and `t2000 stake` / `t2000_stake` / `agent.stakeVSui()` were dead code with no maintenance path. vSUI remains as a passive token (NAVI reward type, Cetus swap target) but the mint/redeem surfaces are gone entirely.
 >
 > **v3.1.0 (2026-05-25) deleted the `AISDKAnthropicProvider` class + the `LLMProvider` abstraction it implemented.** Hosts now pass `anthropicApiKey` directly to `AISDKEngine`, or inject a pre-built `LanguageModel` via `modelInstance` (`createAnthropic({apiKey}).('claude-sonnet-4-5')` from `@ai-sdk/anthropic`, or any gateway-wrapped model).
 

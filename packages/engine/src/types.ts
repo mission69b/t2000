@@ -534,9 +534,10 @@ export interface PendingAction {
    * been updated read `toolName`/`toolUseId`/`input` (which mirror
    * `steps[0]`); newer hosts iterate `steps`.
    *
-   * Bundleable tools (post-S.277): `save_deposit`, `withdraw`, `borrow`,
+   * Bundleable tools (post-S.323): `save_deposit`, `withdraw`, `borrow`,
    * `repay_debt`, `send_transfer`, `swap_execute`, `claim_rewards`.
-   * (`volo_stake` / `volo_unstake` were bundleable in v1 but cut in S.277.)
+   * (`volo_stake` / `volo_unstake` were bundleable in v1; engine surface
+   * cut in S.277 and full SDK/CLI/MCP removal in S.323.)
    */
   steps?: PendingActionStep[];
   /**
@@ -851,9 +852,10 @@ export interface ToolFlags {
    * in a single assistant turn AND every block resolves to a `confirm`-tier
    * write tool with `bundleable: true`, the engine collapses them into one
    * `pending_action` with `steps[]` instead of yielding N times. Default
-   * `false` — silently opt-out. Post-S.277 set: `save_deposit`,
+   * `false` — silently opt-out. Post-S.323 set: `save_deposit`,
    * `withdraw`, `borrow`, `repay_debt`, `send_transfer`, `swap_execute`,
-   * `claim_rewards` (volo_stake / volo_unstake cut in S.277).
+   * `claim_rewards` (volo_stake / volo_unstake cut from engine in S.277;
+   * full SDK/CLI/MCP removal in S.323).
    *
    * **Permanently non-bundleable:** (none today; `save_contact` was
    *  the historical exception, deleted in S.269 item 6 — 2026-05-23.)

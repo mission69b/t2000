@@ -197,8 +197,13 @@ const engine = new AISDKEngine({
 > talks to `api.llama.fi`. 2 dead guards removed (`guardCostWarning`,
 > `guardArtifactPreview`) — both unreachable post-S.245. `explain_tx`
 > kept but description tightened to "arbitrary external digest only".
-> SDK + CLI + MCP retain Volo for non-Audric consumers. 31 → 26 tools
-> (18 read + 8 write), 14 → 12 guards.
+> (Pre-S.323: SDK + CLI + MCP retained Volo for non-Audric consumers;
+> S.323 cut those too.) 31 → 26 tools (18 read + 8 write), 14 → 12 guards.
+>
+> **S.323 (2026-05-25):** Volo fully removed across SDK + CLI + MCP. vSUI
+> remains as a passive token (NAVI reward, Cetus swap target), but
+> `agent.stakeVSui` / `t2000 stake` / `t2000_stake` are gone. Engine
+> surface unchanged from S.277.
 >
 > **S.269 item 6 (2026-05-23):** `save_contact` (write) deleted as part of
 > the template-divergence cleanup slice. Engine-side dead tool — host-side
@@ -207,9 +212,10 @@ const engine = new AISDKEngine({
 >
 > **S.277 (2026-05-23):** "Earns Its Keep" audit cut 5 tools from the
 > engine surface — `volo_stats` / `volo_stake` / `volo_unstake` (no
-> Audric chip / product slot; SDK + CLI + MCP retain Volo for non-Audric
-> consumers), `web_search` (Brave-backed; gateway path uses Vercel AI
-> Gateway's `perplexity_search`), `protocol_deep_dive` (DefiLlama-backed;
+> Audric chip / product slot; SDK + CLI + MCP retained Volo at the time
+> for non-Audric consumers, until full removal in S.323),
+> `web_search` (Brave-backed; gateway path uses Vercel AI Gateway's
+> `perplexity_search`), `protocol_deep_dive` (DefiLlama-backed;
 > rates_info is the in-product proxy). Also dropped: 2 dead guards
 > (`costWarning`, `artifactPreview`) + the `costAware` flag. `explain_tx`
 > kept but description tightened to "arbitrary external digest only". Net

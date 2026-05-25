@@ -42,7 +42,6 @@ await agent.borrow({ amount: 20, asset: 'USDsui' });     // USDsui debt
 await agent.repay({ amount: 20, asset: 'USDsui' });      // symmetry: USDsui debt → USDsui repay
 await agent.withdraw({ amount: 50 });                    // USDC (or pass asset for USDsui/legacy)
 await agent.swap({ from: 'SUI', to: 'USDC', amount: 10 });  // 20+ DEX routing
-await agent.stakeVSui({ amount: 5 }); // liquid staking → vSUI (~3-5% APY)
 ```
 
 ## Packages
@@ -92,7 +91,6 @@ t2000 wraps financial primitives into a single interface:
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) (MCP reads + thin tx builders) |
 | **Credit** | Borrow USDC against savings | NAVI collateralized loans |
 | **Swap** | Trade any token pair on Sui | [Cetus Aggregator V3](https://www.cetus.zone) (20+ DEXs) |
-| **Liquid Staking** | Stake SUI for vSUI (~3-5% APY) | [VOLO](https://www.volosui.com) (thin tx builders) |
 | **Payments (MPP)** | Pay for API resources with USDC | [@suimpp/mpp](https://github.com/mission69b/suimpp) + [MPP Gateway](https://mpp.t2000.ai) |
 | **Market Data** | Wallet portfolio, USD prices | [BlockVision](https://blockvision.org) Indexer REST (`balance_check`, `portfolio_analysis`, `token_prices`); Sui RPC + hardcoded-stable degraded fallback |
 | **DeFi rates** | NAVI lending APYs (supply / borrow) | NAVI MCP via `rates_info` |
@@ -110,7 +108,7 @@ The t2000 SDK + CLI are **fee-free** by design. Fees are an Audric concern — w
 | Save | 0.1% | Inline transfer to Audric treasury wallet |
 | Borrow | 0.05% | Inline transfer to Audric treasury wallet |
 | Swap | 0.1% | Cetus aggregator overlay; routes to Audric treasury wallet |
-| Withdraw / Repay / Send / Receive / Stake / Unstake / Pay (MPP) | Free | — |
+| Withdraw / Repay / Send / Receive / Pay (MPP) | Free | — |
 
 Building your own consumer app on top of `@t2000/sdk`? Use the `addFeeTransfer` helper for save/borrow and `overlayFee` config for swaps to mirror Audric's pattern, or skip fees entirely.
 
@@ -132,8 +130,6 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.withdraw({ amount, asset? })` | Withdraw from savings; `asset` defaults to USDC, also supports USDsui + legacy positions |
 | | `agent.earnings()` | Yield earned, daily rate |
 | **Swap** | `agent.swap({ from, to, amount })` | Swap any token pair (Cetus, 20+ DEXs) |
-| **Staking** | `agent.stakeVSui({ amount })` | Stake SUI → vSUI (VOLO, ~3-5% APY) |
-| | `agent.unstakeVSui({ amount })` | Unstake vSUI → SUI |
 | **Credit** | `agent.borrow({ amount, asset? })` | Borrow USDC or USDsui against collateral (v0.51.0+) |
 | | `agent.repay({ amount, asset? })` | Repay debt; pass `asset` to target a specific debt. **Symmetry enforced:** USDsui debt → USDsui repay (v0.51.1+) |
 | | `agent.healthFactor()` | Liquidation safety |
@@ -221,8 +217,6 @@ t2000 withdraw 25 [--asset <symbol>]   Withdraw savings (default USDC)
 t2000 borrow 10 [--asset USDC|USDsui]  Borrow against collateral (default USDC)
 t2000 repay 10 [--asset USDC|USDsui]   Repay debt (must match borrow asset)
 t2000 swap 10 SUI for USDC        Swap any token (20+ DEXs)
-t2000 stake 5                      Stake SUI for vSUI (~3-5% APY)
-t2000 unstake all                  Unstake vSUI back to SUI
 t2000 health                       Health factor
 t2000 rates                        Current APYs
 
@@ -338,7 +332,7 @@ pnpm --filter @t2000/server test
 | SDK | TypeScript, `@mysten/sui` |
 | Engine | TypeScript, Anthropic Claude, MCP client/server |
 | CLI | Commander.js, Hono (HTTP API) |
-| DeFi | NAVI (lending), Cetus (swap), VOLO (liquid staking), BlockVision (portfolio + prices) |
+| DeFi | NAVI (lending), Cetus (swap), BlockVision (portfolio + prices) |
 | Web | Next.js 15, Tailwind CSS v4, React 19 |
 | Consumer | Audric — zkLogin, Enoki gas, Geist + Instrument Serif |
 | Infra | AWS ECS Fargate, Vercel, Upstash Redis |

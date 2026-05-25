@@ -257,22 +257,9 @@ export interface CompoundRewardsResult {
   totalGasCost: number;
 }
 
-export interface StakeVSuiResult {
-  success: boolean;
-  tx: string;
-  amountSui: number;
-  vSuiReceived: number;
-  apy: number;
-  gasCost: number;
-}
-
-export interface UnstakeVSuiResult {
-  success: boolean;
-  tx: string;
-  vSuiAmount: number;
-  suiReceived: number;
-  gasCost: number;
-}
+// [S.323 / 2026-05-25] StakeVSuiResult + UnstakeVSuiResult removed —
+// see `t2000.ts` for the cut rationale. vSUI remains as a passive token
+// (NAVI reward, Cetus swap target) but the mint/redeem surfaces are gone.
 
 export interface SwapResult {
   success: boolean;

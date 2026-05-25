@@ -1,7 +1,7 @@
 # SPEC_SDK_v3_SMOKE — `@t2000/sdk@3.1.0` Smoke Checklist
 
 > **Status:** ACTIVE · drafted 2026-05-25 · target: any developer with a funded Sui devnet/mainnet keypair · est. 8-10 min
-> **Build smoked:** `@t2000/sdk@3.1.0` (post-S.245/S.269/S.277 — 8 write tools, Volo retained for non-Audric consumers)
+> **Build smoked:** `@t2000/sdk@3.1.0` (post-S.245/S.269/S.277 — 8 write tools, Volo retained for non-Audric consumers; **S.323 / @t2000/sdk@3.3.0 cuts Volo entirely** — re-smoke against 3.3.0 before locking)
 > **Live npm:** `npm view @t2000/sdk version` should print `3.1.0`
 > **Pre-req:** Node 18+ · a Sui keypair holding ≥$3 USDC + ≥0.1 SUI (gas) on mainnet (or devnet equivalents)
 

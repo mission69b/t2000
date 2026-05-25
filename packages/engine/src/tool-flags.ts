@@ -35,9 +35,11 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   //   toggle_allowance, update_daily_limit, update_permissions (allowance dormant)
   // [S.269 item 6 — 2026-05-23] Removed flag entry for deleted save_contact
   //   (dead tool — host-side Prisma persistence, no engine effect).
-  // [S.277 — 2026-05-23] Removed flag entries for deleted Volo trio
-  //   (volo_stake, volo_unstake — "Earns Its Keep" audit; SDK retains
-  //   the capability for CLI/MCP consumers).
+  // [S.277 — 2026-05-23] Engine-side flag entries for Volo trio removed
+  //   (volo_stake, volo_unstake — "Earns Its Keep" audit).
+  // [S.323 — 2026-05-25] Volo fully removed from SDK + CLI + MCP. vSUI
+  //   remains as a passive token (NAVI reward, Cetus swap target) but
+  //   no mint/redeem surfaces exist anywhere in the t2000 stack.
 
   // Receive tools — create/cancel mutate server state
   create_payment_link: { mutating: true },

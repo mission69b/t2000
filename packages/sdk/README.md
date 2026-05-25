@@ -99,8 +99,6 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.borrow({ amount, asset? })` | Borrow **USDC or USDsui** against collateral (v0.51.0+). `asset` defaults to `'USDC'`. | `BorrowResult` |
 | `agent.repay({ amount, asset? })` | Repay outstanding **USDC or USDsui** debt (v0.51.1+). Pass `asset` to target a specific debt; omit for highest-APY repay. **Symmetry enforced:** USDsui debt is repaid with USDsui coins (and USDC with USDC). `amount` can be `'all'`. | `RepayResult` |
 | `agent.swap({ from, to, amount, slippage? })` | Swap tokens via Cetus Aggregator (20+ DEXs). User-friendly names or full coin types. | `SwapResult` |
-| `agent.stakeVSui({ amount })` | Stake SUI for vSUI via VOLO liquid staking (min 1 SUI) | `StakeVSuiResult` |
-| `agent.unstakeVSui({ amount })` | Unstake vSUI back to SUI. `amount` can be `'all'`. | `UnstakeVSuiResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -309,7 +307,6 @@ t2000 uses an MCP-first integration model: NAVI MCP for reads, thin transaction 
 |----------|------------|----------|
 | NAVI | MCP (reads) + thin tx builders (writes) | Lending positions, deposits, withdrawals, borrows, rewards |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated) | Multi-DEX swap routing — overlay fee on swaps (`cetus-swap.ts`) |
-| VOLO | Thin tx builders (direct Move calls) | Stake SUI → vSUI, unstake vSUI → SUI |
 
 ## Testing
 
@@ -332,7 +329,7 @@ Fees only apply when the **Audric** consumer app calls these primitives. Audric 
 | Save (deposit) | 0.10% | Free | USDC only; USDsui save is free in Audric too |
 | Borrow | 0.05% | Free | USDC only; USDsui borrow is free in Audric too |
 | Swap | 0.10% | Free | Audric passes Cetus `overlayFee`. CLI omits it. Cetus Aggregator network fees still apply both ways. |
-| Withdraw / Repay / Send / Receive / Stake / Unstake / Pay (MPP) | Free | Free | No surcharge anywhere. |
+| Withdraw / Repay / Send / Receive / Pay (MPP) | Free | Free | No surcharge anywhere. |
 
 How Audric collects fees: `prepare/route.ts` calls `addFeeTransfer(tx, paymentCoin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and passes `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` for swaps. Both flows produce a USDC transfer to the treasury wallet inside the same atomic Payment Intent. The t2000 server-side indexer detects the on-chain USDC inflow and records a `ProtocolFeeLedger` row — no off-chain submission is involved.
 

@@ -57,11 +57,9 @@ import type {
   PayResult,
   SwapResult,
   SwapQuoteResult,
-  StakeVSuiResult,
-  UnstakeVSuiResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, MIST_PER_SUI, assertAllowedAsset, type SupportedAsset } from './constants.js';
+import { SUPPORTED_ASSETS, assertAllowedAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
@@ -315,63 +313,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  // -- VOLO vSUI Staking --
-
-  async stakeVSui(params: { amount: number }): Promise<StakeVSuiResult> {
-    this.enforcer.assertNotLocked();
-    const { buildStakeVSuiTx, getVoloStats } = await import('./protocols/volo.js');
-
-    const amountMist = BigInt(Math.floor(params.amount * Number(MIST_PER_SUI)));
-    const stats = await getVoloStats();
-
-    const gasResult = await executeTx(this.client, this._signer, async () => {
-      return buildStakeVSuiTx(this.client, this._address, amountMist);
-    });
-
-    const vSuiReceived = params.amount / stats.exchangeRate;
-
-    return {
-      success: true,
-      tx: gasResult.digest,
-      amountSui: params.amount,
-      vSuiReceived,
-      apy: stats.apy,
-      gasCost: gasResult.gasCostSui,
-    };
-  }
-
-  async unstakeVSui(params: { amount: number | 'all' }): Promise<UnstakeVSuiResult> {
-    this.enforcer.assertNotLocked();
-    const { buildUnstakeVSuiTx, getVoloStats, VSUI_TYPE } = await import('./protocols/volo.js');
-
-    let amountMist: bigint | 'all';
-    let vSuiAmount: number;
-
-    if (params.amount === 'all') {
-      amountMist = 'all';
-      const bal = await this.client.getBalance({ owner: this._address, coinType: VSUI_TYPE });
-      vSuiAmount = Number(bal.totalBalance) / 1e9;
-    } else {
-      amountMist = BigInt(Math.floor(params.amount * 1e9));
-      vSuiAmount = params.amount;
-    }
-
-    const stats = await getVoloStats();
-
-    const gasResult = await executeTx(this.client, this._signer, async () => {
-      return buildUnstakeVSuiTx(this.client, this._address, amountMist);
-    });
-
-    const suiReceived = vSuiAmount * stats.exchangeRate;
-
-    return {
-      success: true,
-      tx: gasResult.digest,
-      vSuiAmount,
-      suiReceived,
-      gasCost: gasResult.gasCostSui,
-    };
-  }
+  // [S.323 / 2026-05-25] VOLO vSUI staking surfaces removed (full cut).
+  // Engine cut Volo in S.277; SDK + CLI + MCP followed in S.323 because the
+  // product surface (five products: Passport / Intelligence / Finance / Pay
+  // / Store) doesn't include a staking primitive. vSUI still appears in the
+  // codebase as a passive token (NAVI reward rewards, Cetus swap routing),
+  // but there is no longer any way to MINT or REDEEM vSUI through t2000.
+  // History: see spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md
+  // and the S.323 build-tracker entry.
 
   // -- Swap --
 

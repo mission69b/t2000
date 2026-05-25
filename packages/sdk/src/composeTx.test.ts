@@ -28,7 +28,6 @@ const VALID_ADDRESS = '0x' + 'a'.repeat(64);
 const RECIPIENT_ADDRESS = '0x' + 'b'.repeat(64);
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const USDSUI_TYPE = '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI';
-const VSUI_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
 
 function mockRpcClient(coins: Record<string, Array<{ coinObjectId: string; balance: string }>>): SuiJsonRpcClient {
   const getBalance = vi.fn(async ({ coinType }: { coinType: string }) => {
@@ -340,46 +339,8 @@ describe('composeTx — single-step migration tests (9 canonical write tools)', 
     }
   });
 
-  it('12. volo_stake — fetches SUI, calls Volo stake Move call, transfers vSUI to sender', async () => {
-    const { composeTx } = await import('./composeTx.js');
-    const { SUI_TYPE } = await import('./token-registry.js');
-    const client = mockRpcClient({
-      [SUI_TYPE]: [{ coinObjectId: '0x' + '7'.repeat(64), balance: '5000000000' }],
-    });
-
-    const result = await composeTx({
-      sender: VALID_ADDRESS,
-      client,
-      sponsoredContext: true,
-      steps: [{ toolName: 'volo_stake', input: { amountSui: 2 } }],
-    });
-
-    const preview = result.perStepPreviews[0];
-    if (preview.toolName === 'volo_stake') {
-      expect(preview.effectiveAmountMist).toBe(2_000_000_000n);
-    }
-    expect(result.derivedAllowedAddresses).toContain(VALID_ADDRESS);
-  });
-
-  it('13. volo_unstake — fetches vSUI, calls Volo unstake, transfers SUI to sender', async () => {
-    const { composeTx } = await import('./composeTx.js');
-    const client = mockRpcClient({
-      [VSUI_TYPE]: [{ coinObjectId: '0x' + '8'.repeat(64), balance: '5000000000' }],
-    });
-
-    const result = await composeTx({
-      sender: VALID_ADDRESS,
-      client,
-      sponsoredContext: true,
-      steps: [{ toolName: 'volo_unstake', input: { amountVSui: 2 } }],
-    });
-
-    const preview = result.perStepPreviews[0];
-    if (preview.toolName === 'volo_unstake') {
-      expect(preview.effectiveAmountMist).toBe(2_000_000_000n);
-    }
-    expect(result.derivedAllowedAddresses).toContain(VALID_ADDRESS);
-  });
+  // [S.323 / 2026-05-25] volo_stake / volo_unstake tests removed —
+  // the tool registry no longer accepts those toolNames.
 });
 
 describe('composeTx — error handling', () => {

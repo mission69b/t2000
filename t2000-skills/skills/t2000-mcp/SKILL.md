@@ -5,11 +5,11 @@ description: >-
   Continue, or any MCP-compatible client. Use when asked to set up MCP,
   paste an MCP server config, install @t2000/mcp, or troubleshoot why
   the MCP server "doesn't do anything" when run from a terminal.
-  Provides 29 tools and 14 prompts over stdio.
+  Provides 27 tools and 14 prompts over stdio.
 license: MIT
 metadata:
   author: t2000
-  version: "1.2"
+  version: "1.3"
   requires: a Sui keypair (created via `npx @t2000/cli init` or any wallet)
 ---
 
@@ -17,7 +17,7 @@ metadata:
 
 ## Purpose
 Expose a t2000 Agentic Wallet (Sui wallet + DeFi positions) to any
-MCP-compatible AI client over stdio. **29 tools, 14 prompts**, safeguard
+MCP-compatible AI client over stdio. **27 tools, 14 prompts**, safeguard
 enforced. No global install required — the recommended path uses `npx`
 so the AI client always pulls the latest published version.
 
@@ -127,7 +127,7 @@ by a client.
 | `t2000_services` | List all MPP services and endpoints |
 | `t2000_contacts` | List saved contacts |
 
-### State-changing (12)
+### State-changing (10)
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
@@ -140,10 +140,10 @@ All support `dryRun: true` for previews without signing.
 | `t2000_claim_rewards` | Claim pending protocol rewards |
 | `t2000_pay` | Pay for and call any MPP API service with USDC |
 | `t2000_swap` | Execute a token swap via Cetus Aggregator |
-| `t2000_stake` | Stake SUI for vSUI via VOLO liquid staking |
-| `t2000_unstake` | Unstake vSUI and redeem SUI |
 | `t2000_contact_add` | Save a contact name → address |
 | `t2000_contact_remove` | Remove a saved contact |
+
+> **S.323 (2026-05-25):** `t2000_stake` + `t2000_unstake` removed (full Volo cut across SDK + CLI + MCP). vSUI remains as a tradeable token via `t2000_swap`, but there is no longer a way to mint / redeem vSUI through t2000.
 
 ### Safety (2)
 | Tool | Description |

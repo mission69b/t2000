@@ -34,8 +34,6 @@ export type {
   PayResult,
   SwapResult,
   SwapQuoteResult,
-  StakeVSuiResult,
-  UnstakeVSuiResult,
   FinancialSummary,
   HFAlertLevel,
 } from './types.js';
@@ -154,8 +152,6 @@ export type {
   SendTransferInput,
   SwapExecuteInput,
   ClaimRewardsInput,
-  VoloStakeInput,
-  VoloUnstakeInput,
 } from './composeTx.js';
 export { calculateFee, addFeeTransfer } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
@@ -231,18 +227,9 @@ export {
   MANIFEST_TYPE,
 } from './token-registry.js';
 export type { CoinMeta } from './token-registry.js';
-export {
-  buildStakeVSuiTx,
-  buildUnstakeVSuiTx,
-  addStakeVSuiToTx,
-  addUnstakeVSuiToTx,
-  getVoloStats,
-  VSUI_TYPE,
-  VOLO_PKG,
-  VOLO_POOL,
-  VOLO_METADATA,
-} from './protocols/volo.js';
-export type { VoloStats } from './protocols/volo.js';
+// [S.323 / 2026-05-25] VOLO vSUI staking re-exports removed (full cut).
+// vSUI still exists in the codebase as a passive token (NAVI reward type
+// + Cetus swap target), but t2000 no longer exposes mint/redeem surfaces.
 export {
   AUDRIC_PARENT_NAME,
   AUDRIC_PARENT_NFT_ID,

@@ -64,7 +64,7 @@
 | `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
 | `@t2000/engine`     | Published       | Agent engine — `AISDKEngine` (AI SDK v6), financial tools, MCP client/server |
 | `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
-| `@t2000/mcp`        | Published       | MCP server — wraps the engine's tool registry (26 tools post-S.277) + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport. The MCP package exports its own `t2000_*` wrappers + retains Volo paths for non-Audric consumers (Cursor / Claude Desktop). |
+| `@t2000/mcp`        | Published       | MCP server — wraps the engine's tool registry (26 tools post-S.277) + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport. The MCP package exports its own `t2000_*` wrappers (27 tools post-S.323; Volo wrappers cut alongside the SDK/CLI removal). |
 | `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
 | `@suimpp/discovery` | Published       | Sui-specific discovery validation — OpenAPI checks + 402 probe                    |
 | `mppx`              | External (wevm) | MPP protocol middleware — 402 challenge/credential flow                           |
@@ -629,7 +629,7 @@ The SDK executes via a single internal helper, `executeTx(client, signer, buildT
 7. return { digest, gasCostSui, effects }
 ```
 
-`gasCostSui` is computed from `effects.gasUsed.computationCost + storageCost − storageRebate`, divided by `1e9`. Every write method (`send`, `save`, `withdraw`, `borrow`, `repay`, `swap`, `claimRewards`, `stakeVSui`, `unstakeVSui`) returns `gasCost` (in SUI) — there is **no `gasMethod` field** anymore.
+`gasCostSui` is computed from `effects.gasUsed.computationCost + storageCost − storageRebate`, divided by `1e9`. Every write method (`send`, `save`, `withdraw`, `borrow`, `repay`, `swap`, `claimRewards`) returns `gasCost` (in SUI) — there is **no `gasMethod` field** anymore.
 
 ### Audric web app (Enoki) sponsorship — not in the SDK
 
@@ -870,9 +870,9 @@ Tool dispatch in `AISDKEngine`:
 | `transaction_history`     | `claim_rewards`         |
 | `swap_quote`              | `harvest_rewards`       |
 | `volo_stats`              | `swap_execute`          |
-| `web_search`              | `volo_stake`            |
-| `explain_tx`              | `volo_unstake`          |
-| `portfolio_analysis`      | `save_contact`          |
+| `web_search`              | `save_contact`          |
+| `explain_tx`              |                         |
+| `portfolio_analysis`      |                         |
 | `protocol_deep_dive`      |                         |
 | `token_prices`            |                         |
 | `create_payment_link`     |                         |

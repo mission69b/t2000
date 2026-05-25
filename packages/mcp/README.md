@@ -54,8 +54,6 @@ For other platforms, paste manually:
 | `t2000_contact_add` | write | Save a contact name → address |
 | `t2000_contact_remove` | write | Remove a saved contact |
 | `t2000_swap` | write | Execute a token swap via Cetus Aggregator |
-| `t2000_stake` | write | Stake SUI for vSUI via VOLO liquid staking |
-| `t2000_unstake` | write | Unstake vSUI and redeem SUI |
 | `t2000_config` | safety | View/set limits |
 | `t2000_lock` | safety | Emergency freeze |
 

@@ -85,11 +85,11 @@ In the AI chat:
 
 Verify the published 3.1.0 MCP doesn't re-expose tools that were removed engine-side. Ask:
 
-> Do you have any of these tools: `pay_api`, `volo_stats`, `mpp_services`, `web_search`, `protocol_deep_dive`, `create_invoice`?
+> Do you have any of these tools: `pay_api`, `volo_stats`, `volo_stake`, `volo_unstake`, `t2000_stake`, `t2000_unstake`, `mpp_services`, `web_search`, `protocol_deep_dive`, `create_invoice`?
 
 ### Verifiable signal
 
-- ✅ AI client confirms NONE of those are in its tool registry. (MCP retains `t2000_stake` / `t2000_unstake` / `t2000_pay` — these are NON-Audric SDK consumers' surface — but they map to SDK methods, not the deleted engine tools.)
+- ✅ AI client confirms NONE of those are in its tool registry. (Post-S.323, `t2000_stake` / `t2000_unstake` are also gone — MCP tool count 29 → 27. MCP retains `t2000_pay` — non-Audric SDK consumers' surface — but it maps to the SDK method, not the deleted engine tool.)
 
 ---
 

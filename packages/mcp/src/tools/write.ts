@@ -356,41 +356,10 @@ Common examples:
     },
   );
 
-  // ---------------------------------------------------------------------------
-  // VOLO vSUI Liquid Staking
-  // ---------------------------------------------------------------------------
-
-  server.tool(
-    't2000_stake',
-    'Stake SUI for vSUI via VOLO liquid staking. Earn ~3-5% APY. Rewards compound automatically via exchange rate. Minimum 1 SUI.',
-    {
-      amount: z.number().min(1).describe('Amount of SUI to stake (minimum 1)'),
-    },
-    async ({ amount }) => {
-      try {
-        const result = await mutex.run(() => agent.stakeVSui({ amount }));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_unstake',
-    'Unstake vSUI back to SUI. Returns SUI including accumulated yield. Use amount in vSUI units or "all" to unstake entire position.',
-    {
-      amount: z.union([z.number().positive(), z.literal('all')]).describe('Amount of vSUI to unstake, or "all"'),
-    },
-    async ({ amount }) => {
-      try {
-        const result = await mutex.run(() => agent.unstakeVSui({ amount }));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
+  // [S.323 / 2026-05-25] VOLO vSUI Liquid Staking removed (full cut).
+  // Engine cut Volo in S.277; SDK + CLI + MCP followed in S.323 because the
+  // five Audric products don't include a staking primitive. See the build-
+  // tracker S.323 entry and `packages/sdk/src/t2000.ts` for the cut rationale.
 
   // ---------------------------------------------------------------------------
   // Contact management
