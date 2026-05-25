@@ -50,7 +50,7 @@ await agent.stakeVSui({ amount: 5 }); // liquid staking → vSUI (~3-5% APY)
 | Package | Description | Install |
 |---------|-------------|---------|
 | [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
-| [`@t2000/engine`](packages/engine) | Agent engine — QueryEngine, financial tools, MCP client/server | `npm install @t2000/engine` |
+| [`@t2000/engine`](packages/engine) | Agent engine — `AISDKEngine`, financial tools, MCP client/server | `npm install @t2000/engine` |
 | [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
 | [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
 | [`@suimpp/mpp`](https://github.com/mission69b/suimpp) | MPP payment client (Sui USDC) | `npm install @suimpp/mpp` |
@@ -168,10 +168,10 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
 
 ```typescript
-import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
+import { AISDKEngine, getDefaultTools } from '@t2000/engine';
 
 const engine = new AISDKEngine({
-  provider: new AISDKAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   agent,
   tools: getDefaultTools(),
 });
@@ -181,7 +181,18 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-> The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine `v2.0.0` (2026-05-17). `AISDKEngine` is the only engine; it wraps Vercel AI SDK v6's `streamText` and preserves the same public API surface (`submitMessage`, `EngineEvent` stream, `PendingAction`).
+> `AISDKEngine` wraps Vercel AI SDK v6's `streamText`. For custom providers / gateway routing, pass a pre-built `LanguageModel` via `modelInstance` instead of `anthropicApiKey`:
+>
+> ```typescript
+> import { createAnthropic } from '@ai-sdk/anthropic';
+> const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+> const engine = new AISDKEngine({
+>   modelInstance: anthropic('claude-sonnet-4-5'),
+>   tools: getDefaultTools(),
+> });
+> ```
+>
+> The legacy `QueryEngine` + `AnthropicProvider` were deleted in engine v2.0.0 (2026-05-17). The `LLMProvider` abstraction + `AISDKAnthropicProvider` were retired in v3.1.0 (2026-05-25) — `AISDKEngine` accepts `anthropicApiKey` or `modelInstance` directly.
 
 ### What shipped recently — Spec 1 + Spec 2
 
@@ -287,7 +298,7 @@ Full reference: [Agent Skills README](t2000-skills)
 t2000/
 ├── packages/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
-│   ├── engine/           @t2000/engine — Agent engine (QueryEngine, tools, MCP)
+│   ├── engine/           @t2000/engine — Agent engine (AISDKEngine, tools, MCP)
 │   ├── cli/              @t2000/cli — Terminal bank account
 │   └── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
 │

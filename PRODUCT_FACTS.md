@@ -668,7 +668,7 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | Export | Type | Purpose |
 |--------|------|---------|
 | `AISDKEngine` | class | Stateful conversation loop with tool dispatch, thinking, guards. Sole engine since v2.0.0 (SPEC 37 v0.7a Phases 1-3) — `QueryEngine` was deleted. Backs onto `streamText` + `@ai-sdk/anthropic`. |
-| `AISDKAnthropicProvider` | class | Drop-in `LLMProvider` for in-process embeddings that need the provider shape without an engine. Backs onto `@ai-sdk/anthropic`. (Hand-rolled `AnthropicProvider` deleted in v2.0.0.) |
+| ~~`AISDKAnthropicProvider`~~ | — | **REMOVED in v3.1.0 (2026-05-25)** with the `LLMProvider` abstraction it implemented (zero consumers post-v2 cutover). Hosts pass `anthropicApiKey` directly to `AISDKEngine`, or inject `modelInstance` (any AI SDK `LanguageModel` — typically `createAnthropic({apiKey})('claude-sonnet-4-5')` from `@ai-sdk/anthropic`, or a gateway-wrapped model). |
 | `defineTool` | function | Typed tool factory with Zod `inputSchema` as single source of truth (auto-derives JSON Schema). Sole tool factory since v2.0.0 — `buildTool` was deleted. |
 | `runTools` | function | Legacy parallel-reads / serial-writes orchestration (pre-v2.0.0). Still exported for back-compat with non-AISDKEngine callers (CLI dispatch). v2 engine uses AI SDK's native step model — `runTools` is NOT in the v2 hot path. |
 | `TxMutex` | class | Legacy transaction serialization lock (pre-v2.0.0). v2 engine doesn't instantiate one — write serialisation is structural via the AI SDK step model + `needsApproval` round-trip. Kept exported for back-compat consumers. See `packages/engine/src/v2/tool-policy.ts` lines 33-45 for the v2 contract. |

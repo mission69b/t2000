@@ -7,13 +7,13 @@ Agent engine for conversational finance — implements **Audric Intelligence** (
 ## Quick Start
 
 ```typescript
-import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
+import { AISDKEngine, getDefaultTools } from '@t2000/engine';
 import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
 
 const engine = new AISDKEngine({
-  provider: new AISDKAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   agent,
   tools: getDefaultTools(),
 });
@@ -55,7 +55,7 @@ User message
     ▼
 AISDKEngine.submitMessage()
     │
-    ├── LLM Provider (AISDKAnthropicProvider — wraps AI SDK v6 streamText)
+    ├── LLM Provider (AI SDK v6 streamText via @ai-sdk/anthropic — pass `anthropicApiKey` or `modelInstance`)
     │       ├── text_delta events → streamed to client
     │       └── tool-call → AI SDK dispatches via the step model
     │
@@ -96,19 +96,18 @@ AISDKEngine.submitMessage()
 | `navi-transforms.ts` | `transformRates`, `transformBalance`, ... | Raw MCP response → engine types |
 | `navi-reads.ts` | `fetchRates`, `fetchBalance`, ... | Composite MCP read functions |
 | `blockvision-prices.ts` | `fetchAddressPortfolio`, `fetchTokenPrices`, `clearPortfolioCache`, `clearPortfolioCacheFor`, `clearPriceMapCache` | BlockVision Indexer REST: full wallet portfolio + multi-token USD prices (Sui RPC + hardcoded-stable degraded fallback) |
-| `tools/protocol-deep-dive.ts` | `protocolDeepDiveTool` | DefiLlama protocol metadata (TVL, fees, audits, safety score) — lone production dependency on `api.llama.fi` post-Day-3 |
-| `tools/token-prices.ts` | `tokenPricesTool` | BlockVision-backed multi-token spot price + 24h change (replaces deleted `defillama_token_prices` / `defillama_price_change`) |
+| `tools/token-prices.ts` | `tokenPricesTool` | BlockVision-backed multi-token spot price + 24h change |
 | `tools/swap-quote.ts` | `swapQuoteTool` | Preview swap route + price impact (read-only) |
 | `tools/swap.ts` | `swapExecuteTool` | Cetus Aggregator multi-DEX swap |
-| `tools/volo-stats.ts` | `voloStatsTool` | VOLO liquid staking stats (vSUI/SUI rate, APY, TVL) |
-| `tools/volo-stake.ts` | `voloStakeTool` | Stake SUI → vSUI |
-| `tools/volo-unstake.ts` | `voloUnstakeTool` | Unstake vSUI → SUI |
 | `prompt.ts` | `DEFAULT_SYSTEM_PROMPT` | Audric system prompt |
-| `providers/ai-sdk-anthropic.ts` | `AISDKAnthropicProvider` | Anthropic Claude LLM provider via AI SDK v6 (`@ai-sdk/anthropic`). Replaces the deleted `AnthropicProvider` (v2.0.0). Implements the locked retry contract: retry-before-first-token only (`maxRetries: 0` on AI SDK call), never resume mid-stream. |
+
+> **S.277 (2026-05-23, engine 2.18.0) cut 5 tools + 2 dead guards** in the "Earns Its Keep" audit: `volo_stats` / `volo_stake` / `volo_unstake` (no Audric chip; `harvest_rewards` routes vSUI via Cetus), `web_search` (already filtered in audric prod via Vercel AI Gateway), `protocol_deep_dive` (DefiLlama-backed; `rates_info` covers the in-product safety lens). Engine no longer talks to `api.llama.fi`. SDK + CLI + MCP retain Volo helpers for non-Audric consumers. See `spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md` for the full audit.
+>
+> **v3.1.0 (2026-05-25) deleted the `AISDKAnthropicProvider` class + the `LLMProvider` abstraction it implemented.** Hosts now pass `anthropicApiKey` directly to `AISDKEngine`, or inject a pre-built `LanguageModel` via `modelInstance` (`createAnthropic({apiKey}).('claude-sonnet-4-5')` from `@ai-sdk/anthropic`, or any gateway-wrapped model).
 
 ## Built-in Tools
 
-### Read Tools (21 — parallel, auto-approved)
+### Read Tools (18 — parallel, auto-approved; post-S.277 "Earns Its Keep" cut)
 
 | Tool | Description |
 |------|-------------|
@@ -117,13 +116,12 @@ AISDKEngine.submitMessage()
 | `health_check` | Health factor with risk assessment |
 | `rates_info` | Current supply/borrow APYs |
 | `transaction_history` | Recent transaction log |
-| `explain_tx` | Human-readable transaction explanation from digest |
-| `web_search` | Web search via Brave Search API |
+| `explain_tx` | Human-readable explanation of an arbitrary external digest (own activity uses `transaction_history`) |
 | `swap_quote` | Preview swap route, output amount, and price impact (no execution) |
-| `volo_stats` | VOLO liquid staking stats — vSUI/SUI rate, APY, TVL |
 | `portfolio_analysis` | Portfolio breakdown with diversification insights |
-| `protocol_deep_dive` | Deep protocol analysis — TVL, yields, risks, alternatives (lone surviving DefiLlama dependency) |
-| `token_prices` | Current USD prices for Sui tokens (BlockVision; optional 24h change). Replaces deleted `defillama_token_prices` and `defillama_price_change`. |
+| `token_prices` | Current USD prices for Sui tokens (BlockVision; optional 24h change) |
+| `resolve_suins` | SuiNS reverse-lookup (address ↔ `.sui` name) |
+| `pending_rewards` | Preview claimable NAVI rewards before harvesting |
 | `create_payment_link` | Create a shareable USDC payment link. Also handles invoice intents — set label/memo to encode invoice context (e.g. label="Web design — March 2026", memo="Net 30"). |
 | `list_payment_links` | List payment links with statuses (covers invoice listing intents too). |
 | `cancel_payment_link` | Cancel an active payment link (covers invoice cancellation intents too). |
@@ -132,7 +130,7 @@ AISDKEngine.submitMessage()
 | `activity_summary` | Activity breakdown by action type |
 | `render_canvas` | Generate interactive HTML canvas visualizations |
 
-### Write Tools (10 — serial, confirmation required)
+### Write Tools (8 — serial, confirmation required)
 
 | Tool | Description |
 |------|-------------|
@@ -141,10 +139,9 @@ AISDKEngine.submitMessage()
 | `send_transfer` | Send USDC to an address |
 | `borrow` | Borrow **USDC or USDsui** against collateral (v0.51.0+). Pass `asset: 'USDC' \| 'USDsui'`. |
 | `repay_debt` | Repay outstanding **USDC or USDsui** debt (v0.51.1+). Pass `asset` to target a specific debt; omit for highest-APY repay. **Repay symmetry is enforced:** USDsui debt MUST be repaid with USDsui. |
-| `claim_rewards` | Claim pending yield rewards |
+| `claim_rewards` | Claim pending NAVI rewards |
+| `harvest_rewards` | Compound: claim → swap each non-USDC reward to USDC → deposit merged USDC into NAVI savings (single PTB) |
 | `swap_execute` | Swap any token pair via Cetus Aggregator (20+ DEXs) |
-| `volo_stake` | Stake SUI for vSUI (VOLO liquid staking) |
-| `volo_unstake` | Unstake vSUI back to SUI |
 
 > Note: `record_advice` is an Audric-local tool registered in
 > `audric/apps/web-v2/lib/audric/moat-context.ts` (post-v0.7e Phase 5; previously `audric/apps/web/lib/engine/advice-tool.ts`), not part of the engine package.
@@ -408,8 +405,7 @@ The `submitMessage()` async generator yields `EngineEvent`:
 | `text_delta` | `text` | LLM streams a text chunk |
 | `thinking_delta` | `text`, `blockIndex` | Extended thinking chunk (reasoning accordion). **`blockIndex`** identifies which thinking block this delta belongs to so hosts can render multi-block thinking chronologically (Anthropic streams ≥1 thinking blocks per turn at high effort). |
 | `thinking_done` | `blockIndex`, `signature?`, `summaryMode?`, `evaluationItems?` | Extended thinking block complete. `blockIndex` matches the `thinking_delta` events for that block. **`summaryMode`** flips true and **`evaluationItems`** is populated when the block contained a parseable `<eval_summary>` marker — hosts render `HowIEvaluatedBlock` ("✦ HOW I EVALUATED THIS") from these fields. |
-| `todo_update` | `items`, `toolUseId` | **[SPEC 8 v0.5.1]** Side-channel event paired to every `update_todo` tool call. `items` is the full `TodoItem[]` array; hosts unconditionally replace their rendered list (the tool is idempotent). `toolUseId` keys the render to the originating call. |
-| `tool_progress` | `toolUseId`, `toolName`, `message`, `pct?` | **[SPEC 8 v0.5.1]** Mid-execution progress signal from long-running tools (Cetus swap, protocol_deep_dive, portfolio_analysis). Tools opt in via `context.progress?.(msg, pct?)`. Engine wiring lands with the Cetus SDK integration in a follow-on slice. |
+| `tool_progress` | `toolUseId`, `toolName`, `message`, `pct?` | **[SPEC 8 v0.5.1]** Mid-execution progress signal from long-running tools (Cetus swap, portfolio_analysis). Tools opt in via `context.progress?.(msg, pct?)`. Engine wiring lands with the Cetus SDK integration in a follow-on slice. (Pre-S.277 also surfaced from `protocol_deep_dive`, which was cut in engine 2.18.0.) |
 | `tool_start` | `toolName`, `toolUseId`, `input` | Tool execution begins |
 | `tool_result` | `toolName`, `toolUseId`, `result`, `isError` | Tool execution completes |
 | `pending_action` | `action` (PendingAction with `attemptId`, `approvalId`, `toolUseId`, `turnIndex`, `name`, `input`) | Write tool awaiting client-side execution. `attemptId` is a per-yield UUID — hosts persist it on TurnMetrics and key the resume `updateMany` on it (avoids ambiguous `(sessionId, turnIndex)` updates). **`approvalId` is a forward-compat alias for `attemptId`** (engine stamps both fields identically; reading either is safe). The alias exists to ease a future v0.7c migration if/when Audric (or any host) adopts AI SDK v6's `approvalId` HITL terminology — see `SPEC_SLICE_D_DRAFT.md` (D-6.1, 2026-05-18) for the impedance analysis explaining why we keep our `PendingAction` shape instead of migrating wholesale to AI SDK's `needsApproval` primitive (which is server-execute-only and incompatible with our zkLogin client-executed sponsored-tx model). |

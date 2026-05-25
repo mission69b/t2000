@@ -19,8 +19,8 @@
    │  ┌──────────────────────────────────────────────────────────────────┐
    │  │                     @t2000/engine                                │
    │  │                                                                  │
-   │  │  QueryEngine · LLM Provider · Tool System · MCP Client          │
-   │  │  Streaming · Sessions · Cost Tracking · Context Management      │
+   │  │  AISDKEngine · AI SDK v6 (streamText) · Tool System · MCP Client │
+   │  │  Streaming · Sessions · Cost Tracking · Context Management       │
    │  └────────┬──────────────────────────────────────────────────────┘
    │           │
    │           ▼
@@ -62,7 +62,7 @@
 | Package             | npm             | What it does                                                                      |
 | ------------------- | --------------- | --------------------------------------------------------------------------------- |
 | `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
-| `@t2000/engine`     | Published       | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
+| `@t2000/engine`     | Published       | Agent engine — `AISDKEngine` (AI SDK v6), financial tools, MCP client/server |
 | `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
 | `@t2000/mcp`        | Published       | MCP server — wraps the engine's tool registry (26 tools post-S.277) + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport. The MCP package exports its own `t2000_*` wrappers + retains Volo paths for non-Audric consumers (Cursor / Claude Desktop). |
 | `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
@@ -118,13 +118,13 @@ All transactions are gas-free for the user. Enoki sponsors gas.
 
 ### Engine chat (Audric / @t2000/engine)
 
-For freeform queries typed into the chat, the `QueryEngine` processes the request via SSE streaming:
+For freeform queries typed into the chat, `AISDKEngine` processes the request via SSE streaming:
 
 ```
 User types "What's my current balance?"
   │
   ├── POST /api/engine/chat (SSE stream, JWT auth, Sui address)
-  ├── QueryEngine → AnthropicProvider → Claude with tool definitions
+  ├── AISDKEngine → AI SDK v6 streamText → @ai-sdk/anthropic → Claude with tool definitions
   ├── Tool calls (balance_check, savings_info, etc.) executed server-side
   │   └── MCP-first with SDK fallback for financial reads
   ├── Write tools → pending_action event → POST /api/engine/resume (delegated execution)

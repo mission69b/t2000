@@ -11,7 +11,7 @@ Each test is a standalone `tsx` script that imports `@t2000/sdk` directly from `
 | `test-helpers.ts` | Shared primitives (`assert`, `section`, `runSection`, `createAgent`, `summary`) imported by every other test. |
 | `test-navi.ts` | NAVI lending — rates, save, positions, withdraw, borrow, health factor, repay. Requires ≥ $3 USDC + 0.05 SUI. |
 | `test-send.ts` | Direct USDC transfer. |
-| `test-pay.ts` | MPP payment flow via `pay_api`. |
+| `test-pay.ts` | MPP payment flow via SDK `agent.pay()`. (Engine-side `pay_api` tool was deleted in S.245 — payment scripts test the SDK directly.) |
 | `test-claim-rewards.ts` | NAVI reward claim path. |
 | `test-earn.ts` | Earnings summary / yield read path. |
 | `test-wallet.ts` | Wallet creation, address derivation. |

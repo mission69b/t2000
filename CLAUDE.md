@@ -23,7 +23,7 @@ t2000/
 ├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
-├── packages/engine  ← @t2000/engine (agent engine — QueryEngine, tools, MCP)
+├── packages/engine  ← @t2000/engine (agent engine — AISDKEngine, tools, MCP)
 ├── packages/mcp     ← @t2000/mcp (npm)
 ├── t2000-skills/    ← Agent skill definitions
 └── audric-roadmap.md ← Product roadmap + build tracker
@@ -159,7 +159,7 @@ Read `spec/README.md` (internal) for the spec/active vs archive vs reference lay
 | `.cursor/rules/blockvision-resilience.mdc` | Retry + circuit breaker + sticky-positive cache rules | BlockVision integration changes |
 | `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources | Adding tokens, fixing decimal/display bugs |
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — every env var goes through Zod schema | Adding env vars / wiring a new app |
-| `audric/apps/web/lib/env.ts` | Canonical Zod env-validation template | Adding env vars, copying the pattern |
+| `audric/apps/web-v2/lib/env.ts` | Canonical Zod env-validation template (audric/apps/web archived in v0.7e Phase 5 / S.253, 2026-05-22) | Adding env vars, copying the pattern |
 | `audric/.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct (lives in audric repo) | Audric transaction/receipt bugs |
 
 ---

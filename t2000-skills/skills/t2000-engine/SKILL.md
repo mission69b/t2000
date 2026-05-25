@@ -20,20 +20,20 @@ Build conversational AI agents with financial capabilities on Sui.
 LLM orchestration via Vercel AI SDK v6, MCP client/server integration,
 streaming, sessions, and cost tracking.
 
-> The legacy `QueryEngine` + `AnthropicProvider` classes were deleted in engine
-> `v2.0.0` (2026-05-17). `AISDKEngine` + `AISDKAnthropicProvider` are the only
-> engine and provider; they wrap AI SDK v6's `streamText` while preserving the
-> same public API surface (`submitMessage`, `EngineEvent` stream, `PendingAction`).
+> The legacy `QueryEngine` + `AnthropicProvider` were deleted in engine v2.0.0 (2026-05-17).
+> The `LLMProvider` abstraction + `AISDKAnthropicProvider` class were retired in v3.1.0
+> (2026-05-25). `AISDKEngine` is the only engine; it wraps Vercel AI SDK v6's `streamText`
+> and accepts `anthropicApiKey` (or `modelInstance` for custom providers / gateway routing).
 
 ## Quick Start
 ```typescript
-import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
+import { AISDKEngine, getDefaultTools } from '@t2000/engine';
 import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
 
 const engine = new AISDKEngine({
-  provider: new AISDKAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   agent,
   tools: getDefaultTools(),
 });
@@ -224,13 +224,13 @@ const engine = new AISDKEngine({
 ## Configuration
 ```typescript
 new AISDKEngine({
-  provider: new AISDKAnthropicProvider({ apiKey }),  // Required
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY, // Required (or pass `modelInstance` for custom providers)
   agent,                // T2000 SDK instance
   mcpManager,           // McpClientManager for MCP-first reads
   walletAddress,        // Sui address for MCP reads
   tools: getDefaultTools(),
   systemPrompt,         // Override default Audric prompt
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-5',
   maxTurns: 10,
   maxTokens: 4096,
   costTracker: { budgetLimitUsd: 1.0 },
@@ -242,9 +242,9 @@ new AISDKEngine({
 ## Key Imports
 ```typescript
 // Core
-import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
-// Tools (defineTool replaced the deleted buildTool in engine 1.38.0)
-import { defineTool, READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
+import { AISDKEngine, getDefaultTools } from '@t2000/engine';
+// Tools (defineTool is the v2 factory; READ_TOOL_SET / WRITE_TOOL_SET / READ_TOOL_NAMES are the tool registries since v3.0.0)
+import { defineTool, READ_TOOL_SET, WRITE_TOOL_SET, READ_TOOL_NAMES } from '@t2000/engine';
 // Streaming (`engineToSSE` was deleted in v2.2.0 — see "SSE Streaming" above)
 import { serializeSSE, parseSSE, withStreamState } from '@t2000/engine';
 // Stream checkpoint resume (v2.2.0+)

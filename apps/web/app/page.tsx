@@ -36,7 +36,7 @@ const PACKAGES = [
     icon: "◈",
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine. 37 tools, adaptive thinking, 14 guards, skills via @t2000/mcp, silent memory, canvas.",
+    desc: "Reasoning engine. 26 tools, adaptive thinking, 12 guards, skills via @t2000/mcp, silent memory, canvas.",
     install: "npm i @t2000/engine",
     href: "https://www.npmjs.com/package/@t2000/engine",
   },

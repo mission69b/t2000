@@ -56,7 +56,7 @@ const PACKAGES = [
   {
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine for financial agents. 37 tools, adaptive thinking, 14 step guards, silent intelligence layer, canvas, streaming. Multi-step playbooks (skills) ship from @t2000/mcp.",
+    desc: "Reasoning engine for financial agents. 26 tools, adaptive thinking, 12 step guards, silent intelligence layer, canvas, streaming. Multi-step playbooks (skills) ship from @t2000/mcp.",
     install: "npm i @t2000/engine",
     npm: "https://www.npmjs.com/package/@t2000/engine",
     github: `${GITHUB_URL}/tree/main/packages/engine`,
