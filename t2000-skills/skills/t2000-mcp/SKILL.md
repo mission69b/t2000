@@ -1,7 +1,7 @@
 ---
 name: t2000-mcp
 description: >-
-  Connect a t2000 agent bank account to Claude Desktop, Cursor, Cline,
+  Connect a t2000 Agentic Wallet to Claude Desktop, Cursor, Cline,
   Continue, or any MCP-compatible client. Use when asked to set up MCP,
   paste an MCP server config, install @t2000/mcp, or troubleshoot why
   the MCP server "doesn't do anything" when run from a terminal.
@@ -16,7 +16,7 @@ metadata:
 # t2000: MCP Server
 
 ## Purpose
-Expose a t2000 agent bank account (Sui wallet + DeFi positions) to any
+Expose a t2000 Agentic Wallet (Sui wallet + DeFi positions) to any
 MCP-compatible AI client over stdio. **29 tools, 14 prompts**, safeguard
 enforced. No global install required — the recommended path uses `npx`
 so the AI client always pulls the latest published version.

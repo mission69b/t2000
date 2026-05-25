@@ -43,7 +43,7 @@ export default function StatsPage() {
 
         <footer className="mt-20 pt-8 border-t border-border text-center">
           <p className="text-muted text-xs">
-            t2000 — A bank account for AI agents.{" "}
+            t2000 — Agentic Wallet for AI agents.{" "}
             <Link href="/" className="text-accent hover:underline">
               Home
             </Link>{" "}

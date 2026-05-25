@@ -46,7 +46,7 @@ t2000 init --key "$T2000_KEY_PATH"  # still prompts MCP + safeguards interactive
 
 ### Verifiable signals
 
-- ✅ Prints "Bank account created" with a `0x`-prefixed address.
+- ✅ Prints "Agentic Wallet created" with a `0x`-prefixed address.
 - ✅ Creates `$T2000_KEY_PATH` (60+ bytes).
 - ✅ Exit code 0.
 

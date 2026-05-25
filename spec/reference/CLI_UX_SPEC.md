@@ -483,7 +483,7 @@ Guided setup wizard. Creates wallet, configures MCP for AI platforms, sets safeg
 ```
   ┌─────────────────────────────────────────┐
   │  Welcome to t2000                       │
-  │  A bank account for AI agents           │
+  │  Agentic Wallet for AI agents           │
   └─────────────────────────────────────────┘
 
   Step 1 of 3 — Create wallet
@@ -498,7 +498,7 @@ Guided setup wizard. Creates wallet, configures MCP for AI platforms, sets safeg
   Setting up accounts...
   ✓ Checking  ✓ Savings  ✓ Credit
 
-  🎉 Bank account created
+  🎉 Agentic Wallet created
   Address: 0x8b3e...d412
 
   Step 2 of 3 — Connect AI platforms

@@ -171,7 +171,7 @@ export default function DisclaimerPage() {
             <p>
               t2000 does not provide financial services and is not a bank,
               custodian, exchange, or financial advisor. The use of terms like
-              &quot;bank account,&quot; &quot;savings,&quot; and &quot;cash&quot; are functional labels within
+              &quot;Agentic Wallet,&quot; &quot;savings,&quot; and &quot;cash&quot; are functional labels within
               the app and describe interactions with DeFi protocols, not
               traditional banking products. Deposits are not insured. Users are
               responsible for understanding and complying with the laws and

@@ -62,7 +62,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a financial advisor for a t2000 AI agent bank account on Sui.',
+            'You are a financial advisor for a t2000 Agentic Wallet on Sui.',
             '',
             'STEP 1 — Render the account snapshot per the canonical skill:',
             '',
@@ -98,7 +98,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a yield optimization specialist for a t2000 AI agent bank account on Sui.',
+            'You are a yield optimization specialist for a t2000 Agentic Wallet on Sui.',
             '',
             'CONTEXT (USDC-canonical save policy — from the t2000-save skill):',
             '',
@@ -138,7 +138,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a savings advisor for a t2000 AI agent bank account on Sui.',
+            'You are a savings advisor for a t2000 Agentic Wallet on Sui.',
             '',
             'WHICH ASSETS CAN BE SAVED (from the t2000-save skill — canonical):',
             '',
@@ -173,7 +173,7 @@ export function registerPrompts(
           content: {
             type: 'text',
             text: [
-              'You are a money-routing assistant for a t2000 AI agent bank account on Sui.',
+              'You are a money-routing assistant for a t2000 Agentic Wallet on Sui.',
               '',
               'SAVE ELIGIBILITY (from the t2000-save skill):',
               '',
@@ -213,7 +213,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a risk assessment specialist for a t2000 AI agent bank account on Sui.',
+            'You are a risk assessment specialist for a t2000 Agentic Wallet on Sui.',
             '',
             'STEP 1 — Read the account state (use the t2000-account-report skill\'s tool sequence):',
             '',
@@ -258,7 +258,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a personal finance newsletter writer for a t2000 AI agent bank account on Sui.',
+            'You are a personal finance newsletter writer for a t2000 Agentic Wallet on Sui.',
             '',
             'STEP 1 — Read the account state (use the t2000-account-report tool sequence) + t2000_history (limit: 50) in parallel:',
             '',
@@ -308,7 +308,7 @@ export function registerPrompts(
           content: {
             type: 'text',
             text: [
-              'You are a payment assistant for a t2000 AI agent bank account on Sui.',
+              'You are a payment assistant for a t2000 Agentic Wallet on Sui.',
               '',
               context ? `Context provided by the user:\n${context}\n` : '',
               'CANONICAL SEND FLOW (from the t2000-send skill — DO NOT skip steps):',
@@ -345,7 +345,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a budget advisor for a t2000 AI agent bank account on Sui.',
+            'You are a budget advisor for a t2000 Agentic Wallet on Sui.',
             '',
             amount
               ? `The user wants to know if they can afford to spend $${amount}.`
@@ -397,7 +397,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a financial scenario planner for a t2000 AI agent bank account on Sui.',
+            'You are a financial scenario planner for a t2000 Agentic Wallet on Sui.',
             '',
             scenario
               ? `The user wants to evaluate: "${scenario}"`
@@ -455,7 +455,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a rewards management assistant for a t2000 AI agent bank account on Sui.',
+            'You are a rewards management assistant for a t2000 Agentic Wallet on Sui.',
             '',
             // No dedicated claim-rewards skill — the flow is operational
             // enough that a thin prompt suffices. Future: if a
@@ -499,7 +499,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a security advisor for a t2000 AI agent bank account on Sui.',
+            'You are a security advisor for a t2000 Agentic Wallet on Sui.',
             '',
             'CANONICAL SAFEGUARDS REFERENCE (from the t2000-safeguards skill — full body):',
             '',
@@ -539,7 +539,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a friendly onboarding guide for t2000 — an AI agent bank account on Sui.',
+            'You are a friendly onboarding guide for t2000 — an Agentic Wallet on Sui.',
             '',
             'STEP 1 — Read the user\'s current state (t2000_overview).',
             '',
@@ -588,7 +588,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are an emergency response handler for a t2000 AI agent bank account on Sui.',
+            'You are an emergency response handler for a t2000 Agentic Wallet on Sui.',
             '',
             '🚨 EMERGENCY PROTOCOL',
             '─────────────────────',
@@ -636,7 +636,7 @@ export function registerPrompts(
         content: {
           type: 'text',
           text: [
-            'You are a full-account optimizer for a t2000 AI agent bank account on Sui.',
+            'You are a full-account optimizer for a t2000 Agentic Wallet on Sui.',
             '',
             'STEP 1 — Read the account state in parallel: call t2000_overview AND t2000_all_rates.',
             '       For MCP clients with canvas rendering, also use the t2000-account-report tool sequence:',

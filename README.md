@@ -51,7 +51,7 @@ await agent.stakeVSui({ amount: 5 }); // liquid staking → vSUI (~3-5% APY)
 |---------|-------------|---------|
 | [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
 | [`@t2000/engine`](packages/engine) | Agent engine — `AISDKEngine`, financial tools, MCP client/server | `npm install @t2000/engine` |
-| [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
+| [`@t2000/cli`](packages/cli) | Terminal Agentic Wallet + HTTP API | `npm install -g @t2000/cli` |
 | [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
 | [`@suimpp/mpp`](https://github.com/mission69b/suimpp) | MPP payment client (Sui USDC) | `npm install @suimpp/mpp` |
 
@@ -297,7 +297,7 @@ t2000/
 ├── packages/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
 │   ├── engine/           @t2000/engine — Agent engine (AISDKEngine, tools, MCP)
-│   ├── cli/              @t2000/cli — Terminal bank account
+│   ├── cli/              @t2000/cli — Terminal Agentic Wallet
 │   └── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
 │
 ├── apps/

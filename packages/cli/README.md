@@ -1,6 +1,6 @@
 # @t2000/cli
 
-A bank account for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, and pay for APIs. USDC in, USDC out.
+The Agentic Wallet for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, and pay for APIs. USDC in, USDC out.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -23,7 +23,7 @@ t2000 init
 
   ┌─────────────────────────────────────────┐
   │  Welcome to t2000                       │
-  │  A bank account for AI agents           │
+  │  Agentic Wallet for AI agents           │
   └─────────────────────────────────────────┘
 
   Step 1 of 3 — Create wallet
@@ -33,7 +33,7 @@ t2000 init
   ✓ Network  Sui mainnet
   ✓ Checking  ✓ Savings  ✓ Credit
 
-  🎉 Bank account created
+  🎉 Agentic Wallet created
   Address: 0x8b3e...d412
 
   ℹ Fund your wallet with SUI for gas + USDC to transact.
@@ -137,7 +137,7 @@ See the [MCP setup guide](../../docs/mcp-setup.md) for manual configuration.
 | `t2000 balance --show-limits` | Include maxWithdraw, maxBorrow, and health factor |
 | `t2000 address` | Show wallet address |
 | `t2000 deposit` | Show funding instructions |
-| `t2000 import` | Import an existing bank account from private key |
+| `t2000 import` | Import an existing wallet from private key |
 | `t2000 export` | Export private key (bech32 `suiprivkey1...` format) |
 | `t2000 history` | Transaction history |
 
@@ -256,7 +256,7 @@ Config is stored at `~/.t2000/config.json`.
 
 | Variable | Description |
 |----------|-------------|
-| `T2000_PIN` | Bank account PIN (skip interactive prompt) |
+| `T2000_PIN` | Agentic Wallet PIN (skip interactive prompt) |
 | `T2000_PRIVATE_KEY` | Private key for `t2000 import` (skip interactive prompt) |
 
 ## Gas

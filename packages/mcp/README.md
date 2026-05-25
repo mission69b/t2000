@@ -1,6 +1,6 @@
 # @t2000/mcp
 
-MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
+MCP server for Agentic Wallets on Sui. Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
 
 **Safeguard enforced · stdio transport**
 

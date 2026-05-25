@@ -1,7 +1,7 @@
 {
   "name": "@t2000/cli",
   "version": "3.1.1",
-  "description": "A bank account for AI agents on Sui — guided setup, MCP integration, send, save, borrow, swap, scriptable from any shell.",
+  "description": "Agentic Wallet for AI agents on Sui — guided setup, MCP integration, send, save, borrow, swap, scriptable from any shell.",
   "type": "module",
   "bin": {
     "t2000": "./dist/index.js"

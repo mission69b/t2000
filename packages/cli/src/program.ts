@@ -39,7 +39,7 @@ export function createProgram(): Command {
 
   program
     .name('t2000')
-    .description('A bank account for AI agents')
+    .description('Agentic Wallet for AI agents')
     .version(`${CLI_VERSION} (beta)`)
     .option('--json', 'Output in JSON format')
     .hook('preAction', (thisCommand) => {
@@ -48,7 +48,7 @@ export function createProgram(): Command {
     })
     .addHelpText('after', `
 Examples:
-  $ t2000 init                    Create a new agent bank account
+  $ t2000 init                    Create a new Agentic Wallet
   $ t2000 balance                 Show wallet balance
   $ t2000 save 100                Save $100 to earn yield
   $ t2000 send 50 to 0xabc...    Send $50 USDC

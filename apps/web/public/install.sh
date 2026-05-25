@@ -57,7 +57,7 @@ bold() {
 
 echo ""
 bold "  ┌──────────────────────────────────────────┐"
-bold "  │  ${Green}t2000${Color_Off}${Bold} — a bank account for AI agents        │"
+bold "  │  ${Green}t2000${Color_Off}${Bold} — Agentic Wallet for AI agents        │"
 bold "  └──────────────────────────────────────────┘"
 echo ""
 

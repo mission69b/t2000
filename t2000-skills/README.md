@@ -1,6 +1,6 @@
 # t2000 Agent Skills
 
-Agent Skills for the [t2000](https://t2000.ai) bank account on Sui. Install once and your AI
+Agent Skills for the [t2000](https://t2000.ai) Agentic Wallet on Sui. Install once and your AI
 agent gains the ability to check balances, send payments, earn yield,
 borrow, and pay for MPP API services — all on Sui.
 
@@ -52,7 +52,7 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 npx @t2000/cli init
 ```
 
-The t2000 CLI must be installed and a bank account initialized before any skill can execute.
+The t2000 CLI must be installed and an Agentic Wallet initialized before any skill can execute.
 See [t2000.ai](https://t2000.ai) for full documentation.
 
 ## Skill Format
@@ -63,7 +63,7 @@ Each skill follows the [Agent Skills standard](https://agentskills.io):
 ---
 name: t2000-check-balance        # unique skill identifier
 description: >-                   # when to use this skill (agent reads this)
-  Check the t2000 agent bank account balance on Sui...
+  Check the t2000 Agentic Wallet balance on Sui...
 license: MIT
 metadata:
   author: t2000

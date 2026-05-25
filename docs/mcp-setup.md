@@ -1,6 +1,6 @@
 # t2000 MCP Server — Setup Guide
 
-Connect your AI (Claude Desktop, Cursor, Claude Code, Windsurf, Codex) to your t2000 agent bank account.
+Connect your AI (Claude Desktop, Cursor, Claude Code, Windsurf, Codex) to your t2000 Agentic Wallet.
 
 ## Quick Start — 4 commands
 

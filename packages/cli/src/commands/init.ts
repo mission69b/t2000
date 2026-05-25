@@ -74,7 +74,7 @@ async function installMcpForPlatforms(platforms: McpPlatform[]): Promise<void> {
 export function registerInit(program: Command) {
   program
     .command('init')
-    .description('Create a new agent bank account — guided setup with MCP + safeguards')
+    .description('Create a new Agentic Wallet — guided setup with MCP + safeguards')
     .option('--key <path>', 'Key file path')
     .action(async (opts: { key?: string }) => {
       try {
@@ -83,7 +83,7 @@ export function registerInit(program: Command) {
         console.log('');
         console.log(`  ┌─────────────────────────────────────────┐`);
         console.log(`  │  ${pc.bold('Welcome to t2000')}                       │`);
-        console.log(`  │  A bank account for AI agents           │`);
+        console.log(`  │  Agentic Wallet for AI agents           │`);
         console.log(`  └─────────────────────────────────────────┘`);
         console.log('');
 
@@ -132,7 +132,7 @@ export function registerInit(program: Command) {
           );
 
           printBlank();
-          printLine(`  🎉 ${pc.green('Bank account created')}`);
+          printLine(`  🎉 ${pc.green('Agentic Wallet created')}`);
           printLine(`  Address: ${pc.yellow(address.slice(0, 6) + '...' + address.slice(-4))}`);
           printBlank();
           printInfo('Fund your wallet to start:');

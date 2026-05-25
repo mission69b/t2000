@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI, and borrow against collateral — all from a single class. USDC in, USDC out.
+The complete TypeScript SDK for Agentic Wallets on Sui. Send USDC, earn yield via NAVI, and borrow against collateral — all from a single class. USDC in, USDC out.
 
 In Audric, this SDK powers **Audric Passport** (wallet, signing), **Audric Finance** (NAVI lending/borrowing builders, Cetus swap), and **Audric Pay** (USDC transfers, payment links), and is wrapped by `@t2000/engine` to implement **Audric Intelligence**'s Agent Harness.
 
@@ -26,7 +26,7 @@ yarn add @t2000/sdk
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-// Create a new bank account
+// Create a new Agentic Wallet
 const { agent, address } = await T2000.init({ pin: 'my-secret' });
 
 // Or load an existing one
@@ -56,7 +56,7 @@ await agent.withdraw({ amount: 25 });
 
 ### `T2000.init(options)` — Create a new wallet
 
-Creates a new bank account (generates keypair, encrypts, and saves to disk). Fund the returned address with a small amount of SUI for gas (Mercuryo: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) plus USDC to transact.
+Creates a new Agentic Wallet (generates keypair, encrypts, and saves to disk). Fund the returned address with a small amount of SUI for gas (Mercuryo: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) plus USDC to transact.
 
 ```typescript
 const { agent, address } = await T2000.init({
@@ -67,7 +67,7 @@ const { agent, address } = await T2000.init({
 
 ### `T2000.create(options)` — Load an existing wallet
 
-Loads an existing bank account from an encrypted key file. Throws `WALLET_NOT_FOUND` if no wallet exists.
+Loads an existing Agentic Wallet from an encrypted key file. Throws `WALLET_NOT_FOUND` if no wallet exists.
 
 ```typescript
 const agent = await T2000.create({
