@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, formatUsd, formatAssetAmount } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine } from '../output.js';
+import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, formatApyPercent } from '../output.js';
 
 export function registerFundStatus(program: Command) {
   program
@@ -34,11 +34,11 @@ export function registerFundStatus(program: Command) {
 
         if (savePositions.length > 0) {
           for (const p of savePositions) {
-            printLine(`  ${pc.dim('•')} ${formatAssetAmount(p.amount, p.asset)} ${p.asset} (${formatUsd(p.amountUsd ?? p.amount)}) on ${p.protocol} @ ${p.apy.toFixed(2)}% APY`);
+            printLine(`  ${pc.dim('•')} ${formatAssetAmount(p.amount, p.asset)} ${p.asset} (${formatUsd(p.amountUsd ?? p.amount)}) on ${p.protocol} @ ${formatApyPercent(p.apy)} APY`);
           }
         }
 
-        printKeyValue('Blended APY', `${result.apy.toFixed(2)}%`);
+        printKeyValue('Blended APY', formatApyPercent(result.apy));
         printKeyValue('Earned today', `~${formatUsd(result.earnedToday)}`);
         printKeyValue('Earned all time', `~${formatUsd(result.earnedAllTime)}`);
         printKeyValue('Monthly projected', `~${formatUsd(result.projectedMonthly)}/month`);

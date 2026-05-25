@@ -68,6 +68,20 @@ export function printSeparator() {
   console.log(`  ${pc.dim('──────────────────────────────────────')}`);
 }
 
+/**
+ * Format an APY value for display.
+ *
+ * The SDK returns APYs in **decimal form** — e.g. `agent.rates()` returns
+ * `{ USDC: { saveApy: 0.0473 } }` meaning 4.73%. Every consumer that wants
+ * to render `4.73%` must multiply by 100 first.
+ *
+ * Use this helper at EVERY APY display site to keep the conversion in one
+ * place. Without it the CLI accumulates off-by-100x bugs (S.318).
+ */
+export function formatApyPercent(decimal: number, digits = 2): string {
+  return `${(decimal * 100).toFixed(digits)}%`;
+}
+
 export function explorerUrl(txHash: string, network = 'mainnet'): string {
   const base = network === 'testnet'
     ? 'https://suiscan.xyz/testnet/tx'

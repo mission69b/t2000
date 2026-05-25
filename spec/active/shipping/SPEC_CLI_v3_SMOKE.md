@@ -30,8 +30,18 @@ rm -f "$T2000_KEY_PATH"
 
 ## CLI-SMOKE-1 — `t2000 init` happy path (2 min)
 
+`t2000 init` is **interactive** — the only flag is `--key <path>`. Run it and answer the prompts (PIN, MCP install y/n, safeguards y/n) at the terminal.
+
 ```bash
-t2000 init --no-mcp --no-safeguards --pin smoke-pin
+t2000 init --key "$T2000_KEY_PATH"
+# Wizard asks for: PIN (twice) → MCP install (n for smoke) → safeguards (n for smoke)
+```
+
+Set `T2000_PIN` env var to bypass the PIN prompt:
+
+```bash
+export T2000_PIN="smoke-pin"
+t2000 init --key "$T2000_KEY_PATH"  # still prompts MCP + safeguards interactively
 ```
 
 ### Verifiable signals
@@ -47,7 +57,7 @@ Then fund the address with ≥$3 USDC + ≥0.1 SUI from your real wallet before 
 ## CLI-SMOKE-2 — `t2000 balance` (1 min)
 
 ```bash
-t2000 balance --pin smoke-pin
+T2000_PIN="smoke-pin" t2000 balance --key "$T2000_KEY_PATH"
 ```
 
 ### Verifiable signals
@@ -65,8 +75,8 @@ If the balance is stale, `t2000 balance --refresh` (or just retry after 30s — 
 Self-send is the cheapest way to exercise the full transaction path without losing funds.
 
 ```bash
-SELF=$(t2000 address --pin smoke-pin)
-t2000 send 0.5 USDC to "$SELF" --pin smoke-pin --confirm
+SELF=$(T2000_PIN="smoke-pin" t2000 --json address --key "$T2000_KEY_PATH" | jq -r '.address')
+T2000_PIN="smoke-pin" t2000 send 0.5 USDC to "$SELF" --key "$T2000_KEY_PATH" --confirm
 ```
 
 ### Verifiable signals
@@ -81,7 +91,7 @@ t2000 send 0.5 USDC to "$SELF" --pin smoke-pin --confirm
 ## CLI-SMOKE-4 — `t2000 save 1 USDC` (2 min)
 
 ```bash
-t2000 save 1 USDC --pin smoke-pin --confirm
+T2000_PIN="smoke-pin" t2000 save 1 USDC --key "$T2000_KEY_PATH" --confirm
 ```
 
 ### Verifiable signals
@@ -103,8 +113,8 @@ t2000 rates
 
 ### Verifiable signals
 
-- ✅ Prints a table with at minimum: `USDC`, `USDsui`, `SUI` rows.
-- ✅ Each row has Supply APY + Borrow APY columns with positive numbers (not `0.00%` everywhere).
+- ✅ Prints a table with at minimum a `USDC` row. (Engine currently only iterates `STABLE_ASSETS = ['USDC']` in `packages/cli/src/commands/rates.ts:33` — USDsui + SUI surfaces are deferred to a future `SAVEABLE_ASSETS` expansion.)
+- ✅ Each row shows Supply APY + Borrow APY with realistic values (NAVI USDC supply is typically 4-6%; if you see `0.05%` you're on pre-v3.1.1, the off-by-100 bug was fixed in S.318).
 - ✅ Exit code 0.
 
 ---
@@ -117,9 +127,9 @@ Cleanup:
 
 ```bash
 # Optional: withdraw the $1 you saved
-t2000 withdraw 1 --pin smoke-pin --confirm
+T2000_PIN="smoke-pin" t2000 withdraw 1 --key "$T2000_KEY_PATH" --confirm
 # Optional: send the remaining USDC back to your funding wallet
-t2000 send 1 USDC to 0x<funding-wallet> --pin smoke-pin --confirm
+T2000_PIN="smoke-pin" t2000 send 1 USDC to 0x<funding-wallet> --key "$T2000_KEY_PATH" --confirm
 # Then wipe the sandbox key
 rm "$T2000_KEY_PATH"
 ```

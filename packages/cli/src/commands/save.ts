@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
+import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl, formatApyPercent } from '../output.js';
 
 type SaveAsset = 'USDC' | 'USDsui';
 const SAVE_ASSETS: readonly SaveAsset[] = ['USDC', 'USDsui'] as const;
@@ -46,7 +46,7 @@ export function registerSave(program: Command) {
           printSuccess(`Protocol fee: ${pc.dim(`${formatUsd(result.fee)} ${asset} (${feeRate}%)`)}`);
         }
 
-        printSuccess(`Current APY: ${pc.green(`${result.apy.toFixed(2)}%`)}`);
+        printSuccess(`Current APY: ${pc.green(formatApyPercent(result.apy))}`);
 
         printSuccess(`Savings balance: ${pc.yellow(formatUsd(result.savingsBalance))} ${asset}`);
 

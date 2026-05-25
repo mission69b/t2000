@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, SUPPORTED_ASSETS, STABLE_ASSETS } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider } from '../output.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider, formatApyPercent } from '../output.js';
 
 export function registerRates(program: Command) {
   program
@@ -26,7 +26,7 @@ export function registerRates(program: Command) {
         if (allRates.length > 0) {
           const best = allRates.reduce((a, b) => b.rates.saveApy > a.rates.saveApy ? b : a);
           const bestDisplay = SUPPORTED_ASSETS[best.asset as keyof typeof SUPPORTED_ASSETS]?.displayName ?? best.asset;
-          printLine(pc.bold(pc.green(`Best yield: ${best.rates.saveApy.toFixed(2)}% APY`)) + pc.dim(` (${bestDisplay} on ${best.protocol})`));
+          printLine(pc.bold(pc.green(`Best yield: ${formatApyPercent(best.rates.saveApy)} APY`)) + pc.dim(` (${bestDisplay} on ${best.protocol})`));
           printBlank();
         }
 
@@ -38,7 +38,7 @@ export function registerRates(program: Command) {
           printLine(pc.bold(display));
           printDivider();
           for (const entry of assetRates) {
-            printKeyValue(entry.protocol, `Save ${entry.rates.saveApy.toFixed(2)}%  Borrow ${entry.rates.borrowApy.toFixed(2)}%`);
+            printKeyValue(entry.protocol, `Save ${formatApyPercent(entry.rates.saveApy)}  Borrow ${formatApyPercent(entry.rates.borrowApy)}`);
           }
           printBlank();
         }

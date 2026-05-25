@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printLine } from '../output.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printLine, formatApyPercent } from '../output.js';
 
 interface LimitsData {
   maxWithdraw: string;
@@ -65,13 +65,13 @@ export function registerBalance(program: Command) {
           const weightedApy = saves.length > 0
             ? saves.reduce((sum, p) => sum + (p.amountUsd ?? p.amount) * p.apy, 0) / saves.reduce((sum, p) => sum + (p.amountUsd ?? p.amount), 0)
             : 0;
-          const dailyEarning = bal.savings * (weightedApy / 100) / 365;
-          printKeyValue('Savings', `${formatUsd(bal.savings)}  ${pc.dim(`(earning ${weightedApy.toFixed(2)}% APY)`)}`);
+          const dailyEarning = (bal.savings * weightedApy) / 365;
+          printKeyValue('Savings', `${formatUsd(bal.savings)}  ${pc.dim(`(earning ${formatApyPercent(weightedApy)} APY)`)}`);
           if (bal.debt > 0.01) {
             const borrowApy = borrows.length > 0
               ? borrows.reduce((sum, p) => sum + (p.amountUsd ?? p.amount) * p.apy, 0) / borrows.reduce((sum, p) => sum + (p.amountUsd ?? p.amount), 0)
               : 0;
-            printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}  ${pc.dim(`(${borrowApy.toFixed(2)}% APY)`)}`);
+            printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}  ${pc.dim(`(${formatApyPercent(borrowApy)} APY)`)}`);
           }
           if (bal.gasReserve && bal.gasReserve.usdEquiv >= 0.01) {
             printKeyValue('Gas reserve', `${formatUsd(bal.gasReserve.usdEquiv)}  ${pc.dim(`(${bal.gasReserve.sui.toFixed(2)} SUI)`)}`);

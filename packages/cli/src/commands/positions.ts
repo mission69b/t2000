@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, formatUsd, formatAssetAmount } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider } from '../output.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider, formatApyPercent } from '../output.js';
 
 export function registerPositions(program: Command) {
   program
@@ -46,7 +46,7 @@ export function registerPositions(program: Command) {
                 ? `  ${pc.yellow('+rewards')}`
                 : '';
               const usd = formatUsd(pos.amountUsd ?? pos.amount);
-              printKeyValue(pos.protocol, `${formatAssetAmount(pos.amount, pos.asset)} ${pos.asset} (${usd}) @ ${pos.apy.toFixed(2)}% APY${earning}`);
+              printKeyValue(pos.protocol, `${formatAssetAmount(pos.amount, pos.asset)} ${pos.asset} (${usd}) @ ${formatApyPercent(pos.apy)} APY${earning}`);
             }
             const totalSaved = saves.reduce((s, p) => s + (p.amountUsd ?? p.amount), 0);
             if (saves.length > 1) {
@@ -63,7 +63,7 @@ export function registerPositions(program: Command) {
             printDivider();
             for (const pos of borrows) {
               const usd = formatUsd(pos.amountUsd ?? pos.amount);
-              printKeyValue(pos.protocol, `${formatAssetAmount(pos.amount, pos.asset)} ${pos.asset} (${usd}) @ ${pos.apy.toFixed(2)}% APY`);
+              printKeyValue(pos.protocol, `${formatAssetAmount(pos.amount, pos.asset)} ${pos.asset} (${usd}) @ ${formatApyPercent(pos.apy)} APY`);
             }
             const totalBorrowed = borrows.reduce((s, p) => s + (p.amountUsd ?? p.amount), 0);
             if (borrows.length > 1) {

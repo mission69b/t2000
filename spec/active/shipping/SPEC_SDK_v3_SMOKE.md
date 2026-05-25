@@ -140,13 +140,18 @@ pnpm tsx chainmode.ts
 
 ## SDK-SMOKE-5 — `deserializeCetusRoute` roundtrip (Phase 7 P7.3) (1 min)
 
-Verifies the SDK's serialize → JSON → deserialize → consume path doesn't drop data.
+Verifies the SDK's serialize → JSON → deserialize → consume path doesn't drop data. **Must use the standalone `getSwapQuote` function** — the instance method `agent.swapQuote()` is a thinner CLI-facing wrapper that does NOT return `serializedRoute` (only `getSwapQuote` does, per `SwapQuoteResult` shape).
 
 ```bash
 cat > route.ts <<'EOF'
-import { T2000, deserializeCetusRoute } from '@t2000/sdk';
+import { T2000, getSwapQuote, deserializeCetusRoute } from '@t2000/sdk';
 const agent = await T2000.fromPrivateKey(process.env.SDK_SMOKE_KEY!);
-const quote = await agent.swapQuote({ from: 'USDC', to: 'USDsui', amount: 0.5 });
+const quote = await getSwapQuote({
+  walletAddress: agent.address(),
+  from: 'USDC',
+  to: 'USDsui',
+  amount: 0.5,
+});
 console.log('quote shape:', Object.keys(quote).sort().join(', '));
 const serialized = quote.serializedRoute!;
 const json = JSON.parse(JSON.stringify(serialized));
@@ -161,7 +166,11 @@ pnpm tsx route.ts
 
 - ✅ `quote.serializedRoute` is defined and is an object with `routerData`, `amountIn`, `amountOut`, `byAmountIn`.
 - ✅ `JSON.stringify` → `JSON.parse` → `deserializeCetusRoute` rehydrates without throwing.
-- ✅ `rehydrated.amountIn` is a `BN` (its `.toString()` yields a positive number string).
+- ✅ `rehydrated.amountIn.toString()` yields a positive number string (BN serialized as digits).
+
+### Why `getSwapQuote` not `agent.swapQuote`
+
+`agent.swapQuote()` (instance method in `t2000.ts:519-566`) returns a simplified `SwapQuoteResult` with only `fromAmount` / `toAmount` / `priceImpact` / `route` — no `serializedRoute`. The standalone `getSwapQuote()` (in `swap-quote.ts:9-104`) IS the canonical engine-facing variant: it calls `serializeCetusRoute()` and pins the route onto the result so the engine can stamp it on `pending_action.cetusRoute` for SPEC 20.2 fast-path. The duplication between the two is an SDK-ARCH-REVIEW finding (S.318).
 
 ---
 

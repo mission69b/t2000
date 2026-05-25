@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, formatUsd, formatAssetAmount } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printLine } from '../output.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printLine, formatApyPercent } from '../output.js';
 
 export function registerEarnings(program: Command) {
   program
@@ -28,11 +28,11 @@ export function registerEarnings(program: Command) {
 
         if (savePositions.length > 0) {
           for (const p of savePositions) {
-            printLine(`  ${pc.dim('•')} ${formatAssetAmount(p.amount, p.asset)} ${p.asset} (${formatUsd(p.amountUsd ?? p.amount)}) on ${p.protocol} @ ${p.apy.toFixed(2)}% APY`);
+            printLine(`  ${pc.dim('•')} ${formatAssetAmount(p.amount, p.asset)} ${p.asset} (${formatUsd(p.amountUsd ?? p.amount)}) on ${p.protocol} @ ${formatApyPercent(p.apy)} APY`);
           }
         }
 
-        printKeyValue('Blended APY', `${result.currentApy.toFixed(2)}%`);
+        printKeyValue('Blended APY', formatApyPercent(result.currentApy));
         printKeyValue('Daily Yield', `~${formatUsd(result.dailyEarning)}/day`);
         printKeyValue('Est. Earned', `~${formatUsd(result.totalYieldEarned)}`);
         printBlank();

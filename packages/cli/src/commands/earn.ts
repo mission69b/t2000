@@ -11,6 +11,7 @@ import {
   printDivider,
   printLine,
   printInfo,
+  formatApyPercent,
 } from '../output.js';
 import pc from 'picocolors';
 
@@ -63,8 +64,8 @@ export function registerEarn(program: Command) {
 
         if (savePositions.length > 0) {
           for (const pos of savePositions) {
-            const dailyYield = (pos.amount * pos.apy / 100) / 365;
-            printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY`);
+            const dailyYield = (pos.amount * pos.apy) / 365;
+            printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${formatApyPercent(pos.apy)} APY`);
             if (dailyYield > 0.0001) {
               const dailyStr = dailyYield < 0.01 ? `$${dailyYield.toFixed(4)}` : formatUsd(dailyYield);
               const monthlyStr = dailyYield * 30 < 0.01 ? `$${(dailyYield * 30).toFixed(4)}` : formatUsd(dailyYield * 30);
@@ -78,10 +79,10 @@ export function registerEarn(program: Command) {
         } else if (ratesData && ratesData.length > 0) {
           const sorted = [...ratesData].sort((a, b) => b.rates.saveApy - a.rates.saveApy);
           for (const r of sorted) {
-            printKeyValue(r.protocol, `USDC @ ${r.rates.saveApy.toFixed(2)}% APY`);
+            printKeyValue(r.protocol, `USDC @ ${formatApyPercent(r.rates.saveApy)} APY`);
           }
           const example = 100;
-          const daily = (example * bestSaveApy / 100) / 365;
+          const daily = (example * bestSaveApy) / 365;
           const monthly = daily * 30;
           printLine(pc.dim(`    Save $${example} → ~$${daily.toFixed(2)}/day · ~$${monthly.toFixed(2)}/month`));
           printBlank();
