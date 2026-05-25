@@ -26,7 +26,7 @@ Failed preflight → LLM is told "tool input invalid" and re-asks. The user is n
 
 ## Layer 3 — Guards (`runGuards()`)
 
-14 guards across 3 priority tiers run around every write — 12 pre-execution gates + 2 post-execution hints. Defined in `packages/engine/src/guards.ts`.
+12 guards across 3 priority tiers run around every write — 10 pre-execution gates + 2 post-execution hints (post-S.277 "Earns Its Keep" audit, May 2026, dropped 2 dead guards: `guardCostWarning` + `guardArtifactPreview`). Defined in `packages/engine/src/guards.ts`.
 
 | Tier | Guards |
 |---|---|
