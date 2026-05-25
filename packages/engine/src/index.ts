@@ -8,12 +8,13 @@
 // because tool-author code (in audric and future SDK consumers) still
 // wires `wrapEngineExecute` against them.
 //
-// `ToolDefinition` stays exported because the `LLMProvider` /
-// `ChatParams` contract still references it. The `LLMProvider`
-// pathway (custom provider impl) is unused by every current host
-// (audric, CLI, MCP all use `AISDKEngine` directly) and is a
-// candidate for removal in v3.1.x — when that lands `ToolDefinition`
-// goes with it.
+// [v3.1.0 — 2026-05-25] `LLMProvider`, `ChatParams`, and `ToolDefinition`
+// removed. The legacy provider abstraction (`LLMProvider.chat()` →
+// `AnthropicProvider` / `AISDKAnthropicProvider`) had zero consumers
+// after the v2 engine cutover (the engine wraps `streamText` directly).
+// Hosts that need a tool type import `Tool` / `ToolSet` from `ai`;
+// custom-provider hosts pass `modelInstance` (any AI SDK `LanguageModel`)
+// to `AISDKEngine` for multi-provider / gateway routing.
 export type {
   Message,
   ContentBlock,
@@ -29,11 +30,8 @@ export type {
   ToolContext,
   ToolContextEnv,
   ToolJsonSchema,
-  ToolDefinition,
   PermissionLevel,
   PermissionResponse,
-  LLMProvider,
-  ChatParams,
   ProviderEvent,
   ServerPositionData,
   ToolChoice,
@@ -319,14 +317,11 @@ export {
 } from './navi/reads.js';
 export type { NaviReadOptions, ProtocolStats } from './navi/reads.js';
 
-// [SPEC 37 v0.7a Phase 1] AI SDK-backed provider — drop-in replacement for
-// the (since-deleted) `AnthropicProvider`. Same `LLMProvider` contract;
-// backs onto `@ai-sdk/anthropic` + Vercel AI SDK v6. AISDKEngine takes
-// `anthropicApiKey` directly so this provider is rarely instantiated by
-// hosts; kept exported for in-process embedding scenarios that need an
-// LLMProvider shape without an engine.
-export { AISDKAnthropicProvider } from './providers/ai-sdk-anthropic.js';
-export type { AISDKAnthropicProviderConfig } from './providers/ai-sdk-anthropic.js';
+// [v3.1.0 — 2026-05-25] `AISDKAnthropicProvider` removed. The
+// `LLMProvider` abstraction it implemented had zero remaining consumers
+// after the v2 engine cutover. Hosts that need direct provider access
+// instantiate `createAnthropic({apiKey})` from `@ai-sdk/anthropic` and
+// pass the resulting LanguageModel into `AISDKEngine.modelInstance`.
 
 // [SPEC 37 v0.7a Phase 2-4 — consolidated AI-SDK-native rewrite]
 // [v2.0.0 — 2026-05-17] AISDKEngine is the ONLY engine. Legacy

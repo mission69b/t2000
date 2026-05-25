@@ -904,7 +904,6 @@ export type SystemPrompt = string | SystemBlock[];
 // ---------------------------------------------------------------------------
 
 export interface EngineConfig {
-  provider: LLMProvider;
   agent?: unknown; // T2000 instance
   mcpManager?: unknown; // McpClientManager for MCP-based reads
   walletAddress?: string; // User's Sui wallet address (required for MCP reads)
@@ -1205,33 +1204,16 @@ export interface EngineConfig {
 }
 
 // ---------------------------------------------------------------------------
-// LLM Provider interface (re-exported from providers/types for convenience)
+// Tool choice + provider event stream
 // ---------------------------------------------------------------------------
-
-export interface LLMProvider {
-  chat(params: ChatParams): AsyncGenerator<ProviderEvent>;
-}
+//
+// [v3.1.0 — 2026-05-25] Pre-3.1.0 this section also exported `LLMProvider`,
+// `ChatParams`, and `ToolDefinition` — the legacy provider abstraction.
+// All three were dead code by the time v3.0.0 shipped (v2 engine wraps
+// AI SDK's `streamText` directly; no `LLMProvider.chat()` call survived
+// the v2 cutover). The deletion completes the v3.0.0 CHANGELOG follow-up.
 
 export type ToolChoice = 'auto' | 'any' | { type: 'tool'; name: string };
-
-export interface ChatParams {
-  messages: Message[];
-  systemPrompt: SystemPrompt;
-  tools: ToolDefinition[];
-  model?: string;
-  maxTokens?: number;
-  temperature?: number;
-  toolChoice?: ToolChoice;
-  thinking?: ThinkingConfig;
-  outputConfig?: OutputConfig;
-  signal?: AbortSignal;
-}
-
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  input_schema: ToolJsonSchema;
-}
 
 export type ProviderEvent =
   | { type: 'thinking_delta'; text: string; blockIndex: number }

@@ -1,5 +1,63 @@
 # Changelog
 
+## 3.1.0 — 2026-05-25 — P4.1 follow-up — drop legacy LLMProvider pathway
+
+**MINOR.** Cleanup release. Removes the legacy `LLMProvider` / `ChatParams` / `ToolDefinition` types + the `AISDKAnthropicProvider` class + the three converters that fed it (`toAISDKTools`, `toAISDKSystem`, `toAISDKToolChoice`). The 3.0.0 CHANGELOG explicitly flagged this pathway as "candidate for removal in v3.1.x" — this is that removal.
+
+Why this is a MINOR (not MAJOR) bump: the deleted surface had zero consumers across all in-tree hosts (audric/web-v2, CLI, MCP) and zero downstream npm consumers per the v3.0.0 release notes audit. The v2 engine cutover (2026-05-17) wrapped AI SDK's `streamText` directly and never called `LLMProvider.chat()` after that. The exports survived v3.0.0 as a deliberate "no-op breakage" — we documented the removal in CHANGELOG, soaked v3.0.0 for ~12 hours, confirmed no consumer broke, then proceeded with the removal here. Technically this is a breaking change to the type surface, but the practical risk is nil and the v3.0.0 → v3.1.x → cleanup cadence was pre-announced.
+
+### Removed exports
+
+- `LLMProvider` (the legacy `interface LLMProvider { chat(params): AsyncGenerator<ProviderEvent> }` — types.ts)
+- `ChatParams` (the legacy `LLMProvider.chat()` parameter shape — types.ts)
+- `ToolDefinition` (the legacy JSON-Schema-style `{ name; description; input_schema }` — types.ts; superseded by AI SDK's `Tool` from `'ai'`)
+- `AISDKAnthropicProvider` + `AISDKAnthropicProviderConfig` (the AI-SDK-backed `LLMProvider` implementation — providers/ai-sdk-anthropic.ts; file deleted)
+- `toAISDKTools` (legacy `ToolDefinition[]` → `ToolSet` converter — providers/ai-sdk-message-conversion.ts; the v3.0.0 changelog noted this was already removed, this finishes the job by deleting the export)
+- `toAISDKSystem` (legacy `SystemPrompt` → `string` flattener — providers/ai-sdk-message-conversion.ts)
+- `toAISDKToolChoice` (legacy engine `ToolChoice` → AI SDK union converter — providers/ai-sdk-message-conversion.ts)
+
+### Removed types fields
+
+- `EngineConfig.provider` — the legacy `LLMProvider` field. Already `Omit`ted by `AISDKEngineConfig` so removal is a no-op for `AISDKEngine` hosts; flagged only because `EngineConfig` is exported and some hosts may have typed against it.
+
+### Retained
+
+- `ToolChoice` type (still referenced by `EngineConfig.toolChoice`; future-facing live concept).
+- `ProviderEvent` union (consumed by `message-sanitization.ts` for ordering invariants; still part of the public type surface).
+- `toAISDKMessages` / `buildAnthropicProviderOptions` (the live converters used by `v2/engine.ts`).
+- All v3.0.0 surface (tools, policies, guards, USD-aware permission resolver, streaming-tool dispatch, memory layer, etc.) unchanged.
+
+### Migration for custom-provider hosts
+
+If you implemented `LLMProvider` to wire a custom LLM (zero in-tree hosts did this — but documenting for completeness):
+
+```ts
+// Pre-3.1.0
+class MyProvider implements LLMProvider {
+  async *chat(params: ChatParams) { ... }
+}
+const engine = new AISDKEngine({ provider: new MyProvider() });
+
+// Post-3.1.0 — use `modelInstance` with any AI SDK LanguageModel
+import { gateway } from '@ai-sdk/gateway';
+const engine = new AISDKEngine({
+  modelInstance: gateway('anthropic/claude-sonnet-4-5'),
+  // … or wrapLanguageModel({ model, middleware }) for custom routing
+});
+```
+
+### Verification
+
+- `pnpm --filter @t2000/engine typecheck` → 0 errors
+- `pnpm --filter @t2000/engine test` → 1220 passed / 10 skipped (delta: −2 test files, −50 tests vs v3.0.0 — both were the deleted `AISDKAnthropicProvider` test suites)
+- `pnpm --filter @t2000/engine lint` → 0 errors / 29 warnings (all pre-existing `@typescript-eslint/no-explicit-any` in non-touched lines)
+- `pnpm --filter @t2000/engine build` → tsup ESM + DTS clean
+
+### Companion follow-ups in this release
+
+- `apps/web-v2` Prisma migration `20260525000000_p41_drop_todo_update_count` drops the dead `TurnMetrics.todoUpdateCount` column (was always `0` post-v3.0.0 because the `update_todo` tool was deleted; the host writer was hardcoding `0` on every row).
+- `@t2000/cli` + `@t2000/mcp` ship a working `eslint.config.mjs` so `pnpm lint` runs in both packages.
+
 ## 3.0.0 — 2026-05-25 — AI SDK Hardening P4.1 — `defineTool` → native `tool()` migration
 
 **MAJOR.** Public API surface narrows. Every production tool now ships in native AI SDK `tool()` shape; `defineTool()` and the legacy `Tool` interface are deleted from the public API. Bundleability + cacheability + concurrency-safety + per-tool flags move to NAME-keyed lookups via the central `tool-policy.ts` + `tool-flags.ts` registries — tool objects no longer carry that metadata.

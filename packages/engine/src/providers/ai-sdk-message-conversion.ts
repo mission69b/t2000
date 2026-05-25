@@ -3,15 +3,16 @@
 // ---------------------------------------------------------------------------
 //
 // SPEC 37 v0.7a Phase 1. Pure converters from the engine's provider-agnostic
-// shape to the AI SDK v6 ModelMessage / ToolSet / providerOptions surface.
+// shape to the AI SDK v6 ModelMessage / providerOptions surface.
 //
-// The reverse direction (TextStreamPart → ProviderEvent) lives in
-// `ai-sdk-anthropic.ts` because it is provider-specific and stateful
-// (block-index counters, accumulating reasoning text for the eval-summary
-// parser).
+// [v3.1.0 — 2026-05-25] Pre-3.1.0 this file also exported `toAISDKTools`,
+// `toAISDKSystem`, and `toAISDKToolChoice` — all three were consumed
+// exclusively by the (since-deleted) `AISDKAnthropicProvider` /
+// `LLMProvider` legacy provider pathway. With the legacy provider
+// removed in v3.1.0 those converters dropped out of the live tree.
 //
-// What needs translating
-// ----------------------
+// What needs translating (live surface)
+// -------------------------------------
 // 1. `Message[]` (engine) → `ModelMessage[]` (AI SDK)
 //    The engine packs tool_use + tool_result blocks INSIDE assistant /
 //    user messages (Anthropic-shape). AI SDK v6 splits tool results out
@@ -19,48 +20,24 @@
 //    Reasoning blocks (with signature) become `ReasoningPart` with the
 //    Anthropic signature in providerOptions.
 //
-// 2. `SystemPrompt` (string | SystemBlock[]) → `string`
-//    AI SDK accepts a top-level `system` string. Cache-control blocks
-//    are passed through via providerOptions per the Anthropic provider's
-//    convention; for a top-level string system prompt we concatenate
-//    the cache-able blocks and rely on the Anthropic provider to apply
-//    cache breakpoints automatically (it has heuristics for this since
-//    @ai-sdk/anthropic v3).
-//
-// 3. `ToolDefinition[]` (engine) → `ToolSet` (AI SDK)
-//    Engine uses JSON-Schema-style `input_schema`; AI SDK uses
-//    `inputSchema` via `jsonSchema()`. The tool body is left without
-//    `execute` because the engine runs tools out-of-band via the
-//    permission gate / EarlyToolDispatcher — the SDK never executes
-//    on our behalf.
-//
-// 4. `ThinkingConfig` (engine) → providerOptions.anthropic.thinking
+// 2. `ThinkingConfig` (engine) → providerOptions.anthropic.thinking
 //    Three shapes: disabled (omit entirely), enabled (with budgetTokens),
 //    adaptive (with optional display).
 //
-// 5. `OutputConfig` (engine) → providerOptions.anthropic.outputConfig
+// 3. `OutputConfig` (engine) → providerOptions.anthropic.outputConfig
 //    The `effort` field is forwarded; @ai-sdk/anthropic v3 accepts it
 //    as a top-level provider option per the Anthropic message API.
-//
-// 6. `ToolChoice` (engine) → ToolChoice<TOOLS>
-//    'auto' | 'any' | { type: 'tool', name } → AI SDK's union shape.
 // ---------------------------------------------------------------------------
 
-import {
-  jsonSchema,
-  tool,
-  type AssistantModelMessage,
-  type ModelMessage,
-  type ToolSet,
+import type {
+  AssistantModelMessage,
+  ModelMessage,
 } from 'ai';
 import type {
   ContentBlock,
   Message,
   OutputConfig,
-  SystemPrompt,
   ThinkingConfig,
-  ToolChoice as EngineToolChoice,
-  ToolDefinition,
 } from '../types.js';
 
 type AssistantPart =
@@ -179,57 +156,6 @@ function userBlockToPart(block: ContentBlock): UserPart | null {
   // user messages). Drop defensively rather than throw — the engine
   // should never produce these.
   return null;
-}
-
-/**
- * Convert engine SystemPrompt to a single string. Cache-control hints in
- * SystemBlock[] are dropped at this layer — @ai-sdk/anthropic v3 applies
- * its own cache breakpoint heuristics (every text block over a threshold
- * gets cached). For finer-grained control we'd need to push the cache
- * markers through providerOptions, which @ai-sdk/anthropic v3 does NOT
- * yet expose on system messages. Tracked in v0.7b follow-up.
- */
-export function toAISDKSystem(prompt: SystemPrompt): string {
-  if (typeof prompt === 'string') return prompt;
-  return prompt.map((b) => b.text).join('\n\n');
-}
-
-/**
- * Convert engine ToolDefinition[] → AI SDK ToolSet. The engine runs tools
- * out-of-band via the permission gate, so each AI SDK tool is declared
- * with no `execute` body — `streamText` will emit a `tool-call` event
- * carrying the parsed input, which the engine's `handleProviderEvent`
- * routes into the existing dispatch path.
- */
-export function toAISDKTools(tools: ToolDefinition[]): ToolSet {
-  const set: ToolSet = {};
-  for (const def of tools) {
-    set[def.name] = tool({
-      description: def.description,
-      // jsonSchema() expects JSONSchema7 from @ai-sdk/provider. Our
-      // engine ToolJsonSchema is structurally compatible (object schemas
-      // with `type`/`properties`/`required`); the cast bypasses the
-      // strict index-signature check on `properties`.
-      inputSchema: jsonSchema(def.input_schema as unknown as Parameters<typeof jsonSchema>[0]),
-    });
-  }
-  return set;
-}
-
-/**
- * Convert engine ToolChoice → AI SDK ToolChoice<TOOLS>. AI SDK uses a
- * different shape for tool-name choices.
- */
-export function toAISDKToolChoice(
-  choice: EngineToolChoice | undefined,
-): 'auto' | 'required' | 'none' | { type: 'tool'; toolName: string } | undefined {
-  if (!choice) return undefined;
-  if (choice === 'auto') return 'auto';
-  if (choice === 'any') return 'required';
-  if (typeof choice === 'object' && choice.type === 'tool') {
-    return { type: 'tool', toolName: choice.name };
-  }
-  return undefined;
 }
 
 /**

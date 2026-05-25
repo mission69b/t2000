@@ -348,12 +348,11 @@ See [`.cursor/rules/memory-injection-architecture.mdc`](https://github.com/missi
 ```typescript
 interface EngineConfig {
   // Core
-  provider: LLMProvider;                    // Required — LLM provider instance
   agent?: unknown;                          // T2000 SDK instance (for tool execution)
   mcpManager?: unknown;                     // McpClientManager (MCP-first reads)
   walletAddress?: string;                   // User's Sui address — populated into onAutoExecuted
   suiRpcUrl?: string;                       // Sui JSON-RPC URL for direct chain queries
-  tools?: Tool[];                           // Custom tool set (defaults to getDefaultTools())
+  tools?: ToolSet;                          // AI SDK ToolSet (defaults to getDefaultTools())
   systemPrompt?: string | SystemBlock[];    // Override default Audric prompt
   model?: string;                           // LLM model override
   maxTurns?: number;                        // Max conversation turns (default: 10)
