@@ -9,7 +9,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.5"
+  version: "1.6"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -20,6 +20,15 @@ Take a collateralized loan using savings deposits as collateral.
 Borrowed funds go to the available balance. A 0.05% protocol fee applies.
 USDsui is permitted as a strategic exception (v0.51.0+) alongside USDC —
 both have NAVI lending pools.
+
+## Rules
+
+1. **USDC or USDsui only.** NAVI doesn't have lending pools for other tokens. The SDK returns `UNSUPPORTED_ASSET` on anything else.
+2. **HF ≥ 1.5 is the hard floor.** Refuse the borrow if the projected health factor drops below 1.5; the safeguard layer enforces it. Surface `maxBorrow` from the error and suggest the recovery (repay or add collateral).
+3. **Always preview HF.** Even when HF stays > 2.0, state the projected HF, borrow amount, and borrow APY before signing. Borrow is the most consequential write — never silent.
+4. **Borrow is single-write.** Never bundle with another write in a Payment Intent. The user must consciously accept debt.
+5. **Repay symmetry is non-negotiable.** A USDsui borrow MUST be repaid with USDsui. If the user only holds USDC, tell them — do not auto-swap. See `t2000-repay`.
+6. **Borrow always confirms.** Across every USD-aware permission preset (`conservative` / `balanced` / `aggressive`), `borrow` has `autoBelow: 0` — it never auto-executes. Treat it as `confirm`-tier under all conditions.
 
 ## Command
 ```bash

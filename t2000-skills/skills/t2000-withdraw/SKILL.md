@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.4"
+  version: "1.5"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -16,6 +16,14 @@ metadata:
 
 ## Purpose
 Withdraw USDC or USDsui from savings back to your checking balance.
+
+## Rules
+
+1. **Withdraw is NOT a wallet read.** It moves funds OUT of NAVI back into the wallet. To check wallet USDC balance use `t2000-check-balance`.
+2. **HF check is mandatory when debt exists.** If the withdrawal drops HF below 1.5, refuse with `WITHDRAW_WOULD_LIQUIDATE`. Surface `safeWithdrawAmount` from error data.
+3. **Default is USDC; explicit `--asset USDsui` for USDsui positions.** Two separate NAVI pool positions — they don't auto-merge.
+4. **"Close my position" = bundled repay + withdraw.** When the user has debt and wants out, emit `repay_debt(all)` + `withdraw(remaining)` in the SAME turn so the engine compiles ONE atomic Payment Intent. Never sequence them across turns — exposes the wallet to a partial-close window.
+5. **Repay symmetry still applies to the bundle.** `repay_debt` MUST use the SAME asset as the original borrow (USDsui debt → USDsui repay). If the user doesn't hold enough of the matching asset, abort with a clear message — do not auto-swap.
 
 ## Command
 ```bash

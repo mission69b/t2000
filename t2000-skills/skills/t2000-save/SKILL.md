@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.6"
+  version: "1.7"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -19,6 +19,14 @@ Deposit **USDC or USDsui** into savings to earn yield on NAVI Protocol. Funds re
 withdrawable at any time. USDsui is permitted as a strategic exception (v0.51.0+) because it has
 its own NAVI pool, often at a different APY than USDC. Every other token (GOLD, SUI, USDT, USDe,
 ETH, NAVX, WAL) is **not saveable** — swap to USDC or USDsui first.
+
+## Rules
+
+1. **Only USDC or USDsui save.** The SDK enforces it via `assertAllowedAsset('save', asset)`; other tokens return `UNSUPPORTED_ASSET`.
+2. **Don't auto-swap.** If the user says "save 10 SUI", confirm the swap-and-save intent first — some users want to keep SUI exposure.
+3. **Engine bundling: same turn or not at all.** When you need swap + save, emit BOTH `tool_use` blocks in the same assistant turn so the engine compiles ONE atomic Payment Intent. Never call them in separate turns — that loses atomicity and exposes price drift.
+4. **Preview is mandatory.** Before emitting, always surface: source token + amount, estimated USDC received (from `swap_quote`), save APY, total fees. The user signs once but the LLM walks them through the math first.
+5. **CLI users get sequential.** The CLI doesn't bundle. Run `t2000 swap` then `t2000 save all` — accept small drift for amounts under $1k.
 
 ## Command
 ```bash

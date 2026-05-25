@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.3"
+  version: "1.4"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -17,6 +17,15 @@ metadata:
 ## Purpose
 Transfer USDC from the agent's available balance to any Sui address. Gas is
 self-funded from the agent's SUI reserve (auto-topped up if needed).
+
+## Rules
+
+1. **Validate the recipient first.** Names → contacts lookup; `0x...` → `isValidSuiAddress()`. Refuse with `INVALID_ADDRESS` on a malformed address; don't guess.
+2. **Resolve SuiNS over contacts when both exist.** `alex.sui` is preferred over a local contact named `alex` — SuiNS is the global standard. The contacts subsystem is deprecated and will sunset.
+3. **Sends are single-write.** Never bundle with another write in a Payment Intent. Each transfer is its own intent. If you need send + something else, sequence them across turns.
+4. **Don't auto-save raw addresses.** After a send to an unknown address, OFFER to save as contact but require the user to provide a name. Cluttered contacts hurt UX.
+5. **Amount precision matters.** Floor to USDC's 6 decimals (or 2 for display). Never round up — `Math.round` can produce a number larger than the on-chain balance and the transfer will fail simulation.
+6. **Multi-recipient = multiple sends.** A "send to A, B, C" request emits N parallel `send_transfer` tool calls; the engine compiles them into atomic bundles of up to 4 per Payment Intent (host splits across multiple intents if N > 4).
 
 ## Command
 ```bash

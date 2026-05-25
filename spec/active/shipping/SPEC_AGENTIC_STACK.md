@@ -1,6 +1,6 @@
 # SPEC — Agentic Stack (One Cohesive Release)
 
-> **Status:** ACTIVE — Phase 1 in progress (S.321)
+> **Status:** ACTIVE — Phase 1 ✅ shipped (S.321), Phase 2+3 ✅ shipped (S.322); Phase 4+5 pending
 > **Started:** 2026-05-25
 > **Trigger:** Founder request 2026-05-25 — *"Ideally what im trying to do is create one cohesive stack for agents."* Inspired by Circle's pattern: `curl -sL https://agents.circle.com/skills/setup.md` + open skills repo at `circlefin/skills`.
 > **Scope:** 5 phases. Sequential, ~3-4 days total. No gates.
@@ -61,25 +61,44 @@ Implements Tier 1 picks from [spec/active/CLI_ARCH_REVIEW_2026-05-25.md](../CLI_
 
 ---
 
-## Phase 2 — Skills Repo Modernization (~1d)
+## Phase 2 — Skills Repo Modernization (~1d) — ✅ SHIPPED S.322
 
-Bring `t2000-skills/` to Circle-pattern-aware but NOT Circle-clone. **Lighter touch** — adopt minimum that helps the LLM choose tools; do NOT fork Circle's full compliance scaffolding (Security Rules + Best Practices + Appendix gates).
+Brought `t2000-skills/` to Circle-pattern-aware but NOT Circle-clone. Lighter touch — minimum Rules block added only to the 5 high-impact write skills (`save`, `borrow`, `send`, `repay`, `withdraw`); read-only / advisory skills left as-is.
 
-**Skills to ADD:** `t2000-swap`, `t2000-stake`, `t2000-yields`.
-**No separate `index.json`:** Generated at build time from frontmatter (logic in Phase 3).
+**Skills ADDED (4 net-new — 14 → 18 total):**
+- `t2000-swap` — Cetus aggregator wrapper, preview rules, price-impact thresholds.
+- `t2000-stake` — VOLO liquid staking (SUI → vSUI), explicit comparison vs NAVI save.
+- `t2000-yields` — APY comparison across NAVI USDC / USDsui / VOLO.
+- `t2000-setup` — one-prompt install entry point (consumed by Phase 3's curl flow).
+
+**Rules blocks added to 5 existing skills:**
+- `t2000-save` v1.6 → v1.7 (asset gate + bundling contract pinned)
+- `t2000-borrow` v1.5 → v1.6 (HF ≥ 1.5 floor + repay symmetry pinned)
+- `t2000-send` v1.3 → v1.4 (single-write + SuiNS-over-contacts pinned)
+- `t2000-repay` v1.5 → v1.6 (USDsui support added + symmetry pinned)
+- `t2000-withdraw` v1.4 → v1.5 (bundled close-position pinned)
+
+**Drift fix:** `t2000-engine` v2.0 → v2.1 (description count corrected: 37 → 26 tools post-S.277).
+
+**README:** `t2000-skills/README.md` updated with the canonical one-prompt install + manifest URL + the 18-skill index.
 
 ---
 
-## Phase 3 — One-Prompt Install Infrastructure (~1d)
+## Phase 3 — One-Prompt Install Infrastructure (~1d) — ✅ SHIPPED S.322
 
-Build the Circle-equivalent: a curl-able setup markdown that the LLM reads + executes.
+Built the Circle-equivalent: a curl-able setup markdown that the LLM reads + executes.
 
-**Single source of truth:** Next.js dynamic route at `apps/web/app/skills/[slug]/route.ts` reads from `t2000-skills/skills/<slug>/SKILL.md` at runtime. No copies. No sync script.
+**Single source of truth implemented:** Next.js dynamic route at `apps/web/app/skills/[slug]/route.ts` reads `t2000-skills/skills/<slug>/SKILL.md` at runtime. Production bundling is via `outputFileTracingIncludes` in `apps/web/next.config.ts` (glob key `/skills/*` because picomatch treats `[slug]` as a character class) — Vercel pulls the markdown into the function bundle. No copies, no sync script.
 
 **New artifacts:**
-- `apps/web/app/skills/[slug]/route.ts` — serves any skill at `t2000.ai/skills/<slug>`.
-- `apps/web/app/.well-known/agent-skills/index.json/route.ts` — generated manifest in Circle's shape.
-- `t2000-skills/skills/t2000-setup/SKILL.md` — NEW entry-point skill (the only net-new sub-skill content).
+- `apps/web/app/skills/[slug]/route.ts` — serves any skill at `t2000.ai/skills/<slug>` as `text/markdown; charset=utf-8`. Slug validated against `^[a-z0-9-]+$`. 404 on unknown slugs.
+- `apps/web/app/.well-known/agent-skills/index.json/route.ts` — manifest in Circle-compatible shape (`{ version, name, description, homepage, generated, skills: [{name, description, url, version, license}] }`). Reads frontmatter from every `t2000-skills/skills/<slug>/SKILL.md` at build time (force-static + 5min revalidate). Inline YAML parser handles the `>-` folded scalar (for `description`) AND the nested `metadata:` block (for `version`).
+- `t2000-skills/skills/t2000-setup/SKILL.md` — the entry-point skill walking install → init → fund → safeguards → MCP install → verify.
+
+**Verification (build-time):**
+- All 18 skill markdown files traced into both function bundles (`.next/.../route.js.nft.json`).
+- Prerendered manifest body (`apps/web/.next/server/app/.well-known/agent-skills/index.json.body`) contains 18 entries with per-skill versions extracted correctly.
+- Smoke script at `apps/web/.smoke-skills.mjs` validates the SKILLS_DIR path resolution + new skills exist + Rules blocks landed.
 
 **One-prompt install (canonical):**
 ```
@@ -141,8 +160,8 @@ flowchart LR
 
 | Phase | Tracker entry | Status |
 |---|---|---|
-| 1 | S.321 | IN PROGRESS |
-| 2+3 | S.322 (bundled) | pending |
+| 1 | S.321 | ✅ shipped 2026-05-25 (`@t2000/*@3.2.0`) |
+| 2+3 | S.322 (bundled) | ✅ shipped 2026-05-25 (skills are static, no npm release) |
 | 4 | S.323 | pending |
 | 5 | S.324 | pending |
 

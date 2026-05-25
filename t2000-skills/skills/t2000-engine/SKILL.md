@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "2.0"
+  version: "2.1"
   requires: "@t2000/engine (npm i @t2000/engine)"
 ---
 
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Build conversational AI agents with financial capabilities on Sui.
-`@t2000/engine` provides `AISDKEngine`, 37 financial tools (25 read + 12 write),
+`@t2000/engine` provides `AISDKEngine`, 26 financial tools (18 read + 8 write),
 LLM orchestration via Vercel AI SDK v6, MCP client/server integration,
 streaming, sessions, and cost tracking.
 
