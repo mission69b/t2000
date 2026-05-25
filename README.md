@@ -26,7 +26,7 @@ t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversa
 - 🪪 **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in 3 seconds, every write taps to confirm, Enoki-sponsored gas (web only). Wraps every other product.
 - 🧠 **Audric Intelligence** — the brain (the moat). Four systems orchestrate every money decision: Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal), AdviceLog. Multi-step playbooks (skills) ship from `@t2000/mcp` and surface to Cursor / Claude Desktop as MCP prompts. Picks the tool, clears the guards, remembers what it told you.
 - 💰 **Audric Finance** — manage your money on Sui. Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs), Charts (yield/health/portfolio viz). Every action taps to confirm via Passport.
-- 💸 **Audric Pay** — the money primitive. Move money: free, global, instant (on Sui for now). Send USDC, receive via payment links/invoices/QR. No bank, no borders, no fees.
+- 💸 **Audric Pay** — the money primitive. Move money: free, global, instant (on Sui for now). Send USDC, receive via payment links / QR. No bank, no borders, no fees.
 - 🛒 **Audric Store** — creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon.**
 
 Five t2000 packages give AI agents and developers everything they need to build the same thing.
@@ -95,7 +95,6 @@ t2000 wraps financial primitives into a single interface:
 | **Liquid Staking** | Stake SUI for vSUI (~3-5% APY) | [VOLO](https://www.volosui.com) (thin tx builders) |
 | **Payments (MPP)** | Pay for API resources with USDC | [@suimpp/mpp](https://github.com/mission69b/suimpp) + [MPP Gateway](https://mpp.t2000.ai) |
 | **Market Data** | Wallet portfolio, USD prices | [BlockVision](https://blockvision.org) Indexer REST (`balance_check`, `portfolio_analysis`, `token_prices`); Sui RPC + hardcoded-stable degraded fallback |
-| **Protocol metadata** | TVL trends, fees, audits, safety | [DefiLlama](https://defillama.com) via the lone `protocol_deep_dive` tool |
 | **DeFi rates** | NAVI lending APYs (supply / borrow) | NAVI MCP via `rates_info` |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set`, `t2000 lock/unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
@@ -153,17 +152,16 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 
 ## Engine — Audric Intelligence (the moat)
 
-`@t2000/engine` powers [Audric](https://audric.ai) — the conversational finance agent. It implements **Audric Intelligence**, the 5-system moat that makes Audric a financial agent rather than a chatbot. Every action it triggers still waits on Audric Passport's tap-to-confirm.
+`@t2000/engine` powers [Audric](https://audric.ai) — the conversational finance agent. It implements **Audric Intelligence**, the 4-system moat that makes Audric a financial agent rather than a chatbot. Every action it triggers still waits on Audric Passport's tap-to-confirm.
 
-> _Not a chatbot. A financial agent._ Five systems work together to **understand** your money (Silent Profile), **reason** about decisions (Reasoning Engine), **act** through 35 financial tools in one conversation (Agent Harness), **remember** what you do on-chain (Chain Memory), and **remember what it told you** (AdviceLog). Picks the tool, clears the guards, never contradicts itself.
+> _Not a chatbot. A financial agent._ Four systems work together to **understand** your money (Memory), **reason** about decisions (Reasoning Engine), **act** through 26 financial tools in one conversation (Agent Harness), and **remember what it told you** (AdviceLog). Picks the tool, clears the guards, never contradicts itself.
 
 | System | What it does | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 26 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Read tools fan out in parallel via AI SDK's native step model; write tools serialise structurally — confirm-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step. Auto-execute writes (USD-aware permission resolver) inherit the same one-write-per-step contract from the LLM's planning. | `AISDKEngine` + AI SDK v6 `streamText` + `needsApproval` round-trip + 18 read / 8 write tools (`getDefaultTools()`) |
-| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort` routes `low`/`medium`/`high`/`max`), 14 safety guards across 3 priority tiers (12 pre-exec + 2 post-exec hints) — `input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`, `cost_warning`, `artifact_preview`, `stale_data`. Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save", "emergency withdraw", "account report", "send to alice") lives in **skills** — 14 markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` at build time and exposed to MCP clients as `skill-<name>` prompts. Prompt caching on system prompt + tool definitions. Extended thinking always-on for Sonnet/Opus. | `classifyEffort`, `runGuards`, `t2000-skills/skills/`, `@t2000/mcp` skills-as-prompts adapter, `engine.ts` `cache_control` |
-| 🧠 **Silent Profile** | Knows your finances. Daily on-chain orientation snapshot (savings/wallet/debt USD, health factor, weighted APY, recent activity) refreshed at 02:00 UTC and injected as a `<financial_context>` system-prompt block at every engine boot — every chat starts oriented, no warm-up tool calls. Plus a Claude-inferred profile (risk tolerance, goals, horizon) from chat history. Never surfaced as nudges. | audric-side: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + `buildProfileContext()` |
-| 🔗 **Chain Memory** | Remembers what you do on-chain. 7 classifiers extract structured facts (recurring sends, idle balances, position changes, near-liquidation events, large transactions, compounding streaks, borrow patterns) into `ChainFact` rows. Silent context — no proposals, no notifications. | audric-side: 7 chain classifiers + `ChainFact` Prisma model + `buildMemoryContext()` |
-| 📓 **AdviceLog** | Remembers what it told you. Every recommendation is written via `record_advice` (audric-side tool); last 30 days hydrate every turn so the chat doesn't contradict itself across sessions. `actedOn` flips when the corresponding write executes (via `EngineConfig.onAutoExecuted`). | audric-side: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
+| 🎛️ **Agent Harness** | 26 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Read tools fan out in parallel via AI SDK's native step model; write tools serialise structurally — confirm-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step. | `AISDKEngine` + AI SDK v6 `streamText` + `needsApproval` round-trip + 18 read / 8 write tools (`getDefaultTools()`) |
+| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort` routes `low`/`medium`/`high`/`max`), 12 safety guards across 3 priority tiers (10 pre-exec + 2 post-exec hints). Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` at build time and exposed to MCP clients as `skill-<name>` prompts. Prompt caching on system prompt + tool definitions. Extended thinking always-on for Sonnet/Opus. | `classifyEffort`, `runGuards`, `t2000-skills/skills/`, `@t2000/mcp` skills-as-prompts adapter |
+| 🧠 **Memory (MemWal)** | Knows your finances + remembers your patterns. Long-term vector facts (preferences, goals, risk tolerance, on-chain patterns) recalled top-K each turn into a `<memory_recall>` system-prompt block. Plus a daily `<financial_context>` snapshot (savings/wallet/debt USD, health factor, weighted APY, recent activity) refreshed at 02:00 UTC — every chat starts oriented, no warm-up tool calls. Never surfaced as nudges. | Engine: `prepareStep` + `MemoryStore` injection point. Audric-side: `@mysten-incubation/memwal` SDK + `UserFinancialContext` Prisma model + `buildFinancialContextBlock()` |
+| 📓 **AdviceLog** | Remembers what it told you. Every recommendation is written via `record_advice` (audric-side tool); last 30 days hydrate every turn so the chat doesn't contradict itself across sessions. `actedOn` flips when the corresponding write executes. | Audric-side: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
 
 It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
 
@@ -196,14 +194,14 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 ### What shipped recently — Spec 1 + Spec 2
 
-The harness has had two correctness-and-intelligence upgrades on top of the 5-system base:
+The harness has had two correctness-and-intelligence upgrades on top of the 4-system base:
 
 | Spec | Versions | What it added |
 |---|---|---|
 | **Spec 1 — Correctness** | engine v0.41.0 → v0.50.3 | `attemptId` UUID stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning. `EngineConfig.onAutoExecuted` hook so `auto`-permission writes land in the same telemetry as confirm-gated ones. |
-| **Spec 2 — Intelligence** | engine v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`) for graceful 429 handling. `<financial_context>` boot-time orientation block (Silent Profile). `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. `protocol_deep_dive` retained on DefiLlama as the lone exception. |
+| **Spec 2 — Intelligence** | engine v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`) for graceful 429 handling. `<financial_context>` boot-time orientation block (now part of the Memory system). `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. (S.277 / engine 2.18.0 later cut the lone remaining `protocol_deep_dive` DefiLlama consumer.) |
 
-26 built-in tools (18 read, 8 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP for lending data and BlockVision Indexer REST for wallet portfolio + USD prices, falling back to Sui RPC. Includes a canvas system for interactive in-chat visualizations. The compound write `harvest_rewards` (S.119, May 2026) packs claim + N swaps + deposit into one PTB so users can recycle NAVI rewards into savings with a single tap.
+26 built-in tools (18 read, 8 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP for lending data and BlockVision Indexer REST for wallet portfolio + USD prices, falling back to Sui RPC. Includes a canvas system for interactive in-chat visualizations. The compound write `harvest_rewards` packs claim + N swaps + deposit into one PTB so users can recycle NAVI rewards into savings with a single tap.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 
@@ -340,7 +338,7 @@ pnpm --filter @t2000/server test
 | SDK | TypeScript, `@mysten/sui` |
 | Engine | TypeScript, Anthropic Claude, MCP client/server |
 | CLI | Commander.js, Hono (HTTP API) |
-| DeFi | NAVI (lending), Cetus (swap), VOLO (liquid staking), BlockVision (portfolio + prices), DefiLlama (`protocol_deep_dive` only) |
+| DeFi | NAVI (lending), Cetus (swap), VOLO (liquid staking), BlockVision (portfolio + prices) |
 | Web | Next.js 15, Tailwind CSS v4, React 19 |
 | Consumer | Audric — zkLogin, Enoki gas, Geist + Instrument Serif |
 | Infra | AWS ECS Fargate, Vercel, Upstash Redis |

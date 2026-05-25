@@ -33,19 +33,20 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-## Audric Intelligence — the 5 systems
+## Audric Intelligence — the 4 systems
 
 > _Not a chatbot. A financial agent._ Four systems work together to **understand** the user's money, **reason** about decisions, **act** through 26 financial tools in one conversation, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
 | 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), one agent. | Tool registry, parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
-| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 12 guards (11 pre-exec + 1 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
-| 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
-| 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
+| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 12 guards (10 pre-exec + 2 post-exec hints) across 3 priority tiers, prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
+| 🧠 **Memory (MemWal)** | Knows your finances + remembers your patterns. | Long-term vector facts (preferences, goals, risk tolerance, on-chain patterns) recalled top-K each turn into `<memory_recall>` system-prompt block. Plus a daily `<financial_context>` block (savings/wallet/debt/HF/APY) from `UserFinancialContext`. | Engine: `prepareStep` + `MemoryStore` interface. _Audric-side_: `@mysten-incubation/memwal` SDK + `UserFinancialContext` Prisma model + 02:00 UTC `financial-context-snapshot` cron |
 | 📓 **AdviceLog** | Remembers what it told you. | Every recommendation logged (`record_advice` audric tool); last 30 days hydrated each turn so the chat never contradicts itself | _Audric-side_: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
 
-The engine package owns **Agent Harness** and **Reasoning Engine** in code. The other three systems are powered by audric-side data and injected via the system prompt — see `audric/.cursor/rules/engine-context-assembly.mdc` for the host contract.
+The engine package owns **Agent Harness** and **Reasoning Engine** in code, plus the `MemoryStore` injection point for **Memory**. The MemWal vector backend, the daily snapshot cron, and the AdviceLog Prisma model are audric-side — see `audric/.cursor/rules/engine-context-assembly.mdc` for the host contract.
+
+> v0.7d Phase 6 Block A (2026-05-21) collapsed the former "Silent Profile" + "Chain Memory" systems into a single MemWal-backed **Memory** system. Pre-Block A docs may still mention 5 systems; the canonical is 4.
 
 ## Architecture
 
@@ -143,59 +144,18 @@ AISDKEngine.submitMessage()
 | `harvest_rewards` | Compound: claim → swap each non-USDC reward to USDC → deposit merged USDC into NAVI savings (single PTB) |
 | `swap_execute` | Swap any token pair via Cetus Aggregator (20+ DEXs) |
 
-> Note: `record_advice` is an Audric-local tool registered in
-> `audric/apps/web-v2/lib/audric/moat-context.ts` (post-v0.7e Phase 5; previously `audric/apps/web/lib/engine/advice-tool.ts`), not part of the engine package.
+> Note: `record_advice` is an Audric-local tool registered in `audric/apps/web-v2/lib/audric/moat-context.ts`, not part of the engine package.
 
-> **Simplification Day 7:** Removed 9 tools — `allowance_status`, `toggle_allowance`,
-> `update_daily_limit`, `update_permissions` (allowance contract dormant under zkLogin),
-> `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't execute without user
-> online to sign), `pattern_status`, `pause_pattern` (pattern proposals removed; classifiers
-> kept as pure functions).
->
-> **v1.4 BlockVision swap (April 2026):** Removed 7 `defillama_*` read tools —
-> `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`,
-> `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`,
-> `defillama_sui_protocols`. Added 1 — `token_prices` (BlockVision-backed). `balance_check`
-> and `portfolio_analysis` rewired to BlockVision Indexer REST API for sub-500ms portfolio
-> fetches. `protocol_deep_dive` retains its DefiLlama dependency (narrow scope, no
-> equivalent on BlockVision). Net post-v1.4: 23 reads + 11 writes = 34 tools.
-> Post-SPEC-10 (`resolve_suins`) + S.119 (`pending_rewards`) + Track B (`harvest_rewards`): 25 reads + 12 writes = 37 tools.
->
-> **SPEC 10 SuiNS reverse-lookup (May 2026):** Added 1 read tool — `resolve_suins`.
->
-> **S.119 NAVI rewards (May 2026):** Added 1 read tool — `pending_rewards` (preview claimable
-> rewards without triggering a claim) — and 1 write tool — `harvest_rewards` (compound: claim
-> NAVI rewards → swap each non-USDC reward to USDC → deposit merged USDC into NAVI savings,
-> single PTB). Per-leg fees (10 bps Cetus overlay × N + 10 bps NAVI save fee) wired in S.120.
->
-> **S.245 pay_api + mpp_services deletion (May 2026):** Removed 1 read tool (`mpp_services`)
-> and 1 write tool (`pay_api`) per V07E_D_QUESTION_AUDITS D-2 reframe. The legacy MPP
-> gateway capability returns as a Commerce primitive in the upcoming Audric Store SPEC —
-> clean-slate redesign, not a port of the legacy 3-leg apps/web flow.
-> Net post-S.245: **24 reads + 11 writes = 35 tools**.
->
-> S.269 item 6 (2026-05-23) deletes `save_contact` (engine-side dead
-> tool — host-side Prisma persistence with no engine-owned effect; the
-> user surface is the audric send screen, not the LLM). Net post-S.269
-> item 6: 24 reads + 10 writes = 34 tools.
->
-> S.269 item 7 / V07E_INVOICE_DEPRECATION (2026-05-23) deletes 3
-> invoice tools — `create_invoice`, `list_invoices`, `cancel_invoice` —
-> plus the `InvoiceSchema` Zod definition. Payment links absorb the
-> invoicing use case (label/memo encode context). The 3 surviving
-> payment-link tool descriptions were re-written to route invoice
-> intents (`"create an invoice"`, `"bill a client"`, `"send an
-> invoice"`) to `create_payment_link`. Engine bumped 2.16.0 → 2.17.0.
-> Net post-S.269 item 7: **21 reads + 10 writes = 31 tools** (current).
+> **Tool surface history.** The 26-tool surface (18 read + 8 write) is post-S.277 (2026-05-23, engine 2.18.0) "Earns Its Keep" audit. Earlier deletions: Simplification Day 7 (9 tools — allowance + schedule + pattern), v1.4 BlockVision swap (7 `defillama_*` reads → 1 `token_prices`), S.245 (`pay_api` + `mpp_services`), S.269 (`save_contact` + 3 invoice tools — payment links absorb invoice intents via label/memo). Full audit trail: `spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md`.
 
 ## Recent Upgrades — Spec 1 (Correctness) + Spec 2 (Intelligence)
 
-Two upgrades shipped on top of the 5-system base:
+Two upgrades shipped on top of the 4-system base:
 
 | Spec | Versions | What it added |
 |---|---|---|
 | **Spec 1 — Correctness** | v0.41.0 → v0.50.3 | Per-yield `attemptId` (UUID v4) on every `pending_action` — stable join key from action → on-chain receipt → `TurnMetrics` row. `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning (resume route applies `modifications`). `EngineConfig.onAutoExecuted` hook so `auto`-permission writes participate in the same telemetry as confirm-gated ones. |
-| **Spec 2 — Intelligence** | v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices`; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`) for graceful 429 handling. `<financial_context>` boot-time orientation injected from the daily `UserFinancialContext` snapshot (Silent Profile). `attemptId`-keyed resume (no clobbering between two pending actions in the same turn). `protocol_deep_dive` retained on DefiLlama as the lone exception. |
+| **Spec 2 — Intelligence** | v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices`; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`) for graceful 429 handling. `<financial_context>` boot-time orientation injected from the daily `UserFinancialContext` snapshot. `attemptId`-keyed resume (no clobbering between two pending actions in the same turn). (S.277 / engine 2.18.0 later cut the lone remaining `protocol_deep_dive` DefiLlama consumer — engine no longer talks to `api.llama.fi`.) |
 
 > Local-only specs: `spec/active/harness/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `spec/active/harness/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Cross-repo contracts: `t2000/.cursor/rules/agent-harness-spec.mdc` + `t2000/.cursor/rules/blockvision-resilience.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc`.
 
@@ -233,7 +193,7 @@ Write tool permission resolved dynamically via `resolvePermissionTier(operation,
 ### Reasoning Engine
 
 - **Adaptive thinking** — routes queries to `low`/`medium`/`high` effort based on financial complexity
-- **Guard runner** — 14 guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX). See `guards.ts` for the full list.
+- **Guard runner** — 12 guards (10 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX). See `guards.ts` for the full list.
 - **Skills** — 14 markdown playbooks in `t2000-skills/skills/*/SKILL.md` (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save section, `t2000-send` with offer-save-contact, plus 8 single-tool skills). Baked into `@t2000/mcp` at build time, exposed to MCP clients as `skill-<name>` prompts. Skill content guides the LLM through multi-step intents; the engine just runs the tools the LLM picks. (Pre-Phase 6 had a YAML recipe runtime; deleted May 2026 — see `index.ts` header comment for migration notes.)
 - **Context compaction** — 200k limit, 85% compact trigger, LLM summarizer fallback
 - **Tool flags** — `mutating`, `requiresBalance`, `affectsHealth`, `irreversible` etc.
@@ -426,7 +386,7 @@ const mcpManager = new McpClientManager();
 await mcpManager.connect(NAVI_MCP_CONFIG);
 
 const engine = new AISDKEngine({
-  provider,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   agent,
   mcpManager,
   walletAddress: '0x...',

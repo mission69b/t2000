@@ -117,6 +117,8 @@ t2000 init
 | `t2000 mcp uninstall` | Remove MCP config from AI platforms |
 | `t2000 mcp` | Start MCP server (stdio — used by AI platforms, not run manually) |
 
+See the [MCP setup guide](../../docs/mcp-setup.md) for manual configuration.
+
 ### Config (dot-notation)
 
 | Command | Description |
@@ -129,7 +131,6 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 init` | Create a new agent bank account (Ed25519 keypair, AES-256-GCM encrypted) |
 | `t2000 lock` | Lock agent — freeze all operations |
 | `t2000 unlock` | Unlock agent — resume operations (requires PIN) |
 | `t2000 balance` | Show available USDC + savings + gas reserve |
@@ -137,7 +138,7 @@ t2000 init
 | `t2000 address` | Show wallet address |
 | `t2000 deposit` | Show funding instructions |
 | `t2000 import` | Import an existing bank account from private key |
-| `t2000 export` | Export private key (raw Ed25519 hex) |
+| `t2000 export` | Export private key (bech32 `suiprivkey1...` format) |
 | `t2000 history` | Transaction history |
 
 ### Transfers
@@ -208,21 +209,6 @@ The local `~/.t2000/contacts.json` alias map is being retired. **Use SuiNS inste
 |---------|-------------|
 | `t2000 config get [key]` | Show a config value (omit key for all) |
 | `t2000 config set <key> <value>` | Set a config value |
-
-### MCP Server
-
-```bash
-# Auto-configure Claude Desktop + Cursor
-t2000 mcp install
-
-# Remove MCP config
-t2000 mcp uninstall
-
-# Start MCP server (used by AI platforms, not typically run directly)
-t2000 mcp
-```
-
-Safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 
