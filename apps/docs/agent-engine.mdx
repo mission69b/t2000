@@ -165,7 +165,7 @@ await mcp.connect(NAVI_MCP_CONFIG);                // NAVI MCP for live lending 
 const tools = await mcp.listTools();               // wire into AISDKEngine.tools
 ```
 
-`McpClientManager` is backed by `@ai-sdk/mcp`. `McpPromptAdapter` is an extension point for consuming MCP prompts as skill recipes — currently dormant; see the design notes in `spec/reference/MCP_PROMPTS_INTEGRATION_DECISION.md`.
+`McpClientManager` is backed by `@ai-sdk/mcp`. `McpPromptAdapter` is an extension point for consuming MCP prompts as skill recipes — currently dormant by design (it's the "speak any Sui protocol's MCP" seam, kept unwired until a downstream consumer needs it).
 
 ## MCP server adapter (expose engine tools)
 

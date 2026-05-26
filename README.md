@@ -65,8 +65,7 @@ t2000/
 │   ├── gateway/          mpp.t2000.ai — MPP gateway (40+ paid APIs)
 │   └── server/           api.t2000.ai — fee ledger + indexer + cron
 │
-├── t2000-skills/         Agent Skills (markdown playbooks)
-└── spec/                 Product specs (active/shipping/archive/reference)
+└── t2000-skills/         Agent Skills (markdown playbooks)
 ```
 
 ## Development

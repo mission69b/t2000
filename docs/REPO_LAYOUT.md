@@ -1,8 +1,8 @@
 # t2000 Repo Layout
 
-> **Single source of truth for "where does X go?" in this monorepo.** Last updated 2026-05-18 (SPEC 38a v0.2 ship).
+> **Single source of truth for "where does X go?" in this monorepo.**
 
-This is the public-facing layout reference. Internal SPEC-specific organization is documented in `spec/README.md` (internal).
+This is the public-facing layout reference.
 
 ## Top-level structure
 
@@ -29,12 +29,12 @@ t2000/
 │   ├── marketing/                           (litepaper, etc.)
 │   ├── claude-desktop.json
 │   └── cursor-mcp.json
-├── spec/                                    ← internal specs + reference + runbooks + archive
-│   └── README.md                            (internal layout SSOT)
 ├── infra/, patches/                         ← infra + tooling
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
 ```
+
+> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access.
 
 ## Where does X go?
 
@@ -42,10 +42,6 @@ t2000/
 |---|---|
 | Public-facing doc (anyone on GitHub should see) | `docs/<NAME>.md` |
 | Marketing artifact (litepaper, deck) | `docs/marketing/<NAME>.md` |
-| Operational runbook (incident response, deploy procedure) | `spec/runbooks/RUNBOOK_<name>.md` |
-| Reference doc (CLI UX contract, telemetry baseline) | `spec/reference/<NAME>.md` |
-| Active SPEC | `spec/active/SPEC_N_<name>.md` (gitignored by default) |
-| Shipped SPEC | `spec/archive/<version>/SPEC_N_<name>.md` |
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
 | Public developer docs page | `apps/docs/<slug>.mdx` (Mintlify; deploys to `developers.t2000.ai`) |
@@ -86,6 +82,5 @@ See `audric/CLAUDE.md` for analogous layout. Key conventions:
 
 ## Linked references
 
-- `spec/README.md` — internal SPEC layout SSOT (gitignored areas + promotion rules)
 - `CLAUDE.md` "Key Documents" section — pointer table from agent context
 - `audric/CLAUDE.md` — sister repo analogue

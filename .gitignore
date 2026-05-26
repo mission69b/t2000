@@ -32,34 +32,8 @@ pnpm-debug.log*
 # infra generated
 infra/.env.infra
 
-# spec/ — selective tracking per SPEC 38a (2026-05-18)
-#
-# Layout doc at spec/README.md explains the active/archive/reference/runbooks
-# breakdown. Rule of thumb: anything that's PUBLIC HISTORY (shipped SPECs,
-# deferred SPECs, deprecated, reference docs, runbooks) is tracked; anything
-# that's WORKING NOTES (active drafts, harness internals, rotating
-# handoff/build-tracker archives, founder one-offs) stays local-only.
-spec/*
-!spec/README.md
-!spec/SPEC_INVENTORY_SSOT.md
-!spec/active/
-!spec/archive/
-!spec/reference/
-!spec/runbooks/
-# spec/active/ — most active work is local-only; track the shipping/ subdir only
-spec/active/*
-!spec/active/shipping/
-# spec/archive/ — public history EXCEPT founder-local rotating archives + one-offs that contain personal/strategic content
-spec/archive/handoffs/
-spec/archive/build-tracker/
-spec/archive/one-offs/BL_MEETING_PREP.md
-spec/archive/one-offs/SM_DATA_USECASES.md
-spec/archive/one-offs/audric-raise-strategy.canvas.tsx
-spec/archive/one-offs/AUDIT_FINDINGS.md
-spec/archive/one-offs/article-trust-layer.md
-spec/archive/deferred/audric-simplification-spec.md
-spec/archive/deprecated/audric-scaling-spec.md
-spec/archive/deprecated/audric-scaling-spec-v2.md
+# spec/ — entire tree is local-only / not part of the public repo
+spec/
 
 # marketing — wiped in S.20; ignore by default in case someone recreates locally
 marketing/

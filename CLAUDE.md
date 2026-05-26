@@ -113,21 +113,14 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 
 ---
 
-## Repo Layout (SPEC 38a — 2026-05-18)
+## Repo Layout
 
 Read `docs/REPO_LAYOUT.md` once at session start for "where does X go?"
-Read `spec/README.md` (internal) for the spec/active vs archive vs reference layout + promotion rules.
 
 **Short version:**
-- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + 3 founder-local trackers (`audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
-- **`spec/active/`** — in-flight SPECs (mostly gitignored)
-- **`spec/active/shipping/`** — SPECs with at least one phase shipped (tracked)
-- **`spec/archive/<version>/`** — fully shipped SPECs (tracked)
-- **`spec/archive/deferred/`**, **`deprecated/`**, **`one-offs/`**, **`pre-spec-30/`** — historical
-- **`spec/archive/handoffs/`** + **`build-tracker/`** — rotating archives (gitignored)
-- **`spec/reference/`** — long-lived reference docs (tracked: PRODUCT_SPEC, locked-decision docs, etc.)
-- **`spec/runbooks/`** — operational runbooks (tracked)
+- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + founder-local trackers (`audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
 - **`docs/`** — public-facing docs (tracked)
+- **`spec/`** — internal SPECs, references, runbooks, archive. **Entire tree is local-only / gitignored** (the public repo never sees SPEC content). Active in-flight SPECs, locked design decisions, harness contracts, runbooks all live here for the maintainers; nothing in `spec/` is part of the published surface.
 
 ## Key Documents
 
@@ -136,21 +129,9 @@ Read `spec/README.md` (internal) for the spec/active vs archive vs reference lay
 | [`developers.t2000.ai`](https://developers.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
 | `docs/REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
-| `spec/README.md` | Internal spec/ layout — active vs archive vs reference + promotion rules | Working on a SPEC |
 | `audric-roadmap.md` (local-only) | Product roadmap, feature specs, revenue model (gitignored) | Feature planning |
 | `audric-build-tracker.md` (local-only) | Execution status per phase and task (gitignored). **Top of file: canonical "Forward backlog" table — SSOT for SPEC numbering. Always read before assigning a SPEC number.** | Status checks; before promoting work to a SPEC number |
-| `spec/active/BENEFITS_SPEC_v07c.md` (local-only) | v0.7c migration SPEC (Chat Shell Fork — in flight) | v0.7c work |
-| `spec/active/harness/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` (local-only) | Spec 1 — engine harness correctness (TurnMetrics, attemptId, modifiableFields) | Engine/harness changes |
-| `spec/active/harness/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` (local-only) | Spec 2 — harness intelligence (BlockVision, financial_context, attemptId resume) | Engine/intelligence changes |
-| `spec/active/shipping/SPEC_30_CROSS_REPO_SECURITY_REVIEW.md` | SPEC 30 (Phase 1A+1B SHIPPED; Phase 2-10 open) | Security work |
-| `spec/archive/v07a/BENEFITS_SPEC_v07a.md` | v0.7a engine drain — SHIPPED 2026-05-18 (historical reference) | Engine architecture context |
-| `spec/reference/PRODUCT_SPEC.md` (local-only) | Product reference | Product decisions |
-| `spec/reference/CANVAS_VS_ARTIFACT.md` | LOCKED — canvases stay as inline read-only; `render_artifact` ships as a separate tool when Audric Store Phase 5 lands | Before proposing artifact migration or new generated-content surfaces |
-| `spec/reference/PRISMA_VS_DRIZZLE.md` | LOCKED — Audric stays on Prisma; do not re-litigate without new evidence | Before proposing ORM migration |
-| `spec/reference/LONG_RUNNING_WORKFLOWS.md` | LOCKED — chat stays inline; workflows fit when Audric Store generation tasks (10s-2min) ship | Before proposing workflow infrastructure for chat |
-| `spec/reference/LLM_CACHING_DECISION.md` | LOCKED — AI Gateway prompt cache only; Redis response cache structurally unsafe for finance content | Before proposing LLM response caching |
-| `spec/reference/MCP_PROMPTS_INTEGRATION_DECISION.md` | DORMANT BY DESIGN — `McpPromptAdapter` + `skillRecipeBlock` stays unwired; "speak any Sui protocol's MCP" extension point | Before proposing wiring or deleting the seam |
-| `spec/runbooks/RUNBOOK_*.md` | Operational runbooks (parent-sui, SPEC 7/9/18-20/37 closeout, BV outage drill) | Operational work |
+| `spec/**` (local-only, gitignored) | Internal SPECs, harness contracts, locked-decision references, operational runbooks — full tree available on the maintainer's machine; not part of the public repo | When the rule/agent context cites a specific SPEC by name |
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
 | `.cursor/rules/single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement | Portfolio/wallet/positions reads |
 | `.cursor/rules/agent-harness-spec.mdc` | Spec 1 + Spec 2 contracts | Engine/resume route changes |
@@ -404,7 +385,7 @@ Write (8): `save_deposit` (USDC + USDsui — strategic exception, see `.cursor/r
 >
 > **S.269 item 6 (2026-05-23):** `save_contact` (write) deleted as part of the template-divergence cleanup slice. Engine-side dead tool — host-side Prisma persistence with no engine-owned effect; the user surface is the audric send screen, not the LLM. Net 35 → 34 tools.
 >
-> **S.277 (2026-05-23):** "Earns Its Keep" audit (engine 2.18.0 + 2.18.1 residue cleanup) cut 5 tools + 2 dead guards. **Volo trio** (`volo_stats`, `volo_stake`, `volo_unstake`) — no Audric chip, no product slot in the 5 named products; `harvest_rewards` routes vSUI via Cetus, not Volo, so cutting Volo is safe. (Pre-S.323: SDK + CLI + MCP retained Volo for "non-Audric consumers"; S.323 cut those too.) **`web_search`** — Brave-backed; already filtered out in audric production (gateway path uses Vercel AI Gateway's `perplexity_search`). `BRAVE_API_KEY` env var also removed. **`protocol_deep_dive`** — DefiLlama-backed; `rates_info` is the in-product proxy for protocol safety. Engine no longer talks to `api.llama.fi`. Also deleted: 2 dead post-cut guards (`costWarning`, `artifactPreview`) + the `costAware` tool flag — both became unreachable post-S.245. **`explain_tx` kept but rethought** — description tightened to "arbitrary external digest only" and the system-prompt primary steer was dropped (`transaction_history` covers the user's own activity). Net 31 → 26 tools (18 read / 8 write), 14 → 12 guards. Patch 2.18.1 scrubbed parallel registries the initial 2.18.0 cut missed (`permission-rules.ts` TOOL_TO_OPERATION + `resolveUsdValue`, `describe-action.ts` switch, `v2/tool-policy.ts` TOOL_POLICY, `tools/tool-modifiable-fields.ts`, `prompt/index.ts` DEFAULT_SYSTEM_PROMPT default steers). See `spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md` for the full audit.
+> **S.277 (2026-05-23):** "Earns Its Keep" audit (engine 2.18.0 + 2.18.1 residue cleanup) cut 5 tools + 2 dead guards. **Volo trio** (`volo_stats`, `volo_stake`, `volo_unstake`) — no Audric chip, no product slot in the 5 named products; `harvest_rewards` routes vSUI via Cetus, not Volo, so cutting Volo is safe. (Pre-S.323: SDK + CLI + MCP retained Volo for "non-Audric consumers"; S.323 cut those too.) **`web_search`** — Brave-backed; already filtered out in audric production (gateway path uses Vercel AI Gateway's `perplexity_search`). `BRAVE_API_KEY` env var also removed. **`protocol_deep_dive`** — DefiLlama-backed; `rates_info` is the in-product proxy for protocol safety. Engine no longer talks to `api.llama.fi`. Also deleted: 2 dead post-cut guards (`costWarning`, `artifactPreview`) + the `costAware` tool flag — both became unreachable post-S.245. **`explain_tx` kept but rethought** — description tightened to "arbitrary external digest only" and the system-prompt primary steer was dropped (`transaction_history` covers the user's own activity). Net 31 → 26 tools (18 read / 8 write), 14 → 12 guards. Patch 2.18.1 scrubbed parallel registries the initial 2.18.0 cut missed (`permission-rules.ts` TOOL_TO_OPERATION + `resolveUsdValue`, `describe-action.ts` switch, `v2/tool-policy.ts` TOOL_POLICY, `tools/tool-modifiable-fields.ts`, `prompt/index.ts` DEFAULT_SYSTEM_PROMPT default steers).
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_schedule`, `list_schedules`, `cancel_schedule`, `pattern_status`, `pause_pattern` — 9 tools deleted. Allowance contract is dormant; scheduled actions can't sign without user presence under zkLogin; pattern detectors stay as silent classifiers (not user-facing proposals).
 >
