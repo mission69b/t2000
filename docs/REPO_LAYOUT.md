@@ -31,7 +31,7 @@ t2000/
 │   └── cursor-mcp.json
 ├── spec/                                    ← internal specs + reference + runbooks + archive
 │   └── README.md                            (internal layout SSOT)
-├── infra/, loadtest/, scripts/, patches/    ← infra + tooling
+├── infra/, patches/                         ← infra + tooling
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
 ```

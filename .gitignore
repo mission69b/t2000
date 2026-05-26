@@ -83,9 +83,6 @@ HANDOFF_NEXT_AGENT.md
 
 # pnpm store
 .pnpm-store/
-loadtest/.env.loadtest
-loadtest/reports/*.json
-loadtest/reports/*.log
 .smoke-jwt
 .smoke-addr
 .smoke-runner.mjs
