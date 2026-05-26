@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@t2000ai",
+    site: "@t2000_ai",
     title: "t2000 — The Infrastructure Behind Audric",
     description:
       "CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway. Built on Sui.",

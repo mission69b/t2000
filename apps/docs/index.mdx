@@ -14,6 +14,18 @@ Five-minute setup. No banks, no borders, no fees on the t2000 layer.
 
 ## Install
 
+### One-prompt install (paste into any AI client)
+
+Paste this into Claude Desktop, Cursor, ChatGPT, or any LLM client — the agent will fetch the live setup skill and walk you through the rest.
+
+```
+Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my Agent Wallet.
+```
+
+The skill markdown lives at [`t2000.ai/skills/t2000-setup`](https://t2000.ai/skills/t2000-setup) — `curl` it directly to see what the agent reads.
+
+### Manual install
+
 ```bash
 npm install -g @t2000/cli
 ```
@@ -57,7 +69,7 @@ Requires Node.js 18+.
 | MCP server | `@t2000/mcp` | npm |
 | Agent engine | `@t2000/engine` | npm |
 | MPP API gateway | — | [`mpp.t2000.ai`](https://mpp.t2000.ai) |
-| Skills | — | [`t2000-skills/`](https://github.com/mission69b/t2000/tree/main/t2000-skills) |
+| Skills | — | [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) |
 | Consumer app | Audric | [`audric.ai`](https://audric.ai) |
 
 ## What you can build

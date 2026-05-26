@@ -3,7 +3,7 @@ import { TerminalDemo } from "./components/TerminalDemo";
 import { InstallCommand } from "./components/InstallCommand";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
-const TWITTER_URL = "https://x.com/t2000ai";
+const TWITTER_URL = "https://x.com/t2000_ai";
 const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";
 const AUDRIC_URL = "https://audric.ai";
 

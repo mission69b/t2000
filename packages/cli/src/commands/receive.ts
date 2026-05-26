@@ -46,7 +46,8 @@ export function registerReceive(program: Command) {
         if (!opts.qrOnly) {
           printKeyValue('Address', address);
           printBlank();
-          printLine(pc.dim('Scan to send tokens to this wallet:'));
+          printLine(pc.dim('Accepts USDC, USDsui, or SUI on Sui mainnet.'));
+          printLine(pc.dim('Scan to send to this wallet:'));
           printBlank();
         }
 

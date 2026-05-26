@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@t2000ai",
+    site: "@t2000_ai",
     title: "t2000 MPP Gateway — Pay-per-request APIs on Sui",
     description:
       "No API keys. No accounts. Your agent pays per request with USDC on Sui.",
