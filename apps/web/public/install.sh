@@ -1,1 +1,146 @@
-../../../install.sh
+#!/usr/bin/env bash
+# t2000 CLI installer — Agent Wallet for AI agents on Sui
+#
+# Usage:
+#   curl -fsSL https://t2000.ai/install.sh | bash
+#
+# What this does:
+#   1. Checks for Node.js (v18+)
+#   2. Installs @t2000/cli globally via npm (provides the `t2` binary)
+#   3. Runs `t2 init` (creates a plain Bech32 wallet)
+#
+# Environment variables:
+#   T2000_SKIP_INIT  - Skip `t2 init` (default: false)
+
+main() {
+
+set -euo pipefail
+
+# ─── Colors (only when outputting to a terminal) ─────────────────────────────
+
+Color_Off='' Red='' Green='' Dim='' Bold='' Blue='' Yellow=''
+
+if [[ -t 1 ]]; then
+  Color_Off='\033[0m'
+  Red='\033[0;31m'
+  Green='\033[0;32m'
+  Yellow='\033[0;33m'
+  Dim='\033[0;2m'
+  Bold='\033[1m'
+  Blue='\033[0;34m'
+fi
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+error() {
+  printf "%b\n" "${Red}error${Color_Off}: $*" >&2
+  exit 1
+}
+
+warn() {
+  printf "%b\n" "${Yellow}warn${Color_Off}: $*" >&2
+}
+
+info() {
+  printf "%b\n" "${Dim}$*${Color_Off}"
+}
+
+success() {
+  printf "%b\n" "${Green}$*${Color_Off}"
+}
+
+bold() {
+  printf "%b\n" "${Bold}$*${Color_Off}"
+}
+
+# ─── Banner ──────────────────────────────────────────────────────────────────
+
+echo ""
+bold "  ┌──────────────────────────────────────────┐"
+bold "  │  ${Green}t2000${Color_Off}${Bold} — Agent Wallet for AI agents          │"
+bold "  └──────────────────────────────────────────┘"
+echo ""
+
+# ─── Check Node.js ───────────────────────────────────────────────────────────
+
+if ! command -v node >/dev/null 2>&1; then
+  error "Node.js is required but not found.
+
+  Install Node.js 18+ from https://nodejs.org
+  Or use a version manager:
+
+    # nvm
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+    nvm install 20
+
+    # brew (macOS)
+    brew install node"
+fi
+
+NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
+if [[ "$NODE_VERSION" -lt 18 ]]; then
+  error "Node.js 18+ is required (found v$(node -v | sed 's/v//'))
+
+  Update Node.js: https://nodejs.org"
+fi
+
+info "  ✓ Node.js $(node -v) detected"
+
+# ─── Check npm ───────────────────────────────────────────────────────────────
+
+if ! command -v npm >/dev/null 2>&1; then
+  error "npm is required but not found. It should come with Node.js."
+fi
+
+# ─── Install @t2000/cli ─────────────────────────────────────────────────────
+
+echo ""
+bold "  Installing @t2000/cli..."
+echo ""
+
+npm install -g @t2000/cli 2>&1 | while IFS= read -r line; do
+  printf "  %s\n" "$line"
+done
+
+if ! command -v t2 >/dev/null 2>&1; then
+  error "Installation failed — t2 command not found after npm install.
+
+  Try installing manually:
+    npm install -g @t2000/cli"
+fi
+
+INSTALLED_VERSION=$(t2 --version 2>/dev/null || echo "unknown")
+
+echo ""
+success "  ✓ t2 ${INSTALLED_VERSION} installed"
+
+# ─── Run t2 init ────────────────────────────────────────────────────────────
+
+if [[ "${T2000_SKIP_INIT:-}" != "true" ]]; then
+  echo ""
+  bold "  Creating your wallet..."
+  echo ""
+  t2 init
+fi
+
+# ─── Done ────────────────────────────────────────────────────────────────────
+
+echo ""
+success "  ──────────────────────────────────────"
+success "  ✓ t2 is ready"
+echo ""
+info "  Next steps:"
+echo ""
+bold "    t2 balance              ${Dim}# check USDC / USDsui / SUI${Color_Off}"
+bold "    t2 send 5 USDC <addr>   ${Dim}# gasless USDC send${Color_Off}"
+bold "    t2 mcp install          ${Dim}# wire Claude / Cursor / Windsurf${Color_Off}"
+echo ""
+info "  Developer docs:  https://developers.t2000.ai"
+info "  Skills:          https://developers.t2000.ai/agent-wallet#skills"
+echo ""
+
+}
+
+# Run the installer — this line MUST be the last line in the file.
+# If the download is interrupted, bash will not execute an incomplete function.
+main "$@"

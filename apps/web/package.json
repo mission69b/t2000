@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "sync-install-sh": "cp ../../install.sh public/install.sh",
+    "dev": "pnpm sync-install-sh && next dev --turbo",
+    "prebuild": "pnpm sync-install-sh",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
