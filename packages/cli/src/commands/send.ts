@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
+import type { SupportedAsset } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 import { truncateAddress, formatUsd } from '@t2000/sdk';
@@ -35,7 +36,11 @@ export function registerSend(program: Command) {
         const result = await agent.send({
           to: recipient,
           amount: parsedAmount,
-          asset,
+          // [v4.0 Phase A Day 2] Legacy CLI command (DELETED Day 5). The
+          // `parseSendArgs` validates against `KNOWN_ASSETS`; the SDK's
+          // `assertAllowedAsset('send', asset)` is the canonical runtime
+          // gate that rejects anything outside USDC / USDsui / SUI.
+          asset: asset as SupportedAsset,
         });
 
         if (isJsonMode()) {

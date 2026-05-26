@@ -375,7 +375,7 @@ describe('composeTx — error handling', () => {
       composeTx({
         sender: VALID_ADDRESS,
         client,
-        steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 0 } }],
+        steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 0, asset: 'USDC' } }],
       }),
     ).rejects.toThrow(/Send amount must be greater than zero/);
   });
@@ -403,7 +403,7 @@ describe('composeTx — error handling', () => {
         client,
         steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 5, asset: 'USDC' } }],
       }),
-    ).rejects.toThrow(/No balance found/);
+    ).rejects.toThrow(/Insufficient USDC balance/);
   });
 
   it('throws ASSET_NOT_SUPPORTED for swap with unknown token', async () => {
@@ -918,8 +918,13 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
       const transfers = countTransferObjectsByRecipient(result.tx);
       // Withdraw materializes its output to sender's wallet (output NOT consumed).
       expect(transfers[VALID_ADDRESS]).toBe(1);
-      // Send fetches USDC from wallet, transfers to recipient.
-      expect(transfers[RECIPIENT_ADDRESS]).toBe(1);
+      // [v4.0 Phase A Day 2] Send no longer produces a `TransferObjects` to
+      // the recipient — USDC sends route through `0x2::balance::send_funds`
+      // (gasless Move call). The recipient still shows up in
+      // `derivedAllowedAddresses` because the Move-call extraction
+      // arm of `deriveAllowedAddressesFromPtb` picks up arg[1] of
+      // `balance::send_funds`.
+      expect(transfers[RECIPIENT_ADDRESS] ?? 0).toBe(0);
       expect(result.derivedAllowedAddresses).toEqual(
         expect.arrayContaining([VALID_ADDRESS, RECIPIENT_ADDRESS]),
       );
@@ -935,7 +940,7 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
         sender: VALID_ADDRESS,
         client,
         sponsoredContext: true,
-        steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 5 } }],
+        steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 5, asset: 'USDC' } }],
       });
 
       expect(result.derivedAllowedAddresses).toEqual([RECIPIENT_ADDRESS]);
@@ -1019,7 +1024,7 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
             { toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } },
             {
               toolName: 'send_transfer',
-              input: { to: RECIPIENT_ADDRESS, amount: 5 },
+              input: { to: RECIPIENT_ADDRESS, amount: 5, asset: 'USDC' },
               inputCoinFromStep: 0,
             },
           ],

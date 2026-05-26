@@ -3,7 +3,7 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, coinWithBalance, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { createPaymentTransactionUri } from '@mysten/payment-kit';
-import { getSuiClient } from './utils/sui.js';
+import { getSuiClient, getSuiGrpcClient } from './utils/sui.js';
 import {
   generateKeypair,
   keypairFromPrivateKey,
@@ -59,7 +59,7 @@ import type {
   SwapQuoteResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, assertAllowedAsset, type SupportedAsset } from './constants.js';
+import { SUPPORTED_ASSETS, assertAllowedAsset, type SendableAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
@@ -496,26 +496,75 @@ export class T2000 extends EventEmitter<T2000Events> {
     return this._address;
   }
 
-  async send(params: { to: string; amount: number; asset?: string }): Promise<SendResult> {
+  /**
+   * Send `amount` of `asset` to `to` (hex address, SuiNS name, or
+   * `@audric` handle / saved contact).
+   *
+   * [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
+   *
+   * **Breaking changes from v3.x:**
+   * - `asset` is now REQUIRED (no implicit `?? 'USDC'` default). Callers
+   *   must specify `'USDC' | 'USDsui' | 'SUI'`. Sending `'USDT'` /
+   *   `'USDe'` / `'WAL'` / `'ETH'` / `'NAVX'` / `'GOLD'` now errors
+   *   with `INVALID_ASSET` — swap to a stable first.
+   * - USDC + USDsui builds go through `SuiGrpcClient` so the gRPC build
+   *   resolver auto-detects `0x2::balance::send_funds` eligibility and
+   *   zeros gas at simulate time. Result: **gasless USDC / USDsui sends
+   *   from a zero-SUI wallet.** SUI sends stay on the standard gas-paid
+   *   path.
+   *
+   * Submission stays on the JSON-RPC client (the rest of the SDK
+   * expects JSON-RPC for read paths, and Sui's docs explicitly support
+   * the "build via gRPC, execute via JSON-RPC" hybrid).
+   */
+  async send(params: { to: string; amount: number; asset: SupportedAsset }): Promise<SendResult> {
     this.enforcer.assertNotLocked();
 
-    const asset = (params.asset ?? 'USDC') as keyof typeof SUPPORTED_ASSETS;
-    if (!(asset in SUPPORTED_ASSETS)) {
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
+    // [v4.0 Phase A Day 2] Asset is REQUIRED at runtime (no more silent
+    // USDC default). The parameter type is `SupportedAsset` (the wider
+    // SDK surface) rather than `SendableAsset` so callers that still
+    // hand a wide-typed asset through — primarily the engine LLM tool
+    // surface — compile without modification. Runtime narrowing happens
+    // via `assertAllowedAsset('send', asset)`, which throws
+    // `INVALID_ASSET` for anything outside `['USDC', 'USDsui', 'SUI']`.
+    // This matches the SPEC verification gate `asset: 'USDY'` →
+    // `INVALID_ASSET` (runtime check, not compile check).
+    const asset = params.asset;
+    if (!asset) {
+      throw new T2000Error(
+        'INVALID_ASSET',
+        "send() requires an explicit asset. Use one of: USDC, USDsui, SUI.",
+      );
     }
+    assertAllowedAsset('send', asset);
+    // `assertAllowedAsset('send', asset)` narrows the runtime value to
+    // one of `SendableAsset` (USDC / USDsui / SUI). Cast statically.
+    const sendableAsset = asset as SendableAsset;
 
     const resolved = await this.resolveRecipient(params.to);
     const sendAmount = params.amount;
     const sendTo = resolved.address;
 
-    const gasResult = await executeTx(this.client, this._signer, () =>
-      buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset }),
+    // [v4.0 Phase A Day 2] Build path picks gRPC for the two
+    // gasless-eligible stables (USDC / USDsui) so the resolver can
+    // zero gas at simulate. SUI uses the JSON-RPC build path because
+    // SUI is not on the protocol allowlist for `balance::send_funds`
+    // — there's no upside to gRPC for SUI, and the JSON-RPC singleton
+    // is already initialised (one fewer cold-start cost).
+    const useGrpc = sendableAsset === 'USDC' || sendableAsset === 'USDsui';
+    const buildClient = useGrpc ? getSuiGrpcClient() : undefined;
+
+    const gasResult = await executeTx(
+      this.client,
+      this._signer,
+      () => buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset: sendableAsset }),
+      { buildClient },
     );
 
     this.enforcer.recordUsage(sendAmount);
     const balance = await this.balance();
 
-    this.emitBalanceChange(asset, sendAmount, 'send', gasResult.digest);
+    this.emitBalanceChange(sendableAsset, sendAmount, 'send', gasResult.digest);
 
     return {
       success: true,

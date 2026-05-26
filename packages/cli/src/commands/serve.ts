@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { T2000 } from '@t2000/sdk';
+import type { SupportedAsset } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { handleError } from '../output.js';
 import { streamSSE } from 'hono/streaming';
@@ -211,7 +212,10 @@ function buildApp(agent: T2000, authToken: string, rateLimit: number): Hono {
         c.status(400);
         return c.json(errorResponse('INVALID_PARAMS', 'Required: to, amount'));
       }
-      const result = await agent.send({ to, amount, asset: asset ?? 'USDC' });
+      // [v4.0 Phase A Day 2] Legacy HTTP surface (DELETED Day 5 / Phase B).
+      // SDK's `assertAllowedAsset('send', …)` rejects anything outside
+      // USDC / USDsui / SUI at runtime with `INVALID_ASSET`.
+      const result = await agent.send({ to, amount, asset: (asset ?? 'USDC') as SupportedAsset });
       return c.json(envelope(result));
     } catch (err) {
       c.status(getStatusCode(err) as 400 | 500);

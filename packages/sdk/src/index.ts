@@ -49,9 +49,13 @@ export {
   CLOCK_ID,
   DEFAULT_NETWORK,
 } from './constants.js';
-export type { SupportedAsset, StableAsset, SaveableAsset } from './constants.js';
+export type { SupportedAsset, StableAsset, SaveableAsset, SendableAsset } from './constants.js';
 export {
   STABLE_ASSETS,
+  SENDABLE_ASSETS,
+  GASLESS_MIN_STABLE_AMOUNT,
+  GASLESS_STABLE_TYPES,
+  DEFAULT_GRPC_URL,
   SAVEABLE_ASSETS,
   ALL_NAVI_ASSETS,
   GAS_RESERVE_MIN,
@@ -61,7 +65,14 @@ export {
   assertAllowedAsset,
 } from './constants.js';
 export type { Operation } from './constants.js';
-export { validateAddress, truncateAddress, normalizeCoinType } from './utils/sui.js';
+export {
+  validateAddress,
+  truncateAddress,
+  normalizeCoinType,
+  getSuiClient,
+  getSuiGrpcClient,
+  createSuiClient,
+} from './utils/sui.js';
 export {
   SUI_ADDRESS_REGEX,
   SUI_ADDRESS_STRICT_REGEX,

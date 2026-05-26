@@ -80,7 +80,14 @@ import { addSwapToTx, type SwapRouteResult } from './protocols/cetus-swap.js';
 import { addSendToTx } from './wallet/send.js';
 import { selectAndSplitCoin, selectSuiCoin } from './wallet/coinSelection.js';
 import { resolveTokenType, getDecimalsForCoinType, SUI_TYPE } from './token-registry.js';
-import { SUPPORTED_ASSETS, type SupportedAsset } from './constants.js';
+import {
+  GASLESS_MIN_STABLE_AMOUNT,
+  GASLESS_STABLE_TYPES,
+  SUPPORTED_ASSETS,
+  assertAllowedAsset,
+  type SendableAsset,
+  type SupportedAsset,
+} from './constants.js';
 import { T2000Error } from './errors.js';
 import { validateAddress } from './utils/sui.js';
 
@@ -130,10 +137,29 @@ export interface RepayDebtInput {
   asset?: 'USDC' | 'USDsui';
 }
 
+/**
+ * [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
+ * `asset` is now REQUIRED (no more silent USDC default). The parameter
+ * type is the wider `SupportedAsset` rather than the narrower
+ * `SendableAsset` so callers that thread a wide-typed asset through
+ * (primarily the engine LLM tool surface) compile without modification.
+ * Runtime narrowing happens via `assertAllowedAsset('send', asset)`,
+ * which throws `INVALID_ASSET` for anything outside the
+ * `['USDC', 'USDsui', 'SUI']` whitelist. USDC + USDsui route through
+ * the gasless `0x2::balance::send_funds` Move call; SUI uses the
+ * standard `transferObjects` path.
+ *
+ * Audric hosts: the audric chat client (`audric-chat-client.tsx`)
+ * already defaults asset to `'USDC'` at the marker layer before
+ * calling `sponsoredTx({ type: 'send' })`, so this signature change
+ * doesn't break the LLM flow. LLM intents like "send 5 WAL" now
+ * surface a clear error instead of silently building a non-gasless
+ * tx.
+ */
 export interface SendTransferInput {
   to: string;
   amount: number;
-  asset?: SupportedAsset;
+  asset: SupportedAsset;
 }
 
 export interface SwapExecuteInput {
@@ -292,7 +318,7 @@ export type StepPreview =
   | { toolName: 'withdraw'; effectiveAmount: number; asset: 'USDC' | 'USDsui' }
   | { toolName: 'borrow'; effectiveAmount: number; asset: 'USDC' | 'USDsui' }
   | { toolName: 'repay_debt'; effectiveAmount: number; asset: 'USDC' | 'USDsui' }
-  | { toolName: 'send_transfer'; effectiveAmount: number; recipient: string; asset: SupportedAsset }
+  | { toolName: 'send_transfer'; effectiveAmount: number; recipient: string; asset: SendableAsset }
   | { toolName: 'swap_execute'; effectiveAmountIn: number; expectedAmountOut: number; route: SwapRouteResult }
   | { toolName: 'claim_rewards'; rewards: PendingReward[] }
   // Compact: the audric host renders a multi-line "Claim → Swap → Save"
@@ -560,38 +586,92 @@ export const WRITE_APPENDER_REGISTRY: {
 
   send_transfer: async (tx, input, ctx) => {
     const recipient = validateAddress(input.to);
-    const asset: SupportedAsset = input.asset ?? 'USDC';
-    const assetInfo = SUPPORTED_ASSETS[asset];
-    if (!assetInfo) {
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
+    // [v4.0 Phase A Day 2] Asset is required (no `?? 'USDC'` default).
+    // assertAllowedAsset narrows the runtime value to
+    // `'USDC' | 'USDsui' | 'SUI'` and throws INVALID_ASSET otherwise.
+    // The TypeScript shape is `SupportedAsset` (wider, accommodates
+    // engine LLM tool callers that pass wide-typed assets through);
+    // the runtime assertion is the canonical gate.
+    if (!input.asset) {
+      throw new T2000Error(
+        'INVALID_ASSET',
+        "send_transfer requires an explicit asset. Use one of: USDC, USDsui, SUI.",
+      );
     }
+    assertAllowedAsset('send', input.asset);
+    const asset: SendableAsset = input.asset as SendableAsset;
+    const assetInfo = SUPPORTED_ASSETS[asset];
     if (input.amount <= 0) {
       throw new T2000Error('INVALID_AMOUNT', 'Send amount must be greater than zero');
     }
 
     const rawAmount = BigInt(Math.floor(input.amount * 10 ** assetInfo.decimals));
 
-    let coin: TransactionObjectArgument;
-    let effectiveRaw: bigint;
-
+    // [v4.0 Phase A Day 2] Chain-mode (`chainedCoin` from a previous
+    // appender) ALWAYS uses the legacy `transferObjects` path —
+    // bundles never qualify for gasless because the protocol allowlist
+    // only accepts PTBs whose ops are `balance::send_funds` /
+    // `balance::redeem_funds` / `coin::send_funds` etc. A withdraw →
+    // send bundle has the withdraw Move call, so the whole tx pays gas.
     if (ctx.chainedCoin) {
-      coin = ctx.chainedCoin;
-      effectiveRaw = rawAmount;
-    } else if (asset === 'SUI') {
-      const result = await selectSuiCoin(tx, ctx.client, ctx.sender, rawAmount, ctx.sponsoredContext);
-      coin = result.coin;
-      effectiveRaw = result.effectiveAmount;
-    } else {
-      const result = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount);
-      coin = result.coin;
-      effectiveRaw = result.effectiveAmount;
+      addSendToTx(tx, ctx.chainedCoin, recipient);
+      return {
+        preview: {
+          toolName: 'send_transfer',
+          effectiveAmount: Number(rawAmount) / 10 ** assetInfo.decimals,
+          recipient,
+          asset,
+        },
+      };
     }
 
-    addSendToTx(tx, coin, recipient);
+    if (asset === 'SUI') {
+      // Standard gas-native SUI transfer — NOT gasless (SUI is not on
+      // the protocol `balance::send_funds` allowlist).
+      const result = await selectSuiCoin(tx, ctx.client, ctx.sender, rawAmount, ctx.sponsoredContext);
+      addSendToTx(tx, result.coin, recipient);
+      return {
+        preview: {
+          toolName: 'send_transfer',
+          effectiveAmount: Number(result.effectiveAmount) / 10 ** assetInfo.decimals,
+          recipient,
+          asset,
+        },
+      };
+    }
+
+    // USDC / USDsui — gasless single-step send via `0x2::balance::send_funds`.
+    // Surfaces the protocol's 0.01 minimum BEFORE building so we don't
+    // burn a sponsorship slot on a tx that will revert on-chain.
+    if (input.amount < GASLESS_MIN_STABLE_AMOUNT) {
+      throw new T2000Error(
+        'INVALID_AMOUNT',
+        `Minimum gasless transfer is ${GASLESS_MIN_STABLE_AMOUNT} ${asset}. Got ${input.amount}.`,
+      );
+    }
+    // Pre-flight balance check (composeTx's selectAndSplitCoin used to
+    // do this; we lose the coin-selection but keep the balance gate so
+    // build-time errors stay actionable for audric's prepare route).
+    const balanceResp = await ctx.client.getBalance({ owner: ctx.sender, coinType: assetInfo.type });
+    if (BigInt(balanceResp.totalBalance) < rawAmount) {
+      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${asset} balance`, {
+        available: Number(balanceResp.totalBalance) / 10 ** assetInfo.decimals,
+        required: input.amount,
+      });
+    }
+    const coinType = GASLESS_STABLE_TYPES[asset];
+    tx.moveCall({
+      target: '0x2::balance::send_funds',
+      typeArguments: [coinType],
+      arguments: [
+        tx.balance({ type: coinType, balance: rawAmount }),
+        tx.pure.address(recipient),
+      ],
+    });
     return {
       preview: {
         toolName: 'send_transfer',
-        effectiveAmount: Number(effectiveRaw) / 10 ** assetInfo.decimals,
+        effectiveAmount: Number(rawAmount) / 10 ** assetInfo.decimals,
         recipient,
         asset,
       },
@@ -698,36 +778,64 @@ export function deriveAllowedAddressesFromPtb(tx: Transaction): string[] {
   const addresses = new Set<string>();
   const data = tx.getData();
 
-  for (const cmd of data.commands) {
-    // The Sui transaction-builder stores each top-level command as a
-    // tagged object: { TransferObjects: { objects, address } }.
-    // Inspect the `TransferObjects.address` field — it's a typed input
-    // reference that resolves to a literal `Pure` input holding the
-    // recipient bytes.
-    const transferCmd = (cmd as { TransferObjects?: unknown }).TransferObjects;
-    if (!transferCmd) continue;
-
-    const addressArg = (transferCmd as { address?: unknown }).address;
-    if (!addressArg) continue;
-
-    const addressInputIndex = (addressArg as { Input?: number }).Input;
-    if (addressInputIndex === undefined) continue;
-
-    const input = data.inputs[addressInputIndex];
-    if (!input) continue;
-
+  const addAddressFromInput = (inputIndex: number | undefined): void => {
+    if (inputIndex === undefined) return;
+    const input = data.inputs[inputIndex];
+    if (!input) return;
     const pureBytes = (input as { Pure?: { bytes?: string } }).Pure?.bytes;
-    if (!pureBytes) continue;
-
+    if (!pureBytes) return;
     // Pure bytes are base64-encoded BCS for Sui addresses (32 bytes →
     // 44-char base64). Decode + format as 0x-prefixed hex.
     try {
       const bytes = base64ToBytes(pureBytes);
-      if (bytes.length !== 32) continue; // not an address
+      if (bytes.length !== 32) return; // not an address
       const hex = '0x' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
       addresses.add(hex);
     } catch {
       // not a parseable address — skip
+    }
+  };
+
+  for (const cmd of data.commands) {
+    // Path 1 — `TransferObjects.address` (the legacy send/withdraw/
+    // claim/fee-transfer recipient surface). The Sui transaction-builder
+    // stores each top-level command as a tagged object:
+    //   { TransferObjects: { objects, address: { Input: <index> } } }.
+    const transferCmd = (cmd as { TransferObjects?: unknown }).TransferObjects;
+    if (transferCmd) {
+      const addressArg = (transferCmd as { address?: unknown }).address;
+      const addressInputIndex = (addressArg as { Input?: number } | undefined)?.Input;
+      addAddressFromInput(addressInputIndex);
+      continue;
+    }
+
+    // Path 2 — `0x2::balance::send_funds(balance, recipient)` (gasless
+    // stablecoin transfer, v4.0 Phase A Day 2). Recipient is arg[1],
+    // not a TransferObjects.address. The Move call shape:
+    //   { MoveCall: { package, module, function, arguments: [...] } }
+    //   target = `0x2::balance::send_funds`, arguments[1] = recipient.
+    const moveCall = (cmd as { MoveCall?: unknown }).MoveCall;
+    if (moveCall) {
+      const mc = moveCall as {
+        package?: string;
+        module?: string;
+        function?: string;
+        arguments?: Array<{ Input?: number } | unknown>;
+      };
+      // The `package` field is the normalized framework address. For
+      // `0x2::balance::send_funds` it's `0x0000…0002` (`SUI_FRAMEWORK_ADDRESS`).
+      // Match on module + function defensively; the recipient extraction
+      // only fires when the signature matches.
+      const isBalanceSendFunds =
+        mc.module === 'balance' && mc.function === 'send_funds';
+      const isCoinSendFunds =
+        mc.module === 'coin' && mc.function === 'send_funds';
+      if (isBalanceSendFunds || isCoinSendFunds) {
+        const args = mc.arguments ?? [];
+        const recipientArg = args[1] as { Input?: number } | undefined;
+        addAddressFromInput(recipientArg?.Input);
+      }
+      continue;
     }
   }
 

@@ -163,7 +163,10 @@ describe('write tools', () => {
     it('should send to contact name', async () => {
       const handler = tools.get('t2000_send')!;
       await handler({ to: 'Tom', amount: 10 });
-      expect(agent.send).toHaveBeenCalledWith({ to: 'Tom', amount: 10, asset: undefined });
+      // [v4.0 Phase A Day 2] SDK now requires `asset` (no implicit USDC
+      // default). The MCP back-compat layer keeps the legacy
+      // `asset ?? 'USDC'` shim until Phase B rewrites this tool.
+      expect(agent.send).toHaveBeenCalledWith({ to: 'Tom', amount: 10, asset: 'USDC' });
     });
 
     it('should return error for unknown contact', async () => {
@@ -200,7 +203,9 @@ describe('write tools', () => {
     it('[S.279.1] live send to SuiNS recipient still flows through agent.send', async () => {
       const handler = tools.get('t2000_send')!;
       await handler({ to: 'alex.sui', amount: 10, dryRun: false });
-      expect(agent.send).toHaveBeenCalledWith({ to: 'alex.sui', amount: 10, asset: undefined });
+      // [v4.0 Phase A Day 2] SDK now requires `asset`; MCP back-compat
+      // layer defaults to `'USDC'` until Phase B rewrites this tool.
+      expect(agent.send).toHaveBeenCalledWith({ to: 'alex.sui', amount: 10, asset: 'USDC' });
     });
 
     it('should return safeguard error when locked', async () => {

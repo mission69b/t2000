@@ -68,11 +68,18 @@ describe('OPERATION_ASSETS', () => {
     expect(OPERATION_ASSETS.borrow).toEqual(['USDC', 'USDsui']);
   });
 
-  it('allows any asset for withdraw, repay, send, swap', () => {
+  it('allows any asset for withdraw, repay, swap', () => {
     expect(OPERATION_ASSETS.withdraw).toBe('*');
     expect(OPERATION_ASSETS.repay).toBe('*');
-    expect(OPERATION_ASSETS.send).toBe('*');
     expect(OPERATION_ASSETS.swap).toBe('*');
+  });
+
+  // [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
+  // `send` constrained from `'*'` to the gasless-eligible stables (USDC,
+  // USDsui) plus SUI (for gas-native transfers). Other assets must be
+  // swapped first.
+  it('restricts send to USDC + USDsui + SUI', () => {
+    expect(OPERATION_ASSETS.send).toEqual(['USDC', 'USDsui', 'SUI']);
   });
 });
 
@@ -112,14 +119,30 @@ describe('isAllowedAsset', () => {
     expect(isAllowedAsset('borrow', 'ETH')).toBe(false);
   });
 
-  it('returns true for any asset on wildcard operations', () => {
-    for (const op of ['withdraw', 'repay', 'send', 'swap'] as const) {
+  it('returns true for any asset on wildcard operations (withdraw, repay, swap)', () => {
+    for (const op of ['withdraw', 'repay', 'swap'] as const) {
       expect(isAllowedAsset(op, 'USDC')).toBe(true);
       expect(isAllowedAsset(op, 'USDT')).toBe(true);
       expect(isAllowedAsset(op, 'SUI')).toBe(true);
       expect(isAllowedAsset(op, 'ETH')).toBe(true);
       expect(isAllowedAsset(op, 'RANDOM')).toBe(true);
     }
+  });
+
+  // [v4.0 Phase A Day 2] send is no longer wildcard — restricted to USDC,
+  // USDsui, SUI. Everything else must be swapped first.
+  it('returns true for USDC + USDsui + SUI on send, false for other assets', () => {
+    expect(isAllowedAsset('send', 'USDC')).toBe(true);
+    expect(isAllowedAsset('send', 'USDsui')).toBe(true);
+    expect(isAllowedAsset('send', 'SUI')).toBe(true);
+    expect(isAllowedAsset('send', 'usdc')).toBe(true);
+    expect(isAllowedAsset('send', 'usdsui')).toBe(true);
+    expect(isAllowedAsset('send', 'USDT')).toBe(false);
+    expect(isAllowedAsset('send', 'USDe')).toBe(false);
+    expect(isAllowedAsset('send', 'WAL')).toBe(false);
+    expect(isAllowedAsset('send', 'ETH')).toBe(false);
+    expect(isAllowedAsset('send', 'NAVX')).toBe(false);
+    expect(isAllowedAsset('send', 'GOLD')).toBe(false);
   });
 });
 
@@ -166,11 +189,37 @@ describe('assertAllowedAsset', () => {
     }
   });
 
-  it('does not throw for any asset on wildcard operations', () => {
-    for (const op of ['withdraw', 'repay', 'send', 'swap'] as const) {
+  it('does not throw for any asset on wildcard operations (withdraw, repay, swap)', () => {
+    for (const op of ['withdraw', 'repay', 'swap'] as const) {
       expect(() => assertAllowedAsset(op, 'USDT')).not.toThrow();
       expect(() => assertAllowedAsset(op, 'SUI')).not.toThrow();
       expect(() => assertAllowedAsset(op, 'ETH')).not.toThrow();
+    }
+  });
+
+  // [v4.0 Phase A Day 2] send is no longer wildcard.
+  it('does not throw for USDC, USDsui, SUI on send', () => {
+    expect(() => assertAllowedAsset('send', 'USDC')).not.toThrow();
+    expect(() => assertAllowedAsset('send', 'USDsui')).not.toThrow();
+    expect(() => assertAllowedAsset('send', 'SUI')).not.toThrow();
+  });
+
+  it('throws T2000Error with INVALID_ASSET for USDT on send + hints at swap path', () => {
+    expect(() => assertAllowedAsset('send', 'USDT')).toThrow(T2000Error);
+    try {
+      assertAllowedAsset('send', 'USDT');
+    } catch (e) {
+      const err = e as T2000Error;
+      expect(err.code).toBe('INVALID_ASSET');
+      expect(err.message).toContain('send only supports USDC, USDsui, SUI');
+      expect(err.message).toContain('Cannot use USDT');
+      expect(err.message).toContain('Swap to USDC or USDsui first, or send SUI');
+    }
+  });
+
+  it('throws for WAL / ETH / NAVX / GOLD on send', () => {
+    for (const asset of ['WAL', 'ETH', 'NAVX', 'GOLD'] as const) {
+      expect(() => assertAllowedAsset('send', asset)).toThrow(T2000Error);
     }
   });
 });

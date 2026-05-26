@@ -103,12 +103,23 @@ export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_
 // existing NAVI pool. See `.cursor/rules/savings-usdc-only.mdc` for the
 // rationale and the rule that gates additional stables (don't add more here
 // without updating that file).
+//
+// [v4.0 Phase A Day 2 — 2026-05-26] `send` constrained from `'*'` (any) to
+// `['USDC', 'USDsui', 'SUI']`. Rationale (SPEC_AGENT_WALLET_GREENFIELD §A):
+// - USDC + USDsui are gasless via `0x2::balance::send_funds` (Sui mainnet
+//   protocol allowlist) — the two foundation stables.
+// - SUI is the only non-stable kept on the allowlist so users with no
+//   stablecoin balance can still pay gas-native SUI transfers.
+// - USDT, USDe, WAL, ETH, NAVX, GOLD are NOT sendable — users must swap to
+//   USDC/USDsui first (one-step) or hold SUI and use a manual Move call.
+// - Tracking the full Sui gasless allowlist (suiUSDe, USDY, FDUSD, AUSD, USDB)
+//   is intentionally deferred to follow-up SPEC; minimal allowlist now.
 export const OPERATION_ASSETS = {
   save:     ['USDC', 'USDsui'],
   borrow:   ['USDC', 'USDsui'],
   withdraw: '*',
   repay:    '*',
-  send:     '*',
+  send:     ['USDC', 'USDsui', 'SUI'],
   swap:     '*',
 } as const;
 
@@ -127,19 +138,50 @@ export function isAllowedAsset(op: Operation, asset: string): boolean {
 
 /**
  * Throws if the asset is not permitted for the given operation.
- * Passing `undefined` (omitted) is always valid — defaults to USDC.
+ *
+ * [v4.0 Phase A Day 2] Pre-v4 this allowed `undefined` as a silent default
+ * to USDC. Removed because every write path now requires explicit asset
+ * (see `T2000.send` + `buildSendTx` + `composeTx.send_transfer`). Save /
+ * borrow / repay still call this with `params.asset` (which may be
+ * undefined when the caller relies on the per-method `?? 'USDC'` default
+ * before this assertion fires), so the `undefined → no-op` branch stays
+ * for back-compat; the `send_transfer` flow validates non-undefined.
  */
 export function assertAllowedAsset(op: Operation, asset: string | undefined): void {
   if (!asset) return;
   if (!isAllowedAsset(op, asset)) {
     const allowed = OPERATION_ASSETS[op];
     const list = Array.isArray(allowed) ? allowed.join(', ') : 'any';
+    const swapHint =
+      op === 'save' ? ' Swap to USDC or USDsui first.'
+      : op === 'send' ? ' Swap to USDC or USDsui first, or send SUI.'
+      : '';
     throw new T2000Error(
       'INVALID_ASSET',
-      `${op} only supports ${list}. Cannot use ${asset}.${op === 'save' ? ' Swap to USDC or USDsui first.' : ''}`,
+      `${op} only supports ${list}. Cannot use ${asset}.${swapHint}`,
     );
   }
 }
+
+/**
+ * [v4.0 Phase A Day 2] Narrow type alias for assets sendable through the
+ * Agent Wallet. Matches `OPERATION_ASSETS.send` exactly. Exported so the
+ * CLI / SDK / composeTx can share one type without re-declaring it.
+ */
+export type SendableAsset = 'USDC' | 'USDsui' | 'SUI';
+export const SENDABLE_ASSETS: readonly SendableAsset[] = ['USDC', 'USDsui', 'SUI'] as const;
+
+/**
+ * [v4.0 Phase A Day 2] Coin types for the two gasless-allowlisted stables.
+ * Used by `wallet/send.ts` + `composeTx.send_transfer` to construct the
+ * `0x2::balance::send_funds` Move call's `typeArguments`. SUI is excluded
+ * because SUI transfers are NOT gasless (gas-native, uses `tx.gas` split +
+ * `transferObjects` per the existing path).
+ */
+export const GASLESS_STABLE_TYPES: Record<'USDC' | 'USDsui', string> = {
+  USDC: SUPPORTED_ASSETS.USDC.type,
+  USDsui: SUPPORTED_ASSETS.USDsui.type,
+};
 
 // All protocol fees route here as a regular USDC wallet transfer. Audric's
 // prepare/route.ts adds `addFeeTransfer(...)` inline for save/borrow and passes
@@ -153,8 +195,19 @@ export const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
 
 export const DEFAULT_NETWORK = 'mainnet' as const;
 export const DEFAULT_RPC_URL = 'https://fullnode.mainnet.sui.io:443';
+// [v4.0 Phase A Day 2] gRPC fullnode endpoint used by `getSuiGrpcClient()` for
+// gasless stablecoin transfer detection (T2000.send + composeTx send_transfer).
+// Reads stay JSON-RPC; only write paths that need gasless eligibility detection
+// build via gRPC. Override with T2000_GRPC_URL for local dev / testnet.
+export const DEFAULT_GRPC_URL = 'https://fullnode.mainnet.sui.io:443';
 export const DEFAULT_KEY_PATH = '~/.t2000/wallet.key';
 export const DEFAULT_CONFIG_PATH = '~/.t2000/config.json';
+
+// [v4.0 Phase A Day 2] Minimum stablecoin amount for protocol-level gasless
+// transfers via `0x2::balance::send_funds`. The Sui mainnet allowlist enforces
+// this floor at the protocol level to prevent dust spam; we surface a clear
+// error before signing rather than letting the tx revert on-chain.
+export const GASLESS_MIN_STABLE_AMOUNT = 0.01;
 
 export const API_BASE_URL = process.env.T2000_API_URL ?? 'https://api.t2000.ai';
 

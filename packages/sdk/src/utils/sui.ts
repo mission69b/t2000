@@ -1,6 +1,7 @@
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
-import { DEFAULT_RPC_URL } from '../constants.js';
+import { DEFAULT_GRPC_URL, DEFAULT_RPC_URL } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
 let cachedClient: SuiJsonRpcClient | null = null;
@@ -14,6 +15,36 @@ export function getSuiClient(rpcUrl?: string): SuiJsonRpcClient {
 
 export function createSuiClient(network: 'mainnet' | 'testnet' = 'mainnet'): SuiJsonRpcClient {
   return new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(network), network });
+}
+
+let cachedGrpcClient: SuiGrpcClient | null = null;
+
+/**
+ * Cached `SuiGrpcClient` singleton for gasless stablecoin transfer builds.
+ *
+ * [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
+ *
+ * Why this exists: Sui mainnet's protocol-level gasless stablecoin transfers
+ * (`0x2::balance::send_funds` on the USDC + USDsui allowlist) are detected
+ * ONLY when the transaction is built through a `SuiGrpcClient`. The gRPC
+ * client's build resolver inspects the PTB at `tx.build()` time and, if it
+ * matches the gasless pattern, sets `gasPrice=0` + `gasBudget=0` automatically.
+ * Building the SAME PTB through `SuiJsonRpcClient` produces the same bytes
+ * but with non-zero gas — the tx still works, but the user pays SUI gas.
+ *
+ * Execution stays on JSON-RPC (`SuiJsonRpcClient.executeTransactionBlock`)
+ * because (a) the rest of the SDK expects JSON-RPC and (b) Sui's docs
+ * explicitly support a "build via gRPC, execute via JSON-RPC" hybrid:
+ * https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers
+ *
+ * Override the endpoint with the `T2000_GRPC_URL` env var (consumed at the
+ * caller's discretion, not here — keeps this module pure).
+ */
+export function getSuiGrpcClient(grpcUrl?: string): SuiGrpcClient {
+  if (cachedGrpcClient) return cachedGrpcClient;
+  const baseUrl = grpcUrl ?? DEFAULT_GRPC_URL;
+  cachedGrpcClient = new SuiGrpcClient({ baseUrl, network: 'mainnet' });
+  return cachedGrpcClient;
 }
 
 export function validateAddress(address: string): string {

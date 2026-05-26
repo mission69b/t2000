@@ -3,32 +3,21 @@ import { Transaction } from '@mysten/sui/transactions';
 import { buildSendTx, addSendToTx } from './send.js';
 import { SUPPORTED_ASSETS } from '../constants.js';
 
-function mockClient(usdcBalance: bigint = 10_000_000n) {
+function mockClient(balanceOverride?: bigint, coinType?: string) {
   return {
     getBalance: vi.fn().mockResolvedValue({
-      coinType: SUPPORTED_ASSETS.USDC.type,
+      coinType: coinType ?? SUPPORTED_ASSETS.USDC.type,
       coinObjectCount: 1,
-      totalBalance: usdcBalance.toString(),
+      totalBalance: (balanceOverride ?? 10_000_000n).toString(),
       lockedBalance: {},
-    }),
-    getCoins: vi.fn().mockResolvedValue({
-      data: [
-        {
-          coinObjectId: '0x' + '1'.repeat(64),
-          balance: usdcBalance.toString(),
-          coinType: SUPPORTED_ASSETS.USDC.type,
-        },
-      ],
-      nextCursor: null,
-      hasNextPage: false,
     }),
   } as any;
 }
 
 const VALID_ADDRESS = '0x' + 'a'.repeat(64);
 
-describe('buildSendTx', () => {
-  it('returns a Transaction object for USDC send', async () => {
+describe('buildSendTx — v4 gasless path (USDC)', () => {
+  it('builds a 0x2::balance::send_funds Move call for USDC', async () => {
     const client = mockClient();
     const tx = await buildSendTx({
       client,
@@ -39,10 +28,51 @@ describe('buildSendTx', () => {
     });
 
     expect(tx).toBeInstanceOf(Transaction);
+    const data = tx.getData();
+    const moveCalls = data.commands.filter(
+      (c) => 'MoveCall' in (c as Record<string, unknown>),
+    ) as Array<{ MoveCall: { module: string; function: string; package: string } }>;
+    expect(moveCalls.length).toBe(1);
+    expect(moveCalls[0].MoveCall.module).toBe('balance');
+    expect(moveCalls[0].MoveCall.function).toBe('send_funds');
   });
 
-  it('returns a Transaction for SUI send (gas split)', async () => {
+  it('builds a 0x2::balance::send_funds Move call for USDsui', async () => {
+    const client = mockClient(undefined, SUPPORTED_ASSETS.USDsui.type);
+    const tx = await buildSendTx({
+      client,
+      address: VALID_ADDRESS,
+      to: VALID_ADDRESS,
+      amount: 1,
+      asset: 'USDsui',
+    });
+
+    expect(tx).toBeInstanceOf(Transaction);
+    const data = tx.getData();
+    const moveCalls = data.commands.filter(
+      (c) => 'MoveCall' in (c as Record<string, unknown>),
+    );
+    expect(moveCalls.length).toBe(1);
+  });
+
+  it('rejects USDC amounts below 0.01 (gasless protocol minimum)', async () => {
     const client = mockClient();
+    await expect(
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0.005, asset: 'USDC' }),
+    ).rejects.toThrow(/Minimum gasless transfer is 0\.01/);
+  });
+
+  it('rejects USDsui amounts below 0.01', async () => {
+    const client = mockClient(undefined, SUPPORTED_ASSETS.USDsui.type);
+    await expect(
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0.001, asset: 'USDsui' }),
+    ).rejects.toThrow(/Minimum gasless transfer/);
+  });
+});
+
+describe('buildSendTx — SUI gas-native path', () => {
+  it('builds a tx.splitCoins(tx.gas) + transferObjects for SUI', async () => {
+    const client = mockClient(1_000_000_000n, '0x2::sui::SUI');
     const tx = await buildSendTx({
       client,
       address: VALID_ADDRESS,
@@ -52,55 +82,98 @@ describe('buildSendTx', () => {
     });
 
     expect(tx).toBeInstanceOf(Transaction);
+    const data = tx.getData();
+    // SUI path produces a SplitCoins + TransferObjects pair — no Move call.
+    const moveCalls = data.commands.filter(
+      (c) => 'MoveCall' in (c as Record<string, unknown>),
+    );
+    expect(moveCalls.length).toBe(0);
+    const splits = data.commands.filter(
+      (c) => 'SplitCoins' in (c as Record<string, unknown>),
+    );
+    expect(splits.length).toBe(1);
+    const transfers = data.commands.filter(
+      (c) => 'TransferObjects' in (c as Record<string, unknown>),
+    );
+    expect(transfers.length).toBe(1);
   });
 
+  it('does not enforce the 0.01 minimum for SUI sends', async () => {
+    const client = mockClient(1_000_000_000n, '0x2::sui::SUI');
+    const tx = await buildSendTx({
+      client,
+      address: VALID_ADDRESS,
+      to: VALID_ADDRESS,
+      amount: 0.001,
+      asset: 'SUI',
+    });
+    expect(tx).toBeInstanceOf(Transaction);
+  });
+});
+
+describe('buildSendTx — asset constraint (v4)', () => {
+  it('throws INVALID_ASSET for USDT', async () => {
+    const client = mockClient();
+    await expect(
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'USDT' as any }),
+    ).rejects.toThrow(/send only supports USDC, USDsui, SUI/);
+  });
+
+  it('throws INVALID_ASSET for USDe', async () => {
+    const client = mockClient();
+    await expect(
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'USDe' as any }),
+    ).rejects.toThrow(/send only supports USDC, USDsui, SUI/);
+  });
+
+  it('throws INVALID_ASSET for WAL', async () => {
+    const client = mockClient();
+    await expect(
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'WAL' as any }),
+    ).rejects.toThrow(/send only supports/);
+  });
+
+  it('error message hints at swapping to USDC / USDsui first', async () => {
+    const client = mockClient();
+    await expect(
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'GOLD' as any }),
+    ).rejects.toThrow(/Swap to USDC or USDsui first/);
+  });
+});
+
+describe('buildSendTx — preflight + validation', () => {
   it('throws for zero amount', async () => {
     const client = mockClient();
     await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0 }),
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0, asset: 'USDC' }),
     ).rejects.toThrow('must be greater than zero');
   });
 
   it('throws for negative amount', async () => {
     const client = mockClient();
     await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: -5 }),
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: -5, asset: 'USDC' }),
     ).rejects.toThrow('must be greater than zero');
   });
 
   it('throws for invalid recipient address', async () => {
     const client = mockClient();
     await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: 'not-an-address', amount: 1 }),
+      buildSendTx({ client, address: VALID_ADDRESS, to: 'not-an-address', amount: 1, asset: 'USDC' }),
     ).rejects.toThrow();
   });
 
-  it('throws for unsupported asset', async () => {
-    const client = mockClient();
-    await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'DOGE' as any }),
-    ).rejects.toThrow('not supported');
-  });
-
   it('throws when USDC balance is insufficient', async () => {
-    const client = mockClient(100n); // 0.0001 USDC
+    const client = mockClient(100n);
     await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 100 }),
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 100, asset: 'USDC' }),
     ).rejects.toThrow('Insufficient');
   });
 
   it('throws when USDC balance is zero', async () => {
-    const client = {
-      getBalance: vi.fn().mockResolvedValue({
-        coinType: SUPPORTED_ASSETS.USDC.type,
-        coinObjectCount: 0,
-        totalBalance: '0',
-        lockedBalance: {},
-      }),
-    } as any;
-
+    const client = mockClient(0n);
     await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1 }),
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'USDC' }),
     ).rejects.toThrow('Insufficient');
   });
 });

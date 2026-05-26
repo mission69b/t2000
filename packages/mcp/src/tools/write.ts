@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { T2000 } from '@t2000/sdk';
+import type { T2000, SupportedAsset } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
@@ -71,7 +71,13 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
           };
         }
 
-        const result = await mutex.run(() => agent.send({ to, amount, asset }));
+        // [v4.0 Phase A Day 2] Legacy MCP tool surface (rewritten in
+        // Phase B). SDK's `assertAllowedAsset('send', …)` rejects
+        // anything outside USDC / USDsui / SUI at runtime with
+        // `INVALID_ASSET`; if omitted here the SDK throws the same.
+        const result = await mutex.run(() =>
+          agent.send({ to, amount, asset: (asset ?? 'USDC') as SupportedAsset }),
+        );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
