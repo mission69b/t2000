@@ -1,69 +1,66 @@
-import type { Command } from 'commander';
-import { T2000 } from '@t2000/sdk';
-import { resolvePin } from '../prompts.js';
-import { printHeader, printKeyValue, printBlank, printJson, isJsonMode, handleError, printLine, printDivider } from '../output.js';
+// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1 — 2026-05-26]
+// `t2 receive` — print the wallet address + an ASCII QR code so an
+// agent / human can fund it. Replaces the old `t2000 wallet fund`
+// (which generated a payment link — now superseded by SuiNS handles
+// + this minimal flow).
+//
+// The old `commands/receive.ts` was about invoice generation (S.269
+// deprecated the invoice flow); the slug is reused for the right
+// abstraction.
+
+import qrcode from 'qrcode';
 import pc from 'picocolors';
+import { Command } from 'commander';
+import { withAgent } from '../lib/with-agent.js';
+import {
+  printJson,
+  isJsonMode,
+  handleError,
+  printBlank,
+  printKeyValue,
+  printLine,
+} from '../output.js';
+
+export interface ReceiveOptions {
+  key?: string;
+  qrOnly?: boolean;
+}
 
 export function registerReceive(program: Command) {
   program
     .command('receive')
-    .description('Generate a payment request with address and QR code')
-    .option('--amount <number>', 'Amount to request')
-    .option('--currency <symbol>', 'Currency (default: USDC)', 'USDC')
-    .option('--memo <text>', 'Payment note')
-    .option('--label <text>', 'Description for the request')
-    .option('--key <path>', 'Key file path')
-    .action(async (opts: { amount?: string; currency?: string; memo?: string; label?: string; key?: string }) => {
+    .description('Print your wallet address + QR code for incoming transfers')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--qr-only', 'Print only the QR code (no address text)')
+    .action(async (opts: ReceiveOptions) => {
       try {
-        const pin = await resolvePin();
-        const agent = await T2000.create({ pin, keyPath: opts.key });
-
-        const amount = opts.amount ? parseFloat(opts.amount) : undefined;
-        if (amount !== undefined && (isNaN(amount) || amount <= 0)) {
-          throw new Error('Amount must be a positive number');
-        }
-
-        const request = agent.receive({
-          amount,
-          currency: opts.currency,
-          memo: opts.memo,
-          label: opts.label,
-        });
+        const agent = await withAgent({ keyPath: opts.key });
+        const address = agent.address();
 
         if (isJsonMode()) {
-          printJson(request);
+          printJson({ address, qrEncodedFor: address });
           return;
         }
 
-        printHeader('Payment Request');
-
-        if (request.label) {
-          printLine(pc.bold(request.label));
+        printBlank();
+        if (!opts.qrOnly) {
+          printKeyValue('Address', address);
+          printBlank();
+          printLine(pc.dim('Scan to send tokens to this wallet:'));
           printBlank();
         }
 
-        if (request.amount != null) {
-          printLine(pc.bold(`  $${request.amount.toFixed(2)} ${request.currency}`));
-        } else {
-          printLine(pc.dim('  Any amount') + ` ${request.currency}`);
+        const qr = await qrcode.toString(address, {
+          type: 'terminal',
+          small: true,
+          errorCorrectionLevel: 'M',
+        });
+        process.stdout.write(`${qr}\n`);
+
+        if (!opts.qrOnly) {
+          printLine(pc.dim('Or share `' + address + '` directly.'));
+          printBlank();
         }
-        printBlank();
-
-        printDivider();
-        printKeyValue('Address', request.address);
-        printKeyValue('Network', 'Sui Mainnet');
-        printKeyValue('Nonce', request.nonce);
-        if (request.memo) {
-          printKeyValue('Memo', request.memo);
-        }
-        printDivider();
-
-        printBlank();
-        printKeyValue('Payment URI', request.qrUri);
-        printBlank();
-
-        printLine(pc.dim('Share this URI or scan the QR to pay via any Sui wallet.'));
-        printBlank();
       } catch (error) {
         handleError(error);
       }

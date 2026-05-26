@@ -159,8 +159,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   static async create(options: T2000Options = {}): Promise<T2000> {
-    const { keyPath, pin, passphrase, rpcUrl } = options;
-    const secret = pin ?? passphrase;
+    const { keyPath, rpcUrl } = options;
 
     const client = getSuiClient(rpcUrl);
 
@@ -168,15 +167,15 @@ export class T2000 extends EventEmitter<T2000Events> {
     if (!exists) {
       throw new T2000Error(
         'WALLET_NOT_FOUND',
-        'No wallet found. Run `t2000 init` to create one.',
+        'No wallet found. Run `t2 init` to create one.',
       );
     }
 
-    if (!secret) {
-      throw new T2000Error('WALLET_LOCKED', 'PIN required to unlock wallet');
-    }
-
-    const keypair = await loadKey(secret, keyPath);
+    // [v4.0] loadKey reads v2 plain Bech32 JSON. Legacy v3.x AES files
+    // throw WALLET_LEGACY_AES — the CLI translates that into a recovery
+    // banner via lib/legacy-wallet-detect.ts. PIN/passphrase fields on
+    // T2000Options are accepted for back-compat but IGNORED.
+    const keypair = await loadKey(undefined, keyPath);
     return new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);
   }
 
@@ -186,10 +185,10 @@ export class T2000 extends EventEmitter<T2000Events> {
     return new T2000(keypair, client);
   }
 
-  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string }): Promise<{ agent: T2000; address: string }> {
-    const secret = options.pin ?? options.passphrase ?? '';
+  static async init(options: { pin?: string; passphrase?: string; keyPath?: string; name?: string } = {}): Promise<{ agent: T2000; address: string }> {
+    // [v4.0] pin/passphrase accepted for back-compat but IGNORED.
     const keypair = generateKeypair();
-    await saveKey(keypair, secret, options.keyPath);
+    await saveKey(keypair, undefined, options.keyPath);
 
     const client = getSuiClient();
     const agent = new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);

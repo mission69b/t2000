@@ -37,7 +37,6 @@
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
-  "dependencies": {},
   "devDependencies": {
     "@hono/node-server": "^1",
     "@inquirer/prompts": "^7",
@@ -45,6 +44,7 @@
     "@t2000/mcp": "workspace:*",
     "@t2000/sdk": "workspace:*",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "commander": "^13",
     "eslint": "^9",
     "hono": "^4",
@@ -54,5 +54,8 @@
     "typescript-eslint": "^8.58.0",
     "vitest": "^3"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
 }

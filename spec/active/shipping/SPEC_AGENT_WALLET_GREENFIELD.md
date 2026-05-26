@@ -98,13 +98,24 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 | Phase | Tracker entry | Status |
 |---|---|---|
 | Planning | S.327 | ✅ done 2026-05-26 (this SPEC + 3 deferred follow-up stubs) |
-| A | next | pending |
+| A | S.328 (Day 1) | 🟡 in flight — Day 1 done 2026-05-26 (SDK keyManager v2 plain Bech32 + CLI greenfield scaffold: lib/ helpers, wallet/ group, init/export/receive/balance commands; +30 tests; full e2e smoke verified) |
 | B | pending | |
 | C | pending | |
 | D | pending | |
 | E | pending | |
 | F | pending | |
 | G | pending — bumps `@t2000/{sdk,cli,mcp}@4.0.0`; engine 4.0.0 version-locked, no break | |
+
+### Phase A progress (per the plan's Day 1-6 breakdown)
+
+| Day | Scope | Status |
+|---|---|---|
+| 1 | CLI scaffold (`lib/{legacy-wallet-detect,config-store,with-agent,prompts}.ts`), wallet group (`commands/wallet/{index,address,balance}.ts`), top-level (`commands/{init,export,receive,balance}.ts`); SDK keyManager v2 plain Bech32 (drops AES); `T2000.create/init` no longer require pin; new error codes (`WALLET_LEGACY_AES`, `WALLET_CORRUPT`, `INVALID_KEY`). `program.ts` rewritten to register the new tree; old DeFi commands stay registered for back-compat (cut later in Phase A per plan). | ✅ done 2026-05-26 |
+| 2 | SDK gRPC/gasless rewrite — `wallet/send.ts` uses `SuiGrpcClient` + `0x2::balance::send_funds()`; `getSuiGrpcClient()` cached singleton; drop USDC default from `T2000.send()`; `OPERATION_ASSETS.send` → `['USDC', 'USDsui', 'SUI']`; audric audit (1-2 call sites passing no explicit asset + Enoki compat). | pending — next session |
+| 3 | New CLI `send` + `swap` + `pay` commands. Asset required on send. SuiNS + @audric handle resolution. Zero-SUI gasless smoke. | pending |
+| 4 | New CLI `services/` group (search + inspect) + `limit/` group (set/show/reset). | pending |
+| 5 | New CLI `mcp/` group + `skills/` group. Delete old commands (save/withdraw/borrow/repay/health/rates/positions/earnings/fund-status/earn/lock/serve/config/contacts/exportKey/importKey/swapQuote). | pending |
+| 6 | Integration tests, manual mainnet smokes, polish help text. | pending |
 
 ---
 

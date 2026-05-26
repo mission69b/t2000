@@ -1,112 +1,23 @@
-import type { Command } from 'commander';
-import pc from 'picocolors';
-import { T2000, formatUsd } from '@t2000/sdk';
-import { resolvePin } from '../prompts.js';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printLine, formatApyPercent } from '../output.js';
+// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1 — 2026-05-26]
+// `t2 balance` — top-level alias for `t2 wallet balance`. Symmetric
+// with `t2 receive` + `t2 send` (the top-level wallet-shorthand verbs).
 
-interface LimitsData {
-  maxWithdraw: string;
-  maxBorrow: string;
-  healthFactor: number | null;
-}
+import { Command } from 'commander';
+import { runWalletBalance } from './wallet/balance.js';
+import { handleError } from '../output.js';
 
-async function fetchLimits(agent: T2000): Promise<LimitsData> {
-  const [maxWithdraw, maxBorrow, hf] = await Promise.all([
-    agent.maxWithdraw(),
-    agent.maxBorrow(),
-    agent.healthFactor(),
-  ]);
-
-  return {
-    maxWithdraw: maxWithdraw.maxAmount.toFixed(2),
-    maxBorrow: maxBorrow.maxAmount.toFixed(2),
-    healthFactor: hf.borrowed >= 0.01 ? hf.healthFactor : null,
-  };
+export interface BalanceOptions {
+  key?: string;
 }
 
 export function registerBalance(program: Command) {
   program
     .command('balance')
-    .description('Show wallet balance')
-    .option('--key <path>', 'Key file path')
-    .option('--show-limits', 'Include maxWithdraw, maxBorrow, and health factor')
-    .action(async (opts) => {
+    .description('Show wallet balance (alias for `t2 wallet balance`)')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .action(async (opts: BalanceOptions) => {
       try {
-        const pin = await resolvePin();
-        const agent = await T2000.create({ pin, keyPath: opts.key });
-
-        const bal = await agent.balance();
-
-        const limits = opts.showLimits ? await fetchLimits(agent) : undefined;
-
-        if (isJsonMode()) {
-          const output = limits
-            ? { ...bal, limits }
-            : bal;
-          printJson(output);
-          return;
-        }
-
-        printBlank();
-
-        const stables = bal.stables ?? {};
-        const usdcAmount = stables.USDC ?? 0;
-        const otherStables = Object.entries(stables).filter(([k, v]) => k !== 'USDC' && v >= 0.01);
-
-        printKeyValue('Available', `${formatUsd(usdcAmount)}  ${pc.dim('(checking — USDC)')}`);
-        for (const [symbol, amount] of otherStables) {
-          printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}  ${pc.dim(`(use: t2000 save all — auto-converts to USDC)`)}`);
-        }
-
-        if (bal.savings > 0.01) {
-          const positions = await agent.positions();
-          const saves = positions.positions.filter(p => p.type === 'save');
-          const borrows = positions.positions.filter(p => p.type === 'borrow');
-          const weightedApy = saves.length > 0
-            ? saves.reduce((sum, p) => sum + (p.amountUsd ?? p.amount) * p.apy, 0) / saves.reduce((sum, p) => sum + (p.amountUsd ?? p.amount), 0)
-            : 0;
-          const dailyEarning = (bal.savings * weightedApy) / 365;
-          printKeyValue('Savings', `${formatUsd(bal.savings)}  ${pc.dim(`(earning ${formatApyPercent(weightedApy)} APY)`)}`);
-          if (bal.debt > 0.01) {
-            const borrowApy = borrows.length > 0
-              ? borrows.reduce((sum, p) => sum + (p.amountUsd ?? p.amount) * p.apy, 0) / borrows.reduce((sum, p) => sum + (p.amountUsd ?? p.amount), 0)
-              : 0;
-            printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}  ${pc.dim(`(${formatApyPercent(borrowApy)} APY)`)}`);
-          }
-          if (bal.gasReserve && bal.gasReserve.usdEquiv >= 0.01) {
-            printKeyValue('Gas reserve', `${formatUsd(bal.gasReserve.usdEquiv)}  ${pc.dim(`(${bal.gasReserve.sui.toFixed(2)} SUI)`)}`);
-          }
-          printSeparator();
-          printKeyValue('Total', `${formatUsd(bal.total)}`);
-          if (dailyEarning >= 0.005) {
-            printLine(`  ${pc.dim(`Earning ~${formatUsd(dailyEarning)}/day`)}`);
-          }
-        } else {
-          if (bal.debt > 0.01) {
-            printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}`);
-          }
-          if (bal.savings > 0.005) {
-            printKeyValue('Savings', `${formatUsd(bal.savings)}`);
-          }
-          if (bal.gasReserve && bal.gasReserve.usdEquiv >= 0.01) {
-            printKeyValue('Gas reserve', `${formatUsd(bal.gasReserve.usdEquiv)}  ${pc.dim(`(${bal.gasReserve.sui.toFixed(2)} SUI)`)}`);
-          }
-          printSeparator();
-          printKeyValue('Total', `${formatUsd(bal.total)}`);
-        }
-
-        if (limits) {
-          printBlank();
-          printHeader('Limits');
-          printKeyValue('Max withdraw', `${formatUsd(Number(limits.maxWithdraw))} USDC`, 4);
-          printKeyValue('Max borrow', `${formatUsd(Number(limits.maxBorrow))} USDC`, 4);
-          const hfDisplay = limits.healthFactor !== null
-            ? limits.healthFactor.toFixed(2)
-            : `${pc.green('∞')}  ${pc.dim('(no active loan)')}`;
-          printKeyValue('Health factor', hfDisplay, 4);
-        }
-
-        printBlank();
+        await runWalletBalance(opts);
       } catch (error) {
         handleError(error);
       }

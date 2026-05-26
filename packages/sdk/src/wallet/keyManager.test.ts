@@ -1,18 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile, stat } from 'node:fs/promises';
 import {
   generateKeypair,
   keypairFromPrivateKey,
   saveKey,
+  saveBech32,
   loadKey,
   walletExists,
+  isLegacyWalletPath,
   exportPrivateKey,
   getAddress,
 } from './keyManager.js';
 
-describe('keyManager', () => {
+describe('keyManager (v4.0 plain Bech32)', () => {
   let tempDir: string;
 
   beforeEach(async () => {
@@ -29,38 +31,132 @@ describe('keyManager', () => {
     expect(address).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
-  it('saves and loads an encrypted key', async () => {
+  it('saves and loads a v2 plain Bech32 wallet (round-trip)', async () => {
     const keypair = generateKeypair();
-    const passphrase = 'test-passphrase-12345';
     const keyPath = join(tempDir, 'wallet.key');
 
-    await saveKey(keypair, passphrase, keyPath);
+    await saveKey(keypair, undefined, keyPath);
     expect(await walletExists(keyPath)).toBe(true);
 
-    const loaded = await loadKey(passphrase, keyPath);
+    const content = JSON.parse(await readFile(keyPath, 'utf-8'));
+    expect(content.version).toBe(2);
+    expect(content.secret).toMatch(/^suiprivkey/);
+
+    const loaded = await loadKey(undefined, keyPath);
     expect(getAddress(loaded)).toBe(getAddress(keypair));
   });
 
-  it('rejects wrong PIN', async () => {
+  it('writes the wallet file with 0o600 perms', async () => {
+    const keypair = generateKeypair();
+    const keyPath = join(tempDir, 'wallet.key');
+    await saveKey(keypair, undefined, keyPath);
+    const mode = (await stat(keyPath)).mode & 0o777;
+    expect(mode).toBe(0o600);
+  });
+
+  it('ignores the passphrase argument (back-compat shim)', async () => {
     const keypair = generateKeypair();
     const keyPath = join(tempDir, 'wallet.key');
 
-    await saveKey(keypair, 'correct-pin', keyPath);
-
-    await expect(loadKey('wrong-pin', keyPath)).rejects.toThrow('Invalid PIN');
+    await saveKey(keypair, 'this-is-ignored', keyPath);
+    const loaded = await loadKey('this-too-is-ignored', keyPath);
+    expect(getAddress(loaded)).toBe(getAddress(keypair));
   });
 
-  it('throws if wallet already exists', async () => {
-    const keypair = generateKeypair();
+  it('saveBech32 writes a v2 file from a raw secret', async () => {
+    const original = generateKeypair();
+    const secret = exportPrivateKey(original);
     const keyPath = join(tempDir, 'wallet.key');
 
-    await saveKey(keypair, 'passphrase123', keyPath);
-    await expect(saveKey(keypair, 'passphrase123', keyPath)).rejects.toThrow('already exists');
+    await saveBech32(secret, keyPath);
+    const loaded = await loadKey(undefined, keyPath);
+    expect(getAddress(loaded)).toBe(getAddress(original));
   });
 
-  it('throws if wallet not found', async () => {
+  it('saveBech32 rejects non-Bech32 secrets', async () => {
+    const keyPath = join(tempDir, 'wallet.key');
+    await expect(saveBech32('0xdeadbeef', keyPath)).rejects.toThrow(/suiprivkey/);
+  });
+
+  it('throws WALLET_LEGACY_AES on a v3.x AES file', async () => {
+    const keyPath = join(tempDir, 'wallet.key');
+    const legacyFile = {
+      version: 1,
+      algorithm: 'aes-256-gcm',
+      salt: 'a'.repeat(64),
+      iv: 'b'.repeat(32),
+      tag: 'c'.repeat(32),
+      ciphertext: 'd'.repeat(128),
+    };
+    await writeFile(keyPath, JSON.stringify(legacyFile));
+
+    await expect(loadKey(undefined, keyPath)).rejects.toMatchObject({
+      code: 'WALLET_LEGACY_AES',
+    });
+  });
+
+  it('isLegacyWalletPath detects v1 files without decrypting', async () => {
+    const keyPath = join(tempDir, 'wallet.key');
+    const legacyFile = {
+      version: 1,
+      algorithm: 'aes-256-gcm',
+      salt: 'a'.repeat(64),
+      iv: 'b'.repeat(32),
+      tag: 'c'.repeat(32),
+      ciphertext: 'd'.repeat(128),
+    };
+    await writeFile(keyPath, JSON.stringify(legacyFile));
+
+    expect(await isLegacyWalletPath(keyPath)).toBe(true);
+  });
+
+  it('isLegacyWalletPath returns false for v2 wallet files', async () => {
+    const keypair = generateKeypair();
+    const keyPath = join(tempDir, 'wallet.key');
+    await saveKey(keypair, undefined, keyPath);
+    expect(await isLegacyWalletPath(keyPath)).toBe(false);
+  });
+
+  it('isLegacyWalletPath returns false when no file exists', async () => {
+    expect(await isLegacyWalletPath(join(tempDir, 'nope.key'))).toBe(false);
+  });
+
+  it('throws WALLET_CORRUPT on garbage JSON', async () => {
+    const keyPath = join(tempDir, 'wallet.key');
+    await writeFile(keyPath, 'not json at all');
+    await expect(loadKey(undefined, keyPath)).rejects.toMatchObject({
+      code: 'WALLET_CORRUPT',
+    });
+  });
+
+  it('throws WALLET_CORRUPT on unrecognised JSON shape', async () => {
+    const keyPath = join(tempDir, 'wallet.key');
+    await writeFile(keyPath, JSON.stringify({ version: 99, mysteryField: 'x' }));
+    await expect(loadKey(undefined, keyPath)).rejects.toMatchObject({
+      code: 'WALLET_CORRUPT',
+    });
+  });
+
+  it('throws if wallet already exists (saveKey)', async () => {
+    const keypair = generateKeypair();
+    const keyPath = join(tempDir, 'wallet.key');
+    await saveKey(keypair, undefined, keyPath);
+    await expect(saveKey(keypair, undefined, keyPath)).rejects.toThrow(/already exists/);
+  });
+
+  it('throws if wallet already exists (saveBech32)', async () => {
+    const keypair = generateKeypair();
+    const secret = exportPrivateKey(keypair);
+    const keyPath = join(tempDir, 'wallet.key');
+    await saveBech32(secret, keyPath);
+    await expect(saveBech32(secret, keyPath)).rejects.toThrow(/already exists/);
+  });
+
+  it('throws WALLET_NOT_FOUND when file is missing', async () => {
     const keyPath = join(tempDir, 'nonexistent.key');
-    await expect(loadKey('passphrase', keyPath)).rejects.toThrow('No wallet found');
+    await expect(loadKey(undefined, keyPath)).rejects.toMatchObject({
+      code: 'WALLET_NOT_FOUND',
+    });
   });
 
   it('exports and reimports private key (bech32)', () => {
@@ -68,7 +164,6 @@ describe('keyManager', () => {
     const bech32Key = exportPrivateKey(original);
     expect(bech32Key).toMatch(/^suiprivkey/);
     const reimported = keypairFromPrivateKey(bech32Key);
-
     expect(getAddress(reimported)).toBe(getAddress(original));
   });
 

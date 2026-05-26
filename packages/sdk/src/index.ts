@@ -117,8 +117,10 @@ export {
   generateKeypair,
   keypairFromPrivateKey,
   saveKey,
+  saveBech32,
   loadKey,
   walletExists,
+  isLegacyWalletPath,
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
