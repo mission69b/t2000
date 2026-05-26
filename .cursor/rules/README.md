@@ -25,22 +25,14 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 | `blockvision-resilience.mdc` | `packages/engine/src/**/*.ts` — retry, circuit breaker, sticky cache |
 | `metrics-and-monitoring.mdc` | Reference — TurnMetrics, SessionUsage, dashboards |
 
-## Skill mirrors (description-matched, surface skill content to Cursor)
+## Skills are NOT mirrored here
 
-One `.mdc` per file in `t2000-skills/skills/<name>/SKILL.md`. Cursor auto-pulls them into agent context when the user's request matches the rule's `description`. Bodies mirror their source SKILL.md verbatim — the only delta is the YAML frontmatter (Cursor MDC convention vs the Anthropic Skills convention).
+`t2000-skills/skills/<name>/SKILL.md` is the canonical source for the 8 user-facing skills (setup, mcp, check-balance, receive, send, swap, pay, services). They reach end users via two channels:
 
-| Cursor rule | Source of truth |
-|---|---|
-| `t2000-setup.mdc` | `t2000-skills/skills/t2000-setup/SKILL.md` |
-| `t2000-mcp.mdc` | `t2000-skills/skills/t2000-mcp/SKILL.md` |
-| `t2000-check-balance.mdc` | `t2000-skills/skills/t2000-check-balance/SKILL.md` |
-| `t2000-receive.mdc` | `t2000-skills/skills/t2000-receive/SKILL.md` |
-| `t2000-send.mdc` | `t2000-skills/skills/t2000-send/SKILL.md` |
-| `t2000-swap.mdc` | `t2000-skills/skills/t2000-swap/SKILL.md` |
-| `t2000-pay.mdc` | `t2000-skills/skills/t2000-pay/SKILL.md` |
-| `t2000-services.mdc` | `t2000-skills/skills/t2000-services/SKILL.md` |
+1. **`@t2000/mcp`** — skill bodies are baked into the npm bundle at build time and exposed as `skill-<name>` MCP prompts in any MCP-compatible client (Claude Desktop, Cursor, Windsurf, claude-code CLI, etc.) after `t2 mcp install`.
+2. **`mission69b/t2000-skills`** — auto-synced from this repo via `.github/workflows/sync-skills.yml` for direct skill marketplace consumption.
 
-**When editing a skill**: update the canonical `SKILL.md` in `t2000-skills/skills/<name>/` AND mirror the body change into the matching `.cursor/rules/t2000-<name>.mdc`. Frontmatter stays Cursor-flavored. If drift becomes painful, add a `pnpm sync:skill-rules` script that regenerates the bodies from `SKILL.md`.
+We don't mirror them into `.cursor/rules/` because (a) the skills are *consumer* content while these rules are *contributor* engineering constraints — different altitude, different audience — and (b) mirroring creates a drift class for zero gain inside the contributor repo. If you need skill content while editing this repo, read `t2000-skills/skills/<name>/SKILL.md` directly.
 
 ## Relationship to `CLAUDE.md` and `.claude/rules/`
 

@@ -115,7 +115,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 
 ## Repo Layout
 
-Read `docs/REPO_LAYOUT.md` once at session start for "where does X go?"
+Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 
 **Short version:**
 - **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + founder-local trackers (`audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
@@ -128,7 +128,7 @@ Read `docs/REPO_LAYOUT.md` once at session start for "where does X go?"
 |----------|---------------|-------------|
 | [`developers.t2000.ai`](https://developers.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
-| `docs/REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
+| `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
 | `audric-roadmap.md` (local-only) | Product roadmap, feature specs, revenue model (gitignored) | Feature planning |
 | `audric-build-tracker.md` (local-only) | Execution status per phase and task (gitignored). **Top of file: canonical "Forward backlog" table — SSOT for SPEC numbering. Always read before assigning a SPEC number.** | Status checks; before promoting work to a SPEC number |
 | `spec/**` (local-only, gitignored) | Internal SPECs, harness contracts, locked-decision references, operational runbooks — full tree available on the maintainer's machine; not part of the public repo | When the rule/agent context cites a specific SPEC by name |

@@ -10,6 +10,7 @@ This is the public-facing layout reference.
 t2000/
 ├── README.md, LICENSE, CLAUDE.md           ← entry points
 ├── ARCHITECTURE.md                          ← system architecture
+├── REPO_LAYOUT.md                           ← this file (contributor "where does X go?")
 ├── SECURITY.md                              ← disclosure policy
 ├── apps/                                    ← deployable apps
 │   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
@@ -21,15 +22,12 @@ t2000/
 │   ├── mcp/                                 (@t2000/mcp)
 │   └── sdk/                                 (@t2000/sdk)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source)
-├── docs/                                    ← public-facing docs
-│   ├── REPO_LAYOUT.md                       (this file)
-│   └── marketing/                           (founder-local litepaper, gitignored)
 ├── patches/                                 ← pnpm patches
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
 ```
 
-> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access.
+> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access. Founder-local marketing artifacts (litepaper, decks) live in a gitignored `docs/marketing/` folder.
 
 ## Where does X go?
 
@@ -40,7 +38,7 @@ t2000/
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
 
-Developer-facing docs all live in `apps/docs/` (Mintlify). `docs/` is reserved for the layout SSOT + founder-local marketing artifacts; don't add new public docs there.
+All public developer docs live in `apps/docs/` (Mintlify). There is no public `docs/` folder — the `docs/marketing/` path exists only as a gitignored convenience for founder-local marketing artifacts.
 
 If a file would go at the repo root and it's not on the allowlist below, push it into one of the above subdirectories instead.
 
@@ -54,6 +52,7 @@ These are the ONLY files that should live at repo root (everything else moves to
 | `LICENSE` | MIT |
 | `CLAUDE.md` | Agent context (loaded every session by Claude Code) |
 | `ARCHITECTURE.md` | System architecture reference |
+| `REPO_LAYOUT.md` | Contributor "where does X go?" SSOT (this file) |
 | `SECURITY.md` | Security disclosure policy |
 | `.gitignore`, `.npmrc`, `.prettierrc` | Tooling config |
 | `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` | Workspace |
@@ -71,7 +70,7 @@ Plus founder-local truth source (gitignored, not visible publicly):
 
 See `audric/CLAUDE.md` for analogous layout. Key conventions:
 
-- `audric/apps/web/docs/` — runbooks, post-mortems, security advisories, regression matrices
+- `audric/apps/web-v2/docs/` — runbooks, post-mortems, security advisories, regression matrices
 - `audric/.cursor/rules/` — workspace rules (loaded every session)
 - `audric/.claude/rules/` — Claude Code rules
 - `audric/scripts/` — operational scripts (smoke, env-parity, dump-session)
