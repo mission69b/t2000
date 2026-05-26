@@ -127,11 +127,11 @@ For freeform queries typed into the chat, `AISDKEngine` processes the request vi
 ```
 User types "What's my current balance?"
   │
-  ├── POST /api/engine/chat (SSE stream, JWT auth, Sui address)
+  ├── POST /api/chat (SSE stream, JWT auth, Sui address)
   ├── AISDKEngine → AI SDK v6 streamText → @ai-sdk/anthropic → Claude with tool definitions
   ├── Tool calls (balance_check, savings_info, etc.) executed server-side
   │   └── MCP-first with SDK fallback for financial reads
-  ├── Write tools → pending_action event → POST /api/engine/resume (delegated execution)
+  ├── Write tools → pending_action event → user confirms on-chain → client POSTs back to /api/chat with attemptId + tx result (inline resume)
   ├── Streaming text_delta, tool_start, tool_result, usage events
   ├── Session persisted to Upstash KV
   └── Response rendered in streaming chat UI
@@ -545,7 +545,7 @@ The agent now has:
 
 ## MPP Payment
 
-When a user runs `t2000 pay <url>` or an AI agent calls `t2000_pay`:
+When a user runs `t2 pay <url>` or an AI agent calls `t2000_pay`:
 
 ```
 Agent                              Gateway                          Sui
@@ -679,7 +679,7 @@ Audric prepare/route.ts
 | **Treasury Wallet**  | `0x5366ef...`   | **Audric overlay-fee receiver** (`T2000_OVERLAY_FEE_WALLET`)         |
 
 
-> The legacy `t2000::treasury` Move package is dormant on-chain (no new traffic routes through it as of B5 v2). Source was removed from the repo on 2026-04-30 — see git history pre-tag `v1.1.0` if needed for future admin ops. AdminCap remains with the treasury admin keypair; admin calls work via the on-chain ABI without needing local source.
+> The legacy `t2000::treasury` Move package is dormant on-chain (no new traffic routes through it post-`@t2000/sdk@1.1.0`, 2026-04-30). Source was removed from the repo on 2026-04-30 — see git history pre-tag `v1.1.0` if needed for future admin ops. AdminCap remains with the treasury admin keypair; admin calls work via the on-chain ABI without needing local source.
 
 
 ---
@@ -699,7 +699,7 @@ agent.save('USDC', 100)
 ### NAVI Adapter
 
 - Lending: save, withdraw, borrow, repay
-- Assets: USDC, USDT, USDe, USDsui
+- Saveable assets: **USDC + USDsui only** (`OPERATION_ASSETS.save` / `.borrow` in `packages/sdk/src/constants.ts`). USDsui added as a strategic exception in v0.51.0 — it's the only other Sui-native stable with a productive NAVI pool, and USDsui-on-NAVI borrows must repay in USDsui. Holdable assets like USDT / USDe / GOLD / SUI are tradeable via Cetus but NOT saveable. See `.cursor/rules/savings-usdc-only.mdc`.
 - MCP-first integration: reads via NAVI MCP, writes via thin tx builders
 - Supports flash loans for complex operations
 
@@ -726,34 +726,37 @@ Local-only enforcement on the agent's machine:
 
 ## MCP Server
 
-Tools across three categories:
+`@t2000/mcp` exposes the CLI's capabilities to any MCP-compatible client (Claude Desktop, Cursor, Windsurf, Claude Code, etc.) via stdio transport. The published package is intentionally narrow — 9 tools mapped to the CLI verbs + 8 skill prompts. (The audric web app does NOT use `@t2000/mcp`; it embeds `@t2000/engine` directly and gets the full 26-tool engine surface.)
 
+**Tools (9 total):**
 
-| Category | Examples                                                               |
-| -------- | ---------------------------------------------------------------------- |
-| Read     | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services`    |
-| Write    | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_borrow`, `t2000_repay` |
-| Safety   | `t2000_config`, `t2000_lock`                                           |
+| Category | Tools                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------ |
+| Read (5) | `t2000_balance`, `t2000_address`, `t2000_receive`, `t2000_history`, `t2000_services`                   |
+| Write (3)| `t2000_send`, `t2000_swap`, `t2000_pay`                                                                |
+| Config (1) | `t2000_limit`                                                                                        |
 
+**Prompts (8 — one per skill, auto-registered from `t2000-skills/skills/*/SKILL.md`):**
 
-Prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, etc.
+`skill-setup`, `skill-mcp`, `skill-check-balance`, `skill-receive`, `skill-send`, `skill-swap`, `skill-pay`, `skill-services`
 
-All write operations serialize structurally — `confirm`-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step runs (prevents concurrent transactions + Sui object version conflicts). Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset. Safeguards are checked before every write. (Pre-v2.0.0 used an in-process `TxMutex`; v2 engine `AISDKEngine` doesn't instantiate one — the AI SDK step model + `needsApproval` round-trip is the actual serialization mechanism. Legacy `TxMutex` is still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts` lines 33-45.)
+The skill bodies are baked into the published bundle at build time (`tsup.config.ts`) — no runtime filesystem reads, no path-resolution gymnastics. Hand-rolled workflow prompts (`financial-report`, `optimize-yield`, `morning-briefing`, etc.) were deleted in S.336 (every prompt composed against v3 DeFi skills that were retired); the `skill-*` set is now the entire prompt surface.
+
+Write operations serialize structurally — `confirm`-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step runs (prevents concurrent transactions + Sui object version conflicts). Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset. Safeguards are checked before every write. (Pre-v2.0.0 used an in-process `TxMutex`; v2 engine `AISDKEngine` doesn't instantiate one — the AI SDK step model + `needsApproval` round-trip is the actual serialization mechanism. Legacy `TxMutex` is still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts` lines 33-45.)
 
 ---
 
 ## Engine (`@t2000/engine`) — Audric Intelligence implementation
 
-`@t2000/engine` is the moat. It implements **Audric Intelligence** — the 5-system financial agent that sits between the LLM and the SDK and turns "what does the user want?" into a safe, recorded, on-chain action. Audric Intelligence is _not a chatbot_: it understands the user's money (Silent Profile), reasons before acting (Reasoning Engine), orchestrates 35 financial tools in one conversation (Agent Harness), remembers what the user did on-chain (Chain Memory), and remembers what it told the user (AdviceLog).
+`@t2000/engine` is the moat. It implements **Audric Intelligence** — the 4-system financial agent that sits between the LLM and the SDK and turns "what does the user want?" into a safe, recorded, on-chain action. Audric Intelligence is _not a chatbot_: it reasons before acting (Reasoning Engine), orchestrates 26 financial tools in one conversation (Agent Harness), remembers what it knows about the user (Memory), and remembers what it told the user (AdviceLog).
 
 ```
                 ┌────────────────────────────────────────────────┐
-                │  Audric Intelligence (5 systems, one agent)     │
-                │                                                 │
-   user prompt ─┼──► Reasoning ──► Harness ──► Profile + Memory + Advice
-                │     (think)       (act)         (silent context, every turn)
-                │                                                 │
-                │                                                 │
+                │  Audric Intelligence (4 systems, one agent)    │
+                │                                                │
+   user prompt ─┼──► Reasoning ──► Harness ──► Memory + Advice   │
+                │     (think)       (act)      (silent context)  │
+                │                                                │
                 └─► pending_action ──► user taps Confirm ──► sponsored Sui tx
                                                               + TurnMetrics + AdviceLog
 ```
@@ -762,11 +765,10 @@ All write operations serialize structurally — `confirm`-tier writes yield a `p
 |---|---|---|
 | 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `v2/tool-wrapper.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Adaptive thinking, 12 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
-| 🧠 **Silent Profile** | Daily on-chain snapshot + Claude-inferred profile, injected as `<financial_context>` block | audric-side: `UserFinancialProfile`, `UserFinancialContext`, `buildFinancialContextBlock()`, `buildProfileContext()` |
-| 🔗 **Chain Memory** | 7 classifiers extract `ChainFact` rows from on-chain history; injected silently | audric-side: classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
+| 🧠 **Memory (MemWal)** | Long-term vector memory (preferences, goals, risk tolerance, on-chain patterns) recalled per-turn via `prepareStep` → `<memory_recall>`; daily on-chain `<financial_context>` block from `UserFinancialContext` for fresh state | engine-side: `MemoryStore` interface, `InMemoryMemoryStore`, `memwal-prepare-step.ts`, `memwal-write-callback.ts`; audric-side: `UserFinancialContext` Prisma model + `buildFinancialContextBlock()` |
 | 📓 **AdviceLog** | Every recommendation logged (`record_advice` audric-side tool); last 30 days hydrated each turn | audric-side: `AdviceLog` Prisma model + `buildAdviceContext()` |
 
-> _The "five systems" framing is the canonical product narrative. See `CLAUDE.md` (binding rules) and the per-system rules in `.cursor/rules/` (`agent-harness-spec.mdc`, `engine-context-assembly.mdc`, `engine-tool-development.mdc`, `safeguards-defense-in-depth.mdc`)._
+> _The "four systems" framing is the canonical product narrative. (v0.7d Phase 6 Block A — 2026-05-21 — collapsed former "Silent Profile" + "Chain Memory" into a single MemWal-backed Memory system.) See `CLAUDE.md` (binding rules) and the per-system rules in `.cursor/rules/` (`agent-harness-spec.mdc`, `engine-tool-development.mdc`, `safeguards-defense-in-depth.mdc`)._
 
 The rest of this section is the technical deep-dive: how each system is wired in code, then the two recent harness upgrades — **Spec 1 (Correctness)** and **Spec 2 (Intelligence)**.
 
@@ -800,7 +802,7 @@ Tool dispatch in `AISDKEngine`:
 - Read-only `isConcurrencySafe` tools → AI SDK runs them in parallel within a step; identical concurrent calls are deduped per-step (engine.ts L1145-L1149)
 - Write tools → serial via the step + `needsApproval` round-trip: confirm-tier writes yield `pending_action`, host round-trips through user confirm, next step runs the next write. Prevents Sui object version conflicts structurally without an in-process mutex.
 
-(Legacy `runTools()` + `TxMutex` from `orchestration.ts` are still exported for back-compat with non-AISDKEngine callers — the CLI's `audric chat` command, certain MCP server tests — but the v2 engine doesn't use them.)
+(Legacy `runTools()` + `TxMutex` from `orchestration.ts` are still exported for back-compat with non-AISDKEngine callers and certain MCP server tests — but the v2 engine doesn't use them.)
 
 ### Built-in Financial Tools
 
@@ -814,18 +816,12 @@ Tool dispatch in `AISDKEngine`:
 | `rates_info`              | `repay_debt`            |
 | `transaction_history`     | `claim_rewards`         |
 | `swap_quote`              | `harvest_rewards`       |
-| `volo_stats`              | `swap_execute`          |
-| `web_search`              | `save_contact`          |
-| `explain_tx`              |                         |
+| `explain_tx`              | `swap_execute`          |
 | `portfolio_analysis`      |                         |
-| `protocol_deep_dive`      |                         |
 | `token_prices`            |                         |
 | `create_payment_link`     |                         |
 | `list_payment_links`      |                         |
 | `cancel_payment_link`     |                         |
-| `create_invoice`          |                         |
-| `list_invoices`           |                         |
-| `cancel_invoice`          |                         |
 | `spending_analytics`      |                         |
 | `yield_summary`           |                         |
 | `activity_summary`        |                         |
@@ -833,18 +829,23 @@ Tool dispatch in `AISDKEngine`:
 | `pending_rewards`         |                         |
 
 
-18 read tools, 8 write tools, **26 total**. (Reads went 23 → 24 in SPEC 10 May 2026 with `resolve_suins` for the Audric Passport identity layer; reads → 25 + writes → 12 in S.119 May 2026 with `pending_rewards` + `harvest_rewards` — the NAVI rewards preview + the single-PTB compound that claims, swaps each non-USDC reward to USDC, and deposits into NAVI savings. S.245 May 2026 deleted `pay_api` + `mpp_services` → 24 reads / 11 writes / 35 total. S.269 May 2026 deleted `save_contact` + 3 invoice tools → 21 reads / 10 writes / 31 total. S.277 May 2026 — "Earns Its Keep" audit, engine 2.18.0 — cut Volo trio + `web_search` + `protocol_deep_dive` → current 18 reads / 8 writes / 26 total.) Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
+**18 read tools, 8 write tools, 26 total.** Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
 
-> **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions` (allowance contract dormant), `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't sign without user presence under zkLogin), `pause_pattern`, `pattern_status` (proposal pipeline removed; classifiers stay as silent context). See the S.0–S.12 entries in `audric-build-tracker.md`.
->
-> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `protocol_deep_dive` retains its DefiLlama dependency as the lone production consumer of `api.llama.fi`.
+> **Tool-count history (most → least recent):**
+> - S.323 (May 2026) — full Volo removal from SDK + CLI + MCP. Engine count unchanged.
+> - S.277 (May 2026) — "Earns Its Keep" audit (engine 2.18.0) cut Volo trio + `web_search` + `protocol_deep_dive` → **26 total** (current).
+> - S.269 (May 2026) — deleted `save_contact` + 3 invoice tools (`create_invoice` / `list_invoices` / `cancel_invoice`); payment links absorb the invoicing use case.
+> - S.245 (May 2026) — deleted `pay_api` + `mpp_services`; the MPP gateway capability returns as Commerce primitives in the upcoming Audric Store SPEC.
+> - S.119 + Track B (May 2026) — added `pending_rewards` + `harvest_rewards`.
+> - v1.4 BlockVision swap (April 2026) — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST.
+> - S.7 (April 2026) — removed `allowance_*` / `*_schedule` / `*_pattern` tools (allowance contract dormant; DCA can't sign without user presence under zkLogin; proposal pipeline removed).
 
 ### Reasoning Engine (Shipped — always on)
 
 The engine includes a three-layer reasoning system (extended thinking always on for Sonnet/Opus):
 
 1. **Adaptive thinking** (`classify-effort.ts`) — routes queries to `low`/`medium`/`high`/`max` thinking effort. `low` routes to Haiku; `max` reserved for Opus
-2. **Guard runner** (`guards.ts`) — 12 guards across 3 priority tiers (Safety > Financial > UX): 11 pre-execution gates (`input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`) + 1 post-execution hint (`stale_data`). First block wins; warnings/hints are injected back into the LLM context. (Pre-S.277 had 14 guards; `cost_warning` and `artifact_preview` removed in engine 2.18.0 as dead code post-S.245 `pay_api` and image-output tool cuts.)
+2. **Guard runner** (`guards.ts`) — 12 guards across 3 priority tiers (Safety > Financial > UX): 10 pre-execution gates + 2 post-execution hints. First block wins; warnings/hints are injected back into the LLM context. (Pre-S.277 had 14 guards; `cost_warning` + `artifact_preview` removed in engine 2.18.0 as dead code post-S.245 `pay_api` and image-output tool cuts.)
 3. **Skills** (`t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp`) — 14 markdown playbooks exposed to MCP clients as `skill-<name>` prompts. The 6 multi-step skills (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save section, `t2000-send` with offer-save-contact) absorbed the orchestration that pre-Phase 6 lived in YAML recipes. The runtime recipe registry was deleted v0.7a Phase 6 (May 2026); skills guide the LLM via prose, the engine just runs the tools the LLM picks.
 
 Additional features:
@@ -892,26 +893,29 @@ Write tools with `permissionLevel: 'confirm'` yield a `pending_action` event:
 
 ```
 Engine yields pending_action(toolName, toolUseId, input, description,
-                             assistantContent, turnIndex, modifiableFields?)
+                             assistantContent, turnIndex, attemptId,
+                             modifiableFields?)
     → Client displays confirmation UI (PermissionCard)
     → User may edit any field declared in `modifiableFields`
-    → Client executes the transaction on-chain
-    → Client calls POST /api/engine/resume with the execution result and any
-      `modifications` overlay
+    → Client executes the transaction on-chain (Enoki sponsored)
+    → Client POSTs back to the same /api/chat route with the execution
+      result + any `modifications` overlay, keyed on `attemptId`
     → Engine reconstructs the full turn from the post-modification input
-    → Server updates `TurnMetrics(sessionId, turnIndex)` with the resolved
+    → Server updates `TurnMetrics` (keyed on `attemptId`) with the resolved
       `pendingActionOutcome` ('approved' | 'declined' | 'modified')
 ```
 
 This stateless flow is serverless-friendly — no long-lived SSE connections needed for write operations.
 
-`turnIndex` (engine 0.41.0) is derived from the assistant message count when the action is yielded, giving hosts a stable join key from `pending_action` events back to the originating `TurnMetrics` row written at turn close. `modifiableFields` is the engine-side declaration of which `input` keys the user is allowed to edit before approval — sourced from the `TOOL_MODIFIABLE_FIELDS` registry — and the resume route applies the resulting `modifications` to `action.input` so the conversation history reflects what was actually approved on-chain.
+`attemptId` (engine v1.4.2+, see `.cursor/rules/agent-harness-spec.mdc` Item 3) is a UUID v4 stamped per `pending_action` yield; it's the canonical resume key. `turnIndex` (engine 0.41.0) is derived from the assistant message count when the action is yielded, kept as a join hint for legacy paths. `modifiableFields` is the engine-side declaration of which `input` keys the user is allowed to edit before approval — sourced from the `TOOL_MODIFIABLE_FIELDS` registry — and the resume path applies the resulting `modifications` to `action.input` so the conversation history reflects what was actually approved on-chain.
+
+> Pre-v0.7e Phase 5, resume lived behind a standalone `/api/engine/resume` route. That route was retired in audric v0.7e Phase 5 (2026-05-22); resume is now inline in the same `/api/chat` POST that initiates the turn, keyed on the `attemptId` round-tripping through the user-confirm event.
 
 ### MCP Integration
 
 **MCP Client** (`McpClientManager`): Multi-server registry connecting to external MCP servers (e.g., NAVI Protocol). Supports `streamable-http` and `sse` transports with client-side response caching.
 
-**MCP Server** (`buildMcpTools`, `registerEngineTools`): Exposes engine tools to Claude Desktop, Cursor, and other MCP clients with `audric_` namespace prefix.
+**MCP Server** (`buildMcpTools`, `registerEngineTools`): Adapter that converts engine `Tool` objects into MCP tool definitions for hosts that want to expose the full engine surface over MCP. (The published `@t2000/mcp` package uses a narrower 9-tool CLI-mapped surface — see § MCP Server above.)
 
 **MCP Tool Adapter** (`adaptMcpTool`): Converts tools discovered from external MCP servers into engine `Tool` objects with namespacing and configurable permissions.
 
@@ -937,40 +941,24 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 - `navi-transforms.ts` — Pure functions converting raw MCP responses to typed engine structures (rates, positions, health factor, balance, savings, rewards) with USD price conversion
 - `navi-reads.ts` — Composite read functions orchestrating parallel MCP calls with transforms
 
-### Silent Profile (system 3 of 5)
+### Memory — MemWal (system 3 of 4)
 
-> _Knows your finances. Builds a private financial profile from chat history and a daily on-chain snapshot — refreshed at 02:00 UTC, injected silently at every engine boot._
+> _Knows the user. Long-term vector memory (preferences, goals, risk tolerance, on-chain patterns) recalled per-turn, plus a daily on-chain `<financial_context>` snapshot for fresh state._
 
-Silent Profile is two cooperating layers, both lived in `audric/apps/web` (the engine consumes them via the system prompt):
+v0.7d Phase 6 Block A (2026-05-21) collapsed the former "Silent Profile" + "Chain Memory" systems into a single MemWal-backed Memory system. Two layers cooperate, both consumed silently via the system prompt:
 
 | Layer | Storage | Refresh | Used as |
 |---|---|---|---|
-| `UserFinancialProfile` (Prisma) | risk tolerance, goals, investment horizon | Claude inference cron in the `daily-intel` group | `buildProfileContext()` → `<user_profile>` block |
-| `UserFinancialContext` (Prisma) | savings/wallet/debt USD, health factor, weighted savings APY, open goals, recent activity, last-session days | Vercel cron at `/api/cron/financial-context-snapshot` @ 02:30 UTC (Block B, S.222); refreshed on-demand after large writes | `buildFinancialContextBlock()` → `<financial_context>` block |
+| MemWal vector memory | `@mysten-incubation/memwal` (vector store) | `MemoryStore.recall(latestUserMessage)` per-turn via `prepareStep`; new facts extracted post-turn via `memwal.analyze()` in `onFinish` | `<memory_recall>` block (top-K facts) |
+| `UserFinancialContext` (Prisma, audric-side) | savings/wallet/debt USD, health factor, weighted savings APY, recent activity, last-session days | 02:00 UTC Vercel cron `financial-context-snapshot`; refreshed on-demand after large writes | `<financial_context>` block |
 
-The `<financial_context>` block lets every chat start oriented — no warm-up tool calls, no "let me check your balance" before the agent says anything useful. The block is silent context, never surfaced as a nudge or notification.
+The two blocks together let every chat start oriented — no warm-up tool calls, no "let me check your balance" before the agent says anything useful. Silent context only — never surfaced as a nudge or notification.
 
-> Implementation contract: `audric/.cursor/rules/engine-context-assembly.mdc`. Schema: `audric/apps/web/prisma/schema.prisma` → `UserFinancialProfile` + `UserFinancialContext`.
+Hosts inject a `MemoryStore` via `EngineConfig.memoryStore`. CLI / MCP / tests use the `InMemoryMemoryStore` default; production audric injects a MemWal-backed store. Recall failures degrade gracefully (empty `<memory_recall>` layer).
 
-### Chain Memory (system 4 of 5)
+> Implementation contract: `.cursor/rules/memory-injection-architecture.mdc`. Engine wiring: `packages/engine/src/v2/memwal-prepare-step.ts` + `memwal-write-callback.ts`. Audric-side `UserFinancialContext` schema lives in `audric/apps/web-v2/prisma/schema.prisma`.
 
-> _Remembers what you do on-chain. 7 classifiers extract structured facts; injected silently as `<chain_memory>`._
-
-Seven on-chain classifiers run on the `daily-intel` cron group and write `ChainFact` rows that `buildMemoryContext()` hydrates into every engine boot:
-
-| Classifier | Source | Fact |
-|---|---|---|
-| `deposit_pattern` | `AppEvent` | Recurring savings deposits (cadence + median amount) |
-| `risk_profile` | `PortfolioSnapshot` | Leverage behaviour, HF distribution |
-| `yield_behavior` | `PortfolioSnapshot` | APY optimisation, farming patterns |
-| `borrow_behavior` | `AppEvent` | Borrow / repay pairing |
-| `near_liquidation` | `PortfolioSnapshot` | HF < 1.5 events |
-| `large_transaction` | `AppEvent` | Outbound transfers > $500 |
-| `compounding_streak` | `AppEvent` | Consecutive compound actions |
-
-Chain Memory is **silent context only** — no proposals, no "Audric noticed X" cards, no notifications. The proposal pipeline (`BehavioralPattern` + Copilot suggestions) was deleted in S.5; classifiers stayed.
-
-### AdviceLog (system 5 of 5)
+### AdviceLog (system 4 of 4)
 
 > _Remembers what it told you. Every recommendation is logged; last 30 days hydrated each turn._
 
@@ -978,7 +966,7 @@ Chain Memory is **silent context only** — no proposals, no "Audric noticed X" 
 
 `AdviceLog.actedOn` is updated when the corresponding write tool succeeds via `EngineConfig.onAutoExecuted` — letting the agent see "I told you to save and you did" vs "I told you to save and you didn't" on the next turn.
 
-> Implementation contract: `audric/apps/web/lib/engine/advice-tool.ts` + `audric/.cursor/rules/engine-context-assembly.mdc`.
+> Implementation contract: audric repo — `audric/apps/web-v2/lib/engine/advice-tool.ts`.
 
 ### Spec 1 — Correctness (engine v0.41.0–v0.50.3)
 
@@ -986,8 +974,8 @@ Spec 1 closed three correctness holes that made Audric inconsistent under load:
 
 | Bug class | Fix |
 |---|---|
-| `pending_action` events couldn't be safely correlated to a turn (multiple actions per turn ambiguous) | Stamped a per-yield UUID v4 `attemptId` on every `pending_action`. Hosts persist it on `TurnMetrics(sessionId, turnIndex)` and key the `/api/engine/resume updateMany` on it. |
-| Users couldn't edit fields on a confirm card (e.g. amount) without losing the LLM's reasoning | Added `modifiableFields: PendingActionModifiableField[]` to `pending_action`, sourced from the `TOOL_MODIFIABLE_FIELDS` registry. Resume route applies `modifications` so conversation history reflects what was approved on-chain. |
+| `pending_action` events couldn't be safely correlated to a turn (multiple actions per turn ambiguous) | Stamped a per-yield UUID v4 `attemptId` on every `pending_action`. Hosts persist it on `TurnMetrics` and key the resume `updateMany` on it. |
+| Users couldn't edit fields on a confirm card (e.g. amount) without losing the LLM's reasoning | Added `modifiableFields: PendingActionModifiableField[]` to `pending_action`, sourced from the `TOOL_MODIFIABLE_FIELDS` registry. The resume path applies `modifications` so conversation history reflects what was approved on-chain. |
 | `auto`-permission tools (write tools that don't require confirm) had no completion hook for AdviceLog / TurnMetrics | Added `EngineConfig.onAutoExecuted({ toolName, input, result, walletAddress, sessionId, turnIndex })` — fires after the engine executes any `auto` tool. |
 
 Together these give hosts a stable join key from `pending_action` → on-chain receipt → `TurnMetrics.pendingActionOutcome` ('approved' / 'declined' / 'modified') and let auto-executed writes participate in the same telemetry as confirm-gated ones.
@@ -1000,11 +988,10 @@ Spec 2 swapped the data layer + added boot-time orientation:
 
 | Change | Why |
 |---|---|
-| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net post-v1.4: 29 → 23 read tools, 40 → 34 total. SPEC 10 added `resolve_suins` (→ 24 reads / 35 total). S.119 + Track B added `pending_rewards` + `harvest_rewards` (→ 25 reads / 12 writes / 37 total). S.245 deleted `pay_api` + `mpp_services` (→ 35). S.269 deleted `save_contact` + 3 invoice tools (→ 31). S.277 (engine 2.18.0) "Earns Its Keep" audit deleted Volo trio + `web_search` + `protocol_deep_dive` → current 18 reads / 8 writes / **26 total**. Engine no longer talks to `api.llama.fi` (S.277 removed the last DefiLlama caller). |
+| **BlockVision swap** — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. (S.277 / engine 2.18.0 later removed the last DefiLlama caller `protocol_deep_dive`; engine no longer talks to `api.llama.fi`.) |
 | **Sticky-positive cache + retry/circuit breaker** for BlockVision (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) | BlockVision started returning 429s under load; the cache no longer overwrites known-good positive values with degraded zeros. |
-| **`<financial_context>` block** injected at every engine boot from the daily `UserFinancialContext` snapshot | Every chat starts oriented — no warm-up tool calls before useful answers. Silent Profile system. |
-| **`attemptId` keyed resume** — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
-| **`protocol_deep_dive` exception** — kept on DefiLlama as the lone production consumer of `api.llama.fi` | Protocol metadata (TVL trends, fees, audits) isn't available on BlockVision; not worth building a custom replacement for one tool. |
+| **`<financial_context>` block** injected at every engine boot from the daily `UserFinancialContext` snapshot | Every chat starts oriented — no warm-up tool calls before useful answers. Memory system (post-Block A). |
+| **`attemptId` keyed resume** — host's resume path keys `updateMany({ where: { attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
 
 > Resilience contract: `t2000/.cursor/rules/blockvision-resilience.mdc`.
 
@@ -1018,7 +1005,7 @@ The Audric consumer brand groups everything into exactly **five products**. (S.1
 | Product                    | What it is                                                                                                                                                                | Implementation                                                                        |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | 🪪 **Audric Passport**     | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, Enoki-sponsored gas (web only)                                          | `@t2000/sdk` + Enoki + `@mysten/sui`                                                  |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision (see breakdown below)                                                                                       | `@t2000/engine`                                                                       |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 4 systems orchestrate every money decision (see breakdown below)                                                                                       | `@t2000/engine`                                                                       |
 | 💰 **Audric Finance**      | Manage your money on Sui — Save (NAVI lend), Credit (NAVI borrow), Swap (Cetus aggregator), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
 | 💸 **Audric Pay**          | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui                                                                      | `@t2000/sdk` Sui tx builders + payment-kit                                            |
 | 🛒 **Audric Store**        | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5)                                                                                                        | `@t2000/sdk` + Walrus + payment links                                                 |
@@ -1028,9 +1015,9 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 ---
 
-## Audric Intelligence — the 5-system moat (product narrative)
+## Audric Intelligence — the 4-system moat (product narrative)
 
-> **Not a chatbot. A financial agent.** Five systems work together to understand the user's money, reason about decisions, and get smarter over time. Every action still waits on Passport's tap-to-confirm.
+> **Not a chatbot. A financial agent.** Four systems work together to understand the user's money, reason about decisions, and get smarter over time. Every action still waits on Passport's tap-to-confirm.
 >
 > _The technical deep-dive (per-system implementation, Spec 1, Spec 2) lives under [`## Engine (\`@t2000/engine\`)`](#engine-t2000engine--audric-intelligence-implementation) above. This section is the consumer-product / brand framing._
 >
@@ -1040,11 +1027,10 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 |---|---|---|
 | 🎛️ **Agent Harness** | 26 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (18 read + 8 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 12 guards, prompt caching. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
-| 🧠 **Silent Profile** | Knows your finances — daily on-chain snapshot + chat-inferred profile, injected silently. | `UserFinancialProfile` + `UserFinancialContext` + `buildFinancialContextBlock()` + 02:00 UTC cron |
-| 🔗 **Chain Memory** | Remembers what you do on-chain — 7 classifiers, no proposals, silent context. | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |
+| 🧠 **Memory (MemWal)** | Knows the user — vector memory of preferences / goals / risk tolerance / on-chain patterns recalled per-turn + daily `<financial_context>` snapshot for fresh state. | `MemoryStore` + MemWal vector memory + `UserFinancialContext` + 02:00 UTC cron |
 | 📓 **AdviceLog** | Remembers what it told you — last 30 days hydrated each turn, no two contradictory answers. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |
 
-**What stayed (silent context):** chain-memory classifiers, episodic memory extraction, financial-profile inference, portfolio snapshots, and the `AdviceLog` loop. These run on a single `daily-intel` cron group and feed the LLM context invisibly.
+**What stayed (silent context):** MemWal vector memory, financial-context snapshots, and the `AdviceLog` loop. These run via per-turn `prepareStep` recall + a single Vercel cron job and feed the LLM context invisibly.
 
 ### Multi-wallet Linking
 
@@ -1057,12 +1043,12 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 ### Intelligence Layer (silent context that survives the simplification)
 
 
-| Feature           | What it does                                                                                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Financial Profile | `UserFinancialProfile` model: risk tolerance, goals, investment horizon. Claude inference cron (daily-intel group)                                                       |
-| Episodic Memory   | `UserMemory` model: key facts, preferences, past decisions. Claude extraction cron + Jaccard dedup                                                                       |
-| Advice Memory     | `AdviceLog` rows written by `record_advice` (audric tool). `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
-| Conversation Log  | `ConversationLog` rows written by chat route. Fine-tuning dataset for the future self-hosted model migration                                                             |
+| Feature             | What it does                                                                                                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Memory (MemWal)     | Vector memory of user preferences, goals, risk tolerance, on-chain patterns. `prepareStep` recalls top-K per-turn → `<memory_recall>`. `memwal.analyze()` extracts new facts post-turn. |
+| Financial Context   | `UserFinancialContext` model (audric-side): savings/wallet/debt USD, health factor, weighted savings APY, recent activity. Refreshed by Vercel `financial-context-snapshot` cron @ 02:00 UTC. |
+| Advice Memory       | `AdviceLog` rows written by `record_advice` (audric tool). `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
+| Conversation Log    | `ConversationLog` rows written by chat route. Fine-tuning dataset for the future self-hosted model migration                                                             |
 
 
 > The "Proactive Awareness" / `buildProactivenessInstructions()` layer was deleted in S.5 along with the proposal pipeline. **As of S.31 (2026-04-29) the critical-HF email was also removed** — stablecoin-only collateral (USDC + USDsui) + no leverage trading + zkLogin tap-to-confirm makes the proactive HF email net-negative UX vs surfacing HF prominently in chat. There are now zero proactive surfaces; everything proactive was either a notification (deleted) or a dashboard card (deleted). The chat answers when asked.
@@ -1127,7 +1113,7 @@ Push to main
 ### Publish pipeline (on tag `v*`)
 
 ```
-Tag v0.33.2 (t2000 monorepo)
+Tag vX.Y.Z (t2000 monorepo, all 4 packages bumped in lockstep)
   → CI: lint + typecheck + test
   → Build all packages
   → Publish: @t2000/sdk, @t2000/engine, @t2000/mcp, @t2000/cli
@@ -1139,6 +1125,8 @@ Tag v0.1.0 (mission69b/suimpp repo)
   → Publish: @suimpp/mpp, @suimpp/discovery
   → GitHub Release
 ```
+
+Current published version: `4.0.x`. The release workflow lives at `.github/workflows/release.yml` (manual dispatch with `bump=patch|minor|major`) and `publish.yml` (triggered by the tag push from `release.yml`). See `CLAUDE.md § Release process` for the full procedure.
 
 ---
 
@@ -1238,9 +1226,9 @@ Pre-v2.0.0 the engine instantiated an in-process `TxMutex` (still exported for b
 
 | Server knows                                  | Server does NOT know            |
 | --------------------------------------------- | ------------------------------- |
-| Agent Sui address (public, via indexer)       | Private key                     |
+| Agent Sui address (when surfaced via Audric sponsored-tx prepare or MPP gateway payment) | Private key                     |
 | On-chain transaction digests (public)         | What the TX does (opaque bytes) |
-| Protocol fee transfers (from chain)           | CLI usage, local commands       |
+| Protocol fee transfers (from chain, atomic with the op) | CLI usage, local commands       |
 | —                                             | Wallet balance (read on demand) |
 | —                                             | Which AI client is used         |
 

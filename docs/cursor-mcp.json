@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "t2000": {
-      "command": "t2000",
-      "args": ["mcp"]
-    }
-  }
-}

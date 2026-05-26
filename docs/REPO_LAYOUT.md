@@ -14,7 +14,6 @@ t2000/
 ├── apps/                                    ← deployable apps
 │   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
 │   ├── gateway/                             (MPP API gateway — mpp.t2000.ai)
-│   ├── server/                              (backend API)
 │   └── web/                                 (t2000.ai marketing site)
 ├── packages/                                ← npm packages
 │   ├── cli/                                 (@t2000/cli)
@@ -24,12 +23,8 @@ t2000/
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source)
 ├── docs/                                    ← public-facing docs
 │   ├── REPO_LAYOUT.md                       (this file)
-│   ├── mcp-setup.md                         (MCP setup instructions)
-│   ├── open-model-benchmark.md
-│   ├── marketing/                           (litepaper, etc.)
-│   ├── claude-desktop.json
-│   └── cursor-mcp.json
-├── infra/, patches/                         ← infra + tooling
+│   └── marketing/                           (founder-local litepaper, gitignored)
+├── patches/                                 ← pnpm patches
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
 ```
@@ -40,11 +35,12 @@ t2000/
 
 | If X is a... | Put it in... |
 |---|---|
-| Public-facing doc (anyone on GitHub should see) | `docs/<NAME>.md` |
-| Marketing artifact (litepaper, deck) | `docs/marketing/<NAME>.md` |
+| Public developer docs page (setup, API ref, examples) | `apps/docs/<slug>.mdx` (Mintlify; deploys to `developers.t2000.ai`) |
+| Marketing artifact (litepaper, deck) | `docs/marketing/<NAME>.md` (gitignored) |
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
-| Public developer docs page | `apps/docs/<slug>.mdx` (Mintlify; deploys to `developers.t2000.ai`) |
+
+Developer-facing docs all live in `apps/docs/` (Mintlify). `docs/` is reserved for the layout SSOT + founder-local marketing artifacts; don't add new public docs there.
 
 If a file would go at the repo root and it's not on the allowlist below, push it into one of the above subdirectories instead.
 
