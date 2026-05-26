@@ -29,7 +29,6 @@ spec/
 │   ├── build-tracker/                 (rotating audric-build-tracker.md archive when > 3 MB)
 │   └── pitch-decks/                   (audric repo only — historical pitch decks)
 ├── reference/              ← long-lived reference docs (NOT specs, NOT runbooks) (TRACKED)
-│   ├── CLI_UX_SPEC.md
 │   ├── COMMERCE_V2.md
 │   ├── PRODUCT_SPEC.md
 │   ├── SELF_HOSTED_LLM_STRATEGY.md
@@ -59,7 +58,7 @@ spec/
 ## What stays at the repo root?
 
 Per SPEC 38a allowlist (strict — anything else gets pushed back to a subdir):
-- `README.md`, `LICENSE`, `CLAUDE.md`, `PRODUCT_FACTS.md`, `ARCHITECTURE.md`, `SECURITY.md`
+- `README.md`, `LICENSE`, `CLAUDE.md`, `ARCHITECTURE.md`, `SECURITY.md`
 - Tooling: `.gitignore`, `.npmrc`, `.prettierrc`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `turbo.json`, `glama.json`, `install.sh`
 - Founder-local truth source (gitignored): `audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`
 - Live smoke tooling (gitignored): `.smoke-jwt`, `.smoke-addr`, `.smoke-runner.mjs`

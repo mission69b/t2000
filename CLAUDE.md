@@ -105,12 +105,11 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP for reads, thin tx builders for writes.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.
-5. **Always check PRODUCT_FACTS.md** before writing documentation or marketing copy.
-6. **Always check CLI_UX_SPEC.md** before modifying CLI command output.
-7. **Always use `token-registry.ts`** for token metadata (tiers, `COIN_REGISTRY`, `isTier1` / `isTier2` / `isSupported` / `getTier`). Never hardcode decimals or coin types.
-8. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web/lib/env.ts` (v0.53.x) — schema + `instrumentation.ts` boot-time validation + ESLint `no-restricted-syntax` rule that fails CI on raw `process.env` reads. The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
-9. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design. Audric is the only fee owner: `audric/apps/web/app/api/transactions/prepare/route.ts` calls `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` inline for save/borrow and passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. The deprecated `t2000::treasury::collect_fee` Move call and `addCollectFeeToTx` helper were removed. New consumer apps that want to charge fees follow the same pattern (split + transfer to wallet inside the same PTB; the indexer detects USDC inflows to the wallet and writes `ProtocolFeeLedger` rows). See S.43 in `audric-build-tracker.md`.
-10. **Push back** if a task violates simplicity or adds unnecessary complexity.
+5. **Always check `developers.t2000.ai`** before writing documentation or marketing copy. Mintlify is the live docs SSOT (auto-deployed from `apps/docs/`) — covers product naming, CLI surface, SDK API, MCP tools. For code-level truth (fees, decimals, allowed-asset lists, error codes), read `packages/sdk/src/constants.ts` + `packages/sdk/src/token-registry.ts` directly.
+6. **Always use `token-registry.ts`** for token metadata (tiers, `COIN_REGISTRY`, `isTier1` / `isTier2` / `isSupported` / `getTier`). Never hardcode decimals or coin types.
+7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web/lib/env.ts` (v0.53.x) — schema + `instrumentation.ts` boot-time validation + ESLint `no-restricted-syntax` rule that fails CI on raw `process.env` reads. The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
+8. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design. Audric is the only fee owner: `audric/apps/web/app/api/transactions/prepare/route.ts` calls `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` inline for save/borrow and passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. The deprecated `t2000::treasury::collect_fee` Move call and `addCollectFeeToTx` helper were removed. New consumer apps that want to charge fees follow the same pattern (split + transfer to wallet inside the same PTB; the indexer detects USDC inflows to the wallet and writes `ProtocolFeeLedger` rows). See S.43 in `audric-build-tracker.md`.
+9. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
 ---
 
@@ -120,13 +119,13 @@ Read `docs/REPO_LAYOUT.md` once at session start for "where does X go?"
 Read `spec/README.md` (internal) for the spec/active vs archive vs reference layout + promotion rules.
 
 **Short version:**
-- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `PRODUCT_FACTS.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + 3 founder-local trackers (`audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
+- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + 3 founder-local trackers (`audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
 - **`spec/active/`** — in-flight SPECs (mostly gitignored)
 - **`spec/active/shipping/`** — SPECs with at least one phase shipped (tracked)
 - **`spec/archive/<version>/`** — fully shipped SPECs (tracked)
 - **`spec/archive/deferred/`**, **`deprecated/`**, **`one-offs/`**, **`pre-spec-30/`** — historical
 - **`spec/archive/handoffs/`** + **`build-tracker/`** — rotating archives (gitignored)
-- **`spec/reference/`** — long-lived reference docs (tracked: CLI_UX_SPEC, PRODUCT_SPEC, etc.)
+- **`spec/reference/`** — long-lived reference docs (tracked: PRODUCT_SPEC, locked-decision docs, etc.)
 - **`spec/runbooks/`** — operational runbooks (tracked)
 - **`docs/`** — public-facing docs (tracked)
 
@@ -134,7 +133,7 @@ Read `spec/README.md` (internal) for the spec/active vs archive vs reference lay
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
-| `PRODUCT_FACTS.md` | Versions, fees, CLI syntax, SDK signatures | Documentation or marketing |
+| [`developers.t2000.ai`](https://developers.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
 | `docs/REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
 | `spec/README.md` | Internal spec/ layout — active vs archive vs reference + promotion rules | Working on a SPEC |
@@ -145,7 +144,6 @@ Read `spec/README.md` (internal) for the spec/active vs archive vs reference lay
 | `spec/active/harness/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` (local-only) | Spec 2 — harness intelligence (BlockVision, financial_context, attemptId resume) | Engine/intelligence changes |
 | `spec/active/shipping/SPEC_30_CROSS_REPO_SECURITY_REVIEW.md` | SPEC 30 (Phase 1A+1B SHIPPED; Phase 2-10 open) | Security work |
 | `spec/archive/v07a/BENEFITS_SPEC_v07a.md` | v0.7a engine drain — SHIPPED 2026-05-18 (historical reference) | Engine architecture context |
-| `spec/reference/CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
 | `spec/reference/PRODUCT_SPEC.md` (local-only) | Product reference | Product decisions |
 | `spec/reference/CANVAS_VS_ARTIFACT.md` | LOCKED — canvases stay as inline read-only; `render_artifact` ships as a separate tool when Audric Store Phase 5 lands | Before proposing artifact migration or new generated-content surfaces |
 | `spec/reference/PRISMA_VS_DRIZZLE.md` | LOCKED — Audric stays on Prisma; do not re-litigate without new evidence | Before proposing ORM migration |
@@ -539,8 +537,7 @@ When shipping a feature, update these files:
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
 - [ ] MCP tool/prompt + tests (`packages/mcp/src/`)
 - [ ] Agent Skill (`t2000-skills/skills/`)
-- [ ] CLI UX spec (`CLI_UX_SPEC.md`)
-- [ ] Product facts (`PRODUCT_FACTS.md`)
+- [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to `developers.t2000.ai`
 - [ ] Root README (`README.md`)
 - [ ] Package READMEs (`packages/*/README.md`)
 - [ ] Version bump + build all packages

@@ -9,7 +9,7 @@ This is the public-facing layout reference. Internal SPEC-specific organization 
 ```
 t2000/
 ├── README.md, LICENSE, CLAUDE.md           ← entry points
-├── PRODUCT_FACTS.md, ARCHITECTURE.md       ← cross-repo SSOT + system architecture
+├── ARCHITECTURE.md                          ← system architecture
 ├── SECURITY.md                              ← disclosure policy
 ├── apps/                                    ← deployable apps
 │   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
@@ -61,7 +61,6 @@ These are the ONLY files that should live at repo root (everything else moves to
 | `README.md` | Public landing page |
 | `LICENSE` | MIT |
 | `CLAUDE.md` | Agent context (loaded every session by Claude Code) |
-| `PRODUCT_FACTS.md` | Cross-repo SSOT (versions, fees, signatures) |
 | `ARCHITECTURE.md` | System architecture reference |
 | `SECURITY.md` | Security disclosure policy |
 | `.gitignore`, `.npmrc`, `.prettierrc` | Tooling config |
