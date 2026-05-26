@@ -165,7 +165,7 @@ await mcp.connect(NAVI_MCP_CONFIG);                // NAVI MCP for live lending 
 const tools = await mcp.listTools();               // wire into AISDKEngine.tools
 ```
 
-`McpClientManager` is backed by `@ai-sdk/mcp` (since engine v2.1.0). `McpPromptAdapter` is the (currently dormant) adapter that lets the engine consume MCP prompts as skill recipes — see `spec/reference/MCP_PROMPTS_INTEGRATION_DECISION.md` for the design rationale.
+`McpClientManager` is backed by `@ai-sdk/mcp`. `McpPromptAdapter` is an extension point for consuming MCP prompts as skill recipes — currently dormant; see the design notes in `spec/reference/MCP_PROMPTS_INTEGRATION_DECISION.md`.
 
 ## MCP server adapter (expose engine tools)
 
@@ -231,14 +231,9 @@ AISDKEngine.submitMessage()
             └── Cross-instance abort via AbortSignal threading
 ```
 
-## Version + bundling
+## Bundling
 
-| Surface | Status |
-|---|---|
-| Major | 4.0.0 (version-locked with `@t2000/{sdk,cli,mcp}` — coordinated bump, no engine-side breaking changes) |
-| Module format | ESM only (tsup → `dist/index.js`) |
-| Tree-shake | Yes — all exports are named exports |
-| Side effects | None |
+ESM only (`tsup` → `dist/index.js`). Named exports — fully tree-shakeable. Side-effect-free. Version-locked with `@t2000/{sdk,cli,mcp}` (coordinated releases).
 
 ## Links
 

@@ -30,18 +30,16 @@ The skill markdown lives at [`t2000.ai/skills/t2000-setup`](https://t2000.ai/ski
 npm install -g @t2000/cli
 ```
 
-Installs two equivalent binaries — `t2` (canonical) and `t2000` (legacy alias).
+Requires Node.js 18+.
 
 ```bash
-t2 init                              # create a wallet (plain Bech32, 0o600 perms, no PIN)
+t2 init                              # create a wallet (plain Bech32, 0o600 perms)
 t2 receive                           # show address + ANSI QR — fund the wallet
 t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
 t2 swap 100 USDC SUI                 # best-route swap via Cetus Aggregator
 t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
 t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 ```
-
-Requires Node.js 18+.
 
 ## Where next
 
@@ -91,7 +89,7 @@ Requires Node.js 18+.
 
 **Gasless by default for the things that matter.** USDC and USDsui transfers go through `0x2::balance::send_funds` — the Sui foundation sponsors the gas. Your agent never needs SUI to pay another agent in USDC.
 
-**One stack, one brand.** `@t2000/{sdk,cli,mcp,engine}` are version-locked and ship together at major bumps. No mix-and-match version drift.
+**One stack, one brand.** `@t2000/{sdk,cli,mcp,engine}` are version-locked and ship together. No mix-and-match version drift.
 
 ## Links
 

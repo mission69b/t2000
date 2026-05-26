@@ -59,7 +59,6 @@ describeOrSkip('CLI integration — wiring + version + help', () => {
       'receive',
       'balance',
       'history',
-      'wallet',
       'send',
       'swap',
       'pay',
@@ -122,6 +121,7 @@ describeOrSkip('CLI integration — bulk-deleted legacy commands all exit 1', ()
     'swap-quote',
     'claim-rewards',
     'address',
+    'wallet',
   ];
 
   for (const cmd of deleted) {
@@ -133,7 +133,7 @@ describeOrSkip('CLI integration — bulk-deleted legacy commands all exit 1', ()
   }
 });
 
-describeOrSkip('CLI integration — init + wallet + export round-trip', () => {
+describeOrSkip('CLI integration — init + receive + export round-trip', () => {
   let home: string;
   let keyPath: string;
 
@@ -161,20 +161,20 @@ describeOrSkip('CLI integration — init + wallet + export round-trip', () => {
     expect(r.stderr).toMatch(/Wallet already exists/i);
   });
 
-  it('t2 wallet address --json prints the same address as init', () => {
-    const init = runCli(['--json', 'wallet', 'address'], { home });
+  it('t2 receive --json prints the same address as init', () => {
+    const init = runCli(['--json', 'receive'], { home });
     expect(init.code).toBe(0);
     const parsed = JSON.parse(init.stdout);
     expect(parsed.address).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
-  it('t2 wallet address is deterministic (same call twice -> same output)', () => {
+  it('t2 receive --json is deterministic (same call twice -> same output)', () => {
     // Cheap stability check; the network-touching `t2 balance` is
     // covered by the runbook (it hits Sui RPC). This guard catches any
     // regression where address derivation becomes non-deterministic
     // (e.g., adding a timestamp to the JSON payload by accident).
-    const a = runCli(['--json', 'wallet', 'address'], { home });
-    const b = runCli(['--json', 'wallet', 'address'], { home });
+    const a = runCli(['--json', 'receive'], { home });
+    const b = runCli(['--json', 'receive'], { home });
     expect(a.code).toBe(0);
     expect(b.code).toBe(0);
     expect(a.stdout).toBe(b.stdout);
@@ -201,8 +201,8 @@ describeOrSkip('CLI integration — init + wallet + export round-trip', () => {
       expect(parsed.address).toMatch(/^0x[0-9a-f]{64}$/);
 
       // Same secret -> same address as the original wallet.
-      const originalAddr = runCli(['--json', 'wallet', 'address'], { home });
-      const importedAddr = runCli(['--json', 'wallet', 'address'], { home: home2 });
+      const originalAddr = runCli(['--json', 'receive'], { home });
+      const importedAddr = runCli(['--json', 'receive'], { home: home2 });
       expect(JSON.parse(originalAddr.stdout).address).toBe(
         JSON.parse(importedAddr.stdout).address,
       );
@@ -406,9 +406,6 @@ describeOrSkip('CLI integration — services + skills arg validation', () => {
 
 describeOrSkip('CLI integration — help on every group resolves cleanly', () => {
   const groups = [
-    ['wallet'],
-    ['wallet', 'address'],
-    ['wallet', 'balance'],
     ['send'],
     ['swap'],
     ['pay'],
@@ -446,7 +443,7 @@ describeOrSkip('CLI integration — help on every group resolves cleanly', () =>
       const r = runCli([...path, '--help']);
       // Look for "t2000 <verb>" patterns specifically — the brand word
       // "t2000" appearing alone (e.g. in URLs, brand copy) is fine.
-      const stray = r.stdout.match(/\bt2000\s+(send|swap|pay|init|export|receive|balance|history|wallet|services|limit|mcp|skills)\b/g);
+      const stray = r.stdout.match(/\bt2000\s+(send|swap|pay|init|export|receive|balance|history|services|limit|mcp|skills)\b/g);
       if (stray && stray.length > 0) {
         offenders.push(`${path.join(' ')}: ${stray.join(', ')}`);
       }

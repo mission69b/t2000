@@ -6,8 +6,8 @@
 #
 # What this does:
 #   1. Checks for Node.js (v18+)
-#   2. Installs @t2000/cli globally via npm (provides both `t2` and `t2000` binaries)
-#   3. Runs `t2 init` (creates a plain Bech32 wallet — no PIN, no AES)
+#   2. Installs @t2000/cli globally via npm (provides the `t2` binary)
+#   3. Runs `t2 init` (creates a plain Bech32 wallet)
 #
 # Environment variables:
 #   T2000_SKIP_INIT  - Skip `t2 init` (default: false)
@@ -112,7 +112,7 @@ fi
 INSTALLED_VERSION=$(t2 --version 2>/dev/null || echo "unknown")
 
 echo ""
-success "  ✓ t2 ${INSTALLED_VERSION} installed (also available as \`t2000\`)"
+success "  ✓ t2 ${INSTALLED_VERSION} installed"
 
 # ─── Run t2 init ────────────────────────────────────────────────────────────
 

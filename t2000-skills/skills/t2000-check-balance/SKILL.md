@@ -22,7 +22,6 @@ Fetch the current wallet balance — stablecoin holdings (USDC, USDsui, other Su
 
 ```bash
 t2 balance                # human-readable summary
-t2 wallet balance         # explicit form (same output)
 t2 balance --json         # machine-parseable JSON (works on every command)
 t2 balance --key <path>   # use a non-default wallet key file
 ```

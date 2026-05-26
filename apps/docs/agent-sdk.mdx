@@ -20,7 +20,7 @@ Requires Node.js 18+ · TypeScript 5+ recommended.
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-// Create a new wallet (plain Bech32, 0o600 perms, no PIN)
+// Create a new wallet (plain Bech32, 0o600 perms)
 const { agent, address } = await T2000.init();
 
 // Or load an existing wallet from ~/.t2000/wallet.key
@@ -54,16 +54,12 @@ const result = await agent.pay({
 | Static | Returns | Use when |
 |---|---|---|
 | `T2000.init({ keyPath?, name? })` | `{ agent, address }` | Generating a brand-new wallet. Writes a plain Bech32 JSON file to `~/.t2000/wallet.key` (override with `keyPath`). |
-| `T2000.create({ keyPath?, rpcUrl? })` | `T2000` | Loading the existing wallet from disk. Throws `WALLET_NOT_FOUND` if missing, `WALLET_CORRUPT` if it's a v3 PIN-encrypted file or otherwise malformed. |
+| `T2000.create({ keyPath?, rpcUrl? })` | `T2000` | Loading the existing wallet from disk. Throws `WALLET_NOT_FOUND` if missing, `WALLET_CORRUPT` if malformed. |
 | `T2000.fromPrivateKey(secret, { network?, rpcUrl? })` | `T2000` | Synchronous in-memory load from a `suiprivkey1…` Bech32 or hex secret. No filesystem read or write. |
-
-<Note>
-**v3 → v4.** `T2000.create({ pin })` is gone. The `pin` and `passphrase` fields are accepted (back-compat) but **ignored** — v4 wallets are plain Bech32 JSON with `0o600` perms. If you're upgrading a v3 PIN-encrypted wallet: export the secret from the v3 binary, then `T2000.init` and replace the generated file with one carrying that secret (or just use [`@t2000/cli`](/agent-wallet)'s `t2 init --import` flow).
-</Note>
 
 ## Agent Wallet API
 
-These methods cover the v4 Agent Wallet brand — sending USDC, receiving, swapping, paying for MPP APIs. They mirror the [`@t2000/cli`](/agent-wallet) surface 1:1.
+These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending USDC, receiving, swapping, paying for MPP APIs.
 
 | Method | Returns | Notes |
 |---|---|---|
@@ -98,9 +94,9 @@ agent.signer;      // TransactionSigner (works for keypair + zkLogin)
 agent.keypair;     // Ed25519Keypair (throws for zkLogin instances)
 ```
 
-## Programmatic DeFi API (no CLI alias)
+## DeFi API (programmatic only)
 
-These methods power [Audric Finance](https://audric.ai) — save (NAVI lend), borrow (NAVI), repay, withdraw, plus the supporting read tools. **They have no `t2` CLI alias in v4** by design: the CLI is a focused Agent Wallet (send / swap / pay); DeFi flows live in consumer apps and the [`@t2000/engine`](/agent-engine) Agent Harness. They are still load-bearing for `@t2000/engine` 4.x and any consumer app building on the SDK.
+NAVI lend / borrow / repay / withdraw, plus the supporting reads. These are **programmatic only** — the CLI is a focused Agent Wallet (send / swap / pay); DeFi flows live in consumer apps and the [`@t2000/engine`](/agent-engine) Agent Harness.
 
 | Method | Notes |
 |---|---|
@@ -141,7 +137,7 @@ import {
   // Sui clients
   getSuiClient, getSuiGrpcClient, DEFAULT_GRPC_URL,
 
-  // Fees (consumer apps only — SDK + CLI are fee-free)
+  // Optional overlay-fee helper for consumer apps building on top of the SDK
   addFeeTransfer, T2000_OVERLAY_FEE_WALLET,
 } from '@t2000/sdk';
 ```
@@ -155,7 +151,7 @@ Token metadata + tiers live in `COIN_REGISTRY` (`packages/sdk/src/token-registry
 - **Legacy — no tier, display only (3):** USDT, USDe, USDsui. Kept so existing NAVI positions still render accurately.
 
 <Note>
-**Strategic exception.** `OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` accept **both** USDC and USDsui — USDsui is no-tier in the registry but saveable/borrowable via the allowlist (NAVI runs a separate USDsui pool, often at a different APY than the USDC pool, since v0.51.0). Repay symmetry is enforced: USDsui debt must be repaid with USDsui (USDC debt with USDC).
+**Strategic exception.** `OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` accept **both** USDC and USDsui — USDsui is no-tier in the registry but saveable/borrowable via the allowlist (NAVI runs a separate USDsui pool, often at a different APY than the USDC pool). Repay symmetry is enforced: USDsui debt must be repaid with USDsui (USDC debt with USDC).
 </Note>
 
 ```typescript
@@ -177,14 +173,6 @@ Other writes (SUI sends, Cetus swaps, NAVI save / borrow / withdraw / repay / cl
 <Note>
 **Consumer apps:** sponsored gas via Enoki / zkLogin is the host's responsibility. The SDK is sponsorship-agnostic — Audric wires Enoki at the host layer (`audric/apps/web-v2`); the SDK doesn't know or care.
 </Note>
-
-## Fees
-
-The SDK + CLI are **fee-free by design** (`@t2000/sdk@1.1.0+`). No t2000 protocol fees on any operation.
-
-Network gas (SUI) and third-party fees (Cetus routing, NAVI lending spread) still apply at on-chain rates.
-
-Consumer apps that want to charge an overlay fee — Audric does this on save / borrow / swap — call `addFeeTransfer(tx, paymentCoin, FEE_BPS, receiverAddress, amount)` inside the same PTB. The SDK never assumes a t2000 treasury; pass any receiver.
 
 ## Configuration
 

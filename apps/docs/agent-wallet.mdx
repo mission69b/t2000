@@ -11,10 +11,10 @@ The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — one CLI
 npm install -g @t2000/cli
 ```
 
-Installs two equivalent binaries: `t2` (canonical) and `t2000` (legacy alias). Requires Node.js 18+.
+Requires Node.js 18+.
 
 ```bash
-t2 init                              # plain Bech32 wallet, 0o600 perms, no PIN
+t2 init                              # plain Bech32 wallet, 0o600 perms
 t2 init --import                     # restore from a suiprivkey1… secret
 t2 receive                           # address + ANSI QR
 t2 send 5 USDC alice.sui             # gasless USDC send
@@ -29,7 +29,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 init` · `t2 init --import` | Create a new wallet, or import an existing `suiprivkey1…` Bech32 secret. Prints a warning footer about opt-in `t2 limit` settings. |
 | `t2 export` | Print the wallet's Bech32 secret — pair with `t2 init --import` on another machine to move wallets. |
 | `t2 receive` | Print the wallet address + ANSI QR. `--qr-only` for embedding; `--json` for scripts. |
-| `t2 balance` · `t2 wallet balance` | USDC / USDsui / SUI holdings + USD totals. |
+| `t2 balance` | USDC / USDsui / SUI holdings + USD totals. |
 | `t2 history` | Recent on-chain activity (sends / swaps / MPP payments) with Suiscan digests. |
 | `t2 send <amount> <asset> <recipient>` | Send USDC / USDsui / SUI. **Asset is required** — no implicit USDC default. USDC + USDsui are gasless via `0x2::balance::send_funds`; SUI sends use standard gas. Recipient resolves in priority order: hex address → SuiNS name (`alice.sui`) → `@audric` handle → saved contact alias. |
 | `t2 swap <amount> <from> <to>` | Best-route swap via Cetus Aggregator V3 across 20+ Sui DEXs. `--slippage <pct>` (default 1%, max 5%), `--quote` for a preview without signing. Requires SUI for gas. |
@@ -101,21 +101,21 @@ Manual config — paste into your client's MCP config file:
 {
   "mcpServers": {
     "t2000": {
-      "command": "t2000",
+      "command": "t2",
       "args": ["mcp", "start"]
     }
   }
 }
 ```
 
-The `t2000` (and `t2`) command must be on `PATH` — `npm install -g @t2000/cli` puts both there.
+The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there.
 
 ### MCP Tools
 
 | Tool | Type | What it does |
 |---|---|---|
 | `t2000_balance` | read | USDC / USDsui / SUI holdings + gas reserve + USD totals. |
-| `t2000_address` | read | Wallet's Sui address. Same value as `t2 wallet address`. |
+| `t2000_address` | read | Wallet's Sui address. |
 | `t2000_receive` | read | Payment request — address, Payment Kit `sui:pay?…` URI, optional `amount` / `memo` / `label`. |
 | `t2000_history` | read | Recent on-chain activity with Suiscan digests. |
 | `t2000_services` | read | Discover MPP services on `mpp.t2000.ai`. Call before `t2000_pay`. |
@@ -165,19 +165,19 @@ Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` 
 
 Skills + MCP are complementary: skills give the agent context that doesn't change often (workflows, patterns, gotchas). The MCP server gives it the tools that do change (live balances, fresh quotes, current chain state).
 
-## What's in v4
+## At a glance
 
-| Surface | v4 |
+| Surface | Detail |
 |---|---|
-| Wallet file | Plain Bech32 JSON, `0o600` perms. **No PIN, no AES.** |
+| Wallet file | Plain Bech32 JSON at `~/.t2000/wallet.key`, `0o600` perms |
 | Sendable assets | USDC, USDsui, SUI (asset required on every `send`) |
 | Gasless | USDC + USDsui via Sui foundation's `0x2::balance::send_funds` sponsor |
-| Spending limits | Opt-in via `t2 limit set`. Default = no limits + warning footer at `init`. |
+| Spending limits | Opt-in via `t2 limit set` — default is no limits |
 | MCP tools | 9 (5 read + 3 write + 1 settings) |
-| Skills | 8 (`t2000-setup` / `check-balance` / `send` / `receive` / `swap` / `services` / `pay` / `mcp`) |
-| Fees | Free — t2000 layer charges no protocol fees. Network gas + protocol fees (Cetus routing, etc.) still apply at on-chain rates. |
+| Skills | 8 markdown playbooks shipped as `skill-<name>` MCP prompts |
+| Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |
 
-v4 is an Agent Wallet — focused on USDC payments, swaps, and MPP API access. DeFi (save / borrow / withdraw / repay / yields) lives on [audric.ai](https://audric.ai). The CLI is intentionally narrow.
+The Agent Wallet is intentionally narrow — focused on USDC payments, swaps, and MPP API access. DeFi flows (save / borrow / withdraw / repay) are programmatic-only in [`@t2000/sdk`](/agent-sdk).
 
 ## Programmatic usage
 

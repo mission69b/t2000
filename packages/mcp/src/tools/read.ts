@@ -30,7 +30,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_address',
-    "Get the agent's Sui wallet address. Same value as `t2 wallet address` + the first line of `t2 receive`.",
+    "Get the agent's Sui wallet address. Same value as the first line of `t2 receive`.",
     {},
     async () => {
       try {
