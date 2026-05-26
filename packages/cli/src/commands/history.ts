@@ -1,8 +1,14 @@
+// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 5 — 2026-05-26]
+// Migrated from the legacy `resolvePin` + `T2000.create({pin, keyPath})`
+// flow to the v4 `withAgent` helper. The on-disk wallet is plain Bech32
+// (no PIN), so this command is a thin transcript wrapper over
+// `agent.history()` + `agent.transactionDetail()`.
+
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, truncateAddress } from '@t2000/sdk';
+import { truncateAddress } from '@t2000/sdk';
 import type { TransactionRecord } from '@t2000/sdk';
-import { resolvePin } from '../prompts.js';
+import { withAgent } from '../lib/with-agent.js';
 import { printHeader, printBlank, printJson, isJsonMode, handleError, printLine, printInfo, printDivider, printKeyValue, explorerUrl } from '../output.js';
 
 const ACTION_LABELS: Record<string, string> = {
@@ -63,11 +69,10 @@ export function registerHistory(program: Command) {
     .description('Show transaction history, or detail for a specific digest')
     .argument('[digest]', 'Transaction digest to view details')
     .option('--limit <n>', 'Number of transactions', '20')
-    .option('--key <path>', 'Key file path')
-    .action(async (digest: string | undefined, opts) => {
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .action(async (digest: string | undefined, opts: { limit?: string; key?: string }) => {
       try {
-        const pin = await resolvePin();
-        const agent = await T2000.create({ pin, keyPath: opts.key });
+        const agent = await withAgent({ keyPath: opts.key });
 
         if (digest) {
           const tx = await agent.transactionDetail(digest);
@@ -83,7 +88,8 @@ export function registerHistory(program: Command) {
           return;
         }
 
-        const txns = await agent.history({ limit: parseInt(opts.limit, 10) });
+        const limit = opts.limit ? parseInt(opts.limit, 10) : 20;
+        const txns = await agent.history({ limit });
 
         if (isJsonMode()) {
           printJson(txns);
