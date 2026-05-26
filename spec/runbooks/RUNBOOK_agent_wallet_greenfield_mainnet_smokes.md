@@ -3,12 +3,15 @@
 > **STATUS:** Phase A is DONE (8/8 smokes passed 2026-05-26 — see S.335).
 > Kept as historical reference + template for any future repeat run.
 >
-> **S.337 OBSOLETES SMOKE 1:** the `--import` flag was removed when the
-> legacy-wallet migration flow was cut. If you're re-running this runbook
-> post-S.337, skip Smoke 1 entirely — v4 doesn't migrate v3 wallets. To
-> set up a fresh v4 wallet on a new box, run `t2 init` (creates a new
-> address) or `scp` an existing v4 `~/.t2000/wallet.key` from a machine
-> that already has one. There is no Bech32-paste flow.
+> **S.337 → S.338 revision:** the legacy-wallet *detection* apparatus is
+> permanently gone (no `WALLET_LEGACY_AES`, no recovery banner). A v3 file
+> at the default path throws `WALLET_CORRUPT` and the user moves/deletes
+> it manually. BUT `t2 init --import` was restored as a clean Bech32
+> import primitive in S.338 — paste a `suiprivkey1...` from any source.
+> So Smoke 1 below is still valid for the v3 → v4 migration scenario:
+> the user runs `t2000 export` (legacy v3 binary), moves the v3 file,
+> then `t2 init --import` and pastes the secret. The same Bech32 secret
+> produces the same address. The runbook step still works as written.
 >
 > **Owner:** founder (manual execution). **Purpose:** validate the v4 CLI's
 > write paths (send / swap / pay) against mainnet on a real funded wallet

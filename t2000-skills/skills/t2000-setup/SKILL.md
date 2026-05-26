@@ -56,16 +56,23 @@ If `npm` is missing, point the user to https://nodejs.org/ (Node 18+).
 ### Step 2 — Create a wallet
 
 ```bash
-t2 init
+t2 init                              # fresh wallet
+t2 init --import                     # import an existing Bech32 secret (interactive prompt)
+t2 init --import suiprivkey1xxx...   # import via flag (warns: shell history exposure)
 ```
 
-This:
+`t2 init` (no flag):
 - Generates a fresh Ed25519 keypair on Sui mainnet.
 - Writes the plain Bech32 private key to `~/.t2000/wallet.key` (mode `0o600`).
 - Prints the wallet address.
 - Prints a warning footer if no spending limits are set (those are opt-in, see Step 4).
 
-> **Upgrading from v3 (PIN-encrypted)?** v4 doesn't migrate v3 wallets. The user base is tiny and the simpler path is to send funds across: (1) install the v3 `t2000` binary alongside v4 — keep its key file at a different path via `--key`, (2) `t2000 send <amount> USDC <v4-address>` to move funds, (3) move or delete the v3 file at `~/.t2000/wallet.key`, (4) `t2 init` to bind v4 to the default path.
+`t2 init --import`:
+- Prompts for a `suiprivkey1...` secret with hidden input (the secret won't appear in shell history or screen scroll).
+- Validates the Bech32 format, derives the address, writes the wallet file.
+- Used for: re-creating the wallet on a fresh box (paired with `t2 export` on the source box), or bringing in a key from another tool (Sui CLI, hardware wallet, etc.).
+
+> **Upgrading from v3 (PIN-encrypted)?** v4 doesn't auto-migrate v3 AES wallets — a v3 file at `~/.t2000/wallet.key` will throw `WALLET_CORRUPT`. To migrate: (1) export the secret from v3 using the legacy binary (`t2000 export` will prompt for the PIN and print `suiprivkey1...`), (2) move or delete the v3 file at `~/.t2000/wallet.key`, (3) `t2 init --import` and paste the secret. The same Bech32 secret produces the same address — funds carry over automatically. (Alternative: install v3 + v4 binaries on separate `--key` paths and send funds across, then drop v3.)
 
 ### Step 3 — Fund the wallet
 
@@ -175,6 +182,6 @@ After verify succeeds, surface a short menu of natural next moves:
 |---|---|
 | `t2000: command not found` after npm install | `npm bin -g` directory not on PATH; add it or use `npx @t2000/cli ...` instead |
 | `t2 init` fails with permission error | Don't run with `sudo`; npm global may need a user-level prefix (`npm config set prefix ~/.npm-global`) |
-| `t2 init` fails with `WALLET_EXISTS` | A file already lives at `~/.t2000/wallet.key`. If it's a v3 file you no longer need, move/delete it. If you still need it, point v3 + v4 at separate paths via `--key`. v4 does not migrate v3 wallets. |
+| `t2 init` fails with `WALLET_EXISTS` | A file already lives at `~/.t2000/wallet.key`. If it's a v3 file you no longer need, move/delete it. If you still need it, point v3 + v4 at separate paths via `--key`. v4 does not auto-migrate v3 wallets — see the v3 upgrade note in Step 2. |
 | MCP server "doesn't do anything" when run manually | Working as designed — the server is a subprocess launched by the AI client, never run from a terminal. See the `t2000-mcp` skill. |
 | AI client doesn't see `t2000_*` tools after install | Restart the client. If still missing, check the per-client config path printed by `t2 mcp install`. |

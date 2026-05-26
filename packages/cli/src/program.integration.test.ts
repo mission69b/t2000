@@ -151,6 +151,7 @@ describeOrSkip('CLI integration — init + wallet + export round-trip', () => {
     expect(r.code).toBe(0);
     const parsed = JSON.parse(r.stdout);
     expect(parsed.address).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(parsed.imported).toBe(false);
     expect(existsSync(keyPath)).toBe(true);
   });
 
@@ -185,18 +186,35 @@ describeOrSkip('CLI integration — init + wallet + export round-trip', () => {
     expect(r.stdout).toMatch(/suiprivkey1[a-z0-9]+/);
   });
 
-  it('t2 init --import is no longer supported (S.337 nuclear cut)', () => {
-    // The --import flag was removed when we cut the legacy-wallet
-    // migration flow. Cross-machine wallet copy is now "scp the
-    // ~/.t2000/wallet.key file" — not a CLI primitive.
+  it('t2 init --import <bech32> recreates the same address (S.338 restore)', () => {
+    // Extract the secret from the just-exported wallet.
+    const exp = runCli(['export', '--yes'], { home });
+    const secret = exp.stdout.match(/suiprivkey1[a-z0-9]+/)?.[0];
+    expect(secret).toBeTruthy();
+
     const home2 = mkTmpHome();
     try {
-      const r = runCli(['init', '--import', 'suiprivkey1xxx'], { home: home2 });
-      expect(r.code).not.toBe(0);
-      expect(r.stderr).toMatch(/unknown option|error:/i);
+      const r = runCli(['--json', 'init', '--import', secret!], { home: home2 });
+      expect(r.code).toBe(0);
+      const parsed = JSON.parse(r.stdout);
+      expect(parsed.imported).toBe(true);
+      expect(parsed.address).toMatch(/^0x[0-9a-f]{64}$/);
+
+      // Same secret -> same address as the original wallet.
+      const originalAddr = runCli(['--json', 'wallet', 'address'], { home });
+      const importedAddr = runCli(['--json', 'wallet', 'address'], { home: home2 });
+      expect(JSON.parse(originalAddr.stdout).address).toBe(
+        JSON.parse(importedAddr.stdout).address,
+      );
     } finally {
       rmSync(home2, { recursive: true, force: true });
     }
+  });
+
+  it('t2 init --import refuses to overwrite an existing wallet', () => {
+    const r = runCli(['init', '--import', 'suiprivkey1xxx'], { home });
+    expect(r.code).not.toBe(0);
+    expect(r.stderr + r.stdout).toMatch(/already exists/i);
   });
 });
 

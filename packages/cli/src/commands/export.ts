@@ -47,7 +47,7 @@ export function registerExport(program: Command) {
         printSuccess('Wallet secret (Bech32 suiprivkey):');
         process.stdout.write(`  ${secret}\n`);
         printBlank();
-        printInfo('Store securely. Anyone with this secret controls the wallet.');
+        printInfo('Store securely. Anyone with this secret controls the wallet. Re-import on another box via `t2 init --import` (interactive prompt).');
         printBlank();
       } catch (error) {
         handleError(error);

@@ -1,11 +1,23 @@
 // `t2 init` — create a fresh v2 plain Bech32 wallet. No PIN prompt.
+// `t2 init --import` — interactive hidden-input prompt for a Bech32 secret.
+// `t2 init --import <secret>` — direct CLI flag (scripting; prints
+// shell-history warning).
+//
+// The `--import` primitive is a general "save this Bech32 secret as a v4
+// wallet file" — NOT a v3-migration tool. Anyone with a `suiprivkey1...`
+// from any source (another v4 machine, Sui CLI export, hardware wallet,
+// etc.) can use it. v3 AES files at the default path still throw
+// `WALLET_CORRUPT` — they're not silently migrated.
+//
 // Footer banner: "No spending limits set. Run `t2 limit set --daily <usd>`
 // to add them." — visible reminder, no prompt friction.
 
 import {
   T2000,
   generateKeypair,
+  keypairFromPrivateKey,
   saveKey,
+  saveBech32,
   walletExists,
   getAddress,
 } from '@t2000/sdk';
@@ -14,14 +26,17 @@ import {
   printSuccess,
   printKeyValue,
   printBlank,
+  printWarning,
   printLine,
   printJson,
   isJsonMode,
   handleError,
 } from '../output.js';
+import { askHidden } from '../lib/prompts.js';
 
 export interface InitOptions {
   key?: string;
+  import?: string | boolean;
 }
 
 const NO_LIMITS_FOOTER =
@@ -32,6 +47,10 @@ export function registerInit(program: Command) {
     .command('init')
     .description('Create a new Agent Wallet (no PIN; plain Bech32 key file with 0o600 perms)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option(
+      '--import [secret]',
+      'Import an existing wallet via Bech32 secret. Omit the value for an interactive hidden-input prompt.',
+    )
     .action(async (opts: InitOptions) => {
       try {
         if (await walletExists(opts.key)) {
@@ -40,17 +59,34 @@ export function registerInit(program: Command) {
           );
         }
 
-        const keypair = generateKeypair();
-        await saveKey(keypair, undefined, opts.key);
-        const address = getAddress(keypair);
+        let address: string;
+        let imported = false;
+
+        if (opts.import !== undefined) {
+          const secret = typeof opts.import === 'string' && opts.import.length > 0
+            ? opts.import
+            : await askHidden('Paste your suiprivkey1... secret:');
+
+          if (typeof opts.import === 'string' && opts.import.length > 0) {
+            printWarning('Private key passed as a CLI flag will be in shell history. Prefer the interactive prompt: `t2 init --import` (no value).');
+          }
+
+          await saveBech32(secret, opts.key);
+          address = getAddress(keypairFromPrivateKey(secret));
+          imported = true;
+        } else {
+          const keypair = generateKeypair();
+          await saveKey(keypair, undefined, opts.key);
+          address = getAddress(keypair);
+        }
 
         if (isJsonMode()) {
-          printJson({ address, configPath: opts.key ?? '~/.t2000/wallet.key' });
+          printJson({ address, imported, configPath: opts.key ?? '~/.t2000/wallet.key' });
           return;
         }
 
         printBlank();
-        printSuccess('Wallet created');
+        printSuccess(imported ? 'Wallet imported' : 'Wallet created');
         printKeyValue('Address', address);
         printKeyValue('Path', opts.key ?? '~/.t2000/wallet.key');
         printBlank();
