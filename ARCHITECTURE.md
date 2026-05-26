@@ -1096,7 +1096,7 @@ Returns only aggregated numbers:
 | Database (Audric)      | NeonDB (Postgres) | Users, preferences, sessions, fee history  |
 | Database (gateway)     | NeonDB (Postgres) | MPP payment logs                           |
 | Database (suimpp.dev)  | NeonDB (Postgres) | Servers, payments, endpoints               |
-| DNS                    | Cloudflare        | —                                          |
+| DNS                    | Vercel DNS        | All `t2000.ai` records — managed alongside the Vercel deployment |
 | CI/CD                  | GitHub Actions    | Lint, typecheck, test, publish             |
 
 
