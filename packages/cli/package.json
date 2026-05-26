@@ -56,6 +56,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "mppx": "^0.4.9",
     "qrcode": "^1.5.4"
   }
 }

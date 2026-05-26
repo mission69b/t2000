@@ -1,9 +1,14 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1 — 2026-05-26]
+// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1+3 — 2026-05-26]
 // Greenfield program.ts — registers the new Agent Wallet command tree.
 // Old DeFi commands (save/withdraw/borrow/repay/etc) are still
 // registered for back-compat; they get removed in Day 3-5 of Phase A
 // as new replacements land. The intent is to NOT break `t2000 save 10`
 // mid-pivot — old paths keep working until cut intentionally.
+//
+// Day 3 (2026-05-26): rewrote `send` + `swap` + `pay` in-place for the
+// v4 surface (asset required on send, swap folds swap-quote into
+// `--quote`, pay adds `--estimate`). Dropped the legacy `swap-quote`
+// registration — the file itself stays until Day 5's bulk delete pass.
 
 import { Command } from 'commander';
 import { createRequire } from 'node:module';
@@ -41,7 +46,9 @@ import { registerMcp } from './commands/mcp.js';
 import { registerContacts } from './commands/contacts.js';
 import { registerClaimRewards } from './commands/claimRewards.js';
 import { registerSwap } from './commands/swap.js';
-import { registerSwapQuote } from './commands/swapQuote.js';
+// Day 3: `swap-quote` folded into `t2 swap --quote`. File stays until
+// Day 5's bulk delete pass.
+// import { registerSwapQuote } from './commands/swapQuote.js';
 import { registerSkills } from './commands/skills.js';
 
 export function createProgram(): Command {
@@ -98,7 +105,7 @@ Examples:
   registerContacts(program);
   registerClaimRewards(program);
   registerSwap(program);
-  registerSwapQuote(program);
+  // Day 3: `swap-quote` folded into `t2 swap --quote`.
   registerSkills(program);
 
   return program;

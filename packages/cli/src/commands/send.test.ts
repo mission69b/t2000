@@ -1,52 +1,118 @@
+// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 3 — 2026-05-26]
+// Parser tests for `t2 send <amount> <asset> <recipient>` v4 surface.
+// Locks in the SPEC's "asset required, no USDC default" rule + the
+// constrained whitelist (USDC / USDsui / SUI).
+
 import { describe, it, expect } from 'vitest';
 import { parseSendArgs } from './send.js';
 
-describe('parseSendArgs', () => {
-  it('parses simple amount + address', () => {
-    const result = parseSendArgs(['100', '0xabc123']);
-    expect(result).toEqual({ amount: 100, asset: 'USDC', recipient: '0xabc123' });
+describe('parseSendArgs (v4)', () => {
+  describe('happy path', () => {
+    it('parses USDC + hex recipient', () => {
+      expect(parseSendArgs(['5', 'USDC', '0xabc123'])).toEqual({
+        amount: 5,
+        asset: 'USDC',
+        recipient: '0xabc123',
+      });
+    });
+
+    it('parses USDsui + SuiNS recipient', () => {
+      expect(parseSendArgs(['10', 'USDsui', 'alice.sui'])).toEqual({
+        amount: 10,
+        asset: 'USDsui',
+        recipient: 'alice.sui',
+      });
+    });
+
+    it('parses SUI + @audric handle recipient', () => {
+      expect(parseSendArgs(['0.5', 'SUI', 'mission69b@audric'])).toEqual({
+        amount: 0.5,
+        asset: 'SUI',
+        recipient: 'mission69b@audric',
+      });
+    });
+
+    it('tolerates the "to" filler word between asset and recipient', () => {
+      expect(parseSendArgs(['5', 'USDC', 'to', '0xabc'])).toEqual({
+        amount: 5,
+        asset: 'USDC',
+        recipient: '0xabc',
+      });
+    });
+
+    it('is case-insensitive on asset (lowercase)', () => {
+      expect(parseSendArgs(['5', 'usdc', '0xabc'])).toEqual({
+        amount: 5,
+        asset: 'USDC',
+        recipient: '0xabc',
+      });
+    });
+
+    it('is case-insensitive on asset (USDSUI uppercase)', () => {
+      expect(parseSendArgs(['5', 'USDSUI', '0xabc'])).toEqual({
+        amount: 5,
+        asset: 'USDsui',
+        recipient: '0xabc',
+      });
+    });
   });
 
-  it('parses amount with "to" keyword', () => {
-    const result = parseSendArgs(['50', 'to', '0xdef456']);
-    expect(result).toEqual({ amount: 50, asset: 'USDC', recipient: '0xdef456' });
+  describe('asset required (no implicit USDC default)', () => {
+    it('errors when asset is omitted (bare amount + recipient)', () => {
+      expect(() => parseSendArgs(['5', 'alice.sui'])).toThrow(/Missing required <asset>/);
+    });
+
+    it('error mentions the example invocation with USDC', () => {
+      expect(() => parseSendArgs(['5', 'alice.sui'])).toThrow(/t2 send 5 USDC alice\.sui/);
+    });
+
+    it('errors when only the amount is given', () => {
+      expect(() => parseSendArgs(['5'])).toThrow(/Usage/);
+    });
+
+    it('errors on empty args', () => {
+      expect(() => parseSendArgs([])).toThrow(/Usage/);
+    });
   });
 
-  it('parses amount with "To" keyword (case-insensitive)', () => {
-    const result = parseSendArgs(['50', 'To', '0xdef456']);
-    expect(result).toEqual({ amount: 50, asset: 'USDC', recipient: '0xdef456' });
+  describe('asset whitelist (USDC | USDsui | SUI)', () => {
+    it('rejects USDT with a swap hint', () => {
+      expect(() => parseSendArgs(['5', 'USDT', '0xabc'])).toThrow(/Unsupported asset/);
+      expect(() => parseSendArgs(['5', 'USDT', '0xabc'])).toThrow(/Swap to USDC or USDsui first/);
+    });
+
+    it('rejects USDY (one of the Sui-allowlisted stables we do NOT track)', () => {
+      expect(() => parseSendArgs(['5', 'USDY', '0xabc'])).toThrow(/Unsupported asset/);
+    });
+
+    it('rejects USDe', () => {
+      expect(() => parseSendArgs(['5', 'USDe', '0xabc'])).toThrow(/Unsupported asset/);
+    });
+
+    it('rejects GOLD (XAUM)', () => {
+      expect(() => parseSendArgs(['5', 'GOLD', '0xabc'])).toThrow(/Unsupported asset/);
+    });
+
+    it('rejects WAL', () => {
+      expect(() => parseSendArgs(['5', 'WAL', '0xabc'])).toThrow(/Unsupported asset/);
+    });
+
+    it('rejects a bogus symbol', () => {
+      expect(() => parseSendArgs(['5', 'XYZ', '0xabc'])).toThrow(/Unsupported asset/);
+    });
   });
 
-  it('parses amount + explicit asset + address', () => {
-    const result = parseSendArgs(['10', 'SUI', '0xaddr']);
-    expect(result).toEqual({ amount: 10, asset: 'SUI', recipient: '0xaddr' });
-  });
+  describe('amount validation', () => {
+    it('rejects zero amount', () => {
+      expect(() => parseSendArgs(['0', 'USDC', '0xabc'])).toThrow(/positive/);
+    });
 
-  it('parses amount + USDT + address', () => {
-    const result = parseSendArgs(['25', 'USDT', '0xfoo']);
-    expect(result).toEqual({ amount: 25, asset: 'USDT', recipient: '0xfoo' });
-  });
+    it('rejects negative amount', () => {
+      expect(() => parseSendArgs(['-5', 'USDC', '0xabc'])).toThrow(/positive/);
+    });
 
-  it('parses amount + asset + "to" + address', () => {
-    const result = parseSendArgs(['100', 'USDC', 'to', '0xbar']);
-    expect(result).toEqual({ amount: 100, asset: 'USDC', recipient: '0xbar' });
-  });
-
-  it('defaults to USDC for unknown middle token', () => {
-    const result = parseSendArgs(['50', 'alice']);
-    expect(result).toEqual({ amount: 50, asset: 'USDC', recipient: 'alice' });
-  });
-
-  it('treats contact name as recipient', () => {
-    const result = parseSendArgs(['10', 'Mom']);
-    expect(result).toEqual({ amount: 10, asset: 'USDC', recipient: 'Mom' });
-  });
-
-  it('throws on single argument', () => {
-    expect(() => parseSendArgs(['100'])).toThrow('Usage');
-  });
-
-  it('throws on empty array', () => {
-    expect(() => parseSendArgs([])).toThrow('Usage');
+    it('rejects non-numeric amount', () => {
+      expect(() => parseSendArgs(['abc', 'USDC', '0xabc'])).toThrow(/positive/);
+    });
   });
 });
