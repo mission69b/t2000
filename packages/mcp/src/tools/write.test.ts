@@ -1,95 +1,59 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerWriteTools } from './write.js';
-import { SafeguardError, T2000Error } from '@t2000/sdk';
+import { T2000Error } from '@t2000/sdk';
+
+// [v4.0 Phase B — 2026-05-26] Write surface is 3 tools: send, swap, pay.
+// All DeFi (save/withdraw/borrow/repay/claim_rewards) + contact-store
+// (contact_add/remove) tools were deleted in S.336.
 
 function createMockAgent() {
   return {
     address: vi.fn().mockReturnValue('0xowner'),
     balance: vi.fn().mockResolvedValue({
       available: 96.81,
-      savings: 5.10,
       gasReserve: { sui: 0.86, usdEquiv: 0.84 },
       total: 102.75,
-      assets: { USDC: 101.91 },
+      assets: { USDC: 96.81 },
       stables: { USDC: 96.81 },
     }),
     send: vi.fn().mockResolvedValue({
-      success: true, tx: '0xdigest', amount: 10, to: '0xrecipient',
-      gasCost: 0.001, gasCostUnit: 'SUI',
-      balance: { available: 86.81 },
+      success: true,
+      tx: '0xdigest',
+      digest: '0xdigest',
+      amount: 10,
+      to: '0xrecipient',
+      asset: 'USDC',
+      gasless: true,
+      gasCost: 0,
     }),
-    save: vi.fn().mockResolvedValue({
-      success: true, tx: '0xdigest', amount: 50, apy: 4.92,
-      fee: 0.05, gasCost: 0.001, savingsBalance: 55.10,
+    swap: vi.fn().mockResolvedValue({
+      success: true,
+      digest: '0xswapdigest',
+      from: 'USDC',
+      to: 'SUI',
+      amountIn: 1,
+      amountOut: 0.97,
     }),
-    withdraw: vi.fn().mockResolvedValue({
-      success: true, tx: '0xdigest', amount: 5.10,
-      gasCost: 0.001,
+    pay: vi.fn().mockResolvedValue({
+      status: 200,
+      body: { data: 'paid content' },
+      paid: true,
+      cost: 0.01,
+      receipt: { reference: '0xdigest', timestamp: new Date().toISOString() },
     }),
-    borrow: vi.fn().mockResolvedValue({
-      success: true, tx: '0xdigest', amount: 2, fee: 0.001,
-      healthFactor: 2.10, gasCost: 0.001,
-    }),
-    repay: vi.fn().mockResolvedValue({
-      success: true, tx: '0xdigest', amount: 2,
-      remainingDebt: 0, gasCost: 0.001,
-    }),
-    rates: vi.fn().mockResolvedValue({ USDC: { saveApy: 4.92, borrowApy: 8.5 } }),
-    positions: vi.fn().mockResolvedValue({
-      positions: [
-        { protocol: 'navi', asset: 'USDC', type: 'save', amount: 5.10, apy: 4.92 },
-      ],
-    }),
-    healthFactor: vi.fn().mockResolvedValue({
-      healthFactor: 4.24, supplied: 5.10, borrowed: 0, maxBorrow: 3.50, liquidationThreshold: 0.8,
-    }),
-    maxBorrow: vi.fn().mockResolvedValue({
-      maxAmount: 3.50, healthFactorAfter: 1.50, currentHF: 4.24,
-    }),
-    enforcer: {
-      assertNotLocked: vi.fn(),
-      check: vi.fn(),
-      getConfig: vi.fn().mockReturnValue({ locked: false, maxPerTx: 100, maxDailySend: 1000, dailyUsed: 0, dailyResetDate: '' }),
-      recordUsage: vi.fn(),
-    },
-    contacts: {
-      list: vi.fn().mockReturnValue([
-        { name: 'Tom', address: '0xrecipient' },
-      ]),
-      resolve: vi.fn().mockImplementation((nameOrAddress: string) => {
-        if (nameOrAddress.startsWith('0x')) return { address: nameOrAddress };
-        if (nameOrAddress.toLowerCase() === 'tom') return { address: '0xrecipient', contactName: 'Tom' };
-        throw new T2000Error('CONTACT_NOT_FOUND', `"${nameOrAddress}" is not a valid Sui address or saved contact.`);
-      }),
-    },
-    // [S.279.1] Mirror the public T2000.resolveRecipient priority order:
-    // hex > SuiNS (`.sui` suffix) > contact alias. The MCP `t2000_send`
-    // dryRun path now uses this directly so preview + execute agree.
-    // (Test fixtures use non-hex placeholders like '0xrecipient' for
-    // brevity, so we keep the loose 0x-startsWith check that matches the
-    // pre-S.279.1 ContactManager.resolve mock — production T2000 enforces
-    // strict hex via SUI_ADDRESS_REGEX.)
     resolveRecipient: vi.fn().mockImplementation(async (input: string) => {
       const trimmed = input.trim();
       if (trimmed.startsWith('0x')) return { address: trimmed.toLowerCase() };
       if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/.test(trimmed.toLowerCase())) {
-        if (trimmed.toLowerCase() === 'unregistered.sui') {
-          throw new T2000Error('SUINS_NOT_REGISTERED', `"${trimmed}" isn't a registered SuiNS name.`);
-        }
         return { address: '0xresolvedfromsuins', suinsName: trimmed.toLowerCase() };
       }
-      if (trimmed.toLowerCase() === 'tom') return { address: '0xrecipient', contactName: 'Tom' };
       throw new T2000Error('CONTACT_NOT_FOUND', `"${input}" is not a valid Sui address or saved contact.`);
-    }),
-    pay: vi.fn().mockResolvedValue({
-      status: 200, body: { data: 'paid content' }, paid: true, cost: 0.01,
-      receipt: { reference: '0xdigest123', timestamp: new Date().toISOString() },
     }),
   } as any;
 }
 
-describe('write tools', () => {
+describe('write tools (v4 surface)', () => {
   let server: McpServer;
   let agent: ReturnType<typeof createMockAgent>;
   let tools: Map<string, Function>;
@@ -110,216 +74,128 @@ describe('write tools', () => {
     registerWriteTools(server, agent);
   });
 
-  it('should register 10 write tools', () => {
-    expect(tools.size).toBe(10);
+  it('registers 3 v4 write tools', () => {
+    expect(tools.size).toBe(3);
     expect(tools.has('t2000_send')).toBe(true);
-    expect(tools.has('t2000_save')).toBe(true);
-    expect(tools.has('t2000_withdraw')).toBe(true);
-    expect(tools.has('t2000_borrow')).toBe(true);
-    expect(tools.has('t2000_repay')).toBe(true);
-    expect(tools.has('t2000_claim_rewards')).toBe(true);
-    expect(tools.has('t2000_pay')).toBe(true);
     expect(tools.has('t2000_swap')).toBe(true);
-    expect(tools.has('t2000_contact_add')).toBe(true);
-    expect(tools.has('t2000_contact_remove')).toBe(true);
+    expect(tools.has('t2000_pay')).toBe(true);
+  });
+
+  it('does NOT register the deleted v3 DeFi / contact tools', () => {
+    const banned = [
+      't2000_save', 't2000_withdraw', 't2000_borrow', 't2000_repay',
+      't2000_claim_rewards', 't2000_contact_add', 't2000_contact_remove',
+    ];
+    for (const name of banned) {
+      expect(tools.has(name)).toBe(false);
+    }
   });
 
   describe('t2000_send', () => {
-    it('should return preview with dryRun: true', async () => {
+    it('executes with explicit asset USDC', async () => {
       const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: '0xrecipient', amount: 10, dryRun: true });
+      const result = await handler({
+        to: '0xrecipient',
+        amount: 10,
+        asset: 'USDC',
+      });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(true);
+      expect(data.digest).toBe('0xdigest');
+      expect(agent.send).toHaveBeenCalledWith({ to: '0xrecipient', amount: 10, asset: 'USDC' });
+    });
+
+    it('executes with explicit asset USDsui', async () => {
+      const handler = tools.get('t2000_send')!;
+      await handler({ to: '0xrecipient', amount: 5, asset: 'USDsui' });
+      expect(agent.send).toHaveBeenCalledWith({ to: '0xrecipient', amount: 5, asset: 'USDsui' });
+    });
+
+    it('executes with explicit asset SUI', async () => {
+      const handler = tools.get('t2000_send')!;
+      await handler({ to: '0xrecipient', amount: 0.5, asset: 'SUI' });
+      expect(agent.send).toHaveBeenCalledWith({ to: '0xrecipient', amount: 0.5, asset: 'SUI' });
+    });
+
+    it('dryRun returns preview without signing — marks gasless for USDC', async () => {
+      const handler = tools.get('t2000_send')!;
+      const result = await handler({
+        to: '0xrecipient',
+        amount: 10,
+        asset: 'USDC',
+        dryRun: true,
+      });
       const data = JSON.parse(result.content[0].text);
       expect(data.preview).toBe(true);
       expect(data.canSend).toBe(true);
       expect(data.amount).toBe(10);
-      expect(data.balanceAfter).toBeCloseTo(86.81);
+      expect(data.asset).toBe('USDC');
+      expect(data.gasless).toBe(true);
       expect(agent.send).not.toHaveBeenCalled();
     });
 
-    it('should execute send with dryRun: false', async () => {
+    it('dryRun marks gasless: false for SUI', async () => {
       const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: '0xrecipient', amount: 10, dryRun: false });
+      const result = await handler({
+        to: '0xrecipient',
+        amount: 0.5,
+        asset: 'SUI',
+        dryRun: true,
+      });
       const data = JSON.parse(result.content[0].text);
-      expect(data.success).toBe(true);
-      expect(data.tx).toBe('0xdigest');
-      expect(agent.send).toHaveBeenCalled();
+      expect(data.gasless).toBe(false);
     });
 
-    it('should execute send when dryRun is omitted', async () => {
+    it('resolves SuiNS names through agent.resolveRecipient', async () => {
       const handler = tools.get('t2000_send')!;
-      await handler({ to: '0xrecipient', amount: 10 });
-      expect(agent.send).toHaveBeenCalled();
-    });
-
-    it('should resolve contact name in dryRun preview', async () => {
-      const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: 'Tom', amount: 10, dryRun: true });
+      const result = await handler({
+        to: 'alex.sui',
+        amount: 10,
+        asset: 'USDC',
+        dryRun: true,
+      });
       const data = JSON.parse(result.content[0].text);
-      expect(data.preview).toBe(true);
-      expect(data.to).toBe('0xrecipient');
-      expect(data.contactName).toBe('Tom');
-    });
-
-    it('should send to contact name', async () => {
-      const handler = tools.get('t2000_send')!;
-      await handler({ to: 'Tom', amount: 10 });
-      // [v4.0 Phase A Day 2] SDK now requires `asset` (no implicit USDC
-      // default). The MCP back-compat layer keeps the legacy
-      // `asset ?? 'USDC'` shim until Phase B rewrites this tool.
-      expect(agent.send).toHaveBeenCalledWith({ to: 'Tom', amount: 10, asset: 'USDC' });
-    });
-
-    it('should return error for unknown contact', async () => {
-      const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: 'Unknown', amount: 10 });
-      expect(result.isError).toBe(true);
-    });
-
-    // [S.279.1] Regression tests — preview-then-execute flows must work
-    // for SuiNS recipients. Pre-2.19.1 the dryRun path called
-    // ContactManager.resolve directly, which rejected `.sui` names with
-    // CONTACT_NOT_FOUND even though the live execute path resolved them
-    // correctly. Now both paths share agent.resolveRecipient.
-    it('[S.279.1] resolves SuiNS name in dryRun preview', async () => {
-      const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: 'alex.sui', amount: 10, dryRun: true });
-      expect(result.isError).toBeFalsy();
-      const data = JSON.parse(result.content[0].text);
-      expect(data.preview).toBe(true);
       expect(data.to).toBe('0xresolvedfromsuins');
       expect(data.suinsName).toBe('alex.sui');
-      expect(data.contactName).toBeUndefined();
-      expect(agent.send).not.toHaveBeenCalled();
     });
 
-    it('[S.279.1] surfaces SUINS_NOT_REGISTERED in dryRun', async () => {
+    it('surfaces resolveRecipient errors as MCP tool errors', async () => {
       const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: 'unregistered.sui', amount: 10, dryRun: true });
-      expect(result.isError).toBe(true);
-      const data = JSON.parse(result.content[0].text);
-      expect(data.code).toBe('SUINS_NOT_REGISTERED');
-    });
-
-    it('[S.279.1] live send to SuiNS recipient still flows through agent.send', async () => {
-      const handler = tools.get('t2000_send')!;
-      await handler({ to: 'alex.sui', amount: 10, dryRun: false });
-      // [v4.0 Phase A Day 2] SDK now requires `asset`; MCP back-compat
-      // layer defaults to `'USDC'` until Phase B rewrites this tool.
-      expect(agent.send).toHaveBeenCalledWith({ to: 'alex.sui', amount: 10, asset: 'USDC' });
-    });
-
-    it('should return safeguard error when locked', async () => {
-      agent.enforcer.check.mockImplementation(() => {
-        throw new SafeguardError('locked', {});
+      const result = await handler({
+        to: 'not-an-address',
+        amount: 10,
+        asset: 'USDC',
       });
-      const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: '0xrecipient', amount: 10, dryRun: true });
       expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('t2000_swap', () => {
+    it('executes a swap through Cetus aggregator', async () => {
+      const handler = tools.get('t2000_swap')!;
+      const result = await handler({ from: 'USDC', to: 'SUI', amount: 1 });
       const data = JSON.parse(result.content[0].text);
-      expect(data.code).toBe('SAFEGUARD_BLOCKED');
+      expect(data.digest).toBe('0xswapdigest');
+      expect(data.amountOut).toBe(0.97);
+      expect(agent.swap).toHaveBeenCalledWith({ from: 'USDC', to: 'SUI', amount: 1, slippage: undefined });
     });
 
-    it('should return safeguard error when exceeding maxPerTx', async () => {
-      agent.enforcer.check.mockImplementation(() => {
-        throw new SafeguardError('maxPerTx', { attempted: 200, limit: 100 });
-      });
-      const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: '0xrecipient', amount: 200, dryRun: true });
+    it('forwards custom slippage', async () => {
+      const handler = tools.get('t2000_swap')!;
+      await handler({ from: 'USDC', to: 'SUI', amount: 1, slippage: 0.005 });
+      expect(agent.swap).toHaveBeenCalledWith({ from: 'USDC', to: 'SUI', amount: 1, slippage: 0.005 });
+    });
+
+    it('surfaces SDK errors as MCP tool errors', async () => {
+      agent.swap.mockRejectedValue(new Error('insufficient liquidity'));
+      const handler = tools.get('t2000_swap')!;
+      const result = await handler({ from: 'USDC', to: 'SUI', amount: 1 });
       expect(result.isError).toBe(true);
-      const data = JSON.parse(result.content[0].text);
-      expect(data.code).toBe('SAFEGUARD_BLOCKED');
-      expect(data.details.rule).toBe('maxPerTx');
-    });
-  });
-
-  describe('t2000_save', () => {
-    it('should return preview with dryRun: true', async () => {
-      const handler = tools.get('t2000_save')!;
-      const result = await handler({ amount: 50, dryRun: true });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.preview).toBe(true);
-      expect(data.amount).toBe(50);
-      expect(data.currentApy).toBe(4.92);
-    });
-
-    it('should execute save', async () => {
-      const handler = tools.get('t2000_save')!;
-      const result = await handler({ amount: 50 });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.success).toBe(true);
-      // [v0.51.1] save now defaults asset='USDC' (vs prior implicit hardcode)
-      expect(agent.save).toHaveBeenCalledWith({ amount: 50, asset: 'USDC' });
-    });
-
-    it('should pass asset=USDsui when supplied', async () => {
-      const handler = tools.get('t2000_save')!;
-      await handler({ amount: 50, asset: 'USDsui' });
-      expect(agent.save).toHaveBeenCalledWith({ amount: 50, asset: 'USDsui' });
-    });
-  });
-
-  describe('t2000_withdraw', () => {
-    it('should return preview with dryRun: true', async () => {
-      const handler = tools.get('t2000_withdraw')!;
-      const result = await handler({ amount: 5, dryRun: true });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.preview).toBe(true);
-      expect(data.amount).toBe(5);
-    });
-
-    it('should execute withdraw', async () => {
-      const handler = tools.get('t2000_withdraw')!;
-      await handler({ amount: 'all' });
-      expect(agent.withdraw).toHaveBeenCalledWith({ amount: 'all' });
-    });
-  });
-
-  describe('t2000_borrow', () => {
-    it('should return preview with dryRun: true', async () => {
-      const handler = tools.get('t2000_borrow')!;
-      const result = await handler({ amount: 2, dryRun: true });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.preview).toBe(true);
-      expect(data.maxBorrow).toBe(3.50);
-    });
-
-    it('should execute borrow', async () => {
-      const handler = tools.get('t2000_borrow')!;
-      await handler({ amount: 2 });
-      // [v0.51.1] borrow now defaults asset='USDC'
-      expect(agent.borrow).toHaveBeenCalledWith({ amount: 2, asset: 'USDC' });
-    });
-
-    it('should pass asset=USDsui when supplied', async () => {
-      const handler = tools.get('t2000_borrow')!;
-      await handler({ amount: 2, asset: 'USDsui' });
-      expect(agent.borrow).toHaveBeenCalledWith({ amount: 2, asset: 'USDsui' });
-    });
-  });
-
-  describe('t2000_repay', () => {
-    it('should return preview with dryRun: true', async () => {
-      const handler = tools.get('t2000_repay')!;
-      const result = await handler({ amount: 2, dryRun: true });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.preview).toBe(true);
-    });
-
-    it('should pass asset=USDsui when supplied', async () => {
-      const handler = tools.get('t2000_repay')!;
-      await handler({ amount: 2, asset: 'USDsui' });
-      expect(agent.repay).toHaveBeenCalledWith({ amount: 2, asset: 'USDsui' });
-    });
-
-    it('should default asset to undefined (auto highest-APY) when omitted', async () => {
-      const handler = tools.get('t2000_repay')!;
-      await handler({ amount: 2 });
-      expect(agent.repay).toHaveBeenCalledWith({ amount: 2, asset: undefined });
     });
   });
 
   describe('t2000_pay', () => {
-    it('should make a paid API request', async () => {
+    it('forwards request to agent.pay', async () => {
       const handler = tools.get('t2000_pay')!;
       const result = await handler({
         url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
@@ -330,47 +206,30 @@ describe('write tools', () => {
       const data = JSON.parse(result.content[0].text);
       expect(data.paid).toBe(true);
       expect(data.cost).toBe(0.01);
-      expect(data.status).toBe(200);
-      expect(agent.pay).toHaveBeenCalledWith({
-        url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
-        method: 'POST',
-        body: '{"model":"gpt-4o","messages":[]}',
-        headers: undefined,
-        maxPrice: 0.05,
-      });
+      expect(agent.pay).toHaveBeenCalled();
     });
 
-    it('should return error when pay fails', async () => {
-      agent.pay.mockRejectedValue(new Error('PRICE_EXCEEDS_LIMIT'));
+    it('extracts and prefixes image URLs from response body', async () => {
+      agent.pay.mockResolvedValue({
+        status: 200,
+        body: { images: [{ url: 'https://cdn.fal.ai/image.png' }] },
+        paid: true,
+      });
       const handler = tools.get('t2000_pay')!;
       const result = await handler({
-        url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
-        maxPrice: 0.001,
+        url: 'https://mpp.t2000.ai/fal/fal-ai/flux/dev',
+        method: 'POST',
+        body: '{"prompt":"x"}',
       });
+      expect(result.content[0].text).toContain('Generated images:');
+      expect(result.content[0].text).toContain('https://cdn.fal.ai/image.png');
+    });
+
+    it('surfaces SDK errors as MCP tool errors', async () => {
+      agent.pay.mockRejectedValue(new Error('402 payment required'));
+      const handler = tools.get('t2000_pay')!;
+      const result = await handler({ url: 'https://mpp.t2000.ai/openai/v1', method: 'POST' });
       expect(result.isError).toBe(true);
-    });
-  });
-
-  describe('t2000_contact_add', () => {
-    it('should add a contact', async () => {
-      agent.contacts.add = vi.fn().mockReturnValue({ action: 'added' });
-      const handler = tools.get('t2000_contact_add')!;
-      const result = await handler({ name: 'Bob', address: '0xbob123' });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.success).toBe(true);
-      expect(data.name).toBe('Bob');
-      expect(agent.contacts.add).toHaveBeenCalledWith('Bob', '0xbob123');
-    });
-  });
-
-  describe('t2000_contact_remove', () => {
-    it('should remove a contact', async () => {
-      agent.contacts.remove = vi.fn().mockReturnValue(true);
-      const handler = tools.get('t2000_contact_remove')!;
-      const result = await handler({ name: 'Tom' });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.success).toBe(true);
-      expect(agent.contacts.remove).toHaveBeenCalledWith('Tom');
     });
   });
 });

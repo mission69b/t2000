@@ -4,6 +4,24 @@ import type { T2000, SupportedAsset } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
+// [v4.0 Phase B — 2026-05-26] MCP write surface mirrors the v4 CLI:
+//   t2 send (asset-required) | t2 swap (Cetus aggregator) | t2 pay
+// Deleted in S.336 alongside the CLI bulk delete (S.332):
+//   t2000_save / t2000_withdraw / t2000_borrow / t2000_repay /
+//   t2000_claim_rewards (DeFi — audric.ai owns it)
+//   t2000_contact_add / t2000_contact_remove (SuiNS supersedes local
+//   contacts; the deprecation banner already shipped in S.279.x)
+//
+// PHASE D NOTE — limit enforcement parity. The CLI's `t2 send/swap/pay`
+// commands gate writes on `~/.t2000/config.json` `limits.*` via
+// `assertWithinLimits()` (in `packages/cli/src/commands/limit/enforce.ts`).
+// MCP write tools currently DO NOT mirror that gate — they call the SDK
+// directly. Closing this gap requires moving `enforce.ts` + `config-store.ts`
+// from the CLI package into `@t2000/sdk/limits/` so both CLI + MCP can
+// share one gate. Deferred to Phase D (paired with full SafeguardEnforcer
+// removal — the legacy v3 `maxPerTx` / `maxDailySend` schema is dead code
+// for v4 wallets but still wired in `t2000.ts`).
+
 function extractImageUrls(data: unknown): string[] {
   const urls: string[] = [];
   const urlPattern = /^https?:\/\/.+\.(png|jpg|jpeg|webp|gif)/i;
@@ -27,28 +45,19 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_send',
-    'Send USDC (or another supported asset) to a 0x Sui address, a SuiNS name (e.g. alex.sui), or a saved contact alias. Amount is in dollars. Subject to per-transaction and daily send limits. Set dryRun: true to preview without signing. SuiNS is the preferred name path; saved contacts (~/.t2000/contacts.json) are deprecated and will be removed in the next major SDK release.',
+    'Send USDC, USDsui, or SUI to a 0x Sui address, a SuiNS name (e.g. alex.sui), or a saved contact alias. Amount is in token units (1 USDC = $1). Asset is REQUIRED — there is no implicit USDC default. USDC + USDsui sends are gasless (Sui foundation sponsored); SUI sends require gas. Set dryRun: true to preview without signing. Mirrors `t2 send <amount> <ASSET> <recipient>`.',
     {
-      to: z.string().describe("Recipient: 0x Sui address, SuiNS name like 'alex.sui', or saved contact name. SuiNS preferred; contact aliases are deprecated."),
-      amount: z.number().describe('Amount in dollars to send'),
-      asset: z.string().optional().describe('Asset to send (default: USDC)'),
+      to: z.string().describe("Recipient: 0x Sui address, SuiNS name like 'alex.sui', or saved contact name."),
+      amount: z.number().positive().describe('Amount in token units to send'),
+      asset: z.enum(['USDC', 'USDsui', 'SUI']).describe('REQUIRED — one of USDC, USDsui, SUI. No default.'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
     async ({ to, amount, asset, dryRun }) => {
       try {
-        // [S.279.1 / 2026-05-23 — patch v2.19.1] Use the same public
-        // resolveRecipient() that agent.send() uses internally so that
-        // dryRun preview + live execute always resolve identically.
-        // Pre-2.19.1 the dryRun called agent.contacts.resolve() directly,
-        // which rejected SuiNS names — preview-then-execute flows broke
-        // for `alex.sui`-style recipients.
         const resolved = await agent.resolveRecipient(to);
 
         if (dryRun) {
-          agent.enforcer.check({ operation: 'send', amount });
           const balance = await agent.balance();
-          const config = agent.enforcer.getConfig();
-
           return {
             content: [{
               type: 'text',
@@ -59,24 +68,17 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
                 to: resolved.address,
                 contactName: resolved.contactName,
                 suinsName: resolved.suinsName,
-                asset: asset ?? 'USDC',
+                asset,
+                gasless: asset === 'USDC' || asset === 'USDsui',
                 currentBalance: balance.available,
                 balanceAfter: balance.available - amount,
-                safeguards: {
-                  dailyUsedAfter: config.dailyUsed + amount,
-                  dailyLimit: config.maxDailySend,
-                },
               }),
             }],
           };
         }
 
-        // [v4.0 Phase A Day 2] Legacy MCP tool surface (rewritten in
-        // Phase B). SDK's `assertAllowedAsset('send', …)` rejects
-        // anything outside USDC / USDsui / SUI at runtime with
-        // `INVALID_ASSET`; if omitted here the SDK throws the same.
         const result = await mutex.run(() =>
-          agent.send({ to, amount, asset: (asset ?? 'USDC') as SupportedAsset }),
+          agent.send({ to, amount, asset: asset as SupportedAsset }),
         );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
@@ -86,189 +88,27 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
-    't2000_save',
-    'Deposit USDC or USDsui into NAVI lending to earn yield. Pass asset="USDC" (default) or asset="USDsui". Use "all" to save entire wallet balance of the chosen asset. Set dryRun: true to preview.',
+    't2000_swap',
+    'Swap tokens on Sui via Cetus Aggregator (20+ DEXs). Supports any token pair with liquidity. Use user-friendly names (SUI, USDC, USDsui, CETUS, DEEP, etc.) or full coin types. NOTE: Swap is NOT gasless — the wallet must hold some SUI for gas (typically < $0.01 per swap). Mirrors `t2 swap <amount> <FROM> <TO>`.',
     {
-      amount: z.union([z.number(), z.literal('all')]).describe('Amount of the chosen asset to save, or "all"'),
-      asset: z.enum(['USDC', 'USDsui']).optional().describe('"USDC" or "USDsui". Defaults to USDC.'),
-      dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
+      from: z.string().describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
+      to: z.string().describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),
+      amount: z.number().positive().describe('Amount of the source token to swap'),
+      slippage: z.number().min(0.001).max(0.05).optional().describe('Max slippage (default 0.01 = 1%, max 5%)'),
     },
-    async ({ amount, asset, dryRun }) => {
+    async ({ from, to, amount, slippage }) => {
       try {
-        const saveAsset = (asset ?? 'USDC') as 'USDC' | 'USDsui';
-        if (dryRun) {
-          agent.enforcer.assertNotLocked();
-          const balance = await agent.balance();
-          const rates = await agent.rates();
-          // [v0.51.1] dryRun preview: balance.available is the USDC-only
-          // rollup, so for USDsui we estimate from the full balance object's
-          // savings + 0 cash floor. The actual save() call uses the
-          // per-asset balance query path inside the SDK.
-          const saveAmount = amount === 'all' ? Math.max(0, balance.available - 1.0) : amount;
-
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                preview: true,
-                amount: saveAmount,
-                asset: saveAsset,
-                currentApy: rates[saveAsset]?.saveApy ?? 0,
-                savingsBalanceAfter: balance.savings + saveAmount,
-              }),
-            }],
-          };
-        }
-
-        const result = await mutex.run(() => agent.save({ amount, asset: saveAsset }));
+        const result = await mutex.run(() => agent.swap({ from, to, amount, slippage }));
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
       }
     },
   );
-
-  server.tool(
-    't2000_withdraw',
-    'Withdraw from NAVI lending back to wallet. Supports any deposited asset. Amount is in token units. Use "all" to withdraw everything. Set dryRun: true to preview.',
-    {
-      amount: z.union([z.number(), z.literal('all')]).describe('Amount to withdraw, or "all"'),
-      asset: z.string().optional().describe('Asset to withdraw (default: auto-selects largest position)'),
-      dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
-    },
-    async ({ amount, asset, dryRun }) => {
-      try {
-        if (dryRun) {
-          agent.enforcer.assertNotLocked();
-          const positions = await agent.positions();
-          const health = await agent.healthFactor();
-          const savings = positions.positions
-            .filter(p => p.type === 'save' && (!asset || p.asset === asset))
-            .reduce((sum, p) => sum + p.amount, 0);
-
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                preview: true,
-                amount: amount === 'all' ? savings : amount,
-                asset: asset ?? 'auto',
-                currentSavings: savings,
-                currentHealthFactor: health.healthFactor,
-              }),
-            }],
-          };
-        }
-
-        const result = await mutex.run(() => agent.withdraw({ amount, asset }));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_borrow',
-    'Borrow USDC or USDsui against savings collateral. Pass asset="USDC" (default) or asset="USDsui". Check health factor first — below 1.0 risks liquidation. Set dryRun: true to preview.',
-    {
-      amount: z.number().describe('Amount to borrow (in units of the chosen asset)'),
-      asset: z.enum(['USDC', 'USDsui']).optional().describe('"USDC" or "USDsui". Defaults to USDC.'),
-      dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
-    },
-    async ({ amount, asset, dryRun }) => {
-      try {
-        const borrowAsset = (asset ?? 'USDC') as 'USDC' | 'USDsui';
-        if (dryRun) {
-          agent.enforcer.assertNotLocked();
-          const health = await agent.healthFactor();
-          const maxBorrow = await agent.maxBorrow();
-
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                preview: true,
-                amount,
-                asset: borrowAsset,
-                maxBorrow: maxBorrow.maxAmount,
-                currentHealthFactor: health.healthFactor,
-                estimatedHealthFactorAfter: maxBorrow.healthFactorAfter,
-              }),
-            }],
-          };
-        }
-
-        const result = await mutex.run(() => agent.borrow({ amount, asset: borrowAsset }));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_repay',
-    'Repay borrowed USDC or USDsui. Pass asset="USDC" or asset="USDsui" to target a specific debt; omit to repay the highest-APY borrow. Use "all" to repay entire debt across all assets. Set dryRun: true to preview.',
-    {
-      amount: z.union([z.number(), z.literal('all')]).describe('Amount to repay (in units of the chosen asset), or "all"'),
-      asset: z.enum(['USDC', 'USDsui']).optional().describe('"USDC" or "USDsui". When omitted, repays the highest-APY borrow first.'),
-      dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
-    },
-    async ({ amount, asset, dryRun }) => {
-      try {
-        const repayAsset = asset as 'USDC' | 'USDsui' | undefined;
-        if (dryRun) {
-          agent.enforcer.assertNotLocked();
-          const health = await agent.healthFactor();
-          const positions = await agent.positions();
-          const totalDebt = positions.positions
-            .filter(p => p.type === 'borrow' && (!repayAsset || p.asset === repayAsset))
-            .reduce((sum, p) => sum + p.amount, 0);
-
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                preview: true,
-                amount: amount === 'all' ? totalDebt : amount,
-                asset: repayAsset ?? 'auto',
-                currentDebt: totalDebt,
-                currentHealthFactor: health.healthFactor,
-              }),
-            }],
-          };
-        }
-
-        const result = await mutex.run(() => agent.repay({ amount, asset: repayAsset }));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_claim_rewards',
-    'Claim pending protocol rewards from lending positions to your wallet.',
-    {},
-    async () => {
-      try {
-        const result = await mutex.run(() => agent.claimRewards());
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  // ---------------------------------------------------------------------------
-  // MPP Payments
-  // ---------------------------------------------------------------------------
 
   server.tool(
     't2000_pay',
-    `Make a paid API request using MPP (Machine Payments Protocol). Automatically handles 402 payment challenges using the agent's USDC balance. Enforces safeguards. Returns the API response and payment receipt.
+    `Make a paid API request using MPP (Machine Payments Protocol). Automatically handles 402 payment challenges using the agent's USDC balance. Returns the API response and payment receipt. The USDC transfer is gasless (Sui foundation sponsored). Mirrors \`t2 pay <url>\`.
 
 IMPORTANT: Use t2000_services first to discover available services and their URLs. All services are at https://mpp.t2000.ai/.
 
@@ -312,7 +152,6 @@ Common examples:
 
         let text = JSON.stringify(result);
 
-        // Extract image URLs and prepend them for visibility
         try {
           const data = typeof result === 'string' ? JSON.parse(result) : result;
           const imageUrls = extractImageUrls(data);
@@ -322,82 +161,12 @@ Common examples:
           }
         } catch { /* not JSON or no images */ }
 
-        // Cap response at 800KB to stay under Claude Desktop's 1MB tool result limit
         const MAX_BYTES = 800_000;
         if (text.length > MAX_BYTES) {
           text = text.slice(0, MAX_BYTES) + '\n\n[Response truncated — exceeded size limit]';
         }
 
         return { content: [{ type: 'text' as const, text }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  // ---------------------------------------------------------------------------
-  // Contact management
-  // ---------------------------------------------------------------------------
-
-  // ---------------------------------------------------------------------------
-  // Swap (Cetus Aggregator)
-  // ---------------------------------------------------------------------------
-
-  server.tool(
-    't2000_swap',
-    'Swap tokens on Sui via Cetus Aggregator (20+ DEXs). Supports any token pair with liquidity. Use user-friendly names (SUI, USDC, CETUS, DEEP, etc.) or full coin types.',
-    {
-      from: z.string().describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
-      to: z.string().describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),
-      amount: z.number().positive().describe('Amount to swap'),
-      slippage: z.number().min(0.001).max(0.05).optional().describe('Max slippage (default 0.01 = 1%, max 5%)'),
-    },
-    async ({ from, to, amount, slippage }) => {
-      try {
-        const result = await mutex.run(() => agent.swap({ from, to, amount, slippage }));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  // [S.323 / 2026-05-25] VOLO vSUI Liquid Staking removed (full cut).
-  // Engine cut Volo in S.277; SDK + CLI + MCP followed in S.323 because the
-  // five Audric products don't include a staking primitive. See the build-
-  // tracker S.323 entry and `packages/sdk/src/t2000.ts` for the cut rationale.
-
-  // ---------------------------------------------------------------------------
-  // Contact management
-  // ---------------------------------------------------------------------------
-
-  server.tool(
-    't2000_contact_add',
-    'DEPRECATED — Save a contact name → Sui address mapping to ~/.t2000/contacts.json. The local-file contact map is being sunset; the canonical name system is SuiNS (register your-name.sui at https://suins.io once and every Sui app resolves it). Use this tool only if the recipient has no SuiNS name AND you need a memorable local alias. Will be removed in the next major SDK release.',
-    {
-      name: z.string().describe('Contact name (e.g. "Tom", "Alice")'),
-      address: z.string().describe('Sui wallet address (0x...)'),
-    },
-    async ({ name, address }) => {
-      try {
-        const result = agent.contacts.add(name, address);
-        return { content: [{ type: 'text', text: JSON.stringify({ success: true, name, address, ...result }) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_contact_remove',
-    'DEPRECATED — Remove a saved local contact by name. The local-file contact map is being sunset; will be removed entirely in the next major SDK release.',
-    {
-      name: z.string().describe('Contact name to remove'),
-    },
-    async ({ name }) => {
-      try {
-        const removed = agent.contacts.remove(name);
-        return { content: [{ type: 'text', text: JSON.stringify({ success: removed, name }) }] };
       } catch (err) {
         return errorResult(err);
       }

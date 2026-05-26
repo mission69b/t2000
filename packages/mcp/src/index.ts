@@ -3,8 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createAgent } from './unlock.js';
 import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
-import { registerSafetyTools } from './tools/safety.js';
-import { registerPrompts } from './prompts.js';
+import { registerLimitTool } from './tools/limit.js';
 import { registerSkillPrompts } from './skills-prompts.js';
 
 // Replaced at build time by tsup's `define` with the package.json version
@@ -21,28 +20,26 @@ console.log = (...args: unknown[]) => console.error('[log]', ...args);
 console.warn = (...args: unknown[]) => console.error('[warn]', ...args);
 
 export async function startMcpServer(opts?: { keyPath?: string }): Promise<void> {
+  // [v4.0 Phase B] Pre-v4 the server gated startup on
+  // `agent.enforcer.isConfigured()` and printed a hint to set
+  // `maxPerTx` + `maxDailySend` via the (now deleted) `t2000 config`
+  // command. v4 ships with no default limits — the warning footer
+  // surfaces during `t2 init`, not at MCP server boot. Opt-in via
+  // `t2 limit set --daily 100` or `t2 limit set --per-tx 50`.
   const agent = await createAgent(opts?.keyPath);
-
-  if (!agent.enforcer.isConfigured()) {
-    console.error(
-      'Safeguards not configured. Set limits before starting MCP:\n' +
-      '  t2000 config set maxPerTx 100\n' +
-      '  t2000 config set maxDailySend 500\n',
-    );
-    process.exit(1);
-  }
 
   const server = new McpServer({ name: 't2000', version: PKG_VERSION });
 
   registerReadTools(server, agent);
   registerWriteTools(server, agent);
-  registerSafetyTools(server, agent);
-  registerPrompts(server);
-  // SPEC v0.7a Phase 6 (6C) — auto-expose every t2000-skills SKILL.md as
-  // an MCP prompt (`skill-<short-name>`). Baked into the bundle at build
-  // time via tsup `define: { __BAKED_SKILLS__: ... }`. Companion to
-  // `registerPrompts` (workflow prompts); 6G rewrites those to compose
-  // against these skill bodies.
+  registerLimitTool(server);
+
+  // SPEC v0.7a Phase 6 (6C) — auto-expose every t2000-skills SKILL.md
+  // as an MCP prompt (`skill-<short-name>`). Baked into the bundle at
+  // build time via tsup `define: { __BAKED_SKILLS__: ... }`. The
+  // hand-rolled `registerPrompts` workflow prompts were removed in
+  // Phase B of SPEC_AGENT_WALLET_GREENFIELD (S.336) — they composed
+  // against the v3 DeFi skill set, all of which were deleted Day 5.
   registerSkillPrompts(server);
 
   const transport = new StdioServerTransport();

@@ -1,6 +1,6 @@
 # SPEC — Agent Wallet Greenfield Pivot
 
-> **Status:** 🟢 ACTIVE — Phase A DONE 2026-05-26 (S.328-S.335; 8/8 mainnet smokes); Phase B next
+> **Status:** 🟢 ACTIVE — Phase A DONE 2026-05-26 (S.328-S.335; 8/8 mainnet smokes); Phase B Step 1 DONE 2026-05-26 (S.336); Phase B Steps 2-4 next
 > **Detailed plan:** [`.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md`](../../../.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md) — the full ~9-10 day execution plan with file paths, code snippets, and verification gates
 > **Successor to:** `SPEC_AGENTIC_STACK.md` (Phase 5 absorbed). Phases 1-4 of that SPEC are still shipped + valid; only the marketing/README sweep folds into this pivot's Phase D
 > **Trigger:** Founder review of `agents.circle.com` + `circlefin/skills` + `circlefin/cli` (2026-05-26) — *"the cli is doing TOO MUCH... rip all defi capabilities out... only make it a agentic wallet with payments (mpp) and ability to send, receive... circle docs i shared in the previous prompt was also to review it just incase you missed something with the pivot spec... we should also remove the pin from cli... we have safeguards i think remove them also to simplify the onboarding... full rewrite might be better and really strip out everything and only keep what we actually need."*
@@ -36,7 +36,7 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 | Phase | What | Effort | Status |
 |---|---|---|---|
 | **A** | CLI greenfield rewrite + gRPC/gasless | ~3-4d (took 6 sessions / ~14h) | ✅ **DONE 2026-05-26** (S.328-S.335; 8/8 mainnet smokes) |
-| **B** | Skills + MCP cross-package consistency sweep | ~1.5-2d | 🟡 next |
+| **B** | Skills + MCP cross-package consistency sweep | ~1.5-2d | 🟡 Step 1 DONE 2026-05-26 (S.336); Steps 2-4 pending |
 | **C** | Binary rename `t2` alongside `t2000` | ~0.5d | pending |
 | **D** | Brand + repo health sweep (absorbs Phase 5 of `SPEC_AGENTIC_STACK`) | ~1d | pending |
 | **E** | Test + spec cleanup + RPC invariant verification | ~0.5d | pending |
@@ -99,7 +99,7 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 |---|---|---|
 | Planning | S.327 | ✅ done 2026-05-26 (this SPEC + 3 deferred follow-up stubs) |
 | A | S.328-S.335 | ✅ **DONE 2026-05-26** — 6 sessions / ~14h / ~700 LoC net / 8/8 mainnet smokes / 0 regressions |
-| B | pending | next session |
+| B | S.336 | 🟡 Step 1 ✅ **DONE 2026-05-26** — MCP + skills sweep (8 files deleted + 8 rewritten + 2 added + 6 SKILL.md rewritten + 2 SKILL.md added; MCP tool count 27→9; prompt count 20→8; 64/64 MCP tests pass + live JSON-RPC smoke). Steps 2-4 (README rewrite + cross-client render verification + optional mpp absorption) pending. |
 | C | pending | |
 | D | pending | |
 | E | pending | |

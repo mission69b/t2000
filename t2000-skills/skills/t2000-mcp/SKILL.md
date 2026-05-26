@@ -1,58 +1,56 @@
 ---
 name: t2000-mcp
 description: >-
-  Connect a t2000 Agentic Wallet to Claude Desktop, Cursor, Cline,
-  Continue, or any MCP-compatible client. Use when asked to set up MCP,
-  paste an MCP server config, install @t2000/mcp, or troubleshoot why
-  the MCP server "doesn't do anything" when run from a terminal.
-  Provides 27 tools and 35 prompts (14 workflow + 21 skill) over stdio.
+  Connect a t2000 Agent Wallet to Claude Desktop, Cursor, Cline, Continue,
+  or any MCP-compatible client. Use when asked to set up MCP, paste an MCP
+  server config, install @t2000/mcp, or troubleshoot why the MCP server
+  "doesn't do anything" when run from a terminal. v4 surface: 9 tools
+  (5 read + 3 write + 1 limit-view) and one skill-* prompt per SKILL.md
+  in t2000-skills/skills/.
 license: MIT
 metadata:
   author: t2000
-  version: "1.5"
-  requires: a Sui keypair (created via `npx @t2000/cli init` or any wallet)
+  version: "2.0"
+  requires: a Sui wallet created via `t2 init` (npm install -g @t2000/cli)
 ---
 
 # t2000: MCP Server
 
 ## Purpose
-Expose a t2000 Agentic Wallet (Sui wallet + DeFi positions) to any
-MCP-compatible AI client over stdio. **27 tools, 35 prompts** (14 workflow
-prompts + 21 skill prompts auto-derived from `t2000-skills/skills/`),
-safeguard enforced. No global install required — the recommended path
-uses `npx` so the AI client always pulls the latest published version.
+
+Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **9 tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
 
 ## ⚠️ The most common confusion
 
-**`npx @t2000/mcp` is NOT a command you run from a terminal to "use" the
-MCP server.** It is a JSON-RPC server that listens silently on `stdin`.
-If you run it manually it will appear to hang — that's correct behavior.
-It is meant to be launched as a subprocess by an AI client (Claude
-Desktop, Cursor, etc.) which speaks JSON-RPC to it over `stdin`/`stdout`.
+**`npx @t2000/mcp` is NOT a command you run from a terminal to "use" the MCP server.** It is a JSON-RPC server that listens silently on `stdin`. If you run it manually it will appear to hang — that's correct behavior. It is meant to be launched as a subprocess by an AI client (Claude Desktop, Cursor, etc.) which speaks JSON-RPC to it over `stdin`/`stdout`.
 
-The JSON snippets below go into your **AI client's MCP settings file**,
-not into a shell.
+The JSON snippets below go into your **AI client's MCP settings file**, not into a shell.
 
 ## Setup
 
-### 1. Create a wallet + safeguards (one-time, in a terminal)
+### 1. Create a wallet (one-time, in a terminal)
 
 ```bash
-# Install CLI long enough to bootstrap a wallet and set safety limits
-npx @t2000/cli init
-npx @t2000/cli config set maxPerTx 100
-npx @t2000/cli config set maxDailySend 500
-
-# Create a session so MCP can reuse the saved PIN
-npx @t2000/cli balance
+# Install CLI long enough to bootstrap a wallet
+npm install -g @t2000/cli
+t2 init
 ```
 
-The MCP server **refuses to start** until `maxPerTx` and `maxDailySend`
-are configured. This is intentional.
+That's it. No PIN. No safeguards gate. The MCP server starts as soon as the wallet file exists at `~/.t2000/wallet.key`.
 
-### 2. Add the MCP server to your AI client
+> Optional: set opt-in spending limits via `t2 limit set --per-tx 50` / `t2 limit set --daily 200`. These limits gate CLI writes (`t2 send/swap/pay`). MCP writes do NOT currently honor them (Phase D consolidation). The MCP `t2000_limit` tool surfaces them for the LLM to read.
 
-Recommended config (auto-updates on every launch, no global install):
+### 2. Wire MCP into your AI client — the easy way
+
+```bash
+t2 mcp install
+```
+
+This is interactive — it discovers installed clients (Claude Desktop, Cursor, Windsurf, Cline, Continue) and offers a multi-select. The CLI writes the correct config block into each chosen client. Then restart the client.
+
+### 2-alt. Manual MCP config
+
+Recommended (auto-updates on every launch, no global install):
 
 ```json
 {
@@ -72,16 +70,17 @@ Alternative (if `@t2000/cli` is already installed globally):
   "mcpServers": {
     "t2000": {
       "command": "t2000",
-      "args": ["mcp"]
+      "args": ["mcp", "start"]
     }
   }
 }
 ```
 
+> Until the `t2` alias ships in Phase C, the published binary is `t2000`. Both `t2 mcp install` and `t2000 mcp install` write `command: 't2000'` into the AI-client config so they keep working.
+
 ### 3. Restart the client
 
-The client spawns the MCP server as a subprocess on startup. You should
-see `t2000_*` tools appear in the tool list.
+The client spawns the MCP server as a subprocess on startup. You should see `t2000_*` tools appear in the tool list.
 
 ## Per-client config file paths
 
@@ -93,6 +92,8 @@ see `t2000_*` tools appear in the tool list.
 | Cline | VSCode settings → `cline.mcpServers` |
 | Continue | `~/.continue/config.json` under `mcpServers` |
 
+`t2 mcp install` writes the correct block into each of these automatically.
+
 ## Verification (optional, before wiring into a client)
 
 Confirm the server responds to a real MCP `initialize` request:
@@ -103,83 +104,43 @@ printf '%s\n' \
   | npx -y @t2000/mcp@latest
 ```
 
-You should see a JSON response containing `"serverInfo":{"name":"t2000"...}`
-and exit. If you see that, the server is healthy and ready to be launched
-by a client.
+You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and exit. If you see that, the server is healthy and ready to be launched by a client.
 
-## Available Tools (27)
+## Available Tools (9)
 
-### Read-only (15)
-| Tool | Description |
-|------|-------------|
-| `t2000_overview` | Complete account snapshot in one call |
-| `t2000_balance` | Current balance |
-| `t2000_address` | Wallet address |
-| `t2000_positions` | Lending positions |
-| `t2000_rates` | Best interest rates per asset |
-| `t2000_all_rates` | Per-protocol rate comparison |
-| `t2000_health` | Health factor |
-| `t2000_history` | Transaction history |
-| `t2000_earnings` | Yield earnings |
-| `t2000_fund_status` | Savings fund status |
-| `t2000_pending_rewards` | Pending protocol rewards |
-| `t2000_deposit_info` | Deposit instructions |
-| `t2000_receive` | Generate payment request with address, nonce, and Payment Kit URI (`sui:pay?…`) |
-| `t2000_services` | List all MPP services and endpoints |
-| `t2000_contacts` | List saved contacts |
-
-### State-changing (10)
-All support `dryRun: true` for previews without signing.
+### Read (5)
 
 | Tool | Description |
 |------|-------------|
-| `t2000_send` | Send USDC |
-| `t2000_save` | Deposit to savings |
-| `t2000_withdraw` | Withdraw from savings |
-| `t2000_borrow` | Borrow against collateral |
-| `t2000_repay` | Repay debt |
-| `t2000_claim_rewards` | Claim pending protocol rewards |
-| `t2000_pay` | Pay for and call any MPP API service with USDC |
-| `t2000_swap` | Execute a token swap via Cetus Aggregator |
-| `t2000_contact_add` | Save a contact name → address |
-| `t2000_contact_remove` | Remove a saved contact |
+| `t2000_balance` | Current wallet balance (USDC + USDsui + SUI + gas reserve). |
+| `t2000_address` | Wallet address. |
+| `t2000_receive` | Generate a payment request: address + Payment Kit URI + nonce. |
+| `t2000_history` | Recent on-chain activity (sends / swaps / pays). |
+| `t2000_services` | Discover MPP services (gateway catalog at mpp.t2000.ai). |
 
-> **S.323 (2026-05-25):** `t2000_stake` + `t2000_unstake` removed (full Volo cut across SDK + CLI + MCP). vSUI remains as a tradeable token via `t2000_swap`, but there is no longer a way to mint / redeem vSUI through t2000.
+### Write (3)
 
-### Safety (2)
+All support `dryRun: true` for previews without signing (where applicable).
+
 | Tool | Description |
 |------|-------------|
-| `t2000_config` | View/set limits |
-| `t2000_lock` | Emergency freeze |
+| `t2000_send` | Send USDC / USDsui / SUI. Asset REQUIRED. USDC + USDsui are gasless. |
+| `t2000_swap` | Swap tokens via Cetus Aggregator. Requires SUI for gas. |
+| `t2000_pay` | Pay for an MPP-protected API service (USDC, gasless). |
 
-## Prompts (31 total)
+### Settings (1)
 
-The MCP server exposes TWO classes of prompts. Both appear in the AI client's `/` prompt picker after restart.
+| Tool | Description |
+|------|-------------|
+| `t2000_limit` | View the user's opt-in spending caps from `~/.t2000/config.json`. READ-ONLY — the LLM cannot set or clear limits via MCP. |
 
-### Workflow prompts (14) — multi-skill orchestrations
+> **v3 → v4 deletions.** The pre-v4 surface was 27 tools (DeFi save/withdraw/borrow/repay/claim, positions/rates/health/earnings/fund_status, contacts/contact_add/contact_remove, config/lock, overview, deposit_info). All deleted as part of `SPEC_AGENT_WALLET_GREENFIELD` — see the `t2000-setup` skill for the v4 product story. DeFi lives on audric.ai now; local contacts are deprecated in favor of SuiNS (`alice.sui`).
 
-| Prompt | Description |
-|--------|-------------|
-| `financial-report` | Full financial summary |
-| `optimize-yield` | Yield optimization analysis |
-| `send-money` | Guided send with preview |
-| `budget-check` | Can I afford $X? |
-| `savings-strategy` | Recommend how much to save and where |
-| `what-if` | Scenario planning — model impact before acting |
-| `sweep` | Route idle funds to optimal earning positions |
-| `risk-check` | Health factor, concentration, liquidation risk |
-| `weekly-recap` | Week in review — activity, yield |
-| `claim-rewards` | Check and claim pending protocol rewards |
-| `safeguards` | Review safety settings — limits, lock, PIN-protected operations |
-| `onboarding` | New user setup — deposit, first save, explore features |
-| `emergency` | Lock account, assess damage, recovery guidance |
-| `optimize-all` | One-shot full optimization — sweep, compare APYs, claim rewards |
+## Prompts
 
-### Skill prompts (21) — auto-derived from `t2000-skills/skills/`
+The MCP server auto-registers one `skill-<short-name>` prompt for every `SKILL.md` baked into the bundle. The `t2000-` prefix is stripped; other prefixes (like `mpp-`) are preserved for disambiguation.
 
-Every `SKILL.md` in `t2000-skills/skills/` is registered at server startup as a prompt named `skill-<short-name>` (the `t2000-` prefix is stripped; other prefixes like `mpp-` are preserved for disambiguation). Invoking the prompt loads the full skill markdown as the user message — equivalent to the agent reading the skill from `t2000.ai/skills/<slug>`.
-
-#### Core wallet skills (17)
+The current set of skill prompts mirrors `t2000-skills/skills/`:
 
 | Prompt | Maps to |
 |--------|---------|
@@ -187,44 +148,28 @@ Every `SKILL.md` in `t2000-skills/skills/` is registered at server startup as a 
 | `skill-check-balance` | `t2000-check-balance` |
 | `skill-send` | `t2000-send` |
 | `skill-receive` | `t2000-receive` |
-| `skill-save` | `t2000-save` |
-| `skill-withdraw` | `t2000-withdraw` |
-| `skill-borrow` | `t2000-borrow` |
-| `skill-repay` | `t2000-repay` |
 | `skill-swap` | `t2000-swap` |
-| `skill-yields` | `t2000-yields` |
 | `skill-pay` | `t2000-pay` |
-| `skill-contacts` | `t2000-contacts` |
-| `skill-safeguards` | `t2000-safeguards` |
-| `skill-account-report` | `t2000-account-report` |
-| `skill-rebalance` | `t2000-rebalance` |
+| `skill-services` | `t2000-services` |
 | `skill-mcp` | `t2000-mcp` (this skill) |
-| `skill-engine` | `t2000-engine` |
 
-#### MPP recipes (4)
+Invoking the prompt loads the full skill markdown as the user message — equivalent to the agent reading the skill from `t2000.ai/skills/<slug>`. Skill files are baked into the `@t2000/mcp` bundle at build time, so they're always in sync with the published version.
 
-| Prompt | Maps to |
-|--------|---------|
-| `skill-mpp-image-gen` | `mpp-image-gen` — OpenAI gpt-image-1 ($0.05) |
-| `skill-mpp-gpt4o` | `mpp-gpt4o` — OpenAI chat completions ($0.01) |
-| `skill-mpp-transcription` | `mpp-transcription` — OpenAI Whisper ($0.01) |
-| `skill-mpp-index` | `mpp-index` — intent-grouped discovery for all 40 MPP services |
-
-This is the canonical way to surface t2000 skills inside an MCP-aware AI client — no separate skill install needed. Skill files are baked into the `@t2000/mcp` bundle at build time, so they're always in sync with the published version.
+> The v3 "workflow prompts" (`financial-report`, `optimize-yield`, `sweep`, `risk-check`, etc., 14 total) were deleted in v4 Phase B — they composed against the dead DeFi skill set. Multi-step coordination is now an LLM concern (the v4 surface is small enough — 9 tools — that pre-baked workflows add no value).
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `npx @t2000/mcp` "hangs" with no output | Working as designed — server is waiting for JSON-RPC on stdin | Don't run it manually; let the AI client launch it |
-| Server exits with `Safeguards not configured` | `maxPerTx` / `maxDailySend` not set | Run `npx @t2000/cli config set maxPerTx 100 && ... maxDailySend 500` |
+| Server fails with `WALLET_NOT_FOUND` | No wallet at `~/.t2000/wallet.key` | Run `t2 init` first |
+| Server fails with `WALLET_LEGACY_AES` | Legacy v3 PIN-encrypted wallet at the default path | Migrate with `t2 init --import` (interactive), or point MCP at a different key via `--key` in the config args |
 | Client shows no `t2000_*` tools after restart | Wrong config path, or stale npx cache | Verify with the `printf | npx ...` test above; clear cache with `rm -rf ~/.npm/_npx` |
 | `SuiClient export not found` error from old install | Cached pre-fix bundle in `~/.npm/_npx` | `rm -rf ~/.npm/_npx` then restart the client |
 
 ## Engine MCP Adapter (Audric)
 
-`@t2000/engine` can also expose its financial tools as MCP tools, enabling
-Audric to serve as an MCP server alongside `@t2000/mcp`:
+`@t2000/engine` can also expose its financial tools as MCP tools, enabling Audric to serve as an MCP server alongside `@t2000/mcp`:
 
 ```typescript
 import { registerEngineTools, getDefaultTools } from '@t2000/engine';
@@ -235,12 +180,11 @@ registerEngineTools(server, getDefaultTools());
 // Exposes: audric_balance_check, audric_save_deposit, etc.
 ```
 
-Engine tools use `audric_` prefix to avoid collisions with `t2000_` prefixed
-tools from `@t2000/mcp`. The engine adapter includes permission-level metadata
-and supports the full confirmation flow.
+Engine tools use `audric_` prefix to avoid collisions with `t2000_` prefixed tools from `@t2000/mcp`. The engine adapter includes permission-level metadata and supports the full confirmation flow.
 
 ## Security
-- Safeguard gate: server refuses to start without configured limits
-- `unlock` is CLI-only — AI cannot circumvent a locked agent
-- `dryRun: true` previews operations before signing
-- Local-only stdio transport — key never leaves the machine
+
+- v4 wallets are plain Bech32 JSON files (`0o600` perms) — no PIN. Anyone with read access to `~/.t2000/wallet.key` owns the wallet.
+- Local-only stdio transport — the key never leaves the machine.
+- `dryRun: true` previews operations before signing (on `t2000_send`).
+- Opt-in spending limits via `t2 limit set` gate CLI writes (MCP writes don't gate yet — Phase D consolidation).

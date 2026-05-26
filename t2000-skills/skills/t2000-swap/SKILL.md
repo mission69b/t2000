@@ -3,14 +3,13 @@ name: t2000-swap
 description: >-
   Swap tokens on Sui via Cetus Aggregator (20+ DEXs, best-route across SUI,
   USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, and more). Use when
-  asked to swap, trade, convert, exchange, or "turn X into Y". Also use as
-  a preflight inside the engine's "swap and save" / "swap and pay" bundled
-  flows. Do not use for sending — use t2000-send for transfers.
+  asked to swap, trade, convert, exchange, or "turn X into Y". Do not use
+  for sending — use the t2000-send skill for transfers.
 license: MIT
 metadata:
   author: t2000
-  version: "1.0"
-  requires: t2000 CLI (npx @t2000/cli init)
+  version: "2.0"
+  requires: t2000 CLI (npm install -g @t2000/cli)
 ---
 
 # t2000: Swap Tokens
@@ -19,77 +18,107 @@ metadata:
 
 Convert between tokens at the best available rate. Cetus Aggregator routes across 20+ DEXs and picks the lowest-price-impact path. Slippage defaults to 1%; configurable up to 5%.
 
+**Swaps are NOT gasless.** Unlike `t2 send USDC` / `t2 send USDsui`, Cetus swap transactions require SUI for gas (typically < $0.01 per swap). Ensure the wallet holds a small SUI balance before swapping.
+
 ## Rules
 
-1. **Preview before signing.** Always run `t2000 swap-quote ...` (or call `swap_quote` in the engine) and surface `priceImpact` + `toAmount` to the user before broadcasting.
+1. **Preview before signing.** Always run `t2 swap <amount> <from> <to> --quote` (or call `t2000_swap` in dry-run via the MCP) and surface `priceImpact` + `toAmount` to the user before broadcasting.
 2. **Decline obviously bad swaps.** If `priceImpact > 0.5%` (50 bps), warn the user and require explicit confirmation. If `priceImpact > 5%`, refuse — that's almost certainly a thin-liquidity trap.
-3. **One swap per intent.** Cetus aggregator handles multi-hop internally; do not chain `swap` calls.
-4. **Don't auto-decide stables.** If the user says "swap to USD", ASK whether USDC or USDsui — they have different NAVI pool APYs.
-5. **Engine path is the swap-and-save / swap-and-pay anchor.** When the user asks "save my SUI", the engine emits `swap_execute` + `save_deposit` in the SAME turn → atomic Payment Intent. See the `t2000-save` skill for the bundling contract.
+3. **One swap per intent.** Cetus aggregator handles multi-hop internally; don't chain `swap` calls.
+4. **Don't auto-decide stables.** If the user says "swap to USD", ASK whether USDC or USDsui — they're both Sui-native stables.
+5. **Limits apply to CLI writes.** If the user set `t2 limit set --per-tx 50` and the swap exceeds the cap (when the from-side is USDC / USDsui), the CLI throws `LIMIT_EXCEEDED`. Use `--force` to override.
 
 ## Command
 
 ```bash
-t2000 swap <amount> <from> [for] <to> [--slippage <pct>]
+t2 swap <amount> <from> <to> [--slippage <pct>] [--quote] [--force]
 
 # Examples:
-t2000 swap 100 USDC SUI               # 100 USDC → SUI, default 1% slippage
-t2000 swap 100 USDC for SUI           # same; `for` keyword is optional
-t2000 swap 5 SUI USDC --slippage 2    # 5 SUI → USDC, 2% slippage
-t2000 swap 50 USDC USDsui             # stable-to-stable; usually <0.05% impact
+t2 swap 100 USDC SUI                  # 100 USDC → SUI, default 1% slippage
+t2 swap 5 SUI USDC --slippage 2       # 5 SUI → USDC, 2% slippage
+t2 swap 50 USDC USDsui                # stable-to-stable; usually <0.05% impact
+t2 swap 100 USDC SUI --quote          # preview only (no signing)
 ```
 
 Slippage is capped at 5% (any higher is rejected — that's degenerate liquidity).
 
-## Preview (no signing)
+## Preview (`--quote`)
 
 ```bash
-t2000 swap-quote <amount> <from> <to>
+t2 swap 100 USDC SUI --quote
 ```
 
-Returns:
+Returns (no signing, no execution):
 - `toAmount` — estimated output (at current pool state)
 - `priceImpact` — basis points moved by the trade
-- `route` — provider name(s) Cetus selected
+- `route` — provider name(s) Cetus selected (e.g. BLUEFIN + CETUS + AFTERMATH)
+- `fee` — total Cetus protocol fee baked into the quote
+
+`--quote` replaces the v3 `t2000 swap-quote` standalone command. One verb, one flag.
 
 ## Fees
 
-- **Network gas:** ~0.001-0.01 SUI per swap (self-funded from the wallet)
-- **Cetus protocol fee:** typically 0.05-0.30% depending on the pool tier (already baked into `toAmount`)
+- **Network gas:** ~0.001-0.01 SUI per swap (self-funded from the wallet).
+- **Cetus protocol fee:** typically 0.05-0.30% depending on the pool tier (already baked into `toAmount`).
 - **t2000 / CLI:** zero fee. Audric (consumer product) adds a 10 bps overlay fee — that's separate, not charged by the CLI.
 
-## Output
+## Output (default)
 
 ```
 ✓ Swapped 100 USDC for 49.8721 SUI
-  Price Impact: 0.04%
-  Route: USDC → SUI (Cetus → Turbos)
-  Gas: 0.0038 SUI
-  Tx: https://suiscan.xyz/mainnet/tx/0x...
+  Price impact:  0.04%
+  Route:         USDC → SUI (Cetus + BLUEFIN)
+  Gas:           0.0038 SUI
+  Tx:            https://suiscan.xyz/mainnet/tx/0xdigest...
 ```
 
-## Engine orchestration
+## Output (--json)
 
-When called inside the Audric chat agent, `swap_execute` always pairs with a `swap_quote` first turn (or fresh quote inside the same turn) so the LLM can:
-1. Compute the projected output value in USD via `token_prices`.
-2. Surface a confirm card with: `fromAmount`, `toAmount`, `priceImpact`, `route`, `fee`.
-3. Block on user confirm — every swap is `permissionLevel: 'confirm'` (no auto-execute under zkLogin).
-
-For "swap and save" — emit `swap_execute` + `save_deposit` in the same assistant turn so the engine compiles one atomic Payment Intent. See `t2000-save` for the full bundle contract.
+```json
+{
+  "tx": "0xdigest...",
+  "from": "USDC",
+  "to": "SUI",
+  "amountIn": 100,
+  "amountOut": 49.8721,
+  "priceImpact": 0.04,
+  "route": ["CETUS", "BLUEFIN"],
+  "fee": 0.001,
+  "gasCost": 0.0038
+}
+```
 
 ## Error handling
 
-- `SWAP_NO_ROUTE` — no path from `from` to `to` in Cetus's pool graph. Suggest going via USDC as an intermediate.
-- `INSUFFICIENT_LIQUIDITY` — the requested size moves the pool too far. Suggest a smaller trade or splitting.
-- `INSUFFICIENT_BALANCE` — wallet doesn't hold enough of the source token (after gas reserve).
-- `SLIPPAGE_EXCEEDED` — by the time the tx confirmed, the pool moved past the slippage limit. Retry with the same params; usually transient.
+| Error code | Meaning |
+|---|---|
+| `SWAP_NO_ROUTE` | No path from `from` to `to` in Cetus's pool graph. Suggest going via USDC as an intermediate. |
+| `INSUFFICIENT_LIQUIDITY` | The requested size moves the pool too far. Suggest a smaller trade or splitting. |
+| `INSUFFICIENT_BALANCE` | Wallet doesn't hold enough of the source token (after gas reserve). |
+| `INSUFFICIENT_GAS` | Wallet has the source token but no SUI for gas. Run `t2 swap 1 USDC SUI` (or similar) first to top up gas. |
+| `SLIPPAGE_EXCEEDED` | By the time the tx confirmed, the pool moved past the slippage limit. Retry with the same params; usually transient. |
+| `LIMIT_EXCEEDED` | CLI hit a `t2 limit set` cap on the from-side USD value. Use `--force` to override. |
 
 ## Supported tokens
 
-USDC, USDsui, USDT, USDe, SUI, vSUI, ETH, GOLD (XAUM), NAVX, WAL, and the long tail Cetus routes through. Use the canonical symbol or pass a full coin type (`0x...::module::TYPE`). The `t2000` token registry resolves common symbols automatically.
+USDC, USDsui, USDT, USDe, SUI, vSUI, ETH, GOLD (XAUM), NAVX, WAL, and the long tail Cetus routes through. Use the canonical symbol or pass a full coin type (`0x...::module::TYPE`). The `@t2000/sdk` token registry resolves common symbols automatically.
+
+## When called through MCP (`t2000_swap` tool)
+
+```json
+{
+  "from": "USDC",
+  "to": "SUI",
+  "amount": 100,
+  "slippage": 0.01
+}
+```
+
+- The MCP tool currently does NOT honor `t2 limit set` caps (Phase D consolidation). Use the CLI for limit-gated swaps.
+- Returns the same shape as `--json` mode (digest + amounts + price impact + route).
 
 ## What NOT to do
 
 - Don't auto-execute multi-leg flows ("swap A → B → C in three transactions"). If a multi-hop is needed, Cetus does it internally as one PTB.
 - Don't recommend swapping mid-position rebalance without first surfacing impermanent-loss risk if the user asked for advice.
-- Don't swap to a stable just to "park" funds — point them at `t2000-save` instead (yield > 0).
+- Don't swap to a stable just to "park" funds with no plan — explain that the Agent Wallet is wallet-first; savings yield lives on audric.ai.

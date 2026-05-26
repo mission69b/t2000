@@ -10,35 +10,43 @@ license: MIT
 status: active
 metadata:
   author: t2000
-  version: "2.0"
-  requires: t2000 CLI (npx @t2000/cli init)
+  version: "3.0"
+  requires: t2000 CLI (npm install -g @t2000/cli)
   available: true
 ---
 
 # t2000: Pay for MPP API Service
 
 ## Status
-Active — requires `t2000` CLI with `@suimpp/mpp` installed.
+Active — bundled with `@t2000/cli` (no separate install).
+
+**USDC payment is gasless.** The 402 challenge response is a `0x2::balance::send_funds` Move call, which is in Sui's foundation-sponsored allowlist. The wallet can pay even with 0 SUI in the gas reserve.
 
 ## Purpose
 Make a paid HTTP request to any MPP-protected endpoint. Handles the 402
 challenge, pays via Sui USDC, and returns the API response.
 
 ## Service Discovery
-Before calling `t2000 pay`, discover available services:
+Before calling `t2 pay`, discover available services:
 ```bash
-# CLI
-t2000 pay https://mpp.t2000.ai/api/services
+# CLI — search by name / category / endpoint
+t2 services search "image"           # find image-gen services
+t2 services search "chat"            # find chat/completion endpoints
+t2 services search ""                # list everything
 
-# MCP
+# CLI — inspect a service or endpoint
+t2 services inspect https://mpp.t2000.ai/openai
+t2 services inspect https://mpp.t2000.ai/openai/v1/chat/completions
+
+# MCP — full catalog JSON
 t2000_services
 ```
 
-All services are hosted at `https://mpp.t2000.ai/`.
+All services are hosted at `https://mpp.t2000.ai/`. See the `t2000-services` skill for the full discovery workflow.
 
 ## Command
 ```bash
-t2000 pay <url> [options]
+t2 pay <url> [options]
 ```
 
 ## Options
@@ -200,44 +208,44 @@ t2000 pay <url> [options]
 
 ### Ask an AI model
 ```bash
-t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \
+t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
   --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Explain quantum computing in 3 sentences"}]}'
 ```
 
 ### Search the web
 ```bash
-t2000 pay https://mpp.t2000.ai/brave/v1/web/search \
+t2 pay https://mpp.t2000.ai/brave/v1/web/search \
   --data '{"q":"latest Sui blockchain news"}'
 ```
 
 ### Generate an image
 ```bash
-t2000 pay https://mpp.t2000.ai/fal/fal-ai/flux/dev \
+t2 pay https://mpp.t2000.ai/fal/fal-ai/flux/dev \
   --data '{"prompt":"a futuristic city at sunset, cyberpunk style"}'
 ```
 
 ### Check weather
 ```bash
-t2000 pay https://mpp.t2000.ai/openweather/v1/weather \
+t2 pay https://mpp.t2000.ai/openweather/v1/weather \
   --data '{"q":"Tokyo"}'
 ```
 
 ### Send an email
 ```bash
-t2000 pay https://mpp.t2000.ai/resend/v1/emails \
+t2 pay https://mpp.t2000.ai/resend/v1/emails \
   --data '{"from":"agent@t2000.ai","to":"user@example.com","subject":"Hello","text":"Sent by an AI agent"}'
 ```
 
 ### Execute code
 ```bash
-t2000 pay https://mpp.t2000.ai/judge0/v1/submissions \
+t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
   --data '{"source_code":"print(42)","language_id":71}'
 ```
 
 ### Send physical mail
 ```bash
 # Send a postcard
-t2000 pay https://mpp.t2000.ai/lob/v1/postcards \
+t2 pay https://mpp.t2000.ai/lob/v1/postcards \
   --max-price 2 \
   --data '{
     "to":{"name":"Jane Doe","address_line1":"123 Main St","address_city":"San Francisco","address_state":"CA","address_zip":"94105"},
@@ -248,7 +256,7 @@ t2000 pay https://mpp.t2000.ai/lob/v1/postcards \
   }'
 
 # Send a letter
-t2000 pay https://mpp.t2000.ai/lob/v1/letters \
+t2 pay https://mpp.t2000.ai/lob/v1/letters \
   --max-price 2 \
   --data '{
     "to":{"name":"Jane Doe","address_line1":"123 Main St","address_city":"San Francisco","address_state":"CA","address_zip":"94105"},
@@ -259,128 +267,128 @@ t2000 pay https://mpp.t2000.ai/lob/v1/letters \
   }'
 
 # Verify a US address
-t2000 pay https://mpp.t2000.ai/lob/v1/verify \
+t2 pay https://mpp.t2000.ai/lob/v1/verify \
   --data '{"primary_line":"123 Main St","city":"San Francisco","state":"CA","zip_code":"94105"}'
 ```
 
 ### Get directions
 ```bash
-t2000 pay https://mpp.t2000.ai/googlemaps/v1/directions \
+t2 pay https://mpp.t2000.ai/googlemaps/v1/directions \
   --data '{"origin":"San Francisco, CA","destination":"Palo Alto, CA"}'
 ```
 
 ### Get crypto prices
 ```bash
-t2000 pay https://mpp.t2000.ai/coingecko/v1/price \
+t2 pay https://mpp.t2000.ai/coingecko/v1/price \
   --data '{"ids":"sui,bitcoin,ethereum","vs_currencies":"usd"}'
 ```
 
 ### Get a stock quote
 ```bash
-t2000 pay https://mpp.t2000.ai/alphavantage/v1/quote \
+t2 pay https://mpp.t2000.ai/alphavantage/v1/quote \
   --data '{"symbol":"AAPL"}'
 ```
 
 ### Get breaking news
 ```bash
-t2000 pay https://mpp.t2000.ai/newsapi/v1/headlines \
+t2 pay https://mpp.t2000.ai/newsapi/v1/headlines \
   --data '{"country":"us","category":"technology"}'
 ```
 
 ### Translate text
 ```bash
-t2000 pay https://mpp.t2000.ai/deepl/v1/translate \
+t2 pay https://mpp.t2000.ai/deepl/v1/translate \
   --data '{"text":["Hello, how are you?"],"target_lang":"ES"}'
 ```
 
 ### Semantic search
 ```bash
-t2000 pay https://mpp.t2000.ai/exa/v1/search \
+t2 pay https://mpp.t2000.ai/exa/v1/search \
   --data '{"query":"best practices for AI agent payments","numResults":5}'
 ```
 
 ### Read a URL as markdown
 ```bash
-t2000 pay https://mpp.t2000.ai/jina/v1/read \
+t2 pay https://mpp.t2000.ai/jina/v1/read \
   --data '{"url":"https://docs.sui.io/concepts/tokenomics"}'
 ```
 
 ### Google search (structured)
 ```bash
-t2000 pay https://mpp.t2000.ai/serper/v1/search \
+t2 pay https://mpp.t2000.ai/serper/v1/search \
   --data '{"q":"Sui blockchain TVL 2026"}'
 ```
 
 ### Screenshot a webpage
 ```bash
-t2000 pay https://mpp.t2000.ai/screenshot/v1/capture \
+t2 pay https://mpp.t2000.ai/screenshot/v1/capture \
   --data '{"url":"https://example.com","format":"png","viewport_width":"1280"}'
 ```
 
 ### Generate a QR code
 ```bash
-t2000 pay https://mpp.t2000.ai/qrcode/v1/generate \
+t2 pay https://mpp.t2000.ai/qrcode/v1/generate \
   --data '{"data":"https://t2000.ai","size":"400x400"}'
 ```
 
 ### Convert HTML to PDF
 ```bash
-t2000 pay https://mpp.t2000.ai/pdfshift/v1/convert \
+t2 pay https://mpp.t2000.ai/pdfshift/v1/convert \
   --data '{"source":"https://t2000.ai/docs"}'
 ```
 
 ### Run a Replicate model
 ```bash
-t2000 pay https://mpp.t2000.ai/replicate/v1/predictions \
+t2 pay https://mpp.t2000.ai/replicate/v1/predictions \
   --data '{"model":"meta/llama-3-70b-instruct","input":{"prompt":"Explain DeFi in 3 sentences"}}'
 ```
 
 ### Find emails for a domain
 ```bash
-t2000 pay https://mpp.t2000.ai/hunter/v1/search \
+t2 pay https://mpp.t2000.ai/hunter/v1/search \
   --data '{"domain":"mystenlabs.com"}'
 ```
 
 ### Look up an IP address
 ```bash
-t2000 pay https://mpp.t2000.ai/ipinfo/v1/lookup \
+t2 pay https://mpp.t2000.ai/ipinfo/v1/lookup \
   --data '{"ip":"8.8.8.8"}'
 ```
 
 ### Order print-on-demand merchandise
 ```bash
-t2000 pay https://mpp.t2000.ai/printful/v1/order \
+t2 pay https://mpp.t2000.ai/printful/v1/order \
   --max-price 30 \
   --data '{"recipient":{"name":"Jane Doe","address1":"123 Main St","city":"SF","state_code":"CA","country_code":"US","zip":"94105"},"items":[{"variant_id":4012,"quantity":1,"files":[{"url":"https://example.com/design.png"}]}]}'
 ```
 
 ### Search for flights
 ```bash
-t2000 pay https://mpp.t2000.ai/serpapi/v1/flights \
+t2 pay https://mpp.t2000.ai/serpapi/v1/flights \
   --data '{"departure_id":"LAX","arrival_id":"NRT","outbound_date":"2026-05-01","type":"2"}'
 ```
 
 ### Convert currency
 ```bash
-t2000 pay https://mpp.t2000.ai/exchangerate/v1/convert \
+t2 pay https://mpp.t2000.ai/exchangerate/v1/convert \
   --data '{"from":"USD","to":"EUR","amount":100}'
 ```
 
 ### Scan a URL for malware
 ```bash
-t2000 pay https://mpp.t2000.ai/virustotal/v1/scan \
+t2 pay https://mpp.t2000.ai/virustotal/v1/scan \
   --data '{"url":"https://suspicious-site.com"}'
 ```
 
 ### Shorten a URL
 ```bash
-t2000 pay https://mpp.t2000.ai/shortio/v1/shorten \
+t2 pay https://mpp.t2000.ai/shortio/v1/shorten \
   --data '{"url":"https://example.com/very/long/url/path"}'
 ```
 
 ### Send a push notification
 ```bash
-t2000 pay https://mpp.t2000.ai/pushover/v1/push \
+t2 pay https://mpp.t2000.ai/pushover/v1/push \
   --data '{"user":"USER_KEY","message":"Your agent has a message!"}'
 ```
 

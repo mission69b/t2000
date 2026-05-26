@@ -1,101 +1,133 @@
 ---
 name: t2000-send
 description: >-
-  Send USDC from the t2000 agent wallet to another address on Sui. Use when
-  asked to pay someone, transfer funds, send money, tip a creator, or make a
-  payment to a specific Sui address or saved contact. Do NOT use for API
-  payments — use t2000-pay for MPP-protected services.
+  Send USDC, USDsui, or SUI from the t2000 Agent Wallet to another Sui
+  address. Use when asked to pay someone, transfer funds, send money, tip
+  a creator, or make a payment to a specific Sui address, SuiNS name, or
+  saved contact. Do NOT use for API payments — use the t2000-pay skill
+  for MPP-protected services.
 license: MIT
 metadata:
   author: t2000
-  version: "1.4"
-  requires: t2000 CLI (npx @t2000/cli init)
+  version: "2.0"
+  requires: t2000 CLI (npm install -g @t2000/cli)
 ---
 
-# t2000: Send USDC
+# t2000: Send USDC / USDsui / SUI
 
 ## Purpose
-Transfer USDC from the agent's available balance to any Sui address. Gas is
-self-funded from the agent's SUI reserve (auto-topped up if needed).
+
+Transfer USDC, USDsui, or SUI from the agent's available balance to any Sui address. **USDC + USDsui are gasless** — they go through Sui's protocol-level `0x2::balance::send_funds` path (Sui foundation sponsored). **SUI is not gasless** — the wallet must hold some SUI to cover the gas fee (typically < $0.0002).
 
 ## Rules
 
-1. **Validate the recipient first.** Names → contacts lookup; `0x...` → `isValidSuiAddress()`. Refuse with `INVALID_ADDRESS` on a malformed address; don't guess.
-2. **Resolve SuiNS over contacts when both exist.** `alex.sui` is preferred over a local contact named `alex` — SuiNS is the global standard. The contacts subsystem is deprecated and will sunset.
-3. **Sends are single-write.** Never bundle with another write in a Payment Intent. Each transfer is its own intent. If you need send + something else, sequence them across turns.
-4. **Don't auto-save raw addresses.** After a send to an unknown address, OFFER to save as contact but require the user to provide a name. Cluttered contacts hurt UX.
-5. **Amount precision matters.** Floor to USDC's 6 decimals (or 2 for display). Never round up — `Math.round` can produce a number larger than the on-chain balance and the transfer will fail simulation.
-6. **Multi-recipient = multiple sends.** A "send to A, B, C" request emits N parallel `send_transfer` tool calls; the engine compiles them into atomic bundles of up to 4 per Payment Intent (host splits across multiple intents if N > 4).
+1. **Asset is REQUIRED.** v4 has no implicit USDC default. `t2 send 5 alice.sui` exits with a clear error pointing at the missing `<asset>` arg. Always pass one of `USDC | USDsui | SUI`.
+2. **Only USDC / USDsui / SUI are accepted.** Other tokens (e.g. USDY, USDT, USDe) are rejected with `unsupported asset`. To send a different asset, the user first swaps it via `t2 swap` (or audric.ai) into USDC, USDsui, or SUI.
+3. **Validate the recipient first.** Names → SuiNS resolves (`alice.sui`). Raw addresses → `isValidSuiAddress()`. The SDK throws clear errors (`CONTACT_NOT_FOUND`, `INVALID_ADDRESS`, `SUINS_NOT_REGISTERED`); don't guess.
+4. **SuiNS over local contacts.** `alice.sui` is preferred over a local contact named `alice` — SuiNS is the global standard. The local contact subsystem is deprecated and will sunset.
+5. **Sends are single-write.** Each transfer is its own intent. If you need send + something else, sequence them across turns.
+6. **Amount precision matters.** Floor to the asset's decimals (USDC + USDsui: 6, SUI: 9). Never round up — `Math.round` can produce a number larger than the on-chain balance and the transfer will fail simulation.
+7. **Multi-recipient = multiple sends.** A "send to A, B, C" request emits N sequential `t2 send` invocations (CLI) or N `t2000_send` tool calls (MCP). Each is atomic.
+8. **Limits apply to CLI writes.** If the user set `t2 limit set --per-tx 50` and the request exceeds the cap, the CLI throws `LIMIT_EXCEEDED`. The user can override one time with `--force`. MCP writes do NOT currently gate on limits (Phase D consolidation).
 
 ## Command
+
 ```bash
-t2000 send <amount> <asset> to <address_or_contact>
-t2000 send <amount> <asset> <address_or_contact>
+t2 send <amount> <asset> <recipient>
+t2 send <amount> <asset> to <recipient>      # `to` filler optional
 
 # Examples:
-t2000 send 10 USDC to 0x8b3e...d412
-t2000 send 50 USDC to Tom
-t2000 send 50 USDC 0xabcd...1234
+t2 send 5 USDC 0x8b3e...d412                  # 5 USDC to a hex address (gasless)
+t2 send 5 USDsui alice.sui                    # 5 USDsui to a SuiNS name (gasless)
+t2 send 50 USDC to mission69b@audric          # @audric handle (gasless)
+t2 send 0.1 SUI 0x8b3e...d412                 # 0.1 SUI to a hex address (gas required)
 ```
 
-The `to` keyword is optional. The recipient can be a Sui address (0x...) or a
-saved contact name (e.g. "Tom"). Use `t2000 contacts` to list saved contacts.
+Use `--force` to bypass an opt-in limit one time. Use `--key <path>` to point at a non-default wallet file.
+
+## Output (default)
+
+```
+✓ Sent $5.00 USDC → alex.sui (0x8b3e...d412)
+  Gas:  gasless ⚡
+  Tx:   https://suiscan.xyz/mainnet/tx/0xdigest...
+```
+
+For non-gasless sends (SUI), the gas line shows the actual SUI burn:
+
+```
+✓ Sent 0.1000 SUI → 0x8b3e...d412
+  Gas:  0.000123 SUI
+  Tx:   https://suiscan.xyz/mainnet/tx/0xdigest...
+```
+
+## Output (--json)
+
+```json
+{
+  "tx": "0xdigest...",
+  "amount": 5,
+  "to": "0x8b3e...d412",
+  "suinsName": "alex.sui",
+  "gasCost": 0,
+  "gasCostUnit": "SUI",
+  "asset": "USDC",
+  "gasless": true
+}
+```
 
 ## Pre-flight checks (automatic)
-1. Sufficient available USDC balance
-2. SUI gas reserve present; if not, auto-topup triggers transparently
 
-## Output
-```
-✓ Sent $XX.XX USDC → 0x8b3e...d412
-  Gas: X.XXXX SUI (self-funded)
-  Balance: $XX.XX USDC
-  Tx: https://suiscan.xyz/mainnet/tx/0x...
-```
+1. Sufficient asset balance (USDC / USDsui / SUI as requested).
+2. For SUI sends only: sufficient SUI for gas.
+3. For USDC + USDsui: zero SUI is acceptable — the Sui foundation sponsors the gas.
+4. Limit check (CLI only): per-tx cap (any asset) + daily-send cap (any asset). Override with `--force`.
 
 ## Error handling
-- `INSUFFICIENT_BALANCE`: available balance is less than the requested amount
-- `INVALID_ADDRESS`: destination is not a valid Sui address
-- `CONTACT_NOT_FOUND`: name is not a saved contact or valid address
-- `SIMULATION_FAILED`: transaction would fail on-chain; details in error message
+
+| Error code | Meaning |
+|---|---|
+| `INSUFFICIENT_BALANCE` | Wallet balance for the chosen asset is less than the requested amount. |
+| `INSUFFICIENT_GAS` | SUI sends only — wallet has the asset but not enough SUI for gas. Suggest a swap. |
+| `INVALID_ADDRESS` | Recipient is not a valid Sui hex address. |
+| `INVALID_ASSET` | Asset is missing or not in the allowlist (USDC / USDsui / SUI). |
+| `SUINS_NOT_REGISTERED` | The `.sui` name isn't registered. |
+| `CONTACT_NOT_FOUND` | The name isn't a SuiNS name, an @audric handle, or a saved local contact. |
+| `LIMIT_EXCEEDED` | CLI hit a `t2 limit set` cap. Use `--force` to override. |
+| `SIMULATION_FAILED` | Transaction would fail on-chain (details in the error message). |
 
 ## Recipient resolution flow
 
-When the user provides a recipient, resolve it before broadcasting:
+The SDK (`T2000.resolveRecipient`) handles resolution in this priority order:
 
-1. **Name given** → look up in saved contacts. If found, use the mapped
-   address. If not found and not a valid `0x...` address, ask the user
-   to clarify (suggest `t2000 contacts add <name> <address>` first).
-2. **Address given (`0x...`)** → validate with `isValidSuiAddress()`. If
-   invalid, refuse with `INVALID_ADDRESS`.
-3. **Ambiguous** (looks like a name AND a valid prefix) → ask the user
-   which they meant.
+1. **Hex address** (starts with `0x`) → validated via `isValidSuiAddress()`. If invalid → `INVALID_ADDRESS`.
+2. **SuiNS name** (`*.sui`) → resolves via SuiNS registry. If unregistered → `SUINS_NOT_REGISTERED`.
+3. **@audric handle** (`name@audric`) → resolves via the audric.ai handle registry.
+4. **Local contact name** → resolves via `~/.t2000/contacts.json` (deprecated; will sunset).
 
-After a successful send to a **previously-unknown raw address** (not a
-saved contact), offer to save it:
+If the user's input doesn't match any path, the SDK throws `CONTACT_NOT_FOUND` with a suggestion to use a hex address or register a SuiNS name.
 
-> "Want to save 0x8b3e…d412 as a contact? Say `yes <name>` to save."
+## After a successful send to an unknown raw address
 
-If the user provides a name, call `t2000 contacts add <name> <address>`
-(CLI). This makes future sends to the same person work by name
-(`t2000 send 10 USDC to <name>`). The engine no longer ships a
-`save_contact` tool — contacts are CLI-only state today; audric users
-manage contacts via the send screen.
+Offer (but don't auto-save):
 
-**Do not auto-save** without asking — the user might not want every
-one-off recipient cluttering their contacts list.
+> "Want to save 0x8b3e…d412 as a contact? You can run `t2 contacts add <name> 0x8b3e…d412` to keep it. (SuiNS at https://suins.io is the recommended path — globally resolvable.)"
 
-## Engine orchestration (audric/web)
+The local contact subsystem is deprecated and will sunset. SuiNS is the canonical name layer for Sui addresses.
 
-When called inside the Audric chat agent:
+## When called through MCP (`t2000_send` tool)
 
-1. Resolve recipient (contacts lookup or address validation) — no tool call needed for contacts; resolution happens in prose.
-2. Call `balance_check` to confirm sufficient funds.
-3. Emit `send_transfer({ to, amount, asset })` as the write tool_use.
-4. After the send settles, if the recipient was a raw address not already
-   in contacts, surface the "save as contact?" prompt to the user (see
-   above). The user confirms in the next turn; the host (CLI / audric)
-   handles persistence — the engine has no contact-write tool.
+The MCP `t2000_send` tool has the same asset-required contract:
 
-Sends are **single-write** — never bundle with another write in a
-Payment Intent. Each transfer is its own intent.
+```json
+{
+  "to": "alice.sui",
+  "amount": 5,
+  "asset": "USDC",
+  "dryRun": false
+}
+```
+
+- `dryRun: true` returns a preview without signing — useful for confirming the resolved address + gasless badge before the actual write.
+- `asset` is REQUIRED — calls without it return an error.
+- MCP writes do NOT honor `t2 limit set` caps in v4 Phase B. Use the CLI for limit-gated workflows.

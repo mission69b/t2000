@@ -4,76 +4,39 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
-import { registerSafetyTools } from './tools/safety.js';
-import { registerPrompts } from './prompts.js';
+import { registerLimitTool } from './tools/limit.js';
+import { registerSkillPrompts } from './skills-prompts.js';
 import { loadSkillsFromDisk } from './test-load-skills.js';
+
+// [v4.0 Phase B — 2026-05-26] Integration test surface mirrors the v4
+// CLI: 5 read tools (balance / address / receive / history / services),
+// 3 write tools (send / swap / pay), 1 settings tool (limit) = 9 total.
+// Pre-v4 the count was 27 (DeFi + safeguards). The deletions are
+// tracked in S.336 (Phase B Step 1 commit).
+//
+// Prompts: the hand-rolled `registerPrompts` workflow prompts were
+// also deleted in S.336. The surviving prompt surface is the
+// auto-registered `skill-<short-name>` prompts from `skills-prompts.ts`
+// (one per SKILL.md in `t2000-skills/skills/`). Asserted below by name.
 
 function createMockAgent() {
   return {
     address: vi.fn().mockReturnValue('0xtest_integration'),
     balance: vi.fn().mockResolvedValue({
       available: 96.81,
-      savings: 5.10,
       gasReserve: { sui: 0.86, usdEquiv: 0.84 },
       total: 102.75,
       assets: { USDC: 101.91 },
       stables: { USDC: 96.81 },
     }),
-    positions: vi.fn().mockResolvedValue({
-      positions: [
-        { protocol: 'navi', asset: 'USDC', type: 'save', amount: 5.10, apy: 4.92 },
-      ],
-    }),
-    rates: vi.fn().mockResolvedValue({
-      USDC: { saveApy: 4.92, borrowApy: 8.5 },
-    }),
-    healthFactor: vi.fn().mockResolvedValue({
-      healthFactor: 4.24, supplied: 5.10, borrowed: 0, maxBorrow: 3.50,
-    }),
     history: vi.fn().mockResolvedValue([
       { digest: '0xabc', action: 'send', amount: 10, asset: 'USDC' },
     ]),
-    earnings: vi.fn().mockResolvedValue({
-      totalYieldEarned: 0.15, currentApy: 4.92, dailyEarning: 0.0007,
+    receive: vi.fn().mockReturnValue({
+      address: '0xtest_integration',
+      uri: 'sui:pay?recipient=0xtest_integration&amount=10',
+      nonce: '0xnonce',
     }),
-    fundStatus: vi.fn().mockResolvedValue({
-      supplied: 5.10, apy: 4.92, earnedToday: 0.0007, earnedAllTime: 0.15, projectedMonthly: 0.021,
-    }),
-    getPendingRewards: vi.fn().mockResolvedValue([]),
-    deposit: vi.fn().mockReturnValue({
-      address: '0xtest123', network: 'Sui (mainnet)', supportedAssets: ['USDC'], instructions: 'Send USDC to address.',
-    }),
-    send: vi.fn().mockResolvedValue({
-      digest: '0xsend123', amount: 10, to: '0xrecipient',
-    }),
-    save: vi.fn().mockResolvedValue({ digest: '0xsave123', amount: 50 }),
-    withdraw: vi.fn().mockResolvedValue({ digest: '0xwithdraw123', amount: 25 }),
-    borrow: vi.fn().mockResolvedValue({ digest: '0xborrow123', amount: 5 }),
-    repay: vi.fn().mockResolvedValue({ digest: '0xrepay123', amount: 5 }),
-    claimRewards: vi.fn().mockResolvedValue({ claimed: [] }),
-    maxBorrow: vi.fn().mockResolvedValue({ maxAmount: 3.50, healthFactorAfter: 2.1 }),
-    enforcer: {
-      assertNotLocked: vi.fn(),
-      check: vi.fn(),
-      getConfig: vi.fn().mockReturnValue({
-        locked: false, maxPerTx: 100, maxDailySend: 1000, dailyUsed: 0,
-      }),
-      isConfigured: vi.fn().mockReturnValue(true),
-      lock: vi.fn(),
-      set: vi.fn(),
-    },
-    contacts: {
-      list: vi.fn().mockReturnValue([]),
-      resolve: vi.fn().mockImplementation((nameOrAddress: string) => {
-        if (nameOrAddress.startsWith('0x')) return { address: nameOrAddress };
-        throw new Error(`"${nameOrAddress}" is not a valid Sui address or saved contact.`);
-      }),
-      add: vi.fn().mockReturnValue({ action: 'added' }),
-      remove: vi.fn().mockReturnValue(true),
-    },
-    // [S.279.1] MCP t2000_send dryRun now uses the public
-    // T2000.resolveRecipient — must be mocked here too. Same priority
-    // order as production (hex > SuiNS > contact).
     resolveRecipient: vi.fn().mockImplementation(async (input: string) => {
       const trimmed = input.trim();
       if (trimmed.startsWith('0x')) return { address: trimmed.toLowerCase() };
@@ -82,9 +45,12 @@ function createMockAgent() {
       }
       throw new Error(`"${input}" is not a valid Sui address or saved contact.`);
     }),
-    allRatesAcrossAssets: vi.fn().mockResolvedValue([
-      { protocol: 'navi', asset: 'USDC', rates: { saveApy: 4.08, borrowApy: 4.94 } },
-    ]),
+    send: vi.fn().mockResolvedValue({
+      digest: '0xsend123', amount: 10, to: '0xrecipient', gasless: true,
+    }),
+    swap: vi.fn().mockResolvedValue({
+      digest: '0xswap123', from: 'USDC', to: 'SUI', amountIn: 1, amountOut: 0.97,
+    }),
     pay: vi.fn().mockResolvedValue({
       status: 200, body: { data: 'paid content' }, paid: true, cost: 0.01,
       receipt: { reference: '0xdigest123', timestamp: new Date().toISOString() },
@@ -92,7 +58,7 @@ function createMockAgent() {
   } as any;
 }
 
-describe('integration: MCP client ↔ server', () => {
+describe('integration: MCP client ↔ server (v4 surface)', () => {
   let client: Client;
   let server: McpServer;
   let clientTransport: InMemoryTransport;
@@ -104,13 +70,12 @@ describe('integration: MCP client ↔ server', () => {
 
     registerReadTools(server, agent);
     registerWriteTools(server, agent);
-    registerSafetyTools(server, agent);
-    // [6G] Inject loaded skills since vitest doesn't run tsup
-    // (no `__BAKED_SKILLS__` define) — same data as production.
-    registerPrompts(server, { skills: loadSkillsFromDisk() });
+    registerLimitTool(server);
+    // Inject loaded skills since vitest doesn't run tsup (no
+    // `__BAKED_SKILLS__` define) — same data as production.
+    registerSkillPrompts(server, loadSkillsFromDisk());
 
     [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-
     client = new Client({ name: 'test-client', version: '0.0.1' });
 
     await server.connect(serverTransport);
@@ -122,48 +87,47 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 27 tools', async () => {
+  it('lists the 9 v4 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(27);
+    expect(tools).toHaveLength(9);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
       't2000_address',
-      't2000_all_rates',
       't2000_balance',
-      't2000_borrow',
-      't2000_claim_rewards',
-      't2000_config',
-      't2000_contact_add',
-      't2000_contact_remove',
-      't2000_contacts',
-      't2000_deposit_info',
-      't2000_earnings',
-      't2000_fund_status',
-      't2000_health',
       't2000_history',
-      't2000_lock',
-      't2000_overview',
+      't2000_limit',
       't2000_pay',
-      't2000_pending_rewards',
-      't2000_positions',
-      't2000_rates',
       't2000_receive',
-      't2000_repay',
-      't2000_save',
       't2000_send',
       't2000_services',
       't2000_swap',
-      't2000_withdraw',
     ]);
   });
 
-  it('lists all 14 prompts', async () => {
+  it('exposes one skill-* prompt per SKILL.md on disk', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts).toHaveLength(14);
+    const skillNames = loadSkillsFromDisk().map((s) => s.name);
 
-    const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['budget-check', 'claim-rewards', 'emergency', 'financial-report', 'onboarding', 'optimize-all', 'optimize-yield', 'risk-check', 'safeguards', 'savings-strategy', 'send-money', 'sweep', 'weekly-recap', 'what-if']);
+    expect(prompts.length).toBe(skillNames.length);
+    const promptNames = prompts.map((p) => p.name).sort();
+    expect(promptNames.every((n) => n.startsWith('skill-'))).toBe(true);
+  });
+
+  it('does NOT expose any of the deleted v3 DeFi / safeguards tools', async () => {
+    const { tools } = await client.listTools();
+    const names = new Set(tools.map((t) => t.name));
+    const banned = [
+      't2000_save', 't2000_withdraw', 't2000_borrow', 't2000_repay',
+      't2000_claim_rewards', 't2000_overview', 't2000_positions',
+      't2000_rates', 't2000_all_rates', 't2000_health', 't2000_earnings',
+      't2000_fund_status', 't2000_pending_rewards', 't2000_deposit_info',
+      't2000_contacts', 't2000_contact_add', 't2000_contact_remove',
+      't2000_config', 't2000_lock',
+    ];
+    for (const tool of banned) {
+      expect(names.has(tool)).toBe(false);
+    }
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {
@@ -173,7 +137,6 @@ describe('integration: MCP client ↔ server', () => {
     const content = result.content as Array<{ type: string; text: string }>;
     const data = JSON.parse(content[0].text);
     expect(data.available).toBe(96.81);
-    expect(data.savings).toBe(5.10);
     expect(data.total).toBe(102.75);
   });
 
@@ -184,12 +147,13 @@ describe('integration: MCP client ↔ server', () => {
     expect(data.address).toBe('0xtest_integration');
   });
 
-  it('calls t2000_send with dryRun and returns preview', async () => {
+  it('calls t2000_send with explicit asset + dryRun and returns preview', async () => {
     const result = await client.callTool({
       name: 't2000_send',
       arguments: {
         to: '0x0000000000000000000000000000000000000000000000000000000000000001',
         amount: 10,
+        asset: 'USDC',
         dryRun: true,
       },
     });
@@ -200,49 +164,69 @@ describe('integration: MCP client ↔ server', () => {
     expect(data.preview).toBe(true);
     expect(data.canSend).toBe(true);
     expect(data.amount).toBe(10);
+    expect(data.asset).toBe('USDC');
+    expect(data.gasless).toBe(true);
   });
 
-  it('calls t2000_config show and returns limits', async () => {
+  it('t2000_send rejects calls without an explicit asset', async () => {
     const result = await client.callTool({
-      name: 't2000_config',
-      arguments: { action: 'show' },
+      name: 't2000_send',
+      arguments: {
+        to: '0x0000000000000000000000000000000000000000000000000000000000000001',
+        amount: 10,
+        // asset missing
+      },
     });
 
-    const content = result.content as Array<{ type: string; text: string }>;
-    const data = JSON.parse(content[0].text);
-    expect(data.locked).toBe(false);
-    expect(data.maxPerTx).toBe(100);
-    expect(data.maxDailySend).toBe(1000);
+    expect(result.isError).toBe(true);
   });
 
-  it('calls t2000_lock and returns locked state', async () => {
-    const result = await client.callTool({ name: 't2000_lock', arguments: {} });
+  it('t2000_send rejects unsupported assets (e.g. USDY)', async () => {
+    const result = await client.callTool({
+      name: 't2000_send',
+      arguments: {
+        to: '0x0000000000000000000000000000000000000000000000000000000000000001',
+        amount: 10,
+        asset: 'USDY',
+      },
+    });
 
+    expect(result.isError).toBe(true);
+  });
+
+  it('calls t2000_swap and returns the Cetus aggregator result', async () => {
+    const result = await client.callTool({
+      name: 't2000_swap',
+      arguments: { from: 'USDC', to: 'SUI', amount: 1 },
+    });
+    expect(result.isError).toBeFalsy();
     const content = result.content as Array<{ type: string; text: string }>;
     const data = JSON.parse(content[0].text);
-    expect(data.locked).toBe(true);
-    expect(data.message).toContain('t2000 unlock');
+    expect(data.digest).toBe('0xswap123');
+    expect(data.amountOut).toBe(0.97);
+  });
+
+  it('calls t2000_limit and returns { configured: false } when no config file exists', async () => {
+    // The default config path is ~/.t2000/config.json; in CI this won't
+    // exist. The tool MUST gracefully report unconfigured rather than
+    // throw.
+    const result = await client.callTool({ name: 't2000_limit', arguments: {} });
+    expect(result.isError).toBeFalsy();
+    const content = result.content as Array<{ type: string; text: string }>;
+    const data = JSON.parse(content[0].text);
+    expect(typeof data.configured).toBe('boolean');
+    expect(typeof data.configPath).toBe('string');
   });
 
   it('returns error for invalid tool arguments', async () => {
     const result = await client.callTool({
       name: 't2000_send',
-      arguments: { to: 'not-a-valid-address', amount: 10 },
+      arguments: { to: 'not-a-valid-address', amount: 10, asset: 'USDC' },
     });
 
     expect(result.isError).toBe(true);
     const content = result.content as Array<{ type: string; text: string }>;
     const data = JSON.parse(content[0].text);
     expect(data.code).toBeDefined();
-  });
-
-  it('gets a prompt with messages', async () => {
-    const result = await client.getPrompt({ name: 'financial-report' });
-    expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].role).toBe('user');
-    expect(result.messages[0].content).toMatchObject({
-      type: 'text',
-      text: expect.stringContaining('t2000_overview'),
-    });
   });
 });

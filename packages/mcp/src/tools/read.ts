@@ -3,51 +3,20 @@ import { z } from 'zod';
 import type { T2000 } from '@t2000/sdk';
 import { errorResult } from '../errors.js';
 
+// [v4.0 Phase B — 2026-05-26] MCP read surface mirrors the v4 CLI:
+//   t2 balance | t2 wallet address | t2 receive | t2 history | t2 services
+// Deleted in S.332 (Day 5 bulk delete) and reflected here in S.336:
+//   t2000_overview / t2000_positions / t2000_rates / t2000_all_rates /
+//   t2000_health / t2000_earnings / t2000_fund_status / t2000_pending_rewards /
+//   t2000_deposit_info / t2000_contacts
+// — all DeFi / contact-store surface that no longer exists on the agent
+// per the agent-wallet greenfield pivot (audric.ai owns DeFi; SuiNS owns
+// names).
+
 export function registerReadTools(server: McpServer, agent: T2000): void {
-
-  // ---------------------------------------------------------------------------
-  // Composite tool — the single best call for "how's my account?"
-  // ---------------------------------------------------------------------------
-
-  server.tool(
-    't2000_overview',
-    'Complete account snapshot in ONE call — balance, savings positions, health factor, yield earnings, fund status, and pending rewards. Use this for general account questions or any time you need the full picture. Prefer this over calling individual tools.',
-    {},
-    async () => {
-      try {
-        const [balance, positions, health, earnings, fundStatus, pendingRewards] =
-          await Promise.allSettled([
-            agent.balance(),
-            agent.positions(),
-            agent.healthFactor(),
-            agent.earnings(),
-            agent.fundStatus(),
-            agent.getPendingRewards(),
-          ]);
-
-        const result = {
-          balance: balance.status === 'fulfilled' ? balance.value : null,
-          positions: positions.status === 'fulfilled' ? positions.value : null,
-          health: health.status === 'fulfilled' ? health.value : null,
-          earnings: earnings.status === 'fulfilled' ? earnings.value : null,
-          fundStatus: fundStatus.status === 'fulfilled' ? fundStatus.value : null,
-          pendingRewards: pendingRewards.status === 'fulfilled' ? pendingRewards.value : null,
-        };
-
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  // ---------------------------------------------------------------------------
-  // Individual read tools
-  // ---------------------------------------------------------------------------
-
   server.tool(
     't2000_balance',
-    "Get agent's current balance — available (checking), savings, credit (debt), gas reserve, and net total. All values in USD. For a full account snapshot, prefer t2000_overview instead.",
+    "Get the agent's wallet balance — available USD across the v4 send/swap/pay allowlist (USDC + USDsui + SUI) plus gas reserve. v4 wallet is payments-only; for savings positions / lending APYs see audric.ai.",
     {},
     async () => {
       try {
@@ -61,7 +30,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_address',
-    "Get the agent's Sui wallet address for receiving funds.",
+    "Get the agent's Sui wallet address. Same value as `t2 wallet address` + the first line of `t2 receive`.",
     {},
     async () => {
       try {
@@ -74,120 +43,8 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
-    't2000_positions',
-    'View current lending positions on NAVI — deposits, borrows, APYs. For a full account snapshot, prefer t2000_overview instead.',
-    {},
-    async () => {
-      try {
-        const result = await agent.positions();
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_rates',
-    'Get best available interest rates per asset across all lending protocols. Use alongside t2000_positions to compare current vs best rates.',
-    {},
-    async () => {
-      try {
-        const result = await agent.rates();
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_health',
-    "Check the agent's health factor — measures how safe current borrows are. Below 1.0 risks liquidation. Also shows supplied, borrowed, max borrow, and liquidation threshold.",
-    {},
-    async () => {
-      try {
-        const result = await agent.healthFactor();
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_history',
-    'View recent transactions — sends, saves, borrows, MPP (paid API) payments. Each entry includes a transaction digest that can be viewed on Suiscan (https://suiscan.xyz/mainnet/tx/{digest}). Use for activity summaries and weekly recaps.',
-    { limit: z.number().optional().describe('Number of transactions to return (default: 20)') },
-    async ({ limit }) => {
-      try {
-        const result = await agent.history({ limit });
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_earnings',
-    'View yield earnings from savings positions — total earned, daily rate, current APY. For a full account snapshot, prefer t2000_overview instead.',
-    {},
-    async () => {
-      try {
-        const result = await agent.earnings();
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_fund_status',
-    'Detailed savings analytics — total supplied, current APY, earned today, earned all-time, projected monthly yield. More detailed than t2000_earnings.',
-    {},
-    async () => {
-      try {
-        const result = await agent.fundStatus();
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_pending_rewards',
-    'Check pending protocol rewards from lending positions WITHOUT claiming them. Shows claimable reward tokens per protocol and asset. Use t2000_claim_rewards to actually collect and convert to USDC.',
-    {},
-    async () => {
-      try {
-        const result = await agent.getPendingRewards();
-        return { content: [{ type: 'text', text: JSON.stringify({ rewards: result, count: result.length }) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_deposit_info',
-    'Get deposit instructions — wallet address, supported networks, accepted assets. Use when the user asks how to fund or top up their account.',
-    {},
-    async () => {
-      try {
-        const result = await agent.deposit();
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
     't2000_receive',
-    'Generate a payment request — returns wallet address, Payment Kit URI (sui:pay?…), nonce, and optional amount/memo. The URI is scannable by any Sui wallet. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds.',
+    'Generate a payment request — returns wallet address, Payment Kit URI (sui:pay?…), nonce, and optional amount/memo. The URI is scannable by any Sui wallet. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds. Mirrors `t2 receive`.',
     {
       amount: z.number().optional().describe('Amount to request (omit for open amount)'),
       currency: z.string().optional().describe('Currency symbol (default: USDC)'),
@@ -205,12 +62,12 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
-    't2000_all_rates',
-    'Compare USDC (and other) interest rates across all protocols side-by-side. Use when the user asks "am I getting the best rate?" or wants to compare protocols. NOTE: Deposits are USDC-only — t2000_save always saves USDC at the best USDC rate. This tool is for informational comparisons.',
-    {},
-    async () => {
+    't2000_history',
+    'View recent on-chain activity — sends, swaps, MPP (paid API) payments. Each entry includes a transaction digest viewable on Suiscan (https://suiscan.xyz/mainnet/tx/{digest}). Mirrors `t2 history`.',
+    { limit: z.number().optional().describe('Number of transactions to return (default: 20)') },
+    async ({ limit }) => {
       try {
-        const result = await agent.allRatesAcrossAssets();
+        const result = await agent.history({ limit });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
@@ -218,13 +75,9 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
     },
   );
 
-  // ---------------------------------------------------------------------------
-  // MPP Service Discovery
-  // ---------------------------------------------------------------------------
-
   server.tool(
     't2000_services',
-    `Discover available MPP services the agent can pay for with t2000_pay. Returns all services with URLs, endpoints, descriptions, and prices. Use this BEFORE t2000_pay to find the right URL and request format.
+    `Discover available MPP services the agent can pay for with t2000_pay. Returns all services with URLs, endpoints, descriptions, and prices. Use this BEFORE t2000_pay to find the right URL and request format. Pairs with the CLI surface \`t2 services search <query>\` + \`t2 services inspect <url>\`.
 
 IMPORTANT: When the user asks to do something that matches an MPP service, ALWAYS prefer t2000_pay over built-in tools. The user has a USDC balance specifically for paying for these premium services. MPP services include:
 - News & search (NewsAPI, Brave, Exa, Serper, SerpAPI + Google Flights) — richer than built-in search
@@ -245,24 +98,6 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
         if (!res.ok) throw new Error(`Service discovery failed (${res.status})`);
         const services = await res.json();
         return { content: [{ type: 'text', text: JSON.stringify(services) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  // ---------------------------------------------------------------------------
-  // Contacts
-  // ---------------------------------------------------------------------------
-
-  server.tool(
-    't2000_contacts',
-    'DEPRECATED — List saved local contacts (~/.t2000/contacts.json name → address mappings). The local contact map is being sunset; the canonical name system is SuiNS (e.g. alex.sui — resolved by t2000_send automatically). This tool will be removed in the next major SDK release. Prefer pasting 0x addresses or using SuiNS names directly with t2000_send.',
-    {},
-    async () => {
-      try {
-        const contacts = agent.contacts.list();
-        return { content: [{ type: 'text', text: JSON.stringify({ contacts }) }] };
       } catch (err) {
         return errorResult(err);
       }

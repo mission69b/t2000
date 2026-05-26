@@ -1,75 +1,114 @@
 ---
 name: t2000-receive
 description: >-
-  Generate a payment request to receive funds into the t2000 agent wallet. Use
-  when asked to receive money, create a payment link, share a wallet address, or
-  generate a QR code for receiving payment. Produces a payment request with
-  address, Sui Payment Kit URI (sui:pay?…), nonce, and optional amount/memo.
+  Generate a payment request for the t2000 Agent Wallet — print the
+  wallet address, an ANSI QR code, and (via MCP) a Payment Kit URI
+  (sui:pay?…). Use when asked to receive a payment, share a wallet
+  address, create a payment link, or set up a fund-me link.
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
-  requires: t2000 CLI (npx @t2000/cli init)
+  version: "1.0"
+  requires: t2000 CLI (npm install -g @t2000/cli)
 ---
 
-# t2000: Receive Payment
+# t2000: Receive Funds
 
 ## Purpose
-Generate a payment request containing the agent's wallet address, a unique
-nonce, and a Sui Payment Kit URI (`sui:pay?…`). The sender can scan the QR or
-copy the address to send funds. No on-chain transaction is created — this is a
-local, read-only operation.
 
-## Command
+Surface the wallet address (and optionally a Payment Kit URI with a pre-filled amount + memo) so anyone with a Sui wallet can send tokens to the Agent Wallet. Two surfaces:
+
+- **CLI (`t2 receive`)** — prints the wallet address + an ANSI QR code in the terminal. Minimal; no amount or memo.
+- **MCP (`t2000_receive`)** — returns a JSON payload with the address, an optional Payment Kit URI (`sui:pay?…`), a nonce, plus an optional amount / currency / memo / label. Use this when the LLM is building a payment-request flow.
+
+## Rules
+
+1. **Receive is non-custodial.** The user's address is public; sharing it can't move money — only signed transactions can. Don't add scary disclaimers; the operation is safe.
+2. **Show the QR + the address text.** Some users scan, some copy. Both surfaces.
+3. **No PIN, no sign-in.** v4 wallets are plain Bech32; `t2 receive` is a pure read with no authentication step.
+4. **Default currency is USDC.** When asking the user to fund the wallet, USDC is the most useful (every paid service is USDC-denominated, USDC sends are gasless). USDsui also works.
+5. **Don't generate a Payment Kit URI without an amount unless asked.** A bare address scans just as well; URIs with amounts force the sender into a particular tx shape.
+
+## CLI command
+
 ```bash
-t2000 receive [options]
-
-# Examples:
-t2000 receive                                          # Address only
-t2000 receive --amount 25                              # Request $25 USDC
-t2000 receive --amount 100 --memo "Invoice #42"        # With memo
-t2000 receive --amount 50 --label "Freelance work"     # With label
-t2000 receive --currency SUI --amount 10               # Request SUI
+t2 receive                            # address + ANSI QR + share line
+t2 receive --qr-only                  # just the QR (e.g. for embedding in a screenshot)
+t2 receive --key <path>               # custom wallet path
+t2 receive --json                     # { address, qrEncodedFor }
 ```
 
-## Options
-| Option | Description |
-|--------|-------------|
-| `--amount <n>` | Amount to request (omit for open amount) |
-| `--currency <sym>` | Currency symbol (default: USDC) |
-| `--memo <text>` | Payment note shown to sender |
-| `--label <text>` | Description for the payment request |
+CLI output (default):
 
-## Output
 ```
-✓ Payment Request
+Address  0x55b223b0...0dd1b6
 
-  ──────────────────────────────────────
-  Address   0x8b3e...d412
-  Network   Sui Mainnet
-  Nonce     a1b2c3d4-e5f6-7890-abcd-ef1234567890
-  Amount    $25.00 USDC
-  Memo      Invoice #42
-  ──────────────────────────────────────
+  Scan to send tokens to this wallet:
 
-  Payment URI   sui:pay?receiver=0x8b3e...&amount=25000000&...
+  █▀▀▀▀▀█ ▄ ▀▄  █ ▄▀ ▄ █▀▀▀▀▀█
+  █ ███ █ █  ▀ █ ▄▄  ▀▀ █ ███ █
+  █ ▀▀▀ █ ▀▄▀▄█▀ ▀▄ ▀▄  █ ▀▀▀ █
+  ▀▀▀▀▀▀▀ ▀ █▀▀ █ ▀ ▀ ▀▀▀▀▀▀▀▀▀
+  ... (truncated)
 
-  Share this URI or scan the QR to pay via any Sui wallet.
+  Or share `0x55b223b0...0dd1b6` directly.
 ```
 
-## SDK Usage
-```typescript
-const request = agent.receive({ amount: 25, memo: 'Invoice #42' });
-// Returns: { address, network, amount, currency, memo, label, nonce, qrUri, displayText }
+The CLI prints to ANSI — it will look right in any terminal but won't render as image data in MCP responses. Use the MCP tool for a structured JSON response.
+
+## MCP tool (`t2000_receive`)
+
+```json
+// Request
+{
+  "amount": 10,              // optional — pre-fills the sender's tx amount
+  "currency": "USDC",        // optional — default USDC, also accepts USDsui / SUI
+  "memo": "Coffee on me",    // optional — encoded into the Payment Kit URI
+  "label": "Coffee fund"     // optional — human-readable label for the URI
+}
+
+// Response
+{
+  "address": "0x55b223b0...0dd1b6",
+  "uri": "sui:pay?recipient=0x55b223b0...&amount=10000000&coinType=0xdba34672...::usdc::USDC&nonce=abc-123&label=Coffee+fund&message=Coffee+on+me",
+  "nonce": "abc-123-uuid",
+  "amount": 10,
+  "currency": "USDC",
+  "memo": "Coffee on me",
+  "label": "Coffee fund"
+}
 ```
 
-## MCP Tool
-Tool name: `t2000_receive` (read-only, auto-approved).
+The Payment Kit URI follows the [Sui Payment Kit spec](https://docs.sui.io/) — every Sui wallet (Mysten, Phantom, Suiet, Slush, Sui Wallet Standard) can scan/parse it. If you omit `amount`, the URI is a "bring your own amount" link that the sender fills in.
+
+### URI shapes
+
+| Args | URI shape |
+|---|---|
+| no amount, no memo, default currency | `sui:0x<address>` |
+| no amount, custom currency or memo | `sui:0x<address>?currency=USDsui&memo=…` |
+| with amount | `sui:pay?recipient=0x<address>&amount=<raw>&coinType=<full-type>&nonce=<uuid>[&label=…][&message=…]` |
+
+The amount-bearing form uses raw on-chain units (USDC: × 10^6, SUI: × 10^9) so wallets don't have to do their own conversion. The `nonce` is a UUID v4 minted at request time; senders include it in the tx metadata so the receiving agent can correlate the inflow back to the request.
+
+## When to use which surface
+
+| Need | Use |
+|---|---|
+| "What's my wallet address?" | `t2 receive` (CLI) or `t2000_address` (MCP — address only, no QR) |
+| "Show me the QR" | `t2 receive` (CLI prints ANSI QR) |
+| "Generate a payment link for $10" | `t2000_receive { amount: 10, currency: "USDC" }` (MCP) |
+| "Generate a 'tip jar' link" (no amount) | `t2000_receive { memo: "Tip jar", label: "Tip funkii" }` (MCP) |
 
 ## Notes
-- This is a **local operation** — no transaction is created, no gas is used
-- Uses **Sui Payment Kit** — generates `sui:pay?` URIs with nonce binding
-- The nonce is a UUID that uniquely identifies each payment request
-- Wallets that support Payment Kit register payment in an on-chain registry, preventing double-spend
-- Without `--amount`, the request is open-ended (any amount accepted)
-- Default currency is USDC; specify `--currency SUI` for native SUI
+
+- USDC + USDsui inflows arrive gasless (Sui foundation pays the sender's gas via the `0x2::balance::send_funds` allowlist).
+- SUI inflows require the sender to have SUI for their own gas.
+- Once the funds land, run `t2 balance` (CLI) or `t2000_balance` (MCP) to verify. Inflows show up within ~1 block (~500 ms).
+- This skill is the receive-half of "Audric Pay". The send-half is the `t2000-send` skill.
+
+## What NOT to do
+
+- Don't include the user's address inline in chat messages without confirming they want it shared. It's public — but politeness matters.
+- Don't generate a one-off Payment Kit URI for every conversation. The bare address works fine for repeated transfers.
+- Don't redirect users to audric.ai for receive flows — the Agent Wallet handles receive natively. (Audric Pay's hosted UI is for users who DON'T have the CLI.)
