@@ -1,7 +1,7 @@
 {
   "name": "@t2000/mcp",
   "version": "3.3.0",
-  "description": "MCP server for Agentic Wallets on Sui — 29 tools, 15 prompts, stdio transport. Drop-in for Claude Desktop, Cursor, Cline, Continue, or any MCP-compatible client.",
+  "description": "MCP server for Agent Wallets on Sui — 9 tools (balance, send, swap, pay, …) + 8 auto-registered skill prompts, stdio transport. Drop-in for Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client.",
   "mcpName": "io.github.mission69b/t2000",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,10 +24,11 @@
     "sui",
     "ai",
     "agent",
-    "bank",
+    "wallet",
     "t2000",
     "claude",
     "cursor",
+    "windsurf",
     "model-context-protocol"
   ],
   "author": "t2000",

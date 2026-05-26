@@ -1,7 +1,7 @@
 {
   "name": "@t2000/cli",
   "version": "3.3.0",
-  "description": "Agent Wallet for AI agents on Sui — guided setup, MCP integration, gasless USDC + USDsui sends, swap, MPP pay, scriptable from any shell.",
+  "description": "Agent Wallet for AI agents on Sui — gasless USDC + USDsui sends, Cetus swap, MPP paid API access, MCP integration, scriptable from any shell.",
   "type": "module",
   "bin": {
     "t2": "./dist/index.js",
@@ -17,11 +17,12 @@
     "ai",
     "agent",
     "cli",
-    "defi",
     "usdc",
+    "usdsui",
     "mpp",
-    "t2000",
-    "navi"
+    "mcp",
+    "gasless",
+    "t2000"
   ],
   "author": "t2000",
   "repository": {

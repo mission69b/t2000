@@ -118,8 +118,7 @@ export class ContactManager {
       'CONTACT_NOT_FOUND',
       `"${nameOrAddress}" is not a valid Sui address or saved contact.\n` +
       `  Use a SuiNS name (e.g. alex.sui — register at https://suins.io)\n` +
-      `  or paste the full Sui address (0x... 64 hex characters).\n` +
-      `  Legacy contact aliases: \`t2000 contacts add ${nameOrAddress} 0x...\` (deprecated).`,
+      `  or paste the full Sui address (0x... 64 hex characters).`,
     );
   }
 

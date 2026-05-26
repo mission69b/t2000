@@ -694,11 +694,12 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   /**
-   * [SPEC_AGENTIC_STACK P1 / SDK F2 (CLI rename support) — 2026-05-25]
-   * Preferred alias of `deposit()`. The CLI surface is `t2000 fund` post-Phase 1
-   * (more intuitive than "deposit" which sounds like a NAVI lending action).
-   * `deposit()` stays as the canonical method name for back-compat; it is NOT
-   * deprecated. This wrapper exists so SDK consumers can mirror CLI naming.
+   * [SPEC_AGENTIC_STACK P1 / SDK F2 — 2026-05-25; refreshed S.342 / 2026-05-26]
+   * Preferred alias of `deposit()`. Was introduced to mirror the v3 `t2000 fund`
+   * CLI command; the v4 CLI surface is `t2 receive` (deleted `fund` in the
+   * S.332 bulk cut). `deposit()` stays as the canonical method name for
+   * back-compat; `fund()` stays as a programmatic alias for audric + other
+   * SDK consumers that prefer the verb.
    */
   async fund(): Promise<DepositInfo> {
     return this.deposit();
@@ -1104,7 +1105,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const maxResult = await adapter.maxBorrow(this._address, asset);
     if (maxResult.maxAmount <= 0) {
-      throw new T2000Error('NO_COLLATERAL', 'No collateral deposited. Save first with `t2000 save <amount>`.');
+      throw new T2000Error('NO_COLLATERAL', 'No collateral deposited. Make a save deposit first.');
     }
     if (params.amount > maxResult.maxAmount) {
       throw new T2000Error('HEALTH_FACTOR_TOO_LOW', `Max safe borrow: $${maxResult.maxAmount.toFixed(2)}. Only savings deposits count as borrowable collateral.`, {

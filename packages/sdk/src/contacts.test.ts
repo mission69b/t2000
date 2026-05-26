@@ -177,8 +177,11 @@ describe('ContactManager', () => {
     });
 
     it('throws with helpful add hint pointing to SuiNS first', () => {
-      // [S.279] Error message now leads with the SuiNS migration path
-      // and the legacy `contacts add` route is footnoted as deprecated.
+      // [S.279] Error message leads with the SuiNS migration path.
+      // [S.342] Dropped the legacy `t2000 contacts add` hint — that v3 CLI
+      // command no longer exists; SuiNS is the canonical v4 recipient
+      // resolution path. ContactManager itself stays as a programmatic
+      // surface for audric consumers.
       try {
         manager.resolve('Nobody');
         throw new Error('expected throw');
@@ -186,8 +189,8 @@ describe('ContactManager', () => {
         const msg = (err as Error).message;
         expect(msg).toContain('SuiNS name');
         expect(msg).toContain('alex.sui');
-        expect(msg).toContain('t2000 contacts add Nobody');
-        expect(msg).toContain('deprecated');
+        expect(msg).not.toContain('t2000 contacts add');
+        expect(msg).not.toContain('deprecated');
       }
     });
 

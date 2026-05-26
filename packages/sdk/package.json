@@ -1,7 +1,7 @@
 {
   "name": "@t2000/sdk",
   "version": "3.3.0",
-  "description": "TypeScript SDK for Agentic Wallets on Sui — send, save, borrow, swap. NAVI lending + Cetus aggregator routing, sponsored gas, zkLogin compatible.",
+  "description": "TypeScript SDK for Agent Wallets on Sui — gasless USDC + USDsui transfers, Cetus swap routing, NAVI lending (programmatic), MPP paid API access, zkLogin compatible.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -36,10 +36,13 @@
     "wallet",
     "ai",
     "agent",
-    "defi",
     "sdk",
     "usdc",
-    "navi"
+    "usdsui",
+    "gasless",
+    "cetus",
+    "navi",
+    "zklogin"
   ],
   "author": "t2000",
   "repository": {
