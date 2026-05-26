@@ -54,7 +54,7 @@ export function registerLimitTool(server: McpServer): void {
 
 IMPORTANT: This tool is READ-ONLY. Setting or clearing limits must be done via the CLI (the user has terminal access; security boundary). To suggest a limit change, ask the user to run \`t2 limit set --per-tx 50\` or \`t2 limit reset\` in their terminal.
 
-NOTE: As of v4.0 Phase B, MCP write tools (t2000_send / t2000_swap / t2000_pay) do NOT enforce these limits — only CLI writes do. Enforcement parity is a Phase D consolidation. Until then, use this tool to narrate the user's intent ("you set a $50 per-tx cap, but the send tool can't enforce it via MCP yet").`,
+Use the returned values to inform the user about their own configured caps before writes — e.g., if they set a $50 per-tx cap, surface that context when they ask for a $200 send so they can decide whether to lower the amount or run \`t2 limit reset\` first.`,
     {},
     async () => {
       try {

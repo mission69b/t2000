@@ -1,6 +1,6 @@
 # SPEC — Agent Wallet Greenfield Pivot
 
-> **Status:** 🟢 ACTIVE — Phase A DONE 2026-05-26 (S.328-S.335; 8/8 mainnet smokes); Phase B Step 1 DONE 2026-05-26 (S.336); Simplification cut DONE 2026-05-26 (S.337 — legacy-wallet *detection* removed); `--import` restored 2026-05-26 (S.338 — clean Bech32 import primitive, not tied to v3 migration); Phase B Step 2 DONE 2026-05-26 (S.339 — `t2000-skills/README.md` Circle-style rewrite); Phase B Step 3 (npm publish 4.0.0) next
+> **Status:** 🟢 ACTIVE — Phase A DONE 2026-05-26 (S.328-S.335; 8/8 mainnet smokes); Phase B DONE 2026-05-26 (S.336 + S.339; Phase B audit S.340 clean); Simplification cut DONE 2026-05-26 (S.337 — legacy-wallet *detection* removed); `--import` restored 2026-05-26 (S.338 — clean Bech32 import primitive, not tied to v3 migration); Phase C DONE 2026-05-26 (S.340 — `t2` bin entry shipped alongside `t2000`; bundled polish items #6-#8 from Phase B audit); Phase D (3 package READMEs rewrite + `apps/web` redeploy) next
 > **Detailed plan:** [`.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md`](../../../.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md) — the full ~9-10 day execution plan with file paths, code snippets, and verification gates
 > **Successor to:** `SPEC_AGENTIC_STACK.md` (Phase 5 absorbed). Phases 1-4 of that SPEC are still shipped + valid; only the marketing/README sweep folds into this pivot's Phase D
 > **Trigger:** Founder review of `agents.circle.com` + `circlefin/skills` + `circlefin/cli` (2026-05-26) — *"the cli is doing TOO MUCH... rip all defi capabilities out... only make it a agentic wallet with payments (mpp) and ability to send, receive... circle docs i shared in the previous prompt was also to review it just incase you missed something with the pivot spec... we should also remove the pin from cli... we have safeguards i think remove them also to simplify the onboarding... full rewrite might be better and really strip out everything and only keep what we actually need."*
@@ -36,9 +36,9 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 | Phase | What | Effort | Status |
 |---|---|---|---|
 | **A** | CLI greenfield rewrite + gRPC/gasless | ~3-4d (took 6 sessions / ~14h) | ✅ **DONE 2026-05-26** (S.328-S.335; 8/8 mainnet smokes) |
-| **B** | Skills + MCP cross-package consistency sweep | ~1.5-2d | 🟡 Steps 1-2 DONE 2026-05-26 (S.336 + S.339); Steps 3-4 pending |
-| **C** | Binary rename `t2` alongside `t2000` | ~0.5d | pending |
-| **D** | Brand + repo health sweep (absorbs Phase 5 of `SPEC_AGENTIC_STACK`) | ~1d | pending |
+| **B** | Skills + MCP cross-package consistency sweep | ~1.5-2d | ✅ **DONE 2026-05-26** (S.336 + S.339; audit S.340 clean) |
+| **C** | Binary rename `t2` alongside `t2000` | ~0.5d | ✅ **DONE 2026-05-26** (S.340 — dual-bin `{t2,t2000}` in `packages/cli/package.json`; argv basename audit clean; 2 new integration tests assert both bins point at same dist entry; live npm-install-g smoke confirmed both resolve identical output) |
+| **D** | Brand + repo health sweep (absorbs Phase 5 of `SPEC_AGENTIC_STACK`) | ~1d | pending — 3 package READMEs (`packages/{cli,sdk,mcp}/README.md`) need v3→v4 rewrite + `apps/web` needs redeploy so the live skills manifest serves v4 content |
 | **E** | Test + spec cleanup + RPC invariant verification | ~0.5d | pending |
 | **F** | `developers.t2000.ai` via Mintlify | ~1d | pending |
 | **G** | Verify + release `@t2000/*@4.0.0` | ~0.5d | pending |
@@ -99,8 +99,8 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 |---|---|---|
 | Planning | S.327 | ✅ done 2026-05-26 (this SPEC + 3 deferred follow-up stubs) |
 | A | S.328-S.335 | ✅ **DONE 2026-05-26** — 6 sessions / ~14h / ~700 LoC net / 8/8 mainnet smokes / 0 regressions |
-| B | S.336 + S.337 + S.338 + S.339 | 🟢 Steps 1-2 ✅ **DONE 2026-05-26** (S.336 — MCP + skills sweep; S.337 — legacy-wallet *detection* removed; S.338 — `--import` restored as clean Bech32 primitive; S.339 — `t2000-skills/README.md` Circle-style rewrite). Step 3 (npm publish 4.0.0) + Step 4 (optional MPP absorption / cross-client render verification) pending. |
-| C | pending | |
+| B | S.336 + S.337 + S.338 + S.339 + S.340 (audit) | ✅ **DONE 2026-05-26** (S.336 — MCP + skills sweep; S.337 — legacy-wallet *detection* removed; S.338 — `--import` restored as clean Bech32 primitive; S.339 — `t2000-skills/README.md` Circle-style rewrite; S.340 — Phase B audit + 4 polish items bundled into Phase C). Optional MPP absorption / cross-client render verification deferred to a future slice. |
+| C | S.340 | ✅ **DONE 2026-05-26** (`t2` bin shipped alongside `t2000`; tests + smoke green). |
 | D | pending | |
 | E | pending | |
 | F | pending | |

@@ -6,11 +6,10 @@
 // define-injection that tsup performs at build time (see `tsup.config.ts`).
 // During vitest, tsup never runs, so the define is absent and the symbol
 // resolves to `[]`. This helper mirrors the baker logic so tests can pass
-// the SAME data to `registerPrompts({ skills })` and
-// `registerSkillPrompts(server, skills)`.
+// the SAME data to `registerSkillPrompts(server, skills)`.
 //
 // NOT exported from `src/index.ts` — test-only utility. Keeping it next
-// to its consumers (prompts.test.ts, integration.test.ts) avoids
+// to its consumers (skills-prompts.test.ts, integration.test.ts) avoids
 // publishing test infrastructure to npm.
 // ---------------------------------------------------------------------------
 

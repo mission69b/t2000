@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -334,7 +334,7 @@ describeOrSkip('CLI integration — mcp install + uninstall round-trip', () => {
     // bin name that's actually on PATH after `npm install -g @t2000/cli`.
     const cursorConfig = join(home, '.cursor', 'mcp.json');
     expect(existsSync(cursorConfig)).toBe(true);
-    const raw = require('node:fs').readFileSync(cursorConfig, 'utf-8');
+    const raw = readFileSync(cursorConfig, 'utf-8');
     const parsed = JSON.parse(raw);
     expect(parsed.mcpServers.t2000.command).toBe('t2000');
     expect(parsed.mcpServers.t2000.args).toEqual(['mcp', 'start']);
@@ -365,7 +365,7 @@ describeOrSkip('CLI integration — mcp install + uninstall round-trip', () => {
     const r = runCli(['--json', 'mcp', 'uninstall'], { home });
     expect(r.code).toBe(0);
 
-    const raw = require('node:fs').readFileSync(cursorConfig, 'utf-8');
+    const raw = readFileSync(cursorConfig, 'utf-8');
     const parsed = JSON.parse(raw);
     expect(parsed.mcpServers.t2000).toBeUndefined();
     expect(parsed.mcpServers.siblingServer).toEqual({ command: 'other', args: ['foo'] });
@@ -452,5 +452,28 @@ describeOrSkip('CLI integration — help on every group resolves cleanly', () =>
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+// [SPEC_AGENT_WALLET_GREENFIELD Phase C — S.340 — 2026-05-26]
+// Verifies the publish-shape `bin` map in `package.json` so the v4.0.0
+// release ships BOTH `t2` (new canonical) and `t2000` (legacy alias) as
+// entry points. The test reads the on-disk manifest — the same file npm
+// publishes — so this is the source of truth for "what gets symlinked
+// when a user runs `npm install -g @t2000/cli`".
+describe('CLI integration — Phase C bin map (t2 + t2000 dual entry)', () => {
+  const pkgPath = fileURLToPath(new URL('../package.json', import.meta.url));
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
+    bin?: Record<string, string>;
+  };
+
+  it('exposes both `t2` and `t2000` bins', () => {
+    expect(pkg.bin).toBeDefined();
+    expect(pkg.bin?.t2).toBe('./dist/index.js');
+    expect(pkg.bin?.t2000).toBe('./dist/index.js');
+  });
+
+  it('both bins point at the same dist entry (no drift)', () => {
+    expect(pkg.bin?.t2).toEqual(pkg.bin?.t2000);
   });
 });

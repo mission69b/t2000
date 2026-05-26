@@ -4,6 +4,7 @@
   "description": "Agent Wallet for AI agents on Sui — guided setup, MCP integration, gasless USDC + USDsui sends, swap, MPP pay, scriptable from any shell.",
   "type": "module",
   "bin": {
+    "t2": "./dist/index.js",
     "t2000": "./dist/index.js"
   },
   "files": [

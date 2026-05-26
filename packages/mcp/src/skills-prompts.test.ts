@@ -8,22 +8,22 @@ import {
 
 describe('toPromptName', () => {
   it('strips t2000- prefix and prepends skill-', () => {
-    expect(toPromptName('t2000-borrow')).toBe('skill-borrow');
-    expect(toPromptName('t2000-account-report')).toBe('skill-account-report');
+    expect(toPromptName('t2000-send')).toBe('skill-send');
     expect(toPromptName('t2000-check-balance')).toBe('skill-check-balance');
+    expect(toPromptName('t2000-services')).toBe('skill-services');
   });
 
   it('handles names without t2000- prefix gracefully', () => {
     expect(toPromptName('custom-skill')).toBe('skill-custom-skill');
   });
 
-  it('keeps mpp- prefix as-is (S.326 — MPP recipes share the skill- namespace)', () => {
-    // mpp-* skills only strip the t2000- prefix (which isn't present), so the
-    // mpp- prefix is preserved → `skill-mpp-image-gen` (unambiguous + scannable).
+  it('preserves non-t2000 namespaces (e.g. future audric-* / mpp-* prefixes)', () => {
+    // `toPromptName` only strips the `t2000-` prefix; any other namespace
+    // is preserved verbatim. Documented here so a future skill set in the
+    // monorepo (`audric-*`, an mpp recipe revival, etc.) doesn't surprise
+    // anyone with prompt-name collisions.
+    expect(toPromptName('audric-some-flow')).toBe('skill-audric-some-flow');
     expect(toPromptName('mpp-image-gen')).toBe('skill-mpp-image-gen');
-    expect(toPromptName('mpp-gpt4o')).toBe('skill-mpp-gpt4o');
-    expect(toPromptName('mpp-transcription')).toBe('skill-mpp-transcription');
-    expect(toPromptName('mpp-index')).toBe('skill-mpp-index');
   });
 });
 
@@ -33,14 +33,14 @@ describe('registerSkillPrompts', () => {
 
   const fixtureSkills: SkillData[] = [
     {
-      name: 't2000-borrow',
-      description: 'Borrow USDC or USDsui against savings collateral.',
-      body: '# t2000: Borrow USDC or USDsui\n\nTake a collateralized loan...',
+      name: 't2000-send',
+      description: 'Send USDC, USDsui, or SUI to a Sui address, SuiNS name, or saved contact.',
+      body: '# t2000: Send USDC, USDsui, or SUI\n\nTransfer funds to another Sui address...',
     },
     {
-      name: 't2000-account-report',
-      description: 'Render a complete account snapshot.',
-      body: '# t2000: Account Report\n\nMulti-tool orchestration...',
+      name: 't2000-check-balance',
+      description: 'Check the t2000 Agent Wallet balance on Sui.',
+      body: '# t2000: Check Balance\n\nReturn the wallet balance summary...',
     },
   ];
 
@@ -62,28 +62,28 @@ describe('registerSkillPrompts', () => {
     registerSkillPrompts(server, fixtureSkills);
 
     expect(prompts.size).toBe(2);
-    expect(prompts.has('skill-borrow')).toBe(true);
-    expect(prompts.has('skill-account-report')).toBe(true);
+    expect(prompts.has('skill-send')).toBe(true);
+    expect(prompts.has('skill-check-balance')).toBe(true);
   });
 
   it('uses the skill description as the MCP prompt description', () => {
     registerSkillPrompts(server, fixtureSkills);
 
-    expect(prompts.get('skill-borrow')?.description).toBe(
-      'Borrow USDC or USDsui against savings collateral.',
+    expect(prompts.get('skill-send')?.description).toBe(
+      'Send USDC, USDsui, or SUI to a Sui address, SuiNS name, or saved contact.',
     );
   });
 
   it('handler returns the skill body as a user-role text message', async () => {
     registerSkillPrompts(server, fixtureSkills);
 
-    const { handler } = prompts.get('skill-borrow')!;
+    const { handler } = prompts.get('skill-send')!;
     const result = await handler({});
 
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
-    expect(result.messages[0].content.text).toContain('t2000: Borrow USDC');
+    expect(result.messages[0].content.text).toContain('t2000: Send USDC');
   });
 
   it('passing an empty skills array registers no prompts', () => {

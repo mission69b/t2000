@@ -12,9 +12,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
  *
  * Schema: `[{ name, description, body }]`.
  *
- * SPEC v0.7a Phase 6 (6C) — locked at HYBRID (D-2 c + D-4 a). Companion
- * to the `prompts.ts` hand-rolled workflow prompts; 6G rewrites those
- * to compose against these skill bodies.
+ * SPEC v0.7a Phase 6 (6C) — locked at HYBRID (D-2 c + D-4 a). This was
+ * originally the companion to a hand-rolled `prompts.ts` workflow prompt
+ * set; that file was deleted in S.336 (every workflow prompt composed
+ * against deleted v3 DeFi skills). Auto-registered `skill-<name>` prompts
+ * are now the entire prompt surface — one per local SKILL.md.
  */
 declare const __BAKED_SKILLS__: string;
 
@@ -42,12 +44,13 @@ export function getBakedSkills(): SkillData[] {
 }
 
 /**
- * Convert a skill name like `t2000-borrow` to the MCP prompt name
- * `skill-borrow`. The `t2000-` prefix is stripped because every skill
+ * Convert a skill name like `t2000-send` to the MCP prompt name
+ * `skill-send`. The `t2000-` prefix is stripped because every skill
  * already lives in the `@t2000/mcp` server's namespace — doubling it
- * produces clunky slash-commands like `/skill-t2000-borrow`. The
- * `skill-` prefix avoids collision with the 13 hand-rolled workflow
- * prompts in `prompts.ts`.
+ * produces clunky slash-commands like `/skill-t2000-send`. The
+ * `skill-` prefix originally avoided collision with hand-rolled workflow
+ * prompts (deleted in S.336); it's retained for stable client UX
+ * (existing slash-command bindings keep working post-pivot).
  */
 export function toPromptName(skillName: string): string {
   return `skill-${skillName.replace(/^t2000-/, '')}`;
