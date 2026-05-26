@@ -1,285 +1,197 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for Agentic Wallets on Sui. Send USDC, earn yield via NAVI, and borrow against collateral — all from a single class. USDC in, USDC out.
+The TypeScript SDK for Agent Wallets on Sui. Send USDC + USDsui gasless, swap via Cetus Aggregator, and pay MPP-protected APIs — all from a single class.
 
-In Audric, this SDK powers **Audric Passport** (wallet, signing), **Audric Finance** (NAVI lending/borrowing builders, Cetus swap), and **Audric Pay** (USDC transfers, payment links), and is wrapped by `@t2000/engine` to implement **Audric Intelligence**'s Agent Harness.
+In [Audric](https://audric.ai), this SDK powers **Audric Passport** (wallet, signing), **Audric Finance** (NAVI lending/borrowing builders, Cetus swap), and **Audric Pay** (USDC transfers, payment links), and is wrapped by [`@t2000/engine`](https://www.npmjs.com/package/@t2000/engine) to implement **Audric Intelligence**'s Agent Harness.
 
-[![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-
-**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[CLI](https://www.npmjs.com/package/@t2000/cli)** · **[MPP](https://www.npmjs.com/package/@suimpp/mpp)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
+[![npm @t2000/sdk](https://img.shields.io/npm/v/@t2000/sdk?label=%40t2000%2Fsdk)](https://www.npmjs.com/package/@t2000/sdk)
+[![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
+[![docs](https://img.shields.io/badge/docs-t2000.ai-00D395)](https://t2000.ai)
+[![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/mission69b/t2000/blob/main/LICENSE)
 
 ## Installation
 
 ```bash
-npm install @t2000/sdk
-# or
-pnpm add @t2000/sdk
-# or
-yarn add @t2000/sdk
+npm install @t2000/sdk      # or pnpm add / yarn add
 ```
 
-**Requirements:** Node.js 18+ · TypeScript 5+ (optional but recommended)
+**Requires** Node.js 18+ · TypeScript 5+ (recommended).
 
 ## Quick Start
 
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-// Create a new Agentic Wallet
-const { agent, address } = await T2000.init({ pin: 'my-secret' });
+// Create a new wallet (plain Bech32, 0o600 perms, no PIN)
+const { agent, address } = await T2000.init();
 
-// Or load an existing one
-const agent = await T2000.create({ pin: 'my-secret' });
+// Or load an existing wallet from ~/.t2000/wallet.key
+const agent = await T2000.create();
 
-// Check balance
+// Or from a Bech32 secret in memory (no file)
+const agent = T2000.fromPrivateKey('suiprivkey1…');
+
+// Inspect
 const balance = await agent.balance();
 console.log(`$${balance.available} USDC available`);
 
-// Send USDC — recipient can be a 0x address, a SuiNS name, or a saved contact alias
-await agent.send({ to: '0x...', amount: 10 });
-await agent.send({ to: 'alex.sui', amount: 10 });    // SuiNS — resolved on-chain
-// Legacy contact aliases (~/.t2000/contacts.json) still work but emit a deprecation
-// warning on first use per process. Sunset target: next major SDK release.
+// Send — asset is REQUIRED; USDC + USDsui are gasless via 0x2::balance::send_funds
+await agent.send({ to: 'alice.sui', amount: 5, asset: 'USDC' });
+await agent.send({ to: '0x8b3e…', amount: 5, asset: 'USDsui' });
 
-// Save (earn yield — auto-selects best rate via NAVI)
-await agent.save({ amount: 50 });
+// Swap — Cetus Aggregator V3 across 20+ Sui DEXs. Requires SUI for gas.
+await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });
 
-// Borrow USDC against your collateral
-await agent.borrow({ amount: 25 });
-
-// Withdraw from savings (USDC)
-await agent.withdraw({ amount: 25 });
-```
-
-## API Reference
-
-### `T2000.init(options)` — Create a new wallet
-
-Creates a new Agentic Wallet (generates keypair, encrypts, and saves to disk). Fund the returned address with a small amount of SUI for gas (Mercuryo: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) plus USDC to transact.
-
-```typescript
-const { agent, address } = await T2000.init({
-  pin: 'my-secret',                // Required — encrypts the key
-  keyPath: '~/.t2000/wallet.key',  // Optional — custom key file path
+// Pay — MPP-protected API. Gasless USDC; handles HTTP 402 transparently.
+const result = await agent.pay({
+  url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+  method: 'POST',
+  body: JSON.stringify({ model: 'gpt-4o-mini', messages: […] }),
+  maxPrice: 0.10,
 });
 ```
 
-### `T2000.create(options)` — Load an existing wallet
+## Factory Methods
 
-Loads an existing Agentic Wallet from an encrypted key file. Throws `WALLET_NOT_FOUND` if no wallet exists.
+| Static | Returns | Use when |
+|---|---|---|
+| `T2000.init({ keyPath?, name? })` | `{ agent, address }` | Generating a brand-new wallet. Writes a plain Bech32 JSON file to `~/.t2000/wallet.key` (override with `keyPath`). |
+| `T2000.create({ keyPath?, rpcUrl? })` | `T2000` | Loading the existing wallet from disk. Throws `WALLET_NOT_FOUND` if the file is missing, `WALLET_CORRUPT` if it's a v3 PIN-encrypted file or otherwise malformed. |
+| `T2000.fromPrivateKey(secret, { network?, rpcUrl? })` | `T2000` | Synchronous in-memory load from a `suiprivkey1…` Bech32 or hex secret. No filesystem read or write. |
 
-```typescript
-const agent = await T2000.create({
-  pin: 'my-secret',                 // Required — decrypts the key
-  keyPath: '~/.t2000/wallet.key',   // Optional — custom key file path
-  rpcUrl: 'https://...',            // Optional — custom Sui RPC endpoint
-});
-```
+> **v3 → v4.** `T2000.create({ pin })` is gone. The `pin` and `passphrase` fields are accepted (back-compat) but **ignored** — v4 wallets are plain Bech32 JSON with `0o600` perms. If you're upgrading a v3 PIN-encrypted wallet: export the secret from the v3 binary, then `T2000.init` followed by replacing the generated file with one carrying that secret (or just use [`@t2000/cli`](https://www.npmjs.com/package/@t2000/cli)'s `t2 init --import` flow).
 
-### `T2000.fromPrivateKey(key, options?)` — Load from raw key
+## Agent Wallet API
 
-Synchronous factory that creates an agent from a raw private key (bech32 `suiprivkey1...` or hex).
+These methods cover the v4 Agent Wallet brand — sending USDC, receiving, swapping, paying for MPP APIs. They mirror the [`@t2000/cli`](https://www.npmjs.com/package/@t2000/cli) surface 1:1.
 
-```typescript
-const agent = T2000.fromPrivateKey('suiprivkey1q...');
-```
-
-### Core Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.address()` | Wallet Sui address | `string` |
-| `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
-| `agent.send({ to, amount, asset? })` | Transfer USDC (or other supported asset) to a 0x address, SuiNS name (`alex.sui`), or saved contact alias. Priority: hex > SuiNS > contact. `SendResult.suinsName` / `.contactName` flag which path resolved. | `SendResult` |
-| `agent.resolveRecipient(input)` | Public resolver — same hex / SuiNS / contact priority used by `send()`. Useful for dryRun previews where you need the resolved address before committing. | `{ address, suinsName?, contactName? }` |
-| `agent.receive({ amount?, currency?, memo?, label? })` | Generate payment request with Payment Kit URI (`sui:pay?...`), nonce for duplicate prevention | `PaymentRequest` |
-| `agent.save({ amount, asset?, protocol? })` | Deposit **USDC or USDsui** to NAVI savings (v0.51.0+). `asset` defaults to `'USDC'`. Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
-| `agent.withdraw({ amount, asset? })` | Withdraw from savings. `amount` can be `'all'`. Optional `asset` (default: USDC; also supports USDsui plus legacy USDe / SUI). | `WithdrawResult` |
-| `agent.borrow({ amount, asset? })` | Borrow **USDC or USDsui** against collateral (v0.51.0+). `asset` defaults to `'USDC'`. | `BorrowResult` |
-| `agent.repay({ amount, asset? })` | Repay outstanding **USDC or USDsui** debt (v0.51.1+). Pass `asset` to target a specific debt; omit for highest-APY repay. **Symmetry enforced:** USDsui debt is repaid with USDsui coins (and USDC with USDC). `amount` can be `'all'`. | `RepayResult` |
-| `agent.swap({ from, to, amount, slippage? })` | Swap tokens via Cetus Aggregator (20+ DEXs). User-friendly names or full coin types. | `SwapResult` |
-| `agent.exportKey()` | Export private key (bech32 format) | `string` |
-
-### Query Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.healthFactor()` | Lending health factor | `HealthFactorResult` |
-| `agent.earnings()` | Yield earned to date | `EarningsResult` |
-| `agent.rates()` | Best save/borrow APYs across protocols | `RatesResult` |
-| `agent.allRatesAcrossAssets()` | Per-protocol rate data across assets | `Array<{ protocol, asset, rates }>` |
-| `agent.positions()` | All open DeFi positions | `PositionsResult` |
-| `agent.fundStatus()` | Complete savings summary | `FundStatusResult` |
-| `agent.maxWithdraw()` | Max safe withdrawal amount | `MaxWithdrawResult` |
-| `agent.maxBorrow()` | Max safe borrow amount | `MaxBorrowResult` |
-| `agent.deposit()` | Wallet address + funding instructions | `DepositInfo` |
-| `agent.history({ limit? })` | Transaction history (default: all) | `TransactionRecord[]` |
-| `agent.swapQuote({ from, to, amount })` | Preview swap route, output amount, and price impact (no execution) | `SwapQuoteResult` |
-
-### Contacts Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.contacts.add(name, address)` | Save a named contact | `void` |
-| `agent.contacts.remove(name)` | Remove a contact | `void` |
-| `agent.contacts.list()` | List all saved contacts | `Contact[]` |
-| `agent.contacts.get(name)` | Get a contact by name | `Contact` |
-| `agent.contacts.resolve(nameOrAddress)` | Resolve name to address (passthrough if already an address) | `string` |
-
-### Safeguards (Enforcer)
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.enforcer.getConfig()` | Get safeguard settings | `SafeguardConfig` |
-| `agent.enforcer.set({ maxPerTx?, maxDailySend? })` | Set per-transaction and/or daily send limits | `void` |
-| `agent.enforcer.lock()` | Lock agent (freeze all operations) | `void` |
-| `agent.enforcer.unlock(pin)` | Unlock agent | `void` |
-| `agent.enforcer.check(amount)` | Check if amount is allowed under limits | `void` (throws `SafeguardError` if not) |
-| `agent.enforcer.recordUsage(amount)` | Record send for daily limit tracking | `void` |
-| `agent.enforcer.isConfigured()` | Whether safeguards are set up | `boolean` |
-
-**Types:** `SafeguardConfig` — `{ maxPerTx?, maxDailySend?, locked? }` · `SafeguardError` — thrown when limits exceeded or agent locked
-
-### Key Management
-
-```typescript
-import {
-  generateKeypair,
-  keypairFromPrivateKey,
-  exportPrivateKey,
-  getAddress,
-  saveKey,
-  loadKey,
-  walletExists,
-} from '@t2000/sdk';
-
-// Generate a new keypair
-const keypair = generateKeypair();
-
-// Import from private key (bech32 or hex)
-const imported = keypairFromPrivateKey('suiprivkey1...');
-
-// Export private key (bech32 format)
-const privkey = exportPrivateKey(keypair);
-
-// Get the Sui address
-const address = getAddress(keypair);
-
-// Check if wallet exists on disk
-const exists = await walletExists();
-
-// Save/load encrypted key
-await saveKey(keypair, 'my-pin');
-const loaded = await loadKey('my-pin');
-```
+| Method | Returns | Notes |
+|---|---|---|
+| `agent.address()` | `string` | Sui address. |
+| `agent.balance()` | `BalanceResponse` | USDC / USDsui / SUI + gas reserve + total USD. |
+| `agent.history({ limit? })` | `TransactionRecord[]` | Sends / swaps / MPP payments with Suiscan digests. |
+| `agent.send({ to, amount, asset })` | `SendResult` | **`asset` is required** (`'USDC'` / `'USDsui'` / `'SUI'`). USDC + USDsui are gasless via Sui foundation's `0x2::balance::send_funds` sponsor; SUI uses standard gas. `to` resolves in priority order: hex address > SuiNS name (`alice.sui`) > `@audric` handle > saved contact. |
+| `agent.resolveRecipient(input)` | `{ address, suinsName?, contactName? }` | Public resolver — same lookup `send` uses. Handy for dry-run previews. |
+| `agent.swap({ from, to, amount, slippage? })` | `SwapResult` | Cetus Aggregator V3 (20+ DEXs). User-friendly names (`'USDC'`, `'SUI'`, `'CETUS'`, …) or full coin types. Default slippage 1%, max 5%. **Requires SUI for gas** — Cetus is not in the gasless allowlist. |
+| `agent.swapQuote({ from, to, amount, slippage? })` | `SwapQuoteResult` | Preview route + output + price impact (no execution). |
+| `agent.pay(options)` | `PayResult` | MPP-protected paid API. Handles 402 → quote → USDC payment → retry. USDC transfer is gasless. `options.maxPrice` caps spend (default 1 USDC). |
+| `agent.receive({ amount?, currency?, memo?, label? })` | `PaymentRequest` | Builds a Payment Kit `sui:pay?…` URI with a unique nonce. Scannable by any Sui wallet. |
+| `agent.exportKey()` | `string` | Print the Bech32 (`suiprivkey1…`) secret for the underlying keypair. |
 
 ### Events
 
 ```typescript
-agent.on('balanceChange', (e) => {
-  console.log(`${e.cause}: ${e.asset} ${e.previous} → ${e.current}`);
-});
-
-agent.on('healthWarning', (e) => {
-  console.log(`Health factor: ${e.healthFactor} (warning)`);
-});
-
-agent.on('healthCritical', (e) => {
-  console.log(`Health factor: ${e.healthFactor} (critical — below 1.2)`);
-});
-
-agent.on('yield', (e) => {
-  console.log(`Earned: $${e.earned}, total: $${e.total}`);
-});
-
-agent.on('error', (e) => {
-  console.error(`Error: ${e.code} — ${e.message}`);
-});
+agent.on('balanceChange', (e) => { /* asset, previous, current, cause, tx? */ });
+agent.on('healthWarning', (e) => { /* healthFactor, threshold */ });
+agent.on('healthCritical', (e) => { /* healthFactor < 1.2 */ });
+agent.on('yield', (e) => { /* earned, total, apy, timestamp */ });
+agent.on('error', (e) => { /* T2000Error */ });
 ```
 
-### Utility Functions
+### Exposed Internals
+
+For integrations (`@suimpp/mpp`, `@t2000/engine`, audric web-v2):
+
+```typescript
+agent.suiClient;   // SuiJsonRpcClient
+agent.signer;      // TransactionSigner (works for keypair + zkLogin)
+agent.keypair;     // Ed25519Keypair (throws for zkLogin instances)
+```
+
+## Programmatic DeFi API (no CLI alias)
+
+These methods power [Audric Finance](https://audric.ai) — save (NAVI lend), borrow (NAVI), repay, withdraw, plus the supporting read tools. **They have no `t2` CLI alias in v4** by design: the CLI is a focused Agent Wallet (send / swap / pay); DeFi flows live in consumer apps and the `@t2000/engine` Agent Harness. They are still load-bearing for `@t2000/engine` 4.x and any consumer app building on the SDK.
+
+| Method | Notes |
+|---|---|
+| `agent.save({ amount, asset?, protocol? })` | Deposit **USDC or USDsui** to NAVI savings (default `'USDC'`). `amount` can be `'all'`. |
+| `agent.withdraw({ amount, asset?, protocol? })` | Withdraw from savings (default `'USDC'`; also supports USDsui + legacy USDe / SUI positions). `amount` can be `'all'`. |
+| `agent.borrow({ amount, asset?, protocol? })` | Borrow USDC or USDsui against collateral (default `'USDC'`). |
+| `agent.repay({ amount, asset?, protocol? })` | Repay outstanding debt. **Symmetry enforced** — USDsui debt is repaid with USDsui (USDC with USDC). `amount` can be `'all'`. |
+| `agent.claimRewards()` | Claim pending NAVI rewards. |
+| `agent.healthFactor()` | NAVI lending health factor. |
+| `agent.maxWithdraw()` · `agent.maxBorrow()` | Safe limits without breaching health factor. |
+| `agent.positions()` | Open save + borrow positions across protocols. |
+| `agent.rates()` | Best save/borrow APYs across protocols. |
+| `agent.earnings()` | Yield earned to date. |
+| `agent.fundStatus()` | Complete savings summary. |
+| `agent.deposit()` · `agent.fund()` | Wallet address + funding instructions (used by Audric's deposit UI). |
+
+## Utility Exports
 
 ```typescript
 import {
-  mistToSui,
-  suiToMist,
-  usdcToRaw,
-  rawToUsdc,
-  formatUsd,
-  formatSui,
-  validateAddress,
-  truncateAddress,
+  // Key management
+  generateKeypair, keypairFromPrivateKey, exportPrivateKey, getAddress,
+  saveKey, loadKey, walletExists,
+
+  // Token data
+  COIN_REGISTRY, TOKEN_MAP, SUI_TYPE, USDC_TYPE,
+  isTier1, isTier2, isSupported, getTier,
+  getDecimalsForCoinType, resolveSymbol, resolveTokenType,
+
+  // Asset allowlist
+  SUPPORTED_ASSETS, SENDABLE_ASSETS, assertAllowedAsset,
+  GASLESS_MIN_STABLE_AMOUNT, GASLESS_STABLE_TYPES,
+
+  // Numbers + formatting
+  mistToSui, suiToMist, usdcToRaw, rawToUsdc,
+  formatUsd, formatSui, truncateAddress, validateAddress,
+
+  // Sui clients
+  getSuiClient, getSuiGrpcClient, DEFAULT_GRPC_URL,
+
+  // Fees (consumer apps only — SDK + CLI are fee-free)
+  addFeeTransfer, T2000_OVERLAY_FEE_WALLET,
 } from '@t2000/sdk';
-
-mistToSui(1_000_000_000n);      // 1.0
-usdcToRaw(10.50);               // 10_500_000n
-formatUsd(1234.5);              // "$1234.50"
-truncateAddress('0xabcdef...1234'); // "0xabcd...1234"
-validateAddress('0x...');        // throws if invalid
 ```
-
-### Advanced: Exposed Internals
-
-For integrations (like `@suimpp/mpp`), the agent exposes:
-
-```typescript
-agent.suiClient;   // SuiJsonRpcClient instance
-agent.signer;      // Ed25519Keypair
-```
-
-## Gas
-
-Every transaction is self-funded by the agent's wallet. Keep at least ~0.05 SUI on hand. If gas runs out the SDK throws `INSUFFICIENT_GAS` — top up via Mercuryo (https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) or any Sui exchange.
-
-> **Audric web app exception:** Audric web users transact under Enoki gas sponsorship (zkLogin), so `INSUFFICIENT_GAS` is not a user-facing concern there. The SDK itself is sponsorship-agnostic — sponsorship is wired in at the host layer (Audric web), not inside `@t2000/sdk`.
-
-**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable fragment) functions. Multi-step flows compose multiple protocol calls into a single atomic Payment Intent (a Sui Programmable Transaction Block under the hood). If any step within a Payment Intent fails, the entire transaction reverts — no funds left in intermediate states.
-
-## Configuration
-
-| Environment Variable | Description | Default |
-|---------------------|-------------|---------|
-| `T2000_API_URL` | t2000 API base URL | `https://api.t2000.ai` |
-
-Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create()` or `T2000.init()`. The CLI handles env vars like `T2000_PIN` — see the [CLI README](https://www.npmjs.com/package/@t2000/cli).
 
 ## Supported Assets
 
-Token metadata and **tiers** live in `token-registry.ts` (`COIN_REGISTRY`). **17 tokens** total:
+Token metadata + tiers live in `COIN_REGISTRY` (`packages/sdk/src/token-registry.ts`). **19 tokens** total.
 
-- **Tier 1 (saveable / borrowable):** USDC, USDsui — save, borrow, send, swap. USDsui is a strategic exception (v0.51.0+) because NAVI runs a separate USDsui pool that often quotes a different APY than USDC. Repay symmetry is enforced (USDsui debt → USDsui repay).
-- **Tier 2 (15):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST — send and swap only (not for new save/borrow deposits).
-- **Legacy (no tier):** USDT, USDe, USDSUI — display and withdraw of existing positions; still send/swap where applicable.
+- **Tier 1 — financial layer (1):** USDC. Save / borrow / receive / yield, marketplace, MPP.
+- **Tier 2 — swap assets (15):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST. Hold + swap + send only.
+- **Legacy — no tier, display only (3):** USDT, USDe, USDsui. Kept so existing NAVI positions still render accurately.
 
-Six tokens were removed from the registry (FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS). `STABLE_ASSETS = ['USDC']` (the canonical USD unit for balance aggregation), but **`OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` accept both `'USDC'` and `'USDsui'`** (v0.51.0+). Use `isAllowedAsset(op, asset)` / `assertAllowedAsset(op, asset)` to validate.
+> **Strategic exception.** `OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` accept **both** USDC and USDsui — USDsui is no-tier in the registry but saveable/borrowable via the allowlist (NAVI runs a separate USDsui pool, often at a different APY than the USDC pool, since v0.51.0). Repay symmetry is enforced: USDsui debt must be repaid with USDsui (USDC debt with USDC).
+
+**`OPERATION_ASSETS`** constrains each write:
 
 ```typescript
-import {
-  COIN_REGISTRY,
-  TOKEN_MAP,
-  isTier1,
-  isTier2,
-  isSupported,
-  getTier,
-  getDecimalsForCoinType,
-  resolveSymbol,
-  resolveTokenType,
-  SUI_TYPE,
-  USDC_TYPE,
-  USDT_TYPE,
-  IKA_TYPE,
-  LOFI_TYPE,
-  MANIFEST_TYPE,
-} from '@t2000/sdk';
+import { OPERATION_ASSETS, assertAllowedAsset } from '@t2000/sdk';
 
-isTier1(USDC_TYPE); // true
-isTier2(SUI_TYPE); // true
-isSupported(USDT_TYPE); // false (legacy — no tier)
-getTier(SUI_TYPE); // 2
+OPERATION_ASSETS.send;   // ['USDC', 'USDsui', 'SUI']
+OPERATION_ASSETS.save;   // ['USDC', 'USDsui']
+OPERATION_ASSETS.borrow; // ['USDC', 'USDsui']
+
+assertAllowedAsset('send', 'USDY'); // throws — not in the allowlist
 ```
 
-Swap uses Cetus Aggregator V3. Per-call `overlayFee` is opt-in — the SDK and CLI never charge fees by default. Consumer apps that want to charge an overlay (e.g. Audric) pass `overlayFee: { rate: 10n, receiver: T2000_OVERLAY_FEE_WALLET }` to `findSwapRoute` / `buildSwapTx`. Use `COIN_REGISTRY`, `getDecimalsForCoinType()`, `resolveSymbol()`, and `resolveTokenType()` for token data.
+## Gasless
+
+USDC + USDsui sends and MPP USDC payments are gasless. Build path goes through `SuiGrpcClient` so the SDK's gasless-eligibility resolver detects the `0x2::balance::send_funds` Move call at build time and zeroes out `gasPrice` / `gasBudget` / `gasPayment` automatically. Submission still goes through the JSON-RPC client (hybrid pattern documented at [`docs.sui.io`](https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers)).
+
+Other writes (SUI sends, Cetus swaps, NAVI save / borrow / withdraw / repay / claim) require gas. Keep ~0.05 SUI on hand. The SDK throws `INSUFFICIENT_GAS` if you run dry.
+
+> **Consumer apps:** sponsored gas via Enoki / zkLogin is the host's responsibility. The SDK is sponsorship-agnostic — Audric wires Enoki at the host layer (`audric/apps/web-v2`); the SDK doesn't know or care. See `audric/.cursor/rules/audric-transaction-flow.mdc` in the audric repo.
+
+## Fees
+
+The SDK + CLI are **fee-free by design** (`@t2000/sdk@1.1.0+`). No t2000 protocol fees on any operation.
+
+Network gas (SUI) and third-party fees (Cetus routing, NAVI lending spread) still apply at on-chain rates.
+
+Consumer apps that want to charge an overlay fee — Audric does this on save / borrow / swap — call `addFeeTransfer(tx, paymentCoin, FEE_BPS, receiverAddress, amount)` inside the same PTB. The SDK never assumes a t2000 treasury; pass any receiver.
+
+## Configuration
+
+| Env var | Effect |
+|---|---|
+| `T2000_RPC_URL` | Custom Sui JSON-RPC endpoint. |
+| `T2000_GRPC_URL` | Custom Sui gRPC endpoint (defaults to `fullnode.mainnet.sui.io`). Used during gasless USDC/USDsui send + pay build paths. |
+
+Per-call options like `keyPath` and `rpcUrl` are passed to `T2000.create()` / `T2000.init()`.
 
 ## Error Handling
 
@@ -287,58 +199,38 @@ Swap uses Cetus Aggregator V3. Per-call `overlayFee` is opt-in — the SDK and C
 import { T2000Error } from '@t2000/sdk';
 
 try {
-  await agent.send({ to: 'alex.sui', amount: 1000 });
+  await agent.send({ to: 'alice.sui', amount: 1000, asset: 'USDC' });
 } catch (e) {
   if (e instanceof T2000Error) {
-    console.log(e.code);
-    // 'INSUFFICIENT_BALANCE' | 'SUINS_NOT_REGISTERED' | 'CONTACT_NOT_FOUND' | …
-    console.log(e.message); // Human-readable message
+    // e.code + e.message
   }
 }
 ```
 
-Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `SWAP_NO_ROUTE` · `SWAP_FAILED`
+Common codes:
 
-## Protocol Integration
+`WALLET_NOT_FOUND` · `WALLET_CORRUPT` · `INVALID_KEY` · `INSUFFICIENT_BALANCE` · `INSUFFICIENT_GAS` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `ASSET_NOT_SUPPORTED` · `SUINS_NOT_REGISTERED` · `CONTACT_NOT_FOUND` · `SWAP_NO_ROUTE` · `SWAP_FAILED` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WITHDRAW_WOULD_LIQUIDATE` · `PROTOCOL_PAUSED` · `SIMULATION_FAILED` · `TRANSACTION_FAILED`
 
-t2000 uses an MCP-first integration model: NAVI MCP for reads, thin transaction builders for writes. No protocol SDK dependencies needed.
+## Architecture
+
+t2000 uses an MCP-first model for DeFi reads + thin transaction builders for writes. No protocol SDK dependencies needed in user code.
 
 | Protocol | Integration | Used for |
-|----------|------------|----------|
-| NAVI | MCP (reads) + thin tx builders (writes) | Lending positions, deposits, withdrawals, borrows, rewards |
-| Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated) | Multi-DEX swap routing — overlay fee on swaps (`cetus-swap.ts`) |
+|---|---|---|
+| Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, MPP USDC payments |
+| Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
+| NAVI | NAVI MCP (reads) + thin tx builders (writes) | Save / borrow / withdraw / repay / rewards / positions / rates |
+| MPP | `mppx` + `@suimpp/mpp/client` | Paid API access — 40+ services on `mpp.t2000.ai` |
+
+Each NAVI op exposes both `buildXxxTx()` (standalone) and `addXxxToTx()` (composable fragment) so multi-step flows compose atomically as a single Programmable Transaction Block — any step failing reverts the whole bundle.
 
 ## Testing
 
 ```bash
-# Run all SDK unit tests
-pnpm --filter @t2000/sdk test
-
-# Run smoke tests against mainnet RPC (read-only, no transactions)
-SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
+pnpm --filter @t2000/sdk test                       # unit
+SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__   # read-only mainnet smokes
 ```
-
-## Protocol Fees
-
-> **The SDK and CLI are fee-free by design (as of `@t2000/sdk@1.1.0`, B5 v2 / 2026-04-30).** Direct SDK / CLI calls — `t2000 save`, `t2000 borrow`, `t2000 swap`, plus `T2000.save()` / `T2000.borrow()` / `swapExecute()` from any third-party integrator — never charge a t2000 protocol fee. The CLI is dev-focused tooling and intentionally has no monetization.
-
-Fees only apply when the **Audric** consumer app calls these primitives. Audric layers a fee transfer step (`addFeeTransfer`) inside the same PTB and routes the USDC to `T2000_OVERLAY_FEE_WALLET`.
-
-| Operation | Audric fee | SDK / CLI fee | Notes |
-|-----------|-----------|--------------|-------|
-| Save (deposit) | 0.10% | Free | USDC only; USDsui save is free in Audric too |
-| Borrow | 0.05% | Free | USDC only; USDsui borrow is free in Audric too |
-| Swap | 0.10% | Free | Audric passes Cetus `overlayFee`. CLI omits it. Cetus Aggregator network fees still apply both ways. |
-| Withdraw / Repay / Send / Receive / Pay (MPP) | Free | Free | No surcharge anywhere. |
-
-How Audric collects fees: `prepare/route.ts` calls `addFeeTransfer(tx, paymentCoin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and passes `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` for swaps. Both flows produce a USDC transfer to the treasury wallet inside the same atomic Payment Intent. The t2000 server-side indexer detects the on-chain USDC inflow and records a `ProtocolFeeLedger` row — no off-chain submission is involved.
-
-Need to charge an overlay fee in your own consumer app? Import `addFeeTransfer` and `T2000_OVERLAY_FEE_WALLET` from `@t2000/sdk` (or use your own receiver address — the SDK never assumes the t2000 treasury).
-
-## MCP Server
-
-The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
 
 ## License
 
-MIT — see [LICENSE](https://github.com/mission69b/t2000/blob/main/LICENSE)
+MIT — see [LICENSE](https://github.com/mission69b/t2000/blob/main/LICENSE).

@@ -1,306 +1,162 @@
 # @t2000/cli
 
-The Agentic Wallet for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, and pay for APIs. USDC in, USDC out.
+The Agent Wallet for AI agents on Sui — gasless USDC + USDsui sends, Cetus swaps, MPP paid API access, scriptable from any shell.
 
-[![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-
-**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[MPP](https://www.npmjs.com/package/@suimpp/mpp)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
+[![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
+[![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
+[![docs](https://img.shields.io/badge/docs-t2000.ai-00D395)](https://t2000.ai)
+[![consumer](https://img.shields.io/badge/consumer%20app-audric.ai-7c3aed)](https://audric.ai)
+[![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/mission69b/t2000/blob/main/LICENSE)
 
 ## Installation
 
 ```bash
 npm install -g @t2000/cli
-t2000 init
 ```
 
-**Requirements:** Node.js 18+
+Installs two equivalent binaries: `t2` (canonical) and `t2000` (legacy alias). Use either — they point at the same entry. **Requires Node.js 18+.**
 
-## Quick Start
-
+```bash
+t2 init                              # create a wallet (plain Bech32, 0o600 perms)
+t2 init --import                     # import an existing suiprivkey1… secret
+t2 receive                           # show address + ANSI QR
+t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
+t2 swap 100 USDC SUI                 # best-route swap via Cetus Aggregator
+t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
+t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 ```
-❯ t2000 init
-
-  ┌─────────────────────────────────────────┐
-  │  Welcome to t2000                       │
-  │  Agentic Wallet for AI agents           │
-  └─────────────────────────────────────────┘
-
-  Step 1 of 3 — Create wallet
-
-  Creating agent wallet...
-  ✓ Keypair generated
-  ✓ Network  Sui mainnet
-  ✓ Checking  ✓ Savings  ✓ Credit
-
-  🎉 Agentic Wallet created
-  Address: 0x8b3e...d412
-
-  ℹ Fund your wallet with SUI for gas + USDC to transact.
-  ℹ Buy SUI: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2
-
-  Step 2 of 3 — Connect AI platforms
-  Which AI platforms do you use? (space to select)
-  ◉ Claude Desktop
-  ◉ Cursor
-  ◯ Windsurf
-
-  Adding t2000 to your AI platforms...
-  ✓ Claude Desktop  configured
-  ✓ Cursor  configured
-
-  Step 3 of 3 — Set safeguards
-  ✓ Safeguards configured
-
-  ┌─────────────────────────────────────────┐
-  │  ✓ You're all set                       │
-  │  Next steps:                            │
-  │    1. Restart Claude Desktop / Cursor   │
-  │    2. Ask: "What's my t2000 balance?"   │
-  └─────────────────────────────────────────┘
-
-❯ t2000 send 10 USDC to 0x8b3e...d412
-  ✓ Sent $10.00 USDC → 0x8b3e...d412
-  Gas:  0.0042 SUI
-  Balance:  $90.00 USDC
-  Tx:  https://suiscan.xyz/mainnet/tx/0xa1b2...
-
-❯ t2000 save 80
-  ✓ Saved $80.00 USDC to best rate
-  ✓ Current APY: 4.21%
-  ✓ Savings balance: $80.00 USDC
-  Tx:  https://suiscan.xyz/mainnet/tx/0x9f2c...
-
-❯ t2000 borrow 20
-  ✓ Borrowed $20.00 USDC
-  Health Factor:  3.39
-  Tx:  https://suiscan.xyz/mainnet/tx/0xb3c4...
-
-❯ t2000 pay https://data.api.com/prices
-  → GET https://data.api.com/prices
-  ← 402 Payment Required: $0.01 USDC (Sui)
-  ✓ Paid $0.01 USDC (tx: 0x9f2c...a801)
-  ← 200 OK  [342ms]
-
-❯ t2000 repay 20
-  ✓ Repaid $20.00 USDC
-  Remaining Debt:  $0.00
-  Tx:  https://suiscan.xyz/mainnet/tx/0xe7f8...
-
-❯ t2000 withdraw all
-  ✓ Withdrew $79.92 USDC
-  Tx:  https://suiscan.xyz/mainnet/tx/0xf9a0...
-
-❯ t2000 balance
-  Available:  $85.00  (checking — spendable)
-  Savings:    $0.00
-  Gas:        0.31 SUI     (~$0.28)
-  ──────────────────────────────────────
-  Total:      $85.28
-```
-
-30 seconds. Send → save → borrow → pay → repay → withdraw.
 
 ## Commands
 
-### Setup
+| Group | What it does |
+|---|---|
+| `t2 init` · `t2 init --import` | Create a new wallet, or import an existing `suiprivkey1…` Bech32 secret. Prints a warning footer about opt-in `t2 limit` settings. |
+| `t2 export` | Print the wallet's Bech32 secret — pair with `t2 init --import` on another machine to move wallets. |
+| `t2 receive` | Print the wallet address + ANSI QR. `--qr-only` for embedding; `--json` for scripts. |
+| `t2 balance` · `t2 wallet balance` | USDC / USDsui / SUI holdings + USD totals. |
+| `t2 history` | Recent on-chain activity (sends / swaps / MPP payments) with Suiscan digests. |
+| `t2 send <amount> <asset> <recipient>` | Send USDC / USDsui / SUI. Asset is **required** — no implicit USDC default. USDC + USDsui are gasless via `0x2::balance::send_funds`; SUI sends use standard gas. Recipient resolves in priority order: `0x` hex address → SuiNS name (`alice.sui`) → `@audric` handle → saved contact alias. |
+| `t2 swap <amount> <from> <to>` | Best-route swap via Cetus Aggregator V3 across 20+ Sui DEXs. `--slippage <pct>` (default 1%, max 5%), `--quote` for a preview without signing. Requires SUI for gas. |
+| `t2 pay <url>` | Pay for an MPP-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). |
+| `t2 services search <query>` · `inspect <url>` | Discover MPP services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
+| `t2 limit set --per-tx <USD>` · `--daily <USD>` | Opt-in spending caps written to `~/.t2000/config.json`. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
+| `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
+| `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
+| `t2 skills install [--target=cursor\|claude-code\|agents]` · `list` · `uninstall` | Install per-skill `SKILL.md` files locally (alternative to running the MCP server). |
 
-| Command | Description |
-|---------|-------------|
-| `t2000 init` | Guided setup wizard — wallet, PIN, MCP platforms (Claude Desktop/Cursor/Windsurf), safeguards. |
+Every command supports `--json` for machine-parseable output and `--key <path>` for a non-default wallet file.
 
-### MCP (AI Integration)
+## What's in v4
 
-| Command | Description |
-|---------|-------------|
-| `t2000 mcp install` | Auto-configure MCP in Claude Desktop, Cursor, and Windsurf |
-| `t2000 mcp uninstall` | Remove MCP config from AI platforms |
-| `t2000 mcp` | Start MCP server (stdio — used by AI platforms, not run manually) |
+v4 is an Agent Wallet — focused on USDC payments, swaps, and MPP API access. DeFi (save / borrow / withdraw / repay / yields) lives on [audric.ai](https://audric.ai). The CLI is intentionally narrow.
 
-See the [MCP setup guide](../../docs/mcp-setup.md) for manual configuration.
+| Surface | v4 |
+|---|---|
+| Wallet file | Plain Bech32 JSON, `0o600` perms. **No PIN, no AES.** |
+| Sendable assets | USDC, USDsui, SUI (asset required on every `send`) |
+| Gasless | USDC + USDsui via Sui foundation's `0x2::balance::send_funds` sponsor |
+| Spending limits | Opt-in via `t2 limit set`. Default = no limits + warning footer at `init`. |
+| MCP tools | 9 (5 read + 3 write + 1 settings) |
+| Skills | 8 (`t2000-setup` / `check-balance` / `send` / `receive` / `swap` / `services` / `pay` / `mcp`) |
+| Fees | Free — t2000 layer charges no protocol fees. Network gas + protocol fees (Cetus routing, etc.) still apply at on-chain rates. |
 
-### Config (dot-notation)
+## MCP Integration
 
-| Command | Description |
-|---------|-------------|
-| `t2000 config set maxPerTx 100` | Set max per transaction |
-| `t2000 config set maxDailySend 500` | Set max daily sends |
-| `t2000 config get maxPerTx` | Read a config value |
+The CLI ships with the t2000 MCP stdio server. `t2 mcp install` writes the right JSON config for every supported AI client on your machine.
 
-### Wallet
+| Client | Config path |
+|---|---|
+| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **Cursor** | `~/.cursor/mcp.json` |
+| **Windsurf** | `~/.codeium/windsurf/mcp_config.json` |
+| **Codex / Cline / Continue / any MCP client** | Paste the JSON below into your client's config file |
 
-| Command | Description |
-|---------|-------------|
-| `t2000 lock` | Lock agent — freeze all operations |
-| `t2000 unlock` | Unlock agent — resume operations (requires PIN) |
-| `t2000 balance` | Show available USDC + savings + gas reserve |
-| `t2000 balance --show-limits` | Include maxWithdraw, maxBorrow, and health factor |
-| `t2000 address` | Show wallet address |
-| `t2000 fund` | Show how to fund your Agentic Wallet (receive address + supported networks) |
-| `t2000 import` | Import an existing wallet from private key |
-| `t2000 export` | Export private key (bech32 `suiprivkey1...` format) |
-| `t2000 history` | Transaction history |
-
-### Transfers
-
-| Command | Description |
-|---------|-------------|
-| `t2000 send <amount> <asset> [to] <address>` | Send USDC, SUI, or other assets to any Sui address (the `to` keyword is optional) |
-| `t2000 receive` | Generate a payment request with Payment Kit URI (`sui:pay?...`) and unique nonce. Options: `--amount`, `--currency`, `--memo`, `--label`, `--key` |
-
-### Savings & DeFi
-
-| Command | Description |
-|---------|-------------|
-| `t2000 save <amount> [--asset USDC\|USDsui] [--protocol <name>]` | Deposit USDC or USDsui to NAVI savings (earn ~2–8% APY). `--asset` defaults to USDC. |
-| `t2000 save all [--asset USDC\|USDsui]` | Deposit full available balance of the chosen asset (minus 1.0 reserve) |
-| `t2000 withdraw <amount> [--asset <symbol>]` | Withdraw from NAVI savings (default USDC; pass `--asset USDsui` for USDsui positions) |
-| `t2000 borrow <amount> [--asset USDC\|USDsui]` | Borrow USDC or USDsui against savings collateral (v0.51.1+) |
-| `t2000 repay <amount> [--asset USDC\|USDsui]` | Repay debt. Must use the same asset as the original borrow (USDsui debt → USDsui repay). Use `repay all` to clear all outstanding debts across both stables. |
-| `t2000 health` | Check savings health factor |
-| `t2000 rates` | Best save/borrow APYs across protocols (USDC) |
-| `t2000 positions` | Open savings & borrow positions across all assets |
-| `t2000 claim-rewards` | Claim pending protocol rewards |
-| `t2000 earnings` | Yield earned to date |
-| `t2000 fund-status` | Full savings summary |
-
-### MPP Payments
-
-| Command | Description |
-|---------|-------------|
-| `t2000 pay <url>` | Pay for an MPP-protected API resource |
-| `t2000 pay <url> --max-price 0.10` | Set max USDC per request (default: $1.00) |
-| `t2000 pay <url> --method POST --data '{...}'` | POST with JSON body |
-| `t2000 pay <url> --header 'key=value'` | Add custom HTTP headers (repeatable) |
-| `t2000 pay <url> --timeout 60` | Request timeout in seconds (default: 30) |
-| `t2000 pay <url> --dry-run` | Show what would be paid without paying |
-
-### Earn (Directory)
-
-| Command | Description |
-|---------|-------------|
-| `t2000 earn` | Show all earning opportunities — savings yield |
-
-### Contacts (DEPRECATED — sunset in next major)
-
-The local `~/.t2000/contacts.json` alias map is being retired. **Use SuiNS instead**: register `your-name.sui` once at https://suins.io and every Sui app — including `t2000 send` — resolves it automatically. The first time a process resolves or writes a legacy contact alias, the CLI prints a one-shot deprecation warning to stderr.
-
-| Command | Description |
-|---------|-------------|
-| `t2000 contacts` | List saved contacts (deprecated) |
-| `t2000 contacts add <name> <address>` | Save a named contact (deprecated; warns once) |
-| `t2000 contacts remove <name>` | Remove a contact |
-
-`t2000 send` accepts SuiNS names natively — `t2000 send 10 USDC to alex.sui` works with no setup. Priority order for the recipient argument: `0x` address > SuiNS name > saved contact alias.
-
-### Safeguards
-
-| Command | Description |
-|---------|-------------|
-| `t2000 config show` | View safeguard settings |
-| `t2000 config set maxPerTx 500` | Set per-transaction limit |
-| `t2000 config set maxDailySend 1000` | Set daily send limit |
-| `t2000 lock` | Lock agent (freeze all operations) |
-| `t2000 unlock` | Unlock agent (requires PIN) |
-
-### Configuration
-
-| Command | Description |
-|---------|-------------|
-| `t2000 config get [key]` | Show a config value (omit key for all) |
-| `t2000 config set <key> <value>` | Set a config value |
-
-### HTTP API Server
-
-```bash
-# Start a local HTTP API for non-TypeScript agents
-t2000 serve --port 3001
-
-# All endpoints available at /v1/*
-curl -H "Authorization: Bearer t2k_..." http://localhost:3001/v1/balance
-curl -X POST -H "Authorization: Bearer t2k_..." \
-  -d '{"to":"0x...","amount":10}' \
-  http://localhost:3001/v1/send
+```json
+{
+  "mcpServers": {
+    "t2000": {
+      "command": "t2000",
+      "args": ["mcp", "start"]
+    }
+  }
+}
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--port <port>` | Port number | `3001` |
-| `--rate-limit <rps>` | Max requests per second | `10` |
+Full setup + troubleshooting: [`t2000-mcp` skill](https://t2000.ai/skills/t2000-mcp).
 
-## Global Flags
+## Skills
 
-| Flag | Description |
-|------|-------------|
-| `--json` | Structured JSON output (for automation) |
-| `--yes` | Skip confirmation prompts |
+Skills are markdown instruction files your agent reads on demand. Install per-skill files locally with `t2 skills install --target=<client>`, or let the MCP server expose every skill as a `skill-<name>` prompt without writing files.
 
-## Per-Command Options
+| Skill | What it teaches |
+|---|---|
+| [`t2000-setup`](https://t2000.ai/skills/t2000-setup) | End-to-end wallet bootstrap (`t2 init` + optional limits + MCP install). Read first. |
+| [`t2000-check-balance`](https://t2000.ai/skills/t2000-check-balance) | Inspect USDC / USDsui / SUI before any write. |
+| [`t2000-send`](https://t2000.ai/skills/t2000-send) | Explicit `--asset`, gasless USDC / USDsui, SUI sends that need gas. |
+| [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Address share, ANSI QR, Payment Kit `sui:pay?…` URIs. |
+| [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Cetus Aggregator routing, `--quote`, slippage, swap-needs-SUI gotcha. |
+| [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover MPP services before `t2 pay`. |
+| [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | MPP 402 → quote → pay → retry flow. |
+| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the MCP server into Claude / Cursor / Windsurf. |
 
-| Command | Option | Description | Default |
-|---------|--------|-------------|---------|
-| `init` | `--name <name>` | Agent name | — |
-| `history` | `--limit <n>` | Number of transactions | `20` |
-| Most commands | `--key <path>` | Custom key file path | `~/.t2000/wallet.key` |
+Full inventory + install commands: [`t2000-skills/README.md`](https://github.com/mission69b/t2000/blob/main/t2000-skills/README.md).
 
 ## Configuration
 
-Config is stored at `~/.t2000/config.json`.
+| Path | Purpose |
+|---|---|
+| `~/.t2000/wallet.key` | Plain JSON wallet — `{ version: 2, secret: "suiprivkey1…" }`, `0o600` perms. |
+| `~/.t2000/config.json` | Opt-in spending limits (only present after `t2 limit set`). |
 
-| Key | Description | Default |
-|-----|-------------|---------|
-| `network` | Sui network | `mainnet` |
-| `rpcUrl` | Custom RPC URL | Sui public fullnode |
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `T2000_PIN` | Agentic Wallet PIN (skip interactive prompt) |
-| `T2000_PRIVATE_KEY` | Private key for `t2000 import` (skip interactive prompt) |
+| Env var | Effect |
+|---|---|
+| `T2000_RPC_URL` | Custom Sui JSON-RPC endpoint (defaults to Sui public fullnode). |
+| `T2000_GRPC_URL` | Custom Sui gRPC endpoint (defaults to `fullnode.mainnet.sui.io`). Used during gasless USDC/USDsui send + pay builds. |
+| `T2000_GATEWAY_URL` | Override the MPP gateway URL for `t2 services` + `t2 pay`. Defaults to `https://mpp.t2000.ai`. |
 
 ## Gas
 
-Every transaction is self-funded by the agent's wallet — keep at least ~0.05 SUI on hand for gas. Buy SUI on Mercuryo: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2
-
-Multi-step operations (for example save or withdraw flows that compose several on-chain steps) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts.
-
-## Protocol Fees
-
-The CLI is **fee-free** by design — no protocol fees are charged on any operation. Network gas costs (SUI) and third-party protocol fees (e.g. NAVI lending APY spread, Cetus aggregator routing) still apply at on-chain rates.
-
-Audric (the consumer product on top of the SDK) charges a small overlay fee on save / borrow / swap. Building your own consumer app? See [`@t2000/sdk` README](../sdk/README.md) for the optional `addFeeTransfer` and `overlayFee` helpers.
-
-## File Locations
-
-| File | Path | Description |
-|------|------|-------------|
-| Encrypted key | `~/.t2000/wallet.key` | AES-256-GCM encrypted Ed25519 keypair |
-| Config | `~/.t2000/config.json` | Network, RPC, preferences |
+USDC + USDsui `send` and MPP `pay` are gasless — the Sui foundation sponsors the protocol-level `0x2::balance::send_funds` flow. SUI sends and Cetus swaps need gas (keep ~0.05 SUI on hand). Any Sui exchange or DEX will fund the gas balance.
 
 ## Examples
 
 ```bash
-# Full DeFi cycle (USDC)
-t2000 save all               # Deposit all available USDC
-t2000 borrow 40              # Borrow against it
-t2000 repay 40               # Pay it back
-t2000 withdraw all            # Get everything out (USDC by default; pass --asset USDsui for USDsui)
+# Fresh wallet → first send
+t2 init && t2 receive
+# (fund the wallet with USDC from any source)
+t2 send 5 USDC alice.sui
 
-# Save / borrow / repay in USDsui (strategic stable, v0.51.0+)
-t2000 save 50 --asset USDsui          # Deposit USDsui to NAVI
-t2000 borrow 20 --asset USDsui        # Borrow USDsui against collateral
-t2000 repay all --asset USDsui        # Repay all USDsui debts (must match borrow asset)
+# Move a wallet to another machine
+t2 export                                    # prints suiprivkey1…
+# on the new machine:
+t2 init --import                             # interactive hidden-input prompt
 
-# Automation-friendly (no prompts, JSON output)
-t2000 balance --json
-t2000 save 10 --yes --json
+# Discover an API service, then pay for it
+t2 services search "image"
+t2 pay https://mpp.t2000.ai/fal/fal-ai/flux/dev --data '{"prompt":"a sunset"}' --max-price 0.10
 
-# Use with AI coding agents
-export T2000_PIN="agent-secret"
-t2000 balance --json | jq '.available'
+# Opt into spending limits
+t2 limit set --per-tx 50 --daily 200
+t2 send 100 USDC alice.sui                   # blocked
+t2 send 100 USDC alice.sui --force           # explicit override
+
+# JSON output for scripting
+t2 balance --json | jq '.available'
+t2 history --json --limit 5
+```
+
+## Programmatic Usage
+
+For TypeScript programmatic access — building bots, server apps, or your own consumer surface — use [`@t2000/sdk`](https://www.npmjs.com/package/@t2000/sdk):
+
+```ts
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const balance = await agent.balance();
+await agent.send({ to: 'alice.sui', amount: 5, asset: 'USDC' });
 ```
 
 ## License
 
-MIT — see [LICENSE](https://github.com/mission69b/t2000/blob/main/LICENSE)
+MIT — see [LICENSE](https://github.com/mission69b/t2000/blob/main/LICENSE).
