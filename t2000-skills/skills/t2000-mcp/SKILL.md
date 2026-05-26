@@ -163,7 +163,7 @@ Invoking the prompt loads the full skill markdown as the user message — equiva
 |---------|-------|-----|
 | `npx @t2000/mcp` "hangs" with no output | Working as designed — server is waiting for JSON-RPC on stdin | Don't run it manually; let the AI client launch it |
 | Server fails with `WALLET_NOT_FOUND` | No wallet at `~/.t2000/wallet.key` | Run `t2 init` first |
-| Server fails with `WALLET_LEGACY_AES` | Legacy v3 PIN-encrypted wallet at the default path | Migrate with `t2 init --import` (interactive), or point MCP at a different key via `--key` in the config args |
+| Server fails with `WALLET_CORRUPT` | File at `~/.t2000/wallet.key` is not a v4 wallet (e.g. a pre-v4 file, hand-edited JSON, or a wallet from a different tool) | Move or delete the file, then run `t2 init` to create a fresh wallet |
 | Client shows no `t2000_*` tools after restart | Wrong config path, or stale npx cache | Verify with the `printf | npx ...` test above; clear cache with `rm -rf ~/.npm/_npx` |
 | `SuiClient export not found` error from old install | Cached pre-fix bundle in `~/.npm/_npx` | `rm -rf ~/.npm/_npx` then restart the client |
 

@@ -1,6 +1,6 @@
 # SPEC — Agent Wallet Greenfield Pivot
 
-> **Status:** 🟢 ACTIVE — Phase A DONE 2026-05-26 (S.328-S.335; 8/8 mainnet smokes); Phase B Step 1 DONE 2026-05-26 (S.336); Phase B Steps 2-4 next
+> **Status:** 🟢 ACTIVE — Phase A DONE 2026-05-26 (S.328-S.335; 8/8 mainnet smokes); Phase B Step 1 DONE 2026-05-26 (S.336); Simplification cut DONE 2026-05-26 (S.337 — legacy-wallet flow removed, `--import` deleted); Phase B Steps 2-4 next
 > **Detailed plan:** [`.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md`](../../../.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md) — the full ~9-10 day execution plan with file paths, code snippets, and verification gates
 > **Successor to:** `SPEC_AGENTIC_STACK.md` (Phase 5 absorbed). Phases 1-4 of that SPEC are still shipped + valid; only the marketing/README sweep folds into this pivot's Phase D
 > **Trigger:** Founder review of `agents.circle.com` + `circlefin/skills` + `circlefin/cli` (2026-05-26) — *"the cli is doing TOO MUCH... rip all defi capabilities out... only make it a agentic wallet with payments (mpp) and ability to send, receive... circle docs i shared in the previous prompt was also to review it just incase you missed something with the pivot spec... we should also remove the pin from cli... we have safeguards i think remove them also to simplify the onboarding... full rewrite might be better and really strip out everything and only keep what we actually need."*
@@ -20,7 +20,7 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 
 1. **Greenfield CLI rewrite** (not a strip). `packages/cli/src/` rebuilt from scratch around 9 command groups. UX inspired by Circle's `@circle-fin/cli` (`wallet` / `send` / `receive` / `swap` / `pay` / `services` / `limit` / `mcp` / `skills` + singletons `init` / `export` / `balance` / `version`). No banking metaphor.
 2. **`t2` is the canonical binary name** (alongside `t2000` as alias for back-compat). Help text + all 15 SKILL.md bash blocks use `t2 <verb>`. Brand/repo/url names stay `t2000`.
-3. **PIN removed entirely.** New wallets are plain Bech32 JSON files with `0o600` perms (matches Sui CLI). Legacy v3.x AES wallets get a `legacy-wallet-detect.ts` recovery banner (no auto-migration — too many edge cases; manual `t2 init --import` instead). `t2 init --import` is interactive (hidden input prompt).
+3. **PIN removed entirely.** New wallets are plain Bech32 JSON files with `0o600` perms (matches Sui CLI). ~~Legacy v3.x AES wallets get a `legacy-wallet-detect.ts` recovery banner~~ — **revised 2026-05-26 (S.337):** no legacy-wallet detection, no `--import` flag. v3 files hit a generic `WALLET_CORRUPT` error directing the user to move/delete the file and run `t2 init`. Cross-machine wallet copy is `scp ~/.t2000/wallet.key`. The legacy detection apparatus + `--import` primitive were cut as a simplification per founder review — the affected user base is too small to justify the maintenance footprint.
 4. **Default safeguards removed.** `t2 init` ships with no spending limits + prints a warning footer ("No spending limits set. Run `t2 limit set --daily 100` to add them."). The `t2 limit` command group is the opt-in path.
 5. **Stablecoin neutrality.** SDK `OPERATION_ASSETS.send` constrained to `['USDC', 'USDsui', 'SUI']`. `t2 send` requires an explicit asset flag — there is NO USDC default. The other 5 Sui-native gasless stables (USDT, USDY, BUIDL, FDUSD, agUSD per `docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers`) are deferred — explicit founder decision to keep the CLI surface narrow and add them via a follow-up SPEC when there's user demand.
 6. **gRPC for `send` + `pay` only.** `SuiGrpcClient` plumbed through `packages/sdk/src/utils/sui.ts` (new `getSuiGrpcClient()` cached singleton alongside `getSuiClient()`). Used in `packages/sdk/src/wallet/send.ts` for the `0x2::balance::send_funds()` Move call that enables gasless transfers. Reads stay on `SuiJsonRpcClient` (the audric/web-v2 host already pins on it; full migration is its own SPEC, calendar-driven by Mysten's July 2026 JSON-RPC deactivation deadline).
@@ -66,7 +66,7 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 | Surface | Before | After | Migration |
 |---|---|---|---|
 | `t2000 save / withdraw / borrow / repay / yields / positions / rebalance` | commands exist | **DELETED** | Use audric.ai for DeFi. CLI is wallet + payments only. |
-| `t2000 init` with PIN prompt | PIN-encrypted AES wallet | Plain Bech32 JSON wallet, `0o600` perms | Legacy v3.x users: `t2 init --import` interactive flow + recovery banner. No silent auto-migration. |
+| `t2000 init` with PIN prompt | PIN-encrypted AES wallet | Plain Bech32 JSON wallet, `0o600` perms | Legacy v3.x users (post-S.337): no migration tooling. Run v3 + v4 binaries side-by-side via `--key`, send funds across, then move/delete the old file and run `t2 init`. |
 | `t2000 init` with default safeguards | daily/weekly/monthly limits prompted | No limits, warning footer printed | Opt-in via `t2 limit set` |
 | `t2000 send 5 USDC alice.sui` | works, defaults to USDC if asset omitted | works, **errors if asset omitted** | `t2 send 5 USDC alice.sui` (explicit) |
 | `t2000 send 5 USDY alice.sui` | works for any registered token | **errors — unsupported asset** | Only USDC / USDsui / SUI for now |
@@ -87,7 +87,7 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 | `t2 send 5 USDY alice.sui` | errors with `unsupported asset` |
 | `t2 receive` | prints address + QR code (ANSI) |
 | `t2 borrow 10` | errors with `unknown command 'borrow'` |
-| `t2 init --import` | interactive hidden-input prompt accepts a Bech32 key + creates the wallet file |
+| `t2 init --import` | rejected as unknown flag (removed in S.337) |
 | 4-package typecheck + test + build | all clean (~75 tests in `packages/cli`) |
 | `developers.t2000.ai` smoke | install ≤1 click from home; MCP setup ≤1 click; skills inventory ≤1 click; gateway catalog ≤1 click |
 
@@ -99,7 +99,7 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 |---|---|---|
 | Planning | S.327 | ✅ done 2026-05-26 (this SPEC + 3 deferred follow-up stubs) |
 | A | S.328-S.335 | ✅ **DONE 2026-05-26** — 6 sessions / ~14h / ~700 LoC net / 8/8 mainnet smokes / 0 regressions |
-| B | S.336 | 🟡 Step 1 ✅ **DONE 2026-05-26** — MCP + skills sweep (8 files deleted + 8 rewritten + 2 added + 6 SKILL.md rewritten + 2 SKILL.md added; MCP tool count 27→9; prompt count 20→8; 64/64 MCP tests pass + live JSON-RPC smoke). Steps 2-4 (README rewrite + cross-client render verification + optional mpp absorption) pending. |
+| B | S.336 + S.337 | 🟡 Step 1 ✅ **DONE 2026-05-26** (S.336 — MCP + skills sweep) + Simplification cut ✅ **DONE 2026-05-26** (S.337 — legacy-wallet flow + `--import` flag removed; `unlock.ts` → `agent.ts` rename). Steps 2-4 (README rewrite + cross-client render verification + optional mpp absorption) pending. |
 | C | pending | |
 | D | pending | |
 | E | pending | |

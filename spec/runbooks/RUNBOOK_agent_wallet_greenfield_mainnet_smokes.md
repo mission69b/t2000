@@ -1,5 +1,15 @@
 # RUNBOOK — Agent Wallet Greenfield Pivot · Mainnet Smokes (Phase A Day 6)
 
+> **STATUS:** Phase A is DONE (8/8 smokes passed 2026-05-26 — see S.335).
+> Kept as historical reference + template for any future repeat run.
+>
+> **S.337 OBSOLETES SMOKE 1:** the `--import` flag was removed when the
+> legacy-wallet migration flow was cut. If you're re-running this runbook
+> post-S.337, skip Smoke 1 entirely — v4 doesn't migrate v3 wallets. To
+> set up a fresh v4 wallet on a new box, run `t2 init` (creates a new
+> address) or `scp` an existing v4 `~/.t2000/wallet.key` from a machine
+> that already has one. There is no Bech32-paste flow.
+>
 > **Owner:** founder (manual execution). **Purpose:** validate the v4 CLI's
 > write paths (send / swap / pay) against mainnet on a real funded wallet
 > after the Day 1-5 code work shipped (S.328-S.332).

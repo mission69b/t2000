@@ -52,7 +52,6 @@ export function createProgram(): Command {
     .addHelpText('after', `
 Examples:
   $ t2 init                            Create a new Agent Wallet (no PIN)
-  $ t2 init --import                   Import a v3.x wallet (interactive)
   $ t2 receive                         Show address + QR for incoming transfers
   $ t2 balance                         Show stablecoin + SUI holdings
   $ t2 wallet address                  Print address (machine-parseable)

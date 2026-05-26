@@ -65,7 +65,7 @@ This:
 - Prints the wallet address.
 - Prints a warning footer if no spending limits are set (those are opt-in, see Step 4).
 
-> **Migrating from v3 (PIN-encrypted)?** Use `t2 init --import` interactively — it accepts your existing v3 Bech32 key (you'll need to decrypt your v3 wallet first via the legacy `t2000` v3 binary, then paste the Bech32 string into the import prompt).
+> **Upgrading from v3 (PIN-encrypted)?** v4 doesn't migrate v3 wallets. The user base is tiny and the simpler path is to send funds across: (1) install the v3 `t2000` binary alongside v4 — keep its key file at a different path via `--key`, (2) `t2000 send <amount> USDC <v4-address>` to move funds, (3) move or delete the v3 file at `~/.t2000/wallet.key`, (4) `t2 init` to bind v4 to the default path.
 
 ### Step 3 — Fund the wallet
 
@@ -175,6 +175,6 @@ After verify succeeds, surface a short menu of natural next moves:
 |---|---|
 | `t2000: command not found` after npm install | `npm bin -g` directory not on PATH; add it or use `npx @t2000/cli ...` instead |
 | `t2 init` fails with permission error | Don't run with `sudo`; npm global may need a user-level prefix (`npm config set prefix ~/.npm-global`) |
-| `t2 init` reports a legacy v3 wallet at `~/.t2000/wallet.key` | The user has a pre-v4 PIN-encrypted wallet. Use `t2 init --import` (interactive) to migrate, OR keep the v3 binary alongside v4 and use them on different key paths via `--key` |
+| `t2 init` fails with `WALLET_EXISTS` | A file already lives at `~/.t2000/wallet.key`. If it's a v3 file you no longer need, move/delete it. If you still need it, point v3 + v4 at separate paths via `--key`. v4 does not migrate v3 wallets. |
 | MCP server "doesn't do anything" when run manually | Working as designed — the server is a subprocess launched by the AI client, never run from a terminal. See the `t2000-mcp` skill. |
 | AI client doesn't see `t2000_*` tools after install | Restart the client. If still missing, check the per-client config path printed by `t2 mcp install`. |

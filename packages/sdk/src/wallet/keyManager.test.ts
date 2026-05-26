@@ -9,7 +9,6 @@ import {
   saveBech32,
   loadKey,
   walletExists,
-  isLegacyWalletPath,
   exportPrivateKey,
   getAddress,
 } from './keyManager.js';
@@ -78,7 +77,7 @@ describe('keyManager (v4.0 plain Bech32)', () => {
     await expect(saveBech32('0xdeadbeef', keyPath)).rejects.toThrow(/suiprivkey/);
   });
 
-  it('throws WALLET_LEGACY_AES on a v3.x AES file', async () => {
+  it('throws WALLET_CORRUPT on a v3.x AES file (no longer special-cased)', async () => {
     const keyPath = join(tempDir, 'wallet.key');
     const legacyFile = {
       version: 1,
@@ -91,34 +90,8 @@ describe('keyManager (v4.0 plain Bech32)', () => {
     await writeFile(keyPath, JSON.stringify(legacyFile));
 
     await expect(loadKey(undefined, keyPath)).rejects.toMatchObject({
-      code: 'WALLET_LEGACY_AES',
+      code: 'WALLET_CORRUPT',
     });
-  });
-
-  it('isLegacyWalletPath detects v1 files without decrypting', async () => {
-    const keyPath = join(tempDir, 'wallet.key');
-    const legacyFile = {
-      version: 1,
-      algorithm: 'aes-256-gcm',
-      salt: 'a'.repeat(64),
-      iv: 'b'.repeat(32),
-      tag: 'c'.repeat(32),
-      ciphertext: 'd'.repeat(128),
-    };
-    await writeFile(keyPath, JSON.stringify(legacyFile));
-
-    expect(await isLegacyWalletPath(keyPath)).toBe(true);
-  });
-
-  it('isLegacyWalletPath returns false for v2 wallet files', async () => {
-    const keypair = generateKeypair();
-    const keyPath = join(tempDir, 'wallet.key');
-    await saveKey(keypair, undefined, keyPath);
-    expect(await isLegacyWalletPath(keyPath)).toBe(false);
-  });
-
-  it('isLegacyWalletPath returns false when no file exists', async () => {
-    expect(await isLegacyWalletPath(join(tempDir, 'nope.key'))).toBe(false);
   });
 
   it('throws WALLET_CORRUPT on garbage JSON', async () => {

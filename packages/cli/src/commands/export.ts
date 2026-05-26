@@ -1,5 +1,4 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1 — 2026-05-26]
-// `t2 export` — print the Bech32 secret (`suiprivkey1...`) for recovery.
+// `t2 export` — print the Bech32 secret (`suiprivkey1...`) for backup.
 // No PIN gate (v4 wallets aren't encrypted). Confirmation prompt only
 // when stdout is a TTY — scripts (`--yes` or piped) skip the warning.
 
@@ -48,7 +47,7 @@ export function registerExport(program: Command) {
         printSuccess('Wallet secret (Bech32 suiprivkey):');
         process.stdout.write(`  ${secret}\n`);
         printBlank();
-        printInfo('Store securely. Re-import via `t2 init --import` on a fresh box.');
+        printInfo('Store securely. Anyone with this secret controls the wallet.');
         printBlank();
       } catch (error) {
         handleError(error);

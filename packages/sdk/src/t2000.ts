@@ -171,10 +171,9 @@ export class T2000 extends EventEmitter<T2000Events> {
       );
     }
 
-    // [v4.0] loadKey reads v2 plain Bech32 JSON. Legacy v3.x AES files
-    // throw WALLET_LEGACY_AES — the CLI translates that into a recovery
-    // banner via lib/legacy-wallet-detect.ts. PIN/passphrase fields on
-    // T2000Options are accepted for back-compat but IGNORED.
+    // [v4.0] loadKey reads v2 plain Bech32 JSON. Anything else throws
+    // WALLET_CORRUPT. PIN/passphrase fields on T2000Options are accepted
+    // for back-compat but IGNORED.
     const keypair = await loadKey(undefined, keyPath);
     return new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);
   }

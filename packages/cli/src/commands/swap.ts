@@ -10,8 +10,7 @@
 //     `t2000 swap-quote` command into the same verb so users have one
 //     thing to learn. The legacy `swap-quote` command is no longer
 //     registered in `program.ts` (file gets deleted at Day 5).
-//   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`,
-//     which also runs the legacy v3.x wallet pre-flight banner.
+//   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`.
 //
 // Slippage cap stays at 5% (`Math.min(input, 0.05)`) — matches the SDK
 // guardrail in `t2000.ts:swap()`.

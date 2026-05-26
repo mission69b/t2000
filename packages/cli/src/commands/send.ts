@@ -13,8 +13,7 @@
 //     reports `gasCost === 0`, the receipt renders a `gasless ⚡`
 //     badge so the operator sees the protocol-level zero-gas semantic
 //     actually kicked in.
-//   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`,
-//     which also runs the legacy v3.x wallet pre-flight banner.
+//   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`.
 //
 // SuiNS + @audric handle resolution is delegated to the SDK's
 // `T2000.resolveRecipient` — both `alice.sui` and `mission69b@audric`

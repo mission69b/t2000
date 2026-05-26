@@ -29,7 +29,7 @@ describe('with-agent', () => {
     }
   });
 
-  it('returns { kind: "legacy", banner } for a v3.x AES wallet', async () => {
+  it('returns { kind: "error", error: WALLET_CORRUPT } for a v3.x AES wallet', async () => {
     const legacy = {
       version: 1,
       algorithm: 'aes-256-gcm',
@@ -41,10 +41,9 @@ describe('with-agent', () => {
     await writeFile(keyPath, JSON.stringify(legacy));
 
     const result = await tryWithAgent({ keyPath });
-    expect(result.kind).toBe('legacy');
-    if (result.kind === 'legacy') {
-      expect(result.banner).toContain('Legacy v3.x AES wallet detected');
-      expect(result.banner).toMatch(/t2 init --import/);
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') {
+      expect((result.error as { code?: string }).code).toBe('WALLET_CORRUPT');
     }
   });
 

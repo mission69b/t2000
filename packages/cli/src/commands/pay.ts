@@ -2,8 +2,7 @@
 // `t2 pay <url> [options]` — v4 Agent Wallet surface.
 //
 // Contract changes vs. the pre-pivot legacy command:
-//   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`,
-//     which also runs the legacy v3.x wallet pre-flight banner.
+//   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`.
 //   - Adds `--estimate` flag: issues the request WITHOUT a payment
 //     header, parses the 402 challenge via `mppx.Challenge.fromResponse`,
 //     prints `realm` + `intent` + `amount` + `currency` + `recipient`,

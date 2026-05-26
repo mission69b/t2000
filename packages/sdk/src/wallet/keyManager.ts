@@ -1,13 +1,7 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1 — 2026-05-26]
 // v4.0 wallet auth model: plain Bech32 secret in a versioned JSON file,
 // 0o600 perms. Matches the Sui CLI convention. No AES, no PIN, no scrypt.
-//
-// **Legacy v3.x wallets** (AES-256-GCM encrypted, PIN-derived key) are
-// detected at load-time and rejected with `WALLET_LEGACY_AES` — the CLI
-// translates that into actionable recovery instructions
-// (`t2 init --import <bech32>` flow). No silent auto-migration: the
-// affected user base is tiny (~5 founder + early-tester wallets) and
-// the security delta of keeping AES code paths around isn't worth it.
+// Anything that isn't `{ version: 2, secret: "suiprivkey1..." }` throws
+// `WALLET_CORRUPT` — the user moves/deletes the file and runs `t2 init`.
 
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
@@ -20,15 +14,6 @@ import { DEFAULT_KEY_PATH } from '../constants.js';
 interface PlainKey {
   version: 2;
   secret: string;
-}
-
-interface LegacyEncryptedKey {
-  version: 1;
-  algorithm: string;
-  salt: string;
-  iv: string;
-  tag: string;
-  ciphertext: string;
 }
 
 function expandPath(p: string): string {
@@ -83,9 +68,10 @@ export async function saveKey(
 }
 
 /**
- * Save a Bech32 secret directly as a v2 plain wallet file. Used by the
- * `t2 init --import` recovery flow and any other path where the secret
- * is supplied externally rather than freshly generated.
+ * Save a Bech32 secret directly as a v2 plain wallet file. Used by any
+ * path where the secret is supplied externally rather than freshly
+ * generated. Kept exported because external tooling may still want it
+ * even though the CLI no longer ships an `--import` flag.
  */
 export async function saveBech32(secret: string, keyPath?: string): Promise<string> {
   if (!secret.startsWith('suiprivkey')) {
@@ -122,9 +108,8 @@ export async function saveBech32(secret: string, keyPath?: string): Promise<stri
  *
  * - **v2 plain JSON** (`{ version: 2, secret: "suiprivkey1..." }`) →
  *   decode + return keypair.
- * - **v1 AES JSON** (legacy v3.x) → throw `WALLET_LEGACY_AES`. The CLI
- *   surfaces this as a recovery banner. No auto-migration.
- * - **Anything else** → throw `WALLET_CORRUPT`.
+ * - **Anything else** → throw `WALLET_CORRUPT`. The user moves or
+ *   deletes the file and runs `t2 init` to create a fresh wallet.
  */
 export async function loadKey(
   _passphrase?: string,
@@ -143,20 +128,16 @@ export async function loadKey(
   try {
     parsed = JSON.parse(content);
   } catch {
-    throw new T2000Error('WALLET_CORRUPT', `Wallet file at ${filePath} is not valid JSON`);
-  }
-
-  if (isLegacyEncryptedKey(parsed)) {
     throw new T2000Error(
-      'WALLET_LEGACY_AES',
-      `Legacy v3.x AES wallet detected at ${filePath}. v4.x dropped PIN encryption — recover via 'npm install -g @t2000/cli@3' + 't2000 export' + 't2 init --import <suiprivkey1...>'.`,
+      'WALLET_CORRUPT',
+      `Wallet file at ${filePath} is not a valid v4 wallet. Move or delete the file, then run \`t2 init\`.`,
     );
   }
 
   if (!isPlainKey(parsed)) {
     throw new T2000Error(
       'WALLET_CORRUPT',
-      `Wallet file at ${filePath} has unrecognised format. Expected { version: 2, secret: "suiprivkey1..." }.`,
+      `Wallet file at ${filePath} is not a valid v4 wallet. Expected { version: 2, secret: "suiprivkey1..." }. Move or delete the file, then run \`t2 init\`.`,
     );
   }
 
@@ -169,30 +150,6 @@ export async function walletExists(keyPath?: string): Promise<boolean> {
   try {
     await access(filePath);
     return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Detect a legacy v3.x AES wallet WITHOUT trying to decrypt. Returns
- * `true` if the file exists AND parses as `{ version: 1, algorithm,
- * salt, iv, tag, ciphertext }`. Used by the CLI's pre-flight check
- * so we can fail fast with a recovery banner before any command runs.
- */
-export async function isLegacyWalletPath(keyPath?: string): Promise<boolean> {
-  const filePath = expandPath(keyPath ?? DEFAULT_KEY_PATH);
-
-  let content: string;
-  try {
-    content = await readFile(filePath, 'utf-8');
-  } catch {
-    return false;
-  }
-
-  try {
-    const parsed = JSON.parse(content);
-    return isLegacyEncryptedKey(parsed);
   } catch {
     return false;
   }
@@ -212,18 +169,5 @@ function isPlainKey(value: unknown): value is PlainKey {
     value !== null &&
     (value as { version?: unknown }).version === 2 &&
     typeof (value as { secret?: unknown }).secret === 'string'
-  );
-}
-
-function isLegacyEncryptedKey(value: unknown): value is LegacyEncryptedKey {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    v.version === 1 &&
-    typeof v.algorithm === 'string' &&
-    typeof v.salt === 'string' &&
-    typeof v.iv === 'string' &&
-    typeof v.tag === 'string' &&
-    typeof v.ciphertext === 'string'
   );
 }
