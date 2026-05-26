@@ -63,7 +63,7 @@
 | ------------------- | --------------- | --------------------------------------------------------------------------------- |
 | `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
 | `@t2000/engine`     | Published       | Agent engine — `AISDKEngine` (AI SDK v6), financial tools, MCP client/server |
-| `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
+| `@t2000/cli`        | Published       | Agent Wallet CLI — `t2 init` / `send` / `swap` / `pay` / `mcp install` / etc. v4 is intentionally narrow (no DeFi verbs in CLI). |
 | `@t2000/mcp`        | Published       | MCP server — wraps the engine's tool registry (26 tools post-S.277) + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport. The MCP package exports its own `t2000_*` wrappers (27 tools post-S.323; Volo wrappers cut alongside the SDK/CLI removal). |
 | `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
 | `@suimpp/discovery` | Published       | Sui-specific discovery validation — OpenAPI checks + 402 probe                    |
@@ -454,59 +454,53 @@ A: During registration, all endpoints with `x-payment-info` are stored as JSON i
 
 ---
 
-## Agent Init (`t2000 init`)
+## Agent Init (`t2 init`)
 
-Three-step guided setup that takes a new user from zero to a fully operational AI agent:
+v4 collapses the v3 three-step wizard into a single command. Wallet only — MCP install and spending limits are explicit follow-up commands the user opts into:
 
 ```
-t2000 init
+t2 init
   │
-  ├─ Step 1: Wallet
-  │   ├─ Generate Ed25519 keypair
-  │   ├─ User sets a PIN (passphrase)
-  │   ├─ Encrypt with AES-256-GCM (scrypt-derived key)
-  │   ├─ Write to ~/.t2000/wallet.key (mode 0600)
-  │   ├─ Cache PIN in ~/.t2000/.session (mode 0600)
-  │   └─ Show funding instructions (buy SUI on Mercuryo + send USDC to wallet)
-  │
-  ├─ Step 2: MCP platforms
-  │   ├─ Detect installed: Claude Desktop / Cursor / Windsurf
-  │   ├─ Add mcpServers.t2000 = { command: 't2000', args: ['mcp'] }
-  │   └─ Skip platforms already configured
-  │
-  └─ Step 3: Safeguards
-      ├─ Set maxPerTx (default $500)
-      ├─ Set maxDailySend (default $1000)
-      └─ Write to ~/.t2000/config.json
+  ├─ Generate Ed25519 keypair
+  ├─ Encode the Sui secret as Bech32 (`suiprivkey1…`)
+  ├─ Write { version: 2, secret } JSON to ~/.t2000/wallet.key (mode 0600)
+  ├─ Print the wallet's Sui address
+  └─ Print a warning footer: "Run `t2 limit set --per-tx <USD>` to opt into spending caps."
 ```
 
-### Key encryption
+`t2 init --import` accepts an existing `suiprivkey1…` Bech32 secret (via hidden-input prompt or `--secret` arg) and writes the same file format. Pair with `t2 export` on the source machine to move wallets.
 
+### Key file format
 
-| Parameter      | Value                                                     |
-| -------------- | --------------------------------------------------------- |
-| Algorithm      | AES-256-GCM                                               |
-| Key derivation | scrypt (N=2¹⁴, r=8, p=1)                                  |
-| Salt           | 32 bytes random                                           |
-| IV             | 16 bytes random                                           |
-| Auth tag       | 16 bytes                                                  |
-| File format    | JSON: `{ version, algorithm, salt, iv, tag, ciphertext }` |
-| File path      | `~/.t2000/wallet.key` (mode `0600`)                       |
-| Key format     | Sui bech32 (`suiprivkey...`)                              |
+v4 wallets are **plain Bech32 JSON** — no encryption, no PIN, no scrypt. The security boundary is the `0o600` POSIX file permission. v4 trades the v3 failure-mode of "user forgets PIN, can't recover" for filesystem-ACL trust.
 
+| Field        | Value                                                       |
+| ------------ | ----------------------------------------------------------- |
+| File path    | `~/.t2000/wallet.key`                                       |
+| Mode         | `0o600` (owner read/write only)                             |
+| File format  | JSON: `{ "version": 2, "secret": "suiprivkey1…" }`          |
+| Key format   | Sui Bech32 (`suiprivkey1…`)                                 |
+| Custom path  | `T2000_WALLET_PATH=/path/to/key` env var or `--key <path>` CLI flag |
+| Move wallets | `t2 export` → `t2 init --import` on the target machine      |
 
-### PIN resolution chain
+> **v3 → v4 migration.** v3 wallets are `{ version: 1, algorithm: 'aes-256-gcm', salt, iv, tag, ciphertext }` — v4 cannot decrypt them. Use the v3 binary to print the secret (`t2000 export`), then `t2 init --import` on v4. The v3 `T2000_PIN` / `T2000_PASSPHRASE` env vars are accepted by `T2000.create({ pin })` for back-compat but **ignored** in v4 — they have no effect on v4 wallet files.
 
-When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
+### Spending limits (opt-in)
 
-1. `T2000_PIN` or `T2000_PASSPHRASE` env var
-2. `~/.t2000/.session` file (cached after first use)
-3. Interactive terminal prompt (CLI only)
+v4 has no compulsory safeguards. After `t2 init`, the user opts into limits via:
 
-`t2000 lock` deletes `.session`, forcing re-entry on next use.
+```bash
+t2 limit set --per-tx 100    # max $100 per send/swap/pay
+t2 limit set --daily 500     # max $500 cumulative per UTC day
+t2 limit show                # display current caps
+t2 limit reset               # clear all caps
+```
 
-### MCP config paths
+Limits are written to `~/.t2000/config.json`. Per-call override on `t2 send` / `t2 swap` / `t2 pay` via `--force` (logs a warning, executes anyway). Daily usage is tracked in the same config file and rolls over at UTC midnight.
 
+### MCP install (separate command)
+
+`t2 mcp install` is run on demand — auto-detects Claude Desktop / Cursor / Windsurf and writes `mcpServers.t2000 = { command: "t2000", args: ["mcp", "start"] }` into each client's JSON config. Idempotent. `t2 mcp uninstall` reverses it.
 
 | Platform                 | Config file                                                       |
 | ------------------------ | ----------------------------------------------------------------- |
@@ -515,36 +509,33 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 | Cursor                   | `~/.cursor/mcp.json`                                              |
 | Windsurf                 | `~/.codeium/windsurf/mcp_config.json`                             |
 
-
 ### Funding the agent
 
-CLI agents are **self-funded**. There is no SUI bootstrap, no USDC onboarding, and no sponsor endpoint — the user funds their own wallet after `t2000 init`.
+CLI agents are **self-funded** for gas. USDC + USDsui sends + MPP pays are **gasless** via the Sui foundation's `0x2::balance::send_funds` sponsor — no SUI required for those operations. SUI sends + Cetus swaps need ~0.05 SUI on hand for gas.
 
 ```
-After t2000 init:
-  → Buy SUI for gas: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2
-  → Mercuryo sells SUI direct-to-wallet (Sui USDC is not supported on the iframe)
-  → Optional: swap SUI → USDC via `t2000 swap` once funded
-  → Or send USDC from any Sui exchange / wallet to the agent address
+After t2 init:
+  → Print the wallet address from `t2 init` output (also reachable via `t2 receive`)
+  → Send USDC from any Sui exchange or wallet to that address → ready to send + pay gasless
+  → For swaps / SUI sends: also send a small amount of SUI (~0.05) for gas
 ```
 
-> **Audric web app exception:** Audric web users (not CLI users) sign in with Google → Enoki zkLogin, and Enoki sponsors all gas. They never need to acquire SUI. New web sign-ups are routed through Mercuryo for the SUI top-up, then prompted to swap to USDC via Cetus (the same path the CLI uses). USDC sponsorship and SUI bootstrap have been removed (S.32 — `audric-simplification-spec.md`).
+> **Audric web app exception:** Audric web users (not CLI users) sign in with Google → Enoki zkLogin, and Enoki sponsors all gas. They never need to acquire SUI. The CLI uses the Sui foundation gasless sponsor for USDC / USDsui / MPP — a different mechanism, same effect for those specific operations.
 
 ### What exists after init
 
 ```
 ~/.t2000/
-  ├── wallet.key       # AES-256-GCM encrypted Ed25519 keypair
-  ├── config.json      # Safeguard limits + daily usage tracking
-  └── .session         # Cached PIN (deleted on lock)
+  ├── wallet.key       # Plain Bech32 JSON — { version: 2, secret: "suiprivkey1…" }
+  └── config.json      # (only present after `t2 limit set` — opt-in spending caps + daily usage)
 ```
 
 The agent now has:
 
-- A Sui address (empty — fund it via Mercuryo or a transfer)
-- Safeguard limits configured
-- MCP server registered in AI clients
-- Ready for `t2000 save`, `t2000 pay`, or any MCP tool call once funded
+- A Sui address (empty — fund it with USDC via any Sui exchange / wallet)
+- No MCP install (run `t2 mcp install` to wire Claude / Cursor / Windsurf)
+- No spending limits (run `t2 limit set` to opt in)
+- Ready for `t2 send`, `t2 swap`, `t2 pay`, or any MCP tool call once funded
 
 ---
 
@@ -1215,9 +1206,9 @@ Tag v0.1.0 (mission69b/suimpp repo)
 
 | Layer             | Mechanism                                                              |
 | ----------------- | ---------------------------------------------------------------------- |
-| **Keys**          | Ed25519 keypair, AES-256-GCM encrypted at rest with scrypt-derived key |
+| **Keys**          | Ed25519 keypair, plain Bech32 JSON at rest, `0o600` POSIX file permissions |
 | **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it  |
-| **Safeguards**    | Local spending limits, emergency lock, daily budgets                   |
+| **Safeguards**    | Opt-in spending limits (`t2 limit set`), per-tx + daily caps           |
 | **On-chain**      | Inline fee transfer (Audric only), atomic Payment Intents, indexed ledger |
 | **MPP**           | HMAC-bound challenges (stateless), on-chain USDC verification          |
 | **API keys**      | Upstream keys stored as Vercel env vars, never exposed to agents       |
@@ -1226,61 +1217,40 @@ Tag v0.1.0 (mission69b/suimpp repo)
 ### Key management
 
 - **Algorithm**: Ed25519 (`@mysten/sui/keypairs/ed25519`)
-- **Encryption at rest**: AES-256-GCM with scrypt(PIN, salt) → 256-bit key
+- **At-rest format**: Plain Bech32 JSON — `{ version: 2, secret: "suiprivkey1…" }` with `0o600` perms. **No PIN, no AES, no scrypt** (v4 trades the "user forgets PIN" failure mode for filesystem ACL trust)
 - **No mnemonic**: Raw keypair only — no seed phrase to leak
-- **Import/export**: `t2000 importKey` / `t2000 exportKey` for migration
+- **Import/export**: `t2 export` prints the Bech32 secret; `t2 init --import` accepts a Bech32 secret on the target machine. Pair them to move wallets.
 
 ### Safeguard enforcement
 
+Spending limits are **opt-in**. After `t2 init`, the user runs `t2 limit set --per-tx <USD> --daily <USD>` to write caps to `~/.t2000/config.json`. By default no limits are enforced; the init footer warns the user about this.
+
 ```
-Any write operation (send, save, pay, etc.)
+Any outbound write operation (send / swap / pay)
   │
-  ├── SafeguardEnforcer.assertNotLocked()
-  │   └── If locked: reject immediately
-  │
-  ├── SafeguardEnforcer.check(metadata)
-  │   ├── Is this an outbound op? (send / pay only)
-  │   ├── Amount ≤ maxPerTx? ($500 default)
-  │   └── dailyUsed + amount ≤ maxDailySend? ($1000 default)
+  ├── Limit check (only if t2 limit set was run)
+  │   ├── Amount ≤ per-tx cap?
+  │   └── dailyUsed + amount ≤ daily cap?
   │
   ├── Build + sign + execute TX
   │
-  └── SafeguardEnforcer.recordUsage(amount)  ← outbound ops only
+  └── Record usage (only if a cap is configured)
 ```
 
+Override on a per-call basis with `--force` on `t2 send` / `t2 swap` / `t2 pay` — logs a warning, executes anyway.
+
 Write serialization is the caller's responsibility, NOT the SDK's. In practice:
-- **CLI** (`t2000 send` / `t2000 save`): interactive single-command → naturally serial.
+- **CLI** (`t2 send` / `t2 swap` / `t2 pay`): interactive single-command → naturally serial.
 - **Engine** (`AISDKEngine` driving the conversational harness): structural via AI SDK step model + `needsApproval` round-trip (confirm-tier writes yield `pending_action`, host round-trips, next step runs next write).
 - **Audric web**: per-user single-session writes serialize through the sponsored-tx flow (`/api/transactions/prepare` → user signs → `/api/transactions/execute`).
 
-**Outbound ops** (guarded by daily limit): `send`, `pay`
-**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`
+The daily budget resets automatically at UTC midnight.
 
-The daily budget resets automatically when the date changes.
-
-### Emergency lock
-
-```
-t2000 lock
-  → sets config.locked = true
-  → deletes ~/.t2000/.session (forces PIN re-entry)
-  → all operations blocked immediately
-
-t2000 unlock
-  → requires valid PIN (env var, or interactive prompt)
-  → sets config.locked = false
-  → restores .session
-
-MCP: t2000_lock tool
-  → AI can lock (emergency protection)
-  → AI cannot unlock (requires human with PIN)
-```
-
-The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can freeze the wallet in an emergency but cannot unfreeze it — only a human with the PIN can.
+> **v3 → v4.** The v3 `t2000 lock` / `t2000 unlock` emergency-lock surface (and the `t2000_lock` MCP tool that paired with it) was removed in the v4 cut — it was PIN-anchored and v4 has no PIN. The threat model it protected against (compromised agent process needing a remote freeze) is now covered by stopping the local CLI process / revoking filesystem access. Audric web's "you decide" tap-to-confirm gates fill the same role for the consumer surface.
 
 ### Gas
 
-There is no t2000 gas station, no hashcash, no bootstrap, and no USDC onboarding endpoint. CLI agents self-fund SUI; Audric web users get gas sponsored by Enoki at the host layer (see `audric/.cursor/rules/audric-transaction-flow.mdc`). The previous gas-station / sponsor / bootstrap surface was removed in S.32 (`audric-simplification-spec.md` PR-B1).
+CLI agents are **gasless for USDC + USDsui sends + MPP pays** via the Sui foundation's `0x2::balance::send_funds` sponsor — no SUI required for those operations. SUI sends + Cetus swaps still need ~0.05 SUI on hand for gas. There is no t2000 gas station, no hashcash, no bootstrap, and no USDC onboarding endpoint. Audric web users get gas sponsored by Enoki at the host layer (a different mechanism — see `audric/.cursor/rules/audric-transaction-flow.mdc`). The previous gas-station / sponsor / bootstrap surface was removed in S.32 (`audric-simplification-spec.md` PR-B1).
 
 ### MPP verification (stateless)
 

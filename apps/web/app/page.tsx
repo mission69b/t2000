@@ -12,7 +12,7 @@ const PACKAGES = [
     icon: "▸",
     title: "CLI",
     pkg: "@t2000/cli",
-    desc: "Save, send, borrow, pay — all from the command line.",
+    desc: "Agent Wallet for AI agents — gasless USDC send, swap, MPP pay, MCP install.",
     install: "npm i -g @t2000/cli",
     href: "https://www.npmjs.com/package/@t2000/cli",
   },
@@ -20,7 +20,7 @@ const PACKAGES = [
     icon: "{ }",
     title: "SDK",
     pkg: "@t2000/sdk",
-    desc: "Wallet management, balance queries, transaction building, token registry.",
+    desc: "Agent Wallet TS SDK. Plain Bech32 wallets, gasless send, Cetus swap, MPP pay. Programmatic-only DeFi for consumer apps.",
     install: "npm i @t2000/sdk",
     href: "https://www.npmjs.com/package/@t2000/sdk",
   },
@@ -28,8 +28,8 @@ const PACKAGES = [
     icon: "⟡",
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "29 tools, 14 prompts. Works with Claude, Cursor, any MCP client.",
-    install: "npx @t2000/mcp",
+    desc: "9 tools + 8 skill prompts. Works with Claude Desktop, Cursor, Windsurf, any MCP client.",
+    install: "t2 mcp install",
     href: "https://www.npmjs.com/package/@t2000/mcp",
   },
   {
@@ -107,10 +107,10 @@ const THREE_PRODUCTS = [
 ];
 
 const PRIMITIVES = [
-  { title: "Reasoning engine", desc: "Adaptive thinking, 14 step guards, 14 skills (markdown playbooks shipped via @t2000/mcp). Complexity-based model routing.", isNew: true },
+  { title: "Reasoning engine", desc: "Adaptive thinking, 12 safety guards across 3 priority tiers, 8 skills (markdown playbooks shipped via @t2000/mcp as `skill-<name>` prompts). Complexity-based model routing.", isNew: true },
   { title: "Memory", desc: "MemWal vector memory + daily financial-context snapshot + AdviceLog \u2014 silent context that makes the chat smarter without ever surfacing.", isNew: true },
   { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, savings planner. Powers Audric Canvas.", isNew: true },
-  { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
+  { title: "Non-custodial wallet", desc: "Ed25519 keypair, plain Bech32 JSON at ~/.t2000/wallet.key (0o600 perms). No PIN, no AES \u2014 trade encryption-at-rest for filesystem ACL trust + zero recovery friction. Export with `t2 export`, import with `t2 init --import`." },
   { title: "DeFi access (Audric Finance)", desc: "Save, credit, swap, charts \u2014 every on-chain money op a user can do, all by asking in chat. NAVI lend at 3\u20138% APY USDC, NAVI borrow with health factor, Cetus aggregator across 20+ DEXs at 0.1% fee. Every write taps to confirm via Passport." },
   { title: "USDC transfers (Audric Pay)", desc: "Send USDC to any Sui wallet, receive via payment links / invoices / QR. Sponsored gas, sub-second finality." },
   { title: "Pay-per-use APIs (MPP gateway)", desc: "40 services, 88 endpoints. Pay per request with USDC. No keys, no signup. Internal capability \u2014 Audric uses this under the hood." },
@@ -136,7 +136,7 @@ const ARCH_LAYERS = [
     label: "Layer 4 \u2014 Intelligence",
     accent: true,
     split: [
-      { title: "Reasoning Engine", items: "Adaptive thinking \u00B7 14 step guards \u00B7 14 skills (via @t2000/mcp) \u00B7 Model routing" },
+      { title: "Reasoning Engine", items: "Adaptive thinking \u00B7 12 safety guards \u00B7 8 skills (via @t2000/mcp) \u00B7 Model routing" },
       { title: "Memory", items: "MemWal vector memory \u00B7 Financial-context snapshot \u00B7 AdviceLog \u2014 silent context only" },
     ],
   },

@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://audric.ai">Audric</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@suimpp/mpp">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://audric.ai">Audric</a> · <a href="https://developers.t2000.ai">Developer Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@suimpp/mpp">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -24,34 +24,43 @@
 t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. The Audric consumer brand is exactly **five products**:
 
 - 🪪 **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in 3 seconds, every write taps to confirm, Enoki-sponsored gas (web only). Wraps every other product.
-- 🧠 **Audric Intelligence** — the brain (the moat). Four systems orchestrate every money decision: Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal), AdviceLog. Multi-step playbooks (skills) ship from `@t2000/mcp` and surface to Cursor / Claude Desktop as MCP prompts. Picks the tool, clears the guards, remembers what it told you.
+- 🧠 **Audric Intelligence** — the brain (the moat). Four systems orchestrate every money decision: Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal), AdviceLog. Multi-step playbooks (skills) ship from `@t2000/mcp` and surface to Cursor / Claude Desktop as MCP prompts.
 - 💰 **Audric Finance** — manage your money on Sui. Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs), Charts (yield/health/portfolio viz). Every action taps to confirm via Passport.
 - 💸 **Audric Pay** — the money primitive. Move money: free, global, instant (on Sui for now). Send USDC, receive via payment links / QR. No bank, no borders, no fees.
 - 🛒 **Audric Store** — creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon.**
 
 Five t2000 packages give AI agents and developers everything they need to build the same thing.
 
-```typescript
-const agent = await T2000.create({ pin: process.env.T2000_PIN });
+## The v4 Agent Wallet (one cohesive stack)
 
-await agent.send({ to: '0x...', amount: 50 });
-await agent.save({ amount: 100 });                       // USDC (default), best NAVI rate
-await agent.save({ amount: 100, asset: 'USDsui' });      // USDsui (v0.51.0+ strategic exception)
-await agent.borrow({ amount: 20 });                      // USDC against collateral
-await agent.borrow({ amount: 20, asset: 'USDsui' });     // USDsui debt
-await agent.repay({ amount: 20, asset: 'USDsui' });      // symmetry: USDsui debt → USDsui repay
-await agent.withdraw({ amount: 50 });                    // USDC (or pass asset for USDsui/legacy)
-await agent.swap({ from: 'SUI', to: 'USDC', amount: 10 });  // 20+ DEX routing
+The `@t2000/cli` + `@t2000/mcp` + `t2000-skills` trio = **Agent Wallet** — gasless USDC + USDsui sends, Cetus swaps, MPP paid API access. Plain Bech32 wallets (`0o600` perms), no PIN, opt-in safeguards.
+
+```bash
+npm install -g @t2000/cli       # installs `t2` (canonical) + `t2000` (legacy alias)
+t2 init                          # create a plain Bech32 wallet — no PIN, no AES
+t2 send 5 USDC alice.sui         # gasless USDC send to a SuiNS name
+t2 swap 100 USDC SUI             # best-route swap via Cetus across 20+ DEXs
+t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
+t2 mcp install                   # wire Claude Desktop / Cursor / Windsurf in one command
 ```
+
+**One-prompt install** — paste this into any LLM client:
+
+```
+Run `curl -sL https://t2000.ai/skills/t2000-setup` and use the returned setup
+instructions to set up my Agent Wallet.
+```
+
+DeFi (save / borrow / withdraw / repay / yields) is **programmatic-only** in v4 — it lives in [`@t2000/sdk`](packages/sdk) for consumer apps like Audric to wire up, not in the CLI. The CLI is intentionally narrow.
 
 ## Packages
 
 | Package | Description | Install |
 |---------|-------------|---------|
-| [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
-| [`@t2000/engine`](packages/engine) | Agent engine — `AISDKEngine`, financial tools, MCP client/server | `npm install @t2000/engine` |
-| [`@t2000/cli`](packages/cli) | Terminal Agentic Wallet + HTTP API | `npm install -g @t2000/cli` |
-| [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
+| [`@t2000/sdk`](packages/sdk) | TypeScript SDK — Agent Wallet (send/swap/pay/receive) + programmatic-only DeFi (save/borrow/withdraw/repay/health) | `npm install @t2000/sdk` |
+| [`@t2000/engine`](packages/engine) | Agent engine — `AISDKEngine`, 26 financial tools, MCP client/server. Powers Audric Intelligence. | `npm install @t2000/engine` |
+| [`@t2000/cli`](packages/cli) | Terminal Agent Wallet — `t2 init / send / swap / pay / mcp install` | `npm install -g @t2000/cli` |
+| [`@t2000/mcp`](packages/mcp) | MCP server — 9 tools + 8 auto-registered skill prompts for Claude Desktop, Cursor, Windsurf | Bundled with the CLI |
 | [`@suimpp/mpp`](https://github.com/mission69b/suimpp) | MPP payment client (Sui USDC) | `npm install @suimpp/mpp` |
 
 ## Brand Architecture
@@ -62,89 +71,42 @@ t2000.ai       → Infrastructure (CLI, SDK, MCP, engine, gateway)
 audric.ai      → Consumer product (app, conversational banking)
 ```
 
-All npm packages (`@t2000/cli`, `@t2000/sdk`, `@t2000/mcp`, `@t2000/engine`), the GitHub repo, and gateway domain stay as t2000. [Audric](https://audric.ai) is the consumer-facing brand.
-
-## Getting Started
-
-```bash
-npm install -g @t2000/cli           # Install
-t2000 init                          # Wallet + MCP + safeguards — one command
-```
-
-Use the CLI directly or connect your AI via MCP:
-
-```bash
-t2000 balance                      # Check balance
-t2000 send 10 USDC to 0x...       # Send USDC
-t2000 save all                     # Earn yield on idle funds
-t2000 pay https://api.example.com  # Pay for MPP-protected APIs
-```
-
-## How it works
-
-t2000 wraps financial primitives into a single interface:
-
-| Feature | What it does | How |
-|---------|-------------|-----|
-| **Checking** | Send USDC | Direct Sui transfers |
-| **Receive** | Payment requests with QR & address | Local generation, Sui payment URI |
-| **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) (MCP reads + thin tx builders) |
-| **Credit** | Borrow USDC against savings | NAVI collateralized loans |
-| **Swap** | Trade any token pair on Sui | [Cetus Aggregator V3](https://www.cetus.zone) (20+ DEXs) |
-| **Payments (MPP)** | Pay for API resources with USDC | [@suimpp/mpp](https://github.com/mission69b/suimpp) + [MPP Gateway](https://mpp.t2000.ai) |
-| **Market Data** | Wallet portfolio, USD prices | [BlockVision](https://blockvision.org) Indexer REST (`balance_check`, `portfolio_analysis`, `token_prices`); Sui RPC + hardcoded-stable degraded fallback |
-| **DeFi rates** | NAVI lending APYs (supply / borrow) | NAVI MCP via `rates_info` |
-| **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set`, `t2000 lock/unlock` |
-| **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
-
-Every transaction is self-funded by the agent's wallet. Multi-step operations execute as single atomic Payment Intents (compiled into one Sui Programmable Transaction Block).
-
-### Fees
-
-The t2000 SDK + CLI are **fee-free** by design. Fees are an Audric concern — when [Audric](https://audric.ai) is the consumer, it adds protocol fees inline within the same Payment Intent:
-
-| Operation | Audric fee | Notes |
-|-----------|-----|-------|
-| Save | 0.1% | Inline transfer to Audric treasury wallet |
-| Borrow | 0.05% | Inline transfer to Audric treasury wallet |
-| Swap | 0.1% | Cetus aggregator overlay; routes to Audric treasury wallet |
-| Withdraw / Repay / Send / Receive / Pay (MPP) | Free | — |
-
-Building your own consumer app on top of `@t2000/sdk`? Use the `addFeeTransfer` helper for save/borrow and `overlayFee` config for swaps to mirror Audric's pattern, or skip fees entirely.
+All npm packages (`@t2000/cli`, `@t2000/sdk`, `@t2000/mcp`, `@t2000/engine`), the GitHub repo, and the gateway domain stay as t2000. [Audric](https://audric.ai) is the consumer-facing brand.
 
 ## SDK
 
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-const agent = await T2000.create({ pin: process.env.T2000_PIN });
+const { agent, address } = await T2000.init();        // brand-new wallet
+const agent = await T2000.create();                   // load existing wallet
+const agent = T2000.fromPrivateKey('suiprivkey1…');   // in-memory load
+
+await agent.send({ to: 'alice.sui', amount: 5, asset: 'USDC' });  // gasless
+await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });        // Cetus, needs SUI
+await agent.pay({ url: 'https://mpp.t2000.ai/…', method: 'POST', body, maxPrice: 0.10 });
 ```
 
 | Category | Method | Description |
 |----------|--------|-------------|
-| **Wallet** | `agent.balance()` | Available + savings + gas breakdown |
-| | `agent.send({ to, amount })` | Send USDC |
-| | `agent.receive({ amount?, memo? })` | Generate payment request with QR URI |
-| | `agent.history()` | Transaction log |
-| **Savings** | `agent.save({ amount, asset? })` | Deposit USDC or USDsui to NAVI (v0.51.0+); `asset` defaults to USDC |
-| | `agent.withdraw({ amount, asset? })` | Withdraw from savings; `asset` defaults to USDC, also supports USDsui + legacy positions |
-| | `agent.earnings()` | Yield earned, daily rate |
-| **Swap** | `agent.swap({ from, to, amount })` | Swap any token pair (Cetus, 20+ DEXs) |
-| **Credit** | `agent.borrow({ amount, asset? })` | Borrow USDC or USDsui against collateral (v0.51.0+) |
-| | `agent.repay({ amount, asset? })` | Repay debt; pass `asset` to target a specific debt. **Symmetry enforced:** USDsui debt → USDsui repay (v0.51.1+) |
-| | `agent.healthFactor()` | Liquidation safety |
-| **Info** | `agent.rates()` | Current APYs |
+| **Wallet** | `agent.balance()` | USDC + USDsui + SUI balances + USD totals |
+| | `agent.send({ to, amount, asset })` | Send USDC / USDsui / SUI. `asset` is required. USDC + USDsui gasless via `0x2::balance::send_funds`. |
+| | `agent.receive({ amount?, memo?, label? })` | Payment Kit `sui:pay?…` URI for any wallet to scan |
+| | `agent.history({ limit? })` | Recent on-chain activity |
+| | `agent.resolveRecipient(input)` | Public resolver: hex → SuiNS → @audric handle → contact |
+| | `agent.exportKey()` | Print the `suiprivkey1…` secret for the underlying keypair |
+| **Swap** | `agent.swap({ from, to, amount, slippage? })` | Cetus Aggregator V3 across 20+ Sui DEXs |
+| | `agent.swapQuote({ from, to, amount })` | Preview route + output + price impact (no execution) |
+| **MPP** | `agent.pay({ url, method?, body?, maxPrice? })` | 402 → quote → USDC payment → retry. Gasless. |
+| **DeFi (programmatic-only)** | `agent.save({ amount, asset? })` | Deposit USDC or USDsui to NAVI (best APY). **Not exposed via CLI.** |
+| | `agent.borrow({ amount, asset? })` | Borrow USDC or USDsui against collateral |
+| | `agent.repay({ amount, asset? })` | Repay debt — **symmetry enforced** (USDsui debt → USDsui repay) |
+| | `agent.withdraw({ amount, asset? })` | Withdraw from NAVI savings |
+| | `agent.healthFactor()` | NAVI liquidation safety reading |
 | | `agent.positions()` | Open DeFi positions |
-| **Safeguards** | `agent.enforcer.getConfig()` | Safeguard settings |
-| | `agent.enforcer.set({ maxPerTx?, maxDailySend? })` | Set limits |
-| | `agent.enforcer.lock()` | Lock agent |
-| | `agent.enforcer.unlock(pin)` | Unlock agent |
-| **Payments** | `agent.pay({ url, maxPrice })` | Pay for MPP-protected API |
-| **Contacts** | `agent.contacts.list()` | List saved contacts |
-| | `agent.contacts.add(name, address)` | Add a contact |
-| | `agent.contacts.resolve(nameOrAddress)` | Resolve name to address |
+| | `agent.rates()` | Current NAVI APYs |
 
-Full API reference: [`@t2000/sdk` README](packages/sdk)
+Full API reference: [`@t2000/sdk` README](packages/sdk).
 
 ## Engine — Audric Intelligence (the moat)
 
@@ -154,12 +116,10 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 
 | System | What it does | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 26 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Read tools fan out in parallel via AI SDK's native step model; write tools serialise structurally — confirm-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step. | `AISDKEngine` + AI SDK v6 `streamText` + `needsApproval` round-trip + 18 read / 8 write tools (`getDefaultTools()`) |
-| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort` routes `low`/`medium`/`high`/`max`), 12 safety guards across 3 priority tiers (10 pre-exec + 2 post-exec hints). Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` at build time and exposed to MCP clients as `skill-<name>` prompts. Prompt caching on system prompt + tool definitions. Extended thinking always-on for Sonnet/Opus. | `classifyEffort`, `runGuards`, `t2000-skills/skills/`, `@t2000/mcp` skills-as-prompts adapter |
-| 🧠 **Memory (MemWal)** | Knows your finances + remembers your patterns. Long-term vector facts (preferences, goals, risk tolerance, on-chain patterns) recalled top-K each turn into a `<memory_recall>` system-prompt block. Plus a daily `<financial_context>` snapshot (savings/wallet/debt USD, health factor, weighted APY, recent activity) refreshed at 02:00 UTC — every chat starts oriented, no warm-up tool calls. Never surfaced as nudges. | Engine: `prepareStep` + `MemoryStore` injection point. Audric-side: `@mysten-incubation/memwal` SDK + `UserFinancialContext` Prisma model + `buildFinancialContextBlock()` |
-| 📓 **AdviceLog** | Remembers what it told you. Every recommendation is written via `record_advice` (audric-side tool); last 30 days hydrate every turn so the chat doesn't contradict itself across sessions. `actedOn` flips when the corresponding write executes. | Audric-side: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
-
-It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
+| 🎛️ **Agent Harness** | 26 tools, one agent. Read tools fan out in parallel via AI SDK's native step model; write tools serialise structurally — confirm-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step. | `AISDKEngine` + AI SDK v6 `streamText` + `needsApproval` round-trip + 18 read / 8 write tools (`getDefaultTools()`) |
+| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort`), 12 safety guards across 3 priority tiers. Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to MCP clients as `skill-<name>` prompts. | `classifyEffort`, `runGuards`, `t2000-skills/skills/`, `@t2000/mcp` skills-as-prompts adapter |
+| 🧠 **Memory (MemWal)** | Knows your finances + remembers your patterns. Long-term vector facts (preferences, goals, risk tolerance) recalled top-K each turn into a `<memory_recall>` system-prompt block. Plus a daily `<financial_context>` snapshot refreshed at 02:00 UTC. | Engine: `prepareStep` + `MemoryStore` injection. Audric-side: `@mysten-incubation/memwal` SDK + `UserFinancialContext` Prisma model |
+| 📓 **AdviceLog** | Remembers what it told you. Every recommendation is written via `record_advice`; last 30 days hydrate every turn so the chat doesn't contradict itself across sessions. | Audric-side: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
 
 ```typescript
 import { AISDKEngine, getDefaultTools } from '@t2000/engine';
@@ -175,133 +135,124 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-> `AISDKEngine` wraps Vercel AI SDK v6's `streamText`. For custom providers / gateway routing, pass a pre-built `LanguageModel` via `modelInstance` instead of `anthropicApiKey`:
->
-> ```typescript
-> import { createAnthropic } from '@ai-sdk/anthropic';
-> const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-> const engine = new AISDKEngine({
->   modelInstance: anthropic('claude-sonnet-4-5'),
->   tools: getDefaultTools(),
-> });
-> ```
->
-> The legacy `QueryEngine` + `AnthropicProvider` were deleted in engine v2.0.0 (2026-05-17). The `LLMProvider` abstraction + `AISDKAnthropicProvider` were retired in v3.1.0 (2026-05-25) — `AISDKEngine` accepts `anthropicApiKey` or `modelInstance` directly.
+> `AISDKEngine` wraps Vercel AI SDK v6's `streamText`. For custom providers / gateway routing, pass a pre-built `LanguageModel` via `modelInstance` instead of `anthropicApiKey`.
 
-### What shipped recently — Spec 1 + Spec 2
-
-The harness has had two correctness-and-intelligence upgrades on top of the 4-system base:
-
-| Spec | Versions | What it added |
-|---|---|---|
-| **Spec 1 — Correctness** | engine v0.41.0 → v0.50.3 | `attemptId` UUID stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning. `EngineConfig.onAutoExecuted` hook so `auto`-permission writes land in the same telemetry as confirm-gated ones. |
-| **Spec 2 — Intelligence** | engine v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`) for graceful 429 handling. `<financial_context>` boot-time orientation block (now part of the Memory system). `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. (S.277 / engine 2.18.0 later cut the lone remaining `protocol_deep_dive` DefiLlama consumer.) |
-
-26 built-in tools (18 read, 8 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP for lending data and BlockVision Indexer REST for wallet portfolio + USD prices, falling back to Sui RPC. Includes a canvas system for interactive in-chat visualizations. The compound write `harvest_rewards` packs claim + N swaps + deposit into one PTB so users can recycle NAVI rewards into savings with a single tap.
-
-Full reference: [`@t2000/engine` README](packages/engine)
+Full reference: [`@t2000/engine` README](packages/engine).
 
 ## CLI
 
 ```bash
 # Wallet
-t2000 init                         Guided setup (wallet, AI, safeguards)
-t2000 balance                      Check balance
-t2000 send 10 USDC to 0x...       Send USDC
-t2000 receive --amount 25          Generate payment request with QR
-t2000 history                      Transaction history
+t2 init                               # create a plain Bech32 wallet (no PIN)
+t2 init --import                      # import an existing suiprivkey1… secret
+t2 export                             # print the Bech32 secret
+t2 receive                            # show address + ANSI QR
+t2 balance                            # USDC / USDsui / SUI + USD totals
+t2 history                            # recent on-chain activity
 
-# Savings & DeFi
-t2000 save 50 [--asset USDC|USDsui]    Earn yield (best rate; default USDC)
-t2000 withdraw 25 [--asset <symbol>]   Withdraw savings (default USDC)
-t2000 borrow 10 [--asset USDC|USDsui]  Borrow against collateral (default USDC)
-t2000 repay 10 [--asset USDC|USDsui]   Repay debt (must match borrow asset)
-t2000 swap 10 SUI for USDC        Swap any token (20+ DEXs)
-t2000 health                       Health factor
-t2000 rates                        Current APYs
+# Send / Swap / Pay
+t2 send 5 USDC alice.sui              # gasless USDC send (asset required)
+t2 send 0.1 SUI 0x…                   # SUI send (standard gas)
+t2 swap 100 USDC SUI --slippage 1     # best-route via Cetus across 20+ DEXs
+t2 swap 100 USDC SUI --quote          # preview without signing
+t2 pay https://mpp.t2000.ai/…         # 402 → quote → USDC payment → retry
 
-# MPP Payments
-t2000 pay https://api.example.com  Pay for API resource
+# MPP discovery
+t2 services search "gpt"              # find MPP services on the gateway
+t2 services inspect <url>             # pricing + quote preview
 
-# Contacts
-t2000 contacts                     List saved contacts
-t2000 contacts add <name> <addr>   Save a named contact
+# Safeguards (opt-in)
+t2 limit set --per-tx 100             # per-transaction USD cap
+t2 limit set --daily 500              # daily cumulative USD cap
+t2 limit show                         # display current limits
+t2 limit reset                        # clear all caps
 
-# Safeguards
-t2000 config show                  View safeguard settings
-t2000 config set maxPerTx 500      Set per-transaction limit
-t2000 lock                         Lock agent (freeze all operations)
-t2000 unlock                       Unlock agent (requires PIN)
-
-# HTTP API (for non-TypeScript agents)
-t2000 serve --port 3001            Start HTTP API server
+# MCP + Skills
+t2 mcp install                        # wire Claude Desktop / Cursor / Windsurf
+t2 mcp start                          # start the stdio server (called by clients)
+t2 skills install --target=cursor     # install per-skill SKILL.md files locally
 ```
 
-Every command supports `--json` for structured output and `--yes` to skip confirmations.
+Every command supports `--json` for structured output. `--force` overrides spending limits on individual writes. `t2000` is a legacy alias — both bins point at the same entry.
 
-Full command reference: [`@t2000/cli` README](packages/cli)
+Full command reference: [`@t2000/cli` README](packages/cli).
 
 ## MCP Server
 
 Connect Claude Desktop, Cursor, Windsurf, or any MCP client:
 
 ```bash
-t2000 mcp install
+t2 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 29 tools (read-only subset of the engine, namespaced as `t2000_*`). Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
+Auto-configures Claude Desktop + Cursor + Windsurf. **9 tools** (5 read + 3 write + 1 settings) namespaced as `t2000_*` + **8 auto-registered skill prompts** (`skill-t2000-setup`, `skill-t2000-send`, etc.). Spending limits are honored.
+
+Full reference: [`@t2000/mcp` README](packages/mcp).
 
 ## MPP Payments
 
 t2000 supports [MPP (Machine Payments Protocol)](https://mpp.dev) for paid APIs. When a server returns `402 Payment Required`, t2000 automatically pays with Sui USDC and retries.
 
 ```bash
-t2000 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
+t2 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
   --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}]}' \
   --max-price 0.05
 ```
 
 The [MPP Gateway](https://mpp.t2000.ai) proxies 40+ services (88 endpoints) — OpenAI, Anthropic, fal.ai, Brave, Lob, and more.
 
-Full reference: [`@suimpp/mpp` README](https://github.com/mission69b/suimpp/tree/main/packages/mpp)
+Full reference: [`@suimpp/mpp` README](https://github.com/mission69b/suimpp/tree/main/packages/mpp).
 
 ## Agent Skills
 
-```bash
-npx skills add mission69b/t2000-skills
-```
+8 v4 skills shipped via the MCP server as `skill-<name>` prompts, or installable per-client with `t2 skills install --target=<cursor|claude-code|agents>`:
 
-Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, and [20+ more](https://agentskills.io).
+- [`t2000-setup`](https://t2000.ai/skills/t2000-setup) — end-to-end wallet bootstrap
+- [`t2000-check-balance`](https://t2000.ai/skills/t2000-check-balance) — inspect USDC / USDsui / SUI before any write
+- [`t2000-send`](https://t2000.ai/skills/t2000-send) — explicit `--asset`, gasless USDC / USDsui, SUI sends that need gas
+- [`t2000-receive`](https://t2000.ai/skills/t2000-receive) — address share, ANSI QR, Payment Kit URIs
+- [`t2000-swap`](https://t2000.ai/skills/t2000-swap) — Cetus routing, slippage, swap-needs-SUI gotcha
+- [`t2000-services`](https://t2000.ai/skills/t2000-services) — discover MPP services before `t2 pay`
+- [`t2000-pay`](https://t2000.ai/skills/t2000-pay) — MPP 402 flow
+- [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) — wire the MCP server into Claude / Cursor / Windsurf
 
-Full reference: [Agent Skills README](t2000-skills)
+Live manifest: [`https://t2000.ai/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
+
+Full reference: [Agent Skills README](t2000-skills).
+
+## Fees
+
+The t2000 SDK + CLI are **fee-free** by design. Network gas + protocol fees (Cetus routing, NAVI rates, etc.) still apply at on-chain rates. Fees are an Audric concern — when [Audric](https://audric.ai) is the consumer, it adds protocol fees inline within the same Payment Intent (0.1% save, 0.05% borrow, 0.1% swap; withdraw / repay / send / receive / pay are free).
+
+Building your own consumer app on top of `@t2000/sdk`? Use the `addFeeTransfer` helper for save/borrow and `overlayFee` config for swaps to mirror Audric's pattern, or skip fees entirely.
 
 ## Security
 
 - **Non-custodial** — keys live on the agent's machine, never transmitted
-- **Encrypted storage** — AES-256-GCM with PIN-derived key (scrypt)
-- **Bearer auth** — HTTP API requires token generated at startup
-- **Rate limiting** — 10 req/s default prevents runaway drain
-- **Risk guards** — health factor checks block risky operations
-- **Transaction simulation** — dry-run before signing with Move abort code parsing
+- **Plain Bech32 wallets** — `~/.t2000/wallet.key` is JSON, `0o600` perms. No PIN, no AES — v4 trades the failure-mode of "user forgets PIN, can't recover" for filesystem ACL trust. Use `t2 export` + `t2 init --import` to move wallets between machines.
+- **Opt-in spending limits** — `t2 limit set --per-tx <USD> --daily <USD>` writes caps to `~/.t2000/config.json`. Default = no limits + warning footer at `init`.
+- **Transaction simulation** — every write dry-runs before signing, Move abort codes surfaced
+- **Gasless trust boundary** — USDC + USDsui sends + MPP pays use Sui foundation's `0x2::balance::send_funds` sponsor. Swap + SUI send keep their full self-funded gas model.
 
 ## Repository structure
 
 ```
 t2000/
 ├── packages/
-│   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
+│   ├── sdk/              @t2000/sdk — TypeScript SDK (Agent Wallet + DeFi)
 │   ├── engine/           @t2000/engine — Agent engine (AISDKEngine, tools, MCP)
-│   ├── cli/              @t2000/cli — Terminal Agentic Wallet
+│   ├── cli/              @t2000/cli — Terminal Agent Wallet (`t2` + `t2000` bins)
 │   └── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
 │
 ├── apps/
-│   ├── web/              t2000.ai — developer/infra landing page + docs
+│   ├── web/              t2000.ai — public marketing site + skills routes
+│   ├── docs/             developers.t2000.ai — Mintlify developer docs
 │   ├── gateway/          MPP Gateway — proxied AI APIs (mpp.t2000.ai)
 │   └── server/           Fee ledger + checkpoint indexer + daily-intel cron (api.t2000.ai)
 │
 ├── t2000-skills/         Agent Skills for AI coding assistants
-├── spec/                 Product specs, design system
-└── .github/workflows/    CI/CD (lint → typecheck → test → deploy)
+├── spec/                 Product specs (active/shipping/archive/reference)
+└── .github/workflows/    CI/CD (lint → typecheck → test → publish)
 ```
 
 ## Development
@@ -313,27 +264,28 @@ pnpm build
 
 pnpm typecheck    # TypeScript across all packages
 pnpm lint         # ESLint
-pnpm test         # All unit tests
+pnpm test         # All unit tests (2114 across SDK + engine + CLI + MCP)
 ```
 
-### Testing
+### Releases
 
 ```bash
-pnpm --filter @t2000/sdk test
-pnpm --filter @t2000/engine test
-pnpm --filter @t2000/server test
+gh workflow run release.yml --field bump=major   # major | minor | patch
 ```
+
+Bumps all 4 packages (`@t2000/{sdk,engine,cli,mcp}`) in lockstep, tags `vX.Y.Z`, and triggers the publish workflow (CI gate + `pnpm publish` × 4 + GitHub Release + Discord notification). See [`CLAUDE.md`](CLAUDE.md) → "Release process" for the full flow.
 
 ## Tech stack
 
 | Layer | Technology |
 |-------|------------|
 | Chain | Sui (mainnet) |
-| SDK | TypeScript, `@mysten/sui` |
-| Engine | TypeScript, Anthropic Claude, MCP client/server |
-| CLI | Commander.js, Hono (HTTP API) |
-| DeFi | NAVI (lending), Cetus (swap), BlockVision (portfolio + prices) |
+| SDK | TypeScript, `@mysten/sui@2.x`, gRPC + JSON-RPC |
+| Engine | TypeScript, Anthropic Claude, AI SDK v6, MCP client/server |
+| CLI | Commander.js |
+| DeFi (audric-only) | NAVI (lending), Cetus (swap), BlockVision (portfolio + prices) |
 | Web | Next.js 15, Tailwind CSS v4, React 19 |
+| Docs | Mintlify (developers.t2000.ai) |
 | Consumer | Audric — zkLogin, Enoki gas, Geist + Instrument Serif |
 | Infra | AWS ECS Fargate, Vercel, Upstash Redis |
 | CI/CD | GitHub Actions |

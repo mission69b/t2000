@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# t2000 CLI installer
+# t2000 CLI installer — Agent Wallet for AI agents on Sui
 #
 # Usage:
 #   curl -fsSL https://t2000.ai/install.sh | bash
 #
 # What this does:
 #   1. Checks for Node.js (v18+)
-#   2. Installs @t2000/cli globally via npm
-#   3. Runs t2000 init (guided setup: wallet, MCP platforms, safeguards)
+#   2. Installs @t2000/cli globally via npm (provides both `t2` and `t2000` binaries)
+#   3. Runs `t2 init` (creates a plain Bech32 wallet — no PIN, no AES)
 #
 # Environment variables:
-#   T2000_SKIP_INIT  - Skip t2000 init (default: false)
+#   T2000_SKIP_INIT  - Skip `t2 init` (default: false)
 
 main() {
 
@@ -57,7 +57,7 @@ bold() {
 
 echo ""
 bold "  ┌──────────────────────────────────────────┐"
-bold "  │  ${Green}t2000${Color_Off}${Bold} — Agentic Wallet for AI agents        │"
+bold "  │  ${Green}t2000${Color_Off}${Bold} — Agent Wallet for AI agents          │"
 bold "  └──────────────────────────────────────────┘"
 echo ""
 
@@ -102,41 +102,41 @@ npm install -g @t2000/cli 2>&1 | while IFS= read -r line; do
   printf "  %s\n" "$line"
 done
 
-if ! command -v t2000 >/dev/null 2>&1; then
-  error "Installation failed — t2000 command not found after npm install.
+if ! command -v t2 >/dev/null 2>&1; then
+  error "Installation failed — t2 command not found after npm install.
 
   Try installing manually:
     npm install -g @t2000/cli"
 fi
 
-INSTALLED_VERSION=$(t2000 --version 2>/dev/null || echo "unknown")
+INSTALLED_VERSION=$(t2 --version 2>/dev/null || echo "unknown")
 
 echo ""
-success "  ✓ t2000 ${INSTALLED_VERSION} installed"
+success "  ✓ t2 ${INSTALLED_VERSION} installed (also available as \`t2000\`)"
 
-# ─── Run t2000 init ─────────────────────────────────────────────────────────
+# ─── Run t2 init ────────────────────────────────────────────────────────────
 
 if [[ "${T2000_SKIP_INIT:-}" != "true" ]]; then
   echo ""
-  bold "  Starting guided setup..."
+  bold "  Creating your wallet..."
   echo ""
-  t2000 init
+  t2 init
 fi
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 
 echo ""
 success "  ──────────────────────────────────────"
-success "  ✓ t2000 is ready"
+success "  ✓ t2 is ready"
 echo ""
 info "  Next steps:"
 echo ""
-bold "    t2000 balance          ${Dim}# check your wallet${Color_Off}"
-bold "    t2000 save 100         ${Dim}# earn yield on idle USDC${Color_Off}"
-bold "    t2000 mcp install      ${Dim}# connect Claude / Cursor${Color_Off}"
+bold "    t2 balance              ${Dim}# check USDC / USDsui / SUI${Color_Off}"
+bold "    t2 send 5 USDC <addr>   ${Dim}# gasless USDC send${Color_Off}"
+bold "    t2 mcp install          ${Dim}# wire Claude / Cursor / Windsurf${Color_Off}"
 echo ""
-info "  Docs:  https://t2000.ai/docs"
-info "  Demos: https://t2000.ai/demo"
+info "  Developer docs:  https://developers.t2000.ai"
+info "  Skills:          https://t2000.ai/skills"
 echo ""
 
 }
