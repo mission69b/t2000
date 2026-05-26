@@ -1,6 +1,6 @@
 # SPEC — Agent Wallet Greenfield Pivot
 
-> **Status:** 🟢 ACTIVE — planning closed 2026-05-26 (S.327); Phase A pending start
+> **Status:** 🟢 ACTIVE — Phase A DONE 2026-05-26 (S.328-S.335; 8/8 mainnet smokes); Phase B next
 > **Detailed plan:** [`.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md`](../../../.cursor/plans/agentic_wallet_pivot_spec_111d2729.plan.md) — the full ~9-10 day execution plan with file paths, code snippets, and verification gates
 > **Successor to:** `SPEC_AGENTIC_STACK.md` (Phase 5 absorbed). Phases 1-4 of that SPEC are still shipped + valid; only the marketing/README sweep folds into this pivot's Phase D
 > **Trigger:** Founder review of `agents.circle.com` + `circlefin/skills` + `circlefin/cli` (2026-05-26) — *"the cli is doing TOO MUCH... rip all defi capabilities out... only make it a agentic wallet with payments (mpp) and ability to send, receive... circle docs i shared in the previous prompt was also to review it just incase you missed something with the pivot spec... we should also remove the pin from cli... we have safeguards i think remove them also to simplify the onboarding... full rewrite might be better and really strip out everything and only keep what we actually need."*
@@ -35,8 +35,8 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 
 | Phase | What | Effort | Status |
 |---|---|---|---|
-| **A** | CLI greenfield rewrite + gRPC/gasless | ~3-4d | pending |
-| **B** | Skills + MCP cross-package consistency sweep | ~1.5-2d | pending |
+| **A** | CLI greenfield rewrite + gRPC/gasless | ~3-4d (took 6 sessions / ~14h) | ✅ **DONE 2026-05-26** (S.328-S.335; 8/8 mainnet smokes) |
+| **B** | Skills + MCP cross-package consistency sweep | ~1.5-2d | 🟡 next |
 | **C** | Binary rename `t2` alongside `t2000` | ~0.5d | pending |
 | **D** | Brand + repo health sweep (absorbs Phase 5 of `SPEC_AGENTIC_STACK`) | ~1d | pending |
 | **E** | Test + spec cleanup + RPC invariant verification | ~0.5d | pending |
@@ -98,24 +98,26 @@ The full design (file-by-file scope, verification gates, locked decisions, rejec
 | Phase | Tracker entry | Status |
 |---|---|---|
 | Planning | S.327 | ✅ done 2026-05-26 (this SPEC + 3 deferred follow-up stubs) |
-| A | S.328 (Day 1) | 🟡 in flight — Day 1 done 2026-05-26 (SDK keyManager v2 plain Bech32 + CLI greenfield scaffold: lib/ helpers, wallet/ group, init/export/receive/balance commands; +30 tests; full e2e smoke verified) |
-| B | pending | |
+| A | S.328-S.335 | ✅ **DONE 2026-05-26** — 6 sessions / ~14h / ~700 LoC net / 8/8 mainnet smokes / 0 regressions |
+| B | pending | next session |
 | C | pending | |
 | D | pending | |
 | E | pending | |
 | F | pending | |
 | G | pending — bumps `@t2000/{sdk,cli,mcp}@4.0.0`; engine 4.0.0 version-locked, no break | |
 
-### Phase A progress (per the plan's Day 1-6 breakdown)
+### Phase A progress (per the plan's Day 1-6 breakdown) — ALL DONE
 
-| Day | Scope | Status |
-|---|---|---|
-| 1 | CLI scaffold (`lib/{legacy-wallet-detect,config-store,with-agent,prompts}.ts`), wallet group (`commands/wallet/{index,address,balance}.ts`), top-level (`commands/{init,export,receive,balance}.ts`); SDK keyManager v2 plain Bech32 (drops AES); `T2000.create/init` no longer require pin; new error codes (`WALLET_LEGACY_AES`, `WALLET_CORRUPT`, `INVALID_KEY`). `program.ts` rewritten to register the new tree; old DeFi commands stay registered for back-compat (cut later in Phase A per plan). | ✅ done 2026-05-26 |
-| 2 | SDK gRPC/gasless rewrite — `wallet/send.ts` uses `SuiGrpcClient` + `0x2::balance::send_funds()`; `getSuiGrpcClient()` cached singleton; drop USDC default from `T2000.send()`; `OPERATION_ASSETS.send` → `['USDC', 'USDsui', 'SUI']`; audric audit (1-2 call sites passing no explicit asset + Enoki compat). | pending — next session |
-| 3 | New CLI `send` + `swap` + `pay` commands. Asset required on send. SuiNS + @audric handle resolution. Zero-SUI gasless smoke. | pending |
-| 4 | New CLI `services/` group (search + inspect) + `limit/` group (set/show/reset). | pending |
-| 5 | New CLI `mcp/` group + `skills/` group. Delete old commands (save/withdraw/borrow/repay/health/rates/positions/earnings/fund-status/earn/lock/serve/config/contacts/exportKey/importKey/swapQuote). | pending |
-| 6 | Integration tests, manual mainnet smokes, polish help text. | pending |
+| Day | Scope | S.# | Status |
+|---|---|---|---|
+| 1 | CLI scaffold (`lib/{legacy-wallet-detect,config-store,with-agent,prompts}.ts`), wallet group, top-level commands; SDK keyManager v2 plain Bech32 (drops AES). | S.328 | ✅ |
+| 2 | SDK gRPC/gasless rewrite — `wallet/send.ts` uses `SuiGrpcClient` + `0x2::balance::send_funds()`; `OPERATION_ASSETS.send` → `['USDC', 'USDsui', 'SUI']`. | S.329 | ✅ |
+| 3 | New CLI `send` + `swap` + `pay` commands. Asset required. Zero-SUI gasless. | S.330 | ✅ |
+| 4 | New CLI `services/` + `limit/` groups + opt-in spending caps + `--force` override. | S.331 | ✅ |
+| 5 | New CLI `mcp/` + `skills/` folder groups; bulk DELETE of 19 legacy commands + their tests; `history.ts` migrated to `withAgent`. | S.332 | ✅ |
+| 6 code | Integration smokes (+69 tests against `dist/index.js`); help-text polish; mainnet smoke runbook. | S.333 | ✅ |
+| 6 audit | 3 bug fixes: MCP entry bin reversion (`t2` → `t2000` — bin doesn't exist until Phase C); `T2000_RPC_URL` + `T2000_GRPC_URL` env vars wired; package.json description refreshed. | S.334 | ✅ |
+| 6 mainnet | **8 of 8 critical mainnet smokes PASSED on real Sui mainnet wallet** (zero-SUI gasless USDC + USDsui sends, Cetus swap, SUI standard-gas send, MPP pay end-to-end, limit enforcement with `--force` override). Production v3 wallet untouched throughout. | S.335 | ✅ |
 
 ---
 
