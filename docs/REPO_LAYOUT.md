@@ -12,6 +12,7 @@ t2000/
 ├── PRODUCT_FACTS.md, ARCHITECTURE.md       ← cross-repo SSOT + system architecture
 ├── SECURITY.md                              ← disclosure policy
 ├── apps/                                    ← deployable apps
+│   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
 │   ├── gateway/                             (MPP API gateway — mpp.t2000.ai)
 │   ├── server/                              (backend API)
 │   └── web/                                 (t2000.ai marketing site)
@@ -47,6 +48,7 @@ t2000/
 | Shipped SPEC | `spec/archive/<version>/SPEC_N_<name>.md` |
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
+| Public developer docs page | `apps/docs/<slug>.mdx` (Mintlify; deploys to `developers.t2000.ai`) |
 
 If a file would go at the repo root and it's not on the allowlist below, push it into one of the above subdirectories instead.
 

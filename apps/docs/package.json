@@ -1,0 +1,14 @@
+{
+  "name": "@t2000/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "developers.t2000.ai — Mintlify documentation site for the t2000 Agent Wallet stack (CLI / SDK / MCP / Engine).",
+  "scripts": {
+    "dev": "mintlify dev",
+    "broken-links": "mintlify broken-links",
+    "lint": "mintlify broken-links"
+  },
+  "devDependencies": {
+    "mintlify": "^4.0.0"
+  }
+}

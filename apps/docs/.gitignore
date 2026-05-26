@@ -1,0 +1,5 @@
+.mintlify
+.mintlify-cache
+node_modules
+*.log
+.DS_Store

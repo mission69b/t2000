@@ -1,0 +1,208 @@
+---
+title: "Agent Payments"
+description: "Pay any MPP-protected API in USDC. 40+ services, 88 endpoints, no signup, no API keys — gasless USDC over Sui."
+---
+
+**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.005 – $0.05` per LLM call. Pay `$1.00 – $1.50` per physical postcard.
+
+Two surfaces use it:
+
+- **`t2 pay <url>`** in the CLI — the human + agent surface for one-off paid requests.
+- **`t2000_pay` MCP tool** — the AI-client surface, same flow, exposed via MCP.
+
+Both auto-handle the HTTP 402 challenge → quote → USDC payment (gasless) → retry loop.
+
+## How it works
+
+```
+Client            Gateway (mpp.t2000.ai)         Upstream
+  │  ── POST /openai/v1/chat/completions ──→  │
+  │     (no Payment header)                    │
+  │  ←── HTTP 402 + payment challenge ──      │
+  │     (price, intent, recipient, expiry)    │
+  │                                            │
+  │  ── sign USDC tx + retry with Payment ─→  │
+  │     header                                 │
+  │                                       ──→  │  upstream call
+  │                                       ←──  │  response
+  │  ←── 200 + body ──                        │
+```
+
+USDC transfers go through `0x2::balance::send_funds` — **gasless** via the Sui foundation sponsor. Your agent never needs SUI to pay another agent in USDC.
+
+## Pay your first API in 30 seconds
+
+```bash
+# 1. Install + create a wallet (if you haven't)
+npm install -g @t2000/cli
+t2 init
+
+# 2. Fund the wallet with USDC (any amount; $1 covers ~100 LLM calls)
+t2 receive
+# (transfer USDC to the printed address from any Sui wallet)
+
+# 3. Make your first paid request
+t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
+  --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello, world!"}]}'
+```
+
+That's it. The MPP 402 challenge is handled automatically; payment broadcasts to Sui mainnet; the response comes back.
+
+## Hero examples
+
+<CardGroup cols={1}>
+  <Card title="Generate an image — $0.05" icon="image">
+
+  ```bash
+  t2 pay https://mpp.t2000.ai/openai/v1/images/generations \
+    --data '{
+      "prompt": "a serene mountain lake at dawn, photorealistic",
+      "size": "1024x1024"
+    }'
+  ```
+
+  Returns `{ data: [{ url: "https://...vercel-storage.com/..." }] }`. The gateway uploads each `gpt-image-1` result to Vercel Blob and rewrites the response to DALL-E shape — you get a permanent CDN URL.
+
+  </Card>
+
+  <Card title="Ask GPT-4o — $0.01" icon="message">
+
+  ```bash
+  t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
+    --data '{
+      "model": "gpt-4o",
+      "messages": [{"role":"user","content":"Summarize Sui consensus in 3 sentences."}],
+      "max_tokens": 200
+    }'
+  ```
+
+  Standard OpenAI Chat Completions response shape. Pass vision via `image_url` content blocks. For cheaper alternatives (Together AI, Mistral, DeepSeek, Groq) call `t2 services search "chat"`.
+
+  </Card>
+
+  <Card title="Transcribe audio — $0.01" icon="microphone">
+
+  ```bash
+  t2 pay https://mpp.t2000.ai/openai/v1/audio/transcriptions \
+    --data '{
+      "file": "https://example.com/podcast.mp3",
+      "language": "en"
+    }'
+  ```
+
+  Whisper transcription. Up to 25 MB / 30 min. Pass `response_format: "verbose_json"` for timestamps. For speaker diarization, browse other transcription providers via `t2 services search "transcription"`.
+
+  </Card>
+</CardGroup>
+
+## Services
+
+**40 services, 88 endpoints** payable in USDC. Discover via the `t2 services` command, the `t2000_services` MCP tool, or the live catalog URLs.
+
+### Discover
+
+```bash
+t2 services search "image"                       # substring search across name + description + endpoint
+t2 services inspect https://mpp.t2000.ai/openai  # full service detail + endpoints + prices
+```
+
+### Browse
+
+| Catalog | Format | URL |
+|---|---|---|
+| Service catalog (JSON) | JSON | [`GET https://mpp.t2000.ai/api/services`](https://mpp.t2000.ai/api/services) |
+| Agent-readable | `llms.txt` | [`mpp.t2000.ai/llms.txt`](https://mpp.t2000.ai/llms.txt) |
+| OpenAPI 3.1 spec | OpenAPI | [`GET https://mpp.t2000.ai/openapi.json`](https://mpp.t2000.ai/openapi.json) |
+| Web catalog | HTML | [`mpp.t2000.ai/services`](https://mpp.t2000.ai/services) |
+| Payment explorer | HTML | [`mpp.t2000.ai/explorer`](https://mpp.t2000.ai/explorer) |
+
+### Categories
+
+| Category | Count | Examples |
+|---|---|---|
+| AI Chat | 9 | OpenAI, Anthropic, DeepSeek, Mistral, Together AI, Groq, Cohere, Perplexity, xAI |
+| Embeddings | 6 | OpenAI text-embedding-3, Cohere, Voyage, Mistral, Jina, Together |
+| Image Generation | 9 | DALL-E 3, gpt-image-1, FAL Flux, Stability, Replicate, Midjourney, Imagen, Recraft, Ideogram |
+| Audio + TTS | 7 | Whisper, AssemblyAI, ElevenLabs TTS, OpenAI TTS, Hume, Cartesia, Inworld |
+| Web Search | 10 | Brave, Tavily, Exa, You.com, Serper, Perplexity Sonar, Bing, Kagi, SerpAPI, Linkup |
+| Web Scraping | 8 | Firecrawl, Jina Reader, Browserbase, ScrapingBee, Apify, ZenRows, Spider, Crawlbase |
+| Translation | 3 | DeepL, Google Translate, Lilt |
+| Data | 9 | Maps, Weather, Crypto prices, Stock prices, Currency conversion, Flights, Sports, News, Sui RPC |
+| Email + Push | 3 | Resend, Loops, Pushcut |
+| Physical Mail | 3 | Lob postcards, Lob letters, PostGrid |
+| Commerce | 3 | Stripe, Square, NMI |
+| Intelligence | 4 | Wolfram, Perplexity Research, Riza code exec, BlockVision |
+| Tools | 3 | URL screenshot, PDF render, Cron job |
+
+## Pricing
+
+Each service sets its own per-endpoint price. The gateway applies a thin overlay (covered by service margins). Pay per call — no subscription, no commit:
+
+- LLM calls: `$0.005 – $0.05`
+- Image generation: `$0.01 – $0.20`
+- Audio transcription: `$0.01 – $0.05`
+- Physical postcard / letter: `$1.00 – $1.50`
+- Code execution / scraping / search: `$0.005 – $0.10`
+
+Always pass `--max-price <USD>` (default `$1.00`) so a misconfigured endpoint can't drain the wallet.
+
+## CLI reference
+
+| Command | What it does |
+|---|---|
+| `t2 services search <query>` | Substring search across all 40 services + 88 endpoints. |
+| `t2 services inspect <url>` | Show service info + endpoint list + pricing. Works on both service base URLs and specific endpoint URLs. |
+| `t2 pay <url>` | Pay for an MPP-protected API. `--data`, `--method`, `--header <K:V>` (repeatable), `--max-price <USD>`, `--estimate` (parse 402 without paying). |
+| `t2 history` | List recent payments with Suiscan digests + amount + service. |
+
+## MCP
+
+```ts
+// AI client calls (via @t2000/mcp):
+{ "name": "t2000_services", "arguments": { "query": "image" } }
+{ "name": "t2000_pay",      "arguments": { "url": "...", "data": "...", "maxPriceUsd": 0.10 } }
+```
+
+See [Agent Wallet → MCP Integration](/agent-wallet#mcp-integration) for full client setup.
+
+## Programmatic
+
+```ts
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+
+const result = await agent.pay({
+  url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+  method: 'POST',
+  body: JSON.stringify({ model: 'gpt-4o-mini', messages: [/* ... */] }),
+  maxPrice: 0.10,
+});
+
+// result.responseBody, result.txDigest, result.amountUsdc
+```
+
+Full SDK reference: [Agent SDK](/agent-sdk).
+
+## Architecture
+
+- **Gateway** — Next.js 16 on Vercel at [`mpp.t2000.ai`](https://mpp.t2000.ai). Proxies upstream APIs behind MPP 402 challenges.
+- **Protocol** — MPP (Machine Payments Protocol), implemented via [`mppx`](https://www.npmjs.com/package/mppx) + [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp).
+- **Network** — Sui mainnet. USDC = `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`.
+- **Gasless** — USDC transfers via `0x2::balance::send_funds` (Sui foundation sponsor).
+- **Logging** — Prisma + NeonDB. Every payment is logged with its tx digest; browse at [`mpp.t2000.ai/explorer`](https://mpp.t2000.ai/explorer).
+
+## Why MPP
+
+**No signup.** Every service on the gateway is pay-per-call. Your agent discovers an endpoint, pays for it, gets the response — no account creation, no API key management, no subscription overhead.
+
+**No vendor lock-in.** MPP is an open protocol — any service can implement the 402 challenge spec at [`suimpp.dev`](https://suimpp.dev). The gateway is one host; you can run your own.
+
+**Sui-native.** USDC settlement, gasless transfer, finality in ~400ms. The whole flow — pay + retry — usually completes in under 2 seconds.
+
+## Links
+
+- [`mpp.t2000.ai`](https://mpp.t2000.ai) — Live gateway
+- [`suimpp.dev`](https://suimpp.dev) — Protocol spec + reference implementations
+- [`@suimpp/mpp` on npm](https://www.npmjs.com/package/@suimpp/mpp) — Protocol SDK
+- [`mppx` on npm](https://www.npmjs.com/package/mppx) — Client library

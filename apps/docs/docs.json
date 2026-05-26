@@ -1,0 +1,61 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "t2000",
+  "description": "Agentic Finance Infrastructure on Sui — SDK, CLI, MCP, and Engine for AI agents that move money.",
+  "colors": {
+    "primary": "#00D395",
+    "light": "#00D395",
+    "dark": "#0a0a0a"
+  },
+  "navigation": {
+    "pages": [
+      "index",
+      "agent-wallet",
+      "agent-payments",
+      "agent-sdk",
+      "agent-engine"
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/mission69b/t2000"
+      },
+      {
+        "label": "audric.ai",
+        "href": "https://audric.ai"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/mission69b/t2000",
+      "x": "https://x.com/t2000_ai"
+    },
+    "links": [
+      {
+        "header": "Packages",
+        "items": [
+          { "label": "@t2000/cli", "href": "https://www.npmjs.com/package/@t2000/cli" },
+          { "label": "@t2000/sdk", "href": "https://www.npmjs.com/package/@t2000/sdk" },
+          { "label": "@t2000/mcp", "href": "https://www.npmjs.com/package/@t2000/mcp" },
+          { "label": "@t2000/engine", "href": "https://www.npmjs.com/package/@t2000/engine" }
+        ]
+      },
+      {
+        "header": "Resources",
+        "items": [
+          { "label": "GitHub", "href": "https://github.com/mission69b/t2000" },
+          { "label": "Skills", "href": "https://t2000.ai/.well-known/agent-skills/index.json" },
+          { "label": "MPP Gateway", "href": "https://mpp.t2000.ai" },
+          { "label": "Audric (consumer)", "href": "https://audric.ai" }
+        ]
+      }
+    ]
+  },
+  "seo": {
+    "indexing": "all"
+  }
+}
