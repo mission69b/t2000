@@ -16,6 +16,15 @@ describe('toPromptName', () => {
   it('handles names without t2000- prefix gracefully', () => {
     expect(toPromptName('custom-skill')).toBe('skill-custom-skill');
   });
+
+  it('keeps mpp- prefix as-is (S.326 — MPP recipes share the skill- namespace)', () => {
+    // mpp-* skills only strip the t2000- prefix (which isn't present), so the
+    // mpp- prefix is preserved → `skill-mpp-image-gen` (unambiguous + scannable).
+    expect(toPromptName('mpp-image-gen')).toBe('skill-mpp-image-gen');
+    expect(toPromptName('mpp-gpt4o')).toBe('skill-mpp-gpt4o');
+    expect(toPromptName('mpp-transcription')).toBe('skill-mpp-transcription');
+    expect(toPromptName('mpp-index')).toBe('skill-mpp-index');
+  });
 });
 
 describe('registerSkillPrompts', () => {

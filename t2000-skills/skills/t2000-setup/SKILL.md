@@ -98,7 +98,7 @@ After install, the user must **restart the AI client** for it to pick up the new
 
 ### Step 6 — Verify
 
-In the same terminal:
+**6a — CLI smoke** (in the same terminal):
 ```bash
 t2000 balance
 ```
@@ -109,12 +109,24 @@ Should print:
 - Gas reserve (SUI)
 - Total
 
-In the AI client (after restart):
+**6b — AI client tool smoke** (after restart):
 ```
 What's my t2000 balance?
 ```
 
 Should invoke the `t2000_balance` MCP tool and return the same numbers.
+
+**6c — AI client prompt smoke** (this is what most users miss):
+
+The MCP server doesn't just expose tools — it ALSO exposes 35 prompts. Type `/` in the AI client's chat input to open the prompt picker. You should see:
+
+- 17 core wallet `skill-` entries (`skill-balance`, `skill-save`, `skill-borrow`, etc.) — canonical t2000 skills as MCP prompts.
+- 4 MPP recipe `skill-mpp-*` entries (`skill-mpp-image-gen`, `skill-mpp-gpt4o`, `skill-mpp-transcription`, `skill-mpp-index`) — deep dives for paying paid APIs via `t2000 pay`.
+- 14 workflow prompts (`financial-report`, `optimize-yield`, `sweep`, `risk-check`, etc.) — multi-skill orchestrations.
+
+Run `/skill-balance` (or just type and accept the autocomplete). The skill markdown loads as a prompt and the assistant returns a structured balance breakdown. Try `/financial-report` for the full-account view. Try `/skill-mpp-image-gen` to see how to generate an image via `t2000 pay`.
+
+**Why this matters:** users often paste the one-prompt-install command above, see the t2000 tools work, but don't realize they also have 21 skill prompts + 14 workflow prompts available. Surface this so they discover the agentic surface, not just the tool calls.
 
 ## What "ready" looks like
 

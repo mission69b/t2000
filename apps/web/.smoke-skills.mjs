@@ -26,7 +26,9 @@ try {
 const slugs = await readdir(SKILLS_DIR);
 console.log(`✓ Found ${slugs.length} skill slugs`);
 
-const expectedNew = ['t2000-setup', 't2000-swap', 't2000-stake', 't2000-yields'];
+// [S.323 — 2026-05-25] `t2000-stake` removed (full Volo cut across SDK + CLI + MCP).
+// vSUI remains as a tradeable token via Cetus swaps; there's no more mint/redeem.
+const expectedNew = ['t2000-setup', 't2000-swap', 't2000-yields'];
 for (const slug of expectedNew) {
   if (!slugs.includes(slug)) {
     console.error(`✗ Missing new skill: ${slug}`);
@@ -48,6 +50,25 @@ for (const slug of expectedRules) {
     process.exit(1);
   }
   console.log(`  ${slug}: Rules block ✓`);
+}
+
+// [S.326 — 2026-05-26] Phase 4 MPP recipes. mpp-* skills follow the same
+// frontmatter convention as t2000-* skills but their `name:` field starts
+// with `mpp-`, not `t2000-`. Verify the 4 recipes are present + parseable.
+const expectedMpp = ['mpp-image-gen', 'mpp-gpt4o', 'mpp-transcription', 'mpp-index'];
+for (const slug of expectedMpp) {
+  if (!slugs.includes(slug)) {
+    console.error(`✗ Missing MPP recipe: ${slug}`);
+    process.exit(1);
+  }
+  const content = await readFile(join(SKILLS_DIR, slug, 'SKILL.md'), 'utf-8');
+  const hasFrontmatter = content.startsWith('---\n');
+  const hasName = /^name:\s*mpp-/m.test(content);
+  if (!hasFrontmatter || !hasName) {
+    console.error(`✗ ${slug} frontmatter invalid (frontmatter=${hasFrontmatter}, name=${hasName})`);
+    process.exit(1);
+  }
+  console.log(`  ${slug}: ${content.length} chars, frontmatter=${hasFrontmatter}, name=${hasName}`);
 }
 
 console.log('\nAll checks passed.');

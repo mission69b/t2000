@@ -5,11 +5,11 @@ description: >-
   Continue, or any MCP-compatible client. Use when asked to set up MCP,
   paste an MCP server config, install @t2000/mcp, or troubleshoot why
   the MCP server "doesn't do anything" when run from a terminal.
-  Provides 27 tools and 14 prompts over stdio.
+  Provides 27 tools and 35 prompts (14 workflow + 21 skill) over stdio.
 license: MIT
 metadata:
   author: t2000
-  version: "1.3"
+  version: "1.5"
   requires: a Sui keypair (created via `npx @t2000/cli init` or any wallet)
 ---
 
@@ -17,9 +17,10 @@ metadata:
 
 ## Purpose
 Expose a t2000 Agentic Wallet (Sui wallet + DeFi positions) to any
-MCP-compatible AI client over stdio. **27 tools, 14 prompts**, safeguard
-enforced. No global install required — the recommended path uses `npx`
-so the AI client always pulls the latest published version.
+MCP-compatible AI client over stdio. **27 tools, 35 prompts** (14 workflow
+prompts + 21 skill prompts auto-derived from `t2000-skills/skills/`),
+safeguard enforced. No global install required — the recommended path
+uses `npx` so the AI client always pulls the latest published version.
 
 ## ⚠️ The most common confusion
 
@@ -106,7 +107,7 @@ You should see a JSON response containing `"serverInfo":{"name":"t2000"...}`
 and exit. If you see that, the server is healthy and ready to be launched
 by a client.
 
-## Available Tools (29)
+## Available Tools (27)
 
 ### Read-only (15)
 | Tool | Description |
@@ -151,7 +152,12 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (14)
+## Prompts (31 total)
+
+The MCP server exposes TWO classes of prompts. Both appear in the AI client's `/` prompt picker after restart.
+
+### Workflow prompts (14) — multi-skill orchestrations
+
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |
@@ -168,6 +174,43 @@ All support `dryRun: true` for previews without signing.
 | `onboarding` | New user setup — deposit, first save, explore features |
 | `emergency` | Lock account, assess damage, recovery guidance |
 | `optimize-all` | One-shot full optimization — sweep, compare APYs, claim rewards |
+
+### Skill prompts (21) — auto-derived from `t2000-skills/skills/`
+
+Every `SKILL.md` in `t2000-skills/skills/` is registered at server startup as a prompt named `skill-<short-name>` (the `t2000-` prefix is stripped; other prefixes like `mpp-` are preserved for disambiguation). Invoking the prompt loads the full skill markdown as the user message — equivalent to the agent reading the skill from `t2000.ai/skills/<slug>`.
+
+#### Core wallet skills (17)
+
+| Prompt | Maps to |
+|--------|---------|
+| `skill-setup` | `t2000-setup` — one-prompt install entry point |
+| `skill-check-balance` | `t2000-check-balance` |
+| `skill-send` | `t2000-send` |
+| `skill-receive` | `t2000-receive` |
+| `skill-save` | `t2000-save` |
+| `skill-withdraw` | `t2000-withdraw` |
+| `skill-borrow` | `t2000-borrow` |
+| `skill-repay` | `t2000-repay` |
+| `skill-swap` | `t2000-swap` |
+| `skill-yields` | `t2000-yields` |
+| `skill-pay` | `t2000-pay` |
+| `skill-contacts` | `t2000-contacts` |
+| `skill-safeguards` | `t2000-safeguards` |
+| `skill-account-report` | `t2000-account-report` |
+| `skill-rebalance` | `t2000-rebalance` |
+| `skill-mcp` | `t2000-mcp` (this skill) |
+| `skill-engine` | `t2000-engine` |
+
+#### MPP recipes (4)
+
+| Prompt | Maps to |
+|--------|---------|
+| `skill-mpp-image-gen` | `mpp-image-gen` — OpenAI gpt-image-1 ($0.05) |
+| `skill-mpp-gpt4o` | `mpp-gpt4o` — OpenAI chat completions ($0.01) |
+| `skill-mpp-transcription` | `mpp-transcription` — OpenAI Whisper ($0.01) |
+| `skill-mpp-index` | `mpp-index` — intent-grouped discovery for all 40 MPP services |
+
+This is the canonical way to surface t2000 skills inside an MCP-aware AI client — no separate skill install needed. Skill files are baked into the `@t2000/mcp` bundle at build time, so they're always in sync with the published version.
 
 ## Troubleshooting
 

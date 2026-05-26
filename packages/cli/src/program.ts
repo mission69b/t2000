@@ -32,6 +32,7 @@ import { registerClaimRewards } from './commands/claimRewards.js';
 import { registerSwap } from './commands/swap.js';
 import { registerSwapQuote } from './commands/swapQuote.js';
 import { registerReceive } from './commands/receive.js';
+import { registerSkills } from './commands/skills.js';
 export function createProgram(): Command {
   const program = new Command();
 
@@ -56,7 +57,8 @@ Examples:
   $ t2000 swap 100 USDC SUI       Swap 100 USDC for SUI
   $ t2000 borrow 200              Borrow $200 against savings
   $ t2000 pay openai ...          Pay for an API via MPP gateway
-  $ t2000 mcp install             Connect Claude / Cursor / Windsurf`);
+  $ t2000 mcp install             Connect Claude / Cursor / Windsurf (all skills come along as MCP prompts)
+  $ t2000 skills install          Install skills as local SKILL.md files (alternative to MCP)`);
 
   registerInit(program);
   registerSend(program);
@@ -86,6 +88,7 @@ Examples:
   registerSwap(program);
   registerSwapQuote(program);
   registerReceive(program);
+  registerSkills(program);
 
   return program;
 }
