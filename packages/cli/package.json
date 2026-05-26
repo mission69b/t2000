@@ -1,7 +1,7 @@
 {
   "name": "@t2000/cli",
   "version": "3.3.0",
-  "description": "Agentic Wallet for AI agents on Sui — guided setup, MCP integration, send, save, borrow, swap, scriptable from any shell.",
+  "description": "Agent Wallet for AI agents on Sui — guided setup, MCP integration, gasless USDC + USDsui sends, swap, MPP pay, scriptable from any shell.",
   "type": "module",
   "bin": {
     "t2000": "./dist/index.js"

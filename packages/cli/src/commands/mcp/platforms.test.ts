@@ -12,12 +12,13 @@ import {
 } from './platforms.js';
 
 describe('MCP_SERVER_ENTRY', () => {
-  it('uses the new t2 binary, not the legacy t2000', () => {
-    expect(MCP_SERVER_ENTRY.command).toBe('t2');
+  it('uses the t2000 bin (the only exposed binary until Phase C)', () => {
+    // Pre-Phase-C: t2 isn't on PATH; AI client must launch via t2000.
+    expect(MCP_SERVER_ENTRY.command).toBe('t2000');
     expect(MCP_SERVER_ENTRY.args).toEqual(['mcp', 'start']);
   });
 
-  it('keeps the t2000 key for back-compat (existing installs)', () => {
+  it('uses the t2000 key (canonical install identifier)', () => {
     expect(MCP_SERVER_KEY).toBe('t2000');
   });
 });
@@ -51,8 +52,8 @@ describe('withMcpEntry', () => {
     expect((result.mcpServers as Record<string, unknown>).t2000).toEqual(MCP_SERVER_ENTRY);
   });
 
-  it('is idempotent — overwrites with the canonical entry', () => {
-    const stale = { mcpServers: { t2000: { command: 't2000', args: ['mcp'] } } };
+  it('is idempotent — overwrites a stale (Day 5 t2-bin) entry', () => {
+    const stale = { mcpServers: { t2000: { command: 't2', args: ['mcp', 'start'] } } };
     const result = withMcpEntry(stale);
     expect((result.mcpServers as Record<string, unknown>).t2000).toEqual(MCP_SERVER_ENTRY);
   });
@@ -78,7 +79,7 @@ describe('withoutMcpEntry', () => {
     const input = {
       mcpServers: {
         other: { command: 'foo' },
-        t2000: { command: 't2', args: ['mcp', 'start'] },
+        t2000: { command: 't2000', args: ['mcp', 'start'] },
       },
     };
     const result = withoutMcpEntry(input);
@@ -88,7 +89,7 @@ describe('withoutMcpEntry', () => {
 
   it('preserves unknown top-level keys', () => {
     const result = withoutMcpEntry({
-      mcpServers: { t2000: { command: 't2' } },
+      mcpServers: { t2000: { command: 't2000' } },
       customField: 'preserved',
     });
     expect(result.customField).toBe('preserved');

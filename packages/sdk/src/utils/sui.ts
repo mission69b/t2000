@@ -4,23 +4,58 @@ import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { DEFAULT_GRPC_URL, DEFAULT_RPC_URL } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
-let cachedClient: SuiJsonRpcClient | null = null;
+/**
+ * Resolve the effective JSON-RPC URL: explicit arg > env var > default.
+ * `T2000_RPC_URL` is an OPTIONAL override per the Greenfield SPEC's env
+ * contract — no required vars, so we read inline (allowed by
+ * `env-validation-gate.mdc` carve-out for packages with zero required
+ * env vars).
+ */
+function resolveRpcUrl(rpcUrl?: string): string {
+  if (rpcUrl) return rpcUrl;
+  const envUrl = process.env.T2000_RPC_URL?.trim();
+  if (envUrl) return envUrl;
+  return DEFAULT_RPC_URL;
+}
+
+/**
+ * Same shape as `resolveRpcUrl` for the gRPC endpoint.
+ */
+function resolveGrpcUrl(grpcUrl?: string): string {
+  if (grpcUrl) return grpcUrl;
+  const envUrl = process.env.T2000_GRPC_URL?.trim();
+  if (envUrl) return envUrl;
+  return DEFAULT_GRPC_URL;
+}
+
+/**
+ * JSON-RPC client cache, keyed by URL. The earlier impl cached
+ * unconditionally and ignored URL changes after the first call —
+ * brittle for testnet smokes and custom-RPC test setups.
+ */
+const rpcClientCache = new Map<string, SuiJsonRpcClient>();
 
 export function getSuiClient(rpcUrl?: string): SuiJsonRpcClient {
-  const url = rpcUrl ?? DEFAULT_RPC_URL;
-  if (cachedClient) return cachedClient;
-  cachedClient = new SuiJsonRpcClient({ url, network: 'mainnet' });
-  return cachedClient;
+  const url = resolveRpcUrl(rpcUrl);
+  const cached = rpcClientCache.get(url);
+  if (cached) return cached;
+  const client = new SuiJsonRpcClient({ url, network: 'mainnet' });
+  rpcClientCache.set(url, client);
+  return client;
 }
 
 export function createSuiClient(network: 'mainnet' | 'testnet' = 'mainnet'): SuiJsonRpcClient {
   return new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(network), network });
 }
 
-let cachedGrpcClient: SuiGrpcClient | null = null;
+/**
+ * gRPC client cache, keyed by URL. Same rationale as the JSON-RPC cache:
+ * different URLs must produce different clients.
+ */
+const grpcClientCache = new Map<string, SuiGrpcClient>();
 
 /**
- * Cached `SuiGrpcClient` singleton for gasless stablecoin transfer builds.
+ * Cached `SuiGrpcClient` for gasless stablecoin transfer builds.
  *
  * [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
  *
@@ -37,14 +72,18 @@ let cachedGrpcClient: SuiGrpcClient | null = null;
  * explicitly support a "build via gRPC, execute via JSON-RPC" hybrid:
  * https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers
  *
- * Override the endpoint with the `T2000_GRPC_URL` env var (consumed at the
- * caller's discretion, not here — keeps this module pure).
+ * Override the endpoint with the `T2000_GRPC_URL` env var or the
+ * `grpcUrl` arg. Cache is keyed by URL so multiple endpoints can
+ * co-exist (e.g., the rare testnet smoke + production usage from the
+ * same process).
  */
 export function getSuiGrpcClient(grpcUrl?: string): SuiGrpcClient {
-  if (cachedGrpcClient) return cachedGrpcClient;
-  const baseUrl = grpcUrl ?? DEFAULT_GRPC_URL;
-  cachedGrpcClient = new SuiGrpcClient({ baseUrl, network: 'mainnet' });
-  return cachedGrpcClient;
+  const baseUrl = resolveGrpcUrl(grpcUrl);
+  const cached = grpcClientCache.get(baseUrl);
+  if (cached) return cached;
+  const client = new SuiGrpcClient({ baseUrl, network: 'mainnet' });
+  grpcClientCache.set(baseUrl, client);
+  return client;
 }
 
 export function validateAddress(address: string): string {

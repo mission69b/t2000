@@ -27,12 +27,18 @@ export interface McpPlatform {
 
 /**
  * The MCP server entry that gets written into each platform's
- * `mcpServers.<key>` map. Uses `t2` (the new canonical binary) — the
- * legacy `t2000` alias still resolves to the same binary post-Phase C,
- * but new installs record the modern name.
+ * `mcpServers.<key>` map. Uses `t2000` — the only bin currently
+ * exposed by `packages/cli/package.json`. Phase C will rename the
+ * primary bin to `t2` and keep `t2000` as a permanent alias; at that
+ * point new installs MAY switch to `command: 't2'` but existing
+ * installs continue working because `t2000` stays valid.
+ *
+ * Day 6 finding: shipped with `command: 't2'` during the Day 5 refactor,
+ * which broke any user who ran `t2 mcp install` since `t2` isn't on
+ * PATH until Phase C lands. Day 6 audit caught it; reverted here.
  */
 export const MCP_SERVER_ENTRY = {
-  command: 't2',
+  command: 't2000',
   args: ['mcp', 'start'],
 } as const;
 

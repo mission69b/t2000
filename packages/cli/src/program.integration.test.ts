@@ -168,12 +168,16 @@ describeOrSkip('CLI integration — init + wallet + export round-trip', () => {
     expect(parsed.address).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
-  it('t2 balance is the same address as wallet address (alias)', () => {
-    // Balance hits the Sui RPC; only assert wiring (exits cleanly OR
-    // the network error is non-fatal).
-    const r = runCli(['--json', 'wallet', 'address'], { home });
-    const balRun = runCli(['--json', 'wallet', 'address'], { home });
-    expect(r.stdout).toBe(balRun.stdout);
+  it('t2 wallet address is deterministic (same call twice -> same output)', () => {
+    // Cheap stability check; the network-touching `t2 balance` is
+    // covered by the runbook (it hits Sui RPC). This guard catches any
+    // regression where address derivation becomes non-deterministic
+    // (e.g., adding a timestamp to the JSON payload by accident).
+    const a = runCli(['--json', 'wallet', 'address'], { home });
+    const b = runCli(['--json', 'wallet', 'address'], { home });
+    expect(a.code).toBe(0);
+    expect(b.code).toBe(0);
+    expect(a.stdout).toBe(b.stdout);
   });
 
   it('t2 export --yes prints a suiprivkey1 secret', () => {
@@ -318,12 +322,14 @@ describeOrSkip('CLI integration — mcp install + uninstall round-trip', () => {
     }
   });
 
-  it('written config has command:t2 + args:[mcp, start]', () => {
+  it('written config has command:t2000 + args:[mcp, start]', () => {
+    // Pre-Phase-C: bin is `t2000`, not `t2`. The MCP entry must use the
+    // bin name that's actually on PATH after `npm install -g @t2000/cli`.
     const cursorConfig = join(home, '.cursor', 'mcp.json');
     expect(existsSync(cursorConfig)).toBe(true);
     const raw = require('node:fs').readFileSync(cursorConfig, 'utf-8');
     const parsed = JSON.parse(raw);
-    expect(parsed.mcpServers.t2000.command).toBe('t2');
+    expect(parsed.mcpServers.t2000.command).toBe('t2000');
     expect(parsed.mcpServers.t2000.args).toEqual(['mcp', 'start']);
   });
 
@@ -344,7 +350,7 @@ describeOrSkip('CLI integration — mcp install + uninstall round-trip', () => {
       JSON.stringify({
         mcpServers: {
           siblingServer: { command: 'other', args: ['foo'] },
-          t2000: { command: 't2', args: ['mcp', 'start'] },
+          t2000: { command: 't2000', args: ['mcp', 'start'] },
         },
       }),
     );
