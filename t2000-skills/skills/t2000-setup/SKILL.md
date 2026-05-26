@@ -174,7 +174,7 @@ After verify succeeds, surface a short menu of natural next moves:
 - "Generate a payment request" → `t2000-receive`
 - "See available paid services" → `t2000-services`
 - "Connect more AI clients" → `t2000-mcp`
-- "See what else t2 can do" → run `t2 --help` or browse https://t2000.ai/skills
+- "See what else t2 can do" → run `t2 --help` or browse https://developers.t2000.ai/agent-wallet#skills
 
 ## Troubleshooting
 

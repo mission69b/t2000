@@ -11,6 +11,9 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # patched via patches/@naviprotocol__lending@*.patch — bumps require
+      # manual patch re-application; Dependabot cannot auto-reconcile.
+      - dependency-name: "@naviprotocol/lending"
     groups:
       minor-and-patch:
         update-types:

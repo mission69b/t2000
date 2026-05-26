@@ -136,7 +136,7 @@ bold "    t2 send 5 USDC <addr>   ${Dim}# gasless USDC send${Color_Off}"
 bold "    t2 mcp install          ${Dim}# wire Claude / Cursor / Windsurf${Color_Off}"
 echo ""
 info "  Developer docs:  https://developers.t2000.ai"
-info "  Skills:          https://t2000.ai/skills"
+info "  Skills:          https://developers.t2000.ai/agent-wallet#skills"
 echo ""
 
 }
