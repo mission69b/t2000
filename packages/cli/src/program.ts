@@ -1,7 +1,7 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1+3 — 2026-05-26]
+// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1+3+4 — 2026-05-26]
 // Greenfield program.ts — registers the new Agent Wallet command tree.
 // Old DeFi commands (save/withdraw/borrow/repay/etc) are still
-// registered for back-compat; they get removed in Day 3-5 of Phase A
+// registered for back-compat; they get removed in Day 5 of Phase A
 // as new replacements land. The intent is to NOT break `t2000 save 10`
 // mid-pivot — old paths keep working until cut intentionally.
 //
@@ -9,6 +9,11 @@
 // v4 surface (asset required on send, swap folds swap-quote into
 // `--quote`, pay adds `--estimate`). Dropped the legacy `swap-quote`
 // registration — the file itself stays until Day 5's bulk delete pass.
+//
+// Day 4 (2026-05-26): added `services/` + `limit/` groups. The
+// `limit/` group plugs into the Day 3 send/swap/pay commands as
+// opt-in spending caps with --force override. `services/` queries
+// the mpp.t2000.ai catalog for discovery + inspection.
 
 import { Command } from 'commander';
 import { createRequire } from 'node:module';
@@ -23,6 +28,10 @@ import { registerExport } from './commands/export.js';
 import { registerReceive } from './commands/receive.js';
 import { registerBalance } from './commands/balance.js';
 import { registerWallet } from './commands/wallet/index.js';
+
+// v4 greenfield — Day 4 deliverables (services + limit groups)
+import { registerServices } from './commands/services/index.js';
+import { registerLimit } from './commands/limit/index.js';
 
 // v3 legacy (kept for back-compat through Phase A — deleted by Day 5/6)
 import { registerSend } from './commands/send.js';
@@ -73,6 +82,8 @@ Examples:
   $ t2 send 5 USDC alice.sui           Send 5 USDC (gasless; --asset required)
   $ t2 swap 100 USDC SUI               Swap 100 USDC for SUI via Cetus
   $ t2 pay <mpp_url>                   Pay an MPP / x402 service
+  $ t2 services search "image"         Discover MPP services in the gateway catalog
+  $ t2 limit set --daily 100           Opt in to a $100 daily-send spending cap
   $ t2 mcp install                     Connect Claude / Cursor / Codex / Windsurf
   $ t2 skills install                  Install skills as local SKILL.md files`);
 
@@ -82,8 +93,10 @@ Examples:
   registerReceive(program);
   registerBalance(program);
   registerWallet(program);
+  registerServices(program);
+  registerLimit(program);
 
-  // === v3 back-compat (gets pruned in Day 3-5 of Phase A) ===
+  // === v3 back-compat (gets pruned in Day 5 of Phase A) ===
   registerSend(program);
   registerHistory(program);
   registerImport(program);

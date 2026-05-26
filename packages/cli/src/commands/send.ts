@@ -33,6 +33,7 @@ import {
   explorerUrl,
 } from '../output.js';
 import { withAgent } from '../lib/with-agent.js';
+import { assertWithinLimits, approxUsdValue } from './limit/enforce.js';
 
 const ACCEPTED_ASSETS = ['USDC', 'USDsui', 'SUI'] as const;
 type AcceptedAsset = (typeof ACCEPTED_ASSETS)[number];
@@ -118,6 +119,7 @@ export function registerSend(program: Command) {
     )
     .description('Send USDC, USDsui, or SUI. USDC + USDsui are gasless (no SUI required).')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--force', 'Override opt-in spending limits (see `t2 limit`)')
     .addHelpText(
       'after',
       `
@@ -127,9 +129,15 @@ Examples:
   $ t2 send 0.1 SUI mission69b@audric  Send 0.1 SUI (gas required) to an @audric handle
 `,
     )
-    .action(async (amount: string, args: string[], opts: { key?: string }) => {
+    .action(async (amount: string, args: string[], opts: { key?: string; force?: boolean }) => {
       try {
         const { amount: parsedAmount, asset, recipient } = parseSendArgs([amount, ...args]);
+
+        const usdValue = approxUsdValue(asset, parsedAmount);
+        if (usdValue !== null) {
+          await assertWithinLimits({ operation: 'send', amountUsd: usdValue, force: opts.force });
+        }
+
         const agent = await withAgent({ keyPath: opts.key });
 
         const result = await agent.send({

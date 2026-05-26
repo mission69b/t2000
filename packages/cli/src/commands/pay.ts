@@ -29,6 +29,7 @@ import {
   handleError,
 } from '../output.js';
 import { withAgent } from '../lib/with-agent.js';
+import { assertWithinLimits } from './limit/enforce.js';
 
 interface PayOptions {
   key?: string;
@@ -37,6 +38,7 @@ interface PayOptions {
   header: Record<string, string>;
   maxPrice: string;
   estimate?: boolean;
+  force?: boolean;
 }
 
 export function registerPay(program: Command) {
@@ -52,6 +54,7 @@ export function registerPay(program: Command) {
       '--estimate',
       'Preview the price + service info (no signing, no payment). Exits 0 if the service responds with a 402 challenge.',
     )
+    .option('--force', 'Override opt-in spending limits (see `t2 limit`)')
     .addHelpText(
       'after',
       `
@@ -73,6 +76,13 @@ Examples:
           return;
         }
 
+        const maxPrice = parseFloat(opts.maxPrice);
+        if (Number.isNaN(maxPrice) || maxPrice <= 0) {
+          throw new Error(`Invalid --max-price: "${opts.maxPrice}". Must be a positive number.`);
+        }
+
+        await assertWithinLimits({ operation: 'pay', amountUsd: maxPrice, force: opts.force });
+
         const agent = await withAgent({ keyPath: opts.key });
 
         const startTime = Date.now();
@@ -81,11 +91,6 @@ Examples:
         if (!isJsonMode()) {
           printBlank();
           printInfo(`→ ${method} ${url}`);
-        }
-
-        const maxPrice = parseFloat(opts.maxPrice);
-        if (Number.isNaN(maxPrice) || maxPrice <= 0) {
-          throw new Error(`Invalid --max-price: "${opts.maxPrice}". Must be a positive number.`);
         }
 
         const result = await agent.pay({

@@ -28,6 +28,7 @@ import {
   explorerUrl,
 } from '../output.js';
 import { withAgent } from '../lib/with-agent.js';
+import { assertWithinLimits, approxUsdValue } from './limit/enforce.js';
 
 /**
  * Pure parser for the v4 `t2 swap` positional args. v4 is strictly
@@ -62,6 +63,7 @@ export function registerSwap(program: Command) {
     .option('--quote', 'Preview the swap (price, route, impact) without executing')
     .option('--slippage <pct>', 'Max slippage percentage (default: 1)', '1')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--force', 'Override opt-in spending limits (see `t2 limit`)')
     .addHelpText(
       'after',
       `
@@ -77,10 +79,22 @@ Examples:
         amountStr: string,
         from: string,
         to: string,
-        opts: { key?: string; slippage?: string; quote?: boolean },
+        opts: { key?: string; slippage?: string; quote?: boolean; force?: boolean },
       ) => {
         try {
           const parsed = parseSwapArgs(amountStr, from, to);
+
+          if (!opts.quote) {
+            const usdValue = approxUsdValue(parsed.from, parsed.amount);
+            if (usdValue !== null) {
+              await assertWithinLimits({
+                operation: 'swap',
+                amountUsd: usdValue,
+                force: opts.force,
+              });
+            }
+          }
+
           const agent = await withAgent({ keyPath: opts.key });
 
           if (opts.quote) {
