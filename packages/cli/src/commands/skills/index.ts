@@ -11,7 +11,7 @@ import { registerSkillsUninstall } from './uninstall.js';
 export function registerSkills(program: Command) {
   const group = program
     .command('skills')
-    .description('Install t2000 skills as local SKILL.md files (alt to `t2 mcp install`)')
+    .description('Install agent SKILL.md playbooks locally (alternative to `t2 mcp install`)')
     .addHelpText(
       'after',
       `
