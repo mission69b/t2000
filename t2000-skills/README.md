@@ -1,150 +1,160 @@
 # t2000 Agent Skills
 
-Agent Skills for the [t2000](https://t2000.ai) Agentic Wallet on Sui. Install once and your AI agent gains the ability to check balances, send payments, earn yield, borrow, swap, and pay for MPP API services — all on Sui.
+Ship USDC apps on Sui faster with **t2000 Skills** — best-practice guidance for the t2000 Agent Wallet (sponsored sends, swaps, MPP API payments) — plus the **t2000 MCP server** for live wallet tools in your AI client.
 
-## How to install (one section, three paths)
+[![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
+[![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
+[![docs](https://img.shields.io/badge/docs-t2000.ai-00D395)](https://t2000.ai)
+[![consumer](https://img.shields.io/badge/consumer%20app-audric.ai-7c3aed)](https://audric.ai)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Pick the path that matches how you want your AI client to consume the skills. **Most users want Path 1.**
+## Installation
 
-### Path 1 — One-prompt install (recommended)
+Skills are markdown instruction files your agent reads on demand. Pick the install path that matches your AI client.
 
-Paste this into Claude Desktop, Cursor, Windsurf, Cline, or any LLM with shell access:
-
-```
-Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup
-instructions to set up my Agentic Wallet.
-```
-
-What happens:
-1. The LLM fetches the `t2000-setup` skill and walks you through CLI install → wallet init → safeguards → `t2000 mcp install`.
-2. After `t2000 mcp install`, the `@t2000/mcp` stdio server is wired into your AI client.
-3. **All 21 skills appear as `/skill-balance`, `/skill-save`, `/skill-borrow`, etc. slash commands inside your AI client** — alongside the 14 workflow prompts (`/financial-report`, `/optimize-yield`, etc.) and the 27 `t2000_*` MCP tools.
-
-**No separate skill install needed.** This is the canonical path because it gives you tools (which the LLM can call) AND skill prompts (which you can invoke explicitly) in one shot.
-
-### Path 2 — Local skill files (if you want SKILL.md files in your workspace)
-
-Use this if your AI client reads skills from a project-local directory (e.g., a team repo where skills are checked into git) instead of going through MCP.
+### Cursor
 
 ```bash
-# Single command, all 21 skills, agentskills.io standard layout (v3.3.0+)
-npx @t2000/cli skills install                  # writes to ./.agents/skills/<slug>/SKILL.md
-npx @t2000/cli skills install --global         # writes to ~/.agents/skills/<slug>/SKILL.md
-npx @t2000/cli skills install --target=cursor  # writes to ./.cursor/rules/t2000-<slug>.mdc
-npx @t2000/cli skills install t2000-save       # install just one skill
-npx @t2000/cli skills install mpp-image-gen    # install just one MPP recipe
-npx @t2000/cli skills list                     # list available skills + versions
-npx @t2000/cli skills uninstall                # remove every skill from the target
+npx @t2000/cli skills install --target=cursor
 ```
 
-The CLI fetches from [`https://t2000.ai/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json) at install time, so you always get the latest published skills regardless of CLI version. Network is required at install time; for offline install, use Path 3 (git clone) and copy from `t2000-skills/skills/<slug>/SKILL.md` directly.
+Writes one `.mdc` file per skill into `./.cursor/rules/`. Add `--global` to install into `~/.cursor/rules/` instead.
 
-Or via the agentskills.io npm flow (works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, and any client supporting the [Agent Skills standard](https://agentskills.io)):
+### Claude Code
+
+```bash
+npx @t2000/cli skills install --target=claude-code
+```
+
+Writes `<slug>/SKILL.md` folders into `./.claude/skills/`. Add `--global` for `~/.claude/skills/`.
+
+### Codex / Windsurf / any agentskills.io client
+
+```bash
+npx @t2000/cli skills install                # default --target=agents
+```
+
+Writes `<slug>/SKILL.md` folders into `./.agents/skills/` — the [agentskills.io](https://agentskills.io) standard layout that Codex, Windsurf, Cline, Continue, and the Vercel Skills CLI all read.
+
+### Vercel Skills CLI (any client)
 
 ```bash
 npx skills add mission69b/t2000-skills
 ```
 
-### Path 3 — Manual (last resort)
+The CLI always fetches the latest from [`t2000.ai/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json), so you get current skills regardless of the package version you have installed. For offline installs, `git clone https://github.com/mission69b/t2000` and copy the desired `t2000-skills/skills/<slug>/SKILL.md` files by hand.
 
-Clone the repo if you need raw access to every SKILL.md file:
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+| [`t2000-setup`](https://t2000.ai/skills/t2000-setup) | End-to-end Agent Wallet bootstrap: `t2 init`, optional `t2 limit set`, and `t2 mcp install`. Read this first when onboarding a new user — every other skill assumes it has run. |
+| [`t2000-check-balance`](https://t2000.ai/skills/t2000-check-balance) | Inspect wallet balances (USDC / USDsui / SUI) before any write. Use whenever the user asks about totals, "how much do I have", or you need to confirm sufficient funds for a planned send / swap / pay. |
+| [`t2000-send`](https://t2000.ai/skills/t2000-send) | Send USDC, USDsui, or SUI to a Sui address, SuiNS name, or saved contact. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
+| [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Share the wallet address, render an ANSI QR in terminal, or emit a Payment Kit `sui:pay?…` URI via MCP. Use for "share my address", "create a payment link", or "QR code". |
+| [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
+| [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover MPP services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
+| [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an MPP-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
+| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 9-tool surface, and the most common "MCP doesn't load" failure modes. |
+
+Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
+
+## t2000 MCP Server
+
+Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools* — 9 in total: 5 read (`balance`, `address`, `receive`, `history`, `services`), 3 write (`send`, `swap`, `pay`), 1 settings (`limit`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
 
 ```bash
-git clone https://github.com/mission69b/t2000-skills.git
+npx @t2000/cli mcp install
 ```
 
-Or copy individual `skills/<name>/SKILL.md` files into your agent's context — but prefer Path 1 or 2 because they keep all 21 skills together and stay in sync as we ship updates.
+Auto-configures the t2000 MCP server in every supported AI client found on your machine. Idempotent — re-running reports "already configured".
 
-## Browse the Skills Manifest
+| Client | Setup | Config path |
+|--------|-------|-------------|
+| **Claude Desktop** | `npx @t2000/cli mcp install` | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **Cursor** | `npx @t2000/cli mcp install` | `~/.cursor/mcp.json` |
+| **Windsurf** | `npx @t2000/cli mcp install` | `~/.codeium/windsurf/mcp_config.json` |
+| **Codex / Cline / Continue / any MCP client** | Manual JSON (below) | client-specific |
 
-The manifest is served at [`https://t2000.ai/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json) (Circle-compatible Agent Skills index). Each individual skill is served at `https://t2000.ai/skills/<slug>` as plain markdown — `curl` the URL or open in a browser.
+Manual config — paste into your client's MCP config file:
 
-## Verifying the install worked
+```json
+{
+  "mcpServers": {
+    "t2000": {
+      "command": "t2000",
+      "args": ["mcp", "start"]
+    }
+  }
+}
+```
 
-After Path 1 (recommended), restart your AI client, then:
+The `t2000` command must be on `PATH` — install globally with `npm install -g @t2000/cli` (the CLI ships with the MCP entry point).
 
-1. Type `/` in the chat to open the prompt picker. You should see entries starting with `skill-` (one per skill) and the 14 workflow prompts (`financial-report`, `optimize-yield`, etc.).
-2. Run the `t2000_balance` tool by asking "what's my t2000 balance?" — the AI calls the MCP tool and returns wallet + savings + total.
-3. Invoke a skill explicitly: type `/skill-balance` (or `/skill-save`, etc.) — the skill markdown loads as a prompt and primes the assistant for that operation.
-
-If you don't see any `skill-*` or `t2000_*` entries, the MCP server didn't load — see the `t2000-mcp` skill's Troubleshooting section.
-
-## Available Skills
-
-### Core wallet skills (17)
-
-| Skill | Trigger | MCP prompt name |
-|-------|---------|----------------|
-| `t2000-setup` | "set up t2000", "install Agentic Wallet", "connect to Claude / Cursor" | `skill-setup` |
-| `t2000-check-balance` | "check balance", "how much USDC do I have" | `skill-check-balance` |
-| `t2000-send` | "send 10 USDC to...", "pay X", "send to a contact" | `skill-send` |
-| `t2000-receive` | "share my address", "create payment link", "QR code" | `skill-receive` |
-| `t2000-save` | "deposit to savings", "earn yield", "swap and save" | `skill-save` |
-| `t2000-withdraw` | "withdraw from savings", "close my position", "emergency withdraw" | `skill-withdraw` |
-| `t2000-borrow` | "borrow 40 USDC", "take out a loan", "borrow against savings" | `skill-borrow` |
-| `t2000-repay` | "repay my loan", "pay back..." | `skill-repay` |
-| `t2000-swap` | "swap 100 USDC for SUI", "trade", "convert tokens" | `skill-swap` |
-| `t2000-yields` | "best yield?", "compare APYs", "where to park USDC" | `skill-yields` |
-| `t2000-pay` | "call that paid API", "pay for MPP service" (generic reference) | `skill-pay` |
-| `t2000-contacts` | "add contact", "send to alice", "list contacts" | `skill-contacts` |
-| `t2000-safeguards` | "set spending limit", "lock agent", "show config" | `skill-safeguards` |
-| `t2000-account-report` | "full report", "account summary", "show me everything" | `skill-account-report` |
-| `t2000-rebalance` | "rebalance my portfolio", "adjust my allocation" | `skill-rebalance` |
-| `t2000-mcp` | "install MCP server", "connect to Claude" | `skill-mcp` |
-| `t2000-engine` | "use the engine programmatically", "build an agent" | `skill-engine` |
-
-### MPP recipes (4) — paid API services via `t2000 pay`
-
-The MPP gateway at [mpp.t2000.ai](https://mpp.t2000.ai) exposes 40 paid API services (OpenAI, Anthropic, Brave, Firecrawl, ElevenLabs, Lob, …) over the Machine Payments Protocol. Each call pays $0.005 – $1.50 in USDC. These recipes are deep dives on the most-used services + an index for the rest.
-
-| Skill | Trigger | MCP prompt name |
-|-------|---------|----------------|
-| `mpp-image-gen` | "generate an image", "make a thumbnail", "draw / paint / render…" | `skill-mpp-image-gen` |
-| `mpp-gpt4o` | "ask GPT-4o", "summarize", "extract structured data", "classify" | `skill-mpp-gpt4o` |
-| `mpp-transcription` | "transcribe this audio / podcast / meeting" | `skill-mpp-transcription` |
-| `mpp-index` | "what MPP services are available?", "which API can do X?" | `skill-mpp-index` |
+Full setup walkthrough + troubleshooting: see [`t2000-mcp/SKILL.md`](skills/t2000-mcp/SKILL.md).
 
 ## Prerequisites
 
 ```bash
-npx @t2000/cli init
+# 1. Install the CLI
+npm install -g @t2000/cli
+
+# 2. Create your Agent Wallet (no PIN, plain Bech32 file, 0o600 perms)
+t2 init
+
+# 3. (Optional) opt in to spending limits
+t2 limit set --per-tx 50 --daily 100
 ```
 
-The t2000 CLI must be installed and an Agentic Wallet initialized before any skill can execute.
-See [t2000.ai](https://t2000.ai) for full documentation.
+The wallet must exist at `~/.t2000/wallet.key` (or `--key <path>`) before any skill or MCP tool can sign transactions. See [`t2000-setup/SKILL.md`](skills/t2000-setup/SKILL.md) for the full walkthrough, including the `--import` flow for restoring a Bech32 secret on a new machine.
 
-## Skill Format
+## How Skills Work
 
-Each skill follows the [Agent Skills standard](https://agentskills.io):
+Skills are markdown files with YAML frontmatter. Your agent reads the relevant `SKILL.md` while planning and generating responses; you stay in control of what actually executes.
 
-```yaml
----
-name: t2000-check-balance        # unique skill identifier
-description: >-                   # when to use this skill (agent reads this)
-  Check the t2000 Agentic Wallet balance on Sui...
-license: MIT
-metadata:
-  author: t2000
-  version: "1.2"
-  requires: t2000 CLI (npx @t2000/cli init)
----
+- **Decision frameworks**: USDC vs USDsui vs SUI on `t2 send`, gasless vs gas-required transactions, `--quote` first vs direct `t2 swap`, MPP discover → inspect → pay.
+- **Correct patterns**: explicit `--asset` on `t2 send`, `suiprivkey1…` import via `t2 init --import`, `0x2::balance::send_funds` for sponsored USDC, `t2 limit show` before any large write.
+- **Common mistakes**: `WALLET_CORRUPT` recovery, swaps not being gasless, sending the wrong stable, missing SUI for gas on non-USDC sends.
 
-# Skill body with commands, output examples, and error handling
+Skills + MCP are complementary: skills give the agent context that doesn't change often (workflows, patterns, gotchas). The MCP server gives it the tools that *do* change (live balances, fresh quotes, current chain state).
+
+## Updating
+
+Skills are local files. To get the latest versions:
+
+```bash
+# Via @t2000/cli — re-runs the install (overwrites in place)
+t2 skills install --target=cursor          # or --target=claude-code / --target=agents
+
+# Via the Vercel Skills CLI
+npx skills update
 ```
 
-The `description` field is critical — it tells the AI agent *when* to activate this skill.
-Write it as a list of natural language triggers the agent should match against.
+The CLI fetches the manifest at install time, so a single re-run picks up every skill update we've shipped since you last installed. If a skill was deleted upstream, run `t2 skills uninstall` first to clear the orphan from `./.agents/skills/` (or the equivalent target dir).
 
-## What is t2000?
+## FAQ
 
-t2000 is the infrastructure behind [Audric](https://audric.ai) — checking (send/receive),
-savings (earn yield via NAVI), credit (borrow against deposits),
-and MCP-first integration in one CLI command. USDC in, USDC out.
+**Do skills write code or execute transactions for me?**
+No. Skills are instructions that steer the agent's outputs. To actually sign a send / swap / pay you need the t2000 MCP server (tools) or the `t2` CLI (manual confirm). Every write still taps to confirm — the wallet never moves money on its own.
 
-- **SDK**: `npm install @t2000/sdk`
-- **CLI**: `npx @t2000/cli init`
-- **Docs**: [t2000.ai](https://t2000.ai)
-- **GitHub**: [github.com/mission69b/t2000](https://github.com/mission69b/t2000)
+**Do I need the MCP server?**
+You can use skills alone — the agent will produce correct `t2` commands for you to run by hand. The MCP server is what lets the agent actually call those commands itself, without you copy-pasting. Most users want both.
+
+**Where does my wallet live?**
+`~/.t2000/wallet.key` — a plain JSON file with a `suiprivkey1…` Bech32 secret and `0o600` perms. No PIN, no AES, no `.session` file. Use `t2 export` to print the secret, `t2 init --import` to restore on another machine.
+
+**What's the difference between t2000 and Audric?**
+t2000 is the infra brand: `@t2000/sdk`, `@t2000/cli`, `@t2000/mcp`, `@t2000/engine`. Audric is the consumer product built on top — see [audric.ai](https://audric.ai). This repo is the canonical home for skills that ship with the infra surface.
+
+## Resources
+
+- [t2000.ai](https://t2000.ai) — docs + skill markdown endpoint
+- [audric.ai](https://audric.ai) — consumer product
+- [agentskills.io](https://agentskills.io) — the Agent Skills standard
+- [npm @t2000/cli](https://www.npmjs.com/package/@t2000/cli)
+- [npm @t2000/mcp](https://www.npmjs.com/package/@t2000/mcp)
+- [npm @t2000/sdk](https://www.npmjs.com/package/@t2000/sdk)
+- [GitHub mission69b/t2000](https://github.com/mission69b/t2000)
 
 ## License
 
