@@ -1,6 +1,7 @@
 # SPEC — Agentic Stack (One Cohesive Release)
 
-> **Status:** ACTIVE — Phase 1 ✅ shipped (S.321), Phase 2+3 ✅ shipped (S.322); Phase 4+5 pending
+> **Status:** ✅ EFFECTIVELY CLOSED 2026-05-26 — Phase 1 (S.321), Phase 2+3 (S.322), Phase 4 (S.326) shipped. **Phase 5 ABSORBED into `SPEC_AGENT_WALLET_GREENFIELD.md`** (S.327 planning, 2026-05-26).
+> **Successor SPEC:** [`spec/active/shipping/SPEC_AGENT_WALLET_GREENFIELD.md`](SPEC_AGENT_WALLET_GREENFIELD.md) — the Agent Wallet Greenfield Pivot. Founder review of P1-P4 ship + audit of Circle's `agents.circle.com` + `circlefin/skills` raised: "the CLI is doing TOO MUCH... rip all defi capabilities out... use Agent (not Agentic)... we have safeguards i think remove them also to simplify the onboarding." Phase 5's marketing+README sweep got folded into the larger pivot (which adds: CLI greenfield rewrite, PIN removal, gasless stablecoin send via gRPC, USDC+USDsui restriction, brand restructure to 4 sub-products under AFI, `developers.t2000.ai` via Mintlify). Promote this SPEC to `spec/archive/v07f/` once the pivot ships.
 > **Started:** 2026-05-25
 > **Trigger:** Founder request 2026-05-25 — *"Ideally what im trying to do is create one cohesive stack for agents."* Inspired by Circle's pattern: `curl -sL https://agents.circle.com/skills/setup.md` + open skills repo at `circlefin/skills`.
 > **Scope:** 5 phases. Sequential, ~3-4 days total. No gates.
@@ -96,8 +97,8 @@ Built the Circle-equivalent: a curl-able setup markdown that the LLM reads + exe
 - `t2000-skills/skills/t2000-setup/SKILL.md` — the entry-point skill walking install → init → fund → safeguards → MCP install → verify.
 
 **Verification (build-time):**
-- All 18 skill markdown files traced into both function bundles (`.next/.../route.js.nft.json`).
-- Prerendered manifest body (`apps/web/.next/server/app/.well-known/agent-skills/index.json.body`) contains 18 entries with per-skill versions extracted correctly.
+- All 17 skill markdown files traced into both function bundles (`.next/.../route.js.nft.json`). (Was 18 at initial Phase 2/3 ship; S.323 deleted `t2000-stake` and now reflects 17.)
+- Prerendered manifest body (`apps/web/.next/server/app/.well-known/agent-skills/index.json.body`) contains 17 entries with per-skill versions extracted correctly.
 - Smoke script at `apps/web/.smoke-skills.mjs` validates the SKILLS_DIR path resolution + new skills exist + Rules blocks landed.
 
 **One-prompt install (canonical):**
@@ -117,13 +118,13 @@ Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup ins
 
 ---
 
-## Phase 5 — Marketing + README Sweep (~½d)
+## Phase 5 — Marketing + README Sweep (~½d) — ABSORBED into `SPEC_AGENT_WALLET_GREENFIELD.md` (S.327)
 
-Wrap-up. Surface the new install patterns across consumer touchpoints. **NPM-QUICKSTART folded in.**
+**Originally:** Wrap-up. Surface the new install patterns across consumer touchpoints. **NPM-QUICKSTART folded in.** Files: root README, 4 package READMEs, `apps/web/app/page.tsx`, `apps/web/app/docs/page.tsx`, `install.sh` next-step hint. Verifiable goal: Any README path → working wallet in ≤5 minutes.
 
-**Files:** root README, 4 package READMEs, `apps/web/app/page.tsx`, `apps/web/app/docs/page.tsx`, `install.sh` next-step hint.
+**Why absorbed:** The successor SPEC's Phase D (Brand + Repo Health Sweep) does this work plus more — rewrites all 5 READMEs against the new 4-sub-product brand (`Agent Wallet` / `Agent Payments` / `Agent SDK` / `Agent Engine` under AFI umbrella), simplifies root README to ≤100 lines, drops PIN-related copy, updates install.sh for the new `t2 init` flow, and feeds the same content into Phase F's `developers.t2000.ai` Mintlify build. Running a Phase 5 sweep first would just be wasted work that the pivot's Phase D would rewrite hours later.
 
-**Verifiable goal:** Any README path → working wallet in ≤5 minutes.
+**The Phase 4 / S.326 content (3 MPP hero recipes + index + gateway README rewrite) still ships.** Phase B of the pivot deletes those 4 `mpp-*` skills per founder Path A decision (2026-05-26) and folds the advanced patterns into `t2000-pay` "Advanced patterns" section + relies on marketing site cards for discovery. The gateway README rewrite stands as-is (and gets a `suimpp.dev` mention added in Phase D).
 
 ---
 
@@ -162,8 +163,10 @@ flowchart LR
 |---|---|---|
 | 1 | S.321 | ✅ shipped 2026-05-25 (`@t2000/*@3.2.0`) |
 | 2+3 | S.322 (bundled) | ✅ shipped 2026-05-25 (skills are static, no npm release) |
-| 4 | S.323 | pending |
-| 5 | S.324 | pending |
+| P1-P3 audit | S.324 | ✅ shipped 2026-05-25 (4 bugs found + fixed pre-P4) |
+| P3 followup | S.325 | ✅ shipped 2026-05-26 (`t2000 skills install` CLI + docs sweep) |
+| 4 | S.326 | ✅ shipped 2026-05-26 (4 MPP recipes + gateway README rewrite; skills 17 → 21) |
+| 5 | S.327 | ABSORBED 2026-05-26 — folded into `SPEC_AGENT_WALLET_GREENFIELD.md` Phase D (Brand + Repo Health Sweep) |
 
 ---
 
