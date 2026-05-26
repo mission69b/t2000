@@ -29,30 +29,35 @@
    │  │                                                                  │
    │  │  Agent core · Safeguards · Protocol registry                     │
    │  │  Adapters: NAVI                                                   │
-   │  └────────┬──────────────┬──────────────┬───────────────────────────┘
-   │           │              │              │
-   ▼           ▼              ▼              ▼
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐
-│ Web App     │  │ t2000 Server│  │ MPP Gateway │  │   Sui Blockchain     │
-│ (Vercel)    │  │ (ECS)       │  │ (Vercel)    │  │                      │
-│             │  │             │  │             │  │  USDC · NAVI ·       │
-│ zkLogin     │  │ Fee ledger  │  │ 40 services │  │  t2000 Treasury      │
-│ Enoki gas   │  │ Indexer     │  │ 88 endpoints│  │  @suimpp/mpp         │
-│ Agent loop  │  │ Daily-intel │  │ Explorer    │  │  @suimpp/mpp      │
-│ Anthropic   │  │   cron      │  │ Spec + Docs │  │  (payment method)    │
-└──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
-       │                │                │
-       ▼                ▼                ▼
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│ NeonDB      │  │  NeonDB     │  │ Upstream    │
-│ (web app)   │  │  (server)   │  │ APIs        │
-│             │  │             │  │             │
-│ Users       │  │ Agents      │  │ OpenAI      │
-│ Preferences │  │ Transactions│  │ Anthropic   │
-│ Sessions    │  │ Fee events  │  │ Brave       │
-│             │  │             │  │ + 37 more   │
-└─────────────┘  └─────────────┘  └─────────────┘
+   │  └────────┬─────────────────────────────────────────┘
+   │           │
+   ▼           ▼
+┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐
+│ Audric      │  │ MPP Gateway │  │   Sui Blockchain     │
+│ (Vercel)    │  │ (Vercel)    │  │                      │
+│             │  │             │  │  USDC · NAVI ·       │
+│ zkLogin     │  │ 40 services │  │  t2000 Treasury      │
+│ Enoki gas   │  │ 88 endpoints│  │  @suimpp/mpp         │
+│ Agent loop  │  │ Explorer    │  │  (payment method)    │
+│ Anthropic   │  │ Spec + Docs │  │                      │
+└──────┬──────┘  └──────┬──────┘  └──────────────────────┘
+       │                │
+       ▼                ▼
+┌─────────────┐  ┌─────────────┐
+│ NeonDB      │  │ Upstream    │
+│ (Audric)    │  │ APIs        │
+│             │  │             │
+│ Users       │  │ OpenAI      │
+│ Preferences │  │ Anthropic   │
+│ Sessions    │  │ Perplexity  │
+│ Fee history │  │ + others    │
+└─────────────┘  └─────────────┘
 ```
+
+> Pre-v0.7d, an `apps/server` (AWS ECS Fargate) on `api.t2000.ai` hosted a
+> fee-ledger indexer + daily-intel cron. v0.7d Block C migrated both to Audric
+> v2 on Vercel (Vercel cron + Audric's NeonDB). The `apps/server` directory
+> and its ECS deployment are retired.
 
 ---
 
@@ -76,10 +81,9 @@
 | App            | Hosting         | Domain       | What it does                                                                                                                                                                             |
 | -------------- | --------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Audric         | Vercel          | audric.ai    | Consumer product — Passport (zkLogin), Intelligence (engine chat), Finance (NAVI save/borrow + Cetus swap + charts), Pay (USDC transfers + receive), Store (coming soon) (separate repo) |
-| `apps/web`     | Vercel          | t2000.ai     | Infrastructure landing page + docs                                                                                                                                                       |
-| `apps/gateway` | Vercel          | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs                                                                                                                            |
-| `apps/server`  | AWS ECS Fargate | api.t2000.ai | Fee ledger + indexer + Audric daily-intel cron orchestration                                                                                                                             |
-| Indexer        | AWS ECS Fargate | —            | Checkpoint indexer, yield snapshotter                                                                                                                                                    |
+| `apps/web`     | Vercel          | t2000.ai             | Infrastructure landing page + skills routes                                                                                                                                              |
+| `apps/docs`    | Mintlify        | developers.t2000.ai  | Developer documentation                                                                                                                                                                  |
+| `apps/gateway` | Vercel          | mpp.t2000.ai         | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs                                                                                                                            |
 
 
 ---
@@ -636,78 +640,28 @@ This flow does NOT go through `executeTx`. It's a host-layer concern, documented
 
 ---
 
-## Indexer
-
-Checkpoint-based indexer running on ECS Fargate, polling Sui every 2 seconds.
-
-```
-Sui Checkpoints → Indexer → NeonDB
-                     │
-                     ├── parseTreasuryFees → ProtocolFeeLedger
-                     │   (detect USDC inflows to T2000_OVERLAY_FEE_WALLET,
-                     │    classify operation from moveCall targets)
-                     ├── Parse transfers for known agents → Transaction
-                     ├── Update agent.lastSeen
-                     └── Yield snapshotter (hourly) → YieldSnapshot
-```
-
-### What it tracks
-
-
-| Data             | Model               | Fields                                                                        |
-| ---------------- | ------------------- | ----------------------------------------------------------------------------- |
-| On-chain actions | `Transaction`       | agent, action (save/withdraw/borrow/pay), protocol, asset, amount, gas method |
-| Protocol fees    | `ProtocolFeeLedger` | agent, operation, feeAmount (raw), feeAsset, feeRate (derived), tx digest    |
-| Yield snapshots  | `YieldSnapshot`     | agent, supplied USD, yield earned, APY                                        |
-| Agent metadata   | `Agent`             | address, name, last seen                                                      |
-
-
-### Known-agents filter
-
-The indexer only tracks addresses that have shown up in monitored on-chain activity (a NAVI deposit, a payment-link claim, etc.) — it is no longer fed by a sponsor endpoint. Random Sui addresses are ignored. This means:
-
-- Only opted-in agents are tracked
-- No scanning of arbitrary wallets
-- Privacy by design
-
-### Action classification
-
-The indexer uses SDK adapter descriptors to classify transactions:
-
-- Move call targets → map to protocol (NAVI)
-- Balance changes → infer action type (save, withdraw, etc.) AND detect USDC inflows to the treasury wallet
-- Events → secondary signal
-
----
-
 ## Protocol Fees (wallet-direct architecture)
 
 **Fees are an Audric (consumer) concern, not a t2000 (infra) concern.** As of `@t2000/sdk@1.1.0` (2026-04-30), no Move treasury contract is involved — fees flow inline within the consumer's PTB:
 
 ```
-Audric prepare/route.ts                                       Indexer (every checkpoint)
-  │                                                                  │
-  ├── splitCoins(paymentCoin, feeRaw)  [1]                            │
-  ├── transferObjects([feeCoin], T2000_OVERLAY_FEE_WALLET)  [2]       │
-  ├── (continue with NAVI deposit / borrow / Cetus swap)              │
-  └── tx submitted via Enoki sponsorship                              │
-                                                ↓                     │
-                                                │                     │
-                                                └── on-chain confirmed → parseTreasuryFees(tx, T2000_OVERLAY_FEE_WALLET):
-                                                                              detect USDC → treasury wallet via balanceChanges
-                                                                              classify operation from moveCall targets
-                                                                              upsert ProtocolFeeLedger row
-                                                                                  (agent, operation, feeAmount, feeAsset, feeRate, txDigest)
+Audric prepare/route.ts
+  │
+  ├── splitCoins(paymentCoin, feeRaw)  [1]
+  ├── transferObjects([feeCoin], T2000_OVERLAY_FEE_WALLET)  [2]
+  ├── (continue with NAVI deposit / borrow / Cetus swap)
+  └── tx submitted via Enoki sponsorship
+                ↓
+                on-chain — USDC transferred to T2000_OVERLAY_FEE_WALLET
+                           in the same PTB as the operation
 ```
 
 **Properties:**
 - **Atomic with the operation.** `splitCoins + transferObjects` are PTB ops; if anything in the PTB reverts, the fee transfer reverts too.
 - **No SDK fee logic.** `@t2000/sdk` (and therefore the CLI) is fee-free by design. Audric is the only fee owner; Audric's `prepare/route.ts` ALWAYS adds `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and ALWAYS passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. Structural inclusion (can't be forgotten because it IS the code).
-- **Wallet IS the live ledger.** `client.getBalance({ owner: treasuryWallet })` is "what's in the treasury right now." Stats API (`apps/web/app/api/stats/route.ts`) uses RPC for live balance.
-- **DB is the historical log.** Indexer-fed `ProtocolFeeLedger` is the canonical "total fees ever collected" — survives admin withdrawals from the wallet. Stats API uses Prisma for historical totals + by-operation breakdowns.
-- **Single bridge, no HTTP coupling.** The indexer is the only writer to `ProtocolFeeLedger`. No Audric → server fee call.
+- **Wallet IS the live ledger.** `client.getBalance({ owner: treasuryWallet })` reads "what's in the treasury right now." The marketing stats API (`apps/web/app/api/stats/route.ts`) uses live Sui RPC for the treasury + gateway balances. Historical aggregates (total fees collected across all time, including amounts already withdrawn) live in Audric's NeonDB, populated by Audric's Vercel cron — see the audric repo. (Pre-v0.7d, an `apps/server` ECS indexer wrote a `ProtocolFeeLedger` table here; that responsibility moved to Audric in Block C.)
 
-**Fee rates** (derived from operation type at index time):
+**Fee rates:**
 
 | Operation | Rate (bps) | Rate (decimal) | Source |
 |-----------|------------|----------------|--------|
@@ -1123,9 +1077,8 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 | What             | Where                                      | Purpose                                       |
 | ---------------- | ------------------------------------------ | --------------------------------------------- |
 | Page views       | Vercel Analytics (t2000.ai + mpp.t2000.ai) | Standard web analytics, no wallet data        |
-| Agent addresses  | Server DB (agents table)                   | Indexer-discovered agents only                |
-| On-chain actions | Indexer → Transaction table                | Dashboard stats (save/withdraw/borrow counts) |
-| Protocol fees    | ProtocolFeeLedger                          | Revenue tracking                              |
+| Gateway payments | NeonDB (gateway-owned)                     | MPP payment logs for billing + analytics      |
+| Protocol fees    | NeonDB (Audric-owned)                      | Revenue tracking, fed by Audric's Vercel cron |
 
 
 ### What is NOT tracked
@@ -1134,15 +1087,13 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 - **CLI**: zero telemetry — purely local
 - **Private keys**: never leave the user's machine
 - **Public stats API**: only aggregates — no individual addresses or tx digests
-- **Non-opted-in addresses**: invisible to the indexer
 
 ### Public stats API (`/api/stats`)
 
 Returns only aggregated numbers:
 
-- Total agents, 24h/7d counts (no addresses)
-- Transaction counts by action/protocol (no addresses)
-- Treasury and gateway balances
+- Treasury + gateway wallet balances (live, via Sui RPC)
+- Static marketing snapshot (agents registered, txs processed, fees collected)
 
 ---
 
@@ -1151,18 +1102,16 @@ Returns only aggregated numbers:
 
 | Component              | Hosting           | Notes                                      |
 | ---------------------- | ----------------- | ------------------------------------------ |
-| Web App (audric.ai)    | Vercel            | Next.js, zkLogin + Enoki, @t2000/engine    |
+| Audric (audric.ai)     | Vercel            | Next.js, zkLogin + Enoki, @t2000/engine    |
 | Web (t2000.ai)         | Vercel            | Next.js                                    |
+| Docs (developers.t2000.ai) | Mintlify      | Developer documentation                    |
 | Gateway (mpp.t2000.ai) | Vercel            | Next.js, payment logging, explorer         |
 | Ecosystem (suimpp.dev) | Vercel            | Next.js, server registry, payment explorer |
-| Server (api.t2000.ai)  | AWS ECS Fargate   | Hono, long-running                         |
-| Indexer                | AWS ECS Fargate   | Checkpoint poller, always-on               |
-| Database (web app)     | NeonDB (Postgres) | Users, preferences, contacts               |
-| Database (server)      | NeonDB (Postgres) | Agents, transactions, fee ledger           |
+| Database (Audric)      | NeonDB (Postgres) | Users, preferences, sessions, fee history  |
 | Database (gateway)     | NeonDB (Postgres) | MPP payment logs                           |
 | Database (suimpp.dev)  | NeonDB (Postgres) | Servers, payments, endpoints               |
 | DNS                    | Cloudflare        | —                                          |
-| CI/CD                  | GitHub Actions    | Lint, typecheck, test, publish, deploy     |
+| CI/CD                  | GitHub Actions    | Lint, typecheck, test, publish             |
 
 
 ### Deployment pipeline
@@ -1172,13 +1121,7 @@ Push to main
   │
   ├── CI: lint + typecheck + test (all packages)
   │
-  ├── Deploy Server (if apps/server/** changed)
-  │   → Docker build → ECR → ECS service update
-  │
-  ├── Deploy Indexer (if indexer/** changed)
-  │   → Docker build → ECR → ECS service update
-  │
-  └── Web + Gateway auto-deploy via Vercel
+  └── Web + Gateway + Docs auto-deploy via Vercel / Mintlify
 ```
 
 ### Publish pipeline (on tag `v*`)

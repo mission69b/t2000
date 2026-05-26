@@ -112,7 +112,7 @@ Runs **before** the LLM round-trip when the engine pre-screens a tool call. Fast
 2. **Forward `feeHooks`** — every nested save / borrow / send inside the compound must invoke the matching hook from `ctx.feeHooks?.<single_op_name>` BEFORE the SDK call that consumes the coin. The hook's contract is `({ tx, coin, input }) => void`; call it with the about-to-be-consumed coin handle and the operation amount.
 3. **Forward `allowedAddresses` extensions** — if the compound introduces a new top-level `transferObjects` recipient (e.g. dust-reward fallback), the recipient must be added to the `allowedAddresses` array that's passed to Enoki. Don't rely on the single-op tools' lists.
 4. **Forward `attemptId`** — the compound write yields ONE `pending_action` with ONE `attemptId`. The host's resume route still keys on `attemptId` for the entire compound — don't generate per-leg IDs.
-5. **Update the indexer classifier** — compound txs contain N matching moveCall targets. The indexer's `classifyFromMoveCallTargets` does first-match classification by default; add a compound-detection path BEFORE the per-target loop so `ProtocolFeeLedger` attributes the compound's revenue to a dedicated operation tag (`harvest`, not `claim` or `save`). See `apps/server/src/indexer/eventParser.ts`.
+5. **Update the indexer classifier** — compound txs contain N matching moveCall targets. The indexer that writes the historical fee ledger now lives in audric/v2 (Vercel cron); its `classifyFromMoveCallTargets` does first-match classification by default. Add a compound-detection path BEFORE the per-target loop so the fee ledger attributes the compound's revenue to a dedicated operation tag (`harvest`, not `claim` or `save`). The classifier was retired from `t2000/apps/server` in v0.7d Block C; coordinate the change in the audric repo.
 6. **Test the fee forwarding** — every compound tool's SDK test must assert that omitting `overlayFee` / `feeHooks` results in zero fee transfers (CLI / direct SDK path stays free), AND that providing them produces the expected fee splits. See `packages/sdk/src/protocols/navi-harvest.test.ts` for the canonical pattern.
 7. **Plan a per-leg post-write refresh** — `POST_WRITE_REFRESH_MAP` in audric's `engine-factory.ts` should list every read tool the compound's individual legs would normally trigger. A `harvest_rewards` write should refresh `balance_check` (claim) + `savings_info` (deposit) + `health_check` (deposit changes HF).
 
@@ -138,7 +138,7 @@ await addSaveToTx(tx, client, depositCoin, asset, amount, address);
 - SDK macro pattern → `packages/sdk/src/protocols/navi-harvest.ts` (`addHarvestToTx`)
 - `composeTx` registry forwarding → `packages/sdk/src/composeTx.ts` (`harvest_rewards` appender)
 - Audric host wiring → `audric/apps/web-v2/app/api/transactions/prepare/route.ts` (`needsOverlayFee` + `feeHooks`)
-- Indexer composite classification → `apps/server/src/indexer/eventParser.ts` (`classifyFromMoveCallTargets` harvest detection)
+- Indexer composite classification → audric repo (post-v0.7d Block C migration off t2000/apps/server)
 
 ## Required tests
 

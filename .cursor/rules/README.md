@@ -23,7 +23,6 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 |------|---------|
 | `engine-tool-development.mdc` | `packages/engine/src/tools/**/*.ts` — tool factory, permission levels, flags, preflight |
 | `blockvision-resilience.mdc` | `packages/engine/src/**/*.ts` — retry, circuit breaker, sticky cache |
-| `cron-job-architecture.mdc` | `apps/server/src/cron/**/*.ts` — t2000 cron → audric internal API contract |
 | `metrics-and-monitoring.mdc` | Reference — TurnMetrics, SessionUsage, dashboards |
 
 ## Relationship to `CLAUDE.md` and `.claude/rules/`

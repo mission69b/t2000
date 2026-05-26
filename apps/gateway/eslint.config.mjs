@@ -9,11 +9,9 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
-      // [SPEC 30 D-14 — 2026-05-14] Block direct `process.env.X` reads
-      // outside `lib/env.ts` (the canonical Zod-validated env module).
-      // Mirrors `apps/server/eslint.config.mjs` and the canonical pattern
-      // at `audric/apps/web/eslint.config.mjs`. NODE_ENV is exempt as a
-      // build-time constant.
+      // Block direct `process.env.X` reads outside `lib/env.ts` (the
+      // canonical Zod-validated env module). NODE_ENV is exempt as a
+      // build-time constant. See .cursor/rules/env-validation-gate.mdc.
       'no-restricted-syntax': [
         'error',
         {

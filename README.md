@@ -62,8 +62,7 @@ t2000/
 ├── apps/
 │   ├── web/              t2000.ai — marketing site + skills routes
 │   ├── docs/             developers.t2000.ai — Mintlify developer docs
-│   ├── gateway/          mpp.t2000.ai — MPP gateway (40+ paid APIs)
-│   └── server/           api.t2000.ai — fee ledger + indexer + cron
+│   └── gateway/          mpp.t2000.ai — MPP gateway (40+ paid APIs)
 │
 └── t2000-skills/         Agent Skills (markdown playbooks)
 ```

@@ -1,20 +1,10 @@
-// [v0.7d Phase 6 Block C.1 — 2026-05-21 / S.223] Refactored from Prisma-backed
-// live aggregates (Transaction + ProtocolFeeLedger + YieldSnapshot +
-// IndexerCursor + Agent.lastSeen) to:
-//   - Live Sui RPC reads for the treasury + MPP gateway wallets (no DB)
-//   - Static marketing copy for network-scale totals (refreshed manually)
-//
-// The indexer that previously fed live aggregates retires in Block C.2
-// alongside the entire `t2000/apps/server/` directory + the indexer-owned
-// Prisma models. Pre-refactor history of this file is at git ref pre-S.223
-// (commit `<TBD>`); per-operation fee breakdown logic moved into
-// `aggregateFees.ts` (DELETED in this commit).
+// Live Sui RPC reads for the treasury + MPP gateway wallets + a static
+// marketing snapshot for network-scale totals (refreshed manually).
 //
 // Refresh procedure for the static block: query suiscan.xyz directly via
-// the treasury + gateway addresses, or run a one-shot Prisma script against
-// the existing data BEFORE Block C.2 drops the tables. Update STATIC values
-// + lastRefreshed and ship as a regular PR. Quarterly cadence is enough —
-// the page is marketing, not telemetry.
+// the treasury + gateway addresses. Update STATIC values + lastRefreshed
+// and ship as a regular PR. Quarterly cadence is enough — the page is
+// marketing, not telemetry.
 import { NextResponse } from "next/server";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { isValidSuiAddress } from "@mysten/sui/utils";

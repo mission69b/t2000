@@ -209,8 +209,6 @@ export const DEFAULT_CONFIG_PATH = '~/.t2000/config.json';
 // error before signing rather than letting the tx revert on-chain.
 export const GASLESS_MIN_STABLE_AMOUNT = 0.01;
 
-export const API_BASE_URL = process.env.T2000_API_URL ?? 'https://api.t2000.ai';
-
 // Cetus USDC/SUI pool — read-only for SUI price oracle (no SDK dependency)
 export const CETUS_USDC_SUI_POOL = '0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab';
 

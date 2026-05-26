@@ -9,7 +9,7 @@ alwaysApply: true
 
 April 2026, an audric production deploy ran for ~4 days with `BLOCKVISION_API_KEY=""` (empty string in Vercel UI), silently degrading every BlockVision-backed feature. The bug surfaced as "the LLM thinks the user has no DeFi positions" — three layers below the actual misconfig.
 
-The fix is now the cross-app standard. **Every app (audric/apps/web-v2, t2000/apps/server, t2000/apps/gateway) MUST validate its env contract at boot via a Zod schema and expose values through a typed proxy.**
+The fix is now the cross-app standard. **Every app (audric/apps/web-v2, t2000/apps/gateway) MUST validate its env contract at boot via a Zod schema and expose values through a typed proxy.**
 
 ## The contract
 
