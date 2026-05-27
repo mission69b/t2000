@@ -8,7 +8,7 @@ export function Products() {
         <header className="mb-12 flex flex-wrap items-end justify-between gap-6">
           <div>
             <span className="t2k-eyebrow">{"// THE STACK"}</span>
-            <h2 className="t2k-section-title mt-3">One agent stack.</h2>
+            <h2 className="t2k-section-title mt-[22px]">One agent stack.</h2>
           </div>
           <p
             className="m-0 max-w-[380px] text-[16px] leading-[1.55]"

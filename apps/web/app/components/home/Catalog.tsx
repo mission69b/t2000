@@ -77,7 +77,7 @@ export async function Catalog() {
         <div className="mb-12 grid items-end gap-10 lg:grid-cols-2 lg:gap-12">
           <div>
             <span className="t2k-eyebrow">{"// AGENT PAYMENTS · LIVE"}</span>
-            <h2 className="t2k-section-title mt-3.5" style={{ lineHeight: 1 }}>
+            <h2 className="t2k-section-title mt-[22px]" style={{ lineHeight: 1 }}>
               Pay-per-request APIs
               <br />
               <span style={{ color: "var(--t2k-accent)" }}>on Sui. Gasless.</span>

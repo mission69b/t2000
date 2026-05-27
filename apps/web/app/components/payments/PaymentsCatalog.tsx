@@ -30,7 +30,7 @@ export function PaymentsCatalog() {
           <div>
             <span className="t2k-eyebrow">{"// THE CATALOG · 13 CATEGORIES"}</span>
             <h2
-              className="t2k-section-title mt-3.5"
+              className="t2k-section-title mt-[22px]"
               style={{ lineHeight: 1.0 }}
             >
               40 services.

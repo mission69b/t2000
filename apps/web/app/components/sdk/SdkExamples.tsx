@@ -88,7 +88,7 @@ export function SdkExamples() {
       <div className="t2k-container">
         <header className="mb-12 max-w-[720px]">
           <span className="t2k-eyebrow">{"// EXAMPLES"}</span>
-          <h2 className="t2k-section-title mt-3">
+          <h2 className="t2k-section-title mt-[22px]">
             Stablecoins.
             <br />
             <span style={{ color: "var(--fg-muted)" }}>In code.</span>

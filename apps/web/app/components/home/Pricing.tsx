@@ -47,7 +47,7 @@ export function Pricing() {
         <header className="mb-10 grid items-end gap-10 lg:grid-cols-2 lg:gap-12">
           <div>
             <span className="t2k-eyebrow">{"// PRICING"}</span>
-            <h2 className="t2k-section-title mt-3.5" style={{ lineHeight: 1 }}>
+            <h2 className="t2k-section-title mt-[22px]" style={{ lineHeight: 1 }}>
               Free.
               <br />
               <span style={{ color: "var(--fg-muted)" }}>Mostly gasless.</span>

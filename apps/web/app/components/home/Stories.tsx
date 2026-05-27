@@ -10,7 +10,7 @@ export function Stories() {
       <div className="t2k-container">
         <header className="mb-12">
           <span className="t2k-eyebrow">{"// SIX PROMPTS · SHIPPING TODAY"}</span>
-          <h2 className="t2k-section-title mt-3">What your agent can do.</h2>
+          <h2 className="t2k-section-title mt-[22px]">What your agent can do.</h2>
           <p className="t2k-section-sub">
             Six prompts. Real outputs. Copy any and paste into Claude Desktop.
           </p>

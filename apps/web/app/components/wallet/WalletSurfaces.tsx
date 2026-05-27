@@ -6,7 +6,7 @@ export function WalletSurfaces() {
       <div className="t2k-container">
         <header className="mb-12">
           <span className="t2k-eyebrow">{"// TWO SURFACES"}</span>
-          <h2 className="t2k-section-title mt-3">
+          <h2 className="t2k-section-title mt-[22px]">
             Drive it from a terminal,
             <br />
             <span style={{ color: "var(--fg-muted)" }}>

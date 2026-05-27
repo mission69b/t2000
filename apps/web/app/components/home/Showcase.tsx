@@ -6,7 +6,7 @@ export function Showcase() {
       <div className="t2k-container">
         <div className="mb-14 text-center">
           <span className="t2k-eyebrow">{"// ONE STACK · THREE SURFACES"}</span>
-          <h2 className="t2k-section-title mt-3">
+          <h2 className="t2k-section-title mt-[22px]">
             From your terminal,
             <br />
             to Claude, to{" "}

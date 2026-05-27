@@ -53,7 +53,7 @@ export function PaymentsArchitecture() {
         <header className="mb-8 max-w-[720px]">
           <span className="t2k-eyebrow">{"// ARCHITECTURE"}</span>
           <h2
-            className="m-0 mt-2.5 text-[28px] leading-[1.15]"
+            className="m-0 mt-[22px] text-[28px] leading-[1.15]"
             style={{
               fontFamily: "var(--font-display)",
               fontWeight: 600,

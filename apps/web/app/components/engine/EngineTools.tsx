@@ -65,7 +65,7 @@ export function EngineTools() {
       <div className="t2k-container">
         <header className="mb-12 max-w-[720px]">
           <span className="t2k-eyebrow">{"// PRIMITIVES"}</span>
-          <h2 className="t2k-section-title mt-3">
+          <h2 className="t2k-section-title mt-[22px]">
             26 tools.
             <br />
             <span style={{ color: "var(--fg-muted)" }}>12 safety guards.</span>

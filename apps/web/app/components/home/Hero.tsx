@@ -52,13 +52,7 @@ export function Hero() {
                 infrastructure.
               </span>
             </h1>
-            <p
-              className="m-0 mt-[26px] max-w-[520px] text-[19px] leading-[1.5]"
-              style={{
-                color: "var(--fg-muted)",
-                letterSpacing: "-0.014em",
-              }}
-            >
+            <p className="t2k-section-sub" style={{ marginTop: 26 }}>
               Build agents that move{" "}
               <span style={{ color: "var(--t2k-accent)" }}>money</span>.
               Wallet, payments, SDK, and engine — gasless on Sui.

@@ -84,7 +84,7 @@ export function PaymentsProtocol() {
       <div className="t2k-container">
         <header className="mb-12 max-w-[720px]">
           <span className="t2k-eyebrow">{"// HOW IT WORKS · HTTP 402"}</span>
-          <h2 className="t2k-section-title mt-3">
+          <h2 className="t2k-section-title mt-[22px]">
             No signup.{" "}
             <span style={{ color: "var(--fg-muted)" }}>No API keys.</span>
           </h2>
