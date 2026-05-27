@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@t2000_ai",
+    site: "@t2000ai",
     title: "t2000 — Agentic finance infrastructure on Sui",
     description:
       "Build agents that move money. Wallet, payments, SDK, and engine — gasless on Sui.",

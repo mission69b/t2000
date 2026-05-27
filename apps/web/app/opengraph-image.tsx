@@ -1,124 +1,162 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "t2000 — The Infrastructure Behind Audric";
+export const alt = "t2000 — Agentic finance infrastructure on Sui";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function Image() {
+const ACCENT = "#0072F3";
+
+const WORDMARK = "t2000";
+const EYEBROW = "// AGENTIC FINANCE · ON SUI";
+const LINE_1 = "Agentic finance";
+const LINE_2 = "infrastructure.";
+const BOTTOM = "t2000.ai — Build agents that move money.";
+
+async function loadGoogleFont(
+  family: string,
+  weight: number,
+  text: string,
+): Promise<ArrayBuffer> {
+  const url =
+    `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, "+")}` +
+    `:wght@${weight}&text=${encodeURIComponent(text)}`;
+  const css = await (
+    await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
+      },
+    })
+  ).text();
+  const match = css.match(/src: url\((.+?)\) format\('(opentype|truetype)'\)/);
+  if (!match) {
+    throw new Error(`Font ${family}@${weight}: truetype URL not found in CSS`);
+  }
+  const font = await fetch(match[1]);
+  if (!font.ok) {
+    throw new Error(`Font ${family}@${weight}: HTTP ${font.status}`);
+  }
+  return font.arrayBuffer();
+}
+
+export default async function Image() {
+  const text = [WORDMARK, EYEBROW, LINE_1, LINE_2, BOTTOM].join(" ");
+  const [sansData, monoData] = await Promise.all([
+    loadGoogleFont("Geist", 600, text),
+    loadGoogleFont("Geist Mono", 400, text),
+  ]);
+
   return new ImageResponse(
     (
       <div
         style={{
           width: "100%",
           height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#000000",
+          background: "#0A0A0A",
           position: "relative",
+          display: "flex",
+          fontFamily: "Geist",
         }}
       >
-        {/* Grid pattern overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse 500px 280px at 600px 265px, rgba(0,114,245,0.20) 0%, rgba(0,114,245,0) 70%)",
+          }}
+        />
         <div
           style={{
             position: "absolute",
             inset: 0,
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
+              "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
           }}
         />
-
-        {/* Accent line */}
         <div
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 3,
-            background: "linear-gradient(90deg, #0072F3, #52A8FF, #EBF6FF)",
+            left: 16,
+            top: 16,
+            right: 16,
+            bottom: 16,
+            border: "1px solid rgba(255,255,255,0.06)",
           }}
         />
 
-        {/* Brand */}
         <div
           style={{
+            position: "absolute",
+            left: 80,
+            top: 80,
             display: "flex",
-            alignItems: "baseline",
-            gap: 12,
+            fontFamily: "Geist",
+            fontWeight: 600,
+            fontSize: 28,
+            color: "#ffffff",
+            letterSpacing: "-0.6px",
           }}
         >
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontSize: 72,
-              fontWeight: 700,
-              color: "#ffffff",
-              letterSpacing: "-2px",
-            }}
-          >
-            t2000
-          </span>
+          {WORDMARK}
         </div>
 
-        {/* Tagline */}
         <div
           style={{
-            fontFamily: "monospace",
-            fontSize: 20,
+            position: "absolute",
+            left: 80,
+            top: 280,
+            display: "flex",
+            fontFamily: "Geist Mono",
+            fontSize: 14,
+            color: "#999999",
+            letterSpacing: "0.10em",
+          }}
+        >
+          {EYEBROW}
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 340,
+            display: "flex",
+            flexDirection: "column",
+            fontFamily: "Geist",
+            fontWeight: 600,
+            fontSize: 68,
+            lineHeight: 1.05,
+            letterSpacing: "-2.2px",
+          }}
+        >
+          <div style={{ display: "flex", color: "#ffffff" }}>{LINE_1}</div>
+          <div style={{ display: "flex", color: ACCENT }}>{LINE_2}</div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 560,
+            display: "flex",
+            fontFamily: "Geist Mono",
+            fontSize: 16,
             color: "#666666",
-            marginTop: 20,
-            letterSpacing: "0.05em",
           }}
         >
-          The Infrastructure Behind Audric
-        </div>
-
-        {/* Feature chips */}
-        <div
-          style={{
-            display: "flex",
-            gap: 16,
-            marginTop: 40,
-          }}
-        >
-          {["CLI", "SDK", "MCP", "Engine", "Gateway"].map((label) => (
-            <div
-              key={label}
-              style={{
-                fontFamily: "monospace",
-                fontSize: 13,
-                color: "#999999",
-                border: "1px solid #333333",
-                borderRadius: 6,
-                padding: "6px 14px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-
-        {/* URL */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 32,
-            fontFamily: "monospace",
-            fontSize: 13,
-            color: "#444444",
-            letterSpacing: "0.06em",
-          }}
-        >
-          t2000.ai
+          {BOTTOM}
         </div>
       </div>
     ),
-    { ...size },
+    {
+      ...size,
+      fonts: [
+        { name: "Geist", data: sansData, weight: 600, style: "normal" },
+        { name: "Geist Mono", data: monoData, weight: 400, style: "normal" },
+      ],
+    },
   );
 }

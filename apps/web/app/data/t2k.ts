@@ -154,4 +154,4 @@ export const AUDRIC_URL = "https://audric.ai";
 export const GATEWAY_URL = "https://mpp.t2000.ai";
 export const SUIMPP_URL = "https://suimpp.dev";
 export const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";
-export const TWITTER_URL = "https://x.com/t2000_ai";
+export const TWITTER_URL = "https://x.com/t2000ai";

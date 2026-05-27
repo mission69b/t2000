@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@t2000_ai",
+    site: "@t2000ai",
     title: "mpp.t2000.ai — pay-per-request APIs on Sui",
     description: SOCIAL_DESC,
   },
