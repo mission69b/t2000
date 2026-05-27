@@ -78,9 +78,9 @@ export async function Catalog() {
           <div>
             <span className="t2k-eyebrow">{"// AGENT PAYMENTS · LIVE"}</span>
             <h2 className="t2k-section-title mt-3.5" style={{ lineHeight: 1 }}>
-              40 services.
+              Pay-per-request APIs
               <br />
-              <span style={{ color: "var(--fg-faint)" }}>88 endpoints.</span>
+              <span style={{ color: "var(--fg-faint)" }}>on Sui. Gasless.</span>
             </h2>
           </div>
           <div>
@@ -91,8 +91,8 @@ export async function Catalog() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Pay-per-request to every major AI provider. USDC on Sui.
-              Gasless. Live on{" "}
+              Pay-per-request to every major AI provider. 40 services. 88
+              endpoints. Live on{" "}
               <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
             </p>
           </div>

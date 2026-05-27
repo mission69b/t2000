@@ -59,8 +59,8 @@ export function Hero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              Everything an AI agent needs to hold a wallet, move USDC, pay
-              APIs, and ship.
+              Build agents that move money. Wallet, payments, SDK, and
+              engine — gasless on Sui.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">
