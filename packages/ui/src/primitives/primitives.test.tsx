@@ -57,6 +57,8 @@ import {
 } from './accordion.js';
 import { ScrollArea } from './scroll-area.js';
 import { Command, CommandInput, CommandList, CommandItem } from './command.js';
+import { Skeleton } from './skeleton.js';
+import { Toaster } from './sonner.js';
 
 afterEach(() => {
   cleanup();
@@ -207,5 +209,19 @@ describe('@t2000/ui primitive smoke', () => {
     );
     expect(screen.getByPlaceholderText('Search…')).toBeDefined();
     expect(screen.getByText('option one')).toBeDefined();
+  });
+
+  it('Skeleton renders as aria-hidden div', () => {
+    const { container } = render(<Skeleton className="h-4 w-32" data-testid="sk" />);
+    const el = container.querySelector('[data-testid="sk"]');
+    expect(el).not.toBeNull();
+    expect(el?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('Toaster mounts (Sonner container)', () => {
+    const { container } = render(<Toaster />);
+    // Sonner mounts a section[aria-label] at the document level
+    expect(container).toBeDefined();
+    expect(document.querySelector('[aria-label*="otifications" i]')).not.toBeNull();
   });
 });

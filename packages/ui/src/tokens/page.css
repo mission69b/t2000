@@ -30,6 +30,9 @@ html {
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Geist's typographic discipline. Improves kerning + ligatures on
+     display headlines + body. Per CURSOR.md §9 Anti-aliasing & rendering. */
+  text-rendering: optimizeLegibility;
 }
 
 html, body {
@@ -249,9 +252,17 @@ article li,
   margin: 0;
 }
 
-/* Focus ring */
-.t2k-btn:focus-visible,
-a:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+/* Global 4px focus ring — non-themed (stays Geist blue with 36% alpha
+   on every property, including teal MPP and monochrome suimpp) per
+   CURSOR.md §9. Uses `:where()` for zero specificity so component-level
+   styles can override; in practice @t2000/ui primitives ship their own
+   `focus-visible:shadow-[var(--shadow-focus)]` utility (same intent,
+   higher specificity) so this rule serves raw <a> / <button> / form
+   controls that consumers drop in directly. */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
 
 /* Tabular numerics — for metrics + counts. NOTE: tabular-nums is the
    global default (set on `body`). This class exists as a re-assertion
@@ -264,4 +275,49 @@ a:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 .t2k-code {
   font-family: var(--font-mono);
   line-height: 1.75;
+}
+
+/* Hover utility classes — implement the 5 patterns from CURSOR.md §9
+   "Hover state hierarchy". Opt-in via class name; not every Card / Row
+   / Link should hover (static descriptive cards stay flat, contextual
+   links don't shift color). Consumers apply the right class per surface. */
+
+/* Border-strengthen — interactive cards. Resting hairline → +tier alpha. */
+.t2k-card-hover {
+  transition: border-color var(--dur-fast) var(--ease-out);
+  cursor: pointer;
+}
+.t2k-card-hover:hover { border-color: var(--ds-gray-alpha-500); }
+
+/* Surface-lift — rows in lists (accordion triggers, sidebar items).
+   Resting transparent → hover --ds-gray-alpha-100. */
+.t2k-list-row {
+  transition: background-color var(--dur-fast) var(--ease-out);
+  cursor: pointer;
+}
+.t2k-list-row:hover { background-color: var(--ds-gray-alpha-100); }
+
+/* Color-shift — inline links in body copy. Resting --fg with subtle
+   underline → hover --t2k-accent with accent underline. Opt-in via class
+   so plain <a> stays neutral (e.g. in nav, footer); apply to <a> tags
+   inside long-form body copy where the accent shift reads as intentional. */
+.t2k-link {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--ds-gray-alpha-500);
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) var(--ease-out),
+              text-decoration-color var(--dur-fast) var(--ease-out);
+}
+.t2k-link:hover {
+  color: var(--t2k-accent);
+  text-decoration-color: var(--t2k-accent);
+}
+
+/* GPU compositing for text-over-glow. Hero headlines sitting on top of
+   radial-gradient ambient glows can show fringing without this. Apply
+   to any text element that overlays a glow div. Per CURSOR.md §9. */
+.t2k-hero-headline {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }

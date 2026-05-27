@@ -321,7 +321,7 @@ importers:
     dependencies:
       '@cetusprotocol/aggregator-sdk':
         specifier: ^1.4.8
-        version: 1.4.8(axios@1.15.2)(typescript@5.9.3)
+        version: 1.4.8(axios@1.16.1)(typescript@5.9.3)
       '@mysten/payment-kit':
         specifier: ^0.1.6
         version: 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
@@ -342,7 +342,7 @@ importers:
         version: 2.2.0(typescript@5.9.3)
       '@suimpp/mpp':
         specifier: ^0.7.0
-        version: 0.7.0(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
+        version: 0.7.0(@modelcontextprotocol/sdk@1.28.0(zod@4.4.3))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.4.3))
       bn.js:
         specifier: ^5.2.1
         version: 5.2.3
@@ -351,7 +351,7 @@ importers:
         version: 5.0.4
       mppx:
         specifier: ^0.4.9
-        version: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
+        version: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@4.4.3))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.4.3))
     devDependencies:
       '@types/bn.js':
         specifier: ^5.1.5
@@ -413,6 +413,9 @@ importers:
       lucide-react:
         specifier: ^0.469.0
         version: 0.469.0(react@19.2.4)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.6.1
@@ -6480,6 +6483,12 @@ packages:
     resolution: {integrity: sha512-LJhUYUvItdQ0LkJTmPeaEObWXAqFyfmP85x0tch/ez9cahmhlBBLbIqDFnvBnUJGagb0JbIQrkBs1wJ+yRYpEw==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
+  sonner@2.0.7:
+    resolution: {integrity: sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+      react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -7622,10 +7631,10 @@ snapshots:
 
   '@canvas/image-data@1.1.0': {}
 
-  '@cetusprotocol/aggregator-sdk@1.4.8(axios@1.15.2)(typescript@5.9.3)':
+  '@cetusprotocol/aggregator-sdk@1.4.8(axios@1.16.1)(typescript@5.9.3)':
     dependencies:
       '@mysten/sui': 2.17.0(typescript@5.9.3)
-      '@pythnetwork/hermes-client': 3.1.0(axios@1.15.2)
+      '@pythnetwork/hermes-client': 3.1.0(axios@1.16.1)
       bip39: 3.1.0
       dotenv: 16.6.1
       json-bigint: 1.0.0
@@ -8985,9 +8994,9 @@ snapshots:
       - react-native-b4a
       - supports-color
 
-  '@pythnetwork/hermes-client@3.1.0(axios@1.15.2)':
+  '@pythnetwork/hermes-client@3.1.0(axios@1.16.1)':
     dependencies:
-      '@zodios/core': 10.9.6(axios@1.15.2)(zod@3.25.76)
+      '@zodios/core': 10.9.6(axios@1.16.1)(zod@3.25.76)
       eventsource: 3.0.7
       zod: 3.25.76
     transitivePeerDependencies:
@@ -9931,24 +9940,6 @@ snapshots:
       '@stoplight/yaml-ast-parser': 0.0.50
       tslib: 2.8.1
 
-  '@suimpp/mpp@0.7.0(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))':
-    dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.9.3)
-      mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - '@modelcontextprotocol/sdk'
-      - elysia
-      - express
-      - hono
-      - openapi-types
-      - supports-color
-      - typescript
-      - viem
-
   '@suimpp/mpp@0.7.0(@modelcontextprotocol/sdk@1.28.0(zod@4.4.3))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.4.3))':
     dependencies:
       '@mysten/sui': 2.17.0(typescript@5.9.3)
@@ -10456,14 +10447,9 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@zodios/core@10.9.6(axios@1.15.2)(zod@3.25.76)':
+  '@zodios/core@10.9.6(axios@1.16.1)(zod@3.25.76)':
     dependencies:
-      axios: 1.15.2
-      zod: 3.25.76
-
-  abitype@1.2.3(typescript@5.9.3)(zod@3.25.76):
-    optionalDependencies:
-      typescript: 5.9.3
+      axios: 1.16.1
       zod: 3.25.76
 
   abitype@1.2.3(typescript@5.9.3)(zod@4.4.3):
@@ -11585,7 +11571,7 @@ snapshots:
       eslint: 9.39.4(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.0.1(eslint@9.39.4(jiti@2.6.1))
@@ -11618,7 +11604,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -11632,7 +11618,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)):
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -13716,24 +13702,6 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.3
 
-  mppx@0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76)):
-    dependencies:
-      '@remix-run/fetch-proxy': 0.7.1
-      '@remix-run/node-fetch-server': 0.13.0
-      incur: 0.3.13(openapi-types@12.1.3)
-      ox: 0.14.10(typescript@5.9.3)(zod@4.4.3)
-      viem: 2.47.5(typescript@5.9.3)(zod@3.25.76)
-      zod: 4.4.3
-    optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.28.0(zod@3.25.76)
-      express: 5.2.1
-      hono: 4.12.9
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - openapi-types
-      - supports-color
-      - typescript
-
   mppx@0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@4.4.3))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.4.3)):
     dependencies:
       '@remix-run/fetch-proxy': 0.7.1
@@ -13990,21 +13958,6 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
-      eventemitter3: 5.0.1
-    optionalDependencies:
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - zod
-
-  ox@0.14.5(typescript@5.9.3)(zod@3.25.76):
-    dependencies:
-      '@adraffy/ens-normalize': 1.11.1
-      '@noble/ciphers': 1.3.0
-      '@noble/curves': 1.9.1
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -15134,6 +15087,11 @@ snapshots:
       ip-address: 10.2.0
       smart-buffer: 4.2.0
 
+  sonner@2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
   source-map-js@1.2.1: {}
 
   source-map@0.6.1:
@@ -15849,23 +15807,6 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
-
-  viem@2.47.5(typescript@5.9.3)(zod@3.25.76):
-    dependencies:
-      '@noble/curves': 1.9.1
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
-      isows: 1.0.7(ws@8.18.3)
-      ox: 0.14.5(typescript@5.9.3)(zod@3.25.76)
-      ws: 8.18.3
-    optionalDependencies:
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - zod
 
   viem@2.47.5(typescript@5.9.3)(zod@4.4.3):
     dependencies:

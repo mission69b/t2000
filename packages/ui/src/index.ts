@@ -82,3 +82,5 @@ export {
   CommandShortcut,
   CommandSeparator,
 } from './primitives/command.js';
+export { Skeleton } from './primitives/skeleton.js';
+export { Toaster, toast, type ToasterProps } from './primitives/sonner.js';

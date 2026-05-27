@@ -102,6 +102,67 @@ export function Hero() {
 }
 ```
 
+## Primitives
+
+15 themed shadcn/ui primitives ship today: `Button`, `Card`, `Badge`, `Table`, `Separator`, `Dialog`, `Sheet`, `DropdownMenu`, `Tabs`, `Tooltip`, `Accordion`, `ScrollArea`, `Command`, `Skeleton`, `Toaster` (Sonner).
+
+### Skeleton
+
+Loading placeholders, per CURSOR.md §9 "Skeleton states". Use shapes that match the eventual content (not generic spinners):
+
+```tsx
+import { Skeleton } from '@t2000/ui';
+
+<Skeleton className="h-4 w-32" />        {/* metric label */}
+<Skeleton className="h-8 w-48 mt-2" />   {/* metric value */}
+```
+
+The pulse animation is Tailwind's built-in `animate-pulse` (honors `prefers-reduced-motion`).
+
+### Toaster (Sonner)
+
+Mount the `<Toaster />` once at your app root; trigger from anywhere via the re-exported `toast`:
+
+```tsx
+// app/layout.tsx
+import { Toaster } from '@t2000/ui';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Toaster />
+      </body>
+    </html>
+  );
+}
+
+// any-client-component.tsx
+'use client';
+import { Button, toast } from '@t2000/ui';
+
+<Button onClick={() => toast.success('Copied to clipboard')}>Copy</Button>
+```
+
+Defaults: `theme="dark"`, `position="bottom-right"`. Override either as a `<Toaster theme="light" position="top-center" />` prop. Sonner v2 reads `--popover` + `--popover-foreground` tokens from `@t2000/ui/tokens/theme`, so toasts inherit the Geist surface palette automatically.
+
+## Utility classes
+
+Optional helpers from `@t2000/ui/tokens/page` — opt-in via class name (not applied to every element by default):
+
+| Class | Purpose | Pattern (per CURSOR.md §9) |
+|---|---|---|
+| `.t2k-card-hover` | Interactive Card hover. Border darkens to `--ds-gray-alpha-500`, bg stays flat. | Border-strengthen |
+| `.t2k-list-row` | Row in a list (accordion trigger, sidebar item). Bg lifts to `--ds-gray-alpha-100` on hover. | Surface-lift |
+| `.t2k-link` | Inline link in body copy. Color shifts to `--t2k-accent` on hover, underline tracks. | Color-shift |
+| `.t2k-hero-headline` | Text overlaying a glow/gradient. Forces GPU compositing to avoid fringing. | (anti-aliasing fix) |
+| `.t2k-code` | Code blocks (Geist Mono). Forces `line-height: 1.75` — Tailwind's `leading-relaxed` is under-leaded for Geist Mono. | (line-height fix) |
+| `.t2k-tabular` | Re-assert tabular-nums inside an element that opted out via `.t2k-prose`. | (numeric grid) |
+| `.t2k-prose` | Opt OUT of global `tabular-nums` (body copy, long-form, FAQ answers). | (prose readability) |
+
+Global defaults (no class needed): dark color-scheme, `-webkit-font-smoothing: antialiased`, `text-rendering: optimizeLegibility`, `font-feature-settings: "ss01" "cv11"`, `font-variant-numeric: tabular-nums`, 4px Geist-blue focus ring on every `<button>` / `<a>` / `<input>` / `<textarea>` / `<select>` / `[tabindex]` via low-specificity `:where()` rule. Per CURSOR.md §9 "Anti-aliasing & rendering" + "Focus rings" + "Dark mode is the default".
+
 ## Per-property accent
 
 Every primitive references `var(--t2k-accent)`. Each consumer redefines it (plus `--t2k-accent-hover` for the tier-down on accent buttons) in its own globals.css:
