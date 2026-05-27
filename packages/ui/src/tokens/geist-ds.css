@@ -201,10 +201,17 @@
 
   /* =====================================================================
      3. TYPOGRAPHY TOKENS
+     ---------------------------------------------------------------------
+     Primitives are namespaced `--ds-font-*` because Tailwind v4 reserves
+     the bare `--font-*` namespace for its `@theme` block (collisions
+     create CSS custom-property cycles that invalidate the value).
+     Back-compat aliases `--font-sans`, `--font-mono`, `--font-display`
+     live at the bottom of this :root block so the Tailwind v3 preset +
+     page.css + body/heading rules keep working unchanged.
      ===================================================================== */
-  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace;
-  --font-display: var(--font-sans); /* Geist's display = Geist tight tracking */
+  --ds-font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ds-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace;
+  --ds-font-display: var(--ds-font-sans); /* Geist's display = Geist tight tracking */
 
   /* Type ramp (per geist-ui docs) */
   --fs-12: 12px;    --lh-12: 16px;
@@ -246,9 +253,14 @@
   --space-40: 80px;
   --space-48: 96px;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;          /* default for buttons, inputs, cards */
-  --radius-lg: 8px;
+  /* Radius primitives — `--ds-radius-{sm,md,lg}` are namespaced because
+     Tailwind v4 reserves the bare `--radius-*` namespace for its @theme
+     block. Back-compat aliases are declared below alongside the font
+     aliases. `--radius-xl`, `--radius-2xl`, `--radius-pill` are NOT
+     re-exported via @theme so they stay on the bare name (no cycle). */
+  --ds-radius-sm: 4px;
+  --ds-radius-md: 6px;          /* default for buttons, inputs, cards */
+  --ds-radius-lg: 8px;
   --radius-xl: 12px;
   --radius-2xl: 16px;
   --radius-pill: 9999px;
@@ -260,12 +272,30 @@
   --shadow-menu: 0 4px 16px rgba(0,0,0,0.50), 0 0 0 1px var(--ds-gray-alpha-400);
   --shadow-focus: 0 0 0 4px rgba(0,114,245,0.36);
 
-  /* Motion */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* Geist's signature easing */
+  /* Motion — `--ds-ease-out` is namespaced (Tailwind v4 `--ease-*`
+     reserved). `--ease-in-out` is not re-exported via @theme so it
+     stays on the bare name. Back-compat `--ease-out` alias below. */
+  --ds-ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* Geist's signature easing */
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --dur-fast: 100ms;
   --dur-base: 150ms;
   --dur-slow: 250ms;
+
+  /* =====================================================================
+     BACK-COMPAT ALIASES — bare-name shims for the 7 namespaced primitives
+     ---------------------------------------------------------------------
+     These keep `var(--font-sans)`, `var(--radius-md)`, `var(--ease-out)`,
+     etc. resolving for the Tailwind v3 preset, `page.css`, and the body
+     / heading rules below — without re-introducing the Tailwind v4
+     `@theme` cycle (which now references `--ds-*` directly).
+     ===================================================================== */
+  --font-sans: var(--ds-font-sans);
+  --font-mono: var(--ds-font-mono);
+  --font-display: var(--ds-font-display);
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --ease-out: var(--ds-ease-out);
 }
 
 /* =====================================================================

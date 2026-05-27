@@ -49,18 +49,24 @@
   --color-input: var(--ds-gray-alpha-400);
   --color-ring: var(--t2k-accent);
 
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
+  /* IMPORTANT: these reference `--ds-*` primitives (NOT the bare-name
+     aliases) to avoid CSS custom-property cycle detection. Referencing
+     `var(--font-sans)` here would create a cycle — both this `@theme`
+     block and `geist-ds.css` declare `--font-sans` at `:root`, so the
+     resolver sees `--font-sans: var(--font-sans)` and invalidates the
+     value. The `--ds-*` primitives are stable, unaliased sources. */
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
 
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-display: var(--font-display);
+  --font-sans: var(--ds-font-sans);
+  --font-mono: var(--ds-font-mono);
+  --font-display: var(--ds-font-display);
 
-  --ease-out: var(--ease-out);
+  --ease-out: var(--ds-ease-out);
 
-  --animate-accordion-down: accordion-down 0.2s var(--ease-out);
-  --animate-accordion-up: accordion-up 0.2s var(--ease-out);
+  --animate-accordion-down: accordion-down 0.2s var(--ds-ease-out);
+  --animate-accordion-up: accordion-up 0.2s var(--ds-ease-out);
 }
 
 @keyframes accordion-down {
