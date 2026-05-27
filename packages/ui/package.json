@@ -1,6 +1,6 @@
 {
   "name": "@t2000/ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "t2000 design system — Geist Design System tokens + shadcn/ui primitives themed for the t2000 brand family.",
   "type": "module",
   "main": "./dist/index.js",
