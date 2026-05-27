@@ -71,10 +71,7 @@ export function EngineTools() {
             <span style={{ color: "var(--fg-muted)" }}>12 safety guards.</span>
           </h2>
           <p className="t2k-section-sub">
-            Everything your agent needs. Already wired.{" "}
-            <span style={{ color: "var(--fg-subtle)" }}>
-              Names below are illustrative — see docs for the full list.
-            </span>
+            Everything your agent needs. Already wired.
           </p>
         </header>
 
@@ -82,6 +79,16 @@ export function EngineTools() {
           <ToolsCard />
           <GuardsCard />
         </div>
+
+        <p
+          className="mt-5 font-mono text-[11.5px]"
+          style={{
+            color: "var(--fg-subtle)",
+            letterSpacing: "0.01em",
+          }}
+        >
+          {"// Names are illustrative — see the docs for the full list."}
+        </p>
       </div>
     </section>
   );

@@ -46,8 +46,9 @@ export function PaymentsCatalog() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Models, search, mail, scrapers — anything your agent needs to
-              ship. One marketplace.
+              Pay-per-request to every major AI provider. USDC on Sui.
+              Gasless. Live on{" "}
+              <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
             </p>
           </div>
         </header>
