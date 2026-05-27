@@ -44,13 +44,7 @@ export function SdkHero() {
               <br />
               <span style={{ color: "var(--t2k-accent)" }}>finance.</span>
             </h1>
-            <p
-              className="m-0 mt-[26px] max-w-[500px] text-[19px] leading-[1.5]"
-              style={{
-                color: "var(--fg-muted)",
-                letterSpacing: "-0.014em",
-              }}
-            >
+            <p className="t2k-section-sub" style={{ marginTop: 26 }}>
               Wallet, Payments, Engine. One npm install. One class.
             </p>
 

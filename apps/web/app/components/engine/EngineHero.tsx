@@ -44,13 +44,7 @@ export function EngineHero() {
               <br />
               <span style={{ color: "var(--t2k-accent)" }}>Audric.</span>
             </h1>
-            <p
-              className="m-0 mt-[26px] max-w-[500px] text-[19px] leading-[1.5]"
-              style={{
-                color: "var(--fg-muted)",
-                letterSpacing: "-0.014em",
-              }}
-            >
+            <p className="t2k-section-sub" style={{ marginTop: 26 }}>
               Plug in any LLM. Get 26 tools, 12 safety guards, and a finance
               runtime ready to ship.
             </p>
