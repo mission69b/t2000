@@ -8,11 +8,12 @@ import { getDigestStore } from './upstash-digest-store';
 import { env } from '@/lib/env';
 
 const NETWORK = (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
-const SERVER_URL = 'https://mpp.t2000.ai';
-const REGISTRY_URL = 'https://suimpp.dev/api/report';
 
 type RouteHandler = (request: Request) => Promise<Response> | Response;
 
+// Holds the on-chain PaymentReport emitted by @suimpp/mpp's onPayment callback
+// until the request handler joins it with HTTP context for logPayment(). Keyed
+// by transaction digest. Entries are deleted after consumption to bound memory.
 const pendingReports = new Map<string, PaymentReport>();
 
 function createMppx() {
@@ -28,23 +29,6 @@ function createMppx() {
       },
     })],
   });
-}
-
-function reportToRegistry(
-  report: PaymentReport,
-  context: { service: string; endpoint: string },
-) {
-  pendingReports.delete(report.digest);
-  fetch(REGISTRY_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      ...report,
-      serverUrl: SERVER_URL,
-      service: context.service,
-      endpoint: `/${context.service}${context.endpoint}`,
-    }),
-  }).catch(() => {});
 }
 
 let _mppx: ReturnType<typeof createMppx> | undefined;
@@ -182,8 +166,8 @@ export function chargeProxy(
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
       const report = digest ? pendingReports.get(digest) : undefined;
+      if (digest) pendingReports.delete(digest);
       logPayment({ service, endpoint, amount, digest, sender: report?.sender }).catch(() => {});
-      if (report) reportToRegistry(report, { service, endpoint });
     }
 
     return response;
@@ -226,8 +210,8 @@ export function chargeCustom(
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
       const report = digest ? pendingReports.get(digest) : undefined;
+      if (digest) pendingReports.delete(digest);
       logPayment({ service, endpoint, amount: resolvedAmount, digest, sender: report?.sender }).catch(() => {});
-      if (report) reportToRegistry(report, { service, endpoint });
     }
 
     return response;
