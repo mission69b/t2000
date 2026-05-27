@@ -52,7 +52,12 @@ export default function StatsPage() {
               Docs
             </a>{" "}
             ·{" "}
-            <a href="/mpp" className="text-accent hover:underline">
+            <a
+              href="https://mpp.t2000.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
               MPP
             </a>
           </p>

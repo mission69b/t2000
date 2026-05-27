@@ -12,8 +12,8 @@
 
    Per-property accent: `--t2k-accent` is NOT defined here. Each consumer
    defines it in their own globals.css:
-     :root { --t2k-accent: var(--ds-blue-700); }   /* t2000.ai */
-     :root { --t2k-accent: var(--ds-teal-700); }   /* mpp.t2000.ai */
+     :root { --t2k-accent: var(--ds-blue-700); }   for t2000.ai
+     :root { --t2k-accent: var(--ds-teal-700); }   for mpp.t2000.ai
 
    ---------------------------------------------------------------------
    CANONICAL HEX VALUES SYNCED TO apps/docs/docs.json

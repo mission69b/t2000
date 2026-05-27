@@ -328,7 +328,7 @@ export default function Home() {
                 href={pkg.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-surface p-6 sm:p-7 lg:p-8 relative overflow-hidden group transition-colors hover:bg-[rgba(0,214,143,0.03)] no-underline"
+                className="bg-surface p-6 sm:p-7 lg:p-8 relative overflow-hidden group transition-colors hover:bg-accent/[0.03] no-underline"
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent scale-x-0 origin-left transition-transform duration-400 group-hover:scale-x-100" />
                 <span className="text-[24px] sm:text-[28px] block mb-3">{pkg.icon}</span>

@@ -335,7 +335,7 @@ export default function DocsPage() {
                 href={r.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-surface p-5 sm:p-6 group/link hover:bg-[rgba(0,214,143,0.03)] transition-colors"
+                className="bg-surface p-5 sm:p-6 group/link hover:bg-accent/[0.03] transition-colors"
               >
                 <div className="text-sm font-medium text-foreground mb-1 flex items-center gap-2">
                   {r.label}
