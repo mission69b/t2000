@@ -23,8 +23,24 @@ const TRACE: TraceRow[] = [
 
 export function EngineHeroTrace() {
   const [step, setStep] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduceMotion(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      if (step !== TRACE.length) {
+        const id = setTimeout(() => setStep(TRACE.length), 0);
+        return () => clearTimeout(id);
+      }
+      return;
+    }
     if (step >= TRACE.length) {
       const id = setTimeout(() => setStep(0), 2400);
       return () => clearTimeout(id);
@@ -32,9 +48,10 @@ export function EngineHeroTrace() {
     const delay = TRACE[step].kind === "tool" ? 700 : 500;
     const id = setTimeout(() => setStep(step + 1), delay);
     return () => clearTimeout(id);
-  }, [step]);
+  }, [step, reduceMotion]);
 
   const visible = TRACE.slice(0, step);
+  const showCursor = !reduceMotion && step < TRACE.length;
 
   return (
     <div
@@ -88,7 +105,7 @@ export function EngineHeroTrace() {
         {visible.map((row, i) => (
           <EngineTraceRow key={i} row={row} />
         ))}
-        {step < TRACE.length && (
+        {showCursor && (
           <span
             className="inline-block"
             style={{

@@ -28,10 +28,7 @@ export function SdkHero() {
       <div className="t2k-container relative">
         <Breadcrumb />
 
-        <div
-          className="grid items-center gap-10 lg:gap-14"
-          style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.05fr)" }}
-        >
+        <div className="grid items-center gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
           <div>
             <div className="t2k-eyebrow mb-[22px]">
               {"// AGENT SDK · @t2000/sdk"}

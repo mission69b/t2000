@@ -50,10 +50,7 @@ export function SdkComposition() {
           </p>
         </header>
 
-        <div
-          className="grid items-stretch gap-7 lg:gap-7"
-          style={{ gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)" }}
-        >
+        <div className="grid items-stretch gap-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
           <div className="t2k-card flex flex-col overflow-hidden">
             <header
               className="flex items-center gap-2 border-b px-4 py-3"
