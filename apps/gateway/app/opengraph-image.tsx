@@ -30,9 +30,11 @@ async function loadGoogleFont(
       },
     })
   ).text();
-  const match = css.match(/src: url\((.+?)\) format\('(opentype|truetype)'\)/);
+  const match = css.match(
+    /src:\s*url\((.+?)\)\s+format\('(opentype|truetype|woff)'\)/,
+  );
   if (!match) {
-    throw new Error(`Font ${family}@${weight}: truetype URL not found in CSS`);
+    throw new Error(`Font ${family}@${weight}: font URL not found in CSS`);
   }
   const font = await fetch(match[1]);
   if (!font.ok) {
