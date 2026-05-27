@@ -59,8 +59,9 @@ export function Hero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              Build agents that move money. Wallet, payments, SDK, and
-              engine — gasless on Sui.
+              Build agents that move{" "}
+              <span style={{ color: "var(--t2k-accent)" }}>money</span>.
+              Wallet, payments, SDK, and engine — gasless on Sui.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

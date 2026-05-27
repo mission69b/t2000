@@ -80,7 +80,7 @@ export async function Catalog() {
             <h2 className="t2k-section-title mt-3.5" style={{ lineHeight: 1 }}>
               Pay-per-request APIs
               <br />
-              <span style={{ color: "var(--fg-faint)" }}>on Sui. Gasless.</span>
+              <span style={{ color: "var(--t2k-accent)" }}>on Sui. Gasless.</span>
             </h2>
           </div>
           <div>
@@ -91,9 +91,9 @@ export async function Catalog() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Pay-per-request to every major AI provider. 40 services. 88
-              endpoints. Live on{" "}
-              <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
+              Pay-per-request to every major AI provider.{" "}
+              <span style={{ color: "var(--fg)" }}>40 services. 88 endpoints.</span>{" "}
+              Live on <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
             </p>
           </div>
         </div>
