@@ -1,4 +1,10 @@
-'use client';
+// NOTE: `'use client'` directive does NOT live here. It is injected at
+// the top of `dist/toaster.js` by the tsup `onSuccess` post-build hook
+// (see `tsup.config.ts`). Putting it at the top of this source file is
+// useless — esbuild strips top-of-source directives during bundling and
+// warns "Module level directives cause errors when bundled". Consumers
+// must import Toaster from `@t2000/ui/toaster`, not `@t2000/ui`, to get
+// the published bundle that has the directive applied.
 
 import * as React from 'react';
 import { Toaster as SonnerPrimitive, type ToasterProps as SonnerToasterProps } from 'sonner';

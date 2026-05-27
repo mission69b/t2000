@@ -83,4 +83,9 @@ export {
   CommandSeparator,
 } from './primitives/command.js';
 export { Skeleton } from './primitives/skeleton.js';
-export { Toaster, toast, type ToasterProps } from './primitives/sonner.js';
+
+// Toaster + toast intentionally NOT exported from the main barrel.
+// They live in `@t2000/ui/toaster` so the `'use client'` directive at
+// the top of `src/toaster.ts` reaches the consumer bundle intact —
+// Sonner uses client-only React hooks that would crash in a server
+// component. See `src/toaster.ts` for the consumer pattern.

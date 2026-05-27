@@ -58,6 +58,10 @@ import {
 import { ScrollArea } from './scroll-area.js';
 import { Command, CommandInput, CommandList, CommandItem } from './command.js';
 import { Skeleton } from './skeleton.js';
+// Toaster comes from the `@t2000/ui/toaster` client-only entry in
+// published builds. For tests we import the underlying source file
+// directly to verify it mounts — no need to go through the bundled
+// entry barrel here.
 import { Toaster } from './sonner.js';
 
 afterEach(() => {

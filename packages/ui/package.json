@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./toaster": {
+      "types": "./dist/toaster.d.ts",
+      "import": "./dist/toaster.js"
+    },
     "./tokens": "./src/tokens/geist-ds.css",
     "./tokens/page": "./src/tokens/page.css",
     "./tokens/responsive": "./src/tokens/responsive.css",

@@ -104,7 +104,7 @@ export function Hero() {
 
 ## Primitives
 
-15 themed shadcn/ui primitives ship today: `Button`, `Card`, `Badge`, `Table`, `Separator`, `Dialog`, `Sheet`, `DropdownMenu`, `Tabs`, `Tooltip`, `Accordion`, `ScrollArea`, `Command`, `Skeleton`, `Toaster` (Sonner).
+15 themed shadcn/ui primitives ship today. 14 from the main barrel: `Button`, `Card`, `Badge`, `Table`, `Separator`, `Dialog`, `Sheet`, `DropdownMenu`, `Tabs`, `Tooltip`, `Accordion`, `ScrollArea`, `Command`, `Skeleton`. One from a client-only sub-entry: `Toaster` (Sonner) from `@t2000/ui/toaster`.
 
 ### Skeleton
 
@@ -121,11 +121,13 @@ The pulse animation is Tailwind's built-in `animate-pulse` (honors `prefers-redu
 
 ### Toaster (Sonner)
 
-Mount the `<Toaster />` once at your app root; trigger from anywhere via the re-exported `toast`:
+**Import from the `@t2000/ui/toaster` sub-entry, not the main barrel.** Sonner uses client-only React hooks at the top of its render function; the sub-entry ships with `'use client'` baked in so it works when imported from a server component (e.g. your root layout). The main `@t2000/ui` barrel stays RSC-friendly so server components can import `Card` / `Badge` / `Table` without paying client-bundle cost.
+
+Mount once at your app root; trigger from anywhere via the re-exported `toast`:
 
 ```tsx
-// app/layout.tsx
-import { Toaster } from '@t2000/ui';
+// app/layout.tsx (server component — fine, the sub-entry is 'use client')
+import { Toaster } from '@t2000/ui/toaster';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -138,14 +140,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-// any-client-component.tsx
+// any-client-component.tsx (must already have 'use client' to call toast())
 'use client';
-import { Button, toast } from '@t2000/ui';
+import { Button } from '@t2000/ui';
+import { toast } from '@t2000/ui/toaster';
 
 <Button onClick={() => toast.success('Copied to clipboard')}>Copy</Button>
 ```
 
-Defaults: `theme="dark"`, `position="bottom-right"`. Override either as a `<Toaster theme="light" position="top-center" />` prop. Sonner v2 reads `--popover` + `--popover-foreground` tokens from `@t2000/ui/tokens/theme`, so toasts inherit the Geist surface palette automatically.
+Defaults: `theme="dark"`, `position="bottom-right"`. Override either as a `<Toaster theme="light" position="top-center" />` prop. Sonner v2 inherits `--popover` + `--popover-foreground` tokens via the `bg-popover` / `text-popover-foreground` Tailwind classes in `classNames.toast`, which `@t2000/ui/tokens/theme` maps to `--bg-elevated` (Geist surface).
 
 ## Utility classes
 
