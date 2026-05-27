@@ -61,3 +61,9 @@ HANDOFF_NEXT_AGENT.md
 .smoke-addr
 .smoke-runner.mjs
 .smoke-logs/
+
+# t2000-AFI/ — designer handoff source for the brand-unification redesign
+# (Geist Design System + shadcn/ui static prototype). Local-only — the
+# shipped artifacts live in packages/ui/ (token + primitive ports). Keep on
+# disk as canonical reference during the redesign work.
+t2000-AFI/

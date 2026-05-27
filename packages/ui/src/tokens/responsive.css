@@ -1,0 +1,185 @@
+/* ============================================================
+   responsive.css — mobile + tablet overrides
+   ============================================================
+   Used across t2000.ai, mpp.t2000.ai, and suimpp.dev. Layout-only
+   (colors and tokens come from the per-property stylesheet).
+
+   React inlines `gridTemplateColumns: "repeat(3, 1fr)"` to the DOM as
+   `style="grid-template-columns: repeat(3, 1fr);"` (NOTE: space after
+   the colon) and serializes `minmax(0, 1fr)` as `minmax(0px, 1fr)`.
+   Our [style*="..."] selectors target the substrings React actually
+   writes.
+
+   Breakpoints:
+     ≤ 1024px  — tablet: tighten gutters, scale heroes, narrower nav
+     ≤ 768px   — phablet: collapse multi-col grids to one
+     ≤ 480px   — phone: shrink heroes + tighten chrome further
+   ============================================================ */
+
+
+/* ── Tablet (≤ 1024px) ───────────────────────────────────── */
+@media (max-width: 1024px) {
+  .t2k-container { padding: 0 20px !important; }
+  .t2k-section { padding: 72px 0 !important; }
+
+  .t2k-display       { font-size: clamp(40px, 7vw, 64px) !important; }
+  .t2k-section-title { font-size: clamp(32px, 5.5vw, 48px) !important; }
+
+  /* Hero 2-col → tighter gap */
+  [style*="minmax(0px, 1fr) minmax(0px, 1.05fr)"],
+  [style*="minmax(0px, 1.05fr) minmax(0px, 1fr)"],
+  [style*="minmax(0px, 1fr) minmax(0px, 1.1fr)"],
+  [style*="minmax(0px, 1.1fr) minmax(0px, 1fr)"],
+  [style*="minmax(0px, 1.15fr) minmax(0px, 1fr)"] {
+    gap: 32px !important;
+  }
+}
+
+
+/* ── Phablet (≤ 768px) ───────────────────────────────────── */
+@media (max-width: 768px) {
+  .t2k-container { padding: 0 16px !important; }
+  body { font-size: 15px; }
+
+  .t2k-section          { padding: 56px 0 !important; }
+  .t2k-section--tight   { padding: 40px 0 !important; }
+
+  .t2k-display       { font-size: clamp(36px, 10vw, 52px) !important; line-height: 1.05 !important; }
+  .t2k-section-title { font-size: clamp(28px, 7vw, 40px) !important; line-height: 1.1 !important; }
+  .t2k-section-sub   { font-size: 15px !important; }
+
+  /* ── Grids: collapse to a single column ─────────────── */
+  /* `repeat(N, 1fr)` patterns — N ≥ 2 → 1 col */
+  [style*="repeat(2, 1fr)"],
+  [style*="repeat(3, 1fr)"],
+  [style*="repeat(4, 1fr)"],
+  [style*="repeat(5, 1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* `minmax(0px, …)` 2-col hero patterns + plain `1fr 1fr` → 1 col */
+  [style*=": 1fr 1fr;"],
+  [style*="minmax(0px, 1fr) minmax(0px, 1.05fr)"],
+  [style*="minmax(0px, 1.05fr) minmax(0px, 1fr)"],
+  [style*="minmax(0px, 1fr) minmax(0px, 1.1fr)"],
+  [style*="minmax(0px, 1.1fr) minmax(0px, 1fr)"],
+  [style*="minmax(0px, 1.15fr) minmax(0px, 1fr)"],
+  [style*="minmax(0px, 1fr) minmax(0px, 1fr)"] {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+
+  /* Footer 3-col patterns */
+  [style*="1.4fr 1fr 1fr"],
+  [style*="1.5fr 1fr 1fr"],
+  [style*="1.4fr repeat(4, 1fr)"] {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+
+  /* Service detail endpoint table — drop the Try column */
+  [style*="70px 1fr 100px 90px"] {
+    grid-template-columns: 60px 1fr 70px !important;
+  }
+  [style*="70px 1fr 100px 90px"] > *:nth-child(4) { display: none !important; }
+
+  /* MPP service accordion row — drop category + endpoint count */
+  .mpp-svc-row {
+    grid-template-columns: 22px 1fr 80px !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+  }
+  .mpp-svc-row > :nth-child(3),
+  .mpp-svc-row > :nth-child(4) { display: none !important; }
+
+  /* MPP endpoint subrow — keep method/path/try, drop from-$ */
+  .mpp-ep-row {
+    grid-template-columns: 22px 60px 1fr 110px !important;
+    gap: 10px !important;
+    padding: 10px 16px !important;
+  }
+  .mpp-ep-row > :nth-child(4) { display: none !important; }
+
+  /* MPP activity table — narrow columns */
+  [style*="1.2fr 0.9fr 0.5fr 0.9fr"],
+  [style*="1.3fr 1fr 0.8fr 0.7fr 0.8fr"] {
+    grid-template-columns: 1fr auto auto !important;
+    gap: 10px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  [style*="1.2fr 0.9fr 0.5fr 0.9fr"] > :nth-child(2),
+  [style*="1.3fr 1fr 0.8fr 0.7fr 0.8fr"] > :nth-child(2) { display: none !important; }
+
+  /* Service detail header endpoint header (3-col + auto) */
+  [style*="auto auto auto"] { gap: 18px !important; }
+  [style*=": 1fr 100px 90px"] { grid-template-columns: 1fr auto !important; }
+  [style*=": 1fr 100px 90px"] > :nth-child(2) { display: none !important; }
+
+  /* Buttons */
+  .t2k-btn--lg { height: 46px !important; padding: 0 16px !important; font-size: 14px !important; }
+  .t2k-install-pill { font-size: 12px !important; padding: 6px 10px !important; }
+  .mpp-chip { height: 28px; padding: 0 10px; font-size: 12.5px; }
+
+  /* ── Nav: stacks tighter, hides decorative links ───── */
+  nav > div {
+    height: auto !important;
+    min-height: 56px !important;
+    padding: 8px 16px !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+  /* Drop the small vertical separators in nav */
+  nav span[style*="height: 14px"][style*="background"],
+  nav span[style*="height: 12px"][style*="background"],
+  nav span[style*="border-left"] { display: none !important; }
+  /* Hide secondary links on phone */
+  nav a[href*="github.com"] { display: none !important; }
+  nav a.t2k-btn--blue.t2k-btn--sm { display: none !important; }
+
+  /* Products dropdown panel: full width minus margins */
+  nav > div > div[style*="width: 580px"] {
+    width: calc(100vw - 32px) !important;
+    left: 16px !important;
+  }
+  /* Dropdown internal 2-col grid → stack */
+  nav > div > div[style*="position: absolute"] [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Suimpp doc layout ─────────────────────────────── */
+  .su-doc {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+    padding: 40px 20px 72px !important;
+  }
+  .su-doc-toc {
+    position: static !important;
+    border-bottom: 1px solid var(--ds-gray-alpha-300);
+    padding-bottom: 20px;
+  }
+  .su-doc--solo { padding: 40px 20px 72px !important; }
+  .su-prose { font-size: 15.5px; }
+  .su-prose h1 { font-size: 30px !important; }
+  .su-prose h2 { font-size: 22px !important; }
+  .su-prose pre { font-size: 12px; padding: 14px 16px; }
+  .su-prose table { font-size: 13px; }
+}
+
+
+/* ── Phone (≤ 480px) ─────────────────────────────────────── */
+@media (max-width: 480px) {
+  .t2k-container { padding: 0 14px !important; }
+  body { font-size: 14.5px; }
+
+  .t2k-section { padding: 44px 0 !important; }
+
+  .t2k-display       { font-size: clamp(32px, 11vw, 44px) !important; }
+  .t2k-section-title { font-size: clamp(24px, 8vw, 32px) !important; }
+
+  .t2k-btn--lg { width: 100%; justify-content: center; }
+  .t2k-btn--sm { width: auto; }
+
+  /* Decorative ambient glows can cause horizontal overflow on phone */
+  body > div > section > div[aria-hidden="true"] { display: none !important; }
+}

@@ -9,6 +9,18 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@t2000/ui', '@t2000/ui/*'],
+              message:
+                '@t2000/ui is a UI/React design system. @t2000/engine MUST stay React-free — it runs on Node (server, CLI, MCP host). Move any shared types/utilities into @t2000/sdk, then import from @t2000/sdk here.',
+            },
+          ],
+        },
+      ],
     },
   },
   {

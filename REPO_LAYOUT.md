@@ -20,14 +20,15 @@ t2000/
 │   ├── cli/                                 (@t2000/cli)
 │   ├── engine/                              (@t2000/engine — agent engine)
 │   ├── mcp/                                 (@t2000/mcp)
-│   └── sdk/                                 (@t2000/sdk)
+│   ├── sdk/                                 (@t2000/sdk)
+│   └── ui/                                  (@t2000/ui — design system; shipped 2026-05-27)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source)
 ├── patches/                                 ← pnpm patches
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
 ```
 
-> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access. Founder-local marketing artifacts (litepaper, decks) live in a gitignored `docs/marketing/` folder.
+> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access. Founder-local marketing artifacts (litepaper, decks) live in a gitignored `docs/marketing/` folder. The brand redesign designer handoff source lives in a gitignored `t2000-AFI/` folder (static React+Babel prototype; shipped artifacts live in `packages/ui/`).
 
 ## Where does X go?
 
@@ -65,6 +66,7 @@ Plus founder-local truth source (gitignored, not visible publicly):
 - `HANDOFF_NEXT_AGENT.md` (agent context handoff, ~7d rotation policy)
 - `.smoke-*` (live smoke tooling)
 - `.env.local`, `.env.example`
+- `t2000-AFI/` (designer handoff source for the brand-unification redesign; static React+Babel prototype with Geist Design System tokens + per-property accent overrides; canonical reference during the redesign work — shipped artifacts live in `packages/ui/`)
 
 ## audric repo (sister repo, separate clone)
 
