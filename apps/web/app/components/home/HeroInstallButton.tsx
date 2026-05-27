@@ -18,7 +18,7 @@ export function HeroInstallButton() {
     <button
       type="button"
       onClick={handleCopy}
-      aria-label={copied ? "Copied" : "Copy install prompt"}
+      aria-label={copied ? "copied — paste into Claude Desktop" : "install with one prompt"}
       className={
         "t2k-btn t2k-btn--blue t2k-btn--lg t2k-install-btn" +
         (copied ? " is-copied" : "")
