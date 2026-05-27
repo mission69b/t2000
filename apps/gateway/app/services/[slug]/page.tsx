@@ -52,7 +52,9 @@ export default async function ServiceDetailPage({
   return (
     <>
       <MppNav currentPage="services" />
-      <ServiceDetail service={service} related={related} />
+      <main>
+        <ServiceDetail service={service} related={related} />
+      </main>
       <MppFooter
         serviceCount={totalServices()}
         endpointCount={totalEndpoints()}

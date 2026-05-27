@@ -10,10 +10,12 @@ export default function HomePage() {
   return (
     <>
       <MppNav />
-      <MppHero />
-      <MppMetrics />
-      <MppCatalogTeaser />
-      <MppCloser />
+      <main>
+        <MppHero />
+        <MppMetrics />
+        <MppCatalogTeaser />
+        <MppCloser />
+      </main>
       <MppFooter
         serviceCount={totalServices()}
         endpointCount={totalEndpoints()}

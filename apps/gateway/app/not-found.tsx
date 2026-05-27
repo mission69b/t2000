@@ -5,7 +5,8 @@ export default function NotFound() {
   return (
     <>
       <MppNav />
-      <section className="relative flex min-h-[calc(100vh-60px)] items-center justify-center overflow-hidden px-6 py-20">
+      <main>
+        <section className="relative flex min-h-[calc(100vh-60px)] items-center justify-center overflow-hidden px-6 py-20">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 blur-3xl"
@@ -65,7 +66,8 @@ export default function NotFound() {
             </a>
           </div>
         </div>
-      </section>
+        </section>
+      </main>
     </>
   );
 }

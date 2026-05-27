@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { totalServices, totalCategories } from "@/lib/catalog";
 
 interface Step {
   n: string;
@@ -8,31 +9,30 @@ interface Step {
   cta: { label: string; href: string; external?: boolean };
 }
 
-const STEPS: Step[] = [
-  {
-    n: "01",
-    tag: "INSTALL",
-    title: "Install the wallet.",
-    desc: "One npm install. Or paste a prompt into Claude Desktop and let the agent set itself up.",
-    cta: { label: "Install →", href: "https://t2000.ai/agent-wallet", external: true },
-  },
-  {
-    n: "02",
-    tag: "BROWSE",
-    title: "Browse the catalog.",
-    desc: "40 services across 13 categories. Search, filter, and expand any service to see its endpoints.",
-    cta: { label: "Browse services →", href: "/services" },
-  },
-  {
-    n: "03",
-    tag: "PAY",
-    title: "Pay your first call.",
-    desc: "Each endpoint comes with three one-click commands — t2 CLI, a Claude prompt, or raw curl.",
-    cta: { label: "Read the docs ↗", href: "https://developers.t2000.ai", external: true },
-  },
-];
-
 export function MppCloser() {
+  const steps: Step[] = [
+    {
+      n: "01",
+      tag: "INSTALL",
+      title: "Install the wallet.",
+      desc: "One npm install. Or paste a prompt into Claude Desktop and let the agent set itself up.",
+      cta: { label: "Install →", href: "https://t2000.ai/agent-wallet", external: true },
+    },
+    {
+      n: "02",
+      tag: "BROWSE",
+      title: "Browse the catalog.",
+      desc: `${totalServices()} services across ${totalCategories()} categories. Search, filter, and expand any service to see its endpoints.`,
+      cta: { label: "Browse services →", href: "/services" },
+    },
+    {
+      n: "03",
+      tag: "PAY",
+      title: "Pay your first call.",
+      desc: "Each endpoint comes with three one-click commands — t2 CLI, a Claude prompt, or raw curl.",
+      cta: { label: "Read the docs ↗", href: "https://developers.t2000.ai", external: true },
+    },
+  ];
   return (
     <section
       className="relative overflow-hidden"
@@ -73,8 +73,8 @@ export function MppCloser() {
         </header>
 
         <div className="grid gap-3.5 md:grid-cols-3">
-          {STEPS.map((s, i) => (
-            <StepCard key={s.n} step={s} last={i === STEPS.length - 1} />
+          {steps.map((s, i) => (
+            <StepCard key={s.n} step={s} last={i === steps.length - 1} />
           ))}
         </div>
       </div>

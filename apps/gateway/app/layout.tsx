@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
+import { totalServices, totalEndpoints } from "@/lib/catalog";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -11,15 +12,16 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
+const SHORT_DESC = `${totalServices()} services. ${totalEndpoints()} endpoints. Pay-per-request access to AI, search, web, voice, finance APIs. No keys. No accounts. Settled in USDC on Sui.`;
+const SOCIAL_DESC = `${totalServices()} services. ${totalEndpoints()} endpoints. No API keys. Settled in USDC on Sui. Gasless.`;
+
 export const metadata: Metadata = {
   title: "mpp.t2000.ai — pay-per-request APIs on Sui",
-  description:
-    "40 services. 88 endpoints. Pay-per-request access to OpenAI, Anthropic, fal.ai, ElevenLabs, Firecrawl and more. No keys. No accounts. Settled in USDC on Sui.",
+  description: SHORT_DESC,
   metadataBase: new URL("https://mpp.t2000.ai"),
   openGraph: {
     title: "mpp.t2000.ai — pay-per-request APIs on Sui",
-    description:
-      "40 services. 88 endpoints. No API keys. Settled in USDC on Sui. Gasless.",
+    description: SOCIAL_DESC,
     siteName: "mpp.t2000.ai",
     type: "website",
   },
@@ -27,8 +29,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@t2000_ai",
     title: "mpp.t2000.ai — pay-per-request APIs on Sui",
-    description:
-      "40 services. 88 endpoints. No API keys. Settled in USDC on Sui.",
+    description: SOCIAL_DESC,
   },
 };
 

@@ -12,7 +12,9 @@ export default function ActivityPage() {
   return (
     <>
       <MppNav currentPage="activity" />
-      <MppActivityPage />
+      <main>
+        <MppActivityPage />
+      </main>
       <MppFooter
         serviceCount={totalServices()}
         endpointCount={totalEndpoints()}
