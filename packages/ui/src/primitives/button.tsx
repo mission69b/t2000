@@ -4,23 +4,23 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/cn.js';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-fast ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-fast ease-out focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:opacity-90',
-        accent: 'bg-accent text-accent-foreground hover:opacity-90',
-        destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
+        default: 'bg-primary text-primary-foreground hover:bg-primary-hover',
+        accent: 'bg-accent text-accent-foreground hover:bg-accent-hover',
+        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive-hover',
         outline: 'border border-border bg-transparent text-foreground hover:bg-muted',
-        secondary: 'bg-secondary text-secondary-foreground hover:opacity-90',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary-hover',
         ghost: 'text-foreground hover:bg-muted',
         link: 'text-foreground underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-10 px-4 py-2',
+        default: 'h-11 px-5 py-2',
         sm: 'h-8 rounded-md px-3 text-xs',
         lg: 'h-12 rounded-md px-6',
-        icon: 'h-10 w-10',
+        icon: 'h-11 w-11',
       },
     },
     defaultVariants: {

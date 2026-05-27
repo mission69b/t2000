@@ -47,7 +47,10 @@ Pick **one** path based on which major version of Tailwind you run. The two path
 @import "@t2000/ui/tokens/responsive";/* optional: responsive helpers */
 @import "@t2000/ui/tokens/theme";     /* @theme block — registers utilities */
 
-:root { --t2k-accent: var(--ds-blue-700); }  /* per-property accent */
+:root {
+  --t2k-accent: var(--ds-blue-700);
+  --t2k-accent-hover: var(--ds-blue-800);  /* tier-down for accent buttons */
+}
 ```
 
 You don't need a `tailwind.config.ts` with v4 — the `@theme` block in `tokens/theme` registers `bg-background`, `text-foreground`, `font-sans`, etc.
@@ -79,7 +82,10 @@ export default {
 
 ```css
 /* app/globals.css */
-:root { --t2k-accent: var(--ds-blue-700); }
+:root {
+  --t2k-accent: var(--ds-blue-700);
+  --t2k-accent-hover: var(--ds-blue-800);  /* tier-down for accent buttons */
+}
 ```
 
 ### Usage (both paths)
@@ -98,13 +104,15 @@ export function Hero() {
 
 ## Per-property accent
 
-Every primitive references `var(--t2k-accent)`. Each consumer redefines it in its own globals.css:
+Every primitive references `var(--t2k-accent)`. Each consumer redefines it (plus `--t2k-accent-hover` for the tier-down on accent buttons) in its own globals.css:
 
 | Property | Accent | Override |
 |---|---|---|
-| `t2000.ai` + `developers.t2000.ai` | `#0072F3` blue | `:root { --t2k-accent: var(--ds-blue-700); }` |
-| `mpp.t2000.ai` | `#12A594` teal | `:root { --t2k-accent: var(--ds-teal-700); }` |
-| `suimpp.dev` | monochrome (links only) | `:root { --t2k-accent: var(--ds-blue-700); }` (no fills) |
+| `t2000.ai` + `developers.t2000.ai` | `#0072F3` blue | `--t2k-accent: var(--ds-blue-700); --t2k-accent-hover: var(--ds-blue-800);` |
+| `mpp.t2000.ai` | `#12A594` teal | `--t2k-accent: var(--ds-teal-700); --t2k-accent-hover: var(--ds-teal-800);` |
+| `suimpp.dev` | monochrome (links only) | `--t2k-accent: var(--ds-blue-700); --t2k-accent-hover: var(--ds-blue-800);` (no fills) |
+
+`--t2k-accent-hover` is the tier-down per CURSOR.md §9 "Tier-down" hover discipline — one ramp tier darker than the resting accent. If you omit it, the `bg-accent-hover` Tailwind utility falls back to `--t2k-accent` (accent buttons will appear static on hover instead of darkening).
 
 ## Dark / light mode
 

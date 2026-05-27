@@ -8,6 +8,7 @@
 
 :root {
   --t2k-accent: var(--ds-blue-700);
+  --t2k-accent-hover: var(--ds-blue-800);
   --t2k-accent-bg: rgba(0, 114, 245, 0.08);
   --t2k-accent-hi: rgba(0, 114, 245, 0.20);
 

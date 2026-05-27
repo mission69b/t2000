@@ -32,18 +32,27 @@
 
   --color-primary: var(--ds-gray-1000);
   --color-primary-foreground: var(--ds-background-100);
+  --color-primary-hover: var(--ds-gray-900);
 
   --color-secondary: var(--ds-gray-alpha-200);
   --color-secondary-foreground: var(--fg);
+  --color-secondary-hover: var(--ds-gray-alpha-300);
 
   --color-muted: var(--ds-gray-alpha-200);
   --color-muted-foreground: var(--fg-muted);
 
   --color-accent: var(--t2k-accent);
   --color-accent-foreground: #ffffff;
+  /* Per CURSOR.md §9 "Tier-down" hover discipline: each consumer defines
+     --t2k-accent-hover alongside --t2k-accent (one ramp tier darker —
+     blue-800 for t2000.ai, teal-800 for mpp.t2000.ai). Falls back to
+     --t2k-accent so unmigrated consumers don't break visually; they just
+     lose the tier-down effect on accent buttons. */
+  --color-accent-hover: var(--t2k-accent-hover, var(--t2k-accent));
 
   --color-destructive: var(--ds-red-800);
   --color-destructive-foreground: #ffffff;
+  --color-destructive-hover: var(--ds-red-900);
 
   --color-border: var(--ds-gray-alpha-400);
   --color-input: var(--ds-gray-alpha-400);

@@ -23,10 +23,40 @@
   --t2k-card-gap:    16px;
 }
 
+html {
+  /* Dark mode is canonical per Geist DS + CURSOR.md §9. Form controls,
+     scrollbars, and date-pickers inherit dark UA chrome. Consumers that
+     opt into light mode via [data-theme="light"] should override locally. */
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 html, body {
   background: var(--bg);
   color: var(--fg);
   min-height: 100vh;
+}
+
+body {
+  /* Geist's `ss01` stylistic set keeps the wordmark crisp; `cv11` is the
+     single-story `a`. Always on, per CURSOR.md §9. `tabular-nums` is the
+     data-dense default — flowing prose opts OUT via .t2k-prose below.
+     This is the inverse of most type systems but correct for a finance
+     product family. */
+  font-feature-settings: "ss01", "cv11";
+  font-variant-numeric: tabular-nums;
+}
+
+/* Prose opt-out — restore proportional figure widths on body copy that
+   reads as paragraphs (blog posts, long-form, FAQ answers). Apply to
+   the wrapper that contains flowing prose. */
+.t2k-prose,
+article p,
+article li,
+.t2k-prose p,
+.t2k-prose li {
+  font-variant-numeric: normal;
 }
 
 /* Selection color — t2000 blue, not Geist's vercel-blue (same hex, but
@@ -223,5 +253,15 @@ html, body {
 .t2k-btn:focus-visible,
 a:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 
-/* Tabular numerics — for metrics + counts */
+/* Tabular numerics — for metrics + counts. NOTE: tabular-nums is the
+   global default (set on `body`). This class exists as a re-assertion
+   helper inside elements that opted out via .t2k-prose. */
 .t2k-tabular { font-variant-numeric: tabular-nums; }
+
+/* Code block line-height — Geist Mono needs 1.7-1.85 to feel right.
+   Tailwind's `leading-normal` (1.5) is too tight, `leading-relaxed`
+   (1.625) is still under-leaded. Per CURSOR.md §9. */
+.t2k-code {
+  font-family: var(--font-mono);
+  line-height: 1.75;
+}
