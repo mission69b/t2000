@@ -17,8 +17,8 @@ export function Products() {
               letterSpacing: "-0.011em",
             }}
           >
-            Wallet at the edge. Payments through MPP. SDK underneath
-            everything. Engine to put it all together.
+            Hold, send, swap, and pay. Everything an agent needs to move
+            money on Sui.
           </p>
         </header>
 

@@ -12,8 +12,7 @@ export function Stories() {
           <span className="t2k-eyebrow">{"// SIX PROMPTS · SHIPPING TODAY"}</span>
           <h2 className="t2k-section-title mt-3">What your agent can do.</h2>
           <p className="t2k-section-sub">
-            Each one runs against shipping packages on Sui mainnet. Copy a
-            prompt, run it now.
+            Six prompts. Real outputs. Copy any and paste into Claude Desktop.
           </p>
         </header>
 

@@ -15,8 +15,7 @@ export function PaymentsExamples() {
             <span style={{ color: "var(--fg-muted)" }}>with the catalog.</span>
           </h2>
           <p className="t2k-section-sub">
-            Each prompt is a real chain of MPP calls. Copy any, paste into
-            Claude Desktop.
+            Real chained prompts. Copy any, paste into Claude Desktop.
           </p>
         </header>
 

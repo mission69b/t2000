@@ -154,7 +154,7 @@ function ProductsMenu({ currentPage }: { currentPage: CurrentPage }) {
       className="absolute z-40 rounded-[10px] border p-[10px]"
       style={{
         top: 56,
-        left: 230,
+        left: 24,
         width: 580,
         background: "var(--ds-background-100)",
         borderColor: "var(--ds-gray-alpha-400)",

@@ -61,7 +61,6 @@ export function PaymentsArchitecture() {
               color: "var(--fg)",
             }}
           >
-            Three properties.{" "}
             <span style={{ color: "var(--fg-muted)" }}>One stack.</span>
           </h2>
         </header>

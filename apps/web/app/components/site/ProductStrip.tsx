@@ -31,7 +31,7 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
             color: "var(--fg)",
           }}
         >
-          Four packages. One agent stack.
+          One agent stack.
         </h2>
 
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
