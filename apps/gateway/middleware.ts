@@ -1,18 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 /**
- * Gateway middleware — applies reputation-based rate limiting to service routes.
- * Fetches the cached tier from the reputation API (Node runtime), then applies
- * in-memory rate limiting at the edge.
+ * Gateway middleware — flat IP-based rate limit on service routes.
+ *
+ * The reputation-tier system (premium / established / trusted / new / anonymous)
+ * was removed in Rock 2 (audit Tier 1 cut). No t2000 client sent the
+ * `x-wallet-address` header that drove tier resolution, so the wallet-scored
+ * limits never activated for real traffic. The current cap matches the
+ * legacy `anonymous` ceiling and is a per-edge-instance ceiling — for a
+ * distributed limit, swap in Upstash.
  */
 
-const TIER_RATE_LIMITS: Record<string, number> = {
-  premium: 1000,
-  established: 300,
-  trusted: 60,
-  new: 10,
-  anonymous: 10,
-};
+const RATE_LIMIT_PER_MINUTE = 60;
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -29,46 +28,15 @@ function checkRateLimit(key: string, maxPerMinute: number): boolean {
   return entry.count > maxPerMinute;
 }
 
-const WALLET_RE = /^0x[a-fA-F0-9]{64}$/;
-
-async function resolveTier(walletAddress: string, origin: string): Promise<string> {
-  if (!WALLET_RE.test(walletAddress)) return 'new';
-  try {
-    const url = new URL(`/api/reputation/${encodeURIComponent(walletAddress)}`, origin);
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (!res.ok) return 'new';
-    const data = (await res.json()) as { tier?: string };
-    return data.tier ?? 'new';
-  } catch {
-    return 'new';
-  }
-}
-
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const isServiceRoute = !pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && pathname !== '/' && pathname !== '/favicon.ico';
-  if (!isServiceRoute) return NextResponse.next();
-
-  const walletAddress = request.headers.get('x-wallet-address');
-
-  let tier = 'anonymous';
-  if (walletAddress) {
-    tier = await resolveTier(walletAddress, request.nextUrl.origin);
-  }
-
-  const limit = TIER_RATE_LIMITS[tier] ?? 10;
-  const key = walletAddress ?? `ip:${request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'}`;
-  const blocked = checkRateLimit(key, limit);
+export function middleware(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const blocked = checkRateLimit(`ip:${ip}`, RATE_LIMIT_PER_MINUTE);
 
   if (blocked) {
     return NextResponse.json(
       {
         error: 'Rate limit exceeded',
-        tier,
-        limit,
+        limit: RATE_LIMIT_PER_MINUTE,
         retryAfterSeconds: 60,
       },
       {
@@ -78,11 +46,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.next();
-  if (walletAddress) {
-    response.headers.set('x-reputation-tier', tier);
-  }
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {

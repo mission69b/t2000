@@ -1,41 +1,34 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Serif } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-});
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#000000",
 };
 
 export const metadata: Metadata = {
-  title: "t2000 MPP Gateway — Sui USDC",
+  title: "mpp.t2000.ai — pay-per-request APIs on Sui",
   description:
-    "MPP-enabled APIs payable with Sui USDC. OpenAI, Anthropic, fal.ai, and Firecrawl — no API keys, no accounts, just pay.",
+    "40 services. 88 endpoints. Pay-per-request access to OpenAI, Anthropic, fal.ai, ElevenLabs, Firecrawl and more. No keys. No accounts. Settled in USDC on Sui.",
   metadataBase: new URL("https://mpp.t2000.ai"),
   openGraph: {
-    title: "t2000 MPP Gateway — Pay-per-request APIs on Sui",
+    title: "mpp.t2000.ai — pay-per-request APIs on Sui",
     description:
-      "No API keys. No accounts. No subscriptions. Your agent pays per request with USDC on Sui.",
-    siteName: "t2000 MPP Gateway",
+      "40 services. 88 endpoints. No API keys. Settled in USDC on Sui. Gasless.",
+    siteName: "mpp.t2000.ai",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     site: "@t2000_ai",
-    title: "t2000 MPP Gateway — Pay-per-request APIs on Sui",
+    title: "mpp.t2000.ai — pay-per-request APIs on Sui",
     description:
-      "No API keys. No accounts. Your agent pays per request with USDC on Sui.",
+      "40 services. 88 endpoints. No API keys. Settled in USDC on Sui.",
   },
 };
 
@@ -47,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${GeistSans.variable} ${GeistMono.variable} ${instrumentSerif.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
       <body>
         {children}
