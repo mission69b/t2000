@@ -569,8 +569,6 @@ export default function Home() {
             <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">Discord</a>
             <a href="https://suimpp.dev" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">suimpp</a>
             <a href={AUDRIC_URL} className="font-mono text-[10px] tracking-[0.1em] text-accent uppercase hover:text-foreground transition-colors">Audric</a>
-            <Link href="/terms" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">Terms</Link>
-            <Link href="/privacy" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">Privacy</Link>
           </nav>
         </footer>
       </div>

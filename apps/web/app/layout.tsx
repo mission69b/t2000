@@ -1,16 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Serif } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
-
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -48,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${instrumentSerif.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
       <body>
         {children}

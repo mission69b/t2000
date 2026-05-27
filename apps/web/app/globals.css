@@ -1,66 +1,41 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* ── Agentic Design System — Dark Theme (t2000 infrastructure) ── */
+@import "@t2000/ui/tokens";
+@import "@t2000/ui/tokens/page";
+@import "@t2000/ui/tokens/responsive";
+@import "@t2000/ui/tokens/theme";
 
 :root {
-  /* Neutral scale */
-  --n100: #FFFFFF;
-  --n200: #F7F7F7;
-  --n300: #E5E5E5;
-  --n400: #CCCCCC;
-  --n500: #8F8F8F;
-  --n600: #707070;
-  --n700: #363636;
-  --n800: #191919;
-  --n900: #000000;
+  --t2k-accent: var(--ds-blue-700);
+  --t2k-accent-bg: rgba(0, 114, 245, 0.08);
+  --t2k-accent-hi: rgba(0, 114, 245, 0.20);
 
-  /* Semantic */
-  --color-error: #D50000;
-  --color-warning: #FF9800;
-  --color-success: #3CC14E;
-  --color-info: #0D9DFC;
+  --ds-font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ds-font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace;
 
-  /* t2000 brand accent */
-  --accent: #00D68F;
-  --accent-dim: rgba(0, 214, 143, 0.12);
-  --accent-glow: rgba(0, 214, 143, 0.25);
+  --background: var(--ds-background-100);
+  --surface: var(--ds-gray-100);
+  --foreground: var(--fg);
+  --muted: var(--fg-muted);
+  --dim: var(--fg-subtle);
+  --border-bright: var(--ds-gray-alpha-600);
+  --accent: var(--t2k-accent);
+  --accent-dim: var(--t2k-accent-bg);
+  --accent-glow: var(--t2k-accent-hi);
 
-  /* Dark theme tokens */
-  --background: var(--n900);
-  --surface: var(--n800);
-  --foreground: var(--n100);
-  --muted: var(--n500);
-  --dim: var(--n600);
-  --border: var(--n700);
-  --border-bright: var(--n600);
-
-  /* Shadows (heavier for dark bg) */
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-dropdown: 0 4px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-drawer: 0 8px 24px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
-  --shadow-modal: 0 16px 48px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4);
+  --color-error: var(--ds-red-800);
+  --color-warning: var(--ds-amber-800);
+  --color-success: var(--ds-green-700);
+  --color-info: var(--ds-blue-700);
 }
 
 @theme inline {
-  --color-background: var(--background);
   --color-surface: var(--surface);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
   --color-dim: var(--dim);
-  --color-accent: var(--accent);
+  --color-border-bright: var(--border-bright);
   --color-accent-dim: var(--accent-dim);
   --color-accent-glow: var(--accent-glow);
-  --color-border: var(--border);
-  --color-border-bright: var(--border-bright);
-  --color-success: var(--color-success);
-  --color-warning: var(--color-warning);
-  --color-error: var(--color-error);
-  --color-info: var(--color-info);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
-  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
-  --color-panel: var(--surface);
 }
 
 html {
@@ -68,25 +43,10 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
 }
 
-/* Noise overlay */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.3;
-}
-
-/* Animations */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
