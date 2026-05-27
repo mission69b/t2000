@@ -40,9 +40,8 @@ export function EngineHero() {
                 color: "var(--fg)",
               }}
             >
-              The engine
+              The engine that powers
               <br />
-              that powers{" "}
               <span style={{ color: "var(--t2k-accent)" }}>Audric.</span>
             </h1>
             <p
