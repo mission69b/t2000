@@ -19,7 +19,7 @@ const STEPS: Step[] = [
         <span>/openai/v1/chat/completions</span>
       </>
     ),
-    note: "First hit is always free.",
+    note: "Plain HTTP POST. No API key required.",
   },
   {
     n: "02",

@@ -405,7 +405,7 @@ export const services: Service[] = [
     logo: '/logos/replicate.svg',
     endpoints: [
       { method: 'POST', path: '/v1/predictions', description: 'Run a model (sync — waits for result)', price: '0.02' },
-      { method: 'POST', path: '/v1/predictions/status', description: 'Check prediction status by ID', price: '0.001' },
+      { method: 'POST', path: '/v1/predictions/status', description: 'Check prediction status by ID', price: '0.01' },
     ],
   },
   {
@@ -433,7 +433,7 @@ export const services: Service[] = [
     logo: '/logos/assemblyai.svg',
     endpoints: [
       { method: 'POST', path: '/v1/transcribe', description: 'Submit audio URL for transcription', price: '0.02' },
-      { method: 'POST', path: '/v1/result', description: 'Get transcription result by ID (free — paid on submit)', price: '0.001' },
+      { method: 'POST', path: '/v1/result', description: 'Get transcription result by ID', price: '0.01' },
     ],
   },
   {
