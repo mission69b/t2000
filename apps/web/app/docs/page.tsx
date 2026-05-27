@@ -129,7 +129,7 @@ export default function DocsPage() {
           </a>
           <a
             href="https://audric.ai"
-            className="px-4 sm:px-5 py-2 min-h-[36px] flex items-center bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
+            className="px-4 sm:px-5 py-2 min-h-[36px] flex items-center bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-colors hover:bg-[var(--ds-gray-900)]"
           >
             Try Audric
           </a>

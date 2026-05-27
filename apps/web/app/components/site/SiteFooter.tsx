@@ -13,6 +13,7 @@ interface FooterLink {
   label: string;
   href: string;
   external?: boolean;
+  soon?: boolean;
 }
 
 const PRODUCT_LINKS: FooterLink[] = [
@@ -20,6 +21,7 @@ const PRODUCT_LINKS: FooterLink[] = [
   { label: "Agent Payments", href: "/agent-payments" },
   { label: "Agent SDK", href: "/agent-sdk" },
   { label: "Agent Engine", href: "/agent-engine" },
+  { label: "Agent Models", href: "#", soon: true },
   { label: "Developers", href: DEVELOPERS_URL, external: true },
 ];
 
@@ -103,7 +105,36 @@ function FooterCol({ title, links }: { title: string; links: FooterLink[] }) {
         {links.map((link) => {
           const isInternal = link.href.startsWith("/");
           const className =
-            "inline-flex items-center gap-1 text-[13.5px] tracking-tight no-underline text-muted transition-colors hover:text-foreground";
+            "inline-flex items-center gap-1.5 text-[13.5px] tracking-tight no-underline text-muted transition-colors hover:text-foreground";
+          const soonPill = (
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 9.5,
+                letterSpacing: "0.06em",
+                color: "var(--fg-subtle)",
+                padding: "1px 5px",
+                border: "1px solid var(--ds-gray-alpha-400)",
+                borderRadius: 3,
+              }}
+            >
+              Soon
+            </span>
+          );
+          if (link.soon) {
+            return (
+              <li key={link.label}>
+                <span
+                  className="inline-flex items-center gap-1.5 text-[13.5px] tracking-tight"
+                  style={{ color: "var(--fg-subtle)", opacity: 0.78 }}
+                  aria-disabled="true"
+                >
+                  {link.label}
+                  {soonPill}
+                </span>
+              </li>
+            );
+          }
           return (
             <li key={link.label}>
               {isInternal ? (

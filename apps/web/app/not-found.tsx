@@ -44,7 +44,7 @@ export default function NotFound() {
         <div className="flex gap-2.5 justify-center mt-8 flex-wrap">
           <Link
             href="/"
-            className="px-6 py-3 min-h-[44px] flex items-center bg-accent text-white font-mono text-[10px] tracking-[0.12em] uppercase transition-colors hover:opacity-90"
+            className="px-6 py-3 min-h-[44px] flex items-center bg-accent text-white font-mono text-[10px] tracking-[0.12em] uppercase transition-colors hover:bg-[var(--t2k-accent-hover)]"
           >
             Back home
           </Link>

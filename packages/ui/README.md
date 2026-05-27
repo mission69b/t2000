@@ -178,6 +178,21 @@ Every primitive references `var(--t2k-accent)`. Each consumer redefines it (plus
 
 `--t2k-accent-hover` is the tier-down per CURSOR.md §9 "Tier-down" hover discipline — one ramp tier darker than the resting accent. If you omit it, the `bg-accent-hover` Tailwind utility falls back to `--t2k-accent` (accent buttons will appear static on hover instead of darkening).
 
+## Per-property migration checklist
+
+When wiring `@t2000/ui` into a new app (or fixing drift on an existing one), tick through this list in order. Most failure modes silently degrade — buttons render but don't tier-down, focus rings vanish, dark mode flickers — so verify each step rather than assuming defaults work.
+
+- [ ] **Install** `@t2000/ui` and the matching animate plugin (`tw-animate-css` for v4, `tailwindcss-animate` for v3).
+- [ ] **Wire `globals.css` imports** in this exact order: `tailwindcss` → `tw-animate-css` → `@t2000/ui/tokens` → `@t2000/ui/tokens/page` → `@t2000/ui/tokens/responsive` → `@t2000/ui/tokens/theme`. Order matters — `tokens` must load before `tokens/theme` so the `@theme` block can reference the primitives.
+- [ ] **Define BOTH accent vars** in `:root`: `--t2k-accent` (resting) AND `--t2k-accent-hover` (one ramp tier darker). Skipping the hover var silently no-ops every accent button's tier-down. The hex values per property are in the table above; sync them from `--ds-blue-700` / `--ds-blue-800` (or `--ds-teal-700` / `--ds-teal-800`) — never hardcode the literal hex.
+- [ ] **Wire Geist fonts** in root `layout.tsx` via `next/font/google`'s `GeistSans` + `GeistMono`, applied as className variables on `<html>`. Tokens reference `--font-sans` / `--font-mono` which resolve to the variables.
+- [ ] **Confirm dark is the default.** No `data-theme` attribute on `<html>` = dark. Light mode is opt-in via `data-theme="light"`. Don't ship a property in light mode without an explicit design decision.
+- [ ] **Mount `<Toaster />`** from `@t2000/ui/toaster` once in the root layout, only if the property uses `toast()` feedback. The sub-entry has `'use client'` baked in; the main `@t2000/ui` barrel is RSC-safe.
+- [ ] **Verify focus rings render.** Tab through any `<button>` / `<a>` / `<input>`. Should get a 4px Geist-blue ring (`var(--shadow-focus)`) — same color on every property, including teal MPP and monochrome suimpp. If the browser default ring appears instead, the `:where()` rule in `tokens/page.css` isn't loading.
+- [ ] **Verify hover states tier-down.** Hover any primary button — bg should swap to one ramp tier darker, no scale, no glow, no opacity fade. Hover a card — border-strengthen only. If any element opacity-fades or scales on hover, that's a CURSOR.md §9 violation; grep the component for `hover:opacity-` / `hover:scale-` and fix.
+
+If hygiene drift on an existing app surfaces, that's the same list run as an audit — start from the top and find the first step that's wrong. The bug is almost always there.
+
 ## Dark / light mode
 
 Default theme is **dark** (matches Geist). To switch to light, set `data-theme="light"` on `<html>` (or `data-mode="light"` on any ancestor):

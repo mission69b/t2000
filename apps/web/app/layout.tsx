@@ -12,23 +12,23 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "t2000 — The Infrastructure Behind Audric",
+  title: "t2000 — Agentic finance infrastructure on Sui",
   description:
-    "The infrastructure behind Audric. CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway. Open source. Non-custodial. Built on Sui.",
+    "Build agents that move money. Wallet, payments, SDK, and engine — gasless on Sui.",
   metadataBase: new URL("https://t2000.ai"),
   openGraph: {
-    title: "t2000 — The Infrastructure Behind Audric",
+    title: "t2000 — Agentic finance infrastructure on Sui",
     description:
-      "The infrastructure behind Audric. CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway. Built on Sui.",
+      "Build agents that move money. Wallet, payments, SDK, and engine — gasless on Sui.",
     siteName: "t2000",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     site: "@t2000_ai",
-    title: "t2000 — The Infrastructure Behind Audric",
+    title: "t2000 — Agentic finance infrastructure on Sui",
     description:
-      "CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway. Built on Sui.",
+      "Build agents that move money. Wallet, payments, SDK, and engine — gasless on Sui.",
   },
 };
 

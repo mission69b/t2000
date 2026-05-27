@@ -174,6 +174,7 @@ function ProductsMenu({ currentPage }: { currentPage: CurrentPage }) {
             pkg={p.pkg}
             href={p.href}
             active={p.slug === currentPage}
+            soon={"soon" in p ? p.soon : undefined}
           />
         ))}
       </div>
@@ -206,6 +207,7 @@ function MenuItem({
   href,
   external,
   active,
+  soon,
 }: {
   name: string;
   desc: string;
@@ -213,36 +215,49 @@ function MenuItem({
   href: string;
   external?: boolean;
   active?: boolean;
+  soon?: boolean;
 }) {
   const isInternal = href.startsWith("/");
-  const className =
+  const interactiveClassName =
     "block rounded-md px-3 py-2.5 no-underline text-foreground transition-colors hover:bg-[var(--ds-gray-alpha-100)]";
+  const soonClassName = "block rounded-md px-3 py-2.5 text-foreground";
   const style = {
     background: active ? "var(--t2k-accent-bg)" : "transparent",
+    ...(soon ? { opacity: 0.78, cursor: "default" as const } : null),
   };
 
   const inner = (
     <>
       <div className="flex items-center justify-between gap-2">
         <span
-          className="text-[14px] font-medium tracking-tight"
+          className="inline-flex items-center gap-2 text-[14px] font-medium tracking-tight"
           style={{ color: active ? "var(--t2k-accent)" : "var(--fg)" }}
         >
           {name}
           {external && (
-            <span
-              className="ml-1"
-              style={{ color: "var(--fg-subtle)" }}
-            >
-              ↗
-            </span>
+            <span style={{ color: "var(--fg-subtle)" }}>↗</span>
           )}
           {active && (
             <span
-              className="ml-1.5 font-mono text-[10px]"
+              className="font-mono text-[10px]"
               style={{ color: "var(--t2k-accent)" }}
             >
               • ON
+            </span>
+          )}
+          {soon && (
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 9.5,
+                letterSpacing: "0.06em",
+                color: "var(--fg-subtle)",
+                padding: "2px 6px",
+                border: "1px solid var(--ds-gray-alpha-400)",
+                borderRadius: 3,
+              }}
+            >
+              Soon
             </span>
           )}
         </span>
@@ -264,9 +279,21 @@ function MenuItem({
     </>
   );
 
+  if (soon) {
+    return (
+      <div
+        className={soonClassName}
+        style={style}
+        aria-disabled="true"
+      >
+        {inner}
+      </div>
+    );
+  }
+
   if (isInternal) {
     return (
-      <Link href={href} className={className} style={style}>
+      <Link href={href} className={interactiveClassName} style={style}>
         {inner}
       </Link>
     );
@@ -276,7 +303,7 @@ function MenuItem({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={className}
+      className={interactiveClassName}
       style={style}
     >
       {inner}

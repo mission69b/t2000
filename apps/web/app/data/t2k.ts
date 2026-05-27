@@ -139,6 +139,7 @@ export const NAV_PRODUCTS = [
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },
   { slug: "engine", name: "Agent Engine", pkg: "@t2000/engine", desc: "The engine behind Audric.", href: "/agent-engine" },
+  { slug: "models", name: "Agent Models", pkg: "@t2000/models", desc: "Finance models for agents.", href: "#", soon: true },
 ] as const;
 
 export const NAV_FAMILY = [
