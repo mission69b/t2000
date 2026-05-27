@@ -123,7 +123,7 @@ export default function DocsPage() {
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden md:flex items-center font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition-colors min-h-[36px]"
+            className="hidden md:flex items-center font-mono text-[10px] tracking-[0.12em] text-muted-foreground uppercase hover:text-foreground transition-colors min-h-[36px]"
           >
             GitHub
           </a>
@@ -146,7 +146,7 @@ export default function DocsPage() {
           <h1 className="text-[36px] sm:text-[44px] leading-[1.1] tracking-[-1px] text-foreground mb-4 font-normal">
             Documentation
           </h1>
-          <p className="text-sm sm:text-base text-muted leading-[1.7] max-w-[560px]">
+          <p className="text-sm sm:text-base text-muted-foreground leading-[1.7] max-w-[560px]">
             Everything you need to integrate t2000 into your agent, app, or workflow.
             Five packages, one stack.
           </p>
@@ -179,7 +179,7 @@ export default function DocsPage() {
                 <div className="font-mono text-[10px] tracking-wider uppercase text-dim mb-1.5">
                   3 &mdash; Add to your AI client&rsquo;s MCP config
                 </div>
-                <code className="block font-mono text-sm text-muted bg-background px-4 py-2.5 border border-border whitespace-pre overflow-x-auto">
+                <code className="block font-mono text-sm text-muted-foreground bg-background px-4 py-2.5 border border-border whitespace-pre overflow-x-auto">
 {`{
   "mcpServers": {
     "t2000": {
@@ -191,7 +191,7 @@ export default function DocsPage() {
                 </code>
                 <div className="font-mono text-[10px] text-dim mt-2 leading-relaxed">
                   Paste into Claude Desktop, Cursor, Cline, or any MCP client.
-                  This is a <span className="text-muted">config snippet</span>,
+                  This is a <span className="text-muted-foreground">config snippet</span>,
                   not a terminal command &mdash; the AI client launches the
                   server automatically over stdio.
                 </div>
@@ -200,13 +200,13 @@ export default function DocsPage() {
                 <div className="font-mono text-[10px] tracking-wider uppercase text-dim mb-1.5">
                   4 &mdash; Verify (optional)
                 </div>
-                <code className="block font-mono text-[11px] text-muted bg-background px-4 py-2.5 border border-border whitespace-pre overflow-x-auto">
+                <code className="block font-mono text-[11px] text-muted-foreground bg-background px-4 py-2.5 border border-border whitespace-pre overflow-x-auto">
 {`printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}\\n' \\
   | npx -y @t2000/mcp@latest`}
                 </code>
                 <div className="font-mono text-[10px] text-dim mt-2 leading-relaxed">
                   A healthy server replies with{' '}
-                  <span className="text-muted">&quot;serverInfo&quot;:&#123;&quot;name&quot;:&quot;t2000&quot;...&#125;</span>{' '}
+                  <span className="text-muted-foreground">&quot;serverInfo&quot;:&#123;&quot;name&quot;:&quot;t2000&quot;...&#125;</span>{' '}
                   and exits.
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function DocsPage() {
             ].map((cap) => (
               <div key={cap.label} className="bg-surface p-5 text-center">
                 <div className="text-[22px] font-semibold text-accent leading-none mb-1.5">{cap.value}</div>
-                <div className="font-mono text-[10px] tracking-wider uppercase text-muted mb-1">{cap.label}</div>
+                <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mb-1">{cap.label}</div>
                 <div className="font-mono text-[9px] text-dim">{cap.sub}</div>
               </div>
             ))}
@@ -257,7 +257,7 @@ export default function DocsPage() {
                         {pkg.pkg}
                       </span>
                     </div>
-                    <p className="text-[13px] text-muted leading-[1.7] mb-4">
+                    <p className="text-[13px] text-muted-foreground leading-[1.7] mb-4">
                       {pkg.desc}
                     </p>
                     <div className="flex items-center gap-3 flex-wrap">
@@ -265,7 +265,7 @@ export default function DocsPage() {
                         href={pkg.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted border border-border px-3 py-1.5 hover:text-foreground hover:border-foreground transition-colors"
+                        className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground border border-border px-3 py-1.5 hover:text-foreground hover:border-foreground transition-colors"
                       >
                         GitHub
                       </a>
@@ -274,7 +274,7 @@ export default function DocsPage() {
                           href={pkg.npm}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted border border-border px-3 py-1.5 hover:text-foreground hover:border-foreground transition-colors"
+                          className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground border border-border px-3 py-1.5 hover:text-foreground hover:border-foreground transition-colors"
                         >
                           npm
                         </a>
@@ -284,7 +284,7 @@ export default function DocsPage() {
                           href="https://mpp.t2000.ai/services"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted border border-border px-3 py-1.5 hover:text-foreground hover:border-foreground transition-colors"
+                          className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground border border-border px-3 py-1.5 hover:text-foreground hover:border-foreground transition-colors"
                         >
                           Explorer
                         </a>
@@ -300,7 +300,7 @@ export default function DocsPage() {
                       {pkg.commands.map((cmd) => (
                         <div
                           key={cmd}
-                          className="font-mono text-[12px] text-muted leading-relaxed"
+                          className="font-mono text-[12px] text-muted-foreground leading-relaxed"
                         >
                           <span className="text-dim select-none">
                             {pkg.title === "Gateway" ? "" : "$ "}
@@ -341,7 +341,7 @@ export default function DocsPage() {
                   {r.label}
                   <span className="text-dim group-hover/link:text-accent transition-colors">&rarr;</span>
                 </div>
-                <div className="text-[13px] text-muted">{r.desc}</div>
+                <div className="text-[13px] text-muted-foreground">{r.desc}</div>
               </a>
             ))}
           </div>
@@ -356,7 +356,7 @@ export default function DocsPage() {
         <nav className="flex gap-4 sm:gap-5 flex-wrap justify-center">
           <Link
             href="/"
-            className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors"
+            className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted-foreground transition-colors"
           >
             Home
           </Link>
@@ -364,7 +364,7 @@ export default function DocsPage() {
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors"
+            className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted-foreground transition-colors"
           >
             GitHub
           </a>

@@ -49,7 +49,7 @@ function KpiCard({
 }) {
   return (
     <div className="bg-panel border border-border rounded-md p-5">
-      <div className="text-[10px] tracking-[0.15em] uppercase text-muted mb-2">
+      <div className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground mb-2">
         {label}
       </div>
       <div
@@ -58,7 +58,7 @@ function KpiCard({
         {value}
       </div>
       {sub && (
-        <div className="text-[11px] text-muted mt-1 font-mono">{sub}</div>
+        <div className="text-[11px] text-muted-foreground mt-1 font-mono">{sub}</div>
       )}
     </div>
   );
@@ -76,7 +76,7 @@ function WalletRow({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <span className="text-[11px] font-mono text-muted">{label}</span>
+        <span className="text-[11px] font-mono text-muted-foreground">{label}</span>
         {address ? (
           <a
             href={`https://suiscan.xyz/mainnet/account/${address}`}
@@ -132,7 +132,7 @@ export function StatsView() {
   if (!stats) {
     return (
       <div className="text-center py-20">
-        <div className="text-muted text-sm font-mono animate-pulse">
+        <div className="text-muted-foreground text-sm font-mono animate-pulse">
           Loading stats...
         </div>
       </div>

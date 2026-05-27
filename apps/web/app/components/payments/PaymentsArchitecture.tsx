@@ -72,7 +72,7 @@ export function PaymentsArchitecture() {
               href={p.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="t2k-card flex flex-col gap-3.5 no-underline transition-colors hover:!border-[var(--ds-gray-alpha-500)]"
+              className="t2k-card t2k-card-hover flex flex-col gap-3.5 no-underline"
               style={{
                 padding: "22px 22px 18px",
                 color: "var(--fg)",

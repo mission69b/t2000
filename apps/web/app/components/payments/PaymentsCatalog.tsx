@@ -96,7 +96,7 @@ export function PaymentsCatalog() {
 function CategoryCard({ cat, count, examples }: Category) {
   return (
     <div
-      className="t2k-card flex flex-col gap-2 transition-colors hover:!border-[var(--ds-gray-alpha-500)]"
+      className="t2k-card t2k-card-hover flex flex-col gap-2"
       style={{ padding: "18px 18px" }}
     >
       <div className="flex items-baseline justify-between">

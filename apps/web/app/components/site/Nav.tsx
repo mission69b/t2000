@@ -13,7 +13,7 @@ import {
 type CurrentPage = "wallet" | "payments" | "sdk" | "engine" | null;
 
 const linkBase =
-  "inline-flex items-center gap-1 text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors cursor-pointer no-underline text-muted hover:text-foreground";
+  "inline-flex items-center gap-1 text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors cursor-pointer no-underline text-muted-foreground hover:text-foreground";
 
 export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
   const [open, setOpen] = useState(false);
@@ -87,7 +87,7 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
         <span className="flex-1" />
 
         <span
-          className="hidden md:inline-flex items-center gap-[7px] rounded-full border px-[11px] py-[5px] font-mono text-[12px] tracking-[0.01em] text-muted"
+          className="hidden md:inline-flex items-center gap-[7px] rounded-full border px-[11px] py-[5px] font-mono text-[12px] tracking-[0.01em] text-muted-foreground"
           style={{
             background: "var(--ds-gray-alpha-100)",
             borderColor: "var(--ds-gray-alpha-300)",
@@ -222,7 +222,7 @@ function MenuItem({
     "block rounded-md px-3 py-2.5 no-underline text-foreground transition-colors hover:bg-[var(--ds-gray-alpha-100)]";
   const soonClassName = "block rounded-md px-3 py-2.5 text-foreground";
   const style = {
-    background: active ? "var(--t2k-accent-bg)" : "transparent",
+    ...(active ? { background: "var(--t2k-accent-bg)" } : null),
     ...(soon ? { opacity: 0.78, cursor: "default" as const } : null),
   };
 

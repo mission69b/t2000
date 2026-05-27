@@ -41,7 +41,7 @@ function ServiceTeaserCard({ s }: { s: ServiceCard }) {
   return (
     <Link
       href={`/services/${s.id}`}
-      className="t2k-card flex flex-col gap-1.5 no-underline transition-colors"
+      className="t2k-card t2k-card-hover flex flex-col gap-1.5 no-underline"
       style={{ padding: "14px 16px", color: "var(--fg)" }}
     >
       <div className="flex items-baseline justify-between gap-2">

@@ -34,7 +34,7 @@ export default function NotFound() {
           </div>
 
           <div className="mb-6 inline-flex items-center gap-2">
-            <span className="font-mono text-[14px] font-medium tracking-tight text-muted">
+            <span className="font-mono text-[14px] font-medium tracking-tight text-muted-foreground">
               t2000 · mpp
             </span>
           </div>
@@ -43,7 +43,7 @@ export default function NotFound() {
             Endpoint not found.
           </h1>
 
-          <p className="mx-auto mt-3.5 max-w-[460px] text-base leading-[1.55] text-muted">
+          <p className="mx-auto mt-3.5 max-w-[460px] text-base leading-[1.55] text-muted-foreground">
             No such resource at this URL. The gateway only routes to known services.
           </p>
 

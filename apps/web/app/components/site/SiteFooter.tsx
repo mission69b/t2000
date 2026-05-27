@@ -54,7 +54,7 @@ export function SiteFooter() {
                 t2000
               </span>
             </div>
-            <p className="m-0 max-w-[300px] text-[13px] leading-[1.6] text-muted">
+            <p className="m-0 max-w-[300px] text-[13px] leading-[1.6] text-muted-foreground">
               Agentic finance infrastructure on Sui. Wallet, Payments, SDK,
               Engine.
             </p>
@@ -105,7 +105,7 @@ function FooterCol({ title, links }: { title: string; links: FooterLink[] }) {
         {links.map((link) => {
           const isInternal = link.href.startsWith("/");
           const className =
-            "inline-flex items-center gap-1.5 text-[13.5px] tracking-tight no-underline text-muted transition-colors hover:text-foreground";
+            "inline-flex items-center gap-1.5 text-[13.5px] tracking-tight no-underline text-muted-foreground transition-colors hover:text-foreground";
           const soonPill = (
             <span
               className="font-mono uppercase"

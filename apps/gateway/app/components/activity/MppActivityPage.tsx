@@ -42,6 +42,7 @@ export function MppActivityPage() {
     totalCalls: 0,
     totalVolume: 0,
   });
+  const [loaded, setLoaded] = useState(false);
   const seenIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
@@ -63,6 +64,7 @@ export function MppActivityPage() {
           totalCalls: sData.totalPayments,
           totalVolume: parseFloat(sData.totalVolume) || 0,
         });
+        setLoaded(true);
       } catch {
         // Silent — keep last good state.
       }
@@ -99,13 +101,13 @@ export function MppActivityPage() {
         <div className="mb-8 grid gap-3 md:grid-cols-3">
           <CounterCard
             label="Calls settled"
-            value={stats.totalCalls > 0 ? stats.totalCalls.toLocaleString() : "—"}
+            value={loaded ? stats.totalCalls.toLocaleString() : null}
+            loading={!loaded}
           />
           <CounterCard
             label="USDC settled"
-            value={
-              stats.totalVolume > 0 ? `$${stats.totalVolume.toFixed(2)}` : "—"
-            }
+            value={loaded ? `$${stats.totalVolume.toFixed(2)}` : null}
+            loading={!loaded}
           />
           <CounterCard label="Settle" value="~400" suffix="ms" />
         </div>
@@ -195,10 +197,12 @@ function CounterCard({
   label,
   value,
   suffix,
+  loading,
 }: {
   label: string;
-  value: string;
+  value: string | null;
   suffix?: string;
+  loading?: boolean;
 }) {
   return (
     <div
@@ -220,11 +224,25 @@ function CounterCard({
           fontVariantNumeric: "tabular-nums",
         }}
       >
-        {value}
-        {suffix && (
-          <span style={{ fontSize: 18, color: "var(--fg-muted)" }}>
-            {suffix}
-          </span>
+        {loading ? (
+          <span
+            aria-hidden="true"
+            className="inline-block animate-pulse rounded"
+            style={{
+              width: "5ch",
+              height: "0.7em",
+              background: "var(--ds-gray-alpha-300)",
+            }}
+          />
+        ) : (
+          <>
+            {value}
+            {suffix && (
+              <span style={{ fontSize: 18, color: "var(--fg-muted)" }}>
+                {suffix}
+              </span>
+            )}
+          </>
         )}
       </div>
     </div>

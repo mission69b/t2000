@@ -20,7 +20,7 @@ export default function StatsPage() {
         <header className="mb-12 sm:mb-16">
           <Link
             href="/"
-            className="inline-block text-muted hover:text-accent text-xs font-mono mb-8 transition-colors"
+            className="inline-block text-muted-foreground hover:text-accent text-xs font-mono mb-8 transition-colors"
           >
             ← t2000.ai
           </Link>
@@ -33,7 +33,7 @@ export default function StatsPage() {
               Live
             </span>
           </div>
-          <p className="text-muted text-sm max-w-lg leading-relaxed">
+          <p className="text-muted-foreground text-sm max-w-lg leading-relaxed">
             Real-time data from the t2000 agent network on Sui mainnet.
             Auto-refreshes every 60 seconds.
           </p>
@@ -42,7 +42,7 @@ export default function StatsPage() {
         <StatsView />
 
         <footer className="mt-20 pt-8 border-t border-border text-center">
-          <p className="text-muted text-xs">
+          <p className="text-muted-foreground text-xs">
             t2000 — Agentic Wallet for AI agents.{" "}
             <Link href="/" className="text-accent hover:underline">
               Home

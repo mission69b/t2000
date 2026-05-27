@@ -144,7 +144,7 @@ export async function Catalog() {
 function ServiceCard({ s }: { s: ServiceTeaser }) {
   return (
     <div
-      className="t2k-card flex flex-col gap-1 transition-colors hover:border-[var(--ds-gray-alpha-500)]"
+      className="t2k-card t2k-card-hover flex flex-col gap-1"
       style={{ padding: "16px" }}
     >
       <div className="flex items-baseline justify-between">

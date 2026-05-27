@@ -54,7 +54,7 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
         <span className="flex-1" />
 
         <span
-          className="hidden md:inline-flex items-center gap-[7px] rounded-full border px-[11px] py-[5px] font-mono text-[12px] tracking-[0.01em] text-muted"
+          className="hidden md:inline-flex items-center gap-[7px] rounded-full border px-[11px] py-[5px] font-mono text-[12px] tracking-[0.01em] text-muted-foreground"
           style={{
             background: "var(--ds-gray-alpha-100)",
             borderColor: "var(--ds-gray-alpha-300)",

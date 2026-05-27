@@ -42,7 +42,7 @@ function ProductCard({
   return (
     <Link
       href={p.href}
-      className="t2k-card group flex flex-col gap-4 no-underline transition-colors hover:border-[var(--ds-gray-alpha-500)]"
+      className="t2k-card t2k-card-hover group flex flex-col gap-4 no-underline"
       style={{ padding: 28, color: "var(--fg)" }}
     >
       <div className="flex items-center justify-between">

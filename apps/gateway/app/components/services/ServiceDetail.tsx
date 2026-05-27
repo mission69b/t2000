@@ -293,7 +293,7 @@ $ retry with Payment header
                   <Link
                     key={r.id}
                     href={`/services/${r.id}`}
-                    className="t2k-card flex flex-col gap-2 no-underline transition-colors"
+                    className="t2k-card t2k-card-hover flex flex-col gap-2 no-underline"
                     style={{ padding: "18px 18px", color: "var(--fg)" }}
                   >
                     <span

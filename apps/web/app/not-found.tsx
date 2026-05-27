@@ -28,7 +28,7 @@ export default function NotFound() {
         </div>
 
         <div className="inline-flex items-center gap-2 mb-6">
-          <span className="font-mono text-[14px] font-medium text-muted tracking-tight">
+          <span className="font-mono text-[14px] font-medium text-muted-foreground tracking-tight">
             t2000
           </span>
         </div>
@@ -37,7 +37,7 @@ export default function NotFound() {
           Page not found.
         </h1>
 
-        <p className="mt-3.5 text-base leading-[1.55] text-muted max-w-[460px] mx-auto">
+        <p className="mt-3.5 text-base leading-[1.55] text-muted-foreground max-w-[460px] mx-auto">
           The thing you wanted isn&rsquo;t here. Probably never was.
         </p>
 
@@ -52,7 +52,7 @@ export default function NotFound() {
             href="https://developers.t2000.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-6 py-3 min-h-[44px] flex items-center text-muted font-mono text-[10px] tracking-[0.12em] uppercase border border-border-bright transition-colors hover:text-foreground hover:border-foreground"
+            className="px-6 py-3 min-h-[44px] flex items-center text-muted-foreground font-mono text-[10px] tracking-[0.12em] uppercase border border-border-bright transition-colors hover:text-foreground hover:border-foreground"
           >
             Read the docs <span aria-hidden="true" className="ml-1.5">↗</span>
           </a>
