@@ -145,7 +145,7 @@ export const NAV_PRODUCTS = [
 export const NAV_FAMILY = [
   { name: "MPP Gateway", desc: "40 services. 88 endpoints. mpp.t2000.ai", href: "https://mpp.t2000.ai", external: true },
   { name: "suimpp.dev", desc: "The open MPP standard — Sui binding, v0.1.", href: "https://suimpp.dev", external: true },
-  { name: "Audric", desc: "Conversational finance. Coming soon.", href: "https://audric.ai", external: true },
+  { name: "Audric", desc: "Conversational finance.", href: "https://audric.ai", external: true },
 ] as const;
 
 export const GITHUB_URL = "https://github.com/mission69b/t2000";
