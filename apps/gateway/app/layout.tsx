@@ -12,8 +12,8 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
-const SHORT_DESC = `${totalServices()} services. ${totalEndpoints()} endpoints. Pay-per-request access to AI, search, web, voice, finance APIs. No keys. No accounts. Settled in USDC on Sui.`;
-const SOCIAL_DESC = `Pay-per-request APIs on Sui. No API keys. Settled in USDC on Sui. Gasless.`;
+const SHORT_DESC = `Pay-per-request APIs. ${totalServices()} services, ${totalEndpoints()} endpoints across AI, search, web, voice, and finance. No keys, no accounts. Settled in USDC on Sui.`;
+const SOCIAL_DESC = `Pay-per-request APIs. No API keys. Settled in USDC on Sui. Gasless.`;
 
 export const metadata: Metadata = {
   title: "mpp.t2000.ai — pay-per-request APIs on Sui",
