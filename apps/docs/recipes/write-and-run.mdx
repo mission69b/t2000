@@ -1,0 +1,91 @@
+---
+title: "Write code, then run it"
+description: "Agent writes a script with Claude, then executes it via Judge0 to verify the output. Two paid calls, ~$0.02."
+---
+
+Most agent demos stop at "the LLM wrote some code." This one closes the loop — Claude writes the script, the agent pays Judge0 to actually execute it, and the verified output flows back. Useful for data tasks where you want machine-verified correctness, not just plausible-looking code.
+
+## The prompt
+
+```
+Write a Python script that computes the 30-day EMA of SUI from this OHLC CSV, then run it via Judge0 to verify.
+```
+
+## What runs
+
+1. `POST /anthropic/v1/messages` — Claude writes Python (~$0.01)
+2. `POST /judge0/v1/submissions` — Judge0 executes it in a sandbox (~$0.01)
+
+Judge0 supports [70+ languages](https://judge0.com/languages) — Python, Node.js, Go, Rust, Bash, SQL, etc. The same recipe works for any of them; swap the `language_id`.
+
+## Run it
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+
+const csv = `date,open,high,low,close
+2026-04-01,3.42,3.51,3.40,3.48
+2026-04-02,3.48,3.55,3.45,3.52
+...`; // your OHLC data
+
+const script = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `Write a Python script that reads this CSV from stdin and prints the 30-day EMA of the close column on the last row. Output ONLY the script, no commentary.\n\n${csv}`,
+    }],
+  }),
+});
+
+const code = (script.body as { content: { text: string }[] }).content[0].text;
+
+const run = await agent.pay({
+  url: 'https://mpp.t2000.ai/judge0/v1/submissions',
+  method: 'POST',
+  body: JSON.stringify({
+    source_code: Buffer.from(code).toString('base64'),
+    language_id: 71, // Python 3
+    stdin: Buffer.from(csv).toString('base64'),
+  }),
+});
+
+const output = (run.body as { stdout: string }).stdout;
+console.log('EMA:', Buffer.from(output, 'base64').toString());
+```
+
+### CLI
+
+```bash
+SCRIPT=$(t2 pay https://mpp.t2000.ai/anthropic/v1/messages \
+  --header 'anthropic-version: 2023-06-01' \
+  --data '{"model":"claude-3-5-sonnet-20241022","max_tokens":1024,"messages":[{"role":"user","content":"Write a Python one-liner that prints fib(10)."}]}')
+
+# extract code, base64 it, submit:
+echo "$SCRIPT" | jq -r '.content[0].text' | base64 > /tmp/code.b64
+
+t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
+  --data "{\"source_code\":\"$(cat /tmp/code.b64)\",\"language_id\":71}"
+```
+
+## Expected output
+
+```
+2 calls · ~$0.02 · ~3s · 0 taps
+verified: 55
+```
+
+## Extend it
+
+- Swap to **Together** (`/together/v1/chat/completions`) for Llama-4 code generation at the same price
+- Use **Judge0 `/v1/languages`** (~$0.01) to discover available runtimes if you want to branch on language
+- Pipe the verified output into **Firecrawl** (`/firecrawl/v1/scrape`) to compare against data scraped from another source
+- Pair with **OpenAI** (`/openai/v1/chat/completions`) as a second opinion — have one model write the code, the other review it before Judge0 runs it

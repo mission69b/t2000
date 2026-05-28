@@ -1,0 +1,98 @@
+---
+title: "Morning market brief"
+description: "Chain CoinGecko + NewsAPI + Anthropic over MPP. Three paid calls, ~$0.03, zero API keys."
+---
+
+Your agent pulls live prices from CoinGecko, top crypto headlines from NewsAPI, and asks Claude to write a 200-word brief — all paid in USDC on the [`mpp.t2000.ai`](https://mpp.t2000.ai) gateway. No subscriptions, no auth setup.
+
+## The prompt
+
+```
+Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, write me a 200-word brief.
+```
+
+## What runs
+
+1. `POST /coingecko/v1/price` — coins by ID vs USD
+2. `POST /newsapi/v1/search` — keyword article search
+3. `POST /anthropic/v1/messages` — Claude 3.5 Sonnet stitches them into prose
+
+Each call returns HTTP 402, your wallet signs a tiny USDC payment, the gateway proxies upstream and returns 200. Total ~$0.03, ~6s end to end.
+
+## Run it
+
+### Claude Desktop (MCP)
+
+Install the wallet, wire MCP, fund $1 of USDC, paste the prompt:
+
+```bash
+npm install -g @t2000/cli
+t2 init
+t2 receive          # send $1 USDC to this address
+t2 mcp install      # auto-wires Claude Desktop, Cursor, Windsurf
+```
+
+The MCP server's `t2000_pay` tool handles the 402s automatically — Claude makes the calls and writes the brief.
+
+### CLI
+
+```bash
+PRICES=$(t2 pay https://mpp.t2000.ai/coingecko/v1/price \
+  --data '{"ids":"sui,ethereum,bitcoin","vs_currencies":"usd"}')
+
+NEWS=$(t2 pay https://mpp.t2000.ai/newsapi/v1/search \
+  --data '{"q":"crypto","pageSize":5}')
+
+t2 pay https://mpp.t2000.ai/anthropic/v1/messages \
+  --header 'anthropic-version: 2023-06-01' \
+  --data "{\"model\":\"claude-3-5-sonnet-20241022\",\"max_tokens\":1024,\"messages\":[{\"role\":\"user\",\"content\":\"Prices: $PRICES. Headlines: $NEWS. Write a 200-word brief.\"}]}"
+```
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+
+const prices = await agent.pay({
+  url: 'https://mpp.t2000.ai/coingecko/v1/price',
+  method: 'POST',
+  body: JSON.stringify({ ids: 'sui,ethereum,bitcoin', vs_currencies: 'usd' }),
+});
+
+const news = await agent.pay({
+  url: 'https://mpp.t2000.ai/newsapi/v1/search',
+  method: 'POST',
+  body: JSON.stringify({ q: 'crypto', pageSize: 5 }),
+});
+
+const brief = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `Prices: ${JSON.stringify(prices.body)}. Headlines: ${JSON.stringify(news.body)}. Write a 200-word brief.`,
+    }],
+  }),
+});
+```
+
+## Expected output
+
+```
+3 calls · ~$0.03 · ~6s · 0 taps
+```
+
+A 200-word morning brief stitched from live data.
+
+## Extend it
+
+- Swap NewsAPI for **Exa** (`/exa/v1/search`) for AI-native semantic search
+- Add **Alpha Vantage** (`/alphavantage/v1/quote`) to pull a few equities alongside crypto
+- Pipe the brief to a TTS endpoint (**ElevenLabs** `/v1/text-to-speech/:voiceId`) and play it on a morning kitchen speaker
+- Schedule via cron or GitHub Actions — every call is stateless and pays itself

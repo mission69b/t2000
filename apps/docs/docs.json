@@ -4,22 +4,47 @@
   "name": "t2000",
   "description": "Agentic Finance Infrastructure on Sui — SDK, CLI, MCP, and Engine for AI agents that move money.",
   "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo-light.svg",
+    "dark": "/logo-dark.svg"
+  },
   "colors": {
     "primary": "#0072F3",
     "light": "#0072F3",
     "dark": "#0a0a0a"
   },
   "navigation": {
-    "pages": [
-      "index",
-      "agent-wallet",
-      "agent-payments",
-      "agent-sdk",
-      "agent-engine"
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": ["index"]
+      },
+      {
+        "group": "Products",
+        "pages": [
+          "agent-wallet",
+          "agent-payments",
+          "agent-sdk",
+          "agent-engine"
+        ]
+      },
+      {
+        "group": "Recipes",
+        "pages": [
+          "recipes/morning-brief",
+          "recipes/concept-asset",
+          "recipes/mail-card",
+          "recipes/write-and-run"
+        ]
+      }
     ]
   },
   "navbar": {
     "links": [
+      {
+        "label": "Changelog",
+        "href": "https://github.com/mission69b/t2000/releases"
+      },
       {
         "label": "GitHub",
         "href": "https://github.com/mission69b/t2000"
@@ -51,6 +76,7 @@
           { "label": "GitHub", "href": "https://github.com/mission69b/t2000" },
           { "label": "Skills", "href": "https://t2000.ai/.well-known/agent-skills/index.json" },
           { "label": "MPP Gateway", "href": "https://mpp.t2000.ai" },
+          { "label": "OpenAPI", "href": "https://mpp.t2000.ai/openapi.json" },
           { "label": "Audric (consumer)", "href": "https://audric.ai" }
         ]
       }

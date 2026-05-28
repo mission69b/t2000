@@ -1,0 +1,91 @@
+---
+title: "Mail a physical card"
+description: "Agent writes the message, generates the front, and ships a real postcard via USPS. ~$1.04 end to end."
+---
+
+The most interesting demo of agentic payments isn't another LLM chain — it's letting an agent reach into the physical world. This recipe writes a warm note with Claude, renders the card front with fal.ai, and prints + mails it via [Lob](https://lob.com) at USPS rates.
+
+You pay ~$1.04 in USDC. A physical postcard shows up in someone's mailbox 3–5 days later.
+
+## The prompt
+
+```
+Write a warm note for {recipient}, render it as a card front via fal.ai, and mail it to {address} via Lob.
+```
+
+## What runs
+
+1. `POST /anthropic/v1/messages` — Claude writes the note text (~$0.01)
+2. `POST /fal/fal-ai/flux/dev` — Flux renders the card front (~$0.03)
+3. `POST /lob/v1/postcards` — Lob prints + mails the physical postcard (~$1.00)
+
+## Run it
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+
+const occasion = 'birthday';
+const recipient = { name: 'Mum', address: '123 Lochiel Road, Dunedin 9011, NZ' };
+
+const note = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 200,
+    messages: [{
+      role: 'user',
+      content: `Write a warm ${occasion} note from me to ${recipient.name}. 3-4 sentences. Personal, not gushing.`,
+    }],
+  }),
+});
+
+const cardFront = await agent.pay({
+  url: 'https://mpp.t2000.ai/fal/fal-ai/flux/dev',
+  method: 'POST',
+  body: JSON.stringify({
+    prompt: `Painterly ${occasion} card front. Warm palette, illustrative, no text.`,
+    image_size: 'landscape_16_9',
+  }),
+});
+
+const noteText = (note.body as { content: { text: string }[] }).content[0].text;
+const imageUrl = (cardFront.body as { images: { url: string }[] }).images[0].url;
+
+const postcard = await agent.pay({
+  url: 'https://mpp.t2000.ai/lob/v1/postcards',
+  method: 'POST',
+  body: JSON.stringify({
+    description: `${occasion} card to ${recipient.name}`,
+    to: { name: recipient.name, address_line1: recipient.address },
+    from: { name: 'Phillip', address_line1: 'Sender address here' },
+    front: imageUrl,
+    back: noteText,
+    size: '4x6',
+  }),
+});
+```
+
+### Claude Desktop (MCP)
+
+The chain above runs end-to-end in Claude Desktop if you paste the natural-language prompt — the MCP wallet handles the three 402s in sequence and Claude orchestrates the data flow.
+
+## Expected output
+
+```
+3 calls · ~$1.04 · 0 taps · queued for USPS delivery in 3–5 days
+```
+
+Lob returns a tracking ID + expected delivery date.
+
+## Extend it
+
+- Use **Lob `/v1/letters`** (~$1.50) for multi-page letters instead of postcards
+- Verify the destination first with **Lob `/v1/verify`** (~$0.01) to catch typos before paying $1
+- Swap Flux Dev for **Recraft 20B** (`/fal/fal-ai/recraft-20b`) for vector-style illustrations
+- Generate batches: 10 unique cards to 10 friends, ~$10.50 total, one tap-free pass
