@@ -23,10 +23,22 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-foreground no-underline"
+          aria-label="t2000 mpp — home"
         >
-          <span className="text-[16px] font-semibold tracking-[-0.022em]">
-            t2000
-          </span>
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 100 100"
+            fill="currentColor"
+            aria-hidden="true"
+            style={{ display: "block" }}
+          >
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M22 0H78C90.15 0 100 9.85 100 22V78C100 90.15 90.15 100 78 100H22C9.85 100 0 90.15 0 78V22C0 9.85 9.85 0 22 0ZM32 28V36H44V72H54V36H66V28H32Z"
+            />
+          </svg>
           <span
             className="pl-2 font-mono text-[14px] font-medium tracking-[0.02em]"
             style={{ borderLeft: "1px solid var(--ds-gray-alpha-300)" }}

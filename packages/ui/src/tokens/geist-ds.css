@@ -434,12 +434,14 @@ code {
   border: 1px solid var(--ds-gray-alpha-400);
   color: var(--fg);
 }
-a {
-  color: var(--fg-link);
-  text-decoration: none;
-  transition: color var(--dur-base) var(--ease-out);
+@layer base {
+  a {
+    color: var(--fg-link);
+    text-decoration: none;
+    transition: color var(--dur-base) var(--ease-out);
+  }
+  a:hover { color: var(--ds-blue-700); }
 }
-a:hover { color: var(--ds-blue-700); }
 kbd {
   display: inline-flex;
   align-items: center;
