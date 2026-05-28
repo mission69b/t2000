@@ -14,16 +14,24 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#EDEDED",
-          color: "#0A0A0A",
-          fontSize: 22,
-          fontWeight: 700,
-          borderRadius: 7,
-          fontFamily: "system-ui",
-          letterSpacing: "-0.04em",
+          background: "#0A0A0A",
         }}
       >
-        t
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 100 100"
+          width="100%"
+          height="100%"
+        >
+          <path
+            fill="#EDEDED"
+            d="M22 0H78C90.15 0 100 9.85 100 22V78C100 90.15 90.15 100 78 100H22C9.85 100 0 90.15 0 78V22C0 9.85 9.85 0 22 0Z"
+          />
+          <path
+            fill="#0A0A0A"
+            d="M32 28V36H44V72H54V36H66V28H32Z"
+          />
+        </svg>
       </div>
     ),
     size,
