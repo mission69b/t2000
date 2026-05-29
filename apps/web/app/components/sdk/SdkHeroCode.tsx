@@ -61,7 +61,7 @@ const SAMPLES: Record<TabId, { file: string; lines: CodeToken[] }> = {
       { s: "'gpt-4o'" },
       { c: ", messages },\n" },
       { c: "});\n\n" },
-      { co: "// quote.amount = $0.012\n" },
+      { co: "// quote.amount = $0.01\n" },
       { co: "// settled gasless · ~400ms\n" },
       { p: "return", c: " r.json();" },
     ],

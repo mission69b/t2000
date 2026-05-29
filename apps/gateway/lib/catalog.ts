@@ -1,4 +1,5 @@
 import { services, type Service } from './services';
+import { formatUsd } from './format';
 
 /**
  * UI-friendly projection of a Service. Computes derived fields the AFI
@@ -40,8 +41,7 @@ function cheapestPrice(s: Service): string {
     .map((e) => parseFloat(e.price))
     .filter((n) => Number.isFinite(n) && n > 0);
   if (numeric.length === 0) return 'dynamic';
-  const min = Math.min(...numeric);
-  return `$${min.toFixed(min < 0.01 ? 4 : min < 1 ? 3 : 2)}`;
+  return formatUsd(Math.min(...numeric));
 }
 
 export function toServiceCard(s: Service): ServiceCard {

@@ -44,13 +44,13 @@ export const T2K = {
 
   servicesFallback: [
     { name: "OpenAI", cat: "ai · media", from: "$0.01" },
-    { name: "Anthropic", cat: "ai", from: "$0.002" },
-    { name: "fal.ai", cat: "ai · media", from: "$0.005" },
-    { name: "ElevenLabs", cat: "ai · media", from: "$0.01" },
-    { name: "Perplexity", cat: "ai · search", from: "$0.005" },
-    { name: "Groq", cat: "ai", from: "$0.0005" },
-    { name: "Firecrawl", cat: "web · data", from: "$0.002" },
-    { name: "AlphaVantage", cat: "data", from: "$0.002" },
+    { name: "Anthropic", cat: "ai", from: "$0.01" },
+    { name: "fal.ai", cat: "ai · media", from: "$0.01" },
+    { name: "ElevenLabs", cat: "ai · media", from: "$0.05" },
+    { name: "Perplexity", cat: "ai · search", from: "$0.01" },
+    { name: "Groq", cat: "ai", from: "$0.01" },
+    { name: "Firecrawl", cat: "web · data", from: "$0.01" },
+    { name: "AlphaVantage", cat: "data", from: "$0.01" },
   ] as const,
 
   metrics: [
@@ -130,7 +130,7 @@ export const T2K_STORIES: StoryItem[] = [
       "Write a Python script that computes the 30-day EMA of SUI from this OHLC CSV, then run it via Judge0 to verify.",
     steps: ["anthropic · judge0"],
     done: "Script verified · output matches expected.",
-    total: "~$0.012 · 2 calls · 0 taps · ~3s",
+    total: "~$0.02 · 2 calls · 0 taps · ~3s",
   },
 ];
 

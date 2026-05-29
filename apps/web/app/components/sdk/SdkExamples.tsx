@@ -41,7 +41,7 @@ const EXAMPLES: ExampleCardProps[] = [
       { s: "v1/chat/completions'" },
       { c: ",\n  body,\n});" },
     ],
-    note: "✓ Paid $0.012 · gasless · 200 OK",
+    note: "✓ Paid $0.01 · gasless · 200 OK",
   },
   {
     num: "03",

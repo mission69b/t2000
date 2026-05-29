@@ -111,7 +111,7 @@ function WalletCardCLI() {
         · 200ms{"\n\n"}
         <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 pay
         mpp.t2000.ai/openai/v1/chat{"\n"}
-        <span style={{ color: "var(--t2k-success)" }}>✓</span> Paid $0.012 ·
+        <span style={{ color: "var(--t2k-success)" }}>✓</span> Paid $0.01 ·
         gasless · 200 OK
       </pre>
     </WalletCardShell>
@@ -136,7 +136,7 @@ function WalletCardClaude() {
         <ToolTrace
           lines={[
             { tool: "t2000_send → alice.sui", cost: "$10" },
-            { tool: "t2000_pay → coingecko", cost: "$0.001" },
+            { tool: "t2000_pay → coingecko", cost: "$0.01" },
           ]}
           note="one Payment Intent · gasless"
         />

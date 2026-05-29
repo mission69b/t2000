@@ -100,7 +100,7 @@ const TABS: TerminalTab[] = [
       { text: "  → POST mpp.t2000.ai/elevenlabs/tts", color: "dim", delay: 300 },
       { text: "  ✓ Paid via MPP (tx: 2nRt8wZq...)", color: "green", delay: 500 },
       { text: "  ← 200 OK  [1204ms]", color: "white", delay: 300 },
-      { text: "  Cost: $0.002 USDC", color: "dim", delay: 200 },
+      { text: "  Cost: $0.05 USDC", color: "dim", delay: 200 },
     ],
   },
   {

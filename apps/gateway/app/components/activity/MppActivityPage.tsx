@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { formatUsd } from "@/lib/format";
 
 type Payment = {
   id: number;
@@ -24,12 +25,6 @@ function relativeTs(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
-}
-
-function formatAmount(amount: string): string {
-  const n = parseFloat(amount);
-  if (!Number.isFinite(n)) return amount;
-  return `$${n.toFixed(n < 0.01 ? 4 : n < 1 ? 3 : 2)}`;
 }
 
 function abbreviateEndpoint(endpoint: string): string {
@@ -162,7 +157,7 @@ export function MppActivityPage() {
                     className="text-right t2k-tabular"
                     style={{ color: "var(--fg-muted)" }}
                   >
-                    {formatAmount(r.amount)}
+                    {formatUsd(r.amount)}
                   </span>
                   <span
                     className="text-right"

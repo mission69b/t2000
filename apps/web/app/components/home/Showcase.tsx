@@ -136,7 +136,7 @@ function CardCLI() {
         <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 pay
         https://mpp.t2000.ai/coingecko/{"\n"}
         {"    "}v1/price?ids=sui&vs_currencies=usd{"\n"}
-        <span style={{ color: "var(--t2k-success)" }}>✓</span> Paid $0.001 ·
+        <span style={{ color: "var(--t2k-success)" }}>✓</span> Paid $0.01 ·
         gasless · 200 OK{"\n\n"}
         <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 send 5 USDC
         alice.sui{"\n"}
@@ -164,14 +164,14 @@ function CardClaude() {
         </Bubble>
         <ToolTrace
           lines={[
-            { tool: "t2000_pay → coingecko", cost: "$0.001" },
-            { tool: "t2000_pay → newsapi", cost: "$0.004" },
-            { tool: "t2000_pay → anthropic", cost: "$0.015" },
+            { tool: "t2000_pay → coingecko", cost: "$0.01" },
+            { tool: "t2000_pay → newsapi", cost: "$0.01" },
+            { tool: "t2000_pay → anthropic", cost: "$0.01" },
           ]}
         />
         <Bubble side="left">
           <span style={{ color: "var(--t2k-success)", marginRight: 6 }}>✓</span>
-          Brief saved · <b>~$0.02</b> · gasless · 5s
+          Brief saved · <b>~$0.03</b> · gasless · 5s
         </Bubble>
       </div>
     </ShowcaseCardShell>

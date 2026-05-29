@@ -63,9 +63,11 @@ async function fetchTeasers(): Promise<ServiceTeaser[]> {
 }
 
 function formatPrice(n: number): string {
-  if (n >= 1) return `$${n.toFixed(2)}`;
-  if (n >= 0.01) return `$${n.toFixed(3)}`;
-  return `$${n.toFixed(4)}`;
+  // MPP floor is $0.01 → 2 decimals (no trailing "$0.010"). A positive
+  // sub-cent value (legacy rows only) keeps 3 decimals so it never reads
+  // as "$0.00".
+  if (n > 0 && n < 0.01) return `$${n.toFixed(3)}`;
+  return `$${n.toFixed(2)}`;
 }
 
 export async function Catalog() {

@@ -17,7 +17,7 @@ const SEQUENCE: Step[] = [
   {
     cmd: "t2 pay https://mpp.t2000.ai/coingecko/...",
     out: [
-      { t: "✓ Paid $0.001 · gasless · 200 OK", ok: true },
+      { t: "✓ Paid $0.01 · gasless · 200 OK", ok: true },
       { t: "  { sui: { usd: 4.21 } }", muted: true },
     ],
   },

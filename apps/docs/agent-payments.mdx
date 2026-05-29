@@ -3,7 +3,7 @@ title: "Agent Payments"
 description: "Pay any MPP-protected API in USDC. 40+ services, 88 endpoints, no signup, no API keys — gasless USDC over Sui."
 ---
 
-**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.005 – $0.05` per LLM call. Pay `$1.00 – $1.50` per physical postcard.
+**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.01 – $0.05` per LLM call. Pay `$1.00 – $1.50` per physical postcard.
 
 Two surfaces use it:
 
@@ -138,11 +138,11 @@ t2 services inspect https://mpp.t2000.ai/openai  # full service detail + endpoin
 
 Each service sets its own per-endpoint price. The gateway applies a thin overlay (covered by service margins). Pay per call — no subscription, no commit:
 
-- LLM calls: `$0.005 – $0.05`
+- LLM calls: `$0.01 – $0.05`
 - Image generation: `$0.01 – $0.20`
 - Audio transcription: `$0.01 – $0.05`
 - Physical postcard / letter: `$1.00 – $1.50`
-- Code execution / scraping / search: `$0.005 – $0.10`
+- Code execution / scraping / search: `$0.01 – $0.10`
 
 Always pass `--max-price <USD>` (default `$1.00`) so a misconfigured endpoint can't drain the wallet.
 

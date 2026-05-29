@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Service } from "@/lib/services";
 import { categoryLabel } from "@/lib/catalog";
+import { formatUsd } from "@/lib/format";
 import { sampleBodyFor } from "@/lib/sample-body";
 import { CopyChip } from "./CopyChip";
 
@@ -231,8 +232,7 @@ function CatalogRow({
       .map((e) => parseFloat(e.price))
       .filter((n) => Number.isFinite(n) && n > 0);
     if (ns.length === 0) return "dynamic";
-    const m = Math.min(...ns);
-    return `$${m.toFixed(m < 0.01 ? 4 : m < 1 ? 3 : 2)}`;
+    return formatUsd(Math.min(...ns));
   })();
 
   return (

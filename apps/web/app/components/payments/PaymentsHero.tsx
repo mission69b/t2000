@@ -10,14 +10,14 @@ interface Entry {
 }
 
 const ENTRIES: Entry[] = [
-  { ago: "5s", service: "openai", endpoint: "/chat/completions", amount: "$0.012", live: true },
-  { ago: "12s", service: "fal.ai", endpoint: "/flux/dev", amount: "$0.050" },
-  { ago: "37s", service: "elevenlabs", endpoint: "/text-to-speech", amount: "$0.008" },
-  { ago: "1m", service: "anthropic", endpoint: "/messages", amount: "$0.015" },
-  { ago: "1m", service: "coingecko", endpoint: "/price", amount: "$0.001" },
-  { ago: "2m", service: "firecrawl", endpoint: "/scrape", amount: "$0.002" },
-  { ago: "3m", service: "tavily", endpoint: "/search", amount: "$0.005" },
-  { ago: "4m", service: "lob", endpoint: "/postcards", amount: "$1.000" },
+  { ago: "5s", service: "openai", endpoint: "/chat/completions", amount: "$0.01", live: true },
+  { ago: "12s", service: "fal.ai", endpoint: "/flux/dev", amount: "$0.03" },
+  { ago: "37s", service: "elevenlabs", endpoint: "/text-to-speech", amount: "$0.05" },
+  { ago: "1m", service: "anthropic", endpoint: "/messages", amount: "$0.01" },
+  { ago: "1m", service: "coingecko", endpoint: "/price", amount: "$0.01" },
+  { ago: "2m", service: "firecrawl", endpoint: "/scrape", amount: "$0.01" },
+  { ago: "3m", service: "tavily", endpoint: "/search", amount: "$0.01" },
+  { ago: "4m", service: "lob", endpoint: "/postcards", amount: "$1.00" },
 ];
 
 export function PaymentsHero() {
@@ -93,7 +93,7 @@ export function PaymentsHero() {
                 letterSpacing: "0.02em",
               }}
             >
-              <span>~$0.005 per LLM call</span>
+              <span>~$0.01 per LLM call</span>
               <span className="opacity-40">·</span>
               <span>~400ms settle</span>
               <span className="opacity-40">·</span>

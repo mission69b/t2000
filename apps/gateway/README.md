@@ -8,7 +8,7 @@ MPP gateway — **40 services, 88 endpoints, payable with Sui USDC**.
 
 Proxies requests to upstream APIs (OpenAI, Anthropic, Brave, Firecrawl, etc.) behind MPP (Machine Payments Protocol) 402 challenges. Agents pay per-request with USDC on Sui — no API keys, no accounts, no subscriptions.
 
-Pay $0.005 – $0.05 per call. Pay $1.00 – $1.50 per physical postcard/letter. Top up your wallet with `t2000 fund`.
+Pay $0.01 – $0.05 per call. Pay $1.00 – $1.50 per physical postcard/letter. Top up your wallet with `t2000 fund`.
 
 ## Get started in 30 seconds
 

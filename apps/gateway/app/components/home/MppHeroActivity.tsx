@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { formatUsd } from "@/lib/format";
 
 type Payment = {
   id: number;
@@ -33,12 +34,6 @@ function relativeTs(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function formatAmount(amount: string): string {
-  const n = parseFloat(amount);
-  if (!Number.isFinite(n)) return amount;
-  return `$${n.toFixed(n < 0.01 ? 4 : n < 1 ? 3 : 2)}`;
-}
-
 export function MppHeroActivity() {
   const [rows, setRows] = useState<Row[]>([]);
   const seenIdsRef = useRef<Set<number>>(new Set());
@@ -59,7 +54,7 @@ export function MppHeroActivity() {
           return {
             key: `${p.id}`,
             service: p.service,
-            amount: formatAmount(p.amount),
+            amount: formatUsd(p.amount),
             ts: relativeTs(p.createdAt),
             isNew: isNew && idx === 0,
           };
