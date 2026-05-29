@@ -41,6 +41,52 @@ t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
 t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 ```
 
+### Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="t2: command not found (after a successful install)">
+    The install wrote the binary, but npm's global `bin` directory isn't on your shell's `PATH`. Confirm:
+
+    ```bash
+    npm install -g @t2000/cli
+
+    # Where npm puts global binaries + whether the symlinks exist:
+    NPM_BIN="$(npm prefix -g)/bin"
+    ls -l "$NPM_BIN"/t2 "$NPM_BIN"/t2000
+
+    # Does it run via full path? (proves the package is healthy)
+    "$NPM_BIN/t2" --version          # expect 4.x.x
+
+    # Is that dir actually on PATH?
+    case ":$PATH:" in *":$NPM_BIN:"*) echo "✓ on PATH";; *) echo "✗ NOT on PATH → $NPM_BIN";; esac
+    ```
+
+    If the full-path command prints the version but the last line says **NOT on PATH**, add the dir to your shell profile:
+
+    ```bash
+    # bash
+    echo "export PATH=\"$(npm prefix -g)/bin:\$PATH\"" >> ~/.bash_profile && source ~/.bash_profile
+
+    # zsh
+    echo "export PATH=\"$(npm prefix -g)/bin:\$PATH\"" >> ~/.zshrc && source ~/.zshrc
+    ```
+
+    Then open a **fresh terminal** (shells cache command lookups) and re-run `t2 --version`. As a quick check without editing PATH, `t2000` is a built-in alias for `t2` — both ship in every install.
+  </Accordion>
+  <Accordion title="EACCES / permission errors on install">
+    Your Node was installed somewhere that needs elevated writes (a system `/usr/local` Node). Don't `sudo npm install` — instead point npm's global prefix at your home dir:
+
+    ```bash
+    mkdir -p ~/.npm-global
+    npm config set prefix ~/.npm-global
+    echo "export PATH=\"$HOME/.npm-global/bin:\$PATH\"" >> ~/.zshrc && source ~/.zshrc
+    npm install -g @t2000/cli
+    ```
+
+    Or install Node via [nvm](https://github.com/nvm-sh/nvm) / Homebrew, which keep the global prefix in a user-writable location.
+  </Accordion>
+</AccordionGroup>
+
 ## Where next
 
 <CardGroup cols={2}>
