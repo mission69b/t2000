@@ -51,7 +51,7 @@ t2 --version
 
 If `npm` is missing, point the user to https://nodejs.org/ (Node 18+).
 
-> **Binary naming.** The published binary is currently `t2000`. The `t2` alias ships in Phase C — until then, both `t2000 <verb>` and `t2 <verb>` work via shell alias (or you can keep using `t2000` everywhere). The skills use `t2` because that's the canonical name going forward.
+> **Binary naming.** `npm install -g @t2000/cli` installs two equivalent bins: **`t2`** (canonical) and **`t2000`** (alias) — both point at the same CLI, so `t2 <verb>` and `t2000 <verb>` are interchangeable. If you get `t2: command not found` right after a successful install, npm's global bin directory isn't on your `PATH` — see Troubleshooting at the bottom of this skill.
 
 ### Step 2 — Create a wallet
 
@@ -94,6 +94,8 @@ t2 limit set --daily 200         # cap every send at $200 USD
 ```
 
 v4 ships with **no default limits** — wallets are unconstrained until the user opts in. The `t2 limit` command writes to `~/.t2000/config.json`; CLI writes (`t2 send`, `t2 swap`, `t2 pay`) honor the caps and surface a `LIMIT_EXCEEDED` error when exceeded. Use `--force` on a write to override one time.
+
+> **⚠️ Limits gate CLI writes only — NOT MCP (the AI-client path).** Today `t2 limit` constrains `t2 send/swap/pay` run from the terminal. Writes initiated through the **MCP server you wire up in Step 5** are **not** gated yet — enforcement parity is a Phase D item. Do **not** set a daily cap and then fund the wallet assuming the AI agent can't exceed it: the MCP path is exactly the one that currently bypasses the cap. Treat `t2 limit` as a CLI-only guardrail, and keep agent-wallet balances small, until parity ships.
 
 To view current limits:
 ```bash
@@ -180,7 +182,7 @@ After verify succeeds, surface a short menu of natural next moves:
 
 | Symptom | Fix |
 |---|---|
-| `t2000: command not found` after npm install | `npm bin -g` directory not on PATH; add it or use `npx @t2000/cli ...` instead |
+| `t2: command not found` after npm install | npm's global bin dir isn't on `PATH`. Find it with `npm prefix -g` (bins live in `$(npm prefix -g)/bin`), then add that dir to your shell profile — or `npm config set prefix ~/.npm-global` for a durable user-level prefix. Both `t2` and `t2000` ship in every install. |
 | `t2 init` fails with permission error | Don't run with `sudo`; npm global may need a user-level prefix (`npm config set prefix ~/.npm-global`) |
 | `t2 init` fails with `WALLET_EXISTS` | A file already lives at `~/.t2000/wallet.key`. If it's a v3 file you no longer need, move/delete it. If you still need it, point v3 + v4 at separate paths via `--key`. v4 does not auto-migrate v3 wallets — see the v3 upgrade note in Step 2. |
 | MCP server "doesn't do anything" when run manually | Working as designed — the server is a subprocess launched by the AI client, never run from a terminal. See the `t2000-mcp` skill. |

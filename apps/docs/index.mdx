@@ -14,13 +14,19 @@ Five-minute setup. No banks, no borders, no fees on the t2000 layer.
 
 ## Install
 
-### One-prompt install (paste into any AI client)
+### One-prompt setup (paste into any AI client)
 
-Paste this into Claude Desktop, Cursor, ChatGPT, or any LLM client — the agent will fetch the live setup skill and walk you through the rest.
+Paste this into Cursor, Claude Code, Claude Desktop, ChatGPT, or any LLM client:
 
 ```
 Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my Agent Wallet.
 ```
+
+The agent fetches the live setup skill — which is **read-only and config-only** (it creates a wallet and wires MCP, never moves funds) — and walks you through it.
+
+<Note>
+  **Where the commands actually run.** Agents with access to your local shell — **Cursor**, **Claude Code**, or your terminal — can run the steps with you. Chat clients like **Claude Desktop** and **ChatGPT** run in a cloud sandbox with no access to your machine (and can't reach `t2000.ai` from it), so they'll *read* the skill and hand you the exact commands to paste into your own terminal. Either way the wallet is created locally at `~/.t2000/`, never in the agent's environment — so the [manual install](#manual-install) below is always the reliable path.
+</Note>
 
 The skill markdown lives at [`t2000.ai/skills/t2000-setup`](https://t2000.ai/skills/t2000-setup) — `curl` it directly to see what the agent reads.
 
