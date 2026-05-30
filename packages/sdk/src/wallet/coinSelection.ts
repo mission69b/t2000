@@ -102,6 +102,13 @@ export interface SelectAndSplitResult {
  *   `'all'` to consume the entire balance.
  * @param options.allowSwapAll — if true (default), `amount` >= totalBalance
  *   auto-clips to total. If false, throws when the request would over-consume.
+ * @param options.sponsoredContext — when true, source ONLY from discrete coin
+ *   objects (never the address balance). See the long note below — this exists
+ *   because Enoki's gas station can't yet deserialize a `TransactionData` that
+ *   contains the address-balance `FundsWithdrawal` reservation that
+ *   `coinWithBalance` emits. Self-funded callers leave this false: the fullnode
+ *   handles `FundsWithdrawal` fine, so the address-balance path is preferred
+ *   (it can reach funds that aren't held as coin objects).
  *
  * @returns
  *   - `coin` — `TransactionObjectArgument` ready for downstream consumption.
@@ -115,8 +122,22 @@ export async function selectAndSplitCoin(
   owner: string,
   coinType: string,
   amount: bigint | 'all',
-  options: { allowSwapAll?: boolean } = {},
+  options: { allowSwapAll?: boolean; sponsoredContext?: boolean } = {},
 ): Promise<SelectAndSplitResult> {
+  // [2026-05-30] Sponsored Enoki path — coin objects only. `coinWithBalance`
+  // reaches into the address balance (mysten Address Balances feature) when
+  // `addressBalance >= required`, emitting `0x2::coin::redeem_funds` + a
+  // `FundsWithdrawal` reservation input. That input is a newer `TransactionData`
+  // field; Enoki's sponsor endpoint accepts the kind bytes (200) but its gas
+  // station rejects the assembled `TransactionData` at execute with
+  // "Invalid bcs bytes for TransactionData". The fullnode parses it fine — only
+  // Enoki can't (yet). So under sponsorship we source from discrete coin objects
+  // and surface a clear error when the user's funds are address-balance-only.
+  // See github.com/mission69b/t2000 issue #93.
+  if (options.sponsoredContext) {
+    return selectCoinObjectsOnly(tx, client, owner, coinType, amount, options.allowSwapAll ?? true);
+  }
+
   const balanceResp = await client.getBalance({ owner, coinType });
   const totalBalance = BigInt(balanceResp.totalBalance);
 
@@ -143,17 +164,97 @@ export async function selectAndSplitCoin(
 }
 
 /**
+ * Coin-object-only selection for sponsored (Enoki) transactions. Fetches the
+ * owner's discrete `Coin<T>` objects (NOT the address balance — `getCoins`
+ * excludes it), merges them, and splits the requested amount. Never emits a
+ * `FundsWithdrawal` reservation, so the resulting `TransactionData` stays on
+ * the shape Enoki's gas station can serialize.
+ *
+ * Throws `ADDRESS_BALANCE_UNSPONSORABLE` when the coin objects don't cover the
+ * request — which, for a user whose `getBalance().totalBalance` shows funds,
+ * means those funds live in the address balance (e.g. received via a gasless
+ * stablecoin transfer) and can't be moved through a sponsored transaction yet.
+ */
+async function selectCoinObjectsOnly(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  owner: string,
+  coinType: string,
+  amount: bigint | 'all',
+  allowSwapAll: boolean,
+): Promise<SelectAndSplitResult> {
+  const objects: { objectId: string; balance: bigint }[] = [];
+  let coinObjectTotal = 0n;
+  let cursor: string | null | undefined;
+  let hasNext = true;
+  while (hasNext) {
+    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
+    for (const c of page.data) {
+      objects.push({ objectId: c.coinObjectId, balance: BigInt(c.balance) });
+      coinObjectTotal += BigInt(c.balance);
+    }
+    cursor = page.nextCursor;
+    hasNext = page.hasNextPage;
+  }
+
+  const unsponsorable = (): T2000Error =>
+    new T2000Error(
+      'ADDRESS_BALANCE_UNSPONSORABLE',
+      `These funds are in your address balance, which sponsored transactions ` +
+        `can't access yet. (Funds received via gasless transfers land there.) ` +
+        `This will work once the gas sponsor adds address-balance support.`,
+      { coinObjectTotal: coinObjectTotal.toString(), coinType },
+    );
+
+  if (coinObjectTotal === 0n) {
+    throw unsponsorable();
+  }
+
+  const requested = amount === 'all' ? coinObjectTotal : amount;
+  if (requested > coinObjectTotal) {
+    // Not enough in coin objects. If the caller allows clipping to the
+    // available coin-object total ("swap all"), do so; otherwise the shortfall
+    // is sitting in the address balance → unsponsorable.
+    if (allowSwapAll && amount === 'all') {
+      // unreachable (requested === coinObjectTotal here) — kept for clarity.
+    } else {
+      throw unsponsorable();
+    }
+  }
+
+  const swapAll = amount === 'all' || requested >= coinObjectTotal;
+  const effectiveAmount = swapAll ? coinObjectTotal : requested;
+
+  const [first, ...rest] = objects;
+  const primary = tx.object(first.objectId);
+  if (rest.length > 0) {
+    tx.mergeCoins(
+      primary,
+      rest.map((o) => tx.object(o.objectId)),
+    );
+  }
+
+  // Consume the whole merged coin when taking everything; otherwise split the
+  // exact amount and leave the remainder on the (sender-owned) primary coin.
+  const coin = swapAll ? primary : tx.splitCoins(primary, [effectiveAmount])[0];
+
+  return { coin, effectiveAmount, swapAll };
+}
+
+/**
  * SUI-specific coin selection. Branches on sponsorship context:
  *
  * - **Self-funded (`sponsoredContext: false`)** — splits from `tx.gas`
  *   directly (the user's gas coin IS their SUI). More efficient — no
  *   `getBalance` RTT.
  *
- * - **Sponsored (`sponsoredContext: true`)** — uses
- *   `coinWithBalance({ type: SUI, useGasCoin: false })`, because `tx.gas`
- *   belongs to the Enoki sponsor (NOT the user) under sponsored flows.
- *   The resolver sources from the user's SUI coins / address balance,
- *   not the sponsor's gas coin.
+ * - **Sponsored (`sponsoredContext: true`)** — sources from the user's
+ *   discrete SUI coin objects (`selectCoinObjectsOnly`). This both (a) avoids
+ *   `tx.gas`, which belongs to the Enoki sponsor — NOT the user — under
+ *   sponsored flows (the original S.260 reason for `useGasCoin: false`), AND
+ *   (b) avoids `coinWithBalance`'s address-balance `FundsWithdrawal`, which
+ *   Enoki's gas station can't deserialize (issue #93). If the user's SUI is
+ *   address-balance-only, it raises `ADDRESS_BALANCE_UNSPONSORABLE`.
  */
 export async function selectSuiCoin(
   tx: Transaction,
@@ -164,16 +265,7 @@ export async function selectSuiCoin(
 ): Promise<SelectAndSplitResult> {
   if (sponsoredContext) {
     const { SUI_TYPE } = await import('../token-registry.js');
-    const balanceResp = await client.getBalance({ owner, coinType: SUI_TYPE });
-    const totalBalance = BigInt(balanceResp.totalBalance);
-    if (totalBalance < amountMist) {
-      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient SUI balance`, {
-        available: totalBalance.toString(),
-        required: amountMist.toString(),
-      });
-    }
-    const coin = coinWithBalance({ type: SUI_TYPE, balance: amountMist, useGasCoin: false })(tx);
-    return { coin, effectiveAmount: amountMist, swapAll: false };
+    return selectCoinObjectsOnly(tx, client, owner, SUI_TYPE, amountMist, false);
   }
 
   const [coin] = tx.splitCoins(tx.gas, [amountMist]);

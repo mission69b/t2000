@@ -495,7 +495,9 @@ export const WRITE_APPENDER_REGISTRY: {
       coin = ctx.chainedCoin;
       effectiveAmount = rawAmount;
     } else {
-      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount);
+      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount, {
+        sponsoredContext: ctx.sponsoredContext,
+      });
       coin = r.coin;
       effectiveAmount = r.effectiveAmount;
     }
@@ -566,7 +568,9 @@ export const WRITE_APPENDER_REGISTRY: {
       coin = ctx.chainedCoin;
       effectiveAmount = rawAmount;
     } else {
-      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount);
+      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount, {
+        sponsoredContext: ctx.sponsoredContext,
+      });
       coin = r.coin;
       effectiveAmount = r.effectiveAmount;
     }

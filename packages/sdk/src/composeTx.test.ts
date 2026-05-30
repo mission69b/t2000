@@ -161,7 +161,9 @@ describe('composeTx — single-step migration tests (9 canonical write tools)', 
       steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 1, asset: 'SUI' } }],
     });
 
-    expect(client.getBalance).toHaveBeenCalledWith(expect.objectContaining({ coinType: SUI_TYPE }));
+    // [#93] Sponsored SUI sourcing is coin-object-only (getCoins), never
+    // getBalance + coinWithBalance and never tx.gas (the sponsor's coin).
+    expect(client.getCoins).toHaveBeenCalledWith(expect.objectContaining({ coinType: SUI_TYPE }));
     expect(result.derivedAllowedAddresses).toContain(RECIPIENT_ADDRESS);
   });
 
@@ -195,7 +197,9 @@ describe('composeTx — single-step migration tests (9 canonical write tools)', 
     });
 
     expect(navi.depositCoinPTB).toHaveBeenCalled();
-    expect(client.getBalance).toHaveBeenCalledWith(expect.objectContaining({ coinType: USDC_TYPE }));
+    // [#93] Under sponsorship, sourcing is coin-object-only (getCoins), never
+    // getBalance + coinWithBalance (which would reach the address balance).
+    expect(client.getCoins).toHaveBeenCalledWith(expect.objectContaining({ coinType: USDC_TYPE }));
     const preview = result.perStepPreviews[0];
     if (preview.toolName === 'save_deposit') {
       expect(preview.asset).toBe('USDC');
@@ -665,10 +669,11 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
         ],
       });
 
-      // getBalance called once (for swap's USDC input) — NOT for save's USDsui (chained).
-      const getBalanceCalls = (client.getBalance as ReturnType<typeof vi.fn>).mock.calls;
-      expect(getBalanceCalls).toHaveLength(1);
-      expect(getBalanceCalls[0][0]).toMatchObject({ coinType: USDC_TYPE });
+      // [#93] getCoins called once (for swap's USDC input) — NOT for save's
+      // USDsui (chained). Under sponsorship, sourcing is coin-object-only.
+      const getCoinsCalls = (client.getCoins as ReturnType<typeof vi.fn>).mock.calls;
+      expect(getCoinsCalls).toHaveLength(1);
+      expect(getCoinsCalls[0][0]).toMatchObject({ coinType: USDC_TYPE });
 
       // No transferObjects to sender — swap output goes directly to NAVI deposit, no wallet round-trip.
       const transfers = countTransferObjectsByRecipient(result.tx);

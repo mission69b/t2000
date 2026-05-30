@@ -692,7 +692,7 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
   const SUI_TYPE_NORMALIZED =
     '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
 
-  it('SUI source under sponsoredContext: true emits CoinWithBalance with useGasCoin=false (no GasCoin reference)', async () => {
+  it('SUI source under sponsoredContext: true sources coin objects only (no GasCoin, no CoinWithBalance — issue #93)', async () => {
     mockCetus({
       findRouters: async () => ({
         amountIn: '1000000000', // 1 SUI in MIST
@@ -719,23 +719,22 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
       sponsoredContext: true,
     });
 
-    // Cast through unknown — Transaction.commands is a discriminated
-    // union that doesn't narrow cleanly via type predicate against our
-    // local IntentCommand shape (the actual `$Intent` type also carries
-    // an `inputs` field that we don't care about for this assertion).
+    // [#93] Under sponsorship, SUI is sourced from discrete coin objects
+    // (SplitCoins from the user's 5-SUI object), never coinWithBalance and
+    // never tx.gas. This preserves the S.260 "don't reference the sponsor's
+    // gas coin" intent AND avoids the address-balance FundsWithdrawal that
+    // Enoki's gas station can't deserialize.
     const data = tx.getData();
+    const kinds = data.commands.map((c) => c.$kind);
+    expect(kinds).toContain('SplitCoins');
     const cwbIntent = data.commands.find((c) => {
       const cmd = c as { $kind?: string; $Intent?: { name?: string } };
       return cmd.$kind === '$Intent' && cmd.$Intent?.name === 'CoinWithBalance';
     });
-    expect(cwbIntent).toBeDefined();
-    const intentType = (cwbIntent as unknown as { $Intent: { data: { type: string } } })
-      .$Intent.data.type;
-    // Asserts useGasCoin: false — the normalized SUI type (NOT 'gas') is
-    // stored. See @mysten/sui/transactions/intents/CoinWithBalance.ts L44:
-    //   `type: coinType === SUI_TYPE && useGasCoin ? 'gas' : coinType`
-    expect(intentType).toBe(SUI_TYPE_NORMALIZED);
-    expect(intentType).not.toBe('gas');
+    expect(cwbIntent).toBeUndefined();
+    // No GasCoin argument anywhere (sponsor owns the gas coin).
+    const refsGasCoin = JSON.stringify(data.commands).includes('GasCoin');
+    expect(refsGasCoin).toBe(false);
   });
 
   it('SUI source under sponsoredContext: false (default) splits from tx.gas (self-funded path)', async () => {
@@ -778,7 +777,7 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
     expect(suiCwbIntent).toBeUndefined();
   });
 
-  it('non-SUI source under sponsoredContext: true uses generic selectAndSplitCoin (unchanged behavior)', async () => {
+  it('non-SUI source under sponsoredContext: true sources coin objects only (no CoinWithBalance — issue #93)', async () => {
     mockCetus();
     const { addSwapToTx } = await import('./cetus-swap.js');
     const { Transaction } = await import('@mysten/sui/transactions');
@@ -796,18 +795,17 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
       sponsoredContext: true,
     });
 
-    // USDC source: CoinWithBalance intent uses USDC type (no gas-coin
-    // path possible since coin type isn't SUI). sponsoredContext is a
-    // no-op for non-SUI assets — verifies the SUI branch is bounded.
+    // [#93] Under sponsorship we source from discrete coin objects (SplitCoins),
+    // never coinWithBalance — its address-balance FundsWithdrawal reservation is
+    // exactly what Enoki's gas station can't deserialize ("Invalid bcs bytes").
     const data = tx.getData();
+    const kinds = data.commands.map((c) => c.$kind);
+    expect(kinds).toContain('SplitCoins');
     const cwbIntent = data.commands.find((c) => {
       const cmd = c as { $kind?: string; $Intent?: { name?: string } };
       return cmd.$kind === '$Intent' && cmd.$Intent?.name === 'CoinWithBalance';
     });
-    expect(cwbIntent).toBeDefined();
-    const intentType = (cwbIntent as unknown as { $Intent: { data: { type: string } } })
-      .$Intent.data.type;
-    expect(intentType).toBe(USDC_TYPE);
+    expect(cwbIntent).toBeUndefined();
   });
 });
 

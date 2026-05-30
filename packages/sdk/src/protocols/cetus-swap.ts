@@ -554,7 +554,9 @@ export async function addSwapToTx(
     // pre-2026-05-22 (when `selectAndSplitCoin` emitted explicit
     // `mergeCoins` itself).
     const { selectAndSplitCoin } = await import('../wallet/coinSelection.js');
-    const result = await selectAndSplitCoin(tx, client, address, fromType, requestedRaw);
+    const result = await selectAndSplitCoin(tx, client, address, fromType, requestedRaw, {
+      sponsoredContext: input.sponsoredContext ?? false,
+    });
     inputCoin = result.coin;
     effectiveRaw = result.effectiveAmount;
   }
