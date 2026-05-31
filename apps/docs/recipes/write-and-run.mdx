@@ -3,13 +3,24 @@ title: "Write code, then run it"
 description: "Agent writes a script with Claude, then executes it via Judge0 to verify the output. Two paid calls, ~$0.024."
 ---
 
-Most agent demos stop at "the LLM wrote some code." This one closes the loop — Claude writes the script, the agent pays Judge0 to actually execute it, and the verified output flows back. Useful for data tasks where you want machine-verified correctness, not just plausible-looking code.
+Most agent demos stop at "the LLM wrote some code." This one closes the loop — Claude writes the script, the agent pays Judge0 to actually execute it, and the verified output flows back. Useful when you want machine-verified correctness, not just plausible-looking code.
 
 ## The prompt
 
 ```
-Write a Python script that computes the 30-day EMA of SUI from this OHLC CSV, then run it via Judge0 to verify.
+Write a self-contained Python script that computes the 30-day EMA of a daily
+close series. Embed ~40 days of sample SUI closes in the script as test data,
+then run it via Judge0 to verify the final EMA value.
 ```
+
+<Note>
+The prompt is deliberately **self-contained** — the script carries its own sample
+data, so nothing needs to be uploaded. Judge0's sandbox can't read your local
+files anyway; embedding the data is what makes the "verify" step real (the agent
+proves the EMA *logic* executes correctly on a known series). To run it on your
+own OHLC data, paste a few rows into the prompt or pipe a CSV via `stdin` as the
+SDK example below shows.
+</Note>
 
 ## What runs
 
@@ -27,10 +38,12 @@ import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create();
 
-const csv = `date,open,high,low,close
-2026-04-01,3.42,3.51,3.40,3.48
-2026-04-02,3.48,3.55,3.45,3.52
-...`; // your OHLC data
+// 40 days of self-contained sample SUI closes — swap in your own
+// OHLC `close` column to run it for real. No upload needed.
+const closes = Array.from({ length: 40 }, (_, i) =>
+  (0.85 + 0.15 * Math.sin(i / 5) + i * 0.004).toFixed(4),
+);
+const csv = ['close', ...closes].join('\n');
 
 const script = await agent.pay({
   url: 'https://mpp.t2000.ai/anthropic/v1/messages',
@@ -41,7 +54,10 @@ const script = await agent.pay({
     max_tokens: 1024,
     messages: [{
       role: 'user',
-      content: `Write a Python script that reads this CSV from stdin and prints the 30-day EMA of the close column on the last row. Output ONLY the script, no commentary.\n\n${csv}`,
+      content:
+        "Write a Python script that reads a CSV with a 'close' column from " +
+        'stdin and prints the 30-day EMA (seeded with a 30-period SMA) of the ' +
+        'last row. Output ONLY the script, no commentary.',
     }],
   }),
 });
@@ -59,7 +75,7 @@ const run = await agent.pay({
 });
 
 const output = (run.body as { stdout: string }).stdout;
-console.log('EMA:', Buffer.from(output, 'base64').toString());
+console.log('30-day EMA:', Buffer.from(output, 'base64').toString());
 ```
 
 ### CLI
@@ -80,8 +96,10 @@ t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
 
 ```
 2 calls · ~$0.024 · ~3s · 0 taps
-verified: 55
+30-day EMA: 0.9663
 ```
+
+(The minimal CLI snippet below runs `fib(10)` instead and prints `55` — same write-then-run loop, simplest possible payload.)
 
 ## Extend it
 
