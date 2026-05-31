@@ -130,7 +130,8 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
 | `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
 | `audric-roadmap.md` (local-only) | Product roadmap, feature specs, revenue model (gitignored) | Feature planning |
-| `audric-build-tracker.md` (local-only) | Execution status per phase and task (gitignored). **Top of file: canonical "Forward backlog" table — SSOT for SPEC numbering. Always read before assigning a SPEC number.** | Status checks; before promoting work to a SPEC number |
+| `HANDOFF_NEXT_AGENT.md` (t2000 + `audric/`, local-only) | **Forward-backlog SSOT.** The `audric/HANDOFF_NEXT_AGENT.md` "Active backlog" table is canonical for product / agent-ownable tasks (ranked, with effort + notes) + founder ops; the t2000 one covers the infra forward window + cross-repo cleanup and defers the audric backlog to it. | Picking the next task; planning |
+| `audric-build-tracker.md` (local-only) | Reverse-chronological **execution log** — one `S.N` entry per shipped slice, newest on top (gitignored). This is the audit trail, **NOT** a forward backlog. To get the next SPEC number, read the latest `S.N` at the top of the file and increment. | Status checks; before assigning the next `S.N` |
 | `spec/**` (local-only, gitignored) | Internal SPECs, harness contracts, locked-decision references, operational runbooks — full tree available on the maintainer's machine; not part of the public repo | When the rule/agent context cites a specific SPEC by name |
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
 | `.cursor/rules/single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement | Portfolio/wallet/positions reads |
