@@ -21,8 +21,17 @@ import {
 } from '../blockvision-prices.js';
 import { fetchAudricPortfolio, type AudricPortfolioResult } from '../audric-api.js';
 import { normalizeAddressInput } from '../sui/address.js';
+import { ASSET_DUST_USD } from '../dust.js';
 
 const GAS_RESERVE_SUI = 0.05;
+
+// [#5 — per-asset savings/debt] Shape of one NAVI position row surfaced to
+// the host (USDC vs USDsui). Mirrors health_check's per-asset arrays.
+interface PositionAsset {
+  symbol: string;
+  amount: number;
+  valueUsd: number;
+}
 
 // vSUI (Volo's liquid-staked SUI). BlockVision sometimes lacks a price for
 // this token — when missing we read the official Volo exchange rate and
@@ -332,11 +341,28 @@ async function balanceCallBody(
       let savings: number;
       let debt: number;
       let pendingRewardsUsd: number;
+      // [#5 — per-asset savings/debt] The USDC-vs-USDsui breakdown is
+      // already on the wire (audric ServerPositionData.supplies/
+      // borrows_detail + NAVI MCP positions); the aggregate above collapses
+      // it. Surface it so the BalanceCard renders the real deposited/
+      // borrowed asset instead of hardcoding "USDC". Mirrors health_check's
+      // suppliedAssets/borrowedAssets (Day 14b) with the same per-row dust
+      // filter. (SDK-agent fallback below leaves these absent — that path's
+      // BalanceResponse has no per-asset data; the host degrades to the USD
+      // total.)
+      let savingsAssets: PositionAsset[] = [];
+      let debtAssets: PositionAsset[] = [];
 
       if (serverPositions) {
         savings = serverPositions.savings;
         debt = serverPositions.borrows;
         pendingRewardsUsd = serverPositions.pendingRewards;
+        savingsAssets = serverPositions.supplies
+          .filter((s) => s.amountUsd >= ASSET_DUST_USD)
+          .map((s) => ({ symbol: s.asset, amount: s.amount, valueUsd: s.amountUsd }));
+        debtAssets = serverPositions.borrows_detail
+          .filter((b) => b.amountUsd >= ASSET_DUST_USD)
+          .map((b) => ({ symbol: b.asset, amount: b.amount, valueUsd: b.amountUsd }));
       } else {
         const posEntries = transformPositions(positions);
         const rewardEntries = transformRewards(rewards);
@@ -347,6 +373,12 @@ async function balanceCallBody(
           .filter((p) => p.type === 'borrow')
           .reduce((sum, p) => sum + p.valueUsd, 0);
         pendingRewardsUsd = rewardEntries.reduce((sum, r) => sum + r.valueUsd, 0);
+        savingsAssets = posEntries
+          .filter((p) => p.type === 'supply' && p.valueUsd >= ASSET_DUST_USD)
+          .map((p) => ({ symbol: p.symbol, amount: p.amount, valueUsd: p.valueUsd }));
+        debtAssets = posEntries
+          .filter((p) => p.type === 'borrow' && p.valueUsd >= ASSET_DUST_USD)
+          .map((p) => ({ symbol: p.symbol, amount: p.amount, valueUsd: p.valueUsd }));
       }
 
       const visibleHoldings = holdings
@@ -389,6 +421,8 @@ async function balanceCallBody(
         holdings: visibleHoldings,
         saveableUsdc,
         saveableUsdsui,
+        savingsAssets,
+        debtAssets,
         priceSource: portfolio.source,
         address,
         isSelfQuery,

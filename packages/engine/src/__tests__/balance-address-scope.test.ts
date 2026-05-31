@@ -282,3 +282,101 @@ describe('[v0.50] balance_check DeFi rollup', () => {
     expect(res.displayText).toContain('250.00');
   });
 });
+
+/**
+ * [#5 — per-asset savings/debt] balance_check surfaces the USDC-vs-USDsui
+ * breakdown (savingsAssets/debtAssets) the upstream ServerPositionData
+ * already carries, so the BalanceCard renders the real deposited/borrowed
+ * asset instead of hardcoding "USDC". Mirrors health_check's Day-14b
+ * per-asset arrays (re-key asset→symbol, amountUsd→valueUsd + dust filter).
+ */
+describe('[#5] balance_check per-asset savings/debt', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const withPositions = (sp: Partial<ServerPositionData>) =>
+    ctx({
+      positionFetcher: vi.fn(
+        async (): Promise<ServerPositionData> => ({
+          savings: sp.savings ?? 0,
+          borrows: sp.borrows ?? 0,
+          pendingRewards: 0,
+          healthFactor: null,
+          maxBorrow: 0,
+          savingsRate: 0.045,
+          supplies: sp.supplies ?? [],
+          borrows_detail: sp.borrows_detail ?? [],
+        }),
+      ),
+    });
+
+  interface PerAssetResult {
+    data: {
+      savings: number;
+      debt: number;
+      savingsAssets: Array<{ symbol: string; amount: number; valueUsd: number }>;
+      debtAssets: Array<{ symbol: string; amount: number; valueUsd: number }>;
+    };
+  }
+
+  it('re-keys supplies/borrows_detail into savingsAssets/debtAssets (USDsui kept distinct)', async () => {
+    const res = (await callToolBody(
+      balanceCheckTool,
+      {},
+      withPositions({
+        savings: 22.67,
+        borrows: 5.01,
+        supplies: [
+          { asset: 'USDsui', amount: 9.18, amountUsd: 9.18, apy: 0.083, protocol: 'navi' },
+          { asset: 'USDC', amount: 13.49, amountUsd: 13.49, apy: 0.044, protocol: 'navi' },
+        ],
+        borrows_detail: [
+          { asset: 'USDsui', amount: 5.01, amountUsd: 5.01, apy: 0.068, protocol: 'navi' },
+        ],
+      }),
+    )) as PerAssetResult;
+    expect(res.data.savingsAssets).toEqual([
+      { symbol: 'USDsui', amount: 9.18, valueUsd: 9.18 },
+      { symbol: 'USDC', amount: 13.49, valueUsd: 13.49 },
+    ]);
+    expect(res.data.debtAssets).toEqual([
+      { symbol: 'USDsui', amount: 5.01, valueUsd: 5.01 },
+    ]);
+    // Aggregates preserved alongside the per-asset arrays (backward-compat).
+    expect(res.data.savings).toBe(22.67);
+    expect(res.data.debt).toBe(5.01);
+  });
+
+  it('drops sub-cent dust rows from the per-asset arrays', async () => {
+    const res = (await callToolBody(
+      balanceCheckTool,
+      {},
+      withPositions({
+        savings: 5000.001,
+        borrows: 0.001,
+        supplies: [
+          { asset: 'USDC', amount: 5000, amountUsd: 5000, apy: 0.044, protocol: 'navi' },
+          { asset: 'USDe', amount: 0.001, amountUsd: 0.001, apy: 0.04, protocol: 'navi' },
+        ],
+        borrows_detail: [
+          { asset: 'USDC', amount: 0.001, amountUsd: 0.001, apy: 0.068, protocol: 'navi' },
+        ],
+      }),
+    )) as PerAssetResult;
+    expect(res.data.savingsAssets).toEqual([
+      { symbol: 'USDC', amount: 5000, valueUsd: 5000 },
+    ]);
+    expect(res.data.debtAssets).toEqual([]);
+  });
+
+  it('emits empty arrays when there are no positions', async () => {
+    const res = (await callToolBody(
+      balanceCheckTool,
+      {},
+      withPositions({ savings: 0, borrows: 0 }),
+    )) as PerAssetResult;
+    expect(res.data.savingsAssets).toEqual([]);
+    expect(res.data.debtAssets).toEqual([]);
+  });
+});
