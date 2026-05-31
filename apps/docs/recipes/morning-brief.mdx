@@ -1,6 +1,6 @@
 ---
 title: "Morning market brief"
-description: "Chain CoinGecko + NewsAPI + Anthropic over MPP. Three paid calls, ~$0.03, zero API keys."
+description: "Chain CoinGecko + NewsAPI + Anthropic over MPP. Three paid calls, ~$0.036, zero API keys."
 ---
 
 Your agent pulls live prices from CoinGecko, top crypto headlines from NewsAPI, and asks Claude to write a 200-word brief — all paid in USDC on the [`mpp.t2000.ai`](https://mpp.t2000.ai) gateway. No subscriptions, no auth setup.
@@ -17,7 +17,7 @@ Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, w
 2. `POST /newsapi/v1/search` — keyword article search
 3. `POST /anthropic/v1/messages` — Claude 3.5 Sonnet stitches them into prose
 
-Each call returns HTTP 402, your wallet signs a tiny USDC payment, the gateway proxies upstream and returns 200. Total ~$0.03, ~6s end to end.
+Each call returns HTTP 402, your wallet signs a tiny USDC payment, the gateway proxies upstream and returns 200. Total ~$0.036, ~6s end to end.
 
 ## Run it
 
@@ -85,7 +85,7 @@ const brief = await agent.pay({
 ## Expected output
 
 ```
-3 calls · ~$0.03 · ~6s · 0 taps
+3 calls · ~$0.036 · ~6s · 0 taps
 ```
 
 A 200-word morning brief stitched from live data.

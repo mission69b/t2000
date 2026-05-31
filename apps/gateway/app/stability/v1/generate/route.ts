@@ -1,7 +1,7 @@
 import { chargeCustom } from '@/lib/gateway';
 import { env } from '@/lib/env';
 
-export const POST = chargeCustom('0.03', async (bodyText) => {
+export const POST = chargeCustom(async (bodyText) => {
   const body = JSON.parse(bodyText);
   const formData = new FormData();
   for (const [key, value] of Object.entries(body)) {

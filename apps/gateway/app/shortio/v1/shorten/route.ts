@@ -1,7 +1,7 @@
 import { chargeCustom } from '@/lib/gateway';
 import { env } from '@/lib/env';
 
-export const POST = chargeCustom('0.01', async (body) => {
+export const POST = chargeCustom(async (body) => {
   const { url, domain, title } = JSON.parse(body) as {
     url: string;
     domain?: string;

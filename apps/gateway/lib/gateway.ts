@@ -2,8 +2,10 @@ import { Mppx } from 'mppx/nextjs';
 import { sui, USDC } from '@suimpp/mpp/server';
 import type { PaymentReport } from '@suimpp/mpp/server';
 import { TREASURY_ADDRESS } from './constants';
+import { normalizeBinaryResponse } from './artifact-store';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
+import { getEndpointPrice } from './services';
 import { getDigestStore } from './upstash-digest-store';
 import { env } from '@/lib/env';
 
@@ -122,8 +124,13 @@ async function fetchAndTransformUpstream(
 }
 
 /**
- * Fixed-price proxy — charges a static amount per request, then proxies
- * to the upstream API and returns the response (with optional transform).
+ * Fixed-price proxy — charges the catalog price for this (service, method,
+ * path), then proxies to the upstream API and returns the response (with
+ * optional transform).
+ *
+ * Price SSOT (2026-06): routes no longer pass an amount. It is resolved from
+ * `lib/services.ts` via `getEndpointPrice(service, method, path)` so the
+ * catalog is the single source of truth — a price change is a one-place edit.
  *
  * The previous SPEC 26 settle-on-success path (probe-then-charge with a
  * fingerprint cache + per-route classifier) was reverted 2026-05-22 in
@@ -133,13 +140,21 @@ async function fetchAndTransformUpstream(
  * dual-path complexity wasn't justified.
  */
 export function chargeProxy(
-  amount: string,
   upstream: string,
   upstreamHeaders: Record<string, string>,
   options?: ProxyOptions,
 ): RouteHandler {
   return async (req: Request) => {
     const mppx = getGateway();
+    const { service, endpoint } = inferServiceEndpoint(req.url);
+    const amount = getEndpointPrice(service, req.method, endpoint);
+    if (!amount) {
+      return Response.json(
+        { error: `No price configured for ${service} ${req.method} ${endpoint}` },
+        { status: 500 },
+      );
+    }
+
     const bodyText = await req.text();
 
     if (options?.validate) {
@@ -163,38 +178,67 @@ export function chargeProxy(
     );
 
     if (response.status !== 402) {
-      const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
       const report = digest ? pendingReports.get(digest) : undefined;
       if (digest) pendingReports.delete(digest);
-      logPayment({ service, endpoint, amount, digest, sender: report?.sender }).catch(() => {});
+      // [Bug 1 / dogfood 2026-05-31] Log the VERIFIED on-chain amount from
+      // the PaymentReport when present, not the route's expected `amount`.
+      // They should match (challenge price == on-chain charge), but the
+      // verified figure is the source of truth for the analytics DB.
+      logPayment({ service, endpoint, amount: report?.amount ?? amount, digest, sender: report?.sender }).catch(() => {});
     }
 
-    return response;
+    // [Bug 2 / dogfood 2026-05-31] Host binary bodies as an artifact + return
+    // JSON { url, contentType, sizeBytes } so the SDK/MCP JSON path can't
+    // corrupt them. No-op for JSON/text and 402 challenges.
+    return normalizeBinaryResponse(response);
   };
 }
 
 /**
- * Dynamic-price proxy — price is calculated from the request body.
- * Use for commerce APIs where cost depends on what's being purchased.
+ * Custom-handler proxy. The handler owns the upstream call (auth, retries,
+ * body transforms). Two pricing modes:
  *
- * @param amount - Fixed string OR function that reads the body and returns the price.
- * @param handler - Custom async handler that receives the raw body and returns a Response.
- *                  Responsible for calling the upstream API, retries, auth, etc.
+ *   chargeCustom(handler)            -> price resolved from the catalog (SSOT)
+ *   chargeCustom(priceFn, handler)   -> dynamic price computed from the body
+ *                                       (e.g. printful order = cost + 5%)
+ *
+ * Static-priced custom routes pass NO price (resolved from `lib/services.ts`,
+ * same as `chargeProxy`); only genuinely dynamic routes pass a price function.
  */
+type CustomHandler = (body: string) => Promise<Response>;
+type PriceSpec = string | ((body: string) => string | Promise<string>);
+
+export function chargeCustom(handler: CustomHandler): RouteHandler;
+export function chargeCustom(amount: PriceSpec, handler: CustomHandler): RouteHandler;
 export function chargeCustom(
-  amount: string | ((body: string) => string | Promise<string>),
-  handler: (body: string) => Promise<Response>,
+  arg1: CustomHandler | PriceSpec,
+  arg2?: CustomHandler,
 ): RouteHandler {
+  const handler = (arg2 ?? arg1) as CustomHandler;
+  const priceSpec: PriceSpec | undefined = arg2 ? (arg1 as PriceSpec) : undefined;
+
   return async (req: Request) => {
     const mppx = getGateway();
+    const { service, endpoint } = inferServiceEndpoint(req.url);
     const bodyText = await req.text();
 
     let resolvedAmount: string;
     try {
-      resolvedAmount = typeof amount === 'function'
-        ? await amount(bodyText)
-        : amount;
+      if (priceSpec === undefined) {
+        const catalogPrice = getEndpointPrice(service, req.method, endpoint);
+        if (!catalogPrice) {
+          return Response.json(
+            { error: `No price configured for ${service} ${req.method} ${endpoint}` },
+            { status: 500 },
+          );
+        }
+        resolvedAmount = catalogPrice;
+      } else if (typeof priceSpec === 'function') {
+        resolvedAmount = await priceSpec(bodyText);
+      } else {
+        resolvedAmount = priceSpec;
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Invalid request';
       return Response.json({ error: msg }, { status: 400 });
@@ -207,14 +251,15 @@ export function chargeCustom(
     );
 
     if (response.status !== 402) {
-      const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
       const report = digest ? pendingReports.get(digest) : undefined;
       if (digest) pendingReports.delete(digest);
-      logPayment({ service, endpoint, amount: resolvedAmount, digest, sender: report?.sender }).catch(() => {});
+      // [Bug 1] Verified on-chain amount wins over the resolved expected price.
+      logPayment({ service, endpoint, amount: report?.amount ?? resolvedAmount, digest, sender: report?.sender }).catch(() => {});
     }
 
-    return response;
+    // [Bug 2] Covers custom binary handlers (qrcode, stability image) too.
+    return normalizeBinaryResponse(response);
   };
 }
 

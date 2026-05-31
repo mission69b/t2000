@@ -3,7 +3,7 @@ title: "Agent Payments"
 description: "Pay any MPP-protected API in USDC. 40+ services, 88 endpoints, no signup, no API keys — gasless USDC over Sui."
 ---
 
-**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.01 – $0.05` per LLM call. Pay `$1.00 – $1.50` per physical postcard.
+**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.012 – $0.06` per LLM call. Pay `$1.20 – $1.80` per physical postcard.
 
 Two surfaces use it:
 
@@ -51,7 +51,7 @@ That's it. The MPP 402 challenge is handled automatically; payment broadcasts to
 ## Hero examples
 
 <CardGroup cols={1}>
-  <Card title="Generate an image — $0.05" icon="image">
+  <Card title="Generate an image — $0.06" icon="image">
 
   ```bash
   t2 pay https://mpp.t2000.ai/openai/v1/images/generations \
@@ -65,7 +65,7 @@ That's it. The MPP 402 challenge is handled automatically; payment broadcasts to
 
   </Card>
 
-  <Card title="Ask GPT-4o — $0.01" icon="message">
+  <Card title="Ask GPT-4o — $0.012" icon="message">
 
   ```bash
   t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
@@ -80,7 +80,7 @@ That's it. The MPP 402 challenge is handled automatically; payment broadcasts to
 
   </Card>
 
-  <Card title="Transcribe audio — $0.01" icon="microphone">
+  <Card title="Transcribe audio — $0.012" icon="microphone">
 
   ```bash
   t2 pay https://mpp.t2000.ai/openai/v1/audio/transcriptions \
@@ -138,13 +138,29 @@ t2 services inspect https://mpp.t2000.ai/openai  # full service detail + endpoin
 
 Each service sets its own per-endpoint price. The gateway applies a thin overlay (covered by service margins). Pay per call — no subscription, no commit:
 
-- LLM calls: `$0.01 – $0.05`
-- Image generation: `$0.01 – $0.20`
-- Audio transcription: `$0.01 – $0.05`
-- Physical postcard / letter: `$1.00 – $1.50`
-- Code execution / scraping / search: `$0.01 – $0.10`
+- LLM calls: `$0.012 – $0.06`
+- Image generation: `$0.012 – $0.24`
+- Audio transcription: `$0.012 – $0.06`
+- Physical postcard / letter: `$1.20 – $1.80`
+- Code execution / scraping / search: `$0.012 – $0.12`
 
 Always pass `--max-price <USD>` (default `$1.00`) so a misconfigured endpoint can't drain the wallet.
+
+The live per-endpoint price is always in the [catalog](https://mpp.t2000.ai/llms.txt) and the [OpenAPI spec](https://mpp.t2000.ai/openapi.json) (`x-payment-info.price`) — those are generated from the gateway's price source of truth, so they never drift from what you're charged.
+
+## Binary responses
+
+Endpoints that produce binary output — audio (TTS), raw image bytes, PDFs — do **not** stream the bytes back. The gateway hosts the artifact and returns small JSON instead:
+
+```json
+{
+  "url": "https://...blob.vercel-storage.com/mpp-artifacts/...mp3",
+  "contentType": "audio/mpeg",
+  "sizeBytes": 48213
+}
+```
+
+Fetch `url` to get the file. This keeps responses safe to pass through any JSON or text transport (SDK, MCP, agent context) without corruption, and keeps the bytes out of the LLM's context window. JSON and text endpoints are returned inline as usual.
 
 ## CLI reference
 

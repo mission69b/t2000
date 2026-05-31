@@ -15,6 +15,7 @@ import {
 } from './wallet/keyManager.js';
 import type { TransactionSigner } from './signer.js';
 import { KeypairSigner } from './wallet/keypairSigner.js';
+import { parseChallengeAmount } from './mpp-cost.js';
 import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
@@ -232,6 +233,14 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     let paymentDigest: string | undefined;
     let gasCostSui = 0;
+    // [Bug 1 / dogfood 2026-05-31] The real amount charged on-chain is the
+    // 402 challenge price (a decimal USDC string like "0.01"), NOT the
+    // caller's `maxPrice` ceiling. mppx surfaces the parsed challenge via
+    // `onChallenge` before paying; we capture `request.amount` there and
+    // report THAT as `cost` (and feed it to the spend enforcer). Returning
+    // `undefined` from the hook lets mppx fall through to normal credential
+    // resolution, so capture is side-effect-only.
+    let chargedAmount: number | undefined;
 
     // [2026-05-22] Gasless MPP. Build the payment PTB via SuiGrpcClient
     // so the SDK's gasless-eligibility resolver runs at build time. When
@@ -258,6 +267,11 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const mppx = Mppx.create({
       polyfill: false,
+      onChallenge: async (challenge: { request?: { amount?: unknown } }) => {
+        const parsed = parseChallengeAmount(challenge);
+        if (parsed !== undefined) chargedAmount = parsed;
+        return undefined;
+      },
       methods: [sui({
         client,
         currency: USDC,
@@ -296,14 +310,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     const paid = !!paymentDigest;
 
     if (paid) {
-      this.enforcer.recordUsage(options.maxPrice ?? 1.0);
+      this.enforcer.recordUsage(chargedAmount ?? options.maxPrice ?? 1.0);
     }
 
     return {
       status: response.status,
       body,
       paid,
-      cost: paid ? (options.maxPrice ?? undefined) : undefined,
+      cost: paid ? (chargedAmount ?? options.maxPrice ?? undefined) : undefined,
       gasCostSui: paid ? gasCostSui : undefined,
       receipt: paymentDigest
         ? { reference: paymentDigest, timestamp: new Date().toISOString() }

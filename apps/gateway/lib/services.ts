@@ -31,11 +31,11 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/openai.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (GPT-4o, o1, etc.)', price: '0.01' },
-      { method: 'POST', path: '/v1/embeddings', description: 'Create embeddings', price: '0.01' },
-      { method: 'POST', path: '/v1/images/generations', description: 'Generate images with gpt-image-1', price: '0.05' },
-      { method: 'POST', path: '/v1/audio/transcriptions', description: 'Transcribe audio with Whisper', price: '0.01' },
-      { method: 'POST', path: '/v1/audio/speech', description: 'Text-to-speech', price: '0.02' },
+      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (GPT-4o, o1, etc.)', price: '0.012' },
+      { method: 'POST', path: '/v1/embeddings', description: 'Create embeddings', price: '0.012' },
+      { method: 'POST', path: '/v1/images/generations', description: 'Generate images with gpt-image-1', price: '0.06' },
+      { method: 'POST', path: '/v1/audio/transcriptions', description: 'Transcribe audio with Whisper', price: '0.012' },
+      { method: 'POST', path: '/v1/audio/speech', description: 'Text-to-speech', price: '0.024' },
     ],
   },
   {
@@ -48,7 +48,7 @@ export const services: Service[] = [
     categories: ['ai'],
     logo: '/logos/anthropic.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/messages', description: 'Chat completions (Sonnet, Opus, Haiku)', price: '0.01' },
+      { method: 'POST', path: '/v1/messages', description: 'Chat completions (Sonnet, Opus, Haiku)', price: '0.012' },
     ],
   },
   {
@@ -61,11 +61,11 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/fal.svg',
     endpoints: [
-      { method: 'POST', path: '/fal-ai/flux/dev', description: 'Flux Dev image generation', price: '0.03' },
-      { method: 'POST', path: '/fal-ai/flux-pro', description: 'Flux Pro image generation', price: '0.05' },
-      { method: 'POST', path: '/fal-ai/flux-realism', description: 'Flux Realism (photorealistic)', price: '0.03' },
-      { method: 'POST', path: '/fal-ai/recraft-20b', description: 'Recraft 20B image generation', price: '0.03' },
-      { method: 'POST', path: '/fal-ai/whisper', description: 'Speech-to-text transcription', price: '0.01' },
+      { method: 'POST', path: '/fal-ai/flux/dev', description: 'Flux Dev image generation', price: '0.036' },
+      { method: 'POST', path: '/fal-ai/flux-pro', description: 'Flux Pro image generation', price: '0.06' },
+      { method: 'POST', path: '/fal-ai/flux-realism', description: 'Flux Realism (photorealistic)', price: '0.036' },
+      { method: 'POST', path: '/fal-ai/recraft-20b', description: 'Recraft 20B image generation', price: '0.036' },
+      { method: 'POST', path: '/fal-ai/whisper', description: 'Speech-to-text transcription', price: '0.012' },
     ],
   },
   {
@@ -78,10 +78,10 @@ export const services: Service[] = [
     categories: ['web', 'data'],
     logo: '/logos/firecrawl.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/scrape', description: 'Scrape a URL to structured data', price: '0.01' },
-      { method: 'POST', path: '/v1/crawl', description: 'Crawl a website', price: '0.05' },
-      { method: 'POST', path: '/v1/map', description: 'Discover URLs on a site', price: '0.01' },
-      { method: 'POST', path: '/v1/extract', description: 'Extract structured data with LLM', price: '0.02' },
+      { method: 'POST', path: '/v1/scrape', description: 'Scrape a URL to structured data', price: '0.012' },
+      { method: 'POST', path: '/v1/crawl', description: 'Crawl a website', price: '0.06' },
+      { method: 'POST', path: '/v1/map', description: 'Discover URLs on a site', price: '0.012' },
+      { method: 'POST', path: '/v1/extract', description: 'Extract structured data with LLM', price: '0.024' },
     ],
   },
   {
@@ -94,9 +94,9 @@ export const services: Service[] = [
     categories: ['ai'],
     logo: '/logos/gemini.svg',
     endpoints: [
-      { method: 'POST', path: '/v1beta/models/gemini-2.5-flash', description: 'Gemini 2.5 Flash (fast, multimodal)', price: '0.01' },
-      { method: 'POST', path: '/v1beta/models/gemini-2.5-pro', description: 'Gemini 2.5 Pro (reasoning)', price: '0.02' },
-      { method: 'POST', path: '/v1beta/models/embedding-001', description: 'Text embeddings', price: '0.01' },
+      { method: 'POST', path: '/v1beta/models/gemini-2.5-flash', description: 'Gemini 2.5 Flash (fast, multimodal)', price: '0.012' },
+      { method: 'POST', path: '/v1beta/models/gemini-2.5-pro', description: 'Gemini 2.5 Pro (reasoning)', price: '0.024' },
+      { method: 'POST', path: '/v1beta/models/embedding-001', description: 'Text embeddings', price: '0.012' },
     ],
   },
   {
@@ -109,8 +109,8 @@ export const services: Service[] = [
     categories: ['ai'],
     logo: '/logos/groq.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Llama 3, Mixtral, Gemma)', price: '0.01' },
-      { method: 'POST', path: '/v1/audio/transcriptions', description: 'Audio transcription (Whisper)', price: '0.01' },
+      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Llama 3, Mixtral, Gemma)', price: '0.012' },
+      { method: 'POST', path: '/v1/audio/transcriptions', description: 'Audio transcription (Whisper)', price: '0.012' },
     ],
   },
   {
@@ -123,7 +123,7 @@ export const services: Service[] = [
     categories: ['ai', 'search'],
     logo: '/logos/perplexity.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Sonar search (web-grounded answers)', price: '0.01' },
+      { method: 'POST', path: '/v1/chat/completions', description: 'Sonar search (web-grounded answers)', price: '0.012' },
     ],
   },
   {
@@ -136,11 +136,11 @@ export const services: Service[] = [
     categories: ['search'],
     logo: '/logos/brave.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/web/search', description: 'Web search results', price: '0.01' },
-      { method: 'POST', path: '/v1/images/search', description: 'Image search', price: '0.01' },
-      { method: 'POST', path: '/v1/news/search', description: 'News search', price: '0.01' },
-      { method: 'POST', path: '/v1/videos/search', description: 'Video search', price: '0.01' },
-      { method: 'POST', path: '/v1/summarizer/search', description: 'AI-summarized search', price: '0.01' },
+      { method: 'POST', path: '/v1/web/search', description: 'Web search results', price: '0.012' },
+      { method: 'POST', path: '/v1/images/search', description: 'Image search', price: '0.012' },
+      { method: 'POST', path: '/v1/news/search', description: 'News search', price: '0.012' },
+      { method: 'POST', path: '/v1/videos/search', description: 'Video search', price: '0.012' },
+      { method: 'POST', path: '/v1/summarizer/search', description: 'AI-summarized search', price: '0.012' },
     ],
   },
   {
@@ -153,7 +153,7 @@ export const services: Service[] = [
     categories: ['ai'],
     logo: '/logos/deepseek.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (DeepSeek-V3, R1 reasoning)', price: '0.01' },
+      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (DeepSeek-V3, R1 reasoning)', price: '0.012' },
     ],
   },
   {
@@ -166,8 +166,8 @@ export const services: Service[] = [
     categories: ['communication'],
     logo: '/logos/resend.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/emails', description: 'Send an email', price: '0.01' },
-      { method: 'POST', path: '/v1/emails/batch', description: 'Send batch emails (up to 100)', price: '0.01' },
+      { method: 'POST', path: '/v1/emails', description: 'Send an email', price: '0.012' },
+      { method: 'POST', path: '/v1/emails/batch', description: 'Send batch emails (up to 100)', price: '0.012' },
     ],
   },
   {
@@ -180,9 +180,9 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/together.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Llama 4, Qwen, Mixtral)', price: '0.01' },
-      { method: 'POST', path: '/v1/images/generations', description: 'Image generation (FLUX, Stable Diffusion)', price: '0.03' },
-      { method: 'POST', path: '/v1/embeddings', description: 'Text embeddings', price: '0.01' },
+      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Llama 4, Qwen, Mixtral)', price: '0.012' },
+      { method: 'POST', path: '/v1/images/generations', description: 'Image generation (FLUX, Stable Diffusion)', price: '0.036' },
+      { method: 'POST', path: '/v1/embeddings', description: 'Text embeddings', price: '0.012' },
     ],
   },
   {
@@ -195,8 +195,8 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/elevenlabs.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/text-to-speech/:voiceId', description: 'Text-to-speech (any voice)', price: '0.05' },
-      { method: 'POST', path: '/v1/sound-generation', description: 'AI sound effects generation', price: '0.05' },
+      { method: 'POST', path: '/v1/text-to-speech/:voiceId', description: 'Text-to-speech (any voice)', price: '0.06' },
+      { method: 'POST', path: '/v1/sound-generation', description: 'AI sound effects generation', price: '0.06' },
     ],
   },
   {
@@ -209,8 +209,8 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/openweather.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/weather', description: 'Current weather by city or coordinates', price: '0.01' },
-      { method: 'POST', path: '/v1/forecast', description: '5-day / 3-hour forecast', price: '0.01' },
+      { method: 'POST', path: '/v1/weather', description: 'Current weather by city or coordinates', price: '0.012' },
+      { method: 'POST', path: '/v1/forecast', description: '5-day / 3-hour forecast', price: '0.012' },
     ],
   },
   {
@@ -223,9 +223,9 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/googlemaps.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/geocode', description: 'Address to coordinates (and reverse)', price: '0.01' },
-      { method: 'POST', path: '/v1/places', description: 'Text-based places search', price: '0.01' },
-      { method: 'POST', path: '/v1/directions', description: 'Route directions between locations', price: '0.01' },
+      { method: 'POST', path: '/v1/geocode', description: 'Address to coordinates (and reverse)', price: '0.012' },
+      { method: 'POST', path: '/v1/places', description: 'Text-based places search', price: '0.012' },
+      { method: 'POST', path: '/v1/directions', description: 'Route directions between locations', price: '0.012' },
     ],
   },
   {
@@ -238,8 +238,8 @@ export const services: Service[] = [
     categories: ['compute'],
     logo: '/logos/judge0.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/submissions', description: 'Submit and execute code', price: '0.01' },
-      { method: 'POST', path: '/v1/languages', description: 'List supported languages', price: '0.01' },
+      { method: 'POST', path: '/v1/submissions', description: 'Submit and execute code', price: '0.012' },
+      { method: 'POST', path: '/v1/languages', description: 'List supported languages', price: '0.012' },
     ],
   },
   {
@@ -252,9 +252,9 @@ export const services: Service[] = [
     categories: ['commerce'],
     logo: '/logos/lob.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/postcards', description: 'Send a physical postcard', price: '1.00' },
-      { method: 'POST', path: '/v1/letters', description: 'Send a physical letter', price: '1.50' },
-      { method: 'POST', path: '/v1/verify', description: 'Verify a US address', price: '0.01' },
+      { method: 'POST', path: '/v1/postcards', description: 'Send a physical postcard', price: '1.20' },
+      { method: 'POST', path: '/v1/letters', description: 'Send a physical letter', price: '1.80' },
+      { method: 'POST', path: '/v1/verify', description: 'Verify a US address', price: '0.012' },
     ],
   },
   {
@@ -267,9 +267,9 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/coingecko.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/price', description: 'Get price for coins (by ID, vs currencies)', price: '0.01' },
-      { method: 'POST', path: '/v1/markets', description: 'Market data — price, cap, volume, sparkline', price: '0.01' },
-      { method: 'POST', path: '/v1/trending', description: 'Trending coins and searches', price: '0.01' },
+      { method: 'POST', path: '/v1/price', description: 'Get price for coins (by ID, vs currencies)', price: '0.012' },
+      { method: 'POST', path: '/v1/markets', description: 'Market data — price, cap, volume, sparkline', price: '0.012' },
+      { method: 'POST', path: '/v1/trending', description: 'Trending coins and searches', price: '0.012' },
     ],
   },
   {
@@ -282,9 +282,9 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/alphavantage.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/quote', description: 'Real-time stock quote (price, change, volume)', price: '0.01' },
-      { method: 'POST', path: '/v1/daily', description: 'Daily time series (OHLCV)', price: '0.01' },
-      { method: 'POST', path: '/v1/search', description: 'Search for stock symbols by keyword', price: '0.01' },
+      { method: 'POST', path: '/v1/quote', description: 'Real-time stock quote (price, change, volume)', price: '0.012' },
+      { method: 'POST', path: '/v1/daily', description: 'Daily time series (OHLCV)', price: '0.012' },
+      { method: 'POST', path: '/v1/search', description: 'Search for stock symbols by keyword', price: '0.012' },
     ],
   },
   {
@@ -297,8 +297,8 @@ export const services: Service[] = [
     categories: ['data', 'search'],
     logo: '/logos/newsapi.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/headlines', description: 'Top headlines by country, category, or source', price: '0.01' },
-      { method: 'POST', path: '/v1/search', description: 'Search articles by keyword, date range, language', price: '0.01' },
+      { method: 'POST', path: '/v1/headlines', description: 'Top headlines by country, category, or source', price: '0.012' },
+      { method: 'POST', path: '/v1/search', description: 'Search articles by keyword, date range, language', price: '0.012' },
     ],
   },
   {
@@ -311,7 +311,7 @@ export const services: Service[] = [
     categories: ['translation'],
     logo: '/logos/deepl.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/translate', description: 'Translate text with context-aware AI', price: '0.01' },
+      { method: 'POST', path: '/v1/translate', description: 'Translate text with context-aware AI', price: '0.012' },
     ],
   },
   {
@@ -324,8 +324,8 @@ export const services: Service[] = [
     categories: ['search', 'ai'],
     logo: '/logos/exa.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/search', description: 'Semantic search with optional content extraction', price: '0.01' },
-      { method: 'POST', path: '/v1/contents', description: 'Extract clean content from URLs', price: '0.01' },
+      { method: 'POST', path: '/v1/search', description: 'Semantic search with optional content extraction', price: '0.012' },
+      { method: 'POST', path: '/v1/contents', description: 'Extract clean content from URLs', price: '0.012' },
     ],
   },
   {
@@ -338,7 +338,7 @@ export const services: Service[] = [
     categories: ['web', 'data'],
     logo: '/logos/jina.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/read', description: 'Read a URL and return clean markdown', price: '0.01' },
+      { method: 'POST', path: '/v1/read', description: 'Read a URL and return clean markdown', price: '0.012' },
     ],
   },
   {
@@ -351,8 +351,8 @@ export const services: Service[] = [
     categories: ['search'],
     logo: '/logos/serper.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/search', description: 'Google web search with rich snippets', price: '0.01' },
-      { method: 'POST', path: '/v1/images', description: 'Google image search results', price: '0.01' },
+      { method: 'POST', path: '/v1/search', description: 'Google web search with rich snippets', price: '0.012' },
+      { method: 'POST', path: '/v1/images', description: 'Google image search results', price: '0.012' },
     ],
   },
   {
@@ -365,7 +365,7 @@ export const services: Service[] = [
     categories: ['web'],
     logo: '/logos/screenshot.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/capture', description: 'Screenshot a URL (configurable viewport, format)', price: '0.01' },
+      { method: 'POST', path: '/v1/capture', description: 'Screenshot a URL (configurable viewport, format)', price: '0.012' },
     ],
   },
   {
@@ -378,7 +378,7 @@ export const services: Service[] = [
     categories: ['web', 'data'],
     logo: '/logos/pdfshift.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/convert', description: 'Convert HTML source or URL to PDF', price: '0.01' },
+      { method: 'POST', path: '/v1/convert', description: 'Convert HTML source or URL to PDF', price: '0.012' },
     ],
   },
   {
@@ -391,7 +391,7 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/qrcode.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/generate', description: 'Generate a QR code image (PNG, SVG)', price: '0.01' },
+      { method: 'POST', path: '/v1/generate', description: 'Generate a QR code image (PNG, SVG)', price: '0.012' },
     ],
   },
   {
@@ -404,8 +404,8 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/replicate.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/predictions', description: 'Run a model (sync — waits for result)', price: '0.02' },
-      { method: 'POST', path: '/v1/predictions/status', description: 'Check prediction status by ID', price: '0.01' },
+      { method: 'POST', path: '/v1/predictions', description: 'Run a model (sync — waits for result)', price: '0.024' },
+      { method: 'POST', path: '/v1/predictions/status', description: 'Check prediction status by ID', price: '0.012' },
     ],
   },
   {
@@ -418,8 +418,8 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/stability.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/generate', description: 'Generate an image from text (SD3)', price: '0.03' },
-      { method: 'POST', path: '/v1/edit', description: 'Search-and-replace edit on an image', price: '0.03' },
+      { method: 'POST', path: '/v1/generate', description: 'Generate an image from text (SD3)', price: '0.036' },
+      { method: 'POST', path: '/v1/edit', description: 'Search-and-replace edit on an image', price: '0.036' },
     ],
   },
   {
@@ -432,8 +432,8 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/assemblyai.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/transcribe', description: 'Submit audio URL for transcription', price: '0.02' },
-      { method: 'POST', path: '/v1/result', description: 'Get transcription result by ID', price: '0.01' },
+      { method: 'POST', path: '/v1/transcribe', description: 'Submit audio URL for transcription', price: '0.024' },
+      { method: 'POST', path: '/v1/result', description: 'Get transcription result by ID', price: '0.012' },
     ],
   },
   {
@@ -446,8 +446,8 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/hunter.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/search', description: 'Find emails by domain name', price: '0.02' },
-      { method: 'POST', path: '/v1/verify', description: 'Verify an email address', price: '0.02' },
+      { method: 'POST', path: '/v1/search', description: 'Find emails by domain name', price: '0.024' },
+      { method: 'POST', path: '/v1/verify', description: 'Verify an email address', price: '0.024' },
     ],
   },
   {
@@ -460,7 +460,7 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/ipinfo.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/lookup', description: 'Look up IP address details (geo, ASN, company)', price: '0.01' },
+      { method: 'POST', path: '/v1/lookup', description: 'Look up IP address details (geo, ASN, company)', price: '0.012' },
     ],
   },
   {
@@ -473,8 +473,8 @@ export const services: Service[] = [
     categories: ['translation'],
     logo: '/logos/translate.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/translate', description: 'Translate text between languages', price: '0.01' },
-      { method: 'POST', path: '/v1/detect', description: 'Detect the language of text', price: '0.01' },
+      { method: 'POST', path: '/v1/translate', description: 'Translate text between languages', price: '0.012' },
+      { method: 'POST', path: '/v1/detect', description: 'Detect the language of text', price: '0.012' },
     ],
   },
   {
@@ -487,9 +487,9 @@ export const services: Service[] = [
     categories: ['search'],
     logo: '/logos/serpapi.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/search', description: 'Google search with rich structured results', price: '0.01' },
-      { method: 'POST', path: '/v1/flights', description: 'Google Flights search — routes, prices, airlines', price: '0.01' },
-      { method: 'POST', path: '/v1/locations', description: 'Search locations for geo-targeted queries', price: '0.01' },
+      { method: 'POST', path: '/v1/search', description: 'Google search with rich structured results', price: '0.012' },
+      { method: 'POST', path: '/v1/flights', description: 'Google Flights search — routes, prices, airlines', price: '0.012' },
+      { method: 'POST', path: '/v1/locations', description: 'Search locations for geo-targeted queries', price: '0.012' },
     ],
   },
   {
@@ -502,8 +502,8 @@ export const services: Service[] = [
     categories: ['commerce'],
     logo: '/logos/printful.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/products', description: 'Browse catalog — all products, or by ID for sizes/colors', price: '0.01' },
-      { method: 'POST', path: '/v1/estimate', description: 'Get shipping and cost estimate for an order', price: '0.01' },
+      { method: 'POST', path: '/v1/products', description: 'Browse catalog — all products, or by ID for sizes/colors', price: '0.012' },
+      { method: 'POST', path: '/v1/estimate', description: 'Get shipping and cost estimate for an order', price: '0.012' },
       { method: 'POST', path: '/v1/order', description: 'Place a print-on-demand order (dynamic price: cost + 5%)', price: 'dynamic' },
     ],
   },
@@ -517,7 +517,7 @@ export const services: Service[] = [
     categories: ['messaging'],
     logo: '/logos/pushover.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/push', description: 'Send a push notification', price: '0.01' },
+      { method: 'POST', path: '/v1/push', description: 'Send a push notification', price: '0.012' },
     ],
   },
   {
@@ -530,8 +530,8 @@ export const services: Service[] = [
     categories: ['ai'],
     logo: '/logos/mistral.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Mistral Large, Codestral, Mixtral)', price: '0.01' },
-      { method: 'POST', path: '/v1/embeddings', description: 'Generate text embeddings', price: '0.01' },
+      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Mistral Large, Codestral, Mixtral)', price: '0.012' },
+      { method: 'POST', path: '/v1/embeddings', description: 'Generate text embeddings', price: '0.012' },
     ],
   },
   {
@@ -544,9 +544,9 @@ export const services: Service[] = [
     categories: ['ai'],
     logo: '/logos/cohere.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat', description: 'Chat with Command models', price: '0.01' },
-      { method: 'POST', path: '/v1/embed', description: 'Generate text embeddings', price: '0.01' },
-      { method: 'POST', path: '/v1/rerank', description: 'Rerank search results by relevance', price: '0.01' },
+      { method: 'POST', path: '/v1/chat', description: 'Chat with Command models', price: '0.012' },
+      { method: 'POST', path: '/v1/embed', description: 'Generate text embeddings', price: '0.012' },
+      { method: 'POST', path: '/v1/rerank', description: 'Rerank search results by relevance', price: '0.012' },
     ],
   },
   {
@@ -559,7 +559,7 @@ export const services: Service[] = [
     categories: ['security'],
     logo: '/logos/virustotal.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/scan', description: 'Scan a URL or file hash for threats', price: '0.01' },
+      { method: 'POST', path: '/v1/scan', description: 'Scan a URL or file hash for threats', price: '0.012' },
     ],
   },
   {
@@ -572,8 +572,8 @@ export const services: Service[] = [
     categories: ['finance'],
     logo: '/logos/exchangerate.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/rates', description: 'Get exchange rates for a base currency', price: '0.01' },
-      { method: 'POST', path: '/v1/convert', description: 'Convert an amount between two currencies', price: '0.01' },
+      { method: 'POST', path: '/v1/rates', description: 'Get exchange rates for a base currency', price: '0.012' },
+      { method: 'POST', path: '/v1/convert', description: 'Convert an amount between two currencies', price: '0.012' },
     ],
   },
   {
@@ -586,7 +586,41 @@ export const services: Service[] = [
     categories: ['utility'],
     logo: '/logos/shortio.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/shorten', description: 'Shorten a URL', price: '0.01' },
+      { method: 'POST', path: '/v1/shorten', description: 'Shorten a URL', price: '0.012' },
     ],
   },
 ];
+
+/**
+ * Single source of truth for endpoint pricing.
+ *
+ * Pre-2026-06 the price lived in BOTH this catalog AND hardcoded in every
+ * `chargeProxy('0.01', ...)` route — a guaranteed drift. The routes now pass
+ * NO price; `chargeProxy` / `chargeCustom` resolve it here from the request's
+ * (service, method, path). So a price change (e.g. the +20% bump) is a
+ * one-place edit in this file, and the regression suite asserts every route
+ * resolves a price.
+ */
+function pathMatches(template: string, actual: string): boolean {
+  const t = template.split('/').filter(Boolean);
+  const a = actual.split('/').filter(Boolean);
+  if (t.length !== a.length) return false;
+  return t.every((seg, i) => {
+    const isParam = seg.startsWith(':') || (seg.startsWith('{') && seg.endsWith('}'));
+    return isParam || seg === a[i];
+  });
+}
+
+export function getEndpointPrice(
+  serviceId: string,
+  method: string,
+  path: string,
+): string | undefined {
+  const service = services.find((s) => s.id === serviceId);
+  if (!service) return undefined;
+  const m = method.toUpperCase();
+  const endpoint = service.endpoints.find(
+    (e) => e.method.toUpperCase() === m && pathMatches(e.path, path),
+  );
+  return endpoint?.price;
+}

@@ -8,7 +8,7 @@ MPP gateway — **40 services, 88 endpoints, payable with Sui USDC**.
 
 Proxies requests to upstream APIs (OpenAI, Anthropic, Brave, Firecrawl, etc.) behind MPP (Machine Payments Protocol) 402 challenges. Agents pay per-request with USDC on Sui — no API keys, no accounts, no subscriptions.
 
-Pay $0.01 – $0.05 per call. Pay $1.00 – $1.50 per physical postcard/letter. Top up your wallet with `t2000 fund`.
+Pay $0.012 – $0.06 per call. Pay $1.20 – $1.80 per physical postcard/letter. Top up your wallet with `t2000 fund`.
 
 ## Get started in 30 seconds
 
@@ -28,7 +28,7 @@ That's it. No signup. No API keys. The MPP 402 challenge is handled automaticall
 
 ## Hero examples
 
-### 🖼️ Generate an image ($0.05)
+### 🖼️ Generate an image ($0.06)
 
 ```bash
 t2000 pay https://mpp.t2000.ai/openai/v1/images/generations \
@@ -42,7 +42,7 @@ Returns `{ data: [{ url: "https://...vercel-storage.com/..." }] }`. The gateway 
 
 📘 Full recipe: [`mpp-image-gen`](https://t2000.ai/skills/mpp-image-gen)
 
-### 💬 Ask GPT-4o ($0.01)
+### 💬 Ask GPT-4o ($0.012)
 
 ```bash
 t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \
@@ -57,7 +57,7 @@ Standard OpenAI Chat Completions response shape. Pass vision via `image_url` con
 
 📘 Full recipe: [`mpp-gpt4o`](https://t2000.ai/skills/mpp-gpt4o)
 
-### 🎙️ Transcribe audio ($0.01)
+### 🎙️ Transcribe audio ($0.012)
 
 ```bash
 t2000 pay https://mpp.t2000.ai/openai/v1/audio/transcriptions \
@@ -121,7 +121,7 @@ Runs on `http://localhost:4402`.
 | `NEXT_PUBLIC_SUI_NETWORK` | Yes | `mainnet` or `testnet` |
 | `NEXT_PUBLIC_GATEWAY_URL` | No | Override base URL (defaults to `https://mpp.t2000.ai`) |
 | `OPENAI_API_KEY` | Yes | OpenAI upstream key |
-| `BLOB_READ_WRITE_TOKEN` | Yes for image gen | Vercel Blob read-write token. Required for `POST /openai/v1/images/generations`: `gpt-image-*` models return base64-only payloads; the gateway uploads each image and rewrites the JSON to dall-e shape `{ data: [{ url }] }` before clients consume it. |
+| `BLOB_READ_WRITE_TOKEN` | Yes for binary endpoints | Vercel Blob read-write token. Backs all artifact hosting: (a) `gpt-image-*` base64 payloads rewritten to dall-e shape `{ data: [{ url }] }`, and (b) any binary upstream (audio/TTS, raw image bytes, PDFs) hosted + returned as JSON `{ url, contentType, sizeBytes }` so the bytes survive JSON/text transports uncorrupted. Without it, binary endpoints return `503` (never a corrupted body). |
 | Various `*_API_KEY` | Yes | Per-service upstream keys |
 
 ## Tests

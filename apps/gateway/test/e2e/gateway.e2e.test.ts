@@ -115,6 +115,32 @@ describe('gateway e2e — 402 payment flow', () => {
   });
 });
 
+describe('gateway e2e — binary artifact contract (Bug 2, dogfood 2026-05-31)', () => {
+  // Binary upstreams (audio/image/pdf) must come back as JSON
+  // { url, contentType, sizeBytes }, NOT raw bytes — otherwise the SDK's
+  // text() decode corrupts them (the exact MP3 failure from the dogfood).
+  it('openai TTS returns a hosted artifact URL, not audio bytes', async () => {
+    const res = await paidFetch(`${GATEWAY_URL}/openai/v1/audio/speech`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-tts',
+        voice: 'alloy',
+        input: 'hello e2e artifact test',
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/json');
+
+    const data = (await res.json()) as { url?: string; contentType?: string; sizeBytes?: number };
+    expect(typeof data.url).toBe('string');
+    expect(data.url).toMatch(/^https:\/\//);
+    expect(data.contentType).toMatch(/^audio\//);
+    expect(data.sizeBytes).toBeGreaterThan(0);
+  });
+});
+
 describe('gateway e2e — error cases', () => {
   it('rejects invalid payment credential', async () => {
     const res = await fetch(`${GATEWAY_URL}/openai/v1/chat/completions`, {
