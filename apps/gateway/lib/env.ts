@@ -133,7 +133,7 @@ const serverSchema = z.object({
   GATEWAY_URL: optionalStringWithDefault('https://mpp.t2000.ai'),
   SUI_NETWORK: optionalStringWithDefault('mainnet'),
   SHORTIO_DOMAIN: optionalString,
-  BLOB_READ_WRITE_TOKEN: optionalString, // Vercel Blob — only required for OpenAI image normalization
+  BLOB_READ_WRITE_TOKEN: optionalString, // Vercel Blob — hosts ALL binary upstream responses (audio/image/pdf) as artifact URLs; when unset, binary endpoints degrade to a 503 JSON error rather than corrupting bytes
 
   // ---- Test-only ----
   E2E_TEST_PRIVATE_KEY: optionalString,
