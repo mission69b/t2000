@@ -43,14 +43,14 @@ export const T2K = {
   ] as const,
 
   servicesFallback: [
-    { name: "OpenAI", cat: "ai · media", from: "$0.01" },
-    { name: "Anthropic", cat: "ai", from: "$0.01" },
-    { name: "fal.ai", cat: "ai · media", from: "$0.01" },
-    { name: "ElevenLabs", cat: "ai · media", from: "$0.05" },
-    { name: "Perplexity", cat: "ai · search", from: "$0.01" },
-    { name: "Groq", cat: "ai", from: "$0.01" },
-    { name: "Firecrawl", cat: "web · data", from: "$0.01" },
-    { name: "AlphaVantage", cat: "data", from: "$0.01" },
+    { name: "OpenAI", cat: "ai · media", from: "$0.012" },
+    { name: "Anthropic", cat: "ai", from: "$0.012" },
+    { name: "fal.ai", cat: "ai · media", from: "$0.012" },
+    { name: "ElevenLabs", cat: "ai · media", from: "$0.06" },
+    { name: "Perplexity", cat: "ai · search", from: "$0.012" },
+    { name: "Groq", cat: "ai", from: "$0.012" },
+    { name: "Firecrawl", cat: "web · data", from: "$0.012" },
+    { name: "AlphaVantage", cat: "data", from: "$0.012" },
   ] as const,
 
   metrics: [
@@ -100,7 +100,7 @@ export const T2K_STORIES: StoryItem[] = [
       "Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, write me a 200-word brief.",
     steps: ["coingecko · newsapi · anthropic"],
     done: "./brief.md",
-    total: "~$0.02 · 3 calls · 0 taps",
+    total: "~$0.036 · 3 calls · 0 taps",
   },
   {
     n: "04",
@@ -110,7 +110,7 @@ export const T2K_STORIES: StoryItem[] = [
       "Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synthesize it as MP3 via ElevenLabs.",
     steps: ["fal.ai · anthropic · elevenlabs"],
     done: "./hero.png · ./pitch.md · ./pitch.mp3",
-    total: "~$0.15 · 3 calls · 0 taps · ~18s",
+    total: "~$0.11 · 3 calls · 0 taps · ~18s",
   },
   {
     n: "05",
@@ -120,17 +120,17 @@ export const T2K_STORIES: StoryItem[] = [
       "It's my mum's birthday next Tuesday. Write her a warm note from me, render it as a card front via fal.ai, and put it in the mail to 123 Lochiel Road via Lob.",
     steps: ["anthropic · fal.ai · lob"],
     done: "Card queued · USPS delivery Tuesday.",
-    total: "~$1.00 · 3 calls · 0 taps",
+    total: "~$1.25 · 3 calls · 0 taps",
   },
   {
     n: "06",
     tag: "MPP · CODE",
     title: "Write and run",
     prompt:
-      "Write a Python script that computes the 30-day EMA of SUI from this OHLC CSV, then run it via Judge0 to verify.",
+      "Write a self-contained Python script that computes a 30-day EMA on sample SUI closes, then run it via Judge0 to verify.",
     steps: ["anthropic · judge0"],
     done: "Script verified · output matches expected.",
-    total: "~$0.02 · 2 calls · 0 taps · ~3s",
+    total: "~$0.024 · 2 calls · 0 taps · ~3s",
   },
 ];
 

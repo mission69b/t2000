@@ -63,10 +63,12 @@ async function fetchTeasers(): Promise<ServiceTeaser[]> {
 }
 
 function formatPrice(n: number): string {
-  // MPP floor is $0.01 → 2 decimals (no trailing "$0.010"). A positive
-  // sub-cent value (legacy rows only) keeps 3 decimals so it never reads
-  // as "$0.00".
-  if (n > 0 && n < 0.01) return `$${n.toFixed(3)}`;
+  if (n <= 0) return "$0.00";
+  // Post-+20% bump the catalog floor is $0.012, so 2-decimal rounding would
+  // misstate sub-$0.10 prices (0.012 → "$0.01", 0.036 → "$0.04"). Show up to
+  // 3 decimals under $0.10 (trailing zeros trimmed: 0.06 → "$0.06"), and
+  // 2 decimals at/above $0.10.
+  if (n < 0.1) return `$${Number(n.toFixed(3))}`;
   return `$${n.toFixed(2)}`;
 }
 
