@@ -807,6 +807,21 @@ const READ_TOOLS_WITH_ADDRESS_PARAM = new Set([
 // characters since some clients normalize away leading zeros.
 const SUI_ADDRESS_IN_TEXT_REGEX = /0x[a-fA-F0-9]{60,64}/g;
 
+// [F7 — 2026-05-31] Send/pay/transfer intent. When the user says "send X
+// to 0xABC", the mentioned address is a RECIPIENT, not an inspection
+// target — so a pre-send self-scoped `balance_check` (no `address`, or
+// the user's own wallet) is CORRECT and must not be blocked by the
+// read-side address-scope guard. The WRITE-side `guardAddressSource`
+// still validates the actual `send_transfer` recipient, so relaxing the
+// read guard here weakens no on-chain protection. Without this, every
+// send turn spewed `balance_check ✗ Error` accordions because the
+// recipient address tripped the scope guard.
+// NOTE: deliberately excludes "give" — "give me a portfolio overview of
+// 0xABC" is a READ intent that must still be scope-checked. The verbs
+// here unambiguously imply moving funds TO the mentioned address.
+const SEND_INTENT_REGEX =
+  /\b(send|sends|sending|sent|transfer|transfers|transferring|transferred|pay|pays|paying|paid)\b/i;
+
 function guardAddressScope(
   tool: GuardToolView,
   call: PendingToolCall,
@@ -831,6 +846,15 @@ function guardAddressScope(
   );
 
   if (thirdPartyAddresses.length === 0) {
+    return { verdict: 'pass', gate: 'address_scope', tier: 'safety' };
+  }
+
+  // [F7 — 2026-05-31] The user mentioned a third-party address, but if
+  // the message is a send/pay/transfer command that address is the
+  // RECIPIENT, not something to inspect — a self-scoped read before the
+  // send is legitimate. Pass. (The write-side `guardAddressSource` still
+  // validates the recipient field of the actual transfer.)
+  if (SEND_INTENT_REGEX.test(userText)) {
     return { verdict: 'pass', gate: 'address_scope', tier: 'safety' };
   }
 

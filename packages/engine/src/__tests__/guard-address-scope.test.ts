@@ -226,6 +226,64 @@ describe('guardAddressScope (read-tool address safety)', () => {
     expect(result.blockReason).toContain(WATCHED);
   });
 
+  // ---------------------------------------------------------------------------
+  // F7 regression — send/pay/transfer intent relaxation (2026-05-31)
+  // ---------------------------------------------------------------------------
+  //
+  // Smoke caught the scope guard blocking a legitimate pre-send
+  // self-balance check: "Send 0.5 USDC to 0xABC" → balance_check (no
+  // address, = self) → the recipient address tripped address_scope and
+  // the agent spewed `balance_check ✗ Error` accordions. The mentioned
+  // address is a RECIPIENT on a send turn, not an inspection target, so
+  // a self-scoped read is correct. The write-side guardAddressSource
+  // still validates the actual send recipient.
+  // ---------------------------------------------------------------------------
+
+  it('does NOT block balance_check (no address) when the current turn is a SEND to the mentioned address', () => {
+    const result = runGuards(
+      balanceCheck,
+      makeCall('balance_check', {}),
+      createGuardRunnerState(),
+      DEFAULT_GUARD_CONFIG,
+      makeConvCtx(`Send 0.5 USDC to ${WATCHED}`),
+      undefined,
+      { walletAddress: SIGNED_IN_USER },
+    );
+
+    expect(result.blocked).toBe(false);
+  });
+
+  it('does NOT block balance_check targeting the signed-in user during a send turn', () => {
+    const result = runGuards(
+      balanceCheck,
+      makeCall('balance_check', { address: SIGNED_IN_USER }),
+      createGuardRunnerState(),
+      DEFAULT_GUARD_CONFIG,
+      makeConvCtx(`transfer 10 USDC to ${WATCHED}`),
+      undefined,
+      { walletAddress: SIGNED_IN_USER },
+    );
+
+    expect(result.blocked).toBe(false);
+  });
+
+  it('still BLOCKS a read-intent "give me a portfolio overview of 0xABC" (no send verb)', () => {
+    // "give" is intentionally NOT a send verb — this is a read that must
+    // stay scope-checked.
+    const result = runGuards(
+      portfolioAnalysis,
+      makeCall('portfolio_analysis', {}),
+      createGuardRunnerState(),
+      DEFAULT_GUARD_CONFIG,
+      makeConvCtx(`Give me a portfolio overview of ${WATCHED}`),
+      undefined,
+      { walletAddress: SIGNED_IN_USER },
+    );
+
+    expect(result.blocked).toBe(true);
+    expect(result.blockGate).toBe('address_scope');
+  });
+
   it('handles audric host pattern: <post_write_anchor> + user prompt concatenated in one text block', () => {
     // Audric concatenates the synthetic post-write anchor with the
     // user's actual prompt into a single user text block:
