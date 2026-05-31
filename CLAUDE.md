@@ -107,8 +107,8 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.
 5. **Always check `developers.t2000.ai`** before writing documentation or marketing copy. Mintlify is the live docs SSOT (auto-deployed from `apps/docs/`) — covers product naming, CLI surface, SDK API, MCP tools. For code-level truth (fees, decimals, allowed-asset lists, error codes), read `packages/sdk/src/constants.ts` + `packages/sdk/src/token-registry.ts` directly.
 6. **Always use `token-registry.ts`** for token metadata (tiers, `COIN_REGISTRY`, `isTier1` / `isTier2` / `isSupported` / `getTier`). Never hardcode decimals or coin types.
-7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web/lib/env.ts` (v0.53.x) — schema + `instrumentation.ts` boot-time validation + ESLint `no-restricted-syntax` rule that fails CI on raw `process.env` reads. The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
-8. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design. Audric is the only fee owner: `audric/apps/web/app/api/transactions/prepare/route.ts` calls `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` inline for save/borrow and passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. The deprecated `t2000::treasury::collect_fee` Move call and `addCollectFeeToTx` helper were removed. New consumer apps that want to charge fees follow the same pattern (split + transfer to wallet inside the same PTB; the indexer detects USDC inflows to the wallet and writes `ProtocolFeeLedger` rows). See S.43 in `audric-build-tracker.md`.
+7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web-v2/lib/env.ts` — schema + `instrumentation.ts` boot-time validation (audric enforces the no-raw-`process.env` convention via Biome/ultracite + code review, not an ESLint rule). The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
+8. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design. Audric is the only fee owner: `audric/apps/web-v2/app/api/transactions/prepare/route.ts` calls `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` inline for save/borrow and passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. The deprecated `t2000::treasury::collect_fee` Move call and `addCollectFeeToTx` helper were removed. New consumer apps that want to charge fees follow the same pattern (split + transfer to wallet inside the same PTB; the indexer detects USDC inflows to the wallet and writes `ProtocolFeeLedger` rows). See S.43 in `audric-build-tracker.md`.
 9. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
 ---
@@ -237,7 +237,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk + @t2000/engine to
 - **Never** push multiple tags in the same session to fix failures — fix the code and re-run the workflow
 
 **Key details:**
-- All 4 packages are always at the same version number (e.g. `0.28.0`) — no drift
+- All 4 packages are always at the same version number (currently `4.x`) — no drift
 - `continue-on-error: true` on publish steps — idempotent if a version already exists
 - `workflow_dispatch` on `publish.yml` serves as a manual fallback if needed
 
@@ -249,37 +249,14 @@ Powers **Audric** — the conversational finance agent. Wraps `@t2000/sdk` in an
 
 ### Import patterns
 
+> **Removed exports (do NOT import — verified against `packages/engine/src/index.ts`):** `AISDKAnthropicProvider` (removed v3.1.0), `buildMcpTools` + `registerEngineTools` (removed v3.0.0 — the MCP server now wraps the SDK wallet, not engine tools), `defineTool` / `toolsToDefinitions` / `findTool` / `buildTool` (no public tool-factory export — engine tools are defined inside the package with the AI SDK `tool()` factory), and the legacy QueryEngine helpers `TxMutex` / `runTools` / `EarlyToolDispatcher` / `budgetToolResult` / `engineToSSE`. The v2 `AISDKEngine` serialises writes structurally (AI SDK step model + `needsApproval` round-trip) and dispatches read-only `isConcurrencySafe` tools mid-stream natively — no separate dispatcher.
+
 ```ts
 // Core
-import { AISDKEngine, AISDKAnthropicProvider, getDefaultTools } from '@t2000/engine';
-
-// Tool building — `defineTool` is the v2 factory.
-// `buildTool` was deleted in engine 1.38.0; use `defineTool` for new tools.
-import { defineTool, toolsToDefinitions, findTool } from '@t2000/engine';
-
-// Tool result budgeting.
-// `TxMutex` + `runTools` are STILL exported for back-compat with legacy
-// orchestration callers (e.g. CLI dispatch). v2 `AISDKEngine` does NOT
-// instantiate TxMutex — write serialisation is structural (AI SDK step
-// model + `needsApproval` round-trip; confirm-tier writes yield a
-// `pending_action` event → host round-trips through user confirm → next
-// step). See `packages/engine/src/v2/tool-policy.ts` lines 33-45.
-import { budgetToolResult } from '@t2000/engine';
-// Legacy (kept for back-compat consumers; v2 engine doesn't use them):
-import { TxMutex, runTools } from '@t2000/engine';
-
-// Streaming tool execution.
-// `EarlyToolDispatcher` is the legacy QueryEngine-era helper (still
-// exported for back-compat). v2 `AISDKEngine` natively dispatches
-// read-only `isConcurrencySafe` tools mid-stream as AI SDK emits each
-// `tool-call` event — no separate dispatcher needed. Use this import
-// only if you're building on the legacy orchestration path.
-import { EarlyToolDispatcher } from '@t2000/engine';
+import { AISDKEngine, getDefaultTools } from '@t2000/engine';
+import { TOOL_POLICY, getToolPolicy } from '@t2000/engine';
 
 // Streaming + sessions
-// [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice A] `engineToSSE` was deleted —
-// hosts iterate the EngineEvent generator raw and call `serializeSSE`
-// per event (audric switched to this pattern in v1.4.2 / Spec G3).
 import { serializeSSE, parseSSE } from '@t2000/engine';
 import { MemorySessionStore } from '@t2000/engine';
 
@@ -317,14 +294,10 @@ import {
 } from '@t2000/engine';
 import type { PermissionRule, UserPermissionConfig } from '@t2000/engine';
 
-// MCP client (consume external MCPs)
-// Internally backed by @ai-sdk/mcp's createMCPClient since engine v2.1.0
-// (SPEC 37 v0.7a Phase 4); McpClientManager class name + public method
-// signatures preserved verbatim. Prompts adapter is NEW in v2.1.0.
+// MCP client (consume external MCPs, e.g. NAVI)
+// Internally backed by @ai-sdk/mcp's createMCPClient since engine v2.1.0;
+// McpClientManager class name + public method signatures preserved.
 import { McpClientManager, NAVI_MCP_CONFIG, McpPromptAdapter } from '@t2000/engine';
-
-// MCP server adapter (expose engine tools)
-import { buildMcpTools, registerEngineTools } from '@t2000/engine';
 
 // Token registry (shared with CLI/MCP — import from SDK)
 import {
@@ -372,7 +345,7 @@ In `AISDKEngine` (v2), AI SDK natively dispatches read-only `isConcurrencySafe` 
 
 ### Microcompact (B.3)
 
-`microcompact(messages)` deduplicates identical tool calls (same name + input) in conversation history, replacing repeated results with `[Same result as turn N]`. Runs as Phase -1 in `compactMessages` and every turn in `agentLoop`.
+`microcompact(messages)` deduplicates identical tool calls (same name + input) in conversation history, replacing repeated results with `[Same result as turn N]`. Runs as Phase -1 in `compactMessages` (`packages/engine/src/context.ts`), invoked every turn by the v2 `AISDKEngine`.
 
 ### Built-in tools
 
@@ -392,6 +365,8 @@ Write (8): `save_deposit` (USDC + USDsui — strategic exception, see `.cursor/r
 > **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST API. `protocol_deep_dive` retained its DefiLlama dependency (lone production consumer of `api.llama.fi`) until S.277 — cut in engine 2.18.0 ("Earns Its Keep" audit). Engine no longer talks to `api.llama.fi`. See `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
 >
 > **S.323 (2026-05-25) — full Volo removal across SDK + CLI + MCP.** S.277 left Volo helpers in `@t2000/sdk` (`agent.stakeVSui`, `agent.unstakeVSui`, `protocols/volo.ts`, composeTx `volo_stake` / `volo_unstake` appenders + types), the CLI (`t2000 stake` / `t2000 unstake`), and `@t2000/mcp` (`t2000_stake` / `t2000_unstake`) on the rationale that "non-Audric consumers" might still want VOLO liquid staking. They don't — there are no non-Audric consumers of the t2000 SDK / CLI / MCP, so those surfaces were dead code. S.323 cuts the lot. vSUI remains as a passive token (NAVI reward type, Cetus swap target). MCP tool count 29 → 27. CLI commands: `t2000 stake` / `t2000 unstake` removed. SDK: `agent.stakeVSui` / `agent.unstakeVSui` / `protocols/volo.*` / Volo composeTx branches all gone. Released as v3.3.0 (minor — same convention as S.277 feature cuts).
+>
+> **S.336 (v4.0, 2026-05-25) — Agent Wallet pivot reshaped the CLI + MCP surfaces.** `@t2000/cli` (bin `t2`, with `t2000` alias) and `@t2000/mcp` were narrowed to a **wallet + payments** surface — the DeFi commands/tools (`save`, `withdraw`, `borrow`, `repay`, `claim`) were dropped from CLI and MCP. **`@t2000/mcp` now registers 9 tools** (5 read + 3 write + 1 limit), not 27. The `@t2000/sdk` still exposes the full DeFi builder surface (`agent.save()` etc.) for programmatic use, and the **engine** keeps its 26 tools (Audric's surface) — only the CLI/MCP developer surfaces were narrowed. See the S.336 entry in `audric-build-tracker.md`.
 >
 > See the S.0–S.12 entries in `audric-build-tracker.md` for the locked decisions on what we won't bring back. `record_advice` is an audric-side tool (not exported from `@t2000/engine`).
 

@@ -26,13 +26,13 @@ Failed preflight → LLM is told "tool input invalid" and re-asks. The user is n
 
 ## Layer 3 — Guards (`runGuards()`)
 
-12 guards across 3 priority tiers run around every write — 10 pre-execution gates + 2 post-execution hints (post-S.277 "Earns Its Keep" audit, May 2026, dropped 2 dead guards: `guardCostWarning` + `guardArtifactPreview`). Defined in `packages/engine/src/guards.ts`.
+Guards run around every write via `runGuards()` — 10 pre-execution gate functions + 1 post-execution hint (`guardStaleData`), defined in `packages/engine/src/guards.ts`. (The S.277 "Earns Its Keep" audit, May 2026, dropped the dead `guardCostWarning` + `guardArtifactPreview` guards.) Verify names against the source — the real guard functions and their tiers are:
 
-| Tier | Guards |
+| Tier | Guards (function name in `guards.ts`) |
 |---|---|
-| Safety | Health Factor, Insufficient Balance, Recipient Validation |
-| Financial | USD Threshold, Slippage Cap, Daily Spend Limit |
-| UX | Allowance Reminder, Network Health, Stale Quote |
+| Safety | Health Factor (`guardHealthFactor`), Balance Validation (`guardBalanceValidation`), Address Source (`guardAddressSource`), Address Scope (`guardAddressScope`), Irreversibility (`guardIrreversibility`) |
+| Financial | Large Transfer / USD threshold (`guardLargeTransfer`), Slippage (`guardSlippage`), Asset Intent (`guardAssetIntent`) |
+| UX | Swap Preview (`guardSwapPreview`), Retry Protection (`guardRetryProtection`), Stale Data — post-exec hint (`guardStaleData`) |
 
 Each guard returns one of:
 - `{ pass: true }` — silent, allowed
@@ -105,7 +105,7 @@ Without this, a tool returning a 50k-token portfolio response blows context budg
 
 ```typescript
 // ❌ A write tool with no preflight
-buildTool({ name: 'send_transfer', /* no preflight */ });
+tool({ /* send_transfer with no preflight wired via wrapEngineExecute */ });
 
 // ❌ Disabling guards
 runEngine({ guards: [] });

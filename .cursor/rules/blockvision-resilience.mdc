@@ -94,6 +94,6 @@ const res = await fetchBlockVisionWithRetry(url, { headers, signal: AbortSignal.
 
 ## Cross-references
 
-- Implementation → `packages/engine/src/blockvision-prices.ts` + `packages/engine/src/defi-cache.ts`
+- Implementation → `packages/engine/src/blockvision-prices.ts` (shim re-exporting `blockvision/retry.ts`) + `packages/engine/src/cache/defi.ts`
 - Engine spec context → `agent-harness-spec.mdc` (Spec 2)
 - Wallet portfolio Redis migration (next PR) → `audric-scaling-spec.md` PR 1+2

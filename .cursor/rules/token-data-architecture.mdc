@@ -10,10 +10,10 @@ alwaysApply: false
 
 | Data | Source | Location |
 |------|--------|----------|
-| Swap-supported token names → coin types | `TOKEN_MAP` | `packages/sdk/src/protocols/cetus-swap.ts` |
+| Swap-supported token names → coin types | `TOKEN_MAP` | `packages/sdk/src/token-registry.ts` (re-exported from `protocols/cetus-swap.ts`) |
 | NAVI lending asset metadata | `SUPPORTED_ASSETS` | `packages/sdk/src/constants.ts` |
-| Coin type → symbol/decimals (RPC fallback) | `KNOWN_COINS` | `packages/engine/src/sui-rpc.ts` |
-| NAVI MCP decimal corrections | `NAVI_NEWER_POOL_SYMBOLS` | `packages/engine/src/navi-transforms.ts` |
+| Coin type → symbol/decimals (RPC fallback) | `EXTRA_COINS` | `packages/engine/src/sui/rpc.ts` |
+| NAVI MCP decimal corrections | `NAVI_NEWER_POOL_SYMBOLS` | `packages/engine/src/navi/transforms.ts` |
 
 ## Rules
 

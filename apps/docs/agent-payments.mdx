@@ -160,7 +160,7 @@ Always pass `--max-price <USD>` (default `$1.00`) so a misconfigured endpoint ca
 ```ts
 // AI client calls (via @t2000/mcp):
 { "name": "t2000_services", "arguments": { "query": "image" } }
-{ "name": "t2000_pay",      "arguments": { "url": "...", "data": "...", "maxPriceUsd": 0.10 } }
+{ "name": "t2000_pay",      "arguments": { "url": "...", "body": "...", "maxPrice": 0.10 } }
 ```
 
 See [Agent Wallet → MCP Integration](/agent-wallet#mcp-integration) for full client setup.
@@ -179,7 +179,7 @@ const result = await agent.pay({
   maxPrice: 0.10,
 });
 
-// result.responseBody, result.txDigest, result.amountUsdc
+// result.status, result.body, result.paid, result.cost (USD), result.gasCostSui
 ```
 
 Full SDK reference: [Agent SDK](/agent-sdk).

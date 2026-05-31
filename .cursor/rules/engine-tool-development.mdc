@@ -1,35 +1,46 @@
 ---
-description: Engine tool development — buildTool factory, permission levels, flags, preflight, result budgeting
-globs: "packages/engine/src/tools/**/*.ts,packages/engine/src/tool.ts"
+description: Engine tool development — AI SDK tool() + wrapEngineExecute, permission levels, flags, preflight, result budgeting
+globs: "packages/engine/src/tools/**/*.ts,packages/engine/src/v2/tool-helpers.ts"
 alwaysApply: false
 ---
 
 # Engine Tool Development
 
-The contract for every tool that lives in `packages/engine/src/tools/`. Use `buildTool()` from `tool.ts`. Don't construct the `Tool` interface by hand — the factory keeps defaults consistent.
+The contract for every tool that lives in `packages/engine/src/tools/`. Tools are AI SDK `tool()` instances whose `execute` is wrapped by `wrapEngineExecute` and whose write-gating comes from `buildNeedsApproval` — both from `../v2/tool-helpers.js`. (The old `buildTool()` / `packages/engine/src/tool.ts` factory was removed; do NOT reintroduce it.) Per-tool policy (read/write, concurrency-safe, flags, permission level) lives in the `TOOL_POLICY` registry in `v2/tool-policy.ts`, keyed by tool name.
 
 ## Tool anatomy
 
 ```typescript
-import { buildTool } from '../tool.js';
+import { tool } from 'ai';
 import { z } from 'zod';
+import { wrapEngineExecute, buildNeedsApproval } from '../v2/tool-helpers.js';
+import type { ToolContext, ToolResult, PreflightResult } from '../types.js';
 
-export const myTool = buildTool({
-  name: 'tool_name',
-  description: '...',  // What the LLM sees. Keep short and crisp.
-  inputSchema: z.object({ ... }),
-  jsonSchema: { type: 'object', properties: { ... }, required: [...] },
-  call: async (input, ctx) => {
-    return { data: ..., displayText: '...' };
-  },
-  isReadOnly: true,                 // default true
-  permissionLevel: 'auto',          // 'auto' | 'confirm' | 'explicit'
-  flags: { mutating: false, requiresBalance: false, ... },
-  preflight: (input) => ({ valid: true }),
-  maxResultSizeChars: 8_000,
-  cacheable: true,                  // default true
+const myInputSchema = z.object({ amount: z.number().positive() });
+type MyInput = z.infer<typeof myInputSchema>;
+
+function myPreflight(input: MyInput): PreflightResult {
+  if (input.amount > 1_000_000) return { valid: false, error: 'amount unreasonable' };
+  return { valid: true };
+}
+
+async function myCallBody(input: MyInput, ctx: ToolContext): Promise<ToolResult<unknown>> {
+  return { data: { /* ... */ }, displayText: '...' };
+}
+
+export const myTool = tool({
+  description: '...', // What the LLM sees. Keep short and crisp.
+  inputSchema: myInputSchema,
+  // Writes only: gate via permission policy. Omit for read tools.
+  needsApproval: buildNeedsApproval('tool_name'),
+  execute: wrapEngineExecute<MyInput, unknown>('tool_name', {
+    preflight: myPreflight,
+    call: myCallBody,
+  }),
 });
 ```
+
+Register the tool's policy (read/write, flags, permission level, `maxResultSizeChars`) under its name in `v2/tool-policy.ts`, and add it to `getDefaultTools()` in `tools/index.ts`.
 
 ## Permission level — pick the right one
 
@@ -44,7 +55,7 @@ export const myTool = buildTool({
 ## Read tool patterns
 
 1. Keep them **fast** (target < 500ms p50). They're called per-turn.
-2. Set `isReadOnly: true`, `isConcurrencySafe: true` (default). The early-dispatcher fires them mid-stream.
+2. Mark them read-only + `isConcurrencySafe` in `TOOL_POLICY`. The v2 `AISDKEngine` dispatches concurrency-safe reads mid-stream natively (no separate dispatcher).
 3. Cache common reads via `cacheable: true` (default) — the per-turn `turn-read-cache.ts` dedupes identical calls.
 4. Use `ctx.portfolioCache` (per-request `Map<address, AddressPortfolio>`) for shared portfolio reads — avoids 200–500ms BlockVision RTT amplification across tools in the same turn.
 5. Set `maxResultSizeChars` to keep the LLM context lean. Tools that can return large responses MUST cap.
@@ -59,14 +70,13 @@ export const myTool = buildTool({
 
 ## Result budgeting (B.2)
 
+Set `maxResultSizeChars` (and optionally `summarizeOnTruncate`) on the tool's entry in `TOOL_POLICY` (`v2/tool-policy.ts`):
+
 ```typescript
-buildTool({
-  // ...
-  maxResultSizeChars: 8_000,
-  summarizeOnTruncate: (full, max) => {
-    return `${full.slice(0, max - 100)}\n\n[Truncated — call with narrower params]`;
-  },
-});
+// in TOOL_POLICY[ 'tool_name' ]
+maxResultSizeChars: 8_000,
+summarizeOnTruncate: (full, max) =>
+  `${full.slice(0, max - 100)}\n\n[Truncated — call with narrower params]`,
 ```
 
 Without `maxResultSizeChars`, large results (e.g. portfolio with 100+ tokens) blow context budget and degrade subsequent turns.
@@ -143,7 +153,7 @@ await addSaveToTx(tx, client, depositCoin, asset, amount, address);
 ## Required tests
 
 Every new tool needs:
-1. **Unit test** — `packages/engine/src/__tests__/<tool>.test.ts` covering happy path + every preflight failure mode.
+1. **Unit test** — co-located `tools/<tool>.test.ts` (inline convention; the `__tests__/` folder is grandfathered — see `coding-discipline.mdc`) covering happy path + every preflight failure mode.
 2. **Permission test** — verify `permissionLevel` and `flags` (these are load-bearing for the harness contract).
 3. **Result budget test** — verify `maxResultSizeChars` caps output.
 4. **Integration test** — if the tool calls BlockVision/NAVI, mock + verify retry + circuit breaker behavior.
@@ -172,7 +182,8 @@ import { getPortfolioForTools } from './shared/portfolio.js';
 
 ## Cross-references
 
-- Factory + types → `packages/engine/src/tool.ts`, `packages/engine/src/types.ts`
+- Tool helpers + types → `packages/engine/src/v2/tool-helpers.ts`, `packages/engine/src/types.ts`
+- Per-tool policy registry → `packages/engine/src/v2/tool-policy.ts`
 - Permission resolver → `packages/engine/src/permission-rules.ts`
 - Harness contract → `agent-harness-spec.mdc`
 - BlockVision usage → `blockvision-resilience.mdc`

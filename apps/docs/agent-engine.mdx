@@ -77,9 +77,9 @@ Every write goes through 12 guards across 3 priority tiers. Guards return one of
 
 | Tier | Guards |
 |---|---|
-| **Safety** | Health Factor, Insufficient Balance, Recipient Validation |
-| **Financial** | USD Threshold, Slippage Cap, Daily Spend Limit |
-| **UX** | Allowance Reminder, Network Health, Stale Quote |
+| **Safety** | Health Factor, Balance Validation, Address Source / Address Scope, Irreversibility |
+| **Financial** | Large Transfer (USD threshold), Slippage, Asset Intent |
+| **UX** | Swap Preview, Retry Protection, Stale Data (post-execution hint) |
 
 Plus adaptive thinking effort per turn (cheap vs. expensive reasoning), preflight input validation (no LLM round-trip if the input is malformed), and prompt caching for the system prompt + tool definitions.
 
@@ -104,7 +104,7 @@ const engine = new AISDKEngine({
 });
 ```
 
-Wire your own backend by implementing the `MemoryStore` interface (`recall` + `write`).
+Wire your own backend by implementing the `MemoryStore` interface (`recall(query)` returns top-K facts; `remember(text)` ingests a fact post-turn).
 
 ## AdviceLog — never contradict yourself
 
@@ -167,16 +167,9 @@ const tools = await mcp.listTools();               // wire into AISDKEngine.tool
 
 `McpClientManager` is backed by `@ai-sdk/mcp`. `McpPromptAdapter` is an extension point for consuming MCP prompts as skill recipes — currently dormant by design (it's the "speak any Sui protocol's MCP" seam, kept unwired until a downstream consumer needs it).
 
-## MCP server adapter (expose engine tools)
+## Exposing tools over MCP
 
-```typescript
-import { buildMcpTools, registerEngineTools } from '@t2000/engine';
-
-// Build MCP-compatible tools from your engine tool registry
-const mcpTools = buildMcpTools(engineTools);
-```
-
-Used by `@t2000/mcp` internally to expose the engine's tool definitions as MCP JSON-RPC tools.
+The engine's tools are plain AI SDK `tool()` instances (`getDefaultTools()`), so any MCP server framework can wrap them directly — there is no engine-side MCP server adapter (the old `buildMcpTools` / `registerEngineTools` helpers were removed in v3.0.0). For the supported t2000 wallet MCP surface, use the standalone [`@t2000/mcp`](/agent-wallet) package (9 wallet + payment tools backed by `@t2000/sdk`).
 
 ## What's in scope vs. host
 
@@ -222,7 +215,7 @@ AISDKEngine.submitMessage()
     │
     ├── Memory layer (engine owns the interface; host owns the backend)
     │       ├── MemoryStore.recall(latestUserMessage) → <memory_recall> block
-    │       ├── MemoryStore.write(finishReason, messages) → post-turn analyze
+    │       ├── MemoryStore.remember(...) → post-turn fact ingestion
     │       └── financialContextBlock (host-supplied daily snapshot)
     │
     └── Session + streaming
