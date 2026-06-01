@@ -120,7 +120,7 @@ export function HeroTerminal() {
         style={{
           padding: "18px 16px 18px 18px",
           color: "var(--fg)",
-          minHeight: 320,
+          minHeight: 360,
         }}
       >
         {history.map((h, i) => (

@@ -162,7 +162,7 @@ export function SdkHeroCode() {
         style={{
           padding: "18px 18px 22px",
           color: "var(--fg)",
-          minHeight: 360,
+          minHeight: 400,
         }}
       >
         <CodeTokens tokens={current.lines} />

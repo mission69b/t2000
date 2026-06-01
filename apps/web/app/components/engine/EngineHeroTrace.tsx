@@ -100,7 +100,7 @@ export function EngineHeroTrace() {
 
       <div
         className="flex flex-col gap-2 font-mono text-[12px] leading-[1.55]"
-        style={{ padding: "16px 18px", minHeight: 380 }}
+        style={{ padding: "16px 18px", minHeight: 420 }}
       >
         {visible.map((row, i) => (
           <EngineTraceRow key={i} row={row} />
