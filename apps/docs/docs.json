@@ -34,7 +34,13 @@
           "recipes/morning-brief",
           "recipes/concept-asset",
           "recipes/mail-card",
-          "recipes/write-and-run"
+          "recipes/write-and-run",
+          "recipes/ai-music",
+          "recipes/coloring-book",
+          "recipes/stock-research",
+          "recipes/crypto-research",
+          "recipes/transcribe-summarize",
+          "recipes/research-citations"
         ]
       }
     ]
@@ -58,7 +64,7 @@
   "footer": {
     "socials": {
       "github": "https://github.com/mission69b/t2000",
-      "x": "https://x.com/t2000ai"
+      "x": "https://x.com/t2000_ai"
     },
     "links": [
       {

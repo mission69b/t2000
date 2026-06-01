@@ -1,0 +1,105 @@
+---
+title: "Make a coloring book"
+description: "One sentence in, a printable coloring book out. MPP generates the line-art pages; your AI client binds them into a PDF natively — no third-party PDF service."
+---
+
+Your agent turns a topic into a set of line-art pages a kid can color. Claude writes one scene per page, fal.ai's Flux renders each as clean black-outline art, and your AI client (Claude Desktop, ChatGPT, the SDK, soon Audric) binds them into a PDF with its own built-in tooling. The paid MPP calls are only the image generation — the binding is free and local.
+
+<Note>
+This is the **creation half** of the Audric Store demo *"Make me a coloring book about unicorns and sell only 100 copies for $3 each."* The page generation below works today. The **store half** — capping supply at 100 ("Sui capped it"), the $3 USDC sale, and Walrus storage — lands with **Audric Store** (not yet shipped).
+
+**On PDF binding:** it is deliberately **not** an MPP call. LLM clients emit text and code, not binary files, so the bind is done by the client's own PDF/code tool — reliable, free, no third-party PDF SaaS to flake out. MPP is reserved for the paid services the agent genuinely can't do itself (the image generation).
+</Note>
+
+## The prompt
+
+```
+Make me a coloring book about friendly unicorns — a few line-art pages
+a kid can color in. Bundle them into a PDF.
+```
+
+## What runs
+
+1. `POST /anthropic/v1/messages` — Claude writes one scene per page (~$0.012)
+2. `POST /fal/fal-ai/flux/dev` — line-art image per page (~$0.036 each)
+3. **PDF binding** — your AI client's native tool. **Not MPP. $0.**
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt. The agent pays for each page image over MPP, then assembles the PDF with Claude Desktop's built-in code/analysis tool — no PDF service involved. Any client with a code tool (ChatGPT, Cursor, and Audric soon) binds the same way.
+
+### SDK
+
+Here the bind is a pure-JS step with `pdf-lib` (no system deps, no flaky PDF API):
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+import { PDFDocument } from 'pdf-lib';
+import { writeFileSync } from 'fs';
+
+const agent = await T2000.create();
+const topic = 'friendly unicorns';
+const pageCount = 4;
+
+// 1. Claude writes one coloring-book scene per page.
+const plan = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 400,
+    messages: [{
+      role: 'user',
+      content: `Give me ${pageCount} distinct coloring-book scene ideas about ${topic}, one per line, no numbering.`,
+    }],
+  }),
+});
+const scenes = (plan.body as { content: { text: string }[] }).content[0].text
+  .trim().split('\n').filter(Boolean).slice(0, pageCount);
+
+// 2. MPP: generate a line-art page per scene (the paid part).
+const pages: ArrayBuffer[] = [];
+for (const scene of scenes) {
+  const img = await agent.pay({
+    url: 'https://mpp.t2000.ai/fal/fal-ai/flux/dev',
+    method: 'POST',
+    body: JSON.stringify({
+      prompt: `Coloring book line art, thick clean black outlines, no shading, white background: ${scene}`,
+      image_size: 'portrait_4_3',
+    }),
+  });
+  const url = (img.body as { images: { url: string }[] }).images[0].url;
+  pages.push(await fetch(url).then((r) => r.arrayBuffer()));
+}
+
+// 3. Bind locally — free, reliable, no PDF service. (fal returns PNG; use
+//    pdf.embedJpg(...) if your model returns JPEG.)
+const pdf = await PDFDocument.create();
+for (const bytes of pages) {
+  const png = await pdf.embedPng(bytes);
+  const page = pdf.addPage([png.width, png.height]);
+  page.drawImage(png, { x: 0, y: 0, width: png.width, height: png.height });
+}
+writeFileSync('./unicorn-coloring-book.pdf', await pdf.save());
+```
+
+## Expected output
+
+```
+5 calls · ~$0.16 · ~25s · 0 taps    (1 Claude + 4 image pages)
+./unicorn-coloring-book.pdf    (bound locally, $0)
+```
+
+## Extend it
+
+- Scale `pageCount` up for a full book — each page is one ~$0.036 image call
+- Swap **Flux Dev** for **Stability** (`/stability/v1/generate`) or **OpenAI images** (`/openai/v1/images/generations`) for a different art style
+- Add a **cover** with a separate styled prompt, and a title page Claude writes
+- Cap the edition at 100 copies and list it for $3 in USDC (92% to the creator) — that's the upcoming **Audric Store** flow, built on this exact creation pipeline

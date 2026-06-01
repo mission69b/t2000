@@ -1,0 +1,86 @@
+---
+title: "Research with citations"
+description: "A question in, a sourced answer out. Exa finds the primary sources, Perplexity grounds the answer in live web citations — paid as you go, no scraping setup."
+---
+
+Ask a real question and get back an answer you can trust, with sources. Exa surfaces the most relevant primary pages by meaning, Perplexity returns a web-grounded answer with live citations, and Claude (optionally) fuses them into a tight, cited brief. Self-contained — just a question. ~$0.036.
+
+## The prompt
+
+```
+What are the leading approaches to stablecoin yield on Sui right now,
+and how do they differ? Cite sources.
+```
+
+## What runs
+
+1. `POST /exa/v1/search` — semantic search for the best primary sources (~$0.012)
+2. `POST /perplexity/v1/chat/completions` — web-grounded answer with citations (~$0.012)
+3. `POST /anthropic/v1/messages` — Claude fuses into a cited brief (optional) (~$0.012)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste any question — the agent decides whether one source pass is enough or whether to fuse Exa + Perplexity for breadth.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const question = 'Leading approaches to stablecoin yield on Sui, and how they differ';
+
+const [sources, grounded] = await Promise.all([
+  agent.pay({
+    url: 'https://mpp.t2000.ai/exa/v1/search',
+    method: 'POST',
+    body: JSON.stringify({ query: question, numResults: 5, contents: { text: true } }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/perplexity/v1/chat/completions',
+    method: 'POST',
+    body: JSON.stringify({
+      model: 'sonar',
+      messages: [{ role: 'user', content: `${question}. Answer with inline citations.` }],
+    }),
+  }),
+]);
+
+const brief = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 700,
+    messages: [{
+      role: 'user',
+      content:
+        `Write a 250-word answer to: "${question}". Keep every claim tied to a source URL.\n\n` +
+        `SEMANTIC SOURCES: ${JSON.stringify(sources.body)}\n\nGROUNDED ANSWER: ${JSON.stringify(grounded.body)}`,
+    }],
+  }),
+});
+
+console.log((brief.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+2–3 calls · ~$0.036 · ~7s · 0 taps
+Cited brief + source URLs
+```
+
+## Extend it
+
+- Swap **Exa** for **Firecrawl** (`/firecrawl/v1/scrape`) to read a specific known source verbatim
+- Add **Firecrawl map** (`/firecrawl/v1/map`) to discover every page on a site before extracting
+- Have a second model (**Gemini** `/gemini/v1beta/models/gemini-2.5-pro`) review the brief for unsupported claims
+- Pipe the cited brief into the **Write code, then run it** recipe to turn data points into a verified chart or table

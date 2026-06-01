@@ -1,0 +1,93 @@
+---
+title: "Deep-dive a crypto asset"
+description: "One token, the full picture. Market data + headlines + a web-grounded narrative with citations — CoinGecko + NewsAPI + Perplexity, paid as you go."
+---
+
+Beyond a price check: your agent pulls market data, recent news, and a citation-backed narrative, then synthesizes a single-asset deep-dive. Useful when you want the *why* behind the number, not just the number. ~$0.05.
+
+## The prompt
+
+```
+Deep-dive SUI for me — price and market data, what's in the news, and the
+current narrative with sources. Then a 200-word take.
+```
+
+## What runs
+
+1. `POST /coingecko/v1/markets` — price, market cap, volume, 7d sparkline (~$0.012)
+2. `POST /newsapi/v1/search` — recent headlines (~$0.012)
+3. `POST /perplexity/v1/chat/completions` — web-grounded narrative with live citations (~$0.012)
+4. `POST /anthropic/v1/messages` — Claude fuses it into the final take (~$0.012)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt with any asset (*"Deep-dive ETH"*, *"What's the bull/bear case for SUI?"*).
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const coinId = 'sui'; // CoinGecko id
+
+const [markets, news, narrative] = await Promise.all([
+  agent.pay({
+    url: 'https://mpp.t2000.ai/coingecko/v1/markets',
+    method: 'POST',
+    body: JSON.stringify({ vs_currency: 'usd', ids: coinId, sparkline: true }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/newsapi/v1/search',
+    method: 'POST',
+    body: JSON.stringify({ q: 'Sui blockchain', pageSize: 5, sortBy: 'publishedAt' }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/perplexity/v1/chat/completions',
+    method: 'POST',
+    body: JSON.stringify({
+      model: 'sonar',
+      messages: [{ role: 'user', content: 'What is the current narrative and recent developments for the Sui blockchain? Cite sources.' }],
+    }),
+  }),
+]);
+
+const take = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 600,
+    messages: [{
+      role: 'user',
+      content:
+        `Write a 200-word deep-dive on ${coinId}. Lead with price + 24h/7d move, then the narrative ` +
+        `and key catalysts. Keep the citations from the research.\n\n` +
+        `MARKETS: ${JSON.stringify(markets.body)}\n\nNEWS: ${JSON.stringify(news.body)}\n\nNARRATIVE: ${JSON.stringify(narrative.body)}`,
+    }],
+  }),
+});
+
+console.log((take.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+4 calls · ~$0.05 · ~8s · 0 taps
+SUI deep-dive: market data + narrative + cited take
+```
+
+## Extend it
+
+- Add **AlphaVantage** (`/alphavantage/v1/quote`) to fold in a correlated equity (e.g. COIN, MSTR) for a cross-asset view
+- Swap **Perplexity** for **Exa** (`/exa/v1/search`) + **Firecrawl** (`/firecrawl/v1/scrape`) to read primary sources directly
+- Run it across your watchlist in parallel and have Claude rank by momentum
+- Schedule it as a morning cron and **Pushover** (`/pushover/v1/push`) the take to your phone
