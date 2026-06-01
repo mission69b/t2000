@@ -124,6 +124,32 @@ describe('normalizeResponse — provider asset URL re-hosting (shape #2)', () =>
     expect(json.audio_file.url).toMatch(/^https:\/\/blob\.test\/mpp-artifacts\/.*\.wav$/);
   });
 
+  it('infers .wav from the source URL when the CDN serves a generic octet-stream type', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
+    globalThis.fetch = vi.fn(async () =>
+      new Response(new Uint8Array([0xff, 0xfb]), { headers: { 'content-type': 'application/octet-stream' } }),
+    ) as unknown as typeof fetch;
+
+    const res = Response.json({ audio_file: { url: 'https://v3b.fal.media/files/x/out.wav' } });
+    const out = await normalizeResponse(res);
+    const json = (await out.json()) as { audio_file: { url: string } };
+
+    expect(json.audio_file.url).toMatch(/\.wav$/); // not .bin
+  });
+
+  it('maps non-standard audio MIME variants (audio/x-wav) to .wav', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
+    globalThis.fetch = vi.fn(async () =>
+      new Response(new Uint8Array([0xff, 0xfb]), { headers: { 'content-type': 'audio/x-wav' } }),
+    ) as unknown as typeof fetch;
+
+    const res = Response.json({ audio: 'https://v3b.fal.media/files/x/clip' });
+    const out = await normalizeResponse(res);
+    const json = (await out.json()) as { audio: string };
+
+    expect(json.audio).toMatch(/\.wav$/);
+  });
+
   it('de-dupes repeated URLs into a single fetch + upload', async () => {
     vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
     const fetchMock = vi.fn(async () =>

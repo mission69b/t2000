@@ -97,20 +97,69 @@ const EXT_BY_TYPE: Record<string, string> = {
   'audio/mpeg': 'mp3',
   'audio/mp3': 'mp3',
   'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/vnd.wave': 'wav',
   'audio/ogg': 'ogg',
   'audio/webm': 'webm',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
   'image/png': 'png',
   'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
   'image/webp': 'webp',
   'image/gif': 'gif',
   'image/svg+xml': 'svg',
+  'video/mp4': 'mp4',
   'application/pdf': 'pdf',
   'application/zip': 'zip',
+};
+
+/** Reverse map for inferring content-type from a source URL's file extension. */
+const MIME_BY_EXT: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  webm: 'audio/webm',
+  m4a: 'audio/mp4',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  svg: 'image/svg+xml',
+  mp4: 'video/mp4',
+  pdf: 'application/pdf',
+  zip: 'application/zip',
 };
 
 function extFor(contentType: string): string {
   const base = contentType.split(';')[0].trim().toLowerCase();
   return EXT_BY_TYPE[base] ?? 'bin';
+}
+
+function extFromUrl(url: string): string | undefined {
+  try {
+    const match = new URL(url).pathname.match(/\.([a-z0-9]{1,5})$/i);
+    return match ? match[1].toLowerCase() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Pick the most specific content-type for a re-hosted asset: trust a concrete
+ * upstream type, but when the CDN sends a generic/empty type (fal serves WAVs
+ * as `application/octet-stream`, which would store as `.bin`), fall back to the
+ * type implied by the source URL's extension so the artifact keeps the right
+ * extension + MIME.
+ */
+function resolveAssetContentType(rawContentType: string | null, sourceUrl: string): string {
+  const ct = rawContentType?.split(';')[0].trim().toLowerCase();
+  const isGeneric = !ct || ct === 'application/octet-stream' || ct === 'binary/octet-stream';
+  if (!isGeneric) return ct;
+  const ext = extFromUrl(sourceUrl);
+  return (ext && MIME_BY_EXT[ext]) || ct || 'application/octet-stream';
 }
 
 class VercelBlobArtifactStore implements ArtifactStore {
@@ -214,7 +263,9 @@ async function rehostProviderAssets(response: Response): Promise<Response> {
         try {
           const upstream = await fetch(url);
           if (!upstream.ok) return url;
-          const ct = upstream.headers.get('content-type') ?? 'application/octet-stream';
+          // fal's CDN serves WAVs as octet-stream → infer the real type from
+          // the source URL extension so we don't store a typeless `.bin`.
+          const ct = resolveAssetContentType(upstream.headers.get('content-type'), url);
           const bytes = new Uint8Array(await upstream.arrayBuffer());
           const artifact = await store.put(bytes, ct);
           return artifact.url;
