@@ -1,0 +1,122 @@
+---
+title: "Make an illustrated storybook"
+description: "One sentence in, a printable picture book out. Claude writes the story, Flux illustrates every page in a consistent style, and PDFShift binds it server-side. Real generative art a code sandbox can't fake. ~$0.20."
+---
+
+Your agent turns a premise into a short illustrated children's book: Claude writes the story beat-by-beat, fal.ai's Flux paints a consistent illustration for each page, and PDFShift binds them into a print-ready PDF. ~$0.20, no API keys.
+
+<Note>
+**Why this is genuinely MPP (unlike a coloring book).** Clean line art is drawable as SVG, so a code-sandbox client (Claude Desktop) will hand-draw a coloring book itself for free — fair enough. But a richly illustrated, consistent-character *painterly* storybook is beyond hand-drawn vector art; it needs a real image model. There's no local sandbox shortcut, so the model call earns its keep on every client. And for sandboxless clients (a browser app like Audric), it's the only path regardless.
+
+This is the **creation half** of an Audric Store demo: *"Make a storybook about a brave little fox and sell it for $4."* The **store half** — Walrus permanence, the capped edition, and the 92%-to-creator USDC sale — lands with **Audric Store**.
+</Note>
+
+## The prompt
+
+```
+Make me a short illustrated storybook about a brave little fox who learns to
+swim — about 5 pages, warm watercolor style. Bundle it into a PDF.
+```
+
+## What runs
+
+1. `POST /anthropic/v1/messages` — Claude writes the story + a per-page illustration prompt, with a shared character sheet for consistency (~$0.012)
+2. `POST /fal/fal-ai/flux/dev` — one illustration per page (~$0.036 each)
+3. `POST /pdfshift/v1/convert` — bind the pages (HTML→PDF, server-side) into one hosted PDF (~$0.012)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt. The agent writes the story, pays for each page illustration, builds an HTML layout referencing the image URLs, and has PDFShift render it to a PDF server-side — no local image download required.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+import { writeFileSync } from 'fs';
+
+const agent = await T2000.create();
+const premise = 'a brave little fox who learns to swim';
+const style = 'warm watercolor, soft light, storybook illustration, consistent character';
+const pageCount = 5;
+
+// 1. Claude writes the story + a per-page art prompt. A shared "character
+//    sheet" line is threaded into every prompt so the fox looks the same
+//    on every page.
+const plan = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 900,
+    messages: [{
+      role: 'user',
+      content:
+        `Write a ${pageCount}-page children's story about ${premise}. ` +
+        `Return JSON: { "character": "one-line visual description for consistency", ` +
+        `"pages": [{ "text": "1-2 sentences", "art": "illustration prompt for this scene" }] }. ` +
+        `Output ONLY the JSON.`,
+    }],
+  }),
+});
+const book = JSON.parse((plan.body as { content: { text: string }[] }).content[0].text) as {
+  character: string;
+  pages: { text: string; art: string }[];
+};
+
+// 2. MPP: illustrate each page — a real image model, the part a sandbox can't fake.
+const pages: { text: string; url: string }[] = [];
+for (const page of book.pages) {
+  const img = await agent.pay({
+    url: 'https://mpp.t2000.ai/fal/fal-ai/flux/dev',
+    method: 'POST',
+    body: JSON.stringify({
+      prompt: `${style}. ${book.character}. Scene: ${page.art}. No text.`,
+      image_size: 'portrait_4_3',
+    }),
+  });
+  pages.push({ text: page.text, url: (img.body as { images: { url: string }[] }).images[0].url });
+}
+
+// 3. Bind server-side — PDFShift fetches the image URLs (which client sandboxes
+//    often can't) and the gateway returns a hosted PDF link.
+const html = `<html><body style="margin:0;font-family:Georgia,serif">${pages
+  .map((p) => `<div style="page-break-after:always;text-align:center">
+      <img src="${p.url}" style="width:100%"/>
+      <p style="font-size:22px;padding:24px">${p.text}</p>
+    </div>`)
+  .join('')}</body></html>`;
+
+const pdf = await agent.pay({
+  url: 'https://mpp.t2000.ai/pdfshift/v1/convert',
+  method: 'POST',
+  body: JSON.stringify({ source: html }),
+});
+
+// Binary endpoints return JSON { url, contentType, sizeBytes } (the gateway
+// hosts the artifact). Fetch the URL for the bytes.
+const { url } = pdf.body as { url: string };
+const bytes = await fetch(url).then((r) => r.arrayBuffer());
+writeFileSync('./fox-storybook.pdf', Buffer.from(bytes));
+console.log('Storybook:', url);
+```
+
+## Expected output
+
+```
+7 calls · ~$0.20 · ~35s · 0 taps    (1 Claude + 5 page illustrations + 1 PDF bind)
+./fox-storybook.pdf    (hosted link)
+```
+
+## Extend it
+
+- Bump **Flux Dev** to **Flux Pro** (`/fal/fal-ai/flux-pro`, $0.06) for higher-fidelity illustrations
+- Add an **ElevenLabs** (`/elevenlabs/v1/text-to-speech/:voiceId`) narration track per page for an audio storybook
+- Scale `pageCount` up for a full picture book — each page is one ~$0.036 illustration call
+- Cap the edition and list it for $4 in USDC (92% to the creator) — that's the upcoming **Audric Store** flow, built on this exact creation pipeline
