@@ -4,10 +4,14 @@ vi.mock('@vercel/blob', () => ({
   put: vi.fn(async (filename: string) => ({ url: `https://blob.test/${filename}` })),
 }));
 
-import { isBinaryContentType, normalizeBinaryResponse } from './artifact-store';
+import { isBinaryContentType, normalizeResponse } from './artifact-store';
+
+const realFetch = globalThis.fetch;
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  globalThis.fetch = realFetch;
+  vi.restoreAllMocks();
 });
 
 describe('isBinaryContentType', () => {
@@ -29,16 +33,16 @@ describe('isBinaryContentType', () => {
   });
 });
 
-describe('normalizeBinaryResponse — passthrough', () => {
-  it('returns JSON responses untouched', async () => {
+describe('normalizeResponse — passthrough', () => {
+  it('returns plain JSON responses untouched (no blob backend → same object)', async () => {
     const res = Response.json({ ok: true });
-    const out = await normalizeBinaryResponse(res);
+    const out = await normalizeResponse(res);
     expect(out).toBe(res);
   });
 
   it('returns text responses untouched', async () => {
     const res = new Response('hello', { headers: { 'content-type': 'text/plain' } });
-    const out = await normalizeBinaryResponse(res);
+    const out = await normalizeResponse(res);
     expect(out).toBe(res);
   });
 
@@ -47,12 +51,12 @@ describe('normalizeBinaryResponse — passthrough', () => {
       status: 402,
       headers: { 'content-type': 'audio/mpeg' },
     });
-    const out = await normalizeBinaryResponse(res);
+    const out = await normalizeResponse(res);
     expect(out).toBe(res);
   });
 });
 
-describe('normalizeBinaryResponse — binary hosting', () => {
+describe('normalizeResponse — binary hosting (shape #1)', () => {
   it('hosts binary as an artifact + returns JSON { url, contentType, sizeBytes }, preserving Payment-Receipt', async () => {
     vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
     const bytes = new Uint8Array([0xff, 0xfb, 0x90, 0x00, 0x01, 0x02]); // fake mp3 frame
@@ -61,10 +65,9 @@ describe('normalizeBinaryResponse — binary hosting', () => {
       headers: { 'content-type': 'audio/mpeg', 'Payment-Receipt': 'reference=abc123' },
     });
 
-    const out = await normalizeBinaryResponse(res);
+    const out = await normalizeResponse(res);
     expect(out.status).toBe(200);
     expect(out.headers.get('content-type')).toBe('application/json');
-    // MPP receipt must survive the rewrite.
     expect(out.headers.get('Payment-Receipt')).toBe('reference=abc123');
 
     const json = (await out.json()) as { url: string; contentType: string; sizeBytes: number };
@@ -75,15 +78,103 @@ describe('normalizeBinaryResponse — binary hosting', () => {
   });
 
   it('degrades honestly with 503 (not a corrupted body) when no blob backend is configured', async () => {
-    // Default test env has no BLOB_READ_WRITE_TOKEN.
     const res = new Response(new Uint8Array([1, 2, 3]), {
       status: 200,
       headers: { 'content-type': 'image/png' },
     });
-    const out = await normalizeBinaryResponse(res);
+    const out = await normalizeResponse(res);
     expect(out.status).toBe(503);
     expect(out.headers.get('content-type')).toBe('application/json');
     const json = (await out.json()) as { error: string };
     expect(json.error).toMatch(/BLOB_READ_WRITE_TOKEN/);
+  });
+});
+
+describe('normalizeResponse — provider asset URL re-hosting (shape #2)', () => {
+  it('re-hosts a provider-CDN URL (flux shape) to a blob URL, preserving shape + Payment-Receipt', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
+    const fetchMock = vi.fn(async () =>
+      new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/jpeg' } }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = Response.json(
+      { images: [{ url: 'https://v3b.fal.media/files/abc/out.jpg', width: 768 }] },
+      { headers: { 'Payment-Receipt': 'reference=xyz' } },
+    );
+    const out = await normalizeResponse(res);
+    const json = (await out.json()) as { images: { url: string; width: number }[] };
+
+    expect(fetchMock).toHaveBeenCalledWith('https://v3b.fal.media/files/abc/out.jpg');
+    expect(json.images[0].url).toMatch(/^https:\/\/blob\.test\/mpp-artifacts\/.*\.jpg$/);
+    expect(json.images[0].width).toBe(768); // sibling fields untouched
+    expect(out.headers.get('Payment-Receipt')).toBe('reference=xyz'); // receipt survives
+  });
+
+  it('re-hosts a nested audio URL (stable-audio shape)', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
+    globalThis.fetch = vi.fn(async () =>
+      new Response(new Uint8Array([0xff, 0xfb]), { headers: { 'content-type': 'audio/wav' } }),
+    ) as unknown as typeof fetch;
+
+    const res = Response.json({ audio_file: { url: 'https://v3b.fal.media/files/x/out.wav' } });
+    const out = await normalizeResponse(res);
+    const json = (await out.json()) as { audio_file: { url: string } };
+
+    expect(json.audio_file.url).toMatch(/^https:\/\/blob\.test\/mpp-artifacts\/.*\.wav$/);
+  });
+
+  it('de-dupes repeated URLs into a single fetch + upload', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
+    const fetchMock = vi.fn(async () =>
+      new Response(new Uint8Array([1]), { headers: { 'content-type': 'image/png' } }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const url = 'https://fal.media/files/dup/out.png';
+
+    await normalizeResponse(Response.json({ a: url, b: url, nested: { c: url } }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('never re-hosts arbitrary third-party URLs (research-tool citations pass through)', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = Response.json({
+      results: [
+        { title: 'A paper', url: 'https://arxiv.org/abs/2605.12345' },
+        { title: 'A news story', url: 'https://example.com/story' },
+      ],
+    });
+    const out = await normalizeResponse(res);
+    const json = (await out.json()) as { results: { url: string }[] };
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(json.results[0].url).toBe('https://arxiv.org/abs/2605.12345');
+    expect(json.results[1].url).toBe('https://example.com/story');
+  });
+
+  it('leaves the original provider URL on upstream fetch failure (never breaks a paid response)', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
+    globalThis.fetch = vi.fn(async () => new Response('nope', { status: 404 })) as unknown as typeof fetch;
+
+    const res = Response.json({ images: [{ url: 'https://v3b.fal.media/files/x/out.jpg' }] });
+    const out = await normalizeResponse(res);
+    const json = (await out.json()) as { images: { url: string }[] };
+
+    expect(json.images[0].url).toBe('https://v3b.fal.media/files/x/out.jpg');
+  });
+
+  it('leaves provider URLs untouched when no blob backend is configured (degrade, not fail)', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = Response.json({ images: [{ url: 'https://v3b.fal.media/files/x/out.jpg' }] });
+    const out = await normalizeResponse(res);
+    const json = (await out.json()) as { images: { url: string }[] };
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(json.images[0].url).toBe('https://v3b.fal.media/files/x/out.jpg');
   });
 });

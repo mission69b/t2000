@@ -3,7 +3,7 @@ import { Mppx } from 'mppx/nextjs';
 import { sui, USDC } from '@suimpp/mpp/server';
 import type { PaymentReport } from '@suimpp/mpp/server';
 import { TREASURY_ADDRESS } from './constants';
-import { normalizeBinaryResponse } from './artifact-store';
+import { normalizeResponse } from './artifact-store';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
 import { getEndpointPrice } from './services';
@@ -196,10 +196,11 @@ export function chargeProxy(
       after(() => logPayment({ service, endpoint, amount: report?.amount ?? amount, digest, sender: report?.sender }));
     }
 
-    // [Bug 2 / dogfood 2026-05-31] Host binary bodies as an artifact + return
-    // JSON { url, contentType, sizeBytes } so the SDK/MCP JSON path can't
-    // corrupt them. No-op for JSON/text and 402 challenges.
-    return normalizeBinaryResponse(response);
+    // [Bug 2 / dogfood 2026-05-31] Single normalizer: host binary bodies AND
+    // re-host provider-CDN asset URLs in JSON (fal etc.) to our artifact store
+    // so clients get durable URLs, never corrupt bytes. No-op for plain
+    // JSON/text and 402 challenges. See `artifact-store.ts`.
+    return normalizeResponse(response);
   };
 }
 
@@ -269,7 +270,7 @@ export function chargeCustom(
     }
 
     // [Bug 2] Covers custom binary handlers (qrcode, stability image) too.
-    return normalizeBinaryResponse(response);
+    return normalizeResponse(response);
   };
 }
 

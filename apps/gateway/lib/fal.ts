@@ -1,17 +1,13 @@
 import { chargeProxy } from './gateway';
-import { rehostFalMediaResponse } from './fal-blob-normalize';
 import { env } from '@/lib/env';
 
 /**
- * Shared wiring for every fal.run model proxy: fal auth + re-host the model's
- * output asset(s) through the artifact store (so clients get a durable URL, not
- * fal's ephemeral CDN link — see `fal-blob-normalize.ts`). One entry point so
- * fal behaviour changes in a single place.
+ * Shared wiring for every fal.run model proxy: fal auth + the catalog price.
+ * fal's output assets (`*.fal.media` URLs) are re-hosted to the artifact store
+ * by the universal `normalizeResponse` chokepoint (see `artifact-store.ts`), so
+ * there is nothing fal-specific to do here beyond auth — one entry point keeps
+ * the 6 fal routes tidy.
  */
 export function falProxy(model: string) {
-  return chargeProxy(
-    `https://fal.run/${model}`,
-    { authorization: `Key ${env.FAL_KEY}` },
-    { transformUpstreamResponse: rehostFalMediaResponse },
-  );
+  return chargeProxy(`https://fal.run/${model}`, { authorization: `Key ${env.FAL_KEY}` });
 }
