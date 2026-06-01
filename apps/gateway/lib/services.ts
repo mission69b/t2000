@@ -66,6 +66,7 @@ export const services: Service[] = [
       { method: 'POST', path: '/fal-ai/flux-realism', description: 'Flux Realism (photorealistic)', price: '0.036' },
       { method: 'POST', path: '/fal-ai/recraft-20b', description: 'Recraft 20B image generation', price: '0.036' },
       { method: 'POST', path: '/fal-ai/whisper', description: 'Speech-to-text transcription', price: '0.012' },
+      { method: 'POST', path: '/fal-ai/stable-audio-25/text-to-audio', description: 'Stable Audio 2.5 music generation (commercial, up to 3min)', price: '0.24' },
     ],
   },
   {

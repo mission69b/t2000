@@ -1,28 +1,27 @@
 ---
 title: "Make AI music"
-description: "One sentence in, an original track out. Claude crafts the prompt, Replicate's MusicGen renders the audio, paid as you go in USDC."
+description: "One sentence in, an original track out. Claude crafts the prompt, Stable Audio 2.5 renders real, commercial-grade music — paid as you go in USDC."
 ---
 
-Type a vibe, get a track. Your agent turns a one-line brief into a rich MusicGen prompt with Claude, then pays Replicate to render the actual audio — a real `.wav` you can play, all over MPP. ~$0.05, no API keys, no subscriptions.
+Type a vibe, get a track. Your agent turns a one-line brief into a rich music prompt with Claude, then pays Stable Audio 2.5 to render the actual audio — a real, commercial-use `.wav` you can play and sell. ~$0.25, no API keys, no subscriptions.
 
 <Note>
-This recipe is the **creation half** of the Audric Store demo *"Make me a lo-fi beat called Midnight Rain and sell it for $5."* The generation pipeline below works today. The **store half** — persisting the track to Walrus ("Sui stores it forever"), capping supply, and the 92%-to-creator USDC sale — lands with **Audric Store** (not yet shipped). This recipe stops cleanly at the playable audio URL.
+This recipe is the **creation half** of the Audric Store demo *"Make me a lo-fi beat called Midnight Rain and sell it for $5."* The **store half** — persisting to Walrus, capping supply, and the 92%-to-creator USDC sale — lands with **Audric Store**.
+
+**Why pay for a model when a capable client could DIY?** An agent with a code sandbox (e.g. Claude Desktop) *can* synthesize a basic beat with numpy/ffmpeg for free — and will, if you let it. But that's a hand-built waveform, not generative music. When the point is a **real, sellable track** ("AI *made* the music"), you want a generative model — that's what MPP buys here. For clients **without** a code sandbox (a browser/zkLogin app like Audric), the model endpoint is the *only* path. Phrase the prompt to ask for model generation when quality matters.
 </Note>
 
 ## The prompt
 
 ```
-Make me a lo-fi beat called "Midnight Rain" — mellow, rainy-night vibe,
-~30 seconds. Render it as audio I can play.
+Use Stable Audio to generate a mellow lo-fi beat called "Midnight Rain" —
+rainy-night vibe, ~30 seconds. Give me the audio to play.
 ```
 
 ## What runs
 
-1. `POST /anthropic/v1/messages` — Claude turns the brief into a detailed MusicGen prompt (~$0.012)
-2. `POST /replicate/v1/predictions` — MusicGen renders the audio, sync where it can (~$0.024)
-3. `POST /replicate/v1/predictions/status` — poll once or twice if the render runs long (~$0.012 each)
-
-Replicate's `/v1/predictions` is a generic runner — pass any model `version` + `input`. MusicGen is just one model; the same recipe renders SDXL, Whisper, Llama, or any of the thousands on Replicate by swapping the `version`.
+1. `POST /anthropic/v1/messages` — Claude turns the brief into a vivid music prompt (~$0.012)
+2. `POST /fal/fal-ai/stable-audio-25/text-to-audio` — Stable Audio 2.5 renders the track (~$0.24)
 
 ## Run it
 
@@ -32,7 +31,7 @@ Replicate's `/v1/predictions` is a generic runner — pass any model `version` +
 npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
 ```
 
-Then paste the prompt above (or your own — *"upbeat synthwave, 20s"* works just as well).
+Paste the prompt. Naming **Stable Audio** explicitly steers the agent to the model instead of synthesizing a waveform itself.
 
 ### SDK
 
@@ -41,65 +40,46 @@ import { T2000 } from '@t2000/sdk';
 import { writeFileSync } from 'fs';
 
 const agent = await T2000.create();
+const brief = 'A mellow lo-fi hip-hop beat called "Midnight Rain", rainy-night mood, ~75 BPM';
 
-const brief = 'A mellow lo-fi hip-hop beat called "Midnight Rain", rainy-night mood, ~30s';
-
-// 1. Claude expands the brief into a richer MusicGen prompt.
+// 1. Claude expands the brief into a richer music prompt.
 const promptGen = await agent.pay({
   url: 'https://mpp.t2000.ai/anthropic/v1/messages',
   method: 'POST',
   headers: { 'anthropic-version': '2023-06-01' },
   body: JSON.stringify({
     model: 'claude-3-5-sonnet-20241022',
-    max_tokens: 200,
+    max_tokens: 150,
     messages: [{
       role: 'user',
-      content: `Write a single vivid MusicGen prompt (instruments, tempo, mood) for: ${brief}. Output ONLY the prompt.`,
+      content: `Write a single vivid text-to-music prompt (instruments, tempo, mood) for: ${brief}. Output ONLY the prompt.`,
     }],
   }),
 });
 const musicPrompt = (promptGen.body as { content: { text: string }[] }).content[0].text.trim();
 
-// 2. Submit to MusicGen. The gateway sends `Prefer: wait`, so short renders
-//    come back terminal; longer ones return a prediction id to poll.
-const submit = await agent.pay({
-  url: 'https://mpp.t2000.ai/replicate/v1/predictions',
+// 2. Render with Stable Audio 2.5 — returns a hosted audio URL.
+const track = await agent.pay({
+  url: 'https://mpp.t2000.ai/fal/fal-ai/stable-audio-25/text-to-audio',
   method: 'POST',
-  body: JSON.stringify({
-    // Get the current version hash from replicate.com/meta/musicgen.
-    version: '671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb',
-    input: { prompt: musicPrompt, duration: 30, output_format: 'wav' },
-  }),
+  body: JSON.stringify({ prompt: musicPrompt, seconds_total: 30 }),
 });
 
-// 3. Poll status until the prediction is terminal.
-let prediction = submit.body as { id: string; status: string; output?: string | string[] };
-while (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-  await new Promise((r) => setTimeout(r, 2000));
-  const poll = await agent.pay({
-    url: 'https://mpp.t2000.ai/replicate/v1/predictions/status',
-    method: 'POST',
-    body: JSON.stringify({ id: prediction.id }),
-  });
-  prediction = poll.body as typeof prediction;
-}
-
-// MusicGen returns a Replicate-hosted audio URL — fetch the bytes.
-const audioUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output!;
-const wav = await fetch(audioUrl).then((res) => res.arrayBuffer());
+const { audio } = track.body as { audio: string };
+const wav = await fetch(audio).then((res) => res.arrayBuffer());
 writeFileSync('./midnight-rain.wav', Buffer.from(wav));
-console.log('Track:', audioUrl);
+console.log('Track:', audio);
 ```
 
 ## Expected output
 
 ```
-2–4 calls · ~$0.05 · ~20–60s · 0 taps
-./midnight-rain.wav
+2 calls · ~$0.25 · ~10s · 0 taps
+./midnight-rain.wav  (commercial-use, hosted)
 ```
 
 ## Extend it
 
-- Swap the `version` for **Riffusion** or **Bark** to change the sound entirely — same recipe, different model
-- Chain **fal.ai Flux** (`/fal/fal-ai/flux/dev`) to generate matching cover art, and **ElevenLabs** (`/elevenlabs/v1/text-to-speech/:voiceId`) for a spoken intro
+- Need a cheaper take? **MusicGen via Replicate** (`/replicate/v1/predictions`, $0.024) runs the open MusicGen model — pass its `version` + `{ prompt, duration }` and poll `/replicate/v1/predictions/status` for long renders
+- Chain **fal.ai Flux** (`/fal/fal-ai/flux/dev`) for matching cover art and **ElevenLabs** (`/elevenlabs/v1/text-to-speech/:voiceId`) for a spoken intro
 - Persist the track + cover to Walrus and mint it for sale — that's the upcoming **Audric Store** flow (creation → storage → capped USDC sale, 92% to the creator)
