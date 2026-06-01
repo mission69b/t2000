@@ -71,13 +71,13 @@ t2 pay <url> [options]
 The catalog spans every major AI + data API, grouped roughly as:
 
 - **AI models & reasoning** — OpenAI, Anthropic (Claude), Google Gemini, DeepSeek, Groq, Together AI, Perplexity, Mistral, Cohere (chat, embeddings, rerank).
-- **Media & generation** — OpenAI (images, text-to-speech), fal.ai (Flux, Recraft, Whisper, Stable Audio), Together AI (images), ElevenLabs (TTS, sound effects), Replicate, Stability AI, AssemblyAI, TinyPNG (image compression & resize).
+- **Media & generation** — OpenAI (images, text-to-speech), fal.ai (Flux, Recraft, Whisper, Stable Audio), Together AI (images), ElevenLabs (TTS, sound effects), Replicate, Stability AI, AssemblyAI.
 - **Search** — Brave, Exa, Serper, SerpAPI, NewsAPI.
 - **Web & documents** — Firecrawl (scrape / crawl / map / extract), Jina Reader, ScreenshotOne, PDFShift, QR Code.
 - **Data & finance** — OpenWeather, Google Maps (geocode / places / directions), CoinGecko, Alpha Vantage, ExchangeRate.
 - **Translation** — DeepL, Google Translate.
 - **Intelligence & security** — Hunter.io, IPinfo, VirusTotal.
-- **Tools & compute** — Judge0 (code exec), Resend (email), Pushover (push), Short.io (URL shortener).
+- **Tools & utility** — Judge0 (code exec), Resend (email), Pushover (push), Short.io (URL shortener), TinyPNG (image compression & resize).
 - **Commerce** — Lob (postcards, letters, address verification).
 
 This list is a capability map, not the exhaustive endpoint set — always discover via the catalog before calling.

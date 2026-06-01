@@ -582,7 +582,7 @@ export const services: Service[] = [
     description: 'Smart image compression and resizing — PNG, JPEG, WebP.',
     chain: 'sui',
     currency: 'USDC',
-    categories: ['media', 'utility'],
+    categories: ['utility'],
     logo: '/logos/tinify.svg',
     endpoints: [
       { method: 'POST', path: '/v1/compress', description: 'Compress an image from a URL (lossy, transparent-aware)', price: '0.02' },
