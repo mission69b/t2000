@@ -56,7 +56,7 @@ const [flights, directions, forecast] = await Promise.all([
   agent.pay({
     url: 'https://mpp.t2000.ai/googlemaps/v1/directions',
     method: 'POST',
-    body: JSON.stringify({ origin: 'Shibuya, Tokyo', destination: 'teamLab Planets, Tokyo', mode: 'transit' }),
+    body: JSON.stringify({ origin: 'Shibuya, Tokyo', destination: 'teamLab Planets, Tokyo', mode: 'driving' }),
   }),
   agent.pay({
     url: 'https://mpp.t2000.ai/openweather/v1/forecast',
@@ -70,7 +70,7 @@ const itinerary = await agent.pay({
   method: 'POST',
   headers: { 'anthropic-version': '2023-06-01' },
   body: JSON.stringify({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-sonnet-4-5',
     max_tokens: 900,
     messages: [{
       role: 'user',

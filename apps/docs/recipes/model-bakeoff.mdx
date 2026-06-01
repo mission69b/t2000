@@ -56,7 +56,7 @@ const [claude, gpt, gemini, llama, deepseek] = await Promise.all([
     url: 'https://mpp.t2000.ai/anthropic/v1/messages',
     method: 'POST',
     headers: { 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 300, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 300, messages: [{ role: 'user', content: prompt }] }),
   }),
   chat('openai/v1/chat/completions', 'gpt-4o'),
   agent.pay({
@@ -73,7 +73,7 @@ const judgment = await agent.pay({
   method: 'POST',
   headers: { 'anthropic-version': '2023-06-01' },
   body: JSON.stringify({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-sonnet-4-5',
     max_tokens: 600,
     messages: [{
       role: 'user',

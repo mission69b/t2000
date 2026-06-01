@@ -45,7 +45,7 @@ NEWS=$(t2 pay https://mpp.t2000.ai/newsapi/v1/search \
 
 t2 pay https://mpp.t2000.ai/anthropic/v1/messages \
   --header 'anthropic-version: 2023-06-01' \
-  --data "{\"model\":\"claude-3-5-sonnet-20241022\",\"max_tokens\":1024,\"messages\":[{\"role\":\"user\",\"content\":\"Prices: $PRICES. Headlines: $NEWS. Write a 200-word brief.\"}]}"
+  --data "{\"model\":\"claude-sonnet-4-5\",\"max_tokens\":1024,\"messages\":[{\"role\":\"user\",\"content\":\"Prices: $PRICES. Headlines: $NEWS. Write a 200-word brief.\"}]}"
 ```
 
 ### SDK
@@ -72,7 +72,7 @@ const brief = await agent.pay({
   method: 'POST',
   headers: { 'anthropic-version': '2023-06-01' },
   body: JSON.stringify({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-sonnet-4-5',
     max_tokens: 1024,
     messages: [{
       role: 'user',

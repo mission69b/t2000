@@ -50,7 +50,7 @@ const script = await agent.pay({
   method: 'POST',
   headers: { 'anthropic-version': '2023-06-01' },
   body: JSON.stringify({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-sonnet-4-5',
     max_tokens: 1024,
     messages: [{
       role: 'user',
@@ -83,7 +83,7 @@ console.log('30-day EMA:', Buffer.from(output, 'base64').toString());
 ```bash
 SCRIPT=$(t2 pay https://mpp.t2000.ai/anthropic/v1/messages \
   --header 'anthropic-version: 2023-06-01' \
-  --data '{"model":"claude-3-5-sonnet-20241022","max_tokens":1024,"messages":[{"role":"user","content":"Write a Python one-liner that prints fib(10)."}]}')
+  --data '{"model":"claude-sonnet-4-5","max_tokens":1024,"messages":[{"role":"user","content":"Write a Python one-liner that prints fib(10)."}]}')
 
 # extract code, base64 it, submit:
 echo "$SCRIPT" | jq -r '.content[0].text' | base64 > /tmp/code.b64
