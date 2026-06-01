@@ -84,8 +84,12 @@ writeFileSync('./pitch.mp3', Buffer.from(mp3));
 
 ```
 3 calls · ~$0.108 · ~18s · 0 taps
-./hero.png · ./pitch.md · ./pitch.mp3
+hero image (hosted URL) · pitch text · ./pitch.mp3
 ```
+
+<Note>
+The image comes back as a hosted fal URL and the pitch as text — only the voiceover is written to disk above. Add `writeFileSync` for the others if you want local copies. The ElevenLabs step draws on the gateway's pooled voice quota; if it's exhausted the call returns an error (you still pay the micro-charge, surfaced truthfully).
+</Note>
 
 ## Extend it
 

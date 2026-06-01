@@ -1,0 +1,108 @@
+---
+title: "Prep for a meeting"
+description: "A name and a company in, a tight pre-meeting brief out. Perplexity + Exa + Serper pull the company, the person, and what's recent — Claude flags what matters. Paid as you go, no API keys."
+---
+
+You're meeting someone in an hour and want the 90-second version: what the company is, who the person is, and anything recent worth knowing. Your agent pulls a web-grounded company brief, a profile of the person, and the latest news, then Claude distills it into a brief and flags the relevant bits. ~$0.05, self-contained — just a name, a company, and the topic.
+
+<Note>
+This is a **durable MPP demo** — a sandboxed client can't fake live, web-grounded research. The value is paid search + real-time data, not generation. (We have no X/Twitter endpoint today, so "recent posts" reads as recent public posts + news; an X route would sharpen this — see the recipe backlog.)
+</Note>
+
+## The prompt
+
+```
+I'm meeting Jensen Huang from NVIDIA about AI infrastructure. Pull a brief on
+the company (size, funding/financials), a profile on him (role, background),
+and flag anything recent and relevant. Keep it to one page.
+```
+
+## What runs
+
+1. `POST /perplexity/v1/chat/completions` — web-grounded company brief with citations (~$0.012)
+2. `POST /exa/v1/search` — semantic search for the person's profile + recent public activity (~$0.012)
+3. `POST /serper/v1/search` — latest news mentioning both (~$0.012)
+4. `POST /anthropic/v1/messages` — Claude synthesizes the one-pager and flags what's relevant (~$0.012)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt with any person + company. The agent decides how many source passes it needs.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const person = 'Jensen Huang';
+const company = 'NVIDIA';
+const topic = 'AI infrastructure';
+
+const [companyBrief, profile, news] = await Promise.all([
+  agent.pay({
+    url: 'https://mpp.t2000.ai/perplexity/v1/chat/completions',
+    method: 'POST',
+    body: JSON.stringify({
+      model: 'sonar',
+      messages: [{
+        role: 'user',
+        content: `Brief on ${company}: what it does, size, funding/financials, recent direction. Cite sources.`,
+      }],
+    }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/exa/v1/search',
+    method: 'POST',
+    body: JSON.stringify({
+      query: `${person} ${company} role background recent`,
+      numResults: 5,
+      contents: { text: true },
+    }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/serper/v1/search',
+    method: 'POST',
+    body: JSON.stringify({ q: `${person} ${company} news` }),
+  }),
+]);
+
+const brief = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 800,
+    messages: [{
+      role: 'user',
+      content:
+        `One-page pre-meeting brief. I'm meeting ${person} from ${company} about ${topic}. ` +
+        `Sections: Company (1 para), Person (1 para), Recent & relevant (3-5 bullets), ` +
+        `2-3 smart questions to ask. Keep every claim tied to a source.\n\n` +
+        `COMPANY: ${JSON.stringify(companyBrief.body)}\n\nPROFILE: ${JSON.stringify(profile.body)}\n\nNEWS: ${JSON.stringify(news.body)}`,
+    }],
+  }),
+});
+
+console.log((brief.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+4 calls · ~$0.05 · ~9s · 0 taps
+One-page brief: company + person + recent + questions to ask
+```
+
+## Extend it
+
+- Swap **Serper** for **Brave news** (`/brave/v1/news/search`) or **NewsAPI** (`/newsapi/v1/search`) for a different recency lens
+- Add **Hunter.io** (`/hunter/v1/search`) to surface a verified contact email for follow-up
+- Pipe the brief into **Resend** (`/resend/v1/emails`) to send yourself the prep the morning of
+- Run it for every attendee on tomorrow's calendar in parallel — each is an independent ~$0.05 pass

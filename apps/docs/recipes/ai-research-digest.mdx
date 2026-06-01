@@ -1,0 +1,101 @@
+---
+title: "What's new in AI this week"
+description: "A weekly digest of the AI research that actually matters — specific papers with arXiv IDs, plus the debates and launches to track. Exa + Perplexity find it, Claude distills it. Paid as you go."
+---
+
+Keep up without doom-scrolling. Your agent pulls the week's notable AI papers (with arXiv IDs, dates, authors), surfaces the launches and debates worth tracking, and hands back a tight digest with a one-line "why it matters" per item. Self-contained — no inputs needed. ~$0.04.
+
+<Note>
+A **durable MPP demo**: this is live, web-grounded retrieval a code sandbox can't fabricate. The value is paid semantic search + real-time citations, not generation — exactly the kind of recipe that earns its keep regardless of how capable the client is.
+</Note>
+
+## The prompt
+
+```
+Pull the most important new AI research from the past week — arXiv papers,
+lab blogs, notable launches. Give me 5-8 specific papers with arXiv IDs,
+dates, and authors, plus 3 debates or launches to track. One line on why
+each matters.
+```
+
+## What runs
+
+1. `POST /exa/v1/search` — semantic search for recent papers + primary pages (~$0.012)
+2. `POST /perplexity/v1/chat/completions` — web-grounded "what's notable this week" with citations (~$0.012)
+3. `POST /anthropic/v1/messages` — Claude distills the digest, keeping IDs + sources (~$0.012)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt. Narrow it any way you like — *"...focused on agents and tool use"* or *"...just inference + serving"*.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const focus = 'LLM agents, reasoning, and inference efficiency';
+
+const [papers, landscape] = await Promise.all([
+  agent.pay({
+    url: 'https://mpp.t2000.ai/exa/v1/search',
+    method: 'POST',
+    body: JSON.stringify({
+      query: `notable AI research papers past week ${focus} arxiv`,
+      numResults: 10,
+      contents: { text: true },
+    }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/perplexity/v1/chat/completions',
+    method: 'POST',
+    body: JSON.stringify({
+      model: 'sonar',
+      messages: [{
+        role: 'user',
+        content: `What are the most important AI developments and debates this past week (${focus})? Cite sources.`,
+      }],
+    }),
+  }),
+]);
+
+const digest = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 1200,
+    messages: [{
+      role: 'user',
+      content:
+        `Write a weekly AI digest. List 5-8 specific papers with arXiv ID, date, and authors ` +
+        `(only ones you can tie to a source — no invented IDs), then 3 debates/launches to track. ` +
+        `One line on why each matters.\n\n` +
+        `PAPERS: ${JSON.stringify(papers.body)}\n\nLANDSCAPE: ${JSON.stringify(landscape.body)}`,
+    }],
+  }),
+});
+
+console.log((digest.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+2-3 calls · ~$0.04 · ~8s · 0 taps
+5-8 papers w/ arXiv IDs + 3 things to track, each with why-it-matters
+```
+
+## Extend it
+
+- Add **Jina Reader** (`/jina/v1/read`) to pull the raw arXiv "recent" listing as clean markdown and ground the IDs verbatim
+- Use **Firecrawl** (`/firecrawl/v1/scrape`) to read a specific lab blog (e.g. a new model card) in full
+- Pipe the digest into **Resend** (`/resend/v1/emails`) for a Monday-morning email to yourself, scheduled via cron
+- Chain the **Research with citations** recipe on any single paper to go deeper with sources

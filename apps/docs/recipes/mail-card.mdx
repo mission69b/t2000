@@ -7,6 +7,10 @@ The most interesting demo of agentic payments isn't another LLM chain — it's l
 
 You pay ~$1.25 in USDC. A physical postcard shows up in someone's mailbox 3–5 days later.
 
+<Note>
+The card front is the only part a capable client could draw itself; the **un-fakeable** part is the last step — a sandbox can't put a stamped postcard in a real mailbox. That's the durable MPP value: a real-world action settled in USDC.
+</Note>
+
 ## The prompt
 
 ```
@@ -29,7 +33,17 @@ import { T2000 } from '@t2000/sdk';
 const agent = await T2000.create();
 
 const occasion = 'birthday';
-const recipient = { name: 'Mum', address: '123 Lochiel Road, Dunedin 9011, NZ' };
+
+// Lob needs a STRUCTURED address (line1 / city / state / zip / country),
+// not one crammed string — a single `address_line1` fails validation.
+const recipient = {
+  name: 'Mum',
+  address_line1: '210 King St',
+  address_city: 'San Francisco',
+  address_state: 'CA',
+  address_zip: '94107',
+  address_country: 'US',
+};
 
 const note = await agent.pay({
   url: 'https://mpp.t2000.ai/anthropic/v1/messages',
@@ -62,8 +76,15 @@ const postcard = await agent.pay({
   method: 'POST',
   body: JSON.stringify({
     description: `${occasion} card to ${recipient.name}`,
-    to: { name: recipient.name, address_line1: recipient.address },
-    from: { name: 'Phillip', address_line1: 'Sender address here' },
+    to: recipient,
+    from: {
+      name: 'Phillip',
+      address_line1: '500 Market St',
+      address_city: 'San Francisco',
+      address_state: 'CA',
+      address_zip: '94105',
+      address_country: 'US',
+    },
     front: imageUrl,
     back: noteText,
     size: '4x6',
