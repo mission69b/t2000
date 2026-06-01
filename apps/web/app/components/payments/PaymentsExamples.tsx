@@ -1,4 +1,5 @@
 import { T2K_STORIES } from "../../data/t2k";
+import { RecipesCta } from "../site/RecipesCta";
 import { StoryCard } from "../home/StoryCard";
 
 export function PaymentsExamples() {
@@ -22,6 +23,8 @@ export function PaymentsExamples() {
             <StoryCard key={s.n} s={s} />
           ))}
         </div>
+
+        <RecipesCta />
       </div>
     </section>
   );

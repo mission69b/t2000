@@ -1,4 +1,5 @@
 import { T2K_STORIES } from "../../data/t2k";
+import { RecipesCta } from "../site/RecipesCta";
 import { StoryCard } from "./StoryCard";
 
 export function Stories() {
@@ -48,6 +49,8 @@ export function Stories() {
             <StoryCard key={s.n} s={s} />
           ))}
         </div>
+
+        <RecipesCta />
       </div>
     </section>
   );
