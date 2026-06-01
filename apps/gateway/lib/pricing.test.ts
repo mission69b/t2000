@@ -15,16 +15,16 @@ import { getEndpointPrice, services } from './services';
 
 describe('getEndpointPrice', () => {
   it('resolves exact (service, method, path) entries', () => {
-    expect(getEndpointPrice('openai', 'POST', '/v1/chat/completions')).toBe('0.012');
-    expect(getEndpointPrice('openai', 'POST', '/v1/images/generations')).toBe('0.06');
-    expect(getEndpointPrice('anthropic', 'POST', '/v1/messages')).toBe('0.012');
+    expect(getEndpointPrice('openai', 'POST', '/v1/chat/completions')).toBe('0.02');
+    expect(getEndpointPrice('openai', 'POST', '/v1/images/generations')).toBe('0.10');
+    expect(getEndpointPrice('anthropic', 'POST', '/v1/messages')).toBe('0.02');
   });
 
   it('matches :param template segments against concrete paths', () => {
     // elevenlabs catalog path is /v1/text-to-speech/:voiceId
     expect(
       getEndpointPrice('elevenlabs', 'POST', '/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM'),
-    ).toBe('0.06');
+    ).toBe('0.10');
   });
 
   it('is method-sensitive and returns undefined for unknowns', () => {
@@ -34,13 +34,18 @@ describe('getEndpointPrice', () => {
   });
 });
 
-describe('+20% price bump applied uniformly', () => {
-  it('has no pre-bump penny prices left in the catalog', () => {
+describe('100% margin applied uniformly (price = 2x upstream base)', () => {
+  it('has no pre-100%-margin prices left in the catalog', () => {
     const prices = services.flatMap((s) => s.endpoints.map((e) => e.price));
-    expect(prices).not.toContain('0.01');
-    expect(prices).not.toContain('0.05');
-    expect(prices).toContain('0.012'); // 0.01 * 1.2
-    expect(prices).toContain('0.06'); // 0.05 * 1.2
+    // The +20% tier values must be gone...
+    expect(prices).not.toContain('0.012'); // was 0.01 base
+    expect(prices).not.toContain('0.036'); // was 0.03 base
+    expect(prices).not.toContain('0.24'); // was 0.20 base
+    // ...replaced by 2x-base values.
+    expect(prices).toContain('0.02'); // 0.01 base * 2
+    expect(prices).toContain('0.06'); // 0.03 base * 2
+    expect(prices).toContain('0.10'); // 0.05 base * 2
+    expect(prices).toContain('0.40'); // 0.20 base * 2
   });
 });
 
@@ -71,7 +76,12 @@ describe('route <-> catalog coverage (no dual SSOT, no orphans)', () => {
       .join('/');
   }
 
-  const routeFiles = walk(appDir).filter((f) => /charge(Proxy|Custom)\(/.test(readFileSync(f, 'utf8')));
+  // A route "charges" if it calls chargeProxy/chargeCustom directly OR via a
+  // thin wrapper that does (falProxy → chargeProxy). New charging wrappers must
+  // be added here so their routes are covered by the orphan/coverage checks.
+  const routeFiles = walk(appDir).filter((f) =>
+    /charge(Proxy|Custom)\(|\bfalProxy\(/.test(readFileSync(f, 'utf8')),
+  );
 
   it('every paid route resolves a catalog price', () => {
     const failures: string[] = [];
