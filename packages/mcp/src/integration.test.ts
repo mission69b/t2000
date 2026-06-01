@@ -7,6 +7,7 @@ import { registerWriteTools } from './tools/write.js';
 import { registerLimitTool } from './tools/limit.js';
 import { registerSkillPrompts } from './skills-prompts.js';
 import { loadSkillsFromDisk } from './test-load-skills.js';
+import { T2000_SERVER_INSTRUCTIONS } from './instructions.js';
 
 // [v4.0 Phase B — 2026-05-26] Integration test surface mirrors the v4
 // CLI: 5 read tools (balance / address / receive / history / services),
@@ -66,7 +67,10 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
 
   beforeAll(async () => {
     const agent = createMockAgent();
-    server = new McpServer({ name: 't2000-test', version: '0.0.1' });
+    server = new McpServer(
+      { name: 't2000-test', version: '0.0.1' },
+      { instructions: T2000_SERVER_INSTRUCTIONS },
+    );
 
     registerReadTools(server, agent);
     registerWriteTools(server, agent);
@@ -103,6 +107,18 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
       't2000_services',
       't2000_swap',
     ]);
+  });
+
+  it('surfaces server instructions that prime MPP routing (cold-start fix)', () => {
+    const instructions = client.getInstructions();
+    expect(instructions).toBeTruthy();
+    // Names the MPP capability + the providers that triggered the cold-start miss.
+    expect(instructions).toContain('MPP');
+    expect(instructions).toContain('fal.ai');
+    expect(instructions).toContain('ElevenLabs');
+    expect(instructions).toContain('t2000_pay');
+    // The load-bearing steer: do NOT decline a reachable third-party API.
+    expect(instructions).toMatch(/DO NOT say you cannot reach|cannot reach that service|isn't on an allowlist/i);
   });
 
   it('exposes one skill-* prompt per SKILL.md on disk', async () => {

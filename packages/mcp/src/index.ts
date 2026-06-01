@@ -5,6 +5,7 @@ import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
 import { registerLimitTool } from './tools/limit.js';
 import { registerSkillPrompts } from './skills-prompts.js';
+import { T2000_SERVER_INSTRUCTIONS } from './instructions.js';
 
 // Replaced at build time by tsup's `define` with the package.json version
 // string. Falls back to a sentinel during dev/typecheck runs that don't
@@ -28,7 +29,14 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
   // `t2 limit set --daily 100` or `t2 limit set --per-tx 50`.
   const agent = await createAgent(opts?.keyPath);
 
-  const server = new McpServer({ name: 't2000', version: PKG_VERSION });
+  // The `instructions` field is surfaced by MCP clients (Claude Desktop,
+  // Cursor) at conversation start — it primes the model to route paid
+  // third-party API requests (fal.ai, ElevenLabs, …) through MPP instead
+  // of declining them in a cold session. See `instructions.ts`.
+  const server = new McpServer(
+    { name: 't2000', version: PKG_VERSION },
+    { instructions: T2000_SERVER_INSTRUCTIONS },
+  );
 
   registerReadTools(server, agent);
   registerWriteTools(server, agent);
