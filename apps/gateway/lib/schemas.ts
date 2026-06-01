@@ -619,6 +619,21 @@ const schemas: Record<string, EndpointSchema> = {
   // Short.io
   'shortio:/v1/shorten': { requestBody: urlRequest },
 
+  // TinyPNG
+  'tinify:/v1/compress': {
+    requestBody: obj({
+      url: str('URL of the image to compress (PNG, JPEG, or WebP)'),
+    }, ['url']),
+  },
+  'tinify:/v1/resize': {
+    requestBody: obj({
+      url: str('URL of the image to compress and resize'),
+      method: str('Resize method', { enum: ['scale', 'fit', 'cover', 'thumb'] }),
+      width: num('Target width in pixels'),
+      height: num('Target height in pixels'),
+    }, ['url']),
+  },
+
 };
 
 export function getEndpointSchema(serviceId: string, path: string): EndpointSchema | undefined {

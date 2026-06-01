@@ -575,6 +575,20 @@ export const services: Service[] = [
       { method: 'POST', path: '/v1/shorten', description: 'Shorten a URL', price: '0.02' },
     ],
   },
+  {
+    id: 'tinify',
+    name: 'TinyPNG',
+    serviceUrl: `${BASE_URL}/tinify`,
+    description: 'Smart image compression and resizing — PNG, JPEG, WebP.',
+    chain: 'sui',
+    currency: 'USDC',
+    categories: ['media', 'utility'],
+    logo: '/logos/tinify.svg',
+    endpoints: [
+      { method: 'POST', path: '/v1/compress', description: 'Compress an image from a URL (lossy, transparent-aware)', price: '0.02' },
+      { method: 'POST', path: '/v1/resize', description: 'Compress and resize an image from a URL', price: '0.02' },
+    ],
+  },
 ];
 
 /**

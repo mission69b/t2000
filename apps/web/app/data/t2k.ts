@@ -55,8 +55,8 @@ export const T2K = {
 
   metrics: [
     ["Packages", "4"],
-    ["Endpoints", "86"],
-    ["Services", "39"],
+    ["Endpoints", "88"],
+    ["Services", "40"],
     ["Settle", "~400ms"],
     ["Network fee", "$0"],
   ] as const,

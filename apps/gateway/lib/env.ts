@@ -114,6 +114,7 @@ const serverSchema = z.object({
   SERPER_API_KEY: optionalString,
   SHORTIO_API_KEY: optionalString,
   STABILITY_API_KEY: optionalString,
+  TINIFY_API_KEY: optionalString,
   TOGETHER_API_KEY: optionalString,
   VIRUSTOTAL_API_KEY: optionalString,
 
@@ -203,6 +204,7 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     SERPER_API_KEY: process.env.SERPER_API_KEY,
     SHORTIO_API_KEY: process.env.SHORTIO_API_KEY,
     STABILITY_API_KEY: process.env.STABILITY_API_KEY,
+    TINIFY_API_KEY: process.env.TINIFY_API_KEY,
     TOGETHER_API_KEY: process.env.TOGETHER_API_KEY,
     VIRUSTOTAL_API_KEY: process.env.VIRUSTOTAL_API_KEY,
     // Server — required infra
@@ -275,6 +277,7 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'SERPER_API_KEY',
   'SHORTIO_API_KEY',
   'STABILITY_API_KEY',
+  'TINIFY_API_KEY',
   'TOGETHER_API_KEY',
   'VIRUSTOTAL_API_KEY',
   // Required infra

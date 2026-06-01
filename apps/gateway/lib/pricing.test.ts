@@ -18,6 +18,8 @@ describe('getEndpointPrice', () => {
     expect(getEndpointPrice('openai', 'POST', '/v1/chat/completions')).toBe('0.02');
     expect(getEndpointPrice('openai', 'POST', '/v1/images/generations')).toBe('0.10');
     expect(getEndpointPrice('anthropic', 'POST', '/v1/messages')).toBe('0.02');
+    expect(getEndpointPrice('tinify', 'POST', '/v1/compress')).toBe('0.02');
+    expect(getEndpointPrice('tinify', 'POST', '/v1/resize')).toBe('0.02');
   });
 
   it('matches :param template segments against concrete paths', () => {
