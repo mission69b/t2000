@@ -28,7 +28,7 @@ t2000 is the open-source agentic stack for stablecoins on Sui — everything an 
 | Product | npm | What it gives you |
 |---|---|---|
 | **[Agent Wallet](https://developers.t2000.ai/agent-wallet)** | `@t2000/cli` + `@t2000/mcp` + skills | A terminal Agent Wallet + MCP server for Claude / Cursor / Windsurf. Gasless USDC + USDsui sends, Cetus swaps, MPP paid API access. One install. |
-| **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any MPP-protected API in USDC. 40+ services, 88 endpoints, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
+| **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any MPP-protected API in USDC. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
 | **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless transfers, swap routing, MPP, NAVI lending builders. |
 | **[Agent Engine](https://developers.t2000.ai/agent-engine)** | `@t2000/engine` | The agent engine for conversational finance — `AISDKEngine`, 26 financial tools, 12 safety guards, MCP client/server. Powers [Audric](https://audric.ai). |
 

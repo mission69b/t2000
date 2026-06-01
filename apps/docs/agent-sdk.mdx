@@ -210,7 +210,7 @@ t2000 uses an MCP-first model for DeFi reads + thin transaction builders for wri
 | Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, MPP USDC payments |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
 | NAVI | NAVI MCP (reads) + thin tx builders (writes) | Save / borrow / withdraw / repay / rewards / positions / rates |
-| MPP | `mppx` + `@suimpp/mpp/client` | Paid API access — 40+ services on `mpp.t2000.ai` |
+| MPP | `mppx` + `@suimpp/mpp/client` | Paid API access — every major AI + data API on `mpp.t2000.ai` |
 
 Each NAVI op exposes both `buildXxxTx()` (standalone) and `addXxxToTx()` (composable fragment) so multi-step flows compose atomically as a single Programmable Transaction Block — any step failing reverts the whole bundle.
 

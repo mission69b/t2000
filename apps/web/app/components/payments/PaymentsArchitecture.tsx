@@ -16,7 +16,7 @@ const PROPERTIES: Property[] = [
     href: GATEWAY_URL,
     role: "GATEWAY",
     title: "The live gateway.",
-    desc: "Browse 40 services, 88 endpoints, real activity.",
+    desc: "Browse the full catalog, real activity.",
     cta: "Open the gateway",
   },
   {

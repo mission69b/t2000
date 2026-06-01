@@ -33,9 +33,9 @@ export function PaymentsCatalog() {
               className="t2k-section-title mt-[22px]"
               style={{ lineHeight: 1.0 }}
             >
-              40 services.
+              Every major
               <br />
-              <span style={{ color: "var(--fg-faint)" }}>88 endpoints.</span>
+              <span style={{ color: "var(--fg-faint)" }}>AI + data API.</span>
             </h2>
           </div>
           <div>

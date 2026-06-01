@@ -18,7 +18,7 @@ export const T2K = {
       name: "Agent Payments",
       pkg: "@suimpp/mpp · mppx",
       one: "Pay any API in USDC.",
-      desc: "40+ services, 88 endpoints. Gasless on Sui. No signup, no API keys. Live gateway at mpp.t2000.ai.",
+      desc: "Every major AI + data API. Gasless on Sui. No signup, no API keys. Live gateway at mpp.t2000.ai.",
       verbs: ["t2 pay mpp.t2000.ai/openai/...", "t2 services search"],
       href: "/agent-payments",
     },
@@ -143,7 +143,7 @@ export const NAV_PRODUCTS = [
 ] as const;
 
 export const NAV_FAMILY = [
-  { name: "MPP Gateway", desc: "40 services. 88 endpoints. mpp.t2000.ai", href: "https://mpp.t2000.ai", external: true },
+  { name: "MPP Gateway", desc: "Every major AI + data API. mpp.t2000.ai", href: "https://mpp.t2000.ai", external: true },
   { name: "suimpp.dev", desc: "The open MPP standard — Sui binding, v0.1.", href: "https://suimpp.dev", external: true },
   { name: "Audric", desc: "Conversational finance.", href: "https://audric.ai", external: true },
 ] as const;

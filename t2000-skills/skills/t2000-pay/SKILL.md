@@ -59,7 +59,7 @@ t2 pay <url> [options]
 | `--timeout <seconds>` | Request timeout in seconds | 30 |
 | `--dry-run` | Show what would be paid without paying | — |
 
-## Available Services (40 services, 88 endpoints)
+## Available Services
 
 > For the live, canonical list use `t2000_services` (MCP) or GET `https://mpp.t2000.ai/api/services`.
 > The table below is a quick reference.

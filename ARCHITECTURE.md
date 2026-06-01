@@ -36,8 +36,8 @@
 │ Audric      │  │ MPP Gateway │  │   Sui Blockchain     │
 │ (Vercel)    │  │ (Vercel)    │  │                      │
 │             │  │             │  │  USDC · NAVI ·       │
-│ zkLogin     │  │ 40 services │  │  t2000 Treasury      │
-│ Enoki gas   │  │ 88 endpoints│  │  @suimpp/mpp         │
+│ zkLogin     │  │ Every major │  │  t2000 Treasury      │
+│ Enoki gas   │  │ AI/data API │  │  @suimpp/mpp         │
 │ Agent loop  │  │ Explorer    │  │  (payment method)    │
 │ Anthropic   │  │ Spec + Docs │  │                      │
 └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
@@ -83,7 +83,7 @@
 | Audric         | Vercel          | audric.ai    | Consumer product — Passport (zkLogin), Intelligence (engine chat), Finance (NAVI save/borrow + Cetus swap + charts), Pay (USDC transfers + receive), Store (coming soon) (separate repo) |
 | `apps/web`     | Vercel          | t2000.ai             | Infrastructure landing page + skills routes                                                                                                                                              |
 | `apps/docs`    | Mintlify        | developers.t2000.ai  | Developer documentation                                                                                                                                                                  |
-| `apps/gateway` | Vercel          | mpp.t2000.ai         | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs                                                                                                                            |
+| `apps/gateway` | Vercel          | mpp.t2000.ai         | MPP gateway — every major AI + data API, explorer, spec, docs                                                                                                                            |
 
 
 ---
@@ -158,7 +158,7 @@ Simple actions (Save, Send) use client-side chip flows with zero LLM cost.
 
 ## MPP Gateway (`mpp.t2000.ai`)
 
-Payment infrastructure for machine-to-machine commerce. 40 services, 88 endpoints.
+Payment infrastructure for machine-to-machine commerce. Every major AI + data API.
 
 ### Pages
 

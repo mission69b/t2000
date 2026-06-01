@@ -18,7 +18,7 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 
 ```
 t2000/
-├── apps/gateway     ← MPP API gateway (mpp.t2000.ai, 40+ services, 88 endpoints)
+├── apps/gateway     ← MPP API gateway (mpp.t2000.ai, every major AI + data API)
 ├── apps/docs        ← Mintlify developer docs (developers.t2000.ai)
 ├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)

@@ -1,6 +1,6 @@
 # @t2000/gateway
 
-MPP gateway — **40 services, 88 endpoints, payable with Sui USDC**.
+MPP gateway — **every major AI + data API, payable with Sui USDC**.
 
 **Live:** [mpp.t2000.ai](https://mpp.t2000.ai)
 
@@ -71,7 +71,7 @@ Whisper transcription. Up to 25 MB / 30 min. Pass `response_format: "verbose_jso
 
 📘 Full recipe: [`mpp-transcription`](https://t2000.ai/skills/mpp-transcription)
 
-## Discover all 40 services
+## Discover the catalog
 
 | What you want | Where to look |
 |---|---|
@@ -88,7 +88,7 @@ Categories covered: AI Chat (9), Embeddings (6), Image Generation (9), Audio/TTS
 | Route | What |
 |-------|------|
 | `/` | Gateway homepage with live payment feed |
-| `/services` | Service catalog (40 services) |
+| `/services` | Service catalog |
 | `/explorer` | Payment explorer |
 | `/docs` | Developer guide |
 | `/spec` | Protocol spec |

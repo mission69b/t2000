@@ -1,6 +1,6 @@
 ---
 title: "Agent Payments"
-description: "Pay any MPP-protected API in USDC. 40+ services, 88 endpoints, no signup, no API keys — gasless USDC over Sui."
+description: "Pay any MPP-protected API in USDC. Every major AI + data API, no signup, no API keys — gasless USDC over Sui."
 ---
 
 **Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.02 – $0.10` per LLM call. Pay `$2.00 – $3.00` per physical postcard.
@@ -97,7 +97,7 @@ That's it. The MPP 402 challenge is handled automatically; payment broadcasts to
 
 ## Services
 
-**40 services, 88 endpoints** payable in USDC. Discover via the `t2 services` command, the `t2000_services` MCP tool, or the live catalog URLs.
+**Every major AI + data API** payable in USDC. Discover via the `t2 services` command, the `t2000_services` MCP tool, or the live catalog URLs.
 
 ### Discover
 
@@ -166,7 +166,7 @@ Fetch `url` to get the file. This keeps responses safe to pass through any JSON 
 
 | Command | What it does |
 |---|---|
-| `t2 services search <query>` | Substring search across all 40 services + 88 endpoints. |
+| `t2 services search <query>` | Substring search across the whole catalog. |
 | `t2 services inspect <url>` | Show service info + endpoint list + pricing. Works on both service base URLs and specific endpoint URLs. |
 | `t2 pay <url>` | Pay for an MPP-protected API. `--data`, `--method`, `--header <K:V>` (repeatable), `--max-price <USD>`, `--estimate` (parse 402 without paying). |
 | `t2 history` | List recent payments with Suiscan digests + amount + service. |

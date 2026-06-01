@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 
-Browse the live MPP gateway catalog at `mpp.t2000.ai` to find a service that matches the user's intent (chat, image gen, search, weather, email, code exec, mail, etc.) before calling `t2 pay`. The catalog has 40+ services across 88 endpoints with prices ranging from $0.005 to $30 per call.
+Browse the live MPP gateway catalog at `mpp.t2000.ai` to find a service that matches the user's intent (chat, image gen, search, weather, email, code exec, mail, etc.) before calling `t2 pay`. The catalog spans every major AI + data API, with per-call prices that vary by endpoint — always check the live catalog rather than assuming a fixed count or price.
 
 ## Rules
 

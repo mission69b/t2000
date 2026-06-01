@@ -95,9 +95,8 @@ export async function Catalog() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Pay-per-request to every major AI provider.{" "}
-              <span style={{ color: "var(--fg)" }}>40 services. 88 endpoints.</span>{" "}
-              Live on <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
+              Pay-per-request to every major AI provider. Live on{" "}
+              <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
             </p>
           </div>
         </div>
@@ -122,9 +121,7 @@ export async function Catalog() {
             className="flex flex-wrap items-center gap-3 font-mono text-[13px]"
             style={{ color: "var(--fg-muted)" }}
           >
-            <span style={{ color: "var(--fg)" }}>+ 32 more</span>
-            <span className="opacity-50">·</span>
-            <span>88 endpoints</span>
+            <span style={{ color: "var(--fg)" }}>Browse the full catalog</span>
             <span className="opacity-50">·</span>
             <span>USDC on Sui</span>
             <span className="opacity-50">·</span>
