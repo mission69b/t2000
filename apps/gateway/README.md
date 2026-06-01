@@ -8,7 +8,7 @@ MPP gateway — **40 services, 88 endpoints, payable with Sui USDC**.
 
 Proxies requests to upstream APIs (OpenAI, Anthropic, Brave, Firecrawl, etc.) behind MPP (Machine Payments Protocol) 402 challenges. Agents pay per-request with USDC on Sui — no API keys, no accounts, no subscriptions.
 
-Pay $0.012 – $0.06 per call. Pay $1.20 – $1.80 per physical postcard/letter. Top up your wallet with `t2000 fund`.
+Pay $0.02 – $0.10 per call. Pay $2.00 – $3.00 per physical postcard/letter. Top up your wallet with `t2000 fund`.
 
 ## Get started in 30 seconds
 
@@ -42,7 +42,7 @@ Returns `{ data: [{ url: "https://...vercel-storage.com/..." }] }`. The gateway 
 
 📘 Full recipe: [`mpp-image-gen`](https://t2000.ai/skills/mpp-image-gen)
 
-### 💬 Ask GPT-4o ($0.012)
+### 💬 Ask GPT-4o ($0.02)
 
 ```bash
 t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \
@@ -57,7 +57,7 @@ Standard OpenAI Chat Completions response shape. Pass vision via `image_url` con
 
 📘 Full recipe: [`mpp-gpt4o`](https://t2000.ai/skills/mpp-gpt4o)
 
-### 🎙️ Transcribe audio ($0.012)
+### 🎙️ Transcribe audio ($0.02)
 
 ```bash
 t2000 pay https://mpp.t2000.ai/openai/v1/audio/transcriptions \

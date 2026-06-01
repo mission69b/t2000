@@ -1,6 +1,6 @@
 ---
 title: "Write code, then run it"
-description: "Agent writes a script with Claude, then executes it via Judge0 to verify the output. Two paid calls, ~$0.024."
+description: "Agent writes a script with Claude, then executes it via Judge0 to verify the output. Two paid calls, ~$0.04."
 ---
 
 Most agent demos stop at "the LLM wrote some code." This one closes the loop — Claude writes the script, the agent pays Judge0 to actually execute it, and the verified output flows back. Useful when you want machine-verified correctness, not just plausible-looking code.
@@ -24,8 +24,8 @@ SDK example below shows.
 
 ## What runs
 
-1. `POST /anthropic/v1/messages` — Claude writes Python (~$0.012)
-2. `POST /judge0/v1/submissions` — Judge0 executes it in a sandbox (~$0.012)
+1. `POST /anthropic/v1/messages` — Claude writes Python (~$0.02)
+2. `POST /judge0/v1/submissions` — Judge0 executes it in a sandbox (~$0.02)
 
 Judge0 supports [70+ languages](https://judge0.com/languages) — Python, Node.js, Go, Rust, Bash, SQL, etc. The same recipe works for any of them; swap the `language_id`.
 
@@ -95,7 +95,7 @@ t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
 ## Expected output
 
 ```
-2 calls · ~$0.024 · ~3s · 0 taps
+2 calls · ~$0.04 · ~3s · 0 taps
 30-day EMA: ~0.96   (exact value depends on the sample close series)
 ```
 
@@ -104,6 +104,6 @@ t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
 ## Extend it
 
 - Swap to **Together** (`/together/v1/chat/completions`) for Llama-4 code generation at the same price
-- Use **Judge0 `/v1/languages`** (~$0.012) to discover available runtimes if you want to branch on language
+- Use **Judge0 `/v1/languages`** (~$0.02) to discover available runtimes if you want to branch on language
 - Pipe the verified output into **Firecrawl** (`/firecrawl/v1/scrape`) to compare against data scraped from another source
 - Pair with **OpenAI** (`/openai/v1/chat/completions`) as a second opinion — have one model write the code, the other review it before Judge0 runs it

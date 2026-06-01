@@ -3,7 +3,7 @@ title: "Concept → demo asset"
 description: "From idea to image + pitch + voiceover in one prompt. Chains fal.ai + Anthropic + ElevenLabs over MPP."
 ---
 
-Your agent takes a concept, generates a hero image with fal.ai's Flux, writes a 60-second elevator pitch with Claude, and synthesizes the pitch as an MP3 via ElevenLabs — all in one chain, paid as you go in USDC. ~$0.108, ~18 seconds.
+Your agent takes a concept, generates a hero image with fal.ai's Flux, writes a 60-second elevator pitch with Claude, and synthesizes the pitch as an MP3 via ElevenLabs — all in one chain, paid as you go in USDC. ~$0.18, ~18 seconds.
 
 ## The prompt
 
@@ -13,9 +13,9 @@ Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synt
 
 ## What runs
 
-1. `POST /fal/fal-ai/flux/dev` — Flux image generation (~$0.036)
-2. `POST /anthropic/v1/messages` — Claude writes the pitch (~$0.012)
-3. `POST /elevenlabs/v1/text-to-speech/:voiceId` — pitch becomes audio (~$0.06)
+1. `POST /fal/fal-ai/flux/dev` — Flux image generation (~$0.06)
+2. `POST /anthropic/v1/messages` — Claude writes the pitch (~$0.02)
+3. `POST /elevenlabs/v1/text-to-speech/:voiceId` — pitch becomes audio (~$0.10)
 
 ## Run it
 
@@ -83,7 +83,7 @@ writeFileSync('./pitch.mp3', Buffer.from(mp3));
 ## Expected output
 
 ```
-3 calls · ~$0.108 · ~18s · 0 taps
+3 calls · ~$0.18 · ~18s · 0 taps
 hero image (hosted URL) · pitch text · ./pitch.mp3
 ```
 
@@ -93,7 +93,7 @@ The image comes back as a hosted fal URL and the pitch as text — only the voic
 
 ## Extend it
 
-- Swap Flux Dev for **Flux Pro** (`/fal/fal-ai/flux-pro`, $0.06) for higher-fidelity output
+- Swap Flux Dev for **Flux Pro** (`/fal/fal-ai/flux-pro`, $0.10) for higher-fidelity output
 - Add **DeepL** (`/deepl/v1/translate`) to ship the pitch in 5 languages, then run each through ElevenLabs for localized voiceovers
 - Swap Claude for **Gemini 2.5 Pro** (`/gemini/v1beta/models/gemini-2.5-pro`) for the pitch generation
 - Drop the assets into Walrus storage and embed them in a landing page — that's the upcoming Audric Store flow

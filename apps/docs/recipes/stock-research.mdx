@@ -3,7 +3,7 @@ title: "Research a stock"
 description: "Ticker in, a sourced equity brief out. Real-time quote, trend, and the news moving it — Alpha Vantage + NewsAPI synthesized by Claude, paid as you go."
 ---
 
-Point your agent at a ticker and it pulls a live quote, the recent price trend, and the headlines driving it, then hands you a tight analyst-style brief. Real market data, machine-synthesized, ~$0.06.
+Point your agent at a ticker and it pulls a live quote, the recent price trend, and the headlines driving it, then hands you a tight analyst-style brief. Real market data, machine-synthesized, ~$0.10.
 
 ## The prompt
 
@@ -15,11 +15,11 @@ what's moving it.
 
 ## What runs
 
-1. `POST /alphavantage/v1/search` — resolve the ticker (skip if you already have it) (~$0.012)
-2. `POST /alphavantage/v1/quote` — real-time price, change, volume (~$0.012)
-3. `POST /alphavantage/v1/daily` — daily OHLCV for the trend (~$0.012)
-4. `POST /newsapi/v1/search` — recent headlines on the company (~$0.012)
-5. `POST /anthropic/v1/messages` — Claude synthesizes the brief (~$0.012)
+1. `POST /alphavantage/v1/search` — resolve the ticker (skip if you already have it) (~$0.02)
+2. `POST /alphavantage/v1/quote` — real-time price, change, volume (~$0.02)
+3. `POST /alphavantage/v1/daily` — daily OHLCV for the trend (~$0.02)
+4. `POST /newsapi/v1/search` — recent headlines on the company (~$0.02)
+5. `POST /anthropic/v1/messages` — Claude synthesizes the brief (~$0.02)
 
 <Note>
 For an **IPO / newly-listed** name, lean on steps 1 + 4 (symbol search + news) — Alpha Vantage's quote/daily light up once the stock is trading. The recipe shape is identical; you just weight news over price history.
@@ -84,7 +84,7 @@ console.log((brief.body as { content: { text: string }[] }).content[0].text);
 ## Expected output
 
 ```
-4–5 calls · ~$0.06 · ~6s · 0 taps
+4–5 calls · ~$0.10 · ~6s · 0 taps
 NVDA brief: price, 30-day trend, top catalysts
 ```
 

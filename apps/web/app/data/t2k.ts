@@ -43,14 +43,14 @@ export const T2K = {
   ] as const,
 
   servicesFallback: [
-    { name: "OpenAI", cat: "ai · media", from: "$0.012" },
-    { name: "Anthropic", cat: "ai", from: "$0.012" },
-    { name: "fal.ai", cat: "ai · media", from: "$0.012" },
-    { name: "ElevenLabs", cat: "ai · media", from: "$0.06" },
-    { name: "Perplexity", cat: "ai · search", from: "$0.012" },
-    { name: "Groq", cat: "ai", from: "$0.012" },
-    { name: "Firecrawl", cat: "web · data", from: "$0.012" },
-    { name: "AlphaVantage", cat: "data", from: "$0.012" },
+    { name: "OpenAI", cat: "ai · media", from: "$0.02" },
+    { name: "Anthropic", cat: "ai", from: "$0.02" },
+    { name: "fal.ai", cat: "ai · media", from: "$0.02" },
+    { name: "ElevenLabs", cat: "ai · media", from: "$0.10" },
+    { name: "Perplexity", cat: "ai · search", from: "$0.02" },
+    { name: "Groq", cat: "ai", from: "$0.02" },
+    { name: "Firecrawl", cat: "web · data", from: "$0.02" },
+    { name: "AlphaVantage", cat: "data", from: "$0.02" },
   ] as const,
 
   metrics: [
@@ -100,7 +100,7 @@ export const T2K_STORIES: StoryItem[] = [
       "Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, write me a 200-word brief.",
     steps: ["coingecko · newsapi · anthropic"],
     done: "./brief.md",
-    total: "~$0.036 · 3 calls · 0 taps",
+    total: "~$0.06 · 3 calls · 0 taps",
   },
   {
     n: "04",
@@ -110,7 +110,7 @@ export const T2K_STORIES: StoryItem[] = [
       "Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synthesize it as MP3 via ElevenLabs.",
     steps: ["fal.ai · anthropic · elevenlabs"],
     done: "./hero.png · ./pitch.md · ./pitch.mp3",
-    total: "~$0.11 · 3 calls · 0 taps · ~18s",
+    total: "~$0.18 · 3 calls · 0 taps · ~18s",
   },
   {
     n: "05",
@@ -120,7 +120,7 @@ export const T2K_STORIES: StoryItem[] = [
       "It's my mum's birthday next Tuesday. Write her a warm note from me, render it as a card front via fal.ai, and put it in the mail to 123 Lochiel Road via Lob.",
     steps: ["anthropic · fal.ai · lob"],
     done: "Card queued · USPS delivery Tuesday.",
-    total: "~$1.25 · 3 calls · 0 taps",
+    total: "~$2.08 · 3 calls · 0 taps",
   },
   {
     n: "06",
@@ -130,7 +130,7 @@ export const T2K_STORIES: StoryItem[] = [
       "Write a self-contained Python script that computes a 30-day EMA on sample SUI closes, then run it via Judge0 to verify.",
     steps: ["anthropic · judge0"],
     done: "Script verified · output matches expected.",
-    total: "~$0.024 · 2 calls · 0 taps · ~3s",
+    total: "~$0.04 · 2 calls · 0 taps · ~3s",
   },
 ];
 

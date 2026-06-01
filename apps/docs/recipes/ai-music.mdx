@@ -3,7 +3,7 @@ title: "Make AI music"
 description: "One sentence in, an original track out. Claude crafts the prompt, Stable Audio 2.5 renders real, commercial-grade music — paid as you go in USDC."
 ---
 
-Type a vibe, get a track. Your agent turns a one-line brief into a rich music prompt with Claude, then pays Stable Audio 2.5 to render the actual audio — a real, commercial-use `.wav` you can play and sell. ~$0.25, no API keys, no subscriptions.
+Type a vibe, get a track. Your agent turns a one-line brief into a rich music prompt with Claude, then pays Stable Audio 2.5 to render the actual audio — a real, commercial-use `.wav` you can play and sell. ~$0.42, no API keys, no subscriptions.
 
 <Note>
 This recipe is the **creation half** of the Audric Store demo *"Make me a lo-fi beat called Midnight Rain and sell it for $5."* The **store half** — persisting to Walrus, capping supply, and the 92%-to-creator USDC sale — lands with **Audric Store**.
@@ -20,8 +20,8 @@ rainy-night vibe, ~30 seconds. Give me the audio to play.
 
 ## What runs
 
-1. `POST /anthropic/v1/messages` — Claude turns the brief into a vivid music prompt (~$0.012)
-2. `POST /fal/fal-ai/stable-audio-25/text-to-audio` — Stable Audio 2.5 renders the track (~$0.24)
+1. `POST /anthropic/v1/messages` — Claude turns the brief into a vivid music prompt (~$0.02)
+2. `POST /fal/fal-ai/stable-audio-25/text-to-audio` — Stable Audio 2.5 renders the track (~$0.40)
 
 ## Run it
 
@@ -74,12 +74,12 @@ console.log('Track:', audio);
 ## Expected output
 
 ```
-2 calls · ~$0.25 · ~10s · 0 taps
+2 calls · ~$0.42 · ~10s · 0 taps
 ./midnight-rain.wav  (commercial-use, hosted)
 ```
 
 ## Extend it
 
-- Need a cheaper take? **MusicGen via Replicate** (`/replicate/v1/predictions`, $0.024) runs the open MusicGen model — pass its `version` + `{ prompt, duration }` and poll `/replicate/v1/predictions/status` for long renders
+- Need a cheaper take? **MusicGen via Replicate** (`/replicate/v1/predictions`, $0.04) runs the open MusicGen model — pass its `version` + `{ prompt, duration }` and poll `/replicate/v1/predictions/status` for long renders
 - Chain **fal.ai Flux** (`/fal/fal-ai/flux/dev`) for matching cover art and **ElevenLabs** (`/elevenlabs/v1/text-to-speech/:voiceId`) for a spoken intro
 - Persist the track + cover to Walrus and mint it for sale — that's the upcoming **Audric Store** flow (creation → storage → capped USDC sale, 92% to the creator)

@@ -3,7 +3,7 @@ title: "Transcribe & summarize audio"
 description: "A recording in, key points out. fal.ai Whisper transcribes any public audio URL, Claude pulls the highlights — paid as you go, no upload."
 ---
 
-Drop in a link to a recording — a podcast clip, a voice memo, a meeting export — and your agent transcribes it and hands back the key points. fal.ai's Whisper fetches the URL server-side (so nothing to upload), and Claude distills it. ~$0.024.
+Drop in a link to a recording — a podcast clip, a voice memo, a meeting export — and your agent transcribes it and hands back the key points. fal.ai's Whisper fetches the URL server-side (so nothing to upload), and Claude distills it. ~$0.04.
 
 <Note>
 **Self-contained by design:** transcription takes an `audio_url`, and fal fetches it for you — no file upload, which means it runs cleanly in chat clients too. Point it at any public audio URL.
@@ -18,8 +18,8 @@ https://example.com/standup.mp3
 
 ## What runs
 
-1. `POST /fal/fal-ai/whisper` — Whisper transcribes the audio URL (~$0.012)
-2. `POST /anthropic/v1/messages` — Claude pulls the key points (~$0.012)
+1. `POST /fal/fal-ai/whisper` — Whisper transcribes the audio URL (~$0.02)
+2. `POST /anthropic/v1/messages` — Claude pulls the key points (~$0.02)
 
 ## Run it
 
@@ -68,7 +68,7 @@ console.log((summary.body as { content: { text: string }[] }).content[0].text);
 ## Expected output
 
 ```
-2 calls · ~$0.024 · ~5s · 0 taps
+2 calls · ~$0.04 · ~5s · 0 taps
 5 key points + full transcript
 ```
 

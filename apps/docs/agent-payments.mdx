@@ -3,7 +3,7 @@ title: "Agent Payments"
 description: "Pay any MPP-protected API in USDC. 40+ services, 88 endpoints, no signup, no API keys — gasless USDC over Sui."
 ---
 
-**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.012 – $0.06` per LLM call. Pay `$1.20 – $1.80` per physical postcard.
+**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.02 – $0.10` per LLM call. Pay `$2.00 – $3.00` per physical postcard.
 
 Two surfaces use it:
 
@@ -65,7 +65,7 @@ That's it. The MPP 402 challenge is handled automatically; payment broadcasts to
 
   </Card>
 
-  <Card title="Ask GPT-4o — $0.012" icon="message">
+  <Card title="Ask GPT-4o — $0.02" icon="message">
 
   ```bash
   t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
@@ -80,7 +80,7 @@ That's it. The MPP 402 challenge is handled automatically; payment broadcasts to
 
   </Card>
 
-  <Card title="Transcribe audio — $0.012" icon="microphone">
+  <Card title="Transcribe audio — $0.02" icon="microphone">
 
   ```bash
   t2 pay https://mpp.t2000.ai/openai/v1/audio/transcriptions \
@@ -138,11 +138,11 @@ t2 services inspect https://mpp.t2000.ai/openai  # full service detail + endpoin
 
 Each service sets its own per-endpoint price. The gateway applies a thin overlay (covered by service margins). Pay per call — no subscription, no commit:
 
-- LLM calls: `$0.012 – $0.06`
-- Image generation: `$0.012 – $0.24`
-- Audio transcription: `$0.012 – $0.06`
-- Physical postcard / letter: `$1.20 – $1.80`
-- Code execution / scraping / search: `$0.012 – $0.12`
+- LLM calls: `$0.02 – $0.10`
+- Image generation: `$0.02 – $0.40`
+- Audio transcription: `$0.02 – $0.10`
+- Physical postcard / letter: `$2.00 – $3.00`
+- Code execution / scraping / search: `$0.02 – $0.20`
 
 Always pass `--max-price <USD>` (default `$1.00`) so a misconfigured endpoint can't drain the wallet.
 

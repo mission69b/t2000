@@ -1,9 +1,9 @@
 ---
 title: "Make an illustrated storybook"
-description: "One sentence in, a printable picture book out. Claude writes the story, Flux illustrates every page in a consistent style, and PDFShift binds it server-side. Real generative art a code sandbox can't fake. ~$0.20."
+description: "One sentence in, a printable picture book out. Claude writes the story, Flux illustrates every page in a consistent style, and PDFShift binds it server-side. Real generative art a code sandbox can't fake. ~$0.34."
 ---
 
-Your agent turns a premise into a short illustrated children's book: Claude writes the story beat-by-beat, fal.ai's Flux paints a consistent illustration for each page, and PDFShift binds them into a print-ready PDF. ~$0.20, no API keys.
+Your agent turns a premise into a short illustrated children's book: Claude writes the story beat-by-beat, fal.ai's Flux paints a consistent illustration for each page, and PDFShift binds them into a print-ready PDF. ~$0.34, no API keys.
 
 <Note>
 **Why this is genuinely MPP (unlike a coloring book).** Clean line art is drawable as SVG, so a code-sandbox client (Claude Desktop) will hand-draw a coloring book itself for free — fair enough. But a richly illustrated, consistent-character *painterly* storybook is beyond hand-drawn vector art; it needs a real image model. There's no local sandbox shortcut, so the model call earns its keep on every client. And for sandboxless clients (a browser app like Audric), it's the only path regardless.
@@ -21,9 +21,9 @@ into a PDF with PDFShift.
 
 ## What runs
 
-1. `POST /anthropic/v1/messages` — Claude writes the story + a per-page illustration prompt, with a shared character sheet for consistency (~$0.012)
-2. `POST /fal/fal-ai/flux/dev` — one illustration per page (~$0.036 each)
-3. `POST /pdfshift/v1/convert` — bind the pages (HTML→PDF, server-side) into one hosted PDF (~$0.012)
+1. `POST /anthropic/v1/messages` — Claude writes the story + a per-page illustration prompt, with a shared character sheet for consistency (~$0.02)
+2. `POST /fal/fal-ai/flux/dev` — one illustration per page (~$0.06 each)
+3. `POST /pdfshift/v1/convert` — bind the pages (HTML→PDF, server-side) into one hosted PDF (~$0.02)
 
 ## Run it
 
@@ -111,13 +111,13 @@ console.log('Storybook:', url);
 ## Expected output
 
 ```
-7 calls · ~$0.20 · ~35s · 0 taps    (1 Claude + 5 page illustrations + 1 PDF bind)
+7 calls · ~$0.34 · ~35s · 0 taps    (1 Claude + 5 page illustrations + 1 PDF bind)
 ./fox-storybook.pdf    (hosted link)
 ```
 
 ## Extend it
 
-- Bump **Flux Dev** to **Flux Pro** (`/fal/fal-ai/flux-pro`, $0.06) for higher-fidelity illustrations
+- Bump **Flux Dev** to **Flux Pro** (`/fal/fal-ai/flux-pro`, $0.10) for higher-fidelity illustrations
 - Add an **ElevenLabs** (`/elevenlabs/v1/text-to-speech/:voiceId`) narration track per page for an audio storybook
-- Scale `pageCount` up for a full picture book — each page is one ~$0.036 illustration call
+- Scale `pageCount` up for a full picture book — each page is one ~$0.06 illustration call
 - Cap the edition and list it for $4 in USDC (92% to the creator) — that's the upcoming **Audric Store** flow, built on this exact creation pipeline
