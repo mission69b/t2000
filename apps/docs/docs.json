@@ -31,48 +31,23 @@
       {
         "group": "Recipes",
         "pages": [
-          {
-            "group": "Research & briefs",
-            "pages": [
-              "recipes/morning-brief",
-              "recipes/meeting-prep",
-              "recipes/stock-research",
-              "recipes/crypto-research",
-              "recipes/ai-research-digest",
-              "recipes/research-citations",
-              "recipes/competitor-teardown"
-            ]
-          },
-          {
-            "group": "Create",
-            "pages": [
-              "recipes/concept-asset",
-              "recipes/storybook",
-              "recipes/ai-music"
-            ]
-          },
-          {
-            "group": "Audio & language",
-            "pages": [
-              "recipes/transcribe-summarize",
-              "recipes/localize-clip"
-            ]
-          },
-          {
-            "group": "Build & inspect",
-            "pages": [
-              "recipes/write-and-run",
-              "recipes/model-bakeoff",
-              "recipes/link-inspector"
-            ]
-          },
-          {
-            "group": "Plan & deliver",
-            "pages": [
-              "recipes/trip-planner",
-              "recipes/mail-card"
-            ]
-          }
+          "recipes/morning-brief",
+          "recipes/concept-asset",
+          "recipes/mail-card",
+          "recipes/write-and-run",
+          "recipes/ai-music",
+          "recipes/storybook",
+          "recipes/stock-research",
+          "recipes/crypto-research",
+          "recipes/transcribe-summarize",
+          "recipes/research-citations",
+          "recipes/meeting-prep",
+          "recipes/ai-research-digest",
+          "recipes/trip-planner",
+          "recipes/localize-clip",
+          "recipes/competitor-teardown",
+          "recipes/link-inspector",
+          "recipes/model-bakeoff"
         ]
       }
     ]
