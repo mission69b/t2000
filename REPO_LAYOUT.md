@@ -23,6 +23,7 @@ t2000/
 │   ├── sdk/                                 (@t2000/sdk)
 │   └── ui/                                  (@t2000/ui — design system; shipped 2026-05-27)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source)
+├── team-docs/                               ← team-facing onboarding guides (committed)
 ├── patches/                                 ← pnpm patches
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
