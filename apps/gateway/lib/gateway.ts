@@ -210,7 +210,7 @@ export function chargeProxy(
  *
  *   chargeCustom(handler)            -> price resolved from the catalog (SSOT)
  *   chargeCustom(priceFn, handler)   -> dynamic price computed from the body
- *                                       (e.g. printful order = cost + 5%)
+ *                                       (e.g. a per-order cost-plus-margin)
  *
  * Static-priced custom routes pass NO price (resolved from `lib/services.ts`,
  * same as `chargeProxy`); only genuinely dynamic routes pass a price function.

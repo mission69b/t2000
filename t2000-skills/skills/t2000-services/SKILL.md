@@ -158,7 +158,7 @@ The current catalog clusters into:
 | Translation | DeepL, Google Translate |
 | Code / utility | Judge0, screenshot-as-a-service, QR codes, PDFShift |
 | Email / mail | Resend, Lob (postcards, letters, verify) |
-| Commerce | Printful (print-on-demand), Hunter (email discovery) |
+| Commerce | Hunter (email discovery) |
 | Security | VirusTotal |
 | Messaging | Pushover |
 | URL / IP | Short.io, IPinfo |

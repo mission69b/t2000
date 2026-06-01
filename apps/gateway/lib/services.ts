@@ -494,21 +494,6 @@ export const services: Service[] = [
     ],
   },
   {
-    id: 'printful',
-    name: 'Printful',
-    serviceUrl: `${BASE_URL}/printful`,
-    description: 'Print-on-demand — shirts, mugs, posters, shipped to any address.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['commerce'],
-    logo: '/logos/printful.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/products', description: 'Browse catalog — all products, or by ID for sizes/colors', price: '0.02' },
-      { method: 'POST', path: '/v1/estimate', description: 'Get shipping and cost estimate for an order', price: '0.02' },
-      { method: 'POST', path: '/v1/order', description: 'Place a print-on-demand order (dynamic price: cost + 5%)', price: 'dynamic' },
-    ],
-  },
-  {
     id: 'pushover',
     name: 'Pushover',
     serviceUrl: `${BASE_URL}/pushover`,

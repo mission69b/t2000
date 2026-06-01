@@ -179,10 +179,6 @@ t2 pay <url> [options]
 | Lob Postcards | `/lob/v1/postcards` | $1.00 |
 | Lob Letters | `/lob/v1/letters` | $1.50 |
 | Lob Address Verify | `/lob/v1/verify` | $0.01 |
-| Printful (browse) | `/printful/v1/products` | $0.005 |
-| Printful (estimate) | `/printful/v1/estimate` | $0.005 |
-| Printful (order) | `/printful/v1/order` | dynamic |
-
 ### Messaging
 | Service | Endpoint | Price |
 |---------|----------|-------|
@@ -353,13 +349,6 @@ t2 pay https://mpp.t2000.ai/hunter/v1/search \
 ```bash
 t2 pay https://mpp.t2000.ai/ipinfo/v1/lookup \
   --data '{"ip":"8.8.8.8"}'
-```
-
-### Order print-on-demand merchandise
-```bash
-t2 pay https://mpp.t2000.ai/printful/v1/order \
-  --max-price 30 \
-  --data '{"recipient":{"name":"Jane Doe","address1":"123 Main St","city":"SF","state_code":"CA","country_code":"US","zip":"94105"},"items":[{"variant_id":4012,"quantity":1,"files":[{"url":"https://example.com/design.png"}]}]}'
 ```
 
 ### Search for flights

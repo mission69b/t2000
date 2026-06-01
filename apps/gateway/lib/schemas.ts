@@ -550,52 +550,6 @@ const schemas: Record<string, EndpointSchema> = {
     }, ['q']),
   },
 
-  // Printful
-  'printful:/v1/products': {
-    requestBody: obj({
-      id: num('Product ID (omit to list all)'),
-      category_id: num('Filter by category'),
-    }),
-  },
-  'printful:/v1/estimate': {
-    requestBody: obj({
-      recipient: obj({
-        address1: str('Street address'),
-        city: str('City'),
-        state_code: str('State code'),
-        country_code: str('Country code (e.g. "US")'),
-        zip: str('ZIP code'),
-      }, ['address1', 'city', 'country_code', 'zip']),
-      items: arr(
-        obj({
-          variant_id: num('Product variant ID'),
-          quantity: num('Quantity'),
-        }, ['variant_id', 'quantity']),
-        'Order items',
-      ),
-    }, ['recipient', 'items']),
-  },
-  'printful:/v1/order': {
-    requestBody: obj({
-      recipient: obj({
-        name: str('Recipient name'),
-        address1: str('Street address'),
-        city: str('City'),
-        state_code: str('State code'),
-        country_code: str('Country code'),
-        zip: str('ZIP code'),
-      }, ['name', 'address1', 'city', 'country_code', 'zip']),
-      items: arr(
-        obj({
-          variant_id: num('Product variant ID'),
-          quantity: num('Quantity'),
-          files: arr(obj({ url: str('Print file URL') }, ['url']), 'Print files'),
-        }, ['variant_id', 'quantity']),
-        'Order items',
-      ),
-    }, ['recipient', 'items']),
-  },
-
   // Pushover
   'pushover:/v1/push': {
     requestBody: obj({
