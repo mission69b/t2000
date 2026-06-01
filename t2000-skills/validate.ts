@@ -185,14 +185,18 @@ function main() {
     }
   }
 
+  // v4 Agent Wallet skill set (post-S.336 pivot — the v3 DeFi skills
+  // save/withdraw/borrow/repay were removed). Keep in sync when adding
+  // or removing a skill directory.
   const expectedSkills = [
     't2000-check-balance',
-    't2000-send',
-    't2000-save',
-    't2000-withdraw',
-    't2000-borrow',
-    't2000-repay',
+    't2000-mcp',
     't2000-pay',
+    't2000-receive',
+    't2000-send',
+    't2000-services',
+    't2000-setup',
+    't2000-swap',
   ];
 
   const missing = expectedSkills.filter(s => !skillDirs.includes(s));
