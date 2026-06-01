@@ -173,7 +173,8 @@ Both repos have `.cursor/rules/*.mdc` files. These are conventions the AI assist
 | **t2000** | **gRPC migration** — Sui's JSON-RPC is being deactivated (mid-2026), so the SDK must move to gRPC. Calendar-driven — the highest time-risk item. |
 | **t2000 / Audric** | **Audric Store** — the creator marketplace (sell AI-generated content in USDC). In design. Large, founder-gated. |
 | **Audric** | **MPP-AUDRIC** — let Audric itself call paid APIs from chat. Currently blocked on a wallet-signing gap. |
-| **Audric** | Smaller items: security-header hardening, memory controls, schema cleanup, marketing-landing polish. Ranked in the audric HANDOFF. |
+| **Audric** | **Fiat on/off-ramp** — buy crypto with card/bank + cash out to bank. Marketed but not built; design/provider-gated. |
+| **Audric** | Smaller items: security-header hardening, memory controls, schema cleanup, dead-code cleanup. Ranked in the audric HANDOFF. |
 
 > ℹ️ Heads-up on docs: the `HANDOFF_NEXT_AGENT.md` files, the `spec/` trees, and the build trackers are **local-only** — they hold detailed internal task state and aren't committed. The founder shares them with you directly. This onboarding doc is the committed, shareable entry point.
 
