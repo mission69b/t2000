@@ -1,0 +1,91 @@
+---
+title: "Tear down a competitor"
+description: "A domain in, a positioning teardown out. Firecrawl maps the site and pulls structured facts, Claude synthesizes the angle. Live data, paid as you go, no API keys."
+---
+
+You want to understand a competitor fast: what they sell, how they price it, who they pitch to, and how they position. Your agent discovers the key pages on their site, extracts structured facts from each, then Claude turns it into a teardown. ~$0.08, self-contained — just a domain.
+
+<Note>
+This is a **durable MPP demo** — it reads the live site right now, not a stale snapshot a sandboxed client might have. The value is paid, real-time crawling + extraction.
+</Note>
+
+## The prompt
+
+```
+Tear down stripe.com for me. Use Firecrawl to find their key pages (pricing,
+product, about) and extract what they sell, how they price, and who they target
+— then give me a positioning teardown and three angles we could differentiate on.
+```
+
+## What runs
+
+1. `POST /firecrawl/v1/map` — discover the site's key URLs (pricing, product, about) (~$0.02)
+2. `POST /firecrawl/v1/extract` — LLM-extract structured facts (offering, pricing, audience) from those pages (~$0.04)
+3. `POST /anthropic/v1/messages` — Claude writes the teardown + differentiation angles (~$0.02)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt with any domain. The agent decides which discovered pages are worth extracting.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const domain = 'https://stripe.com';
+
+const map = await agent.pay({
+  url: 'https://mpp.t2000.ai/firecrawl/v1/map',
+  method: 'POST',
+  body: JSON.stringify({ url: domain, search: 'pricing product about' }),
+});
+
+const facts = await agent.pay({
+  url: 'https://mpp.t2000.ai/firecrawl/v1/extract',
+  method: 'POST',
+  body: JSON.stringify({
+    urls: (map.body as { links: string[] }).links.slice(0, 4),
+    prompt: 'Extract what they sell, how they price it, and who they target.',
+  }),
+});
+
+const teardown = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 800,
+    messages: [{
+      role: 'user',
+      content:
+        `Positioning teardown of ${domain}. Cover: offering, pricing model, target audience, ` +
+        `messaging. Then give 3 concrete angles to differentiate against them.\n\n` +
+        `EXTRACTED: ${JSON.stringify(facts.body)}`,
+    }],
+  }),
+});
+
+console.log((teardown.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+3 calls · ~$0.08 · ~11s · 0 taps
+Positioning teardown + 3 differentiation angles, grounded in the live site
+```
+
+## Extend it
+
+- Add **Firecrawl scrape** (`/firecrawl/v1/scrape`) on the homepage for full-copy tone analysis
+- Capture a visual with **ScreenshotOne** (`/screenshot/v1/capture`) to teardown the design too
+- Run it across a list of competitors in parallel and have Claude build a comparison table
+- Pipe the result into **PDFShift** (`/pdfshift/v1/convert`) for a shareable battlecard

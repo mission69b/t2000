@@ -1,0 +1,85 @@
+---
+title: "Localize an audio clip"
+description: "An English clip in, the same clip in another language out. fal Whisper transcribes, DeepL translates, ElevenLabs re-voices it. A full audio round-trip, paid as you go, no API keys."
+---
+
+You have a voice clip in English and want it in Spanish — not subtitles, actual spoken audio. Your agent transcribes the clip, translates the text with context-aware AI, then synthesizes a natural voice reading it back in the target language. ~$0.14, end to end — audio in, audio out.
+
+<Note>
+This is a **durable MPP demo** — every leg needs a real model: real transcription, real translation, real voice synthesis. A sandboxed client can't fake any of them. The artifact (the re-voiced clip) is re-hosted on our store, so the URL is durable.
+</Note>
+
+## The prompt
+
+```
+Take this English clip and give me a Spanish version I can play:
+https://example.com/clip.mp3
+Use fal Whisper to transcribe, DeepL to translate, and ElevenLabs to read it back.
+```
+
+## What runs
+
+1. `POST /fal/fal-ai/whisper` — transcribe the source clip to text (~$0.02)
+2. `POST /deepl/v1/translate` — translate the transcript, context-aware (~$0.02)
+3. `POST /elevenlabs/v1/text-to-speech/:voiceId` — synthesize the translated voice (~$0.10)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt with any audio URL and target language. The agent chains the three calls and hands back the new clip's URL.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const sourceUrl = 'https://example.com/clip.mp3';
+const voiceId = '21m00Tcm4TlvDq8ikWAM'; // any ElevenLabs voice
+
+const transcript = await agent.pay({
+  url: 'https://mpp.t2000.ai/fal/fal-ai/whisper',
+  method: 'POST',
+  body: JSON.stringify({ audio_url: sourceUrl }),
+});
+
+const translated = await agent.pay({
+  url: 'https://mpp.t2000.ai/deepl/v1/translate',
+  method: 'POST',
+  body: JSON.stringify({
+    text: (transcript.body as { text: string }).text,
+    target_lang: 'ES',
+  }),
+});
+
+const speech = await agent.pay({
+  url: `https://mpp.t2000.ai/elevenlabs/v1/text-to-speech/${voiceId}`,
+  method: 'POST',
+  body: JSON.stringify({
+    text: (translated.body as { translations: { text: string }[] }).translations[0].text,
+    model_id: 'eleven_multilingual_v2',
+  }),
+});
+
+// The gateway re-hosts the audio on its artifact store — speech.body.url is durable.
+console.log((speech.body as { url: string }).url);
+```
+
+## Expected output
+
+```
+3 calls · ~$0.14 · ~12s · 0 taps
+A Spanish-voiced .mp3 of the original clip, on a durable URL
+```
+
+## Extend it
+
+- Target any of DeepL's 30+ languages by changing `target_lang` (`FR`, `DE`, `JA`, …)
+- Swap **DeepL** for **Google Translate** (`/translate/v1/translate`) for 130+ languages
+- Generate captions too: feed the transcript to **Claude** (`/anthropic/v1/messages`) for an SRT
+- Loop over several `target_lang` values in parallel to ship one clip in five languages

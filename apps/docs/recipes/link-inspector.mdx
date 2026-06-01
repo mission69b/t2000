@@ -1,0 +1,96 @@
+---
+title: "Inspect a sketchy link"
+description: "A URL in, a safety verdict out. VirusTotal scans it across 70+ engines, Jina reads what's actually on the page, ScreenshotOne shows it — Claude gives the verdict. Live data, paid as you go, no API keys."
+---
+
+Someone sent you a link and you're not sure about it. Your agent scans it across 70+ security engines, reads the actual page content, captures a screenshot so you can see it without clicking, then Claude gives a plain-English verdict. ~$0.08, self-contained — just the URL.
+
+<Note>
+This is a **durable MPP demo** — it inspects the live URL right now across real security engines. A sandboxed client can't fake a 70-engine scan or a real screenshot.
+</Note>
+
+## The prompt
+
+```
+Is this link safe? https://bit.ly/3xExample
+Scan it with VirusTotal, read the page with Jina, and grab a screenshot —
+then give me a plain-English verdict and tell me if I should open it.
+```
+
+## What runs
+
+1. `POST /virustotal/v1/scan` — scan the URL across 70+ antivirus engines (~$0.02)
+2. `POST /jina/v1/read` — read the destination page as clean markdown (~$0.02)
+3. `POST /screenshot/v1/capture` — capture the page so you can see it safely (~$0.02)
+4. `POST /anthropic/v1/messages` — Claude gives the verdict + recommendation (~$0.02)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt with any URL. The agent runs the scan, read, and screenshot in parallel before the verdict.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const url = 'https://bit.ly/3xExample';
+
+const [scan, content, shot] = await Promise.all([
+  agent.pay({
+    url: 'https://mpp.t2000.ai/virustotal/v1/scan',
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/jina/v1/read',
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/screenshot/v1/capture',
+    method: 'POST',
+    body: JSON.stringify({ url, format: 'png' }),
+  }),
+]);
+
+const verdict = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 500,
+    messages: [{
+      role: 'user',
+      content:
+        `Is this link safe to open? Give a one-line verdict (safe / caution / avoid), ` +
+        `then why. URL: ${url}\n\n` +
+        `SCAN: ${JSON.stringify(scan.body)}\n\nPAGE: ${JSON.stringify(content.body)}`,
+    }],
+  }),
+});
+
+// shot.body.url is the re-hosted screenshot on the artifact store.
+console.log((verdict.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+4 calls · ~$0.08 · ~9s · 0 taps
+Safe / caution / avoid verdict + a screenshot you can eyeball before clicking
+```
+
+## Extend it
+
+- Add **IPinfo** (`/ipinfo/v1/lookup`) on the resolved host IP for geo + hosting provider
+- Scan attached files too — **VirusTotal** also takes a file hash
+- Batch a whole inbox of links in parallel; flag only the ones that come back `caution`/`avoid`
+- Pipe flagged links into **Resend** (`/resend/v1/emails`) for an automated security digest

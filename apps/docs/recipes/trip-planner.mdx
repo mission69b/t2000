@@ -1,0 +1,101 @@
+---
+title: "Plan a trip"
+description: "A city and dates in, a planned trip out. SerpAPI finds the flights, Google Maps routes the days, OpenWeather checks the forecast — Claude turns it into an itinerary. Paid as you go, no API keys."
+---
+
+You want a trip planned without ten browser tabs: real flight options, how to get around, what the weather will be, and a day-by-day plan. Your agent pulls live Google Flights results, directions between the places you want to see, and the forecast for your dates, then Claude assembles an itinerary. ~$0.08, self-contained — just an origin, a destination, and dates.
+
+<Note>
+This is a **durable MPP demo** — a sandboxed client can't fake live flight prices, real routing, or a real forecast. The value is paid, real-time data, not generation.
+</Note>
+
+## The prompt
+
+```
+Plan a 3-day Tokyo trip leaving from LAX on 2026-07-10, back 2026-07-13.
+Use SerpAPI for flight options, Google Maps for getting between Shibuya,
+Asakusa, and teamLab Planets, and OpenWeather for the forecast — then give
+me a day-by-day itinerary with a flight pick and what to pack.
+```
+
+## What runs
+
+1. `POST /serpapi/v1/flights` — live Google Flights results for the dates (~$0.02)
+2. `POST /googlemaps/v1/directions` — routes between the places on the list (~$0.02)
+3. `POST /openweather/v1/forecast` — 5-day / 3-hour forecast for the destination (~$0.02)
+4. `POST /anthropic/v1/messages` — Claude builds the itinerary + flight pick + packing list (~$0.02)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt with any origin, destination, and dates. The agent decides how many routing/forecast passes it needs.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+
+const [flights, directions, forecast] = await Promise.all([
+  agent.pay({
+    url: 'https://mpp.t2000.ai/serpapi/v1/flights',
+    method: 'POST',
+    body: JSON.stringify({
+      departure_id: 'LAX',
+      arrival_id: 'HND',
+      outbound_date: '2026-07-10',
+      return_date: '2026-07-13',
+    }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/googlemaps/v1/directions',
+    method: 'POST',
+    body: JSON.stringify({ origin: 'Shibuya, Tokyo', destination: 'teamLab Planets, Tokyo', mode: 'transit' }),
+  }),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/openweather/v1/forecast',
+    method: 'POST',
+    body: JSON.stringify({ city: 'Tokyo' }),
+  }),
+]);
+
+const itinerary = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 900,
+    messages: [{
+      role: 'user',
+      content:
+        `Plan a 3-day Tokyo trip (LAX→HND, 2026-07-10 to 07-13). ` +
+        `Pick one flight option with a one-line reason, give a day-by-day itinerary ` +
+        `using the routes provided, and a packing list based on the forecast.\n\n` +
+        `FLIGHTS: ${JSON.stringify(flights.body)}\n\nROUTES: ${JSON.stringify(directions.body)}\n\nFORECAST: ${JSON.stringify(forecast.body)}`,
+    }],
+  }),
+});
+
+console.log((itinerary.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+4 calls · ~$0.08 · ~10s · 0 taps
+Flight pick + 3-day itinerary + packing list, grounded in live data
+```
+
+## Extend it
+
+- Render the itinerary to a shareable PDF with **PDFShift** (`/pdfshift/v1/convert`)
+- Add **Google Maps places** (`/googlemaps/v1/places`) to suggest restaurants near each stop
+- Swap **SerpAPI flights** filters (`type`, cabin, stops) to compare nonstop vs cheapest
+- Run it for several candidate cities in parallel and let Claude rank them by weather + flight price

@@ -1,0 +1,104 @@
+---
+title: "Run a model bake-off"
+description: "One prompt in, five models' answers out — side by side. Claude, GPT, Gemini, Groq (Llama), and DeepSeek all answer the same prompt, then Claude judges. One wallet, no five API keys."
+---
+
+You want to know which model is best for *your* prompt — not a leaderboard, your actual task. Your agent sends the same prompt to five models in parallel, then has Claude judge them blind on accuracy, completeness, and tone. ~$0.14, one wallet — no juggling five provider accounts.
+
+<Note>
+This is a **durable MPP demo** — the headline is one wallet replacing five API keys. A sandboxed client can't reach five real frontier models at once; here it's one `pay` per model, gasless, no signup.
+</Note>
+
+## The prompt
+
+```
+Run a bake-off on this prompt across Claude, GPT, Gemini, Groq's Llama, and
+DeepSeek: "Explain why USDC depegs happen, in 3 sentences a beginner gets."
+Then judge them on accuracy, clarity, and which you'd ship.
+```
+
+## What runs
+
+1. `POST /anthropic/v1/messages` — Claude's answer (~$0.02)
+2. `POST /openai/v1/chat/completions` — GPT's answer (~$0.02)
+3. `POST /gemini/v1beta/models/gemini-2.5-pro` — Gemini's answer (~$0.04)
+4. `POST /groq/v1/chat/completions` — Llama (on Groq) answer (~$0.02)
+5. `POST /deepseek/v1/chat/completions` — DeepSeek's answer (~$0.02)
+6. `POST /anthropic/v1/messages` — Claude judges all five (~$0.02)
+
+## Run it
+
+### Claude Desktop (MCP)
+
+```bash
+npm install -g @t2000/cli && t2 init && t2 receive && t2 mcp install
+```
+
+Paste the prompt with any task. The agent fans out to all five, then scores them.
+
+### SDK
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create();
+const prompt = 'Explain why USDC depegs happen, in 3 sentences a beginner gets.';
+
+const chat = (path: string, model: string) =>
+  agent.pay({
+    url: `https://mpp.t2000.ai/${path}`,
+    method: 'POST',
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: 300 }),
+  });
+
+const [claude, gpt, gemini, llama, deepseek] = await Promise.all([
+  agent.pay({
+    url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+    method: 'POST',
+    headers: { 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 300, messages: [{ role: 'user', content: prompt }] }),
+  }),
+  chat('openai/v1/chat/completions', 'gpt-4o'),
+  agent.pay({
+    url: 'https://mpp.t2000.ai/gemini/v1beta/models/gemini-2.5-pro',
+    method: 'POST',
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+  }),
+  chat('groq/v1/chat/completions', 'llama-3.3-70b-versatile'),
+  chat('deepseek/v1/chat/completions', 'deepseek-chat'),
+]);
+
+const judgment = await agent.pay({
+  url: 'https://mpp.t2000.ai/anthropic/v1/messages',
+  method: 'POST',
+  headers: { 'anthropic-version': '2023-06-01' },
+  body: JSON.stringify({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 600,
+    messages: [{
+      role: 'user',
+      content:
+        `Judge these 5 answers to "${prompt}" on accuracy, clarity, and which you'd ship. ` +
+        `Score each 1-5 and pick a winner.\n\n` +
+        `CLAUDE: ${JSON.stringify(claude.body)}\n\nGPT: ${JSON.stringify(gpt.body)}\n\n` +
+        `GEMINI: ${JSON.stringify(gemini.body)}\n\nLLAMA: ${JSON.stringify(llama.body)}\n\nDEEPSEEK: ${JSON.stringify(deepseek.body)}`,
+    }],
+  }),
+});
+
+console.log((judgment.body as { content: { text: string }[] }).content[0].text);
+```
+
+## Expected output
+
+```
+6 calls · ~$0.14 · ~8s · 0 taps
+Five answers side by side + a scored verdict and a winner
+```
+
+## Extend it
+
+- Add **Mistral** (`/mistral/v1/chat/completions`) or **Cohere** (`/cohere/v1/chat`) to widen the field
+- Swap Gemini 2.5 Pro for **Flash** (`/gemini/v1beta/models/gemini-2.5-flash`) to bake off on cost too
+- Time each call to compare latency, not just quality — Groq usually wins that one
+- Render the scorecard to a PDF with **PDFShift** (`/pdfshift/v1/convert`) for a shareable eval
