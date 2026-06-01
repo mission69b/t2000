@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@mysten/sui": "^2.17.0",
-    "@mysten/suins": "^1.1.1",
+    "@mysten/suins": "^1.1.4",
     "prettier": "^3",
     "tsx": "^4",
     "turbo": "^2",
