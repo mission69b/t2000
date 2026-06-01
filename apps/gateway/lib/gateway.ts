@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { Mppx } from 'mppx/nextjs';
 import { sui, USDC } from '@suimpp/mpp/server';
 import type { PaymentReport } from '@suimpp/mpp/server';
@@ -185,7 +186,14 @@ export function chargeProxy(
       // the PaymentReport when present, not the route's expected `amount`.
       // They should match (challenge price == on-chain charge), but the
       // verified figure is the source of truth for the analytics DB.
-      logPayment({ service, endpoint, amount: report?.amount ?? amount, digest, sender: report?.sender }).catch(() => {});
+      //
+      // [Activity-log race / dogfood 2026-06-01] Run the write via `after()`
+      // so it survives the serverless freeze. Fire-and-forget (un-awaited)
+      // writes get torn down when the function suspends after the response is
+      // sent — fast/parallel calls were charged on-chain but never logged,
+      // so they vanished from the activity page. `after()` keeps the function
+      // alive until the write commits without adding response latency.
+      after(() => logPayment({ service, endpoint, amount: report?.amount ?? amount, digest, sender: report?.sender }));
     }
 
     // [Bug 2 / dogfood 2026-05-31] Host binary bodies as an artifact + return
@@ -255,7 +263,9 @@ export function chargeCustom(
       const report = digest ? pendingReports.get(digest) : undefined;
       if (digest) pendingReports.delete(digest);
       // [Bug 1] Verified on-chain amount wins over the resolved expected price.
-      logPayment({ service, endpoint, amount: report?.amount ?? resolvedAmount, digest, sender: report?.sender }).catch(() => {});
+      // [Activity-log race] `after()` so the write survives the serverless
+      // freeze (see chargeProxy note above).
+      after(() => logPayment({ service, endpoint, amount: report?.amount ?? resolvedAmount, digest, sender: report?.sender }));
     }
 
     // [Bug 2] Covers custom binary handlers (qrcode, stability image) too.
