@@ -61,144 +61,26 @@ t2 pay <url> [options]
 
 ## Available Services
 
-> For the live, canonical list use `t2000_services` (MCP) or GET `https://mpp.t2000.ai/api/services`.
-> The table below is a quick reference.
+> **The live catalog is the only source of truth for what's available and what it costs.**
+> Discover services and current per-endpoint prices with `t2000_services` (MCP) or
+> `GET https://mpp.t2000.ai/api/services`. Inspect one with `t2 services inspect <url>`.
+> Prices are NOT listed here on purpose — they would drift from the catalog. Resolve the
+> real price at call time (the `--max-price` ceiling guards against overpaying), or run
+> `t2 pay <url> --dry-run` to see what would be charged before paying.
 
-### AI Models
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| OpenAI Chat | `/openai/v1/chat/completions` | $0.01 |
-| OpenAI Embeddings | `/openai/v1/embeddings` | $0.005 |
-| OpenAI Audio Transcription | `/openai/v1/audio/transcriptions` | $0.01 |
-| OpenAI Text-to-Speech | `/openai/v1/audio/speech` | $0.02 |
-| Anthropic | `/anthropic/v1/messages` | $0.01 |
-| Google Gemini Flash | `/gemini/v1beta/models/gemini-2.5-flash` | $0.005 |
-| Google Gemini Pro | `/gemini/v1beta/models/gemini-2.5-pro` | $0.01 |
-| Google Gemini Embeddings | `/gemini/v1beta/models/embedding-001` | $0.005 |
-| DeepSeek | `/deepseek/v1/chat/completions` | $0.005 |
-| Groq Chat | `/groq/v1/chat/completions` | $0.005 |
-| Groq Audio Transcription | `/groq/v1/audio/transcriptions` | $0.005 |
-| Together AI Chat | `/together/v1/chat/completions` | $0.005 |
-| Together AI Embeddings | `/together/v1/embeddings` | $0.005 |
-| Perplexity | `/perplexity/v1/chat/completions` | $0.01 |
-| Mistral Chat | `/mistral/v1/chat/completions` | $0.005 |
-| Mistral Embeddings | `/mistral/v1/embeddings` | $0.005 |
-| Cohere Chat | `/cohere/v1/chat` | $0.005 |
-| Cohere Embed | `/cohere/v1/embed` | $0.005 |
-| Cohere Rerank | `/cohere/v1/rerank` | $0.005 |
+The catalog spans every major AI + data API, grouped roughly as:
 
-### Media & Generation
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| OpenAI DALL-E | `/openai/v1/images/generations` | $0.05 |
-| Fal.ai Flux Dev | `/fal/fal-ai/flux/dev` | $0.03 |
-| Fal.ai Flux Pro | `/fal/fal-ai/flux-pro` | $0.05 |
-| Fal.ai Flux Realism | `/fal/fal-ai/flux-realism` | $0.05 |
-| Fal.ai Recraft 20B | `/fal/fal-ai/recraft-20b` | $0.05 |
-| Fal.ai Whisper | `/fal/fal-ai/whisper` | $0.01 |
-| Together AI Images | `/together/v1/images/generations` | $0.03 |
-| ElevenLabs TTS | `/elevenlabs/v1/text-to-speech/:voiceId` | $0.05 |
-| ElevenLabs SFX | `/elevenlabs/v1/sound-generation` | $0.05 |
-| Replicate (any model) | `/replicate/v1/predictions` | $0.02 |
-| Replicate (check status) | `/replicate/v1/predictions/status` | $0.005 |
-| Stability AI (generate) | `/stability/v1/generate` | $0.03 |
-| Stability AI (edit) | `/stability/v1/edit` | $0.03 |
-| AssemblyAI (transcribe) | `/assemblyai/v1/transcribe` | $0.02 |
-| AssemblyAI (get result) | `/assemblyai/v1/result` | $0.005 |
+- **AI models & reasoning** — OpenAI, Anthropic (Claude), Google Gemini, DeepSeek, Groq, Together AI, Perplexity, Mistral, Cohere (chat, embeddings, rerank).
+- **Media & generation** — OpenAI (images, text-to-speech), fal.ai (Flux, Recraft, Whisper, Stable Audio), Together AI (images), ElevenLabs (TTS, sound effects), Replicate, Stability AI, AssemblyAI, TinyPNG (image compression & resize).
+- **Search** — Brave, Exa, Serper, SerpAPI, NewsAPI.
+- **Web & documents** — Firecrawl (scrape / crawl / map / extract), Jina Reader, ScreenshotOne, PDFShift, QR Code.
+- **Data & finance** — OpenWeather, Google Maps (geocode / places / directions), CoinGecko, Alpha Vantage, ExchangeRate.
+- **Translation** — DeepL, Google Translate.
+- **Intelligence & security** — Hunter.io, IPinfo, VirusTotal.
+- **Tools & compute** — Judge0 (code exec), Resend (email), Pushover (push), Short.io (URL shortener).
+- **Commerce** — Lob (postcards, letters, address verification).
 
-### Search
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Brave Web Search | `/brave/v1/web/search` | $0.005 |
-| Brave Image Search | `/brave/v1/images/search` | $0.005 |
-| Brave News Search | `/brave/v1/news/search` | $0.005 |
-| Brave Video Search | `/brave/v1/videos/search` | $0.005 |
-| Brave Summarizer | `/brave/v1/summarizer/search` | $0.01 |
-| Exa (semantic search) | `/exa/v1/search` | $0.01 |
-| Exa (content extract) | `/exa/v1/contents` | $0.01 |
-| Serper (Google search) | `/serper/v1/search` | $0.005 |
-| Serper (image search) | `/serper/v1/images` | $0.005 |
-| SerpAPI (Google search) | `/serpapi/v1/search` | $0.01 |
-| SerpAPI (Google Flights) | `/serpapi/v1/flights` | $0.01 |
-| SerpAPI (locations) | `/serpapi/v1/locations` | $0.005 |
-| NewsAPI (headlines) | `/newsapi/v1/headlines` | $0.005 |
-| NewsAPI (article search) | `/newsapi/v1/search` | $0.005 |
-
-### Data
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| OpenWeather Current | `/openweather/v1/weather` | $0.005 |
-| OpenWeather Forecast | `/openweather/v1/forecast` | $0.005 |
-| Google Maps Geocode | `/googlemaps/v1/geocode` | $0.01 |
-| Google Maps Places | `/googlemaps/v1/places` | $0.01 |
-| Google Maps Directions | `/googlemaps/v1/directions` | $0.01 |
-| CoinGecko (price) | `/coingecko/v1/price` | $0.005 |
-| CoinGecko (markets) | `/coingecko/v1/markets` | $0.005 |
-| CoinGecko (trending) | `/coingecko/v1/trending` | $0.005 |
-| Alpha Vantage (quote) | `/alphavantage/v1/quote` | $0.005 |
-| Alpha Vantage (daily) | `/alphavantage/v1/daily` | $0.005 |
-| Alpha Vantage (search) | `/alphavantage/v1/search` | $0.005 |
-
-### Web & Documents
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Firecrawl Scrape | `/firecrawl/v1/scrape` | $0.01 |
-| Firecrawl Crawl | `/firecrawl/v1/crawl` | $0.02 |
-| Firecrawl Map | `/firecrawl/v1/map` | $0.01 |
-| Firecrawl Extract | `/firecrawl/v1/extract` | $0.02 |
-| Jina Reader | `/jina/v1/read` | $0.005 |
-| ScreenshotOne | `/screenshot/v1/capture` | $0.01 |
-| PDFShift (HTML to PDF) | `/pdfshift/v1/convert` | $0.01 |
-| QR Code | `/qrcode/v1/generate` | $0.005 |
-
-### Translation
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| DeepL (translate) | `/deepl/v1/translate` | $0.005 |
-| Google Translate | `/translate/v1/translate` | $0.005 |
-| Google Detect Language | `/translate/v1/detect` | $0.005 |
-
-### Intelligence
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Hunter.io (domain search) | `/hunter/v1/search` | $0.02 |
-| Hunter.io (verify email) | `/hunter/v1/verify` | $0.02 |
-| IPinfo (IP lookup) | `/ipinfo/v1/lookup` | $0.005 |
-
-### Tools & Compute
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Judge0 Code Exec | `/judge0/v1/submissions` | $0.005 |
-| Judge0 Languages | `/judge0/v1/languages` | $0.005 |
-| Resend Email | `/resend/v1/emails` | $0.005 |
-| Resend Batch Email | `/resend/v1/emails/batch` | $0.01 |
-
-### Commerce
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Lob Postcards | `/lob/v1/postcards` | $1.00 |
-| Lob Letters | `/lob/v1/letters` | $1.50 |
-| Lob Address Verify | `/lob/v1/verify` | $0.01 |
-### Messaging
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Pushover | `/pushover/v1/push` | $0.005 |
-
-### Security
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| VirusTotal (URL/file scan) | `/virustotal/v1/scan` | $0.01 |
-
-### Finance
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| ExchangeRate (rates) | `/exchangerate/v1/rates` | $0.005 |
-| ExchangeRate (convert) | `/exchangerate/v1/convert` | $0.005 |
-
-### Utility
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Short.io (URL shortener) | `/shortio/v1/shorten` | $0.005 |
+This list is a capability map, not the exhaustive endpoint set — always discover via the catalog before calling.
 
 ## Example Commands
 
