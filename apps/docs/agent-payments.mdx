@@ -179,6 +179,10 @@ Fetch `url` to get the file. This keeps responses safe to pass through any JSON 
 { "name": "t2000_pay",      "arguments": { "url": "...", "body": "...", "maxPrice": 0.10 } }
 ```
 
+<Note>
+**Lead a fresh session with "use t2 services."** In a brand-new chat, if you name an external API directly ("generate an image via fal.ai"), some AI clients default to their own sandbox and reply that they can't reach it — they never consider the wallet. Starting your request with **"use t2 services"** (e.g. *"Use t2 services to generate a hero image via fal.ai."*) tells the client to load the `t2000_*` tools and pay via MPP from the first message. Every recipe prompt in these docs already starts this way. Once any `t2000_*` tool has run, the rest of the session routes correctly without the prefix.
+</Note>
+
 See [Agent Wallet → MCP Integration](/agent-wallet#mcp-integration) for full client setup.
 
 ## Programmatic

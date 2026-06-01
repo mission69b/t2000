@@ -97,7 +97,7 @@ export const T2K_STORIES: StoryItem[] = [
     tag: "MPP · RESEARCH",
     title: "Morning market brief",
     prompt:
-      "Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, write me a 200-word brief.",
+      "Use t2 services. Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, write me a 200-word brief.",
     steps: ["coingecko · newsapi · anthropic"],
     done: "./brief.md",
     total: "~$0.06 · 3 calls · 0 taps",
@@ -107,7 +107,7 @@ export const T2K_STORIES: StoryItem[] = [
     tag: "MPP · CREATIVE",
     title: "Concept → demo asset",
     prompt:
-      "Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synthesize it as MP3 via ElevenLabs.",
+      "Use t2 services. Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synthesize it as MP3 via ElevenLabs.",
     steps: ["fal.ai · anthropic · elevenlabs"],
     done: "./hero.png · ./pitch.md · ./pitch.mp3",
     total: "~$0.18 · 3 calls · 0 taps · ~18s",
@@ -117,7 +117,7 @@ export const T2K_STORIES: StoryItem[] = [
     tag: "MPP · REACH",
     title: "Mail mum a birthday card",
     prompt:
-      "It's my mum's birthday next Tuesday. Write her a warm note from me, render it as a card front via fal.ai, and put it in the mail to 123 Lochiel Road via Lob.",
+      "Use t2 services. It's my mum's birthday next Tuesday. Write her a warm note from me, render it as a card front via fal.ai, and put it in the mail to 123 Lochiel Road via Lob.",
     steps: ["anthropic · fal.ai · lob"],
     done: "Card queued · USPS delivery Tuesday.",
     total: "~$2.08 · 3 calls · 0 taps",
@@ -127,7 +127,7 @@ export const T2K_STORIES: StoryItem[] = [
     tag: "MPP · CODE",
     title: "Write and run",
     prompt:
-      "Write a self-contained Python script that computes a 30-day EMA on sample SUI closes, then run it via Judge0 to verify.",
+      "Use t2 services. Write a self-contained Python script that computes a 30-day EMA on sample SUI closes, then run it via Judge0 to verify.",
     steps: ["anthropic · judge0"],
     done: "Script verified · output matches expected.",
     total: "~$0.04 · 2 calls · 0 taps · ~3s",
