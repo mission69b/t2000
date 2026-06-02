@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
 import { EngineCloser } from "../components/engine/EngineCloser";
+import { EngineCore } from "../components/engine/EngineCore";
 import { EngineHero } from "../components/engine/EngineHero";
+import { EngineMemory } from "../components/engine/EngineMemory";
 import { EngineRuntime } from "../components/engine/EngineRuntime";
-import { EngineTools } from "../components/engine/EngineTools";
+import { EngineSystems } from "../components/engine/EngineSystems";
 import { Nav } from "../components/site/Nav";
 import { ProductStrip } from "../components/site/ProductStrip";
 import { SiteFooter } from "../components/site/SiteFooter";
@@ -33,7 +35,9 @@ export default function AgentEnginePage() {
       <Nav currentPage="engine" />
       <main>
         <EngineHero />
-        <EngineTools />
+        <EngineSystems />
+        <EngineCore />
+        <EngineMemory />
         <EngineRuntime />
         <ProductStrip currentPage="engine" />
         <EngineCloser />
