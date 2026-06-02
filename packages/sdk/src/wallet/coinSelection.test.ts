@@ -12,7 +12,11 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { describe, expect, it, vi } from 'vitest';
 import { T2000Error } from '../errors.js';
-import { selectAndSplitCoin, selectSuiCoin } from './coinSelection.js';
+import {
+  selectAndSplitCoin,
+  selectSuiCoin,
+  type SponsoredCoinMergeCache,
+} from './coinSelection.js';
 
 const OWNER = `0x${'a'.repeat(64)}`;
 const USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -183,7 +187,7 @@ describe('selectSuiCoin — sponsored merge cache (multi-leg bundle)', () => {
       { coinObjectId: `0x${'5'.repeat(64)}`, balance: '20000000000' },
       { coinObjectId: `0x${'6'.repeat(64)}`, balance: '14000000000' },
     ]);
-    const cache = new Map() as Parameters<typeof selectSuiCoin>[5];
+    const cache = new Map() as SponsoredCoinMergeCache;
 
     // Leg 1 (SUI → WAL) and Leg 2 (SUI → DEEP), same PTB, shared cache.
     await selectSuiCoin(tx, client, OWNER, 1_700_000_000n, true, cache);
@@ -219,7 +223,7 @@ describe('selectSuiCoin — sponsored merge cache (multi-leg bundle)', () => {
     const { client } = countingClient([
       { coinObjectId: `0x${'5'.repeat(64)}`, balance: '2000000000' },
     ]);
-    const cache = new Map() as Parameters<typeof selectSuiCoin>[5];
+    const cache = new Map() as SponsoredCoinMergeCache;
 
     await selectSuiCoin(tx, client, OWNER, 1_500_000_000n, true, cache);
     // Only 0.5 SUI remains on the merged primary; asking for 1 SUI fails.
@@ -234,7 +238,7 @@ describe('selectSuiCoin — sponsored merge cache (multi-leg bundle)', () => {
     const { client, getCoins } = countingClient([
       { coinObjectId: `0x${'5'.repeat(64)}`, balance: '34000000000' },
     ]);
-    const cache = new Map() as Parameters<typeof selectSuiCoin>[5];
+    const cache = new Map() as SponsoredCoinMergeCache;
 
     await selectSuiCoin(tx, client, OWNER, 1_700_000_000n, true, cache);
     await selectSuiCoin(tx, client, OWNER, 1_700_000_000n, true, cache);
@@ -244,5 +248,104 @@ describe('selectSuiCoin — sponsored merge cache (multi-leg bundle)', () => {
     expect(kinds.filter((k) => k === 'MergeCoins')).toHaveLength(0);
     expect(kinds.filter((k) => k === 'SplitCoins')).toHaveLength(2);
     expect(getCoins).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('selectAndSplitCoin — sponsored merge cache (non-SUI, NOT SUI-specific)', () => {
+  // Proves the fix is root-cause: under sponsorship EVERY asset routes
+  // through selectCoinObjectsOnly, so two same-asset legs (e.g. swap USDC +
+  // save USDC, or two USDC swaps) hit the same double-merge bug and the
+  // shared cache fixes them identically to SUI.
+  function countingClient(coins: Array<{ coinObjectId: string; balance: string }>) {
+    const getCoins = vi.fn(async () => ({ data: coins, nextCursor: null, hasNextPage: false }));
+    const client = {
+      getCoins,
+      getBalance: async ({ coinType }: { coinType: string }) => ({
+        coinType,
+        coinObjectCount: coins.length,
+        totalBalance: coins.reduce((a, c) => a + BigInt(c.balance), 0n).toString(),
+        lockedBalance: {},
+      }),
+    } as unknown as SuiJsonRpcClient;
+    return { client, getCoins };
+  }
+
+  it('merges USDC coin objects exactly ONCE across two sponsored legs', async () => {
+    const tx = new Transaction();
+    tx.setSender(OWNER);
+    const { client, getCoins } = countingClient([
+      { coinObjectId: `0x${'1'.repeat(64)}`, balance: '10000000' },
+      { coinObjectId: `0x${'2'.repeat(64)}`, balance: '6000000' },
+    ]);
+    const cache = new Map() as SponsoredCoinMergeCache;
+
+    await selectAndSplitCoin(tx, client, OWNER, USDC, 5_000_000n, {
+      sponsoredContext: true,
+      allowSwapAll: false,
+      mergeCache: cache,
+    });
+    await selectAndSplitCoin(tx, client, OWNER, USDC, 5_000_000n, {
+      sponsoredContext: true,
+      allowSwapAll: false,
+      mergeCache: cache,
+    });
+
+    const kinds = commandKinds(tx);
+    expect(kinds.filter((k) => k === 'MergeCoins')).toHaveLength(1);
+    expect(kinds.filter((k) => k === 'SplitCoins')).toHaveLength(2);
+    expect(getCoins).toHaveBeenCalledTimes(1);
+    expect(kinds).not.toContain('$Intent'); // never coinWithBalance under sponsorship
+  });
+
+  it('without a shared cache, two USDC legs re-merge (the pre-fix bug)', async () => {
+    const tx = new Transaction();
+    tx.setSender(OWNER);
+    const { client } = countingClient([
+      { coinObjectId: `0x${'1'.repeat(64)}`, balance: '10000000' },
+      { coinObjectId: `0x${'2'.repeat(64)}`, balance: '6000000' },
+    ]);
+
+    await selectAndSplitCoin(tx, client, OWNER, USDC, 5_000_000n, {
+      sponsoredContext: true,
+      allowSwapAll: false,
+    });
+    await selectAndSplitCoin(tx, client, OWNER, USDC, 5_000_000n, {
+      sponsoredContext: true,
+      allowSwapAll: false,
+    });
+
+    expect(commandKinds(tx).filter((k) => k === 'MergeCoins')).toHaveLength(2);
+  });
+
+  it('distinct coin types in one PTB each get their own single merge', async () => {
+    const tx = new Transaction();
+    tx.setSender(OWNER);
+    const cache = new Map() as SponsoredCoinMergeCache;
+    const { client: usdcClient } = countingClient([
+      { coinObjectId: `0x${'1'.repeat(64)}`, balance: '10000000' },
+      { coinObjectId: `0x${'2'.repeat(64)}`, balance: '6000000' },
+    ]);
+
+    // Two USDC legs (share cache → one merge) ...
+    await selectAndSplitCoin(tx, usdcClient, OWNER, USDC, 5_000_000n, {
+      sponsoredContext: true,
+      allowSwapAll: false,
+      mergeCache: cache,
+    });
+    await selectAndSplitCoin(tx, usdcClient, OWNER, USDC, 5_000_000n, {
+      sponsoredContext: true,
+      allowSwapAll: false,
+      mergeCache: cache,
+    });
+    // ... plus one SUI leg (different coin type → separate cache entry + merge).
+    const { client: suiClient } = countingClient([
+      { coinObjectId: `0x${'5'.repeat(64)}`, balance: '20000000000' },
+      { coinObjectId: `0x${'6'.repeat(64)}`, balance: '14000000000' },
+    ]);
+    await selectSuiCoin(tx, suiClient, OWNER, 1_700_000_000n, true, cache);
+
+    // One merge per coin type (USDC + SUI), three splits (two USDC, one SUI).
+    expect(commandKinds(tx).filter((k) => k === 'MergeCoins')).toHaveLength(2);
+    expect(commandKinds(tx).filter((k) => k === 'SplitCoins')).toHaveLength(3);
   });
 });

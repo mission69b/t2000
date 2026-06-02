@@ -492,14 +492,16 @@ export async function addSwapToTx(
      */
     sponsoredContext?: boolean;
     /**
-     * Per-PTB merge cache for sponsored SUI sourcing. Provided by
-     * `composeTx`'s orchestration loop so multiple SUI-source legs in one
-     * bundle share a single merged primary coin instead of each emitting
-     * its own `mergeCoins` (the second of which references already-consumed
-     * coins → Enoki dry-run `ArgumentWithoutValue`). Single swaps / non-SUI
-     * sources don't need it; omit. See `SponsoredCoinMergeCache` JSDoc.
+     * Per-PTB merge cache for sponsored coin-object sourcing (any coin
+     * type — SUI in the dedicated branch, USDC/USDsui/etc. in the wallet
+     * branch). Provided by `composeTx`'s orchestration loop so multiple
+     * legs sourcing the same coin in one bundle share a single merged
+     * primary coin instead of each emitting its own `mergeCoins` (the
+     * second of which references already-consumed coins → Enoki dry-run
+     * `ArgumentWithoutValue`). Single swaps don't need it; omit. See
+     * `SponsoredCoinMergeCache` JSDoc.
      */
-    suiMergeCache?: SponsoredCoinMergeCache;
+    coinMergeCache?: SponsoredCoinMergeCache;
   },
 ): Promise<{
   coin: TransactionObjectArgument;
@@ -549,24 +551,28 @@ export async function addSwapToTx(
       address,
       requestedRaw,
       input.sponsoredContext ?? false,
-      input.suiMergeCache,
+      input.coinMergeCache,
     );
     inputCoin = result.coin;
     effectiveRaw = result.effectiveAmount;
   } else {
     // Non-SUI wallet-mode source — delegate to the canonical prelude.
-    // Pre-flights against `getBalance().totalBalance` (coins + address
-    // balance) and returns a `coinWithBalance({ type, balance })` arg.
-    // Multi-write bundles that consume the same input asset across legs
-    // (swap+save, swap+send) get correct merge/split dedup automatically
-    // because the `@mysten/sui` resolver batches all `coinWithBalance`
-    // intents for a given coin type into a single merge at `tx.build()`
-    // time. Replaces the per-PTB merge cache that was load-bearing
-    // pre-2026-05-22 (when `selectAndSplitCoin` emitted explicit
-    // `mergeCoins` itself).
+    // NON-sponsored: pre-flights against `getBalance().totalBalance` and
+    // returns a `coinWithBalance({ type, balance })` arg, whose `@mysten/sui`
+    // resolver batches all intents for a coin type into a single build-time
+    // merge — so same-asset multi-leg bundles dedup automatically.
+    //
+    // SPONSORED: routes through `selectCoinObjectsOnly` instead (coinWithBalance's
+    // address-balance `FundsWithdrawal` reservation is what Enoki can't
+    // deserialize, issue #93). That manual path has NO build-time batching, so
+    // two legs sourcing the same coin would each emit their own `mergeCoins`
+    // over the SAME objects → second merge references consumed coins → Enoki
+    // dry-run `ArgumentWithoutValue`. The `coinMergeCache` supplies the dedup:
+    // first leg merges once + caches the primary, later legs split from it.
     const { selectAndSplitCoin } = await import('../wallet/coinSelection.js');
     const result = await selectAndSplitCoin(tx, client, address, fromType, requestedRaw, {
       sponsoredContext: input.sponsoredContext ?? false,
+      mergeCache: input.coinMergeCache,
     });
     inputCoin = result.coin;
     effectiveRaw = result.effectiveAmount;

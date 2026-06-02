@@ -122,7 +122,11 @@ export async function selectAndSplitCoin(
   owner: string,
   coinType: string,
   amount: bigint | 'all',
-  options: { allowSwapAll?: boolean; sponsoredContext?: boolean } = {},
+  options: {
+    allowSwapAll?: boolean;
+    sponsoredContext?: boolean;
+    mergeCache?: SponsoredCoinMergeCache;
+  } = {},
 ): Promise<SelectAndSplitResult> {
   // [2026-05-30] Sponsored Enoki path — coin objects only. `coinWithBalance`
   // reaches into the address balance (mysten Address Balances feature) when
@@ -135,7 +139,15 @@ export async function selectAndSplitCoin(
   // and surface a clear error when the user's funds are address-balance-only.
   // See github.com/mission69b/t2000 issue #93.
   if (options.sponsoredContext) {
-    return selectCoinObjectsOnly(tx, client, owner, coinType, amount, options.allowSwapAll ?? true);
+    return selectCoinObjectsOnly(
+      tx,
+      client,
+      owner,
+      coinType,
+      amount,
+      options.allowSwapAll ?? true,
+      options.mergeCache,
+    );
   }
 
   const balanceResp = await client.getBalance({ owner, coinType });
@@ -184,14 +196,20 @@ export async function selectAndSplitCoin(
  * `primary` instead of re-fetching + re-merging.
  *
  * Why this exists (S.xxx, 2026-06-02): a sponsored bundle with 2+ legs
- * sourcing the same coin (e.g. `SUI→WAL` + `SUI→DEEP`) called
- * `selectCoinObjectsOnly` once per leg. Each call emitted its own
- * `mergeCoins` over the SAME coin objects, so the second leg's merge
- * referenced coins the first leg already consumed → Enoki dry-run failed
- * with `CommandArgumentError { ArgumentWithoutValue }`. Non-SUI legs dodge
- * this because they go through `coinWithBalance`, whose resolver batches
- * all intents for one coin type into a single build-time merge. The SUI
- * sponsored path has no such batching, so the cache supplies it.
+ * sourcing the same coin (e.g. `SUI→WAL` + `SUI→DEEP`, or `swap USDC` +
+ * `save USDC`) called `selectCoinObjectsOnly` once per leg. Each call
+ * emitted its own `mergeCoins` over the SAME coin objects, so the second
+ * leg's merge referenced coins the first leg already consumed → Enoki
+ * dry-run failed with `CommandArgumentError { ArgumentWithoutValue }`.
+ *
+ * This is NOT SUI-specific. Under sponsorship, `selectAndSplitCoin` routes
+ * EVERY asset through `selectCoinObjectsOnly` (the `coinWithBalance`
+ * batching that would otherwise dedup these merges only runs for
+ * non-sponsored CLI/direct flows — its address-balance `FundsWithdrawal`
+ * reservation is what Enoki can't deserialize, issue #93). So the cache is
+ * the dedup layer for ALL coin types in a sponsored multi-leg PTB, keyed
+ * by coin type. SUI was simply the first asset observed failing in the
+ * wild because it's the most common swap source.
  */
 export type SponsoredCoinMergeCache = Map<
   string,

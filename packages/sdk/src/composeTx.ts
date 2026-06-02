@@ -402,14 +402,15 @@ export interface AppenderContext {
    */
   isOutputConsumed?: boolean;
   /**
-   * Per-PTB merge cache for sponsored SUI sourcing, shared across every
-   * appender in a single `composeTx` run. Lets multiple SUI-source swap
-   * legs in one bundle reuse a single merged primary coin instead of each
-   * re-fetching + re-merging the same coin objects (the second merge of
-   * which references already-consumed coins → Enoki dry-run
-   * `ArgumentWithoutValue`). See `SponsoredCoinMergeCache` JSDoc.
+   * Per-PTB merge cache for sponsored coin-object sourcing, shared across
+   * every appender in a single `composeTx` run. Lets multiple legs that
+   * source the same coin type (two SUI swaps, swap USDC + save USDC, etc.)
+   * reuse a single merged primary coin instead of each re-fetching +
+   * re-merging the same coin objects (the second merge of which references
+   * already-consumed coins → Enoki dry-run `ArgumentWithoutValue`). Applies
+   * to ALL coin types, not just SUI. See `SponsoredCoinMergeCache` JSDoc.
    */
-  suiMergeCache?: SponsoredCoinMergeCache;
+  coinMergeCache?: SponsoredCoinMergeCache;
 }
 
 /**
@@ -510,6 +511,7 @@ export const WRITE_APPENDER_REGISTRY: {
     } else {
       const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount, {
         sponsoredContext: ctx.sponsoredContext,
+        mergeCache: ctx.coinMergeCache,
       });
       coin = r.coin;
       effectiveAmount = r.effectiveAmount;
@@ -583,6 +585,7 @@ export const WRITE_APPENDER_REGISTRY: {
     } else {
       const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount, {
         sponsoredContext: ctx.sponsoredContext,
+        mergeCache: ctx.coinMergeCache,
       });
       coin = r.coin;
       effectiveAmount = r.effectiveAmount;
@@ -645,7 +648,14 @@ export const WRITE_APPENDER_REGISTRY: {
     if (asset === 'SUI') {
       // Standard gas-native SUI transfer — NOT gasless (SUI is not on
       // the protocol `balance::send_funds` allowlist).
-      const result = await selectSuiCoin(tx, ctx.client, ctx.sender, rawAmount, ctx.sponsoredContext);
+      const result = await selectSuiCoin(
+        tx,
+        ctx.client,
+        ctx.sender,
+        rawAmount,
+        ctx.sponsoredContext,
+        ctx.coinMergeCache,
+      );
       addSendToTx(tx, result.coin, recipient);
       return {
         preview: {
@@ -719,7 +729,7 @@ export const WRITE_APPENDER_REGISTRY: {
       inputCoin: ctx.chainedCoin,
       precomputedRoute: input.precomputedRoute,
       sponsoredContext: ctx.sponsoredContext,
-      suiMergeCache: ctx.suiMergeCache,
+      coinMergeCache: ctx.coinMergeCache,
     });
     if (!ctx.isOutputConsumed) {
       tx.transferObjects([result.coin], ctx.sender);
@@ -895,10 +905,10 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
     sponsoredContext: opts.sponsoredContext ?? false,
     overlayFee: opts.overlayFee,
     feeHooks: opts.feeHooks,
-    // One cache per compose run — shared across all legs so multi-leg
-    // sponsored bundles that source the same coin (e.g. two SUI swaps)
-    // merge that coin's objects exactly once.
-    suiMergeCache: new Map() as SponsoredCoinMergeCache,
+    // One cache per compose run — shared across all legs (any coin type)
+    // so multi-leg sponsored bundles that source the same coin (two SUI
+    // swaps, swap USDC + save USDC, ...) merge that coin's objects once.
+    coinMergeCache: new Map() as SponsoredCoinMergeCache,
   };
 
   // [SPEC 13 Phase 1] First pass: validate every `inputCoinFromStep`
