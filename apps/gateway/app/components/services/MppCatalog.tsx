@@ -58,7 +58,7 @@ export function MppCatalog({
             <CatalogSearch q={q} setQ={setQ} />
           </div>
           <p
-            className="m-0 mt-5 max-w-[560px]"
+            className="mb-0 mt-5 max-w-[560px]"
             style={{
               fontSize: 16,
               lineHeight: 1.55,
@@ -71,14 +71,14 @@ export function MppCatalog({
         </header>
 
         <div
-          className="flex flex-wrap gap-2 py-6"
+          className="flex flex-nowrap gap-2 overflow-x-auto py-6 scrollbar-hide"
           style={{ borderTop: "1px solid var(--ds-gray-alpha-300)" }}
         >
           {chips.map((c) => (
             <button
               key={c.id}
               type="button"
-              className="mpp-chip"
+              className="mpp-chip shrink-0"
               aria-pressed={c.id === cat}
               onClick={() => setCat(c.id)}
             >

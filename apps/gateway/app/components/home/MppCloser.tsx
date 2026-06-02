@@ -157,14 +157,16 @@ function StepCard({ step, last }: { step: Step; last: boolean }) {
       <LinkOrAnchor
         href={step.cta.href}
         {...linkProps}
-        className="inline-flex items-center gap-1 no-underline transition-colors"
+        className={
+          "inline-flex items-center gap-1 no-underline transition-colors " +
+          (last ? "text-accent hover:text-accent-hover" : "text-foreground hover:text-accent")
+        }
         style={{
           marginTop: 8,
           fontFamily: "var(--font-sans)",
           fontSize: 13.5,
           fontWeight: 500,
           letterSpacing: "-0.011em",
-          color: last ? "var(--t2k-accent)" : "var(--fg)",
         }}
       >
         {step.cta.label}

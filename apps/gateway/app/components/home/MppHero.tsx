@@ -58,7 +58,7 @@ export function MppHero() {
               No API keys. No accounts. No subscriptions. No gas. Your agent pays per request with USDC.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-2.5">
+            <div className="mt-8 flex flex-wrap gap-2.5 sm:flex-nowrap">
               <MppInstallButton />
               <a
                 href="/services"

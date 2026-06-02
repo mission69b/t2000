@@ -42,6 +42,9 @@
 html { overflow-x: hidden; }
 body { font-size: 15px; line-height: 1.6; }
 
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 ::selection { background: var(--t2k-accent); color: var(--ds-background-100); }
 
 .t2k-dot {

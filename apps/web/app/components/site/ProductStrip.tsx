@@ -40,16 +40,12 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
             const className =
               "group flex flex-col rounded-lg border p-[20px_18px] no-underline transition-colors";
 
-            const style = {
-              background: active
-                ? "var(--ds-gray-alpha-100)"
-                : "transparent",
-              borderColor: active
-                ? "var(--ds-gray-alpha-500)"
-                : "var(--ds-gray-alpha-400)",
-              color: active ? "var(--fg-muted)" : "var(--fg)",
-              cursor: active ? "default" : "pointer",
-              pointerEvents: active ? ("none" as const) : ("auto" as const),
+            const activeStyle = {
+              background: "var(--ds-gray-alpha-100)",
+              borderColor: "var(--ds-gray-alpha-500)",
+              color: "var(--fg-muted)",
+              cursor: "default",
+              pointerEvents: "none" as const,
             };
 
             const inner = (
@@ -97,7 +93,7 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
                 <div
                   key={p.slug}
                   className={className}
-                  style={style}
+                  style={activeStyle}
                   aria-current="page"
                 >
                   {inner}
@@ -108,8 +104,11 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
               <Link
                 key={p.slug}
                 href={p.href}
-                className={className + " hover:border-accent hover:bg-accent/[0.08]"}
-                style={style}
+                className={
+                  className +
+                  " border-[color:var(--ds-gray-alpha-400)] hover:border-accent hover:bg-accent/[0.08]"
+                }
+                style={{ color: "var(--fg)" }}
               >
                 {inner}
               </Link>

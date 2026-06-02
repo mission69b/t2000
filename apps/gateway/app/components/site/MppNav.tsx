@@ -54,8 +54,12 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
               <Link
                 key={l.id}
                 href={l.href}
-                className="text-[13px] font-medium tracking-[-0.011em] no-underline transition-colors hover:text-foreground"
-                style={{ color: active ? "var(--fg)" : "var(--fg-muted)" }}
+                className={
+                  "text-[13px] font-medium tracking-[-0.011em] no-underline transition-colors " +
+                  (active
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground")
+                }
               >
                 {l.label}
               </Link>
@@ -80,8 +84,7 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
           href="https://github.com/mission69b/t2000"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden text-[13px] font-medium tracking-[-0.011em] no-underline transition-colors hover:text-foreground md:inline-flex"
-          style={{ color: "var(--fg-muted)" }}
+          className="hidden text-[13px] font-medium tracking-[-0.011em] text-muted-foreground no-underline transition-colors hover:text-foreground md:inline-flex"
         >
           GitHub
         </a>
@@ -90,9 +93,8 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
           href="https://suimpp.dev"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden font-mono text-[12px] tracking-[0.01em] no-underline transition-colors hover:text-foreground md:inline-flex"
+          className="hidden font-mono text-[12px] tracking-[0.01em] text-dim no-underline transition-colors hover:text-foreground md:inline-flex"
           style={{
-            color: "var(--fg-subtle)",
             paddingLeft: 12,
             borderLeft: "1px solid var(--ds-gray-alpha-300)",
           }}
@@ -104,8 +106,7 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
           href="https://t2000.ai"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-[12px] tracking-[0.01em] no-underline transition-colors hover:text-foreground"
-          style={{ color: "var(--fg-subtle)" }}
+          className="font-mono text-[12px] tracking-[0.01em] text-dim no-underline transition-colors hover:text-foreground"
         >
           t2000.ai&nbsp;↗
         </a>
