@@ -62,17 +62,17 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@cetusprotocol/aggregator-sdk": "^1.4.8",
-    "@mysten/payment-kit": "^0.1.6",
+    "@cetusprotocol/aggregator-sdk": "^1.5.5",
+    "@mysten/payment-kit": "^0.1.11",
     "@mysten/sui": "^2.17.0",
-    "@mysten/suins": "^1.1.1",
+    "@mysten/suins": "^1.1.4",
     "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.4.0",
     "@suimpp/mpp": "^0.7.0",
     "bn.js": "^5.2.1",
     "eventemitter3": "^5",
-    "mppx": "^0.4.9"
+    "mppx": "^0.6.28"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",
@@ -80,7 +80,7 @@
     "eslint": "^9",
     "tsup": "^8",
     "typescript": "^5",
-    "typescript-eslint": "^8.58.0",
+    "typescript-eslint": "^8.60.1",
     "vitest": "^3"
   },
   "license": "MIT"
