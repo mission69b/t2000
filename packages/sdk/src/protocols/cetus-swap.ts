@@ -19,6 +19,7 @@ import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transac
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import BN from 'bn.js';
 import { resolveTokenType, getDecimalsForCoinType } from '../token-registry.js';
+import type { SponsoredCoinMergeCache } from '../wallet/coinSelection.js';
 
 export interface OverlayFeeConfig {
   /** Fee rate as a fraction (e.g. 0.001 = 0.1%). Pass 0 to disable. */
@@ -490,6 +491,15 @@ export async function addSwapToTx(
      * threads this through via `composeTx({ sponsoredContext: true })`.
      */
     sponsoredContext?: boolean;
+    /**
+     * Per-PTB merge cache for sponsored SUI sourcing. Provided by
+     * `composeTx`'s orchestration loop so multiple SUI-source legs in one
+     * bundle share a single merged primary coin instead of each emitting
+     * its own `mergeCoins` (the second of which references already-consumed
+     * coins → Enoki dry-run `ArgumentWithoutValue`). Single swaps / non-SUI
+     * sources don't need it; omit. See `SponsoredCoinMergeCache` JSDoc.
+     */
+    suiMergeCache?: SponsoredCoinMergeCache;
   },
 ): Promise<{
   coin: TransactionObjectArgument;
@@ -539,6 +549,7 @@ export async function addSwapToTx(
       address,
       requestedRaw,
       input.sponsoredContext ?? false,
+      input.suiMergeCache,
     );
     inputCoin = result.coin;
     effectiveRaw = result.effectiveAmount;

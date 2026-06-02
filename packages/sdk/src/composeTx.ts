@@ -78,7 +78,11 @@ import { addHarvestToTx } from './protocols/navi-harvest.js';
 import type { PendingReward } from './adapters/types.js';
 import { addSwapToTx, type SwapRouteResult } from './protocols/cetus-swap.js';
 import { addSendToTx } from './wallet/send.js';
-import { selectAndSplitCoin, selectSuiCoin } from './wallet/coinSelection.js';
+import {
+  selectAndSplitCoin,
+  selectSuiCoin,
+  type SponsoredCoinMergeCache,
+} from './wallet/coinSelection.js';
 import { resolveTokenType, getDecimalsForCoinType, SUI_TYPE } from './token-registry.js';
 import {
   GASLESS_MIN_STABLE_AMOUNT,
@@ -397,6 +401,15 @@ export interface AppenderContext {
    * the PTB build fails or the on-chain leg reverts.
    */
   isOutputConsumed?: boolean;
+  /**
+   * Per-PTB merge cache for sponsored SUI sourcing, shared across every
+   * appender in a single `composeTx` run. Lets multiple SUI-source swap
+   * legs in one bundle reuse a single merged primary coin instead of each
+   * re-fetching + re-merging the same coin objects (the second merge of
+   * which references already-consumed coins → Enoki dry-run
+   * `ArgumentWithoutValue`). See `SponsoredCoinMergeCache` JSDoc.
+   */
+  suiMergeCache?: SponsoredCoinMergeCache;
 }
 
 /**
@@ -706,6 +719,7 @@ export const WRITE_APPENDER_REGISTRY: {
       inputCoin: ctx.chainedCoin,
       precomputedRoute: input.precomputedRoute,
       sponsoredContext: ctx.sponsoredContext,
+      suiMergeCache: ctx.suiMergeCache,
     });
     if (!ctx.isOutputConsumed) {
       tx.transferObjects([result.coin], ctx.sender);
@@ -881,6 +895,10 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
     sponsoredContext: opts.sponsoredContext ?? false,
     overlayFee: opts.overlayFee,
     feeHooks: opts.feeHooks,
+    // One cache per compose run — shared across all legs so multi-leg
+    // sponsored bundles that source the same coin (e.g. two SUI swaps)
+    // merge that coin's objects exactly once.
+    suiMergeCache: new Map() as SponsoredCoinMergeCache,
   };
 
   // [SPEC 13 Phase 1] First pass: validate every `inputCoinFromStep`

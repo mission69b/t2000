@@ -175,6 +175,29 @@ export async function selectAndSplitCoin(
  * means those funds live in the address balance (e.g. received via a gasless
  * stablecoin transfer) and can't be moved through a sponsored transaction yet.
  */
+/**
+ * Per-PTB cache of merged sponsored coin-object primaries, keyed by coin
+ * type. The FIRST `selectCoinObjectsOnly` call for a given coin type in a
+ * PTB fetches the owner's discrete `Coin<T>` objects, merges them into one
+ * `primary`, and records it here alongside the remaining (unspent) balance.
+ * EVERY subsequent leg sourcing the same coin type splits from that cached
+ * `primary` instead of re-fetching + re-merging.
+ *
+ * Why this exists (S.xxx, 2026-06-02): a sponsored bundle with 2+ legs
+ * sourcing the same coin (e.g. `SUI→WAL` + `SUI→DEEP`) called
+ * `selectCoinObjectsOnly` once per leg. Each call emitted its own
+ * `mergeCoins` over the SAME coin objects, so the second leg's merge
+ * referenced coins the first leg already consumed → Enoki dry-run failed
+ * with `CommandArgumentError { ArgumentWithoutValue }`. Non-SUI legs dodge
+ * this because they go through `coinWithBalance`, whose resolver batches
+ * all intents for one coin type into a single build-time merge. The SUI
+ * sponsored path has no such batching, so the cache supplies it.
+ */
+export type SponsoredCoinMergeCache = Map<
+  string,
+  { primary: TransactionObjectArgument; remaining: bigint }
+>;
+
 async function selectCoinObjectsOnly(
   tx: Transaction,
   client: SuiJsonRpcClient,
@@ -182,7 +205,33 @@ async function selectCoinObjectsOnly(
   coinType: string,
   amount: bigint | 'all',
   allowSwapAll: boolean,
+  mergeCache?: SponsoredCoinMergeCache,
 ): Promise<SelectAndSplitResult> {
+  // Cache hit — a prior leg in THIS PTB already merged this coin type's
+  // objects into `cached.primary`. Re-running the fetch+merge below would
+  // emit a second `mergeCoins` over already-consumed coins → dry-run
+  // `ArgumentWithoutValue`. Split from the cached primary instead.
+  const cached = mergeCache?.get(coinType);
+  if (cached) {
+    const requested = amount === 'all' ? cached.remaining : amount;
+    if (cached.remaining === 0n || requested > cached.remaining) {
+      throw new T2000Error(
+        'ADDRESS_BALANCE_UNSPONSORABLE',
+        `Not enough ${coinType} in coin objects to cover all legs of this ` +
+          `sponsored bundle. The remaining funds are in your address balance, ` +
+          `which sponsored transactions can't access yet.`,
+        { remaining: cached.remaining.toString(), requested: requested.toString(), coinType },
+      );
+    }
+    const swapAll = amount === 'all' || requested >= cached.remaining;
+    const effectiveAmount = swapAll ? cached.remaining : requested;
+    const coin = swapAll
+      ? cached.primary
+      : tx.splitCoins(cached.primary, [effectiveAmount])[0];
+    cached.remaining -= effectiveAmount;
+    return { coin, effectiveAmount, swapAll };
+  }
+
   const objects: { objectId: string; balance: bigint }[] = [];
   let coinObjectTotal = 0n;
   let cursor: string | null | undefined;
@@ -238,6 +287,15 @@ async function selectCoinObjectsOnly(
   // exact amount and leave the remainder on the (sender-owned) primary coin.
   const coin = swapAll ? primary : tx.splitCoins(primary, [effectiveAmount])[0];
 
+  // Record the merged primary so later legs in the same PTB reuse it
+  // rather than re-fetching + re-merging the same (now-consumed) coins.
+  // When `swapAll`, the primary was consumed (remaining 0) — a later leg
+  // hitting the cache then throws the unsponsorable shortfall above.
+  mergeCache?.set(coinType, {
+    primary,
+    remaining: coinObjectTotal - effectiveAmount,
+  });
+
   return { coin, effectiveAmount, swapAll };
 }
 
@@ -262,10 +320,11 @@ export async function selectSuiCoin(
   owner: string,
   amountMist: bigint,
   sponsoredContext: boolean,
+  mergeCache?: SponsoredCoinMergeCache,
 ): Promise<SelectAndSplitResult> {
   if (sponsoredContext) {
     const { SUI_TYPE } = await import('../token-registry.js');
-    return selectCoinObjectsOnly(tx, client, owner, SUI_TYPE, amountMist, false);
+    return selectCoinObjectsOnly(tx, client, owner, SUI_TYPE, amountMist, false, mergeCache);
   }
 
   const [coin] = tx.splitCoins(tx.gas, [amountMist]);
