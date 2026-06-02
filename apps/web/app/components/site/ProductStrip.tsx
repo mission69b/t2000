@@ -19,20 +19,22 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
       }}
     >
       <div className="t2k-container">
-        <span className="t2k-eyebrow mb-3.5 block">{"// PART OF THE STACK"}</span>
-        <h2
-          style={{
-            margin: "0 0 36px",
-            fontFamily: "var(--font-display)",
-            fontWeight: 600,
-            fontSize: "clamp(28px, 3.6vw, 40px)",
-            letterSpacing: "-0.03em",
-            lineHeight: 1.1,
-            color: "var(--fg)",
-          }}
-        >
-          One agent stack.
-        </h2>
+        <header className="mb-9">
+          <span className="t2k-eyebrow mb-3.5 block">{"// PART OF THE STACK"}</span>
+          <h2
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              fontSize: "clamp(28px, 3.6vw, 40px)",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.1,
+              color: "var(--fg)",
+            }}
+          >
+            One agent stack.
+          </h2>
+        </header>
 
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {PRODUCTS.map((p) => {
