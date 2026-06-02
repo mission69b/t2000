@@ -21,7 +21,7 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
       <div className="t2k-container">
         <span className="t2k-eyebrow mb-3.5 block">{"// PART OF THE STACK"}</span>
         <h2
-          className="m-0 mb-9"
+          className="mt-0 mb-9"
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 600,
