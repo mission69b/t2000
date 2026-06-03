@@ -95,14 +95,37 @@ export default async function Image() {
             left: 80,
             top: 80,
             display: "flex",
-            fontFamily: "Geist",
-            fontWeight: 600,
-            fontSize: 28,
-            color: "#ffffff",
-            letterSpacing: "-0.6px",
+            alignItems: "center",
+            gap: 13,
           }}
         >
-          {WORDMARK}
+          <svg
+            width="36"
+            height="36"
+            viewBox="0 0 100 100"
+            style={{ display: "block" }}
+          >
+            <path
+              fill="#EDEDED"
+              d="M22 0H78C90.15 0 100 9.85 100 22V78C100 90.15 90.15 100 78 100H22C9.85 100 0 90.15 0 78V22C0 9.85 9.85 0 22 0Z"
+            />
+            <path
+              fill="#0A0A0A"
+              d="M41 29H52V41H61V50H52V62Q52 72 63 72H41V50H33V41H41Z"
+            />
+          </svg>
+          <div
+            style={{
+              display: "flex",
+              fontFamily: "Geist",
+              fontWeight: 600,
+              fontSize: 28,
+              color: "#ffffff",
+              letterSpacing: "-0.6px",
+            }}
+          >
+            {WORDMARK}
+          </div>
         </div>
 
         <div
