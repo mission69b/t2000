@@ -25,8 +25,10 @@ t2000/
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/engine  ← @t2000/engine (agent engine — AISDKEngine, tools, MCP)
 ├── packages/mcp     ← @t2000/mcp (npm)
+├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
+├── packages/models  ← @t2000/models (PLANNED, H2 — Agent Models: OpenAI-compatible gateway to self-hosted Qwen + resold frontier)
 ├── t2000-skills/    ← Agent skill definitions
-└── audric-roadmap.md ← Product roadmap + build tracker
+└── PRODUCT_ROADMAP.md ← Whole-product master roadmap (t2000 + Audric)
 ```
 
 ### Two brand layers
@@ -87,7 +89,7 @@ Every Audric action runs through Passport. It's the wallet itself.
 9. **Invest is REMOVED.** Do not add it back. Savings (an Audric Finance operation on USDC into NAVI) covers yield.
 10. **Audric Finance is back (S.18).** S.17 retired it; S.18 brought it back as the home for save/swap/borrow/repay/charts because "Intelligence" was overloaded. Don't try to re-retire it without re-reading the S.18 entry in `audric-build-tracker.md`.
 
-The canonical reference for these five products is the top of `audric-roadmap.md`.
+The canonical reference for these five products is the top of `PRODUCT_ROADMAP.md`.
 
 ### MCP-first DeFi integration
 
@@ -118,7 +120,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 
 **Short version:**
-- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + founder-local trackers (`audric-build-tracker.md`, `audric-roadmap.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
+- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + founder-local trackers (`audric-build-tracker.md`, `PRODUCT_ROADMAP.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
 - **`docs/`** — public-facing docs (tracked)
 - **`spec/`** — internal SPECs, references, runbooks, archive. **Entire tree is local-only / gitignored** (the public repo never sees SPEC content). Active in-flight SPECs, locked design decisions, harness contracts, runbooks all live here for the maintainers; nothing in `spec/` is part of the published surface.
 
@@ -129,7 +131,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 | [`developers.t2000.ai`](https://developers.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
 | `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
-| `audric-roadmap.md` (local-only) | Product roadmap, feature specs, revenue model (gitignored) | Feature planning |
+| `PRODUCT_ROADMAP.md` (local-only) | Whole-product master roadmap — 5 Audric products + t2000 infra + the 3 strategic threads (Store, Agent Models, Agent Deploy) + revenue model (gitignored) | Feature planning |
 | `HANDOFF_NEXT_AGENT.md` (t2000 + `audric/`, local-only) | **Forward-backlog SSOT.** The `audric/HANDOFF_NEXT_AGENT.md` "Active backlog" table is canonical for product / agent-ownable tasks (ranked, with effort + notes) + founder ops; the t2000 one covers the infra forward window + cross-repo cleanup and defers the audric backlog to it. | Picking the next task; planning |
 | `audric-build-tracker.md` (local-only) | Reverse-chronological **execution log** — one `S.N` entry per shipped slice, newest on top (gitignored). This is the audit trail, **NOT** a forward backlog. To get the next SPEC number, read the latest `S.N` at the top of the file and increment. | Status checks; before assigning the next `S.N` |
 | `spec/**` (local-only, gitignored) | Internal SPECs, harness contracts, locked-decision references, operational runbooks — full tree available on the maintainer's machine; not part of the public repo | When the rule/agent context cites a specific SPEC by name |

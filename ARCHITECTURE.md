@@ -849,7 +849,7 @@ The Audric consumer brand groups everything into exactly **five products**. (S.1
 | 🛒 **Audric Store**        | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5)                                                                                                        | `@t2000/sdk` + Walrus + payment links                                                 |
 
 
-See `audric-roadmap.md` for the canonical taxonomy + naming rules.
+See `PRODUCT_ROADMAP.md` for the canonical taxonomy + naming rules.
 
 ---
 

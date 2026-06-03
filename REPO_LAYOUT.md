@@ -63,7 +63,7 @@ These are the ONLY files that should live at repo root (everything else moves to
 
 Plus founder-local truth source (gitignored, not visible publicly):
 - `audric-build-tracker.md` (build progress log, ~3 MB rotation policy)
-- `audric-roadmap.md` (product roadmap)
+- `PRODUCT_ROADMAP.md` (whole-product master roadmap)
 - `HANDOFF_NEXT_AGENT.md` (agent context handoff, ~7d rotation policy)
 - `.smoke-*` (live smoke tooling)
 - `.env.local`, `.env.example`

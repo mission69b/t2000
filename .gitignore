@@ -49,7 +49,7 @@ audric-litepaper.html
 # untracked from the public mirror. See audric-build-tracker.md S.23 entry
 # (itself private now) for rationale.
 audric-build-tracker.md
-audric-roadmap.md
+PRODUCT_ROADMAP.md
 HANDOFF_NEXT_AGENT.md
 
 # MCP registry tokens
