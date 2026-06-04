@@ -120,11 +120,13 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 
 **Short version:**
-- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + founder-local trackers (`audric-build-tracker.md`, `PRODUCT_ROADMAP.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule.
+- **Root** = `README` / `LICENSE` / `CLAUDE.md` / `ARCHITECTURE.md` / `SECURITY.md` + tooling config + founder-local trackers (`audric-build-tracker.md`, `PRODUCT_ROADMAP.md`, `HANDOFF_NEXT_AGENT.md`) + `.smoke-*` tooling. Strict allowlist — any other file at root violates the rule. The trackers are gitignored **symlinks into `spec/`** (their real files live in the private `t2000-internal` repo — see below).
 - **`docs/`** — public-facing docs (tracked)
-- **`spec/`** — internal SPECs, references, runbooks, archive. **Entire tree is local-only / gitignored** (the public repo never sees SPEC content). Active in-flight SPECs, locked design decisions, harness contracts, runbooks all live here for the maintainers; nothing in `spec/` is part of the published surface.
+- **`spec/`** — internal SPECs, references, runbooks, archive, **plus** `PRODUCT_ROADMAP.md`, `audric-build-tracker.md`, and both repos' `HANDOFF_NEXT_AGENT.md` (under `handoffs/`). **Gitignored in the public repo — the real content lives in the private `mission69b/t2000-internal` repo, mounted at `spec/`** (clone it there per `team-docs/ONBOARDING.md` §2.1). The public repo never sees any of this; nothing in `spec/` is part of the published surface.
 
 ## Key Documents
+
+> Docs marked **(local-only)** / **(gitignored)** are not in this public repo — they live in the private `mission69b/t2000-internal` repo, mounted at `spec/` (setup: `team-docs/ONBOARDING.md` §2.1). The root paths below resolve via gitignored symlinks once that repo is cloned into `spec/`.
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
