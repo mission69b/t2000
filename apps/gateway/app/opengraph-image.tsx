@@ -113,7 +113,7 @@ export default async function Image() {
             />
             <path
               fill="#0A0A0A"
-              d="M41 29H52V41H61V50H52V62Q52 72 63 72H41V50H33V41H41Z"
+              d="M39 24H53V36H64V49H53V65Q53 72 64 72V78H39V49H28V36H39Z"
             />
           </svg>
           <div
