@@ -51,7 +51,7 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
             <path
               fillRule="evenodd"
               clipRule="evenodd"
-              d="M22 0H78C90.15 0 100 9.85 100 22V78C100 90.15 90.15 100 78 100H22C9.85 100 0 90.15 0 78V22C0 9.85 9.85 0 22 0ZM39 24H53V36H64V49H53V65Q53 72 64 72V78H39V49H28V36H39Z"
+              d="M22 0H78C90.15 0 100 9.85 100 22V78C100 90.15 90.15 100 78 100H22C9.85 100 0 90.15 0 78V22C0 9.85 9.85 0 22 0ZM43 22H57V32H65V44H57V64Q57 71 65 71V78H43V44H35V32H43Z"
             />
           </svg>
           <span className="text-[16px] font-semibold tracking-[-0.022em]">

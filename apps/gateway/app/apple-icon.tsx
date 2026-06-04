@@ -30,7 +30,7 @@ export default function AppleIcon() {
           />
           <path
             fill="#0A0A0A"
-            d="M39 24H53V36H64V49H53V65Q53 72 64 72V78H39V49H28V36H39Z"
+            d="M43 22H57V32H65V44H57V64Q57 71 65 71V78H43V44H35V32H43Z"
           />
         </svg>
       </div>
