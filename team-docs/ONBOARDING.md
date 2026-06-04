@@ -1,7 +1,7 @@
 # Engineer Onboarding — t2000 + Audric
 
 > **Goal:** read this once (~30 min), get both repos running, and know where to look for everything else.
-> **This is the map, not the territory.** The detailed, always-current task lists live in `HANDOFF_NEXT_AGENT.md` (one in each repo). Those are **local-only (not committed)** — the founder shares them with you directly. This file is the source of truth for *how everything fits together and how to get started*.
+> **This is the map, not the territory.** The detailed, always-current task lists live in `HANDOFF_NEXT_AGENT.md` (one in each repo). Those — plus the `spec/` trees, the product roadmap, and the build tracker — live in the **private `mission69b/t2000-internal` repo** (Section 2.1). This file is the source of truth for *how everything fits together and how to get started*.
 
 ---
 
@@ -76,6 +76,28 @@ Env vars are validated at boot by a Zod schema (`apps/web-v2/lib/env.ts`). If yo
 
 - t2000: `pnpm build && pnpm test` is green.
 - Audric: `pnpm dev` boots, you can load `localhost:3001`, and `pnpm typecheck && pnpm lint && pnpm check:ads` are all clean.
+
+### 2.1 Internal docs — the private repo
+
+The detailed internal docs (the `spec/` trees, `SPEC_INVENTORY_SSOT.md`, `PRODUCT_ROADMAP.md`, the `audric-build-tracker.md` session log, and both `HANDOFF_NEXT_AGENT.md` task lists) live in the **private `mission69b/t2000-internal`** repo, not the public ones. Ask the founder for collaborator access (a one-time GitHub invite), then mount it **inside the gitignored `spec/` folder** of your t2000 clone:
+
+```bash
+# from ~/dev/t2000 (the public clone you set up above)
+git clone git@github.com:mission69b/t2000-internal.git spec
+
+# (optional) symlink the founder-local docs back to their canonical repo-root paths
+# so CLAUDE.md / tooling references resolve. All targets are gitignored — they never ship.
+cd ~/dev/t2000
+ln -s spec/handoffs/t2000-HANDOFF_NEXT_AGENT.md HANDOFF_NEXT_AGENT.md
+ln -s spec/PRODUCT_ROADMAP.md PRODUCT_ROADMAP.md
+ln -s spec/audric-build-tracker.md audric-build-tracker.md
+cd ~/dev/audric
+ln -s ../t2000/spec/handoffs/audric-HANDOFF_NEXT_AGENT.md HANDOFF_NEXT_AGENT.md
+```
+
+Stay in sync with a plain `cd spec && git pull` — the founder pushes updates there, no manual re-sharing. Full details + rationale are in `spec/_PRIVATE_REPO.md`.
+
+> **Why private:** it holds unshipped strategy, open security follow-ups, infra/secret *names*, and internal session history. None of it belongs in the public repos.
 
 ---
 
@@ -157,7 +179,7 @@ Both repos have `.cursor/rules/*.mdc` files. These are conventions the AI assist
 
 ## 5. Where we are right now (the task board)
 
-> **The detailed, always-current task lists are the two `HANDOFF_NEXT_AGENT.md` files** (one per repo, shared with you directly — they're not in the repo). Below is the distilled, high-level snapshot as of **2026-06-01**.
+> **The detailed, always-current task lists are the two `HANDOFF_NEXT_AGENT.md` files** (one per repo, in the private `t2000-internal` repo — see Section 2.1). Below is the distilled, high-level snapshot as of **2026-06-01**.
 
 ### Recently shipped (context, not work)
 
@@ -176,7 +198,7 @@ Both repos have `.cursor/rules/*.mdc` files. These are conventions the AI assist
 | **Audric** | **Fiat on/off-ramp** — buy crypto with card/bank + cash out to bank. Marketed but not built; design/provider-gated. |
 | **Audric** | Smaller items: security-header hardening, memory controls, schema cleanup, dead-code cleanup. Ranked in the audric HANDOFF. |
 
-> ℹ️ Heads-up on docs: the `HANDOFF_NEXT_AGENT.md` files, the `spec/` trees, and the build trackers are **local-only** — they hold detailed internal task state and aren't committed. The founder shares them with you directly. This onboarding doc is the committed, shareable entry point.
+> ℹ️ Heads-up on docs: the `HANDOFF_NEXT_AGENT.md` files, the `spec/` trees, the roadmap, and the build tracker live in the **private `t2000-internal` repo** (Section 2.1), not the public ones — they hold detailed internal task state. This onboarding doc is the committed, public entry point that points you there.
 
 ---
 
