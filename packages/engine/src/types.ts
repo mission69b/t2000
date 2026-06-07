@@ -1176,11 +1176,12 @@ export interface EngineConfig {
    */
   memoryStore?: import('./memory/store.js').MemoryStore;
   /**
-   * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Pre-built `<financial_context>`
-   * XML block sourced from the host's daily snapshot cron (in audric:
-   * `UserFinancialContext` table populated by the 02:00 UTC
-   * `financial-context-snapshot` cron). Engine inserts this at layer 2
-   * of the F-4 order via `prepareStep` when `memoryStore` is set.
+   * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Optional pre-built
+   * `<financial_context>` XML block, supplied by the host. Engine inserts
+   * it at layer 2 of the F-4 order via `prepareStep` when `memoryStore` is
+   * set. (Audric originally fed this from a daily `UserFinancialContext`
+   * snapshot cron, retired S.375 — it now supplies no block and orients
+   * via read tools.)
    *
    * **Only consumed when `memoryStore` is set** — without `memoryStore`
    * the engine takes the legacy static-system-prompt path and hosts are

@@ -603,7 +603,7 @@ Write operations serialize structurally — `confirm`-tier writes yield a `pendi
 |---|---|---|
 | 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `v2/tool-wrapper.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Adaptive thinking, 12 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
-| 🧠 **Memory (MemWal)** | Long-term vector memory (preferences, goals, risk tolerance, on-chain patterns) recalled per-turn via `prepareStep` → `<memory_recall>`; daily on-chain `<financial_context>` block from `UserFinancialContext` for fresh state | engine-side: `MemoryStore` interface, `InMemoryMemoryStore`, `memwal-prepare-step.ts`, `memwal-write-callback.ts`; audric-side: `UserFinancialContext` Prisma model + `buildFinancialContextBlock()` |
+| 🧠 **Memory (MemWal)** | Long-term vector memory (preferences, goals, risk tolerance, on-chain patterns) recalled per-turn via `prepareStep` → `<memory_recall>` | engine-side: `MemoryStore` interface, `InMemoryMemoryStore`, `memwal-prepare-step.ts`, `memwal-write-callback.ts`; audric-side: `MemWalMemoryStore` adapter |
 | 📓 **AdviceLog** | Every recommendation logged (`record_advice` audric-side tool); last 30 days hydrated each turn | audric-side: `AdviceLog` Prisma model + `buildAdviceContext()` |
 
 > _The "four systems" framing is the canonical product narrative. (v0.7d Phase 6 Block A — 2026-05-21 — collapsed former "Silent Profile" + "Chain Memory" into a single MemWal-backed Memory system.) See `CLAUDE.md` (binding rules) and the per-system rules in `.cursor/rules/` (`agent-harness-spec.mdc`, `engine-tool-development.mdc`, `safeguards-defense-in-depth.mdc`)._
@@ -781,16 +781,17 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 
 ### Memory — MemWal (system 3 of 4)
 
-> _Knows the user. Long-term vector memory (preferences, goals, risk tolerance, on-chain patterns) recalled per-turn, plus a daily on-chain `<financial_context>` snapshot for fresh state._
+> _Knows the user. Long-term vector memory (preferences, goals, risk tolerance, on-chain patterns) recalled per-turn._
 
-v0.7d Phase 6 Block A (2026-05-21) collapsed the former "Silent Profile" + "Chain Memory" systems into a single MemWal-backed Memory system. Two layers cooperate, both consumed silently via the system prompt:
+v0.7d Phase 6 Block A (2026-05-21) collapsed the former "Silent Profile" + "Chain Memory" systems into a single MemWal-backed Memory system, consumed silently via the system prompt:
 
 | Layer | Storage | Refresh | Used as |
 |---|---|---|---|
 | MemWal vector memory | `@mysten-incubation/memwal` (vector store) | `MemoryStore.recall(latestUserMessage)` per-turn via `prepareStep`; new facts extracted post-turn via `memwal.analyze()` in `onFinish` | `<memory_recall>` block (top-K facts) |
-| `UserFinancialContext` (Prisma, audric-side) | savings/wallet/debt USD, health factor, weighted savings APY, recent activity, last-session days | 02:00 UTC Vercel cron `financial-context-snapshot`; refreshed on-demand after large writes | `<financial_context>` block |
 
-The two blocks together let every chat start oriented — no warm-up tool calls, no "let me check your balance" before the agent says anything useful. Silent context only — never surfaced as a nudge or notification.
+> The daily `<financial_context>` snapshot (`UserFinancialContext`) was retired in S.375 (2026-06-07) — its fields were redundant with fresh tool reads and the daily BlockVision fan-out cron didn't earn its keep. The agent now orients via read tools (`balance_check` / `savings_info` / `rates_info`) instead of a pre-injected block. The engine still exposes the optional `financialContextBlock` layer for hosts that want one.
+
+MemWal recall is silent context only — never surfaced as a nudge or notification.
 
 Hosts inject a `MemoryStore` via `EngineConfig.memoryStore`. CLI / MCP / tests use the `InMemoryMemoryStore` default; production audric injects a MemWal-backed store. Recall failures degrade gracefully (empty `<memory_recall>` layer).
 
@@ -828,7 +829,7 @@ Spec 2 swapped the data layer + added boot-time orientation:
 |---|---|
 | **BlockVision swap** — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. (S.277 / engine 2.18.0 later removed the last DefiLlama caller `protocol_deep_dive`; engine no longer talks to `api.llama.fi`.) |
 | **Sticky-positive cache + retry/circuit breaker** for BlockVision (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) | BlockVision started returning 429s under load; the cache no longer overwrites known-good positive values with degraded zeros. |
-| **`<financial_context>` block** injected at every engine boot from the daily `UserFinancialContext` snapshot | Every chat starts oriented — no warm-up tool calls before useful answers. Memory system (post-Block A). |
+| **`<financial_context>` block** (engine `financialContextBlock` layer; Audric fed it from a daily `UserFinancialContext` snapshot) | Originally let every chat start oriented. **Audric's daily snapshot retired in S.375 (2026-06-07)** — the agent orients via fresh read tools; the engine layer remains optional for other hosts. |
 | **`attemptId` keyed resume** — host's resume path keys `updateMany({ where: { attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
 
 > Resilience contract: `t2000/.cursor/rules/blockvision-resilience.mdc`.
@@ -865,7 +866,7 @@ See `PRODUCT_ROADMAP.md` for the canonical taxonomy + naming rules.
 |---|---|---|
 | 🎛️ **Agent Harness** | 26 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (18 read + 8 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 12 guards, prompt caching. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
-| 🧠 **Memory (MemWal)** | Knows the user — vector memory of preferences / goals / risk tolerance / on-chain patterns recalled per-turn + daily `<financial_context>` snapshot for fresh state. | `MemoryStore` + MemWal vector memory + `UserFinancialContext` + 02:00 UTC cron |
+| 🧠 **Memory (MemWal)** | Knows the user — vector memory of preferences / goals / risk tolerance / on-chain patterns recalled per-turn. | `MemoryStore` + MemWal vector memory + `MemWalMemoryStore` adapter |
 | 📓 **AdviceLog** | Remembers what it told you — last 30 days hydrated each turn, no two contradictory answers. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |
 
 **What stayed (silent context):** MemWal vector memory, financial-context snapshots, and the `AdviceLog` loop. These run via per-turn `prepareStep` recall + a single Vercel cron job and feed the LLM context invisibly.
@@ -884,7 +885,7 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 | Feature             | What it does                                                                                                                                                            |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Memory (MemWal)     | Vector memory of user preferences, goals, risk tolerance, on-chain patterns. `prepareStep` recalls top-K per-turn → `<memory_recall>`. `memwal.analyze()` extracts new facts post-turn. |
-| Financial Context   | `UserFinancialContext` model (audric-side): savings/wallet/debt USD, health factor, weighted savings APY, recent activity. Refreshed by Vercel `financial-context-snapshot` cron @ 02:00 UTC. |
+| ~~Financial Context~~ | **Retired in S.375 (2026-06-07).** Was the `UserFinancialContext` daily snapshot injected as `<financial_context>`; redundant with fresh tool reads, so the model + cron were dropped. The agent now orients via `balance_check` / `savings_info` / `rates_info`. |
 | Advice Memory       | `AdviceLog` rows written by `record_advice` (audric tool). `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
 | Conversation Log    | `ConversationLog` rows written by chat route. Fine-tuning dataset for the future self-hosted model migration                                                             |
 

@@ -202,9 +202,7 @@ export function EngineSystems() {
         >
           The engine package owns the harness and reasoning layers in code, plus the{" "}
           <span style={{ color: "var(--fg-muted)" }}>MemoryStore</span> injection point. The MemWal
-          vector backend, the daily{" "}
-          <span style={{ color: "var(--fg-muted)" }}>{"<financial_context>"}</span> snapshot, and the
-          AdviceLog model live audric-side.
+          vector backend and the AdviceLog model live audric-side.
         </p>
       </div>
     </section>

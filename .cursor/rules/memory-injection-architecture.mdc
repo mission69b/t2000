@@ -9,7 +9,7 @@ When a host configures `EngineConfig.memoryStore`, the engine wires `prepareStep
 | # | Layer | Source | When skipped |
 |---|---|---|---|
 | 1 | base system | `config.systemPrompt` (string or `SystemBlock[]`, joined) | when omitted entirely |
-| 2 | `<financial_context>` block | `config.financialContextBlock` (pre-built by host snapshot cron) | when undefined OR empty string |
+| 2 | `<financial_context>` block | `config.financialContextBlock` (optional; pre-built by host — Audric supplies none post-S.375, orients via tools) | when undefined OR empty string |
 | 3 | `<memory_recall>` block | `buildMemoryBlock(memoryStore.recall(latestUserMessage))` | when recall returns 0 records OR recall throws |
 | 4 | skill recipe block | `config.skillRecipeBlock` (typically from `McpPromptAdapter.buildPrepareStepSystemPrefix()`) | when undefined OR empty string |
 | 5 | user message | `messages[]` (last user turn) | — always present |

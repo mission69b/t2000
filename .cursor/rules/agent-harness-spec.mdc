@@ -70,9 +70,9 @@ Fires after a write tool successfully executes (whether server-side or client-co
 
 ## Spec 2 — Intelligence (`AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`, local-only)
 
-### `<financial_context>` block (silent context)
+### `<financial_context>` block (silent context — optional, host-supplied)
 
-Every turn's system prompt embeds a `<financial_context>` block built from the daily `UserFinancialContext` snapshot (savings, wallet, debt, HF, APY, recent activity). Built by `buildFinancialContextBlock()`. Refreshed by the 02:00 UTC `financial-context-snapshot` cron.
+The engine accepts an optional `config.financialContextBlock` string and injects it as layer 2 of the `prepareStep` system prompt. Originally Audric fed it from a daily `UserFinancialContext` snapshot cron, but that was retired in S.375 (2026-06-07): the snapshot's fields were redundant with fresh tool reads, and a daily BlockVision fan-out cron didn't earn its keep. **Audric now supplies no block** — the agent orients via fresh tool calls (`balance_check` / `savings_info` / `rates_info`). The engine layer remains for hosts that want to supply their own context.
 
 ### BlockVision swap (v1.4 BlockVision migration)
 

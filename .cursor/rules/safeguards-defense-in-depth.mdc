@@ -90,7 +90,7 @@ PERMISSION_PRESETS = {
 - Audric Passport's trust pillar is "you decide — Audric never moves money on its own." Sub-threshold auto-execute would create the implicit promise "Audric usually asks, but sometimes just acts" — the worst possible UX for a finance product. The architectural decision (locked Round 3, 2026-05-24 — see `SPEC_AI_SDK_HARDENING.md` P4.7) is to commit fully: **every write taps**. The B.4 resolver stays in code because (a) it's tested + cheap to keep, (b) `@t2000/cli` engine consumers with a server-signing agent DO honor it, (c) future host architectures (server-side signing audric variants) could re-activate it.
 
 **When NOT to auto-execute (engineering rule, applies to non-web-v2 consumers):**
-- Don't add a new write tool whose preset entry has `autoBelow > 0` without a guard that re-validates fresh balance / health-factor at execute time. The `<financial_context>` snapshot is daily; small auto-writes that race a position change can wedge HF if you trust stale data.
+- Don't add a new write tool whose preset entry has `autoBelow > 0` without a guard that re-validates fresh balance / health-factor at execute time. Any cached/daily context block can be stale; small auto-writes that race a position change can wedge HF if you trust it.
 
 ## Tool result budgeting (B.2)
 
