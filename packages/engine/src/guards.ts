@@ -163,15 +163,12 @@ export class BalanceTracker {
   }
 
   /**
-   * [v1.11 F2] Seed `lastBalanceAt` from an external snapshot timestamp.
-   * Used by the engine constructor when the host passes
-   * `EngineConfig.financialContextSeed.balanceAt` — i.e. the system
-   * prompt already embeds a fresh balance snapshot from that time so
-   * the LLM has authoritative balance data without the host
-   * round-tripping a `balance_check` tool call first. Pre-fix the
-   * `Balance has not been checked this session` hint fired on every
-   * first-turn write, even when audric had just embedded the daily
-   * `<financial_context>` block — pure noise for the LLM and the user.
+   * Seed `lastBalanceAt` from an explicit timestamp (Unix ms). A seam
+   * for a host that already holds authoritative balance data (read
+   * earlier in the turn, or surfaced to the LLM out-of-band) and wants
+   * to suppress the redundant "Balance has not been checked this
+   * session" first-turn hint without round-tripping a `balance_check`
+   * call. Monotonic — a stale seed never clobbers a fresher read.
    */
   recordReadAt(at: number): void {
     if (at > this.lastBalanceAt) {

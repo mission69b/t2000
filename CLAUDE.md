@@ -68,7 +68,7 @@ Every Audric action runs through Passport. It's the wallet itself.
 |---|---|---|
 | 🎛️ **Agent Harness** | 26 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `AISDKEngine` + 26 tools (18 read / 8 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 14 safety guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` at build time and exposed to Cursor / Claude Desktop as MCP prompts. The engine no longer ships a YAML recipe runtime (deleted v0.7a Phase 6, May 2026); skill content guides the LLM, the engine just runs the tools the LLM picks. | `classify-effort.ts`, `guards.ts`, `t2000-skills/skills/`, extended thinking always-on |
-| 🧠 **Memory (MemWal)** | Knows your finances. `@mysten-incubation/memwal` vector memory holds long-term facts about preferences, goals, risk tolerance, on-chain patterns. `prepareStep` recalls top-K facts each turn → `<memory_recall>` system-prompt block; `onFinish` calls `memwal.analyze()` to extract new facts post-turn. Used silently to calibrate answers — never surfaced as nudges. (The engine still accepts an optional `<financial_context>` block as prompt layer 2, but Audric retired its daily `UserFinancialContext` snapshot + cron in S.375 (2026-06-07) — the agent now orients via fresh tool calls. v0.7d Phase 6 Block A absorbed the former "Silent Profile" + "Chain Memory" systems into this one.) | `@mysten-incubation/memwal` SDK + `memwal-prepare-step.ts` + `memwal-write-callback.ts` |
+| 🧠 **Memory (MemWal)** | Knows your finances. `@mysten-incubation/memwal` vector memory holds long-term facts about preferences, goals, risk tolerance, on-chain patterns. `prepareStep` recalls top-K facts each turn → `<memory_recall>` system-prompt block; `onFinish` calls `memwal.analyze()` to extract new facts post-turn. Used silently to calibrate answers — never surfaced as nudges. (Audric retired its daily `UserFinancialContext` snapshot + cron in S.375 (2026-06-07), and the engine's now-unused `financialContextBlock` prompt layer was removed in S.376 — the agent orients via fresh tool calls. v0.7d Phase 6 Block A absorbed the former "Silent Profile" + "Chain Memory" systems into this one.) | `@mysten-incubation/memwal` SDK + `memwal-prepare-step.ts` + `memwal-write-callback.ts` |
 | 📓 **AdviceLog** | Remembers what it told you. Every recommendation is logged so the agent doesn't contradict itself across sessions. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` (last 30 days hydrated each turn) |
 
 **Naming rules (binding):**
@@ -278,11 +278,11 @@ import type { StreamCheckpointStore } from '@t2000/engine';
 
 // [v2.7.0 / SPEC_PHASE_7_DRAFT.md] Memory layer — wire
 // `EngineConfig.memoryStore` and the engine assembles the system prompt
-// in F-4 5-layer order via `prepareStep`:
-// 1. base systemPrompt → 2. financialContextBlock → 3. <memory_recall>
-// (top-K MemoryStore.recall(latestUserMessage)) → 4. skillRecipeBlock →
-// 5. messages[]. Per-turn caching (single recall per submitMessage call)
-// is load-bearing; recall failures degrade gracefully (empty layer 3).
+// in F-4 4-layer order via `prepareStep`:
+// 1. base systemPrompt → 2. <memory_recall>
+// (top-K MemoryStore.recall(latestUserMessage)) → 3. skillRecipeBlock →
+// 4. messages[]. Per-turn caching (single recall per submitMessage call)
+// is load-bearing; recall failures degrade gracefully (empty memory layer).
 // CLI / MCP / tests use the InMemoryMemoryStore default; production
 // audric will inject MemWalMemoryStore post-2026-05-29 MemWal stability.
 // See `.cursor/rules/memory-injection-architecture.mdc` for the contract.

@@ -5,7 +5,7 @@
 // These tests pin the EXACT format of the `<memory_recall>` block so:
 //
 //   1. Prompt-engineering changes are intentional (drift fails CI).
-//   2. The 5-layer integration test can assert against a known shape.
+//   2. The prompt-layer integration test can assert against a known shape.
 //   3. Hosts inspecting prepareStep output for debugging see a stable
 //      structure across engine versions.
 // ---------------------------------------------------------------------------

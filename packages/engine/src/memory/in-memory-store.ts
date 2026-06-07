@@ -7,7 +7,7 @@
 //
 //   - Engine unit + integration tests (deterministic, zero infra).
 //   - CLI / MCP examples + smoke harnesses (no MemWal dependency).
-//   - Audric pre-production wiring (proves the 5-layer F-4 order works
+//   - Audric pre-production wiring (proves the 4-layer F-4 order works
 //     end-to-end before swapping in `MemWalMemoryStore`).
 //
 // **Scoring.** Real MemWal uses cosine distance over embedding vectors.
@@ -15,8 +15,8 @@
 //
 //   - Sort semantics match (lower `distance` = better match).
 //   - Tests can hand-craft known overlaps without an embedding model.
-//   - The 5-layer ordering test (`five-layer-ordering.test.ts`) gets
-//     deterministic recall results for assertion.
+//   - The prompt-layer ordering test (`prompt-layer-ordering.test.ts`)
+//     gets deterministic recall results for assertion.
 //
 // **What this is NOT.** Not a production memory store. No embedding
 // quality, no persistence, no concurrency safety. Production hosts MUST

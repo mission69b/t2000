@@ -10,21 +10,21 @@ import { makeGuardView } from './_helpers/call-tool-body.js';
 import type { PendingToolCall } from '../types.js';
 
 /**
- * F2 / v1.11 — Financial-context seed regression tests.
+ * Balance/HF guard freshness regression tests.
  *
- * Failure mode being prevented: the host (audric) embeds a daily
- * `<financial_context>` snapshot in the system prompt with fresh
- * balances + HF, but the engine's BalanceTracker starts empty so
- * EVERY first-turn write fires the redundant "Balance has not been
+ * Failure mode being prevented: the engine's BalanceTracker starts
+ * empty, so the FIRST-TURN write fires the "Balance has not been
  * checked this session" / "Health factor has not been checked this
- * session" hint. Pure noise — the LLM has the data, the user sees
- * the data on the PermissionCard's guard-injection rows, and the
- * model is incentivized to waste a tool call (`balance_check`) just
- * to silence the guard.
+ * session" hint. That's correct when the agent has genuinely not read
+ * state — but a host (or an earlier-in-turn tool read) may already
+ * hold authoritative balance/HF data, in which case the hint is pure
+ * noise that nudges the model to waste a `balance_check` call.
  *
- * Fix: `EngineConfig.financialContextSeed` lets the host pre-seed
- * the guard state to "balance read at T, HF = N" so the first-turn
- * guards trust the snapshot.
+ * `BalanceTracker.recordReadAt(at)` is the seam that suppresses that
+ * noise: seed the tracker with the timestamp at which balance was
+ * known and the first-turn guards trust it. These tests pin the seam
+ * (`recordReadAt`) plus the baseline guard behaviour (hints fire when
+ * NOT seeded; stale-balance detection survives seeding).
  */
 
 const SAVE = makeGuardView('save_deposit');

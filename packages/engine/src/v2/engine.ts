@@ -99,7 +99,7 @@ import {
   type StreamResumeOutcome,
 } from '../stream-checkpoint.js';
 // [SPEC_PHASE_7_DRAFT.md / v2.7.0] Memory layer — prepareStep injects a
-// `<memory_recall>` block at layer 3 of the F-4 5-layer system prompt.
+// `<memory_recall>` block at layer 2 of the F-4 4-layer system prompt.
 import { buildMemoryBlock } from '../memory/build-memory-block.js';
 import { extractLatestUserMessage } from '../memory/extract-user-message.js';
 
@@ -1109,8 +1109,8 @@ export class AISDKEngine {
     const validatedMessages = validateHistory(this.messages);
 
     // [SPEC_PHASE_7_DRAFT.md / v2.7.0] Branch on `memoryStore` config:
-    // - When SET, prepareStep owns the system prompt (F-4 5-layer assembly:
-    //   base → financial_context → memory → skill). We DO NOT pass static
+    // - When SET, prepareStep owns the system prompt (F-4 4-layer assembly:
+    //   base → memory → skill → user_message). We DO NOT pass static
     //   `system` because prepareStep's return value sets it fresh each step.
     // - When UNSET (legacy path, all CLI / MCP / pre-Phase-7 audric), the
     //   static `system: this.systemPromptString()` carries the prompt
@@ -1665,9 +1665,8 @@ export class AISDKEngine {
    *      segments + the cached memory results:
    *
    *        1. base — `systemPromptString()` (config.systemPrompt)
-   *        2. financial — `config.financialContextBlock`
-   *        3. memory — `<memory_recall>` from this turn's recall
-   *        4. skill — `config.skillRecipeBlock`
+   *        2. memory — `<memory_recall>` from this turn's recall
+   *        3. skill — `config.skillRecipeBlock`
    *
    *      Empty segments are skipped via `.filter((l) => l.length > 0)`.
    *
@@ -1709,7 +1708,6 @@ export class AISDKEngine {
       // back to the legacy joined-string path when it's a plain string.
       const baseSystem = this.buildSystemForStream();
       const volatileLayers = [
-        this.config.financialContextBlock ?? '',
         buildMemoryBlock(internal.toolContext.memoryCache?.results ?? []),
         this.config.skillRecipeBlock ?? '',
       ];

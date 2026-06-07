@@ -1,6 +1,8 @@
 # Memory Injection Architecture (Phase 7)
 
-Codifies the F-4 5-layer system-prompt assembly that ships in engine v2.7.0+ when `EngineConfig.memoryStore` is configured. Re-read before touching `prepareStep`, `buildMemoryBlock`, the `MemoryStore` interface, or any code path that affects what the LLM sees at turn start.
+Codifies the F-4 4-layer system-prompt assembly that ships in engine v2.7.0+ when `EngineConfig.memoryStore` is configured. Re-read before touching `prepareStep`, `buildMemoryBlock`, the `MemoryStore` interface, or any code path that affects what the LLM sees at turn start.
+
+> **S.376 (2026-06-07):** the optional `<financial_context>` prompt layer was removed. Audric retired its daily snapshot in S.375 and no other host supplied a `financialContextBlock`, so the unused `config.financialContextBlock` field + its layer (and the never-wired `financialContextSeed` guard-seed field) were deleted. The assembly dropped from 5 layers to 4. The integration test was renamed `prompt-layer-ordering.test.ts`.
 
 ## The contract (binding)
 
@@ -9,12 +11,11 @@ When a host configures `EngineConfig.memoryStore`, the engine wires `prepareStep
 | # | Layer | Source | When skipped |
 |---|---|---|---|
 | 1 | base system | `config.systemPrompt` (string or `SystemBlock[]`, joined) | when omitted entirely |
-| 2 | `<financial_context>` block | `config.financialContextBlock` (optional; pre-built by host — Audric supplies none post-S.375, orients via tools) | when undefined OR empty string |
-| 3 | `<memory_recall>` block | `buildMemoryBlock(memoryStore.recall(latestUserMessage))` | when recall returns 0 records OR recall throws |
-| 4 | skill recipe block | `config.skillRecipeBlock` (typically from `McpPromptAdapter.buildPrepareStepSystemPrefix()`) | when undefined OR empty string |
-| 5 | user message | `messages[]` (last user turn) | — always present |
+| 2 | `<memory_recall>` block | `buildMemoryBlock(memoryStore.recall(latestUserMessage))` | when recall returns 0 records OR recall throws |
+| 3 | skill recipe block | `config.skillRecipeBlock` (typically from `McpPromptAdapter.buildPrepareStepSystemPrefix()`) | when undefined OR empty string |
+| 4 | user message | `messages[]` (last user turn) | — always present |
 
-Layers 1–4 are joined with `\n\n`. Empty layers are dropped via `.filter((l) => l.length > 0)` — no empty wrappers, no double-blank separators. Layer 5 is passed to AI SDK as the regular `messages` argument; `prepareStep` only owns layers 1–4.
+Layers 1–3 are joined with `\n\n`. Empty layers are dropped via `.filter((l) => l.length > 0)` — no empty wrappers, no double-blank separators. Layer 4 is passed to AI SDK as the regular `messages` argument; `prepareStep` only owns layers 1–3.
 
 ## What's banned
 
@@ -27,7 +28,7 @@ const stream = streamText({
 
 // ❌ Reordering layers (breaks F-4 verification + invalidates the spec invariant)
 const layers = [
-  buildMemoryBlock(records),  // layer 3 first
+  buildMemoryBlock(records),  // memory layer first
   this.systemPromptString(),  // base second
   // ...
 ];
@@ -51,11 +52,11 @@ if (records.length === 0) throw new Error('memory unavailable');
 
 1. **Per-turn caching.** `prepareStep` fires N times per turn (once per multi-step iteration under `stopWhen: stepCountIs(maxTurns)`). The current implementation only re-recalls at `stepNumber === 0`; subsequent steps read from `internal.toolContext.memoryCache`. Removing this cache turns a 1 × 700ms recall into N × 700ms — a 10-step turn would add 7s of cumulative latency.
 
-2. **Honest degradation.** Recall failures are caught, logged via `console.warn`, and the cache is populated with `{ query, results: [] }`. Layer 3 becomes empty; the turn proceeds. This mirrors the same outage-tolerant contract as BlockVision sticky-positive caching and NAVI MCP circuit-breaker fallback paths.
+2. **Honest degradation.** Recall failures are caught, logged via `console.warn`, and the cache is populated with `{ query, results: [] }`. The memory layer becomes empty; the turn proceeds. This mirrors the same outage-tolerant contract as BlockVision sticky-positive caching and NAVI MCP circuit-breaker fallback paths.
 
 3. **Branch on `memoryStore` presence.** Legacy hosts (audric pre-v2.7.0, CLI, MCP, examples) leave `memoryStore` undefined; the engine takes the legacy `system: this.systemPromptString()` path with NO `prepareStep` hook. The wire shape stays identical to pre-v2.7.0 for those consumers.
 
-4. **`financialContextBlock` + `skillRecipeBlock` are ONLY read when `memoryStore` is set.** Without the memory path, the engine has no `prepareStep` to assemble layers 2 + 4 — hosts are expected to keep embedding `<financial_context>` and skill text inside `systemPrompt` directly (pre-Phase-7 contract). Mixing both styles silently is forbidden.
+4. **`skillRecipeBlock` is ONLY read when `memoryStore` is set.** Without the memory path, the engine has no `prepareStep` to assemble layer 3 — hosts are expected to keep embedding skill text inside `systemPrompt` directly (pre-Phase-7 contract). Mixing both styles silently is forbidden.
 
 ## Why we chose `prepareStep` over extending `systemPromptString()`
 
@@ -84,9 +85,9 @@ Production hosts MUST inject a real `MemoryStore`. The mock is not production-gr
 - Engine wiring → `packages/engine/src/v2/engine.ts` (`buildPrepareStepHook` method + branch in `runStream`)
 - Interface → `packages/engine/src/memory/store.ts`
 - Reference impl → `packages/engine/src/memory/in-memory-store.ts`
-- Layer-3 formatter → `packages/engine/src/memory/build-memory-block.ts`
+- Memory-layer formatter → `packages/engine/src/memory/build-memory-block.ts`
 - Query extractor → `packages/engine/src/memory/extract-user-message.ts`
-- Integration test → `packages/engine/src/memory/five-layer-ordering.test.ts`
+- Integration test → `packages/engine/src/memory/prompt-layer-ordering.test.ts`
 - Scoping doc → `SPEC_PHASE_7_DRAFT.md`
 - BENEFITS_SPEC Phase 7 section → `BENEFITS_SPEC_v07a.md:1810-1895` (F-4, F-11, F-12, O-1, S-1, S-10)
 - MemWal smoke harness → `packages/engine/scripts/memwal-smoke.ts`

@@ -789,7 +789,7 @@ v0.7d Phase 6 Block A (2026-05-21) collapsed the former "Silent Profile" + "Chai
 |---|---|---|---|
 | MemWal vector memory | `@mysten-incubation/memwal` (vector store) | `MemoryStore.recall(latestUserMessage)` per-turn via `prepareStep`; new facts extracted post-turn via `memwal.analyze()` in `onFinish` | `<memory_recall>` block (top-K facts) |
 
-> The daily `<financial_context>` snapshot (`UserFinancialContext`) was retired in S.375 (2026-06-07) — its fields were redundant with fresh tool reads and the daily BlockVision fan-out cron didn't earn its keep. The agent now orients via read tools (`balance_check` / `savings_info` / `rates_info`) instead of a pre-injected block. The engine still exposes the optional `financialContextBlock` layer for hosts that want one.
+> The daily `<financial_context>` snapshot (`UserFinancialContext`) was retired in S.375 (2026-06-07) — its fields were redundant with fresh tool reads and the daily BlockVision fan-out cron didn't earn its keep. The agent now orients via read tools (`balance_check` / `savings_info` / `rates_info`) instead of a pre-injected block. With no host supplying it, the engine's unused `financialContextBlock` prompt layer was removed in S.376 — the assembly is now 4 layers (base → `<memory_recall>` → skill recipe → conversation).
 
 MemWal recall is silent context only — never surfaced as a nudge or notification.
 
@@ -829,7 +829,7 @@ Spec 2 swapped the data layer + added boot-time orientation:
 |---|---|
 | **BlockVision swap** — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. (S.277 / engine 2.18.0 later removed the last DefiLlama caller `protocol_deep_dive`; engine no longer talks to `api.llama.fi`.) |
 | **Sticky-positive cache + retry/circuit breaker** for BlockVision (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) | BlockVision started returning 429s under load; the cache no longer overwrites known-good positive values with degraded zeros. |
-| **`<financial_context>` block** (engine `financialContextBlock` layer; Audric fed it from a daily `UserFinancialContext` snapshot) | Originally let every chat start oriented. **Audric's daily snapshot retired in S.375 (2026-06-07)** — the agent orients via fresh read tools; the engine layer remains optional for other hosts. |
+| **`<financial_context>` block** (engine `financialContextBlock` layer; Audric fed it from a daily `UserFinancialContext` snapshot) | Originally let every chat start oriented. **Audric's daily snapshot retired in S.375 (2026-06-07)** — the agent orients via fresh read tools. With no host left supplying it, the engine prompt layer itself was removed in S.376. |
 | **`attemptId` keyed resume** — host's resume path keys `updateMany({ where: { attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
 
 > Resilience contract: `t2000/.cursor/rules/blockvision-resilience.mdc`.

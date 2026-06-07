@@ -53,7 +53,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 | 🧠 **Memory (MemWal)** | Knows your finances + remembers your patterns. | Engine: `prepareStep` + `MemoryStore` interface. Backend: `@mysten-incubation/memwal` (audric-side) |
 | 📓 **AdviceLog** | Remembers what it told you. | `record_advice` audric tool + `buildAdviceContext()` |
 
-The engine package owns **Agent Harness** and **Reasoning Engine** in code, plus the `MemoryStore` injection point for **Memory**. The MemWal vector backend and the AdviceLog Prisma model are audric-side. The engine also accepts an optional host-supplied `<financial_context>` block — Audric no longer feeds it a daily snapshot; the agent orients via fresh tool calls instead.
+The engine package owns **Agent Harness** and **Reasoning Engine** in code, plus the `MemoryStore` injection point for **Memory**. The MemWal vector backend and the AdviceLog Prisma model are audric-side. The agent orients itself with fresh read-tool calls (`balance_check`, `savings_info`, `rates_info`) each turn — no pre-injected financial snapshot.
 
 ## Agent Harness — 26 tools
 
@@ -83,15 +83,14 @@ Every write goes through 12 guards across 3 priority tiers. Guards return one of
 
 Plus adaptive thinking effort per turn (cheap vs. expensive reasoning), preflight input validation (no LLM round-trip if the input is malformed), and prompt caching for the system prompt + tool definitions.
 
-## Memory — MemWal recall + optional context
+## Memory — MemWal recall
 
-Engine assembles the system prompt in up to 5 layers via `prepareStep`:
+Engine assembles the system prompt in 4 layers via `prepareStep`:
 
 1. Base `systemPrompt`
-2. `financialContextBlock` — **optional** host-supplied context string (Audric no longer supplies one)
-3. `<memory_recall>` — top-K vector facts from MemWal
-4. `skillRecipeBlock` (multi-step orchestration playbooks)
-5. `messages[]` (conversation history)
+2. `<memory_recall>` — top-K vector facts from MemWal
+3. `skillRecipeBlock` (multi-step orchestration playbooks)
+4. `messages[]` (conversation history)
 
 CLI / MCP / tests use `InMemoryMemoryStore` (default). Production Audric injects `MemWalMemoryStore` backed by `@mysten-incubation/memwal`.
 
@@ -178,7 +177,7 @@ The engine's tools are plain AI SDK `tool()` instances (`getDefaultTools()`), so
 - LLM orchestration loop (`AISDKEngine.submitMessage`)
 - Tool registry, dispatch, permission gates (`v2/tool-policy.ts`)
 - 12 guards + USD-aware permission resolver
-- System prompt assembly (5-layer with `prepareStep`)
+- System prompt assembly (4-layer with `prepareStep`)
 - MCP client + server adapters
 - Streaming + checkpointing + session store interfaces
 
@@ -189,7 +188,6 @@ The engine's tools are plain AI SDK `tool()` instances (`getDefaultTools()`), so
 - `SessionStore` + `StreamCheckpointStore` backends (Redis / Postgres)
 - Transaction signing + tap-to-confirm UI (engine yields `pending_action`, host signs)
 - `record_advice` tool implementation (AdviceLog Prisma model is audric-side)
-- (optional) `financialContextBlock` — a context string the engine injects as layer 2 if supplied; Audric supplies none
 
 ## Architecture
 
@@ -211,12 +209,11 @@ AISDKEngine.submitMessage()
     ├── Reasoning layer
     │       ├── classify-effort.ts (cheap vs. expensive thinking)
     │       ├── guards.ts (12 guards, 3 priority tiers)
-    │       └── prepareStep (5-layer system prompt assembly)
+    │       └── prepareStep (4-layer system prompt assembly)
     │
     ├── Memory layer (engine owns the interface; host owns the backend)
     │       ├── MemoryStore.recall(latestUserMessage) → <memory_recall> block
-    │       ├── MemoryStore.remember(...) → post-turn fact ingestion
-    │       └── financialContextBlock (optional host-supplied context block)
+    │       └── MemoryStore.remember(...) → post-turn fact ingestion
     │
     └── Session + streaming
             ├── SessionStore (default: in-memory; prod: Redis)

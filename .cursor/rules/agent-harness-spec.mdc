@@ -70,9 +70,9 @@ Fires after a write tool successfully executes (whether server-side or client-co
 
 ## Spec 2 — Intelligence (`AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`, local-only)
 
-### `<financial_context>` block (silent context — optional, host-supplied)
+### `<financial_context>` block — RETIRED (S.375 + S.376)
 
-The engine accepts an optional `config.financialContextBlock` string and injects it as layer 2 of the `prepareStep` system prompt. Originally Audric fed it from a daily `UserFinancialContext` snapshot cron, but that was retired in S.375 (2026-06-07): the snapshot's fields were redundant with fresh tool reads, and a daily BlockVision fan-out cron didn't earn its keep. **Audric now supplies no block** — the agent orients via fresh tool calls (`balance_check` / `savings_info` / `rates_info`). The engine layer remains for hosts that want to supply their own context.
+Historically the engine accepted an optional `config.financialContextBlock` string and injected it as prompt layer 2; Audric fed it from a daily `UserFinancialContext` snapshot cron. That cron was retired in S.375 (2026-06-07) — the snapshot's fields were redundant with fresh tool reads, and a daily BlockVision fan-out cron didn't earn its keep. With no host left supplying a block, the now-unused `financialContextBlock` config field + prompt layer (and the never-wired `financialContextSeed` guard-seed field) were removed from the engine in S.376. **The agent orients via fresh tool calls** (`balance_check` / `savings_info` / `rates_info`); the `prepareStep` assembly is now 4 layers (base → `<memory_recall>` → skill recipe → conversation). Do not re-introduce a pre-injected financial-context layer without a host that actually consumes it.
 
 ### BlockVision swap (v1.4 BlockVision migration)
 

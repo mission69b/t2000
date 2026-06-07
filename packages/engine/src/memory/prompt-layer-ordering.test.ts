@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// memory/five-layer-ordering.test.ts — Phase 7 integration test
+// memory/prompt-layer-ordering.test.ts — Phase 7 integration test
 // ---------------------------------------------------------------------------
 //
 // End-to-end verification that when `EngineConfig.memoryStore` is set:
@@ -8,8 +8,8 @@
 //      its `streamText` call.
 //   2. `prepareStep` calls `memoryStore.recall()` exactly ONCE per turn
 //      (regardless of how many AI SDK steps fire under `stopWhen`).
-//   3. The assembled system prompt presents the 5 layers in F-4 order:
-//      base → financial_context → memory → skill → user_message.
+//   3. The assembled system prompt presents the 4 layers in F-4 order:
+//      base → memory → skill → user_message.
 //   4. Recall failures degrade gracefully — the turn completes with an
 //      empty `<memory_recall>` block (no throw, no abort).
 //
@@ -19,10 +19,10 @@
 // prepareStep transformation.
 //
 // **Why not snapshot the entire prompt?** Brittle. We assert the
-// ORDER of the named layer markers (`<financial_context>`, the base
-// prompt's first words, `<memory_recall>`, the skill block's first
-// words) — drift in any one of those marker strings breaks the test
-// loudly, while non-layer copy edits stay green.
+// ORDER of the named layer markers (the base prompt's first words,
+// `<memory_recall>`, the skill block's first words) — drift in any one
+// of those marker strings breaks the test loudly, while non-layer copy
+// edits stay green.
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, vi } from 'vitest';
@@ -116,7 +116,6 @@ async function collect(gen: AsyncGenerator<EngineEvent>): Promise<EngineEvent[]>
 // ---------------------------------------------------------------------------
 
 const BASE_PROMPT = 'BASE_MARKER you are Audric, a financial agent.';
-const FINANCIAL_BLOCK = '<financial_context>\n  Savings: $100 USDC\n</financial_context>';
 const SKILL_BLOCK = 'SKILL_MARKER: yield-comparison recipe active.';
 
 function baseEngineConfig(): AISDKEngineConfig {
@@ -149,7 +148,7 @@ const SIMPLE_TURN_PARTS: LanguageModelV3StreamPart[] = [
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Phase 7 — 5-layer system prompt ordering', () => {
+describe('Phase 7 — 4-layer system prompt ordering', () => {
   it('does NOT wire prepareStep when memoryStore is undefined (legacy path preserved)', async () => {
     const engine = new AISDKEngine(baseEngineConfig());
     const captured: CapturedCall[] = [];
@@ -162,11 +161,10 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     // Legacy path: just the base prompt; no F-4 layers.
     expect(system).toBe(BASE_PROMPT);
     expect(system).not.toContain('<memory_recall>');
-    expect(system).not.toContain('<financial_context>');
     expect(system).not.toContain('SKILL_MARKER');
   });
 
-  it('wires prepareStep when memoryStore is set; assembles 5 layers in F-4 order', async () => {
+  it('wires prepareStep when memoryStore is set; assembles 4 layers in F-4 order', async () => {
     const store = new InMemoryMemoryStore();
     await store.remember('user prefers USDC over USDsui for savings');
     await store.remember('user holds 100 USDC in NAVI lending pool');
@@ -174,7 +172,6 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     const engine = new AISDKEngine({
       ...baseEngineConfig(),
       memoryStore: store,
-      financialContextBlock: FINANCIAL_BLOCK,
       skillRecipeBlock: SKILL_BLOCK,
     });
 
@@ -188,18 +185,16 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
 
     // Each marker must appear AND in the F-4 order.
     const idxBase = system.indexOf('BASE_MARKER');
-    const idxFinancial = system.indexOf('<financial_context>');
     const idxMemory = system.indexOf('<memory_recall>');
     const idxSkill = system.indexOf('SKILL_MARKER');
 
     expect(idxBase).toBeGreaterThanOrEqual(0);
-    expect(idxFinancial).toBeGreaterThan(idxBase);
-    expect(idxMemory).toBeGreaterThan(idxFinancial);
+    expect(idxMemory).toBeGreaterThan(idxBase);
     expect(idxSkill).toBeGreaterThan(idxMemory);
 
     // Memory block contains a recalled record (bag-of-words mock matched
     // on 'usdc' / 'save'). Pin to the specific text rendered so any drift
-    // in the layer-3 formatter fails this test loudly.
+    // in the memory-layer formatter fails this test loudly.
     expect(system).toContain('user prefers USDC');
   });
 
@@ -211,7 +206,6 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     const engine = new AISDKEngine({
       ...baseEngineConfig(),
       memoryStore: store,
-      financialContextBlock: FINANCIAL_BLOCK,
       skillRecipeBlock: SKILL_BLOCK,
     });
 
@@ -346,7 +340,6 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     const engine = new AISDKEngine({
       ...baseEngineConfig(),
       memoryStore: store,
-      financialContextBlock: FINANCIAL_BLOCK,
       skillRecipeBlock: SKILL_BLOCK,
     });
 
@@ -358,13 +351,12 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     expect(events.some((e) => e.type === 'turn_complete')).toBe(true);
 
     // System prompt must NOT contain the memory wrapper (empty results
-    // → empty layer 3 → omitted entirely by the filter).
+    // → empty memory layer → omitted entirely by the filter).
     const system = extractSystemFromCapturedPrompt(captured[0].prompt);
     expect(system).not.toContain('<memory_recall>');
 
     // Other layers still present.
     expect(system).toContain('BASE_MARKER');
-    expect(system).toContain('<financial_context>');
     expect(system).toContain('SKILL_MARKER');
 
     // Warning was logged (so production telemetry surfaces the outage).
@@ -399,14 +391,14 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     expect(system).not.toContain('<memory_recall>');
   });
 
-  it('layer 2 (financial) + layer 4 (skill) absent when not configured', async () => {
+  it('skill layer absent when not configured', async () => {
     const store = new InMemoryMemoryStore();
     await store.remember('user prefers USDC');
 
     const engine = new AISDKEngine({
       ...baseEngineConfig(),
       memoryStore: store,
-      // financialContextBlock + skillRecipeBlock deliberately omitted
+      // skillRecipeBlock deliberately omitted
     });
 
     const captured: CapturedCall[] = [];
@@ -417,7 +409,6 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     const system = extractSystemFromCapturedPrompt(captured[0].prompt);
     expect(system).toContain('BASE_MARKER');
     expect(system).toContain('<memory_recall>');
-    expect(system).not.toContain('<financial_context>');
     expect(system).not.toContain('SKILL_MARKER');
 
     // Order between the two present layers still holds (base before memory).

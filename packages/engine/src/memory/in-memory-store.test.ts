@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 //
 // Pins the contract `InMemoryMemoryStore` makes to the engine and its
-// hosts. The integration test (`five-layer-ordering.test.ts`) leans on
+// hosts. The integration test (`prompt-layer-ordering.test.ts`) leans on
 // these behaviors — keep them green or update both together.
 // ---------------------------------------------------------------------------
 

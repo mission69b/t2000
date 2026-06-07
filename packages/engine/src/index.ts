@@ -146,7 +146,7 @@ export type {
 // reference impl + test default; production hosts inject
 // `MemWalMemoryStore` (or similar) via `EngineConfig.memoryStore`.
 // Consumed by `prepareStep` in `v2/engine.ts` to inject a
-// `<memory_recall>` block as layer 3 of the F-4 5-layer system-prompt
+// `<memory_recall>` block as layer 2 of the F-4 4-layer system-prompt
 // assembly.
 export { InMemoryMemoryStore } from './memory/in-memory-store.js';
 export type { MemoryStore, MemoryRecord } from './memory/store.js';

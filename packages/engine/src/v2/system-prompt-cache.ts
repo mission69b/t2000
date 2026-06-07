@@ -68,10 +68,10 @@ export function buildSystemForStream(
 
 /**
  * Compose the `prepareStep` `system` return value for the memory-path
- * `AISDKEngine` flow. Takes the typed base system prompt + the three
- * per-turn volatile layers (financialContextBlock, memoryRecallBlock,
- * skillRecipeBlock — already rendered to strings by the caller; empty
- * strings are dropped) and returns either:
+ * `AISDKEngine` flow. Takes the typed base system prompt + the two
+ * per-turn volatile layers (memoryRecallBlock, skillRecipeBlock —
+ * already rendered to strings by the caller; empty strings are dropped)
+ * and returns either:
  *
  *  - `SystemModelMessage[]` when `baseSystem` is typed `SystemBlock[]`:
  *    base blocks preserve their cache_control; each non-empty volatile

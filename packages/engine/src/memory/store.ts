@@ -15,9 +15,9 @@
 // would force the wrong abstraction onto every consumer.
 //
 // **Engine-side scope:** MemoryStore is consumed by `prepareStep` in
-// `v2/engine.ts` to inject a `<memory_recall>` block as layer 3 of the
-// 5-layer F-4 system-prompt assembly (base → financial_context → memory
-// → skill → user message). The engine never decides WHEN to remember
+// `v2/engine.ts` to inject a `<memory_recall>` block as layer 2 of the
+// 4-layer F-4 system-prompt assembly (base → memory → skill → user
+// message). The engine never decides WHEN to remember
 // (host triggers it via `EngineConfig.memoryStore.remember(...)` after
 // each turn) — it only consumes whatever the store returns at recall
 // time.

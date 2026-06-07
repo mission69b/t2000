@@ -994,45 +994,6 @@ export interface EngineConfig {
     walletAddress?: string;
   }) => void | Promise<void>;
   /**
-   * [v1.11 F2] Trust signal from the host: the system prompt already
-   * embeds a fresh financial-context snapshot covering balance + HF as
-   * of `balanceAt` (Unix ms). Pre-seeds the guard runner so the
-   * "Balance has not been checked this session" / "Health factor has
-   * not been checked this session" hints DON'T fire on the first turn.
-   *
-   * Pre-v1.11 the guards started cold every chat: the LLM saw the
-   * `<financial_context>` block in the system prompt (with balances +
-   * HF baked in) but the BalanceTracker still reported `hasEverRead()`
-   * = false, so every first-turn write got pinged with a redundant
-   * "call balance_check first" hint. Audric's UC1/UC2/UC3 P2.6 runs
-   * showed the noise verbatim ("Balance not checked this session"
-   * appeared on every first-turn permission card).
-   *
-   * Why a host-supplied seed (vs. engine sniffing the system prompt):
-   * the engine doesn't own the prompt format. Audric builds
-   * `<financial_context>` from `UserFinancialContext`; another host
-   * may not (Audric CLI, server-signed automations). Having the host
-   * pass an explicit seed keeps the engine prompt-agnostic.
-   *
-   * Stale snapshots (>30min old): still seed. The LLM can judge
-   * whether to call `balance_check` for a fresh value based on the
-   * snapshot timestamp surfaced inside the financial-context block;
-   * the guard's job is to prevent unprompted writes against
-   * unknown-state, NOT to enforce a freshness SLA.
-   */
-  financialContextSeed?: {
-    /** Unix ms timestamp of the snapshot. Any non-zero value seeds `lastBalanceAt`. */
-    balanceAt?: number;
-    /**
-     * Health factor at snapshot time. Pass `null` if the user has no
-     * debt (HF undefined / Infinity in audric — render the snapshot
-     * row as "no debt" and don't seed). Pass a number to skip the
-     * "Health factor has not been checked this session" hint on
-     * first-turn write.
-     */
-    healthFactor?: number | null;
-  };
-  /**
    * [v1.4 Item 4] Per-guard observation hook. Forwarded to `runGuards`
    * and fired once per non-`pass` verdict so hosts can record guard
    * behaviour in `TurnMetrics.guardsFired` without re-implementing the
@@ -1143,14 +1104,13 @@ export interface EngineConfig {
    * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Pluggable memory backend.
    * When set, the engine wires `prepareStep` (currently otherwise unused
    * in v2) to perform ONE memory recall per turn at `stepNumber === 0`
-   * and inject the top-K records as a `<memory_recall>` block at layer 3
-   * of the F-4 5-layer system-prompt assembly:
+   * and inject the top-K records as a `<memory_recall>` block at layer 2
+   * of the F-4 4-layer system-prompt assembly:
    *
    *   1. base `systemPrompt`
-   *   2. `<financial_context>` block (from `financialContextBlock` below)
-   *   3. `<memory_recall>` block (from `memoryStore.recall()` results)
-   *   4. skill recipe block (from `skillRecipeBlock` below)
-   *   5. user message (from `messages[]`)
+   *   2. `<memory_recall>` block (from `memoryStore.recall()` results)
+   *   3. skill recipe block (from `skillRecipeBlock` below)
+   *   4. user message (from `messages[]`)
    *
    * The recall result is cached in `ToolContext.memoryCache` for the
    * duration of the turn — subsequent steps in the same `streamText`
@@ -1176,32 +1136,15 @@ export interface EngineConfig {
    */
   memoryStore?: import('./memory/store.js').MemoryStore;
   /**
-   * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Optional pre-built
-   * `<financial_context>` XML block, supplied by the host. Engine inserts
-   * it at layer 2 of the F-4 order via `prepareStep` when `memoryStore` is
-   * set. (Audric originally fed this from a daily `UserFinancialContext`
-   * snapshot cron, retired S.375 — it now supplies no block and orients
-   * via read tools.)
-   *
-   * **Only consumed when `memoryStore` is set** — without `memoryStore`
-   * the engine takes the legacy static-system-prompt path and hosts are
-   * expected to keep embedding `<financial_context>` directly inside the
-   * `systemPrompt` string (the pre-v2.7.0 contract).
-   *
-   * Optional — when undefined, layer 2 is empty (and the prepareStep
-   * assembler skips it).
-   */
-  financialContextBlock?: string;
-  /**
    * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Pre-built skill recipe block
    * — typically the output of `McpPromptAdapter.buildPrepareStepSystemPrefix()`
-   * (see `mcp/prompt-adapter.ts`). Engine inserts this at layer 4 of the
+   * (see `mcp/prompt-adapter.ts`). Engine inserts this at layer 3 of the
    * F-4 order via `prepareStep` when `memoryStore` is set.
    *
-   * **Only consumed when `memoryStore` is set** — same reasoning as
-   * `financialContextBlock` above.
+   * **Only consumed when `memoryStore` is set** — without `memoryStore`
+   * the engine takes the legacy static-system-prompt path.
    *
-   * Optional — when undefined, layer 4 is empty.
+   * Optional — when undefined, layer 3 is empty.
    */
   skillRecipeBlock?: string;
 }
