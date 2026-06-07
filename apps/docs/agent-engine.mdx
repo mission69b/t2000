@@ -53,7 +53,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 | 🧠 **Memory (MemWal)** | Knows your finances + remembers your patterns. | Engine: `prepareStep` + `MemoryStore` interface. Backend: `@mysten-incubation/memwal` (audric-side) |
 | 📓 **AdviceLog** | Remembers what it told you. | `record_advice` audric tool + `buildAdviceContext()` |
 
-The engine package owns **Agent Harness** and **Reasoning Engine** in code, plus the `MemoryStore` injection point for **Memory**. The MemWal vector backend, the daily `<financial_context>` snapshot cron, and the AdviceLog Prisma model are audric-side.
+The engine package owns **Agent Harness** and **Reasoning Engine** in code, plus the `MemoryStore` injection point for **Memory**. The MemWal vector backend and the AdviceLog Prisma model are audric-side. The engine also accepts an optional host-supplied `<financial_context>` block — Audric no longer feeds it a daily snapshot; the agent orients via fresh tool calls instead.
 
 ## Agent Harness — 26 tools
 
@@ -83,12 +83,12 @@ Every write goes through 12 guards across 3 priority tiers. Guards return one of
 
 Plus adaptive thinking effort per turn (cheap vs. expensive reasoning), preflight input validation (no LLM round-trip if the input is malformed), and prompt caching for the system prompt + tool definitions.
 
-## Memory — MemWal + financial context
+## Memory — MemWal recall + optional context
 
-Engine assembles the system prompt in 5 layers via `prepareStep`:
+Engine assembles the system prompt in up to 5 layers via `prepareStep`:
 
 1. Base `systemPrompt`
-2. `financialContextBlock` (daily snapshot from `UserFinancialContext`)
+2. `financialContextBlock` — **optional** host-supplied context string (Audric no longer supplies one)
 3. `<memory_recall>` — top-K vector facts from MemWal
 4. `skillRecipeBlock` (multi-step orchestration playbooks)
 5. `messages[]` (conversation history)
@@ -189,7 +189,7 @@ The engine's tools are plain AI SDK `tool()` instances (`getDefaultTools()`), so
 - `SessionStore` + `StreamCheckpointStore` backends (Redis / Postgres)
 - Transaction signing + tap-to-confirm UI (engine yields `pending_action`, host signs)
 - `record_advice` tool implementation (AdviceLog Prisma model is audric-side)
-- `<financial_context>` snapshot (daily cron; engine just reads the block)
+- (optional) `financialContextBlock` — a context string the engine injects as layer 2 if supplied; Audric supplies none
 
 ## Architecture
 
@@ -216,7 +216,7 @@ AISDKEngine.submitMessage()
     ├── Memory layer (engine owns the interface; host owns the backend)
     │       ├── MemoryStore.recall(latestUserMessage) → <memory_recall> block
     │       ├── MemoryStore.remember(...) → post-turn fact ingestion
-    │       └── financialContextBlock (host-supplied daily snapshot)
+    │       └── financialContextBlock (optional host-supplied context block)
     │
     └── Session + streaming
             ├── SessionStore (default: in-memory; prod: Redis)

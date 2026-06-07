@@ -57,7 +57,7 @@ For custom LLM providers or gateway routing, pass a pre-built `LanguageModel` vi
 | 🧠 **Memory** | Knows your finances. Vector-search-backed `MemoryStore` (recall + write) injected by the host; engine assembles a 5-layer system prompt with `prepareStep`. |
 | 📓 **AdviceLog** | Remembers what it told you. Host-side log (`record_advice`); last 30 days hydrate every turn so the chat never contradicts itself. |
 
-The engine package owns Agent Harness and Reasoning Engine, plus the `MemoryStore` interface. Vector backends (e.g. MemWal), daily `<financial_context>` snapshots, and the AdviceLog model live host-side.
+The engine package owns Agent Harness and Reasoning Engine, plus the `MemoryStore` interface. Vector backends (e.g. MemWal) and the AdviceLog model live host-side. The engine also accepts an optional host-supplied `<financial_context>` block (`EngineConfig.financialContextBlock`); supplying it is up to the host.
 
 ## Full reference
 

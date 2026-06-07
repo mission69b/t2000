@@ -1,5 +1,5 @@
 // EngineMemory — systems 03 + 04, at the same depth as tools/guards.
-// 03 Memory (MemWal): recall + daily financial_context snapshot.
+// 03 Memory (MemWal): per-wallet recall + post-turn analyze.
 // 04 AdviceLog: record_advice → recalled next session.
 
 interface Capability {
@@ -41,7 +41,7 @@ export function EngineMemory() {
 function MemoryCard() {
   const CAPS: Capability[] = [
     { fn: "recall(message)", note: "injects <memory_recall> at prepareStep" },
-    { fn: "financialContextBlock", note: "daily <financial_context> snapshot" },
+    { fn: "namespace: wallet", note: "facts scoped per user" },
     { fn: "write(finishReason)", note: "post-turn analyze · learns patterns" },
   ];
 
