@@ -59,6 +59,7 @@ import { resolveSuinsTool } from './resolve-suins.js';
 import { pendingRewardsTool } from './pending-rewards.js';
 import { harvestRewardsTool, narrateHarvestResult } from './harvest-rewards.js';
 import { tokenPricesTool } from './token-prices.js';
+import { mppServicesTool, mppCallTool } from './mpp.js';
 
 // ---------------------------------------------------------------------------
 // Tool name catalogues (single source of truth for "what's a read?",
@@ -85,6 +86,7 @@ export const READ_TOOL_NAMES = [
   'activity_summary',
   'resolve_suins',
   'pending_rewards',
+  'mpp_services',
 ] as const;
 
 export const WRITE_TOOL_NAMES = [
@@ -96,6 +98,7 @@ export const WRITE_TOOL_NAMES = [
   'claim_rewards',
   'harvest_rewards',
   'swap_execute',
+  'mpp_call',
 ] as const;
 
 export type ReadToolName = (typeof READ_TOOL_NAMES)[number];
@@ -125,6 +128,7 @@ export const READ_TOOL_SET: ToolSet = {
   activity_summary: activitySummaryTool,
   resolve_suins: resolveSuinsTool,
   pending_rewards: pendingRewardsTool,
+  mpp_services: mppServicesTool,
 };
 
 export const WRITE_TOOL_SET: ToolSet = {
@@ -136,6 +140,7 @@ export const WRITE_TOOL_SET: ToolSet = {
   claim_rewards: claimRewardsTool,
   harvest_rewards: harvestRewardsTool,
   swap_execute: swapExecuteTool,
+  mpp_call: mppCallTool,
 };
 
 /**
@@ -178,4 +183,6 @@ export {
   pendingRewardsTool,
   harvestRewardsTool,
   narrateHarvestResult,
+  mppServicesTool,
+  mppCallTool,
 };

@@ -735,6 +735,10 @@ export interface ToolContextEnv {
    *  Read by `web-search.ts`. Hosts: audric/web-v2 (optional;
    *  absent → web_search returns "not available"). */
   BRAVE_API_KEY?: string;
+  /** MPP gateway base URL — backs `mpp_services` (catalog fetch) and
+   *  `mpp_call` (paid endpoint calls). Read by `tools/mpp.ts`. Hosts:
+   *  audric/web-v2 (optional; absent → defaults to `https://mpp.t2000.ai`). */
+  MPP_GATEWAY_URL?: string;
 }
 
 export interface ToolContext {

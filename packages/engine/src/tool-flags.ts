@@ -44,6 +44,10 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   // Receive tools — create/cancel mutate server state
   create_payment_link: { mutating: true },
   cancel_payment_link: { mutating: true },
+
+  // MPP — paying for a Service spends USDC (mutating). Not bundleable: a
+  // paid API call isn't part of an on-chain Payment Intent PTB.
+  mpp_call: { mutating: true },
 };
 
 /**

@@ -151,6 +151,9 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   activity_summary: READ_DEFAULT,
   resolve_suins: READ_DEFAULT,
   render_canvas: READ_DEFAULT,
+  // Live gateway catalog fetch — never dedupe across turns (the catalog is
+  // the SSOT and can change between turns; see tools/mpp.ts).
+  mpp_services: { ...READ_DEFAULT, cacheable: false },
   list_payment_links: READ_DEFAULT,
   // [P4.1 audit / 2026-05-25] `create_payment_link` + `cancel_payment_link`
   // ARE auto-tier (no user tap — they create / cancel server-side rows,
@@ -180,6 +183,10 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
   claim_rewards: WRITE_CONFIRM,
   harvest_rewards: WRITE_CONFIRM,
   swap_execute: WRITE_CONFIRM,
+  // Metered consumption — confirm-tier in the engine. The sub-threshold
+  // tap-free path is a host-side (audric) budget decision (Gap B2/B3), not
+  // an engine auto-execute; the engine yields and the client runs pay().
+  mpp_call: WRITE_CONFIRM,
 
   // Explicit-only write tools (LLM never auto-dispatches; user must
   // initiate from a UI surface)

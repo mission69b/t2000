@@ -403,6 +403,7 @@ export {
   yieldSummaryTool,
   activitySummaryTool,
   resolveSuinsTool,
+  mppServicesTool,
 } from './tools/index.js';
 
 // Built-in tools — writes
@@ -416,6 +417,7 @@ export {
   repayDebtTool,
   claimRewardsTool,
   swapExecuteTool,
+  mppCallTool,
 } from './tools/index.js';
 
 // All default tools
