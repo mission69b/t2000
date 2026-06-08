@@ -17,7 +17,13 @@ const SAMPLE_CATALOG = [
     categories: ['ai', 'media'],
     logo: '/logos/openai.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Chat', price: '0.02' },
+      {
+        method: 'POST',
+        path: '/v1/chat/completions',
+        description: 'Chat',
+        price: '0.02',
+        schema: { type: 'object', properties: { messages: { type: 'array' } }, required: ['messages'] },
+      },
     ],
   },
   {
@@ -66,6 +72,9 @@ describe('mpp_services — catalog fetch', () => {
     expect(res.data.services).toHaveLength(2);
     expect(res.data.services[0]).not.toHaveProperty('logo');
     expect(res.data.services[0].name).toBe('OpenAI');
+    // The per-endpoint `schema` (the gateway surfaces it from its registry so
+    // the model shapes the call body correctly) must survive the passthrough.
+    expect(res.data.services[0].endpoints[0]).toHaveProperty('schema');
     expect(res.displayText).toContain('2 Services available');
   });
 

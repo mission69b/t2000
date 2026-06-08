@@ -34,6 +34,10 @@ interface ServiceEndpoint {
   path: string;
   description: string;
   price: string;
+  // Request-body JSON schema (param names, types, required, descriptions)
+  // surfaced by the gateway from its registry. Present for most endpoints;
+  // when present, build the mpp_call body to match it instead of guessing.
+  schema?: unknown;
 }
 
 interface CatalogService {
@@ -85,13 +89,14 @@ async function mppServicesCallBody(
     displayText:
       `${count} Service${count === 1 ? '' : 's'} available: ${names}. ` +
       `Each endpoint lists its per-call USDC price; the full call URL is serviceUrl + endpoint.path. ` +
+      `When an endpoint has a \`schema\`, build the mpp_call body to match it exactly (required fields, types). ` +
       `Use mpp_call with that URL + the endpoint price.`,
   };
 }
 
 export const mppServicesTool = tool({
   description:
-    'Discover paid third-party Services (live data, paid search, AI, media, real-world actions like mail) that Audric can call and pay for on the user\u2019s behalf via the MPP gateway. Returns the LIVE catalog: each Service has a `serviceUrl` and `endpoints[]` with `method`, `path`, `description`, and per-call USDC `price`. The full call URL is `serviceUrl + endpoint.path`. Call this FIRST to find the right endpoint and its price before mpp_call.',
+    'Discover paid third-party Services (live data, paid search, AI, media, real-world actions like mail) that Audric can call and pay for on the user\u2019s behalf via the MPP gateway. Returns the LIVE catalog: each Service has a `serviceUrl` and `endpoints[]` with `method`, `path`, `description`, per-call USDC `price`, and (for most endpoints) a `schema` describing the exact request-body shape (param names, types, required fields). The full call URL is `serviceUrl + endpoint.path`. Build the mpp_call body to match the endpoint `schema` — do not guess param names or shapes. Call this FIRST to find the right endpoint and its price before mpp_call.',
   inputSchema: mppServicesInputSchema,
   execute: wrapEngineExecute<MppServicesInput, { services: CatalogService[] }>('mpp_services', {
     call: mppServicesCallBody,
@@ -116,7 +121,9 @@ const mppCallInputSchema = z.object({
   body: z
     .string()
     .nullable()
-    .describe('JSON request body as a string, or null for GET-style calls with no body.'),
+    .describe(
+      'JSON request body as a string, shaped to match the endpoint\u2019s `schema` from mpp_services (use the exact param names/types it lists; include all required fields). Null for GET-style calls with no body.',
+    ),
   maxPriceUsd: z
     .number()
     .positive()

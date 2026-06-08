@@ -1,8 +1,23 @@
 import { services } from '@/lib/services';
+import { getEndpointSchema } from '@/lib/schemas';
 import { NextResponse } from 'next/server';
 
 export function GET() {
-  return NextResponse.json(services, {
+  // Attach each endpoint's request-body JSON schema (param names, types,
+  // required fields, descriptions) so callers — Audric, the CLI, any MPP
+  // agent — shape the call body from the contract instead of guessing.
+  // Single source of truth: lib/schemas.ts (the same map the OpenAPI doc
+  // uses). NOT duplicated into services.ts. Endpoints without a registered
+  // schema pass through unchanged.
+  const enriched = services.map((service) => ({
+    ...service,
+    endpoints: service.endpoints.map((endpoint) => {
+      const schema = getEndpointSchema(service.id, endpoint.path);
+      return schema ? { ...endpoint, schema: schema.requestBody } : endpoint;
+    }),
+  }));
+
+  return NextResponse.json(enriched, {
     headers: {
       'cache-control': 'public, max-age=60',
       'access-control-allow-origin': '*',
