@@ -14,6 +14,13 @@ export type { TransactionSigner } from './signer.js';
 export { KeypairSigner } from './wallet/keypairSigner.js';
 export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 
+// Gasless MPP pay — browser-safe; the Audric client runs this in-browser on
+// the zkLogin session key (unified gasless write path). Same canonical loop
+// `T2000.pay()` delegates to. Pair with `executeTx` for advanced callers.
+// (`PayOptions` / `PayResult` are exported from the types block below.)
+export { payWithMpp } from './wallet/pay.js';
+export { executeTx } from './wallet/executeTx.js';
+
 // Error handling
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';

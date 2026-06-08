@@ -15,7 +15,8 @@ import {
 } from './wallet/keyManager.js';
 import type { TransactionSigner } from './signer.js';
 import { KeypairSigner } from './wallet/keypairSigner.js';
-import { parseChallengeAmount } from './mpp-cost.js';
+import { executeTx } from './wallet/executeTx.js';
+import { payWithMpp } from './wallet/pay.js';
 import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
@@ -80,41 +81,6 @@ interface T2000Events {
 
 // Sign + execute a transaction with the agent's signer. Replaces the pre-v2 gas
 // manager — every transaction is now self-funded by the agent's wallet.
-type SuiTransactionEffects = NonNullable<Awaited<ReturnType<SuiJsonRpcClient['executeTransactionBlock']>>['effects']>;
-
-type BuildClient = NonNullable<Parameters<Transaction['build']>[0]>['client'];
-
-async function executeTx(
-  client: SuiJsonRpcClient,
-  signer: TransactionSigner,
-  buildTx: () => Promise<Transaction> | Transaction,
-  options: { buildClient?: BuildClient } = {},
-): Promise<{ digest: string; gasCostSui: number; effects: SuiTransactionEffects | undefined }> {
-  const tx = await buildTx();
-  tx.setSender(signer.getAddress());
-  // [2026-05-22] Optional buildClient. When set, `tx.build()` uses it to
-  // resolve the PTB — relevant for gasless stablecoin transfers where the
-  // SuiGrpcClient build path auto-detects allowlisted ops and zeros out
-  // gasPrice/gasBudget/gasPayment. See `T2000.pay()`. Submission still
-  // goes through the JSON-RPC client (gRPC client's submit API is not
-  // drop-in compatible with the rest of the SDK).
-  const txBytes = await tx.build({ client: options.buildClient ?? client });
-  const { signature } = await signer.signTransaction(txBytes);
-  const result = await client.executeTransactionBlock({
-    transactionBlock: txBytes,
-    signature,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
-  const gasUsed = result.effects?.gasUsed;
-  let gasCostSui = 0;
-  if (gasUsed) {
-    const total = BigInt(gasUsed.computationCost) + BigInt(gasUsed.storageCost) - BigInt(gasUsed.storageRebate);
-    gasCostSui = Number(total) / 1e9;
-  }
-  return { digest: result.digest, gasCostSui, effects: result.effects ?? undefined };
-}
-
 export class T2000 extends EventEmitter<T2000Events> {
   private readonly _signer: TransactionSigner;
   private readonly _keypair?: Ed25519Keypair;
@@ -223,106 +189,17 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.enforcer.assertNotLocked();
     this.enforcer.check({ operation: 'pay', amount: options.maxPrice ?? 1.0 });
 
-    const { Mppx } = await import('mppx/client');
-    const { sui, USDC } = await import('@suimpp/mpp/client');
-    const { SuiGrpcClient } = await import('@mysten/sui/grpc');
+    // Canonical gasless MPP pay loop lives in `wallet/pay.ts` (browser-safe,
+    // shared with the Audric client's unified gasless write path). T2000
+    // owns only the enforcer book-ends; the server budget ledger is the cap
+    // on the browser side, so the client caller skips the enforcer.
+    const result = await payWithMpp({ signer: this._signer, client: this.client, options });
 
-    const client = this.client;
-    const signer = this._signer;
-    const signerAddress = signer.getAddress();
-
-    let paymentDigest: string | undefined;
-    let gasCostSui = 0;
-    // [Bug 1 / dogfood 2026-05-31] The real amount charged on-chain is the
-    // 402 challenge price (a decimal USDC string like "0.01"), NOT the
-    // caller's `maxPrice` ceiling. mppx surfaces the parsed challenge via
-    // `onChallenge` before paying; we capture `request.amount` there and
-    // report THAT as `cost` (and feed it to the spend enforcer). Returning
-    // `undefined` from the hook lets mppx fall through to normal credential
-    // resolution, so capture is side-effect-only.
-    let chargedAmount: number | undefined;
-
-    // [2026-05-22] Gasless MPP. Build the payment PTB via SuiGrpcClient
-    // so the SDK's gasless-eligibility resolver runs at build time. When
-    // the PTB is `0x2::balance::send_funds` on an allowlisted stablecoin
-    // (USDC, USDsui, USDY, FdUSD, AUSD, BUCK, USDB, SUI_USDE), the resolver
-    // sets `gasPrice=0, gasBudget=0, gasPayment=[]` automatically. The
-    // protocol then accepts the tx for $0 gas.
-    //
-    // Submission stays on JSON-RPC because (a) the rest of the SDK expects
-    // SuiJsonRpcClient and (b) the docs explicitly support a "build via
-    // gRPC, execute via JSON-RPC" hybrid:
-    // https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers
-    //
-    // Network selection: only mainnet + testnet are gasless-eligible
-    // surfaces. Devnet/localnet/custom RPC fall back to mainnet — the
-    // tx will still build, just without the gasless allowlist check
-    // (which is mainnet-protocol-config-driven anyway).
-    const network: 'mainnet' | 'testnet' = client.network === 'testnet' ? 'testnet' : 'mainnet';
-    const grpcBaseUrl =
-      network === 'testnet'
-        ? 'https://fullnode.testnet.sui.io'
-        : 'https://fullnode.mainnet.sui.io';
-    const grpcClient = new SuiGrpcClient({ baseUrl: grpcBaseUrl, network });
-
-    const mppx = Mppx.create({
-      polyfill: false,
-      onChallenge: async (challenge: { request?: { amount?: unknown } }) => {
-        const parsed = parseChallengeAmount(challenge);
-        if (parsed !== undefined) chargedAmount = parsed;
-        return undefined;
-      },
-      methods: [sui({
-        client,
-        currency: USDC,
-        signer: {
-          toSuiAddress: () => signerAddress,
-          signPersonalMessage: (bytes: Uint8Array) => signer.signPersonalMessage(bytes),
-        } as Parameters<typeof sui>[0]['signer'],
-        execute: async (tx) => {
-          const result = await executeTx(client, signer, () => tx, { buildClient: grpcClient });
-          paymentDigest = result.digest;
-          gasCostSui = result.gasCostSui;
-          return { digest: result.digest };
-        },
-      })],
-    });
-
-    const method = (options.method ?? 'GET').toUpperCase();
-    const canHaveBody = method !== 'GET' && method !== 'HEAD';
-
-    const response = await mppx.fetch(options.url, {
-      method,
-      headers: options.headers,
-      body: canHaveBody ? options.body : undefined,
-    });
-
-    const contentType = response.headers.get('content-type') ?? '';
-    let body: unknown;
-    try {
-      body = contentType.includes('application/json')
-        ? await response.json()
-        : await response.text();
-    } catch {
-      body = null;
+    if (result.paid) {
+      this.enforcer.recordUsage(result.cost ?? options.maxPrice ?? 1.0);
     }
 
-    const paid = !!paymentDigest;
-
-    if (paid) {
-      this.enforcer.recordUsage(chargedAmount ?? options.maxPrice ?? 1.0);
-    }
-
-    return {
-      status: response.status,
-      body,
-      paid,
-      cost: paid ? (chargedAmount ?? options.maxPrice ?? undefined) : undefined,
-      gasCostSui: paid ? gasCostSui : undefined,
-      receipt: paymentDigest
-        ? { reference: paymentDigest, timestamp: new Date().toISOString() }
-        : undefined,
-    };
+    return result;
   }
 
   // [S.323 / 2026-05-25] VOLO vSUI staking surfaces removed (full cut).

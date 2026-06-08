@@ -39,10 +39,21 @@ describe('ZkLoginSigner', () => {
     expect(typeof signer.signPersonalMessage).toBe('function');
   });
 
-  it('signPersonalMessage throws — not yet implemented for zkLogin', async () => {
-    await expect(
-      signer.signPersonalMessage(new TextEncoder().encode('test')),
-    ).rejects.toThrow(/not yet implemented/i);
+  it('signPersonalMessage returns a zkLogin-wrapped signature and round-trips the message bytes', async () => {
+    const message = new TextEncoder().encode('mpp-grief-protection-challenge');
+    const result = await signer.signPersonalMessage(message);
+
+    expect(typeof result.signature).toBe('string');
+    expect(result.signature.length).toBeGreaterThan(0);
+    // `bytes` is the base64-encoded message the ephemeral keypair signed.
+    expect(typeof result.bytes).toBe('string');
+    expect(Buffer.from(result.bytes, 'base64')).toEqual(Buffer.from(message));
+  });
+
+  it('signPersonalMessage produces distinct wrapped signatures for distinct messages', async () => {
+    const a = await signer.signPersonalMessage(new TextEncoder().encode('challenge-a'));
+    const b = await signer.signPersonalMessage(new TextEncoder().encode('challenge-b'));
+    expect(a.signature).not.toBe(b.signature);
   });
 
   it('isExpired returns false when currentEpoch < maxEpoch', () => {

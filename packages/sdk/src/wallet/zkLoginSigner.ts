@@ -39,12 +39,17 @@ export class ZkLoginSigner implements TransactionSigner {
     };
   }
 
-  async signPersonalMessage(_messageBytes: Uint8Array): Promise<{ signature: string; bytes: string }> {
-    // zkLogin personal-message signing for `@suimpp/mpp` 0.7+ grief protection
-    // is not yet wired here. Audric (the only zkLogin consumer today) uses the
-    // sponsored-tx flow which does not call `sdk.pay()`. Implement when audric
-    // needs to drive MPP payments directly from the SDK.
-    throw new Error('ZkLoginSigner.signPersonalMessage is not yet implemented. Use KeypairSigner for sdk.pay() until grief-protection signing is wired for zkLogin.');
+  async signPersonalMessage(messageBytes: Uint8Array): Promise<{ signature: string; bytes: string }> {
+    const { getZkLoginSignature } = await import('@mysten/zklogin');
+    const { signature: ephSig, bytes } = await this.ephemeralKeypair.signPersonalMessage(messageBytes);
+    return {
+      signature: getZkLoginSignature({
+        inputs: this.zkProof,
+        maxEpoch: this.maxEpoch,
+        userSignature: ephSig,
+      }),
+      bytes,
+    };
   }
 
   isExpired(currentEpoch: number): boolean {
