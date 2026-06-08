@@ -364,7 +364,7 @@ const schemas: Record<string, EndpointSchema> = {
     requestBody: obj({
       country: str('2-letter country code (e.g. "us")'),
       category: str('Category (business, technology, science, etc.)'),
-      q: str('Search keywords'),
+      q: str('Optional keywords to narrow the headlines. Note: combining q with country/category is restrictive and often returns 0 results — for a keyword TOPIC use /v1/search instead.'),
     }),
   },
   'newsapi:/v1/search': {

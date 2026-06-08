@@ -298,8 +298,8 @@ export const services: Service[] = [
     categories: ['data', 'search'],
     logo: '/logos/newsapi.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/headlines', description: 'Top headlines by country, category, or source', price: '0.02' },
-      { method: 'POST', path: '/v1/search', description: 'Search articles by keyword, date range, language', price: '0.02' },
+      { method: 'POST', path: '/v1/headlines', description: 'Top breaking headlines filtered by country/category/source ONLY (e.g. country=us, category=business). Sparse: returns few or ZERO results for keyword topics. For a topic or keyword (e.g. "crypto", "bitcoin"), use /v1/search instead.', price: '0.02' },
+      { method: 'POST', path: '/v1/search', description: 'Search ALL articles by keyword across 150k+ sources (comprehensive). Use this for any topic/keyword query (e.g. "crypto headlines"), optionally with date range, language, sortBy. Prefer this over /v1/headlines for topic searches.', price: '0.02' },
     ],
   },
   {
