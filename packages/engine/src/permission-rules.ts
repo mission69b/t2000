@@ -171,6 +171,7 @@ const TOOL_TO_OPERATION: Record<string, PermissionOperation> = {
   borrow: 'borrow',
   repay_debt: 'repay',
   swap_execute: 'swap',
+  mpp_call: 'pay',
 };
 
 export function toolNameToOperation(toolName: string): PermissionOperation | undefined {
@@ -206,6 +207,10 @@ export function resolveUsdValue(
       if (fromAsset === 'USDC' || fromAsset === 'USDT') return amount;
       return amount * (priceCache.get(fromAsset) ?? 0);
     }
+
+    case 'mpp_call':
+      // The price ceiling is the spend bound — USDC-denominated, 1:1.
+      return safeNum(input.maxPriceUsd);
 
     default:
       return 0;

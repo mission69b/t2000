@@ -53,6 +53,16 @@ export function describeAction(toolName: string, call: PendingToolCall): string 
     }
     case 'claim_rewards':
       return 'Claim all pending protocol rewards';
+    case 'mpp_call': {
+      const max = input.maxPriceUsd;
+      let host = 'a Service';
+      try {
+        host = new URL(String(input.url ?? '')).host;
+      } catch {
+        // fall through to the generic label
+      }
+      return `Call & pay for ${host}${max ? ` (up to $${max} USDC)` : ''}`;
+    }
     case 'swap_execute': {
       const from = resolveTokenSymbol(String(input.from ?? '?'));
       const to = resolveTokenSymbol(String(input.to ?? '?'));
