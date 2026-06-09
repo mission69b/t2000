@@ -5,6 +5,7 @@ import {
   normalizeCoinType,
   getSuiClient,
   getSuiGrpcClient,
+  getSuiReadClient,
 } from './sui.js';
 import { DEFAULT_GRPC_URL, DEFAULT_RPC_URL } from '../constants.js';
 import { T2000Error } from '../errors.js';
@@ -172,6 +173,46 @@ describe('sui utilities', () => {
       delete process.env.T2000_GRPC_URL;
       const fromDefault = getSuiGrpcClient();
       expect(getSuiGrpcClient(DEFAULT_GRPC_URL)).toBe(fromDefault);
+    });
+  });
+
+  describe('getSuiReadClient — transport flag (gRPC migration Stage 1)', () => {
+    // The env flag `T2000_TRANSPORT` is the single seam the read path flips on.
+    // Default / unrecognized → JSON-RPC (fail-safe to the live transport);
+    // `grpc` → the gRPC client. Both expose `.core`, so balance.ts is identical
+    // either way — these tests lock the SELECTION, not the read shapes.
+    const originalTransport = process.env.T2000_TRANSPORT;
+
+    afterEach(() => {
+      if (originalTransport === undefined) delete process.env.T2000_TRANSPORT;
+      else process.env.T2000_TRANSPORT = originalTransport;
+    });
+
+    it('returns the passed JSON-RPC client when the flag is unset', () => {
+      delete process.env.T2000_TRANSPORT;
+      const jsonRpc = getSuiClient(DEFAULT_RPC_URL);
+      expect(getSuiReadClient(jsonRpc)).toBe(jsonRpc);
+    });
+
+    it('returns the passed JSON-RPC client for an unrecognized flag value', () => {
+      process.env.T2000_TRANSPORT = 'carrier-pigeon';
+      const jsonRpc = getSuiClient(DEFAULT_RPC_URL);
+      expect(getSuiReadClient(jsonRpc)).toBe(jsonRpc);
+    });
+
+    it('returns the gRPC client when T2000_TRANSPORT=grpc (case/space-insensitive)', () => {
+      process.env.T2000_TRANSPORT = '  GRPC  ';
+      const jsonRpc = getSuiClient(DEFAULT_RPC_URL);
+      const read = getSuiReadClient(jsonRpc);
+      expect(read).not.toBe(jsonRpc);
+      expect(read).toBe(getSuiGrpcClient(DEFAULT_GRPC_URL));
+    });
+
+    it('honors an explicit grpcUrl on the grpc branch', () => {
+      process.env.T2000_TRANSPORT = 'grpc';
+      const jsonRpc = getSuiClient(DEFAULT_RPC_URL);
+      const custom = 'https://read.example/grpc';
+      expect(getSuiReadClient(jsonRpc, custom)).toBe(getSuiGrpcClient(custom));
     });
   });
 });

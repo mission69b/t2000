@@ -73,6 +73,7 @@ export {
   normalizeCoinType,
   getSuiClient,
   getSuiGrpcClient,
+  getSuiGraphQLClient,
   createSuiClient,
 } from './utils/sui.js';
 export {
@@ -137,6 +138,8 @@ export {
   getAddress,
 } from './wallet/keyManager.js';
 export { buildSendTx, addSendToTx } from './wallet/send.js';
+// Canonical SDK-level wallet balance reader (transport-agnostic via `.core`).
+export { queryBalance, resetSuiPriceCache } from './wallet/balance.js';
 export {
   fetchAllCoins,
   selectAndSplitCoin,
