@@ -14,8 +14,14 @@
 //          guard pipeline composition.
 // ---------------------------------------------------------------------------
 
-export { AISDKEngine, tool } from './engine.js';
-export type { AISDKEngineConfig } from './engine.js';
+// [S.391 — 2026-06-09] `AISDKEngine` + `tool` re-export + `bridgeAISDKStream`
+// removed: the runnable engine loop + SSE/checkpoint/event-bridge surface was
+// retired (zero live consumers — audric composes `Experimental_Agent`
+// directly via `buildInternalContext` + `buildStepFinishHandler`; CLI/MCP
+// don't run a chat loop). The engine is now a harness LIBRARY.
+// `AISDKEngineConfig` survives in `./config.js` because `buildToolContext`
+// takes it. See the S.390 audit `SPEC_AUDRIC_CODEBASE_AUDIT.md` §1.2A.
+export type { AISDKEngineConfig } from './config.js';
 export {
   TOOL_POLICY,
   getToolPolicy,
@@ -32,4 +38,3 @@ export { runGuardsForTool, GuardBlockedError } from './guard-runner.js';
 export type { GuardRunnerOutcome } from './guard-runner.js';
 export { buildStepFinishHandler } from './step-finish.js';
 export type { StepFinishMutableState } from './step-finish.js';
-export { bridgeAISDKStream } from './event-translation.js';

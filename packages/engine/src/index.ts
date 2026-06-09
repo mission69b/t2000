@@ -18,7 +18,6 @@
 export type {
   Message,
   ContentBlock,
-  EngineEvent,
   EngineConfig,
   StopReason,
   PendingAction,
@@ -32,7 +31,6 @@ export type {
   ToolJsonSchema,
   PermissionLevel,
   PermissionResponse,
-  ProviderEvent,
   ServerPositionData,
   ToolChoice,
   ThinkingConfig,
@@ -84,19 +82,14 @@ export type { BundleCompositionInput, SwapQuoteReadEntry } from './compose-bundl
 // flows (e.g. audric's bundle-prepare path).
 export { findMatchingCetusRoute } from './swap-route-matching.js';
 
-// [SPEC 7 P2.4b] Bundle regeneration — re-fire upstream reads + rebuild
-// a multi-step pending_action without re-running the LLM. Hosts call
-// this from `POST /api/engine/regenerate` (synchronous JSON endpoint —
-// the chat SSE stream has already closed by the time the user taps
-// REGENERATE). See `packages/engine/src/regenerate.ts` for the full
-// contract + failure modes.
-export { regenerateBundle } from './regenerate.js';
-export type {
-  RegenerateResult,
-  RegenerateSuccess,
-  RegenerateFailure,
-  RegenerateTimelineEvent,
-} from './regenerate.js';
+// [S.391 — 2026-06-09] `regenerateBundle` removed with the engine loop
+// retirement. It was bound to the deleted `AISDKEngine` instance
+// (`engine.getMessages()` / `invokeReadTool()` / `loadMessages()`) and had
+// zero live consumers — audric regenerates host-side via
+// `composeBundleFromToolResults` + `computeRegenerateFields` (still exported
+// above) wired through its own `dispatch-intents.ts`. The PendingAction
+// `canRegenerate` / `regenerateInput` fields + the compose-bundle helpers
+// remain; only the engine-instance-bound wrapper is gone.
 
 // [P4.1 / 2026-05-25] Pending tool call shape — surfaced to hosts that
 // build PendingActions outside the engine (compose-bundle consumers).
@@ -106,40 +99,16 @@ export type { PendingToolCall } from './types.js';
 export { CostTracker } from './cost.js';
 export type { CostSnapshot, CostTrackerConfig } from './cost.js';
 
-// Streaming (SSE wire format)
-// [SPEC 37 v0.7a Phase 5 Slice A / v2.2.0 / 2026-05-17] `engineToSSE` removed —
-// see `streaming.ts` header for the deletion rationale. Hosts that previously
-// wrapped `engine.submitMessage()` with `engineToSSE` now iterate the
-// EngineEvent generator raw and call `serializeSSE` per-event (audric switched
-// to this pattern in v1.4.2; CLI / MCP never used the SSE path). `SSEEvent` +
-// `serializeSSE` + `parseSSE` remain as the wire-format single source of truth.
-export { serializeSSE, parseSSE } from './streaming.js';
-export type { SSEEvent } from './streaming.js';
-
-// [SPEC 21.1] Stream-state choreography wrapper — converts `routing` /
-// `quoting` / `confirming` / `settling` / `done` engine signals into
-// `stream_state` events for UI motion. Previously default-applied inside
-// `engineToSSE`; hosts now wrap their EngineEvent iteration with it directly.
-export { withStreamState } from './stream-state.js';
-export type { StreamState, StreamStateEvent } from './stream-state.js';
-
-// [SPEC 37 v0.7a Phase 5 Slice C / v2.2.0] Stream checkpoint store —
-// pluggable per-stream EngineEvent log for page-reload / cold-start
-// resume of the LIVE stream. Wire by setting `EngineConfig.streamCheckpointStore`
-// (engine then emits `stream_started` first and appends every event
-// fire-and-forget); host re-passes the streamId as `EngineConfig.resumeStreamId`
-// on reconnect. The CLI / MCP / tests / single-instance dev should use
-// the in-memory default; multi-instance hosts (audric on Vercel) need
-// an Upstash-backed impl.
-export {
-  InMemoryStreamCheckpointStore,
-  detectInFlightTool,
-} from './stream-checkpoint.js';
-export type {
-  StreamCheckpointStore,
-  InFlightToolDetection,
-  StreamResumeOutcome,
-} from './stream-checkpoint.js';
+// [S.391 — 2026-06-09] Streaming SSE wire-format (`serializeSSE` / `parseSSE` /
+// `SSEEvent`), the stream-state choreography wrapper (`withStreamState`), and
+// the stream-checkpoint store (`InMemoryStreamCheckpointStore` /
+// `StreamCheckpointStore` / `detectInFlightTool` / resume types) were all
+// REMOVED with the runnable engine-loop retirement. They served the
+// `EngineEvent`-based SSE transport that only `AISDKEngine.submitMessage`
+// emitted. No consumer used them: audric streams AI SDK `UIMessage` chunks
+// and resumes via the Redis-backed `resumable-stream` package (NOT the engine
+// checkpoint store — that LOCK-4 path was deferred and never wired); CLI/MCP
+// don't run a chat loop. See `SPEC_AUDRIC_CODEBASE_AUDIT.md` §3.
 
 // [SPEC_PHASE_7_DRAFT.md / v2.7.0] Memory store (engine-side abstraction
 // for MemWal-class backends). Engine ships `InMemoryMemoryStore` as the
@@ -323,19 +292,17 @@ export type { NaviReadOptions, ProtocolStats } from './navi/reads.js';
 // instantiate `createAnthropic({apiKey})` from `@ai-sdk/anthropic` and
 // pass the resulting LanguageModel into `AISDKEngine.modelInstance`.
 
-// [SPEC 37 v0.7a Phase 2-4 — consolidated AI-SDK-native rewrite]
-// [v2.0.0 — 2026-05-17] AISDKEngine is the ONLY engine. Legacy
-// QueryEngine + AnthropicProvider deleted; their ~17.3k LoC of custom
-// orchestration replaced by ~4,500 LoC wrapping AI SDK v6's streamText +
-// native tool() factory. Engine-specific concerns (USD permissions, 14
-// guards, postWriteRefresh, financial context) compose AROUND AI SDK
-// primitives instead of re-implementing them.
-// [v0.7a Phase 6 — 2026-05-17] Recipes removed from this list — see the
-// RE-3.1 deletion note above.
-//
-// See SPIKE_FINDINGS_v07a.md for the LoC delta + concerns mapping table
-// + 3-4 week effort estimate that justified the consolidated rewrite.
-export { AISDKEngine, TOOL_POLICY, getToolPolicy, registerToolPolicy } from './v2/index.js';
+// [S.391 — 2026-06-09] The runnable `AISDKEngine` class was RETIRED (the
+// engine is now a harness LIBRARY, not a runnable agent — audric composes
+// AI SDK's `Experimental_Agent` directly using the host-composition
+// primitives below; CLI/MCP are wallet surfaces with no chat loop; the
+// `AISDKEngine.submitMessage` loop + SSE/checkpoint/event-bridge surface had
+// zero live consumers). The tool registry, guards, USD permissions, prompt
+// assembly, internal-context, and the step-finish handler all survive — they
+// were always the load-bearing surface. `AISDKEngineConfig` survives as the
+// per-turn config shape `buildToolContext` takes. See the audit
+// `SPEC_AUDRIC_CODEBASE_AUDIT.md` §1.2A for the decision.
+export { TOOL_POLICY, getToolPolicy, registerToolPolicy } from './v2/index.js';
 export type { AISDKEngineConfig, ToolPolicy } from './v2/index.js';
 
 // [v2.20.0 / SPEC_AI_SDK_HARDENING P3.4 — 2026-05-24] Step-finish handler

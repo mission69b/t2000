@@ -83,8 +83,7 @@ const resolveSuinsDescription =
   '\n\nUse this WHENEVER the user mentions a `.sui` name OR asks "what\'s the SuiNS for 0x…", ' +
   '"does 0x… have a name", "who is 0x…". You MUST call this tool — never guess from saved ' +
   'contacts (a contact named "alex" is NOT the same as the SuiNS name "alex.sui"; verify on-chain). ' +
-  'Never use `web_search` for SuiNS — web_search doesn\'t index the SuiNS registry, but this tool ' +
-  'queries the canonical on-chain RPC. ' +
+  'Never guess a SuiNS mapping from memory — this tool queries the canonical on-chain RPC. ' +
   '\n\nReturns `{ direction, address, registered }` for forward, ' +
   '`{ direction, names, primary }` for reverse. Empty `names: []` means the address has no SuiNS records. ' +
   '\n\nNOTE: For money-flow questions about a `.sui` name ("what\'s alex.sui\'s balance / portfolio / ' +

@@ -1,5 +1,54 @@
 # Changelog
 
+## 5.0.0 — 2026-06-09 — S.391 — retire the runnable engine loop (engine = harness library)
+
+**MAJOR.** Removes the runnable `AISDKEngine` agent loop and its entire `EngineEvent`-based SSE / stream-checkpoint / event-bridge transport. The engine is now a **harness library** — tools, guards, USD-aware permissions, 4-layer prompt assembly, MCP client/adapters, and the host-composition primitives (`buildToolContext` / `buildInternalContext` / `buildStepFinishHandler`) hosts wire into AI SDK's own `Experimental_Agent`. There is no longer a "drop-in runnable engine."
+
+Why now / why safe: the runnable-loop surface had **zero live consumers** across both repos (verified by grep). Audric/web-v2 composes `Experimental_Agent` directly (the D-15 host-composition path) using the primitives above and never called `AISDKEngine.submitMessage()`; the CLI and MCP are v4 wallet+payments surfaces that don't import `@t2000/engine` at all. Live-stream resume in audric is the Redis-backed `resumable-stream` package over AI SDK `UIMessage` chunks — NOT the engine's `StreamCheckpointStore` (that LOCK-4 path was deferred and never wired). Rationale + audit trail: `SPEC_AUDRIC_CODEBASE_AUDIT.md` §1.2A + §3 (the S.390 audit).
+
+This was an extract-then-delete: `AISDKEngineConfig` survives (it's the per-turn config shape `buildToolContext` takes) and moved to `v2/config.ts`.
+
+### Removed exports
+
+- `AISDKEngine` (the runnable loop class — `v2/engine.ts`, deleted; ~1,830 LoC)
+- `regenerateBundle` + `RegenerateResult` / `RegenerateSuccess` / `RegenerateFailure` / `RegenerateTimelineEvent` (`regenerate.ts`, deleted — was bound to the deleted engine instance via `getMessages` / `invokeReadTool` / `loadMessages`; audric regenerates host-side via `composeBundleFromToolResults` + `computeRegenerateFields`, both retained)
+- `serializeSSE` / `parseSSE` / `SSEEvent` (`streaming.ts`, deleted)
+- `withStreamState` / `StreamState` / `StreamStateEvent` (`stream-state.ts`, deleted)
+- `InMemoryStreamCheckpointStore` / `detectInFlightTool` / `StreamCheckpointStore` / `InFlightToolDetection` / `StreamResumeOutcome` (`stream-checkpoint.ts`, deleted)
+- `bridgeAISDKStream` (`v2/event-translation.ts` + `bridge/*`, deleted)
+- `EngineEvent` (the loop's event-protocol union — `types.ts`)
+- `ProviderEvent` (the raw provider-event union — `types.ts`; its only consumer was the deleted engine's `handleProviderEvent`)
+- `tool` re-export from `v2/index.ts` (hosts import `tool` from `'ai'` directly; never re-exported at the package root)
+
+### Removed `EngineConfig` fields
+
+- `streamCheckpointStore`, `resumeStreamId`, `onStreamResume` — configured the live-stream checkpoint/replay that only `submitMessage` drove. No host wired them.
+
+### Retained (the load-bearing surface)
+
+- `AISDKEngineConfig` (moved to `v2/config.ts`) + `buildToolContext`, `buildInternalContext`, `buildStepFinishHandler`, `asInternalContext`, `tryGetInternalContext`, `runGuardsForTool` — the host-composition primitives audric uses.
+- All tools (`READ_TOOL_SET` / `WRITE_TOOL_SET` / `getDefaultTools` / individual tools), guards (`runGuards`, `DEFAULT_GUARD_CONFIG`, trackers), USD-aware permission resolver, `TOOL_POLICY`, prompt assembly, MCP client + adapters, memory `MemoryStore` interface + `InMemoryMemoryStore`, caches, BlockVision/NAVI/Sui helpers, `compose-bundle` + `regenerate`-field helpers.
+- `ToolChoice`, `StopReason`, `PendingAction` (+ steps/modifiable-fields), `HarnessShape` — unchanged.
+
+### Files deleted
+
+`v2/engine.ts`, `regenerate.ts`, `streaming.ts`, `stream-state.ts`, `stream-checkpoint.ts`, `v2/event-translation.ts`, `bridge/*` (5 files), plus their tests (`v2/engine.test.ts`, `v2/e2e-smoke.test.ts`, `v2/engine-checkpoint.test.ts`, `stream-state.test.ts`, `stream-checkpoint.test.ts`, `__tests__/streaming.test.ts`, `bridge/*.test.ts`, `memory/prompt-layer-ordering.test.ts`).
+
+### Orphaned helper sweep (follow-up to the loop deletion)
+
+Four `v2/*` helpers had the deleted `AISDKEngine` as their **only** importer (verified by grep — no other src import, no barrel re-export). Removed with their tests: `v2/enrich-pending-action.ts`, `v2/canonical-route.ts`, `v2/validate-history.ts`, `v2/system-prompt-cache.ts` (+ `enrich-pending-action.test.ts`, `validate-history.test.ts`, `system-prompt-cache.test.ts`).
+
+### Dead-reference cleanup (removed-tool residue)
+
+- `ToolContextEnv.BRAVE_API_KEY` removed — backed the `web_search` tool cut in S.277. Audric dropped its value-side wiring (env schema + `ToolContextEnv` spread) in S.277; this removes the now-dead field from the engine type (and the stale `BRAVE_API_KEY` entry from audric `turbo.json`).
+- `resolve_suins` tool description reworded to drop the "never use `web_search`" steer (that tool no longer exists; the line was shipped to the LLM every turn the tool was in scope).
+
+~520 KB removed across the loop deletion + orphan sweep. Typecheck + 985 tests + build all green.
+
+### Migration
+
+Hosts that ran `new AISDKEngine(...).submitMessage(...)` compose AI SDK's `Experimental_Agent` directly and wire `buildInternalContext` / `buildStepFinishHandler` / the tool sets — see the README quick-start. (No in-tree host needed migrating; this documents the path for any external loop consumer.)
+
 ## 3.1.0 — 2026-05-25 — P4.1 follow-up — drop legacy LLMProvider pathway
 
 **MINOR.** Cleanup release. Removes the legacy `LLMProvider` / `ChatParams` / `ToolDefinition` types + the `AISDKAnthropicProvider` class + the three converters that fed it (`toAISDKTools`, `toAISDKSystem`, `toAISDKToolChoice`). The 3.0.0 CHANGELOG explicitly flagged this pathway as "candidate for removal in v3.1.x" — this is that removal.

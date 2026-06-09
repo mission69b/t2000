@@ -32,292 +32,20 @@ export interface PendingToolCall {
 }
 
 // ---------------------------------------------------------------------------
-// Engine events — yielded by QueryEngine.submitMessage()
+// Engine events — RETIRED (S.391 — 2026-06-09)
 // ---------------------------------------------------------------------------
-
-export type EngineEvent =
-  /**
-   * [SPEC 8 v0.5.1] `blockIndex` identifies which thinking block this delta
-   * belongs to. Anthropic streams multi-block thinking with rising indices
-   * across each turn (block 0, 1, 2, ...). Hosts use this to render
-   * chronologically interleaved thinking accordions instead of flattening
-   * every delta into one string. Backwards-compatible: older hosts that
-   * ignore the field still see deltas in emission order.
-   */
-  | { type: 'thinking_delta'; text: string; blockIndex: number }
-  /**
-   * [SPEC 8 v0.5.1] When the thinking block contained a parseable
-   * `<eval_summary>...</eval_summary>` marker, `summaryMode` flips true
-   * and `evaluationItems` carries the structured rows. Hosts render the
-   * `HowIEvaluatedBlock` ("✦ HOW I EVALUATED THIS") trust card from
-   * these fields. Both undefined when the block had no marker (every
-   * read-only and most write turns).
-   */
-  | {
-      type: 'thinking_done';
-      blockIndex: number;
-      signature?: string;
-      summaryMode?: boolean;
-      evaluationItems?: import('./eval-summary.js').EvaluationItem[];
-    }
-  | { type: 'text_delta'; text: string }
-  | {
-      type: 'tool_start';
-      toolName: string;
-      toolUseId: string;
-      input: unknown;
-      /**
-       * [SPEC 23A-Q-source, 2026-05-11] Origin of this tool dispatch.
-       * Engine ALWAYS stamps this in production; hosts can rely on its
-       * presence to route the resulting blocks (e.g. group `'pwr'`
-       * results under a `<PostWriteRefreshSurface>`).
-       *
-       *  - `'pwr'`  — injected by `runPostWriteRefresh` after a successful
-       *               write. Paired with `wasPostWriteRefresh: true` on the
-       *               matching `tool_result` for one release cycle (the
-       *               boolean field deprecates in the next minor; consume
-       *               `source === 'pwr'` instead).
-       *  - `'llm'`  — default agent-loop dispatch (the LLM emitted a
-       *               `tool_use` block; engine ran the tool). Covers both
-       *               late-dispatch (in-loop) and `EarlyToolDispatcher`
-       *               (`wasEarlyDispatched: true` discriminates within `'llm'`).
-       *  - `'user'` — re-dispatch driven by a host-side user action,
-       *               specifically the `<PermissionCard>` Regenerate flow
-       *               that re-fires the upstream read (e.g. `swap_quote`
-       *               regen on a stale-quote tap).
-       *
-       * Optional in the type for back-compat with internal tests that
-       * pre-date this field. Engine code paths set it unconditionally;
-       * absent on a production event = bug, file an issue.
-       */
-      source?: 'pwr' | 'llm' | 'user';
-    }
-  | {
-      type: 'tool_result';
-      toolName: string;
-      toolUseId: string;
-      result: unknown;
-      isError: boolean;
-      /**
-       * [SPEC 23A-Q-source, 2026-05-11] See `tool_start.source` doc-comment
-       * for the full contract — same field, same values, paired by
-       * `toolUseId` to the originating `tool_start`.
-       */
-      source?: 'pwr' | 'llm' | 'user';
-      /**
-       * [v1.4 Item 4] True when the tool was executed by `EarlyToolDispatcher`
-       * (read tools dispatched concurrently before the LLM yields). Hosts
-       * record this in `TurnMetrics.toolsCalled[].wasEarlyDispatched`.
-       */
-      wasEarlyDispatched?: boolean;
-      /**
-       * [v1.4 Item 4] True when this result was synthesized from a previous
-       * identical tool call by `microcompact` deduplication, instead of
-       * actually re-running the tool.
-       */
-      resultDeduped?: boolean;
-      /**
-       * [v1.5 → DEPRECATED in SPEC 23A-Q-source, 2026-05-11] True when
-       * this result was produced by the engine's post-write refresh
-       * mechanism (see `EngineConfig.postWriteRefresh`). Equivalent to
-       * `source === 'pwr'`; kept in addition to `source` for one
-       * release cycle so existing host code that reads `wasPostWriteRefresh`
-       * (audric `TurnMetricsCollector`, `BlockRouter` legacy paths)
-       * keeps working without a coordinated bump. Migrate consumers to
-       * `event.source === 'pwr'` and this field deletes in the next
-       * minor.
-       */
-      wasPostWriteRefresh?: boolean;
-      /**
-       * [SPEC 8 v0.5.1 B3.2] Number of HTTP attempts the tool made before
-       * succeeding (or returning the final result). Surfaced when the tool
-       * went through one or more retries inside its retry wrapper
-       * (`fetchBlockVisionWithRetry` and equivalents). Set ONLY when N > 1
-       * — a successful first try leaves the field undefined to avoid
-       * header noise in the host's `ToolBlockView`. Hosts render
-       * "TOOL · attempt N · 1.4s" subtitle when present, hidden otherwise.
-       *
-       * Plumbing: engine sets a per-tool `retryStats: { attemptCount: 1 }`
-       * counter on `ToolContext`; the BlockVision retry wrapper increments
-       * it on every retry attempt; the engine reads it back after the tool
-       * returns and surfaces here when > 1. Tools that don't use a retry
-       * wrapper never emit a value.
-       */
-      attemptCount?: number;
-    }
-  | {
-      type: 'pending_action';
-      action: PendingAction;
-    }
-  | { type: 'turn_complete'; stopReason: StopReason }
-  | {
-      type: 'usage';
-      inputTokens: number;
-      outputTokens: number;
-      cacheReadTokens?: number;
-      cacheWriteTokens?: number;
-    }
-  | { type: 'error'; error: Error }
-  | {
-      /** Emitted when a tool result carries a canvas payload (__canvas: true). */
-      type: 'canvas';
-      template: string;
-      data: unknown;
-      title: string;
-      toolUseId: string;
-    }
-  /**
-   * [v1.4 Item 4] Emitted exactly once per agent turn when context-window
-   * compaction fires. Hosts (e.g. audric `TurnMetricsCollector`) flip a
-   * boolean for the `TurnMetrics.compactionTriggered` column. Carries no
-   * payload — `compactMessages` stays a pure function.
-   */
-  | { type: 'compaction' }
-  /**
-   * [SPEC 9 v0.1.1 P9.2] Proactive insight emitted by the LLM via a
-   * `<proactive type="..." subjectKey="...">BODY</proactive>` wrapper in
-   * the final-text block. Engine fires this event AFTER the matching
-   * text_delta stream has finished, once `parseProactiveMarker` has
-   * extracted the marker at content_block_stop on the text block AND
-   * the per-session cooldown check has run.
-   *
-   * `suppressed === false` (cold marker, first time seen this session)
-   * → host applies the `✦ ADDED BY AUDRIC` lockup styling on the matching
-   *   `text` TimelineBlock (italic body, dim border-left accent).
-   * `suppressed === true` (cooldown hit, same `(type, subjectKey)` already
-   *   fired this session) → host strips the wrapper from the displayed
-   *   text and renders as a regular text block — narrative still flows,
-   *   the visual lockup just doesn't fire twice.
-   *
-   * In both cases the streamed `text_delta` events still contain the raw
-   * marker chars (the engine doesn't buffer-and-rewrite mid-stream); the
-   * host applies marker stripping post-hoc using `body` from this event.
-   * Hosts that ignore this event render markers visibly — acceptable for
-   * legacy hosts as a graceful fallback.
-   */
-  | {
-      type: 'proactive_text';
-      proactiveType: 'idle_balance' | 'hf_warning' | 'apy_drift' | 'goal_progress';
-      subjectKey: string;
-      /** Marker body, trimmed. Host renders this inside the lockup (or as plain text when suppressed). */
-      body: string;
-      /** True when (proactiveType, subjectKey) was already seen this session — host skips the lockup. */
-      suppressed: boolean;
-      /** Total marker count detected in the text. >1 = LLM violation; counted by the host telemetry. */
-      markerCount: number;
-    }
-  /**
-   * [SPEC 8 v0.5.1] Mid-execution progress signal from a long-running tool
-   * (Cetus swap_execute 2-5s, protocol_deep_dive 3-8s, portfolio_analysis
-   * 1-2s). Tools opt in by calling `context.progress?.(msg, pct?)` from
-   * inside their `call` implementation. Hosts render the message + bar
-   * inside the corresponding tool block's spinner — kills the dead-air
-   * static-spinner UX that's the explicit SPEC 8 v0.3 fix target.
-   *
-   * Engine wiring (queue-and-yield in the dispatcher) lands with the
-   * Cetus integration in a follow-on slice. SPEC 8 v0.5.1 reserves the
-   * event type now so hosts can pre-wire the renderer.
-   *
-   * `pct` is 0–100 when the tool can express progress quantitatively,
-   * undefined otherwise (free-text status only).
-   */
-  | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
-  /**
-   * [SPEC 8 v0.5.1 B3.2] One-shot per-turn declaration of which adaptive
-   * harness shape this turn is running under. Emitted at the start of
-   * `submitMessage` BEFORE `agentLoop` begins (not on `resumeWithToolResult`
-   * — resume is a continuation of the same turn, not a new shape decision).
-   *
-   * Derived from `classifyEffort()` on the host side: `low → 'lean'`,
-   * `medium → 'standard'`, `high → 'rich'`, `max → 'max'`. Hosts use it
-   * to (a) pre-allocate UI affordances,
-   * (b) stamp `TurnMetrics.harnessShape` for dashboard segmentation,
-   * and (c) gate optional features.
-   *
-   * If absent, hosts MUST default to `'legacy'` for telemetry purposes
-   * (existing engines that don't emit this event are pre-SPEC-8). The
-   * engine emits it ONLY when the host passes `harnessShape` into
-   * `submitMessage` options; hosts that don't classify won't see this
-   * event.
-   */
-  | {
-      type: 'harness_shape';
-      shape: HarnessShape;
-      /**
-       * 1-line human-readable explanation of why this shape was picked.
-       * Examples: "matched recipe portfolio_rebalance → max",
-       * "session has prior writes + 'borrow' keyword → rich",
-       * "single-fact lookup → lean". Forwarded into telemetry verbatim.
-       */
-      rationale: string;
-    }
-  /**
-   * [SPEC 21.1] Stream-state choreography event — typed transition signal
-   * for hosts to drive UI motion ("Routing 0.05 USDC → SUI…" → "Quote in
-   * hand" → "Confirming…" → "Settling on Sui (~2s)…" → "Done") instead of
-   * the legacy `TASK INITIATED → silence → giant block` shape.
-   *
-   * Engine ALWAYS emits these events when configured tool boundaries are
-   * crossed — additive on the wire, safe for older hosts (they ignore
-   * unknown event types). Hosts opt INTO the visual choreography via a
-   * feature flag (audric uses `NEXT_PUBLIC_HARNESS_TRANSITIONS_V1` per
-   * SPEC 21 D-3 lock = staged rollout).
-   *
-   * Engine-emitted states (auto, via `withStreamState` wrapper applied
-   * by hosts around their EngineEvent iteration; `engineToSSE` was the
-   * pre-v2.2.0 SSE adapter that default-applied `withStreamState` — it
-   * was removed in Phase 5 Slice A and hosts now wrap directly):
-   *  - `'routing'`  — emitted immediately BEFORE the first `tool_start`
-   *                   for `swap_quote` in a turn. Signals "the LLM is
-   *                   asking the aggregator for a route."
-   *  - `'quoting'`  — emitted immediately AFTER the first SUCCESSFUL
-   *                   `tool_result` for `swap_quote` in a turn. Signals
-   *                   "the route is in hand; the quote card is about to
-   *                   render." Skipped on tool error (so the UI doesn't
-   *                   flash `Quote in hand` on a failed routing attempt).
-   *
-   * Host-emitted states (audric layers these in from its sponsored-tx
-   * flow — engine NEVER emits these because the engine doesn't see the
-   * post-pending_action handoff):
-   *  - `'confirming'` — when the client posts to `/api/transactions/prepare`
-   *                     after the user taps Confirm.
-   *  - `'settling'`   — after Enoki sponsorship returns success and the
-   *                     client is awaiting `waitForTransaction`.
-   *  - `'done'`       — on `tx_settled` confirmation, before the receipt
-   *                     card renders.
-   *
-   * Per D-1 (a) lock: typed enum only; NO `copyHint` field on v0.1.
-   * Promote to a hybrid shape (D-1 c) only if a tool-specific copy
-   * override becomes necessary. Hosts pick their own copy + motion per
-   * state.
-   *
-   * Per-turn state — the wrapper resets on `turn_complete` so a
-   * multi-turn session can fire `routing → quoting` again on the next
-   * swap.
-   */
-  | {
-      type: 'stream_state';
-      state: 'routing' | 'quoting' | 'confirming' | 'settling' | 'done';
-    }
-  /**
-   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] Emitted FIRST on
-   * every `submitMessage()` when `streamCheckpointStore` is configured
-   * on `EngineConfig`. Carries the UUID v4 streamId the engine assigned
-   * to this turn so the host can persist it and later pass it back as
-   * `EngineConfig.resumeStreamId` on a fresh `submitMessage()` (page
-   * reload / Vercel cold-start / mobile-tab swap mid-turn).
-   *
-   * Per Decision 4 of the Slice C spec: engine owns streamId generation
-   * (guarantees uniqueness across hosts). The event is OPT-IN — engines
-   * without `streamCheckpointStore` never emit it. Legacy hosts ignore
-   * unknown event types so the addition is wire-compatible.
-   *
-   * Resume scope: page-reload of the LIVE stream. The
-   * user-confirm-then-resume flow (`pending_action` →
-   * `resumeWithToolResult`) is unchanged and keys on `attemptId`, not
-   * `streamId`.
-   */
-  | { type: 'stream_started'; streamId: string };
+//
+// The `EngineEvent` union was the wire protocol the runnable
+// `AISDKEngine.submitMessage()` loop yielded. The loop + its SSE/checkpoint/
+// event-bridge transport were retired (the engine is now a harness LIBRARY,
+// not a runnable agent — hosts consume AI SDK `streamText` / `UIMessage`
+// chunks directly via the composition primitives). The union had zero live
+// consumers and was not part of the public export surface, so it was
+// deleted whole. See `SPEC_AUDRIC_CODEBASE_AUDIT.md` §1.2A + §3.
+//
+// The data shapes the union referenced — `PendingAction`, `StopReason`,
+// `HarnessShape`, `EvaluationItem` — live on independently (tools/guards/
+// host helpers still use them).
 
 /**
  * [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — driven by `classifyEffort()`,
@@ -731,10 +459,10 @@ export interface ToolContextEnv {
    *  authentication. Read by every audric-backed tool above.
    *  Hosts: audric/web-v2 (required; pairs with the URL). */
   AUDRIC_INTERNAL_KEY?: string;
-  /** Brave Search API key — backs the `web_search` tool.
-   *  Read by `web-search.ts`. Hosts: audric/web-v2 (optional;
-   *  absent → web_search returns "not available"). */
-  BRAVE_API_KEY?: string;
+  // [S.391 — 2026-06-09] `BRAVE_API_KEY` removed — it backed the
+  // `web_search` tool cut in S.277 (engine 2.18.0). Audric dropped its
+  // value-side wiring (env schema + ToolContextEnv spread) in S.277; this
+  // removes the now-dead field from the engine type.
   /** MPP gateway base URL — backs `mpp_services` (catalog fetch) and
    *  `mpp_call` (paid endpoint calls). Read by `tools/mpp.ts`. Hosts:
    *  audric/web-v2 (optional; absent → defaults to `https://mpp.t2000.ai`). */
@@ -1041,69 +769,13 @@ export interface EngineConfig {
    * Omit (undefined / empty map) to disable post-write refresh entirely.
    */
   postWriteRefresh?: Record<string, string[]>;
-  /**
-   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] Pluggable per-stream
-   * EngineEvent checkpoint log. When configured, every yielded event is
-   * appended (fire-and-forget) to the store keyed by an engine-generated
-   * `streamId`, and a `stream_started` EngineEvent fires first so the
-   * host can persist the id.
-   *
-   * On a subsequent `submitMessage()` with `resumeStreamId` set, the
-   * engine REPLAYS the checkpointed events AND RETURNS — replay-only,
-   * no second LLM pass (per S.151). This enables page-reload /
-   * Vercel cold-start / mobile-tab swap recovery of an in-flight turn
-   * without paying for or risking a redundant LLM call.
-   *
-   * Omit to disable checkpointing entirely (the historical, pre-v2.2.0
-   * behavior). The CLI / MCP / tests / single-instance dev should omit
-   * or use `InMemoryStreamCheckpointStore`; multi-instance hosts (audric
-   * on Vercel) need an Upstash-backed impl.
-   */
-  streamCheckpointStore?: import('./stream-checkpoint.js').StreamCheckpointStore;
-  /**
-   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.2.0] When set, engine
-   * treats this `submitMessage()` call as a RESUME — it replays the
-   * checkpointed events for `resumeStreamId` from `streamCheckpointStore`
-   * AND RETURNS. No live LLM continuation runs; the replayed events
-   * (which were captured from a previous live stream on this same
-   * `streamId`) become the entire response. Requires
-   * `streamCheckpointStore` to also be set (the engine throws on misconfig).
-   *
-   * Outcomes the engine emits before returning:
-   * - **Clean replay** — replay log ends with `turn_complete` or
-   *   `pending_action`; engine yields the events verbatim and returns.
-   * - **Missing terminal** — replay log was captured mid-event (e.g.
-   *   the original stream was killed before emitting a terminal); engine
-   *   yields the events plus a synthetic `turn_complete` so the host
-   *   state machine doesn't hang.
-   * - **In-flight tool (Path B)** — replay log contains a `tool_start`
-   *   without matching `tool_result`. Engine emits an `EngineEvent.error`
-   *   ("cannot resume mid-tool; please retry") and stops; host re-prompts
-   *   the user fresh. (Path A — silent re-execution — deferred to v2.3.0+.)
-   * - **Empty checkpoint** — `resumeStreamId` was passed but the store
-   *   has nothing for it (expired, never written, wrong id). Engine
-   *   emits an `EngineEvent.error` ("no checkpoint for streamId …");
-   *   host should start a fresh `submitMessage()` send.
-   * - **Replay infra failure** — `store.replay()` throws. Engine
-   *   propagates as `EngineEvent.error` and stops.
-   *
-   * Use `EngineConfig.onStreamResume` to subscribe to which outcome
-   * fired (telemetry for evaluating Path A in v2.3.0+).
-   */
-  resumeStreamId?: string;
-  /**
-   * [SPEC 37 v0.7a Phase 5 Slice C / engine v2.5.0] Optional callback
-   * invoked exactly ONCE per `submitMessage({ resumeStreamId })` call
-   * with the outcome of the replay (see `resumeStreamId` JSDoc for the
-   * five outcomes). Fires before the engine returns. Errors thrown from
-   * the callback are caught and logged — the resume path is not affected.
-   *
-   * Use to count how often Path B (mid-tool resume) fires in production;
-   * if it's common enough, Path A (silent tool re-execution) becomes
-   * worth building. CLI / MCP / single-instance dev typically omit;
-   * audric subscribes and pushes the outcome to its telemetry pipeline.
-   */
-  onStreamResume?: (info: import('./stream-checkpoint.js').StreamResumeOutcome) => void;
+  // [S.391 — 2026-06-09] `streamCheckpointStore`, `resumeStreamId`, and
+  // `onStreamResume` REMOVED with the runnable engine-loop retirement. They
+  // configured the `EngineEvent`-based live-stream checkpoint/replay that
+  // only `AISDKEngine.submitMessage` drove. No host wired them — audric
+  // resumes via the Redis-backed `resumable-stream` package over AI SDK
+  // `UIMessage` chunks (the engine checkpoint path was the deferred LOCK-4
+  // that never shipped). See `SPEC_AUDRIC_CODEBASE_AUDIT.md` §3.
   /**
    * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Pluggable memory backend.
    * When set, the engine wires `prepareStep` (currently otherwise unused
@@ -1154,61 +826,20 @@ export interface EngineConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Tool choice + provider event stream
+// Tool choice
 // ---------------------------------------------------------------------------
 //
 // [v3.1.0 — 2026-05-25] Pre-3.1.0 this section also exported `LLMProvider`,
 // `ChatParams`, and `ToolDefinition` — the legacy provider abstraction.
 // All three were dead code by the time v3.0.0 shipped (v2 engine wraps
 // AI SDK's `streamText` directly; no `LLMProvider.chat()` call survived
-// the v2 cutover). The deletion completes the v3.0.0 CHANGELOG follow-up.
+// the v2 cutover).
+//
+// [S.391 — 2026-06-09] `ProviderEvent` REMOVED with the runnable engine-loop
+// retirement. Its only consumer was the deleted engine's
+// `handleProviderEvent`; the engine no longer translates a raw provider
+// event stream into `EngineEvent`s (AI SDK's `streamText` is consumed
+// directly by hosts via the harness-library primitives). See
+// `SPEC_AUDRIC_CODEBASE_AUDIT.md` §1.2A.
 
 export type ToolChoice = 'auto' | 'any' | { type: 'tool'; name: string };
-
-export type ProviderEvent =
-  | { type: 'thinking_delta'; text: string; blockIndex: number }
-  | {
-      type: 'thinking_done';
-      blockIndex: number;
-      thinking: string;
-      signature: string;
-      // [SPEC 8 v0.5.1] populated by the provider when a parseable
-      // <eval_summary> marker was found in the thinking text.
-      summaryMode?: boolean;
-      evaluationItems?: import('./eval-summary.js').EvaluationItem[];
-    }
-  | { type: 'redacted_thinking'; data: string }
-  | { type: 'text_delta'; text: string }
-  /**
-   * [SPEC 9 v0.1.1 P9.2] Fired by the provider at content_block_stop on
-   * a TEXT block when a `<proactive>` marker was detected in the
-   * accumulated text. Carries the parsed marker payload so the engine
-   * can run cooldown logic (per-session dedup) and emit the public
-   * `proactive_text` engine event. Absent when no marker was found —
-   * regular text turns don't pay the cost.
-   *
-   * The provider does NOT do the cooldown check (that's engine state);
-   * it just parses + forwards. Pre-SPEC-9 hosts that handle provider
-   * events directly will silently no-op on this event; the engine's
-   * `handleProviderEvent` is the only consumer in production.
-   */
-  | {
-      type: 'text_done';
-      proactiveMarker?: import('./proactive-marker.js').ProactiveMarker;
-    }
-  | { type: 'tool_use_start'; id: string; name: string }
-  | { type: 'tool_use_delta'; id: string; partialJson: string }
-  | { type: 'tool_use_done'; id: string; name: string; input: unknown }
-  | {
-      type: 'message_start';
-      messageId: string;
-      model: string;
-    }
-  | {
-      type: 'usage';
-      inputTokens: number;
-      outputTokens: number;
-      cacheReadTokens?: number;
-      cacheWriteTokens?: number;
-    }
-  | { type: 'stop'; reason: StopReason };

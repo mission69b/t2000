@@ -21,7 +21,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ToolContext } from '../types.js';
-import type { AISDKEngineConfig } from './engine.js';
+import type { AISDKEngineConfig } from './config.js';
 
 /**
  * Build a fresh ToolContext for one streamText call.
