@@ -1,0 +1,50 @@
+---
+description: How to scope and build products/features — Musk's algorithm + the t2000 thesis. Apply before scoping any feature, spec, or plan.
+alwaysApply: true
+---
+
+# Product Build Algorithm + t2000 Thesis
+
+## The thesis (orients every product decision)
+
+**t2000 is for Machines AND Humans.** Every surface, API, and flow must work for an
+autonomous agent *and* a person. If a design only serves one, it's half-built. The rail
+(MPP / USDC / Passport) is the shared substrate both call.
+
+## The algorithm — run it IN ORDER, every time, before building
+
+Adapted from Musk. The order is load-bearing: never optimize a step you should have
+deleted, never automate a process that shouldn't exist.
+
+1. **Make the requirements less dumb.** Question every requirement — especially ones from
+   a senior person or a spec. Requirements are guilty until proven innocent. Trace each to
+   the real user/agent need. A requirement with no owner who'll defend it is a dumb
+   requirement. *(This is step 1 because most wasted work is building the wrong thing well.)*
+2. **Delete the part or process step.** If you're not adding back ≥10% of what you delete,
+   you didn't delete enough. A deleted step needs no optimizing, testing, or maintenance.
+   Prefer removing a surface over building one (the DeFi-removal / render-collapse instinct).
+3. **Optimize / simplify** — but only what survived steps 1–2. Don't optimize a thing that
+   shouldn't exist.
+4. **Accelerate cycle time** — speed up only after the above. Going fast on the wrong thing
+   is the most expensive mistake.
+5. **Automate** — last. Automating a flawed/undeleted process locks the flaw in.
+
+## How this binds agent behavior here
+
+- **Before scoping a plan or asking a "gate" question:** run step 1. Read the owning spec
+  fully first. A scoping question built on an unread/assumed requirement is itself dumb work.
+- **Default to deletion.** When a spec adds a surface (a card, a button, a flow, a config),
+  ask "what happens if we delete it?" before "how do we build it?" Surface every deletion
+  candidate you find, even outside the immediate task.
+- **Name the fork, don't paper over it.** If a "simpler" path conflicts with a locked
+  constraint (e.g. non-custodial), surface the trade-off explicitly and let the founder
+  decide — don't silently pick the constrained path because a spec said so (that's skipping
+  step 1).
+- **Machines-and-Humans test.** For any new flow, state how an agent uses it AND how a human
+  uses it. If you can't, the requirement isn't done being thought through.
+
+## Cross-references
+
+- Simplicity / surgical changes → `coding-discipline.mdc`
+- Trace-the-path / fix-at-root / single-source-of-truth → `engineering-principles.mdc`
+- Verifiable goals → `goal-driven-execution.mdc`

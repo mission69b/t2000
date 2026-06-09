@@ -1,0 +1,64 @@
+---
+description: Sui platform patterns — Address Balances (SIP-58) + gasless stablecoin / address-balance gas payments. When to reach for each, the eligibility gotchas, and how they scale a busy settlement address.
+alwaysApply: false
+---
+
+# Sui Address Balances + Gasless Stablecoin Transfers
+
+Two Sui platform features that change how we architect any **high-throughput payer** (the Model B settlement float, the MPP gateway, future Channel C agent custody) and any **gas-free user send** (Audric Pay → Store creator payouts, send-to-email claim links). Read this before assuming a single Sui address serializes, or before adding SUI-for-gas onboarding friction.
+
+## TL;DR — the two patterns
+
+| Pattern | What it gives you | Sui docs |
+|---|---|---|
+| **Address Balances (SIP-58)** | Fungible assets held as ONE accumulator balance at the address, not a scatter of `Coin<T>` objects. Concurrent debits are accumulator mutations → no owned-object lock → a single address is **no longer single-threaded**. Pairs with non-sequential nonces (many in-flight txs per address, keyed by digest not a serial counter). Gas can be paid from the balance (`enable_address_balance_gas_payments`). | `docs.sui.io/onchain-finance/asset-custody/address-balances/using-address-balances` |
+| **Gasless stablecoin transfers** | Move a stablecoin (USDC) **without holding SUI** — gas is sponsored or paid in-asset. Removes the "user needs SUI to send USDC" onboarding wall and the SUI gas-coin as a contention object on a busy payer. | `docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers` |
+
+## The myth these kill: "one Sui address can only do one tx at a time"
+
+The classic Sui owned-object model serializes a wallet on TWO objects:
+1. The **gas coin** (every tx mutates it) → equivocation risk if two txs grab it concurrently.
+2. The **payload coin** being spent (owned `Coin<T>`).
+
+That's why our **client-side** consumer path ships `enqueueWalletWrite` (the equivocation queue) — correct for **one human wallet doing occasional writes**.
+
+A **high-throughput server payer** must NOT inherit that constraint:
+- Address Balances remove #2 (accumulator, not owned object).
+- Address-balance gas payments / gasless transfers remove #1.
+- Non-sequential nonces let many settlement txs be in flight at once.
+
+→ **A single settlement address scales.** A wallet *fleet* is an OPTIONAL lever for blast-radius/security isolation or extreme headroom — **never a scaling prerequisite.** (This is the resolution recorded in `SPEC_AUDRIC_TOPUP_METERING.md` §3c for the Model B float.)
+
+## When to reach for which
+
+- **Building a busy payer** (Model B float, gateway settlement, server-signing agent custody) → architect on **Address Balances + non-sequential nonces**. Do not pre-shard into a wallet fleet "for throughput."
+- **A user/creator sends USDC and may not hold SUI** (Audric Pay → Store payouts, claim links) → use **gasless stablecoin transfer** so onboarding never requires SUI. We already do gasless USDC sends in `@t2000/sdk`.
+- **An occasional single human wallet doing client-side writes** → keep `enqueueWalletWrite`. Address Balances help but the queue is cheap insurance for the human path; don't rip it out chasing this.
+
+## Eligibility gotchas (do NOT overclaim "gasless")
+
+1. **Gasless ≠ free Move calls.** The gasless-stablecoin feature targets **stablecoin transfer** flows. A *pure USDC transfer* leg qualifies. An MPP `pay()` (or any tx) that calls a **custom Move contract** is not automatically gasless — it still needs gas, which **address-balance gas payments** (or Enoki sponsorship) cover. Classify each settlement leg: pure transfer → gasless path; contract call → address-balance-gas / sponsored path.
+2. **`enable_address_balance_gas_payments` is a protocol flag — verify it's live on mainnet** before building hard on address-balance *gas* sponsorship. Gasless stablecoin *transfers* are already live and exercised by the SDK; the address-balance-*gas* half is newer. **Fallback when not yet enabled: Enoki gas sponsorship** (already wired for Passport writes).
+3. **Migration cost.** Funds sitting in legacy owned `Coin<T>` objects must be deposited into the address balance to get the concurrency benefit; withdrawing back to a `Coin` when a downstream needs an object is a step. Don't assume every balance is already an accumulator.
+4. **Don't fork the canonical fetchers.** Reading a held balance still goes through the canonical portfolio path (`single-source-of-truth.mdc`) — Address Balances change the *write/concurrency* story, not the "one canonical reader" rule.
+
+## Where this is load-bearing in the codebase
+
+- **Model B settlement float** — `SPEC_AUDRIC_TOPUP_METERING.md` §3/§3c. One address, scales; fleet optional.
+- **Audric Pay → Store creator payouts + send-to-email** — gasless USDC sends so creators/recipients never need SUI (`SPEC_AUDRIC_STORE_V1.md`, `SPEC_AUDRIC_SEND_TO_EMAIL.md`).
+- **`@t2000/sdk` USDC sends** — already use gasless; `financial-amounts.mdc` covers the amount-flooring discipline for any on-chain leg.
+- **MPP `pay()`** — `SPEC_AUDRIC_MPP_REENABLE.md`: the on-chain payment path. Classify pure-transfer vs contract-call legs per gotcha #1.
+
+## What NOT to do
+
+- ❌ Add a wallet fleet to the Model B float "so it scales" — it scales on one address (gotcha-free per §3c). Fleet is security/extreme-scale only.
+- ❌ Tell a user they need SUI to send/receive USDC — use the gasless path.
+- ❌ Claim a Move-calling tx is "gasless" — only pure stablecoin transfers are; everything else needs gas (address-balance or Enoki).
+- ❌ Architect address-balance *gas* payments as a hard dependency without confirming the mainnet flag — keep the Enoki fallback.
+
+## Cross-references
+
+- `SPEC_AUDRIC_TOPUP_METERING.md` §3c — the settlement-scaling resolution this rule generalizes.
+- `.cursor/rules/financial-amounts.mdc` — amount flooring for on-chain legs.
+- `.cursor/rules/single-source-of-truth.mdc` — canonical balance reads (unchanged by this).
+- `audric/.cursor/rules/audric-transaction-flow.mdc` — Enoki sponsorship path (the gas fallback).
