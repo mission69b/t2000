@@ -3,9 +3,13 @@ title: "Agent Engine"
 description: "@t2000/engine — the agent engine for conversational finance. Implements Audric Intelligence: Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal), and AdviceLog."
 ---
 
-`@t2000/engine` is the agent engine for conversational finance on Sui — the brain behind [Audric](https://audric.ai). It implements **Audric Intelligence**, a 4-system stack that orchestrates LLM conversations, 26 financial tools, user confirmations, and MCP integrations into a single async-generator loop.
+`@t2000/engine` is the agent **harness library** for conversational finance on Sui — the brain behind [Audric](https://audric.ai). It implements **Audric Intelligence**, a 4-system stack: 26 financial tools, a 12-guard reasoning pipeline, a USD-aware permission resolver, 4-layer prompt assembly, MCP client/adapters, and the host-composition primitives a host wires into Vercel AI SDK's own agent loop.
 
 > _Not a chatbot. A financial agent._ Every action still waits on Audric Passport's tap-to-confirm. The engine never moves money on its own.
+
+<Note>
+  **[S.391 — 2026-06-09] The runnable `AISDKEngine` loop was retired.** The engine no longer ships a runnable agent (the `AISDKEngine.submitMessage()` async-generator loop + its `EngineEvent` SSE/checkpoint/event-bridge transport had zero live consumers). The host owns the AI SDK loop (`Experimental_Agent`) and composes the engine's primitives — tools, guards, permissions, prompt assembly, `buildToolContext` / `buildInternalContext` / `buildStepFinishHandler` — into it. This is `@t2000/engine` **5.0.0** (MAJOR). The snippets below reflect that model.
+</Note>
 
 ## Install
 
@@ -15,41 +19,55 @@ npm install @t2000/engine @t2000/sdk
 
 Requires Node.js 18+ · TypeScript 5+ recommended.
 
-## Quick Start
+## Quick Start (host composition)
+
+The host owns the AI SDK loop and wires the engine's primitives into it: build the tool set, build the per-turn `ToolContext` + `InternalContext`, and run guard state + post-write refresh via the step-finish handler.
 
 ```typescript
-import { AISDKEngine, getDefaultTools } from '@t2000/engine';
+import { Experimental_Agent as Agent } from 'ai';
+import { gateway } from '@ai-sdk/gateway';
+import {
+  READ_TOOL_SET,
+  WRITE_TOOL_SET,
+  buildToolContext,
+  buildInternalContext,
+  buildStepFinishHandler,
+  DEFAULT_GUARD_CONFIG,
+} from '@t2000/engine';
 import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create();
 
-const engine = new AISDKEngine({
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-  agent,
-  tools: getDefaultTools(),
+const config = { agent, anthropicApiKey: process.env.ANTHROPIC_API_KEY };
+const toolContext = buildToolContext(config, { signal: AbortSignal.timeout(60_000) });
+const messages: { role: string; content: unknown }[] = [];
+const internalContext = buildInternalContext({
+  toolContext,
+  walletAddress: agent.address,
+  guards: DEFAULT_GUARD_CONFIG,
+  getMessages: () => messages,
 });
 
-for await (const event of engine.submitMessage('What is my balance?')) {
-  switch (event.type) {
-    case 'text_delta':
-      process.stdout.write(event.text);
-      break;
-    case 'tool_start':
-      console.log(`\n[calling ${event.toolName}]`);
-      break;
-    case 'pending_action':
-      // Write tool needs approval — client executes, then calls engine.resumeWithToolResult()
-      break;
-  }
+const llm = new Agent({
+  model: gateway('anthropic/claude-sonnet-4-5'),
+  tools: { ...READ_TOOL_SET, ...WRITE_TOOL_SET },
+  experimental_context: internalContext,
+  onStepFinish: buildStepFinishHandler(internalContext, { sessionSpendUsd: 0 }),
+});
+
+for await (const part of llm.stream({ prompt: 'What is my balance?' }).fullStream) {
+  if (part.type === 'text-delta') process.stdout.write(part.text);
 }
 ```
+
+Write tools yield through AI SDK's native `needsApproval` round-trip (every write taps to confirm under zkLogin). `getDefaultTools()` is still exported if you want the combined read+write set as a single map.
 
 ## The 4 systems
 
 | System | One-line | Lives in |
 |---|---|---|
-| 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), one agent. | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `tools/*` |
-| ⚡ **Reasoning Engine** | Thinks before it acts. 12 guards, 3 priority tiers. | `classify-effort.ts`, `guards.ts`, `engine.ts` |
+| 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), one agent. | `tools/*`, `v2/tool-policy.ts`, `READ_TOOL_SET` / `WRITE_TOOL_SET` |
+| ⚡ **Reasoning Engine** | Thinks before it acts. 12 guards, 3 priority tiers. | `classify-effort.ts`, `guards.ts`, `v2/step-finish.ts` |
 | 🧠 **Memory (MemWal)** | Knows your finances + remembers your patterns. | Engine: `prepareStep` + `MemoryStore` interface. Backend: `@mysten-incubation/memwal` (audric-side) |
 | 📓 **AdviceLog** | Remembers what it told you. | `record_advice` audric tool + `buildAdviceContext()` |
 
@@ -92,15 +110,15 @@ Engine assembles the system prompt in 4 layers via `prepareStep`:
 3. `skillRecipeBlock` (multi-step orchestration playbooks)
 4. `messages[]` (conversation history)
 
-CLI / MCP / tests use `InMemoryMemoryStore` (default). Production Audric injects `MemWalMemoryStore` backed by `@mysten-incubation/memwal`.
+Tests use `InMemoryMemoryStore` (default). Production Audric injects a MemWal-backed store via `@mysten-incubation/memwal`. The host owns `prepareStep` assembly; the engine provides the `MemoryStore` interface + the in-memory default.
 
 ```typescript
 import { InMemoryMemoryStore } from '@t2000/engine';
 
-const engine = new AISDKEngine({
-  // ...
-  memoryStore: new InMemoryMemoryStore(),
-});
+const memory = new InMemoryMemoryStore();
+// In the host's prepareStep: recall top-K facts and prepend a
+// <memory_recall> block to the system prompt before the skill recipe.
+const facts = await memory.recall(latestUserMessage);
 ```
 
 Wire your own backend by implementing the `MemoryStore` interface (`recall(query)` returns top-K facts; `remember(text)` ingests a fact post-turn).
@@ -109,21 +127,17 @@ Wire your own backend by implementing the `MemoryStore` interface (`recall(query
 
 Every recommendation the agent makes is logged via the `record_advice` tool (audric-side). The last 30 days of advice are hydrated into the system prompt each turn so the chat doesn't contradict itself across sessions ("I told you to deposit USDC last week, here's the update").
 
-## Event types
+## Stream events
+
+The host consumes AI SDK v6's native `fullStream` parts (`text-delta`, `reasoning-delta`, `tool-call`, `tool-result`, `finish`, …) — the engine no longer defines its own `EngineEvent` union (removed in 5.0.0 with the runnable loop). Write tools surface through AI SDK's `needsApproval` round-trip; the engine still owns the **`PendingAction`** shape the host renders on the confirm card:
 
 ```typescript
-type EngineEvent =
-  | { type: 'text_delta'; text: string }
-  | { type: 'thinking_delta'; text: string }
-  | { type: 'thinking_done' }
-  | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
-  | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
-  | { type: 'pending_action'; action: PendingAction }   // write tool, needs user confirm
-  | { type: 'canvas'; html: string }
-  | { type: 'turn_complete'; stopReason: StopReason }
-  | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
-  | { type: 'error'; error: Error }
-  | { type: 'stream_started'; streamId: string };       // emitted FIRST when streamCheckpointStore is configured
+import type { PendingAction } from '@t2000/engine';
+
+// PendingAction carries the confirm-card payload: description, modifiableFields,
+// cetusRoute / steps[] for bundles, borrowApyBps, currentHF / projectedHF,
+// quoteAge / canRegenerate, plus the attemptId (UUID v4) the host round-trips
+// through the user-confirm event to correlate the resume.
 ```
 
 ## Tool permission levels
@@ -136,23 +150,15 @@ type EngineEvent =
 
 USD-aware resolver (`resolvePermissionTier(operation, amountUsd, config)`) downgrades writes dynamically based on USD value. Under zkLogin (Audric web-v2), every write taps to confirm — the auto-execute path is structurally disabled by design. Under server-signing hosts (`@t2000/cli` engine usage with a key), sub-threshold writes can auto-execute per the configured preset (`conservative` / `balanced` / `aggressive`).
 
-## Streaming + sessions
+## Sessions
 
 ```typescript
-import {
-  AISDKEngine,
-  serializeSSE,
-  parseSSE,
-  MemorySessionStore,
-  InMemoryStreamCheckpointStore,
-  budgetToolResult,
-} from '@t2000/engine';
+import { MemorySessionStore } from '@t2000/engine';
 ```
 
-- **`serializeSSE` / `parseSSE`** — wire format helpers for streaming `EngineEvent` over HTTP.
 - **`MemorySessionStore`** — default `SessionStore` (in-memory). Hosts inject Redis / Postgres backends.
-- **`InMemoryStreamCheckpointStore`** — replay the live stream after a page reload. Default in CLI / MCP / tests; Audric injects Upstash.
-- **`budgetToolResult`** — caps tool output size with a truncation hint.
+
+Streaming is the host's concern: it streams AI SDK `fullStream` parts directly. The engine's `EngineEvent` SSE helpers (`serializeSSE` / `parseSSE`), the `StreamCheckpointStore`, and `budgetToolResult` were removed in 5.0.0 — Audric does live-stream resume with the Redis-backed [`resumable-stream`](https://www.npmjs.com/package/resumable-stream) package over AI SDK `UIMessage` chunks, and tool-result budgeting is configured per-tool via `maxResultSizeChars`.
 
 ## MCP integration (external MCPs)
 
@@ -161,7 +167,7 @@ import { McpClientManager, NAVI_MCP_CONFIG, McpPromptAdapter } from '@t2000/engi
 
 const mcp = new McpClientManager();
 await mcp.connect(NAVI_MCP_CONFIG);                // NAVI MCP for live lending reads
-const tools = await mcp.listTools();               // wire into AISDKEngine.tools
+const tools = await mcp.listTools();               // merge into the Agent's tools map
 ```
 
 `McpClientManager` is backed by `@ai-sdk/mcp`. `McpPromptAdapter` is an extension point for consuming MCP prompts as skill recipes — currently dormant by design (it's the "speak any Sui protocol's MCP" seam, kept unwired until a downstream consumer needs it).
@@ -172,21 +178,20 @@ The engine's tools are plain AI SDK `tool()` instances (`getDefaultTools()`), so
 
 ## What's in scope vs. host
 
-**Engine owns:**
+**Engine owns (the library surface the host composes):**
 
-- LLM orchestration loop (`AISDKEngine.submitMessage`)
-- Tool registry, dispatch, permission gates (`v2/tool-policy.ts`)
-- 12 guards + USD-aware permission resolver
-- System prompt assembly (4-layer with `prepareStep`)
-- MCP client + server adapters
-- Streaming + checkpointing + session store interfaces
+- Tool registry, dispatch policy, permission gates (`READ_TOOL_SET` / `WRITE_TOOL_SET`, `v2/tool-policy.ts`)
+- 12 guards + USD-aware permission resolver (run via `buildStepFinishHandler` + `runGuardsForTool`)
+- Per-turn context builders (`buildToolContext`, `buildInternalContext`)
+- Prompt-assembly primitives + `MemoryStore` interface (host assembles the 4 layers in its `prepareStep`)
+- MCP client + prompt adapters
 
 **Host owns (e.g. Audric `apps/web-v2`):**
 
-- LLM provider keys + model selection (passes via `anthropicApiKey` or `modelInstance`)
-- `MemoryStore` implementation (MemWal in production, in-memory in tests)
-- `SessionStore` + `StreamCheckpointStore` backends (Redis / Postgres)
-- Transaction signing + tap-to-confirm UI (engine yields `pending_action`, host signs)
+- The AI SDK loop itself (`Experimental_Agent`), LLM provider keys + model selection
+- `prepareStep` (4-layer system prompt assembly) + the `MemoryStore` backend (MemWal in production, in-memory in tests)
+- `SessionStore` backend + live-stream resume (Redis `resumable-stream`)
+- Transaction signing + tap-to-confirm UI (write tools yield via `needsApproval`, host signs)
 - `record_advice` tool implementation (AdviceLog Prisma model is audric-side)
 
 ## Architecture
@@ -195,30 +200,21 @@ The engine's tools are plain AI SDK `tool()` instances (`getDefaultTools()`), so
 User message
     │
     ▼
-AISDKEngine.submitMessage()
+Host: Experimental_Agent (AI SDK v6) — owns the loop
     │
-    ├── LLM Provider (AI SDK v6 streamText via @ai-sdk/anthropic)
-    │       ├── text_delta events → streamed to client
-    │       ├── tool_start events → AI SDK dispatches isConcurrencySafe reads in parallel
-    │       └── pending_action events → client executes write, then resumeWithToolResult()
+    ├── model + prepareStep (host assembles 4-layer system prompt)
+    │       └── <memory_recall> ← engine MemoryStore.recall(latestUserMessage)
     │
-    ├── Tool registry (v2/tool-policy.ts)
-    │       ├── 18 read tools (auto-dispatch, parallel)
-    │       └── 8 write tools (confirm-tier, needsApproval round-trip)
+    ├── tools: { ...READ_TOOL_SET, ...WRITE_TOOL_SET }   ← engine
+    │       ├── 18 read tools (isConcurrencySafe → parallel mid-stream)
+    │       └── 8 write tools (needsApproval round-trip → host signs)
     │
-    ├── Reasoning layer
-    │       ├── classify-effort.ts (cheap vs. expensive thinking)
-    │       ├── guards.ts (12 guards, 3 priority tiers)
-    │       └── prepareStep (4-layer system prompt assembly)
+    ├── experimental_context: buildInternalContext(...)  ← engine
+    │       └── buildToolContext(config) per turn (BlockVision/NAVI/Sui + caches)
     │
-    ├── Memory layer (engine owns the interface; host owns the backend)
-    │       ├── MemoryStore.recall(latestUserMessage) → <memory_recall> block
-    │       └── MemoryStore.remember(...) → post-turn fact ingestion
-    │
-    └── Session + streaming
-            ├── SessionStore (default: in-memory; prod: Redis)
-            ├── StreamCheckpointStore (default: in-memory; prod: Upstash)
-            └── Cross-instance abort via AbortSignal threading
+    └── onStepFinish: buildStepFinishHandler(...)        ← engine
+            ├── runGuardsForTool (12 guards, 3 priority tiers)
+            └── post-write portfolio refresh + sessionSpendUsd
 ```
 
 ## Bundling

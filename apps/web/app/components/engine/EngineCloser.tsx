@@ -1,15 +1,16 @@
 import { AUDRIC_URL, DEVELOPERS_URL } from "../../data/t2k";
 import { CopyButton } from "../ui/CopyButton";
 
-const SNIPPET = `import { AISDKEngine, T2000 } from '@t2000/engine';
-import { anthropic } from '@ai-sdk/anthropic';
+const SNIPPET = `import { WRITE_TOOL_SET, buildInternalContext } from '@t2000/engine';
+import { Experimental_Agent as Agent } from 'ai';
+import { T2000 } from '@t2000/sdk';
 
-const engine = new AISDKEngine({
-  wallet: new T2000(),
-  model: anthropic('claude-sonnet-4'),
+const agent = new Agent({
+  tools: WRITE_TOOL_SET,
+  experimental_context: buildInternalContext({ wallet: new T2000() }),
 });
 
-await engine.run('Compound my NAVI rewards.');`;
+await agent.stream({ prompt: 'Compound my NAVI rewards.' });`;
 
 export function EngineCloser() {
   return (
@@ -94,46 +95,50 @@ export function EngineCloser() {
           >
             <span style={{ color: "var(--ds-blue-700)" }}>import</span>
             {" { "}
-            <span style={{ color: "var(--ds-teal-700)" }}>AISDKEngine</span>
+            <span style={{ color: "var(--ds-teal-700)" }}>WRITE_TOOL_SET</span>
             {", "}
-            <span style={{ color: "var(--ds-teal-700)" }}>T2000</span>
+            <span style={{ color: "var(--ds-teal-700)" }}>buildInternalContext</span>
             {" } "}
             <span style={{ color: "var(--ds-blue-700)" }}>from</span>
             {" "}
             <span style={{ color: "var(--t2k-success)" }}>{"'@t2000/engine'"}</span>
             {";\n"}
             <span style={{ color: "var(--ds-blue-700)" }}>import</span>
-            {" { anthropic } "}
+            {" { Experimental_Agent "}
+            <span style={{ color: "var(--ds-blue-700)" }}>as</span>
+            {" Agent } "}
             <span style={{ color: "var(--ds-blue-700)" }}>from</span>
             {" "}
-            <span style={{ color: "var(--t2k-success)" }}>
-              {"'@ai-sdk/anthropic'"}
-            </span>
+            <span style={{ color: "var(--t2k-success)" }}>{"'ai'"}</span>
+            {";\n"}
+            <span style={{ color: "var(--ds-blue-700)" }}>import</span>
+            {" { T2000 } "}
+            <span style={{ color: "var(--ds-blue-700)" }}>from</span>
+            {" "}
+            <span style={{ color: "var(--t2k-success)" }}>{"'@t2000/sdk'"}</span>
             {";\n\n"}
             <span style={{ color: "var(--ds-blue-700)" }}>const</span>
-            {" engine = "}
+            {" agent = "}
             <span style={{ color: "var(--ds-blue-700)" }}>new</span>
             {" "}
-            <span style={{ color: "var(--ds-teal-700)" }}>AISDKEngine</span>
-            {"({\n  wallet: "}
+            <span style={{ color: "var(--ds-teal-700)" }}>Agent</span>
+            {"({\n  tools: "}
+            <span style={{ color: "var(--ds-teal-700)" }}>WRITE_TOOL_SET</span>
+            {",\n  experimental_context: "}
+            <span style={{ color: "var(--ds-teal-700)" }}>buildInternalContext</span>
+            {"({ wallet: "}
             <span style={{ color: "var(--ds-blue-700)" }}>new</span>
             {" "}
             <span style={{ color: "var(--ds-teal-700)" }}>T2000</span>
-            {"(),\n  model: "}
-            <span style={{ color: "var(--ds-teal-700)" }}>anthropic</span>
-            {"("}
-            <span style={{ color: "var(--t2k-success)" }}>
-              {"'claude-sonnet-4'"}
-            </span>
-            {"),\n});\n\n"}
+            {"() }),\n});\n\n"}
             <span style={{ color: "var(--ds-blue-700)" }}>await</span>
-            {" engine."}
-            <span style={{ color: "var(--ds-teal-700)" }}>run</span>
-            {"("}
+            {" agent."}
+            <span style={{ color: "var(--ds-teal-700)" }}>stream</span>
+            {"({ prompt: "}
             <span style={{ color: "var(--t2k-success)" }}>
               {"'Compound my NAVI rewards.'"}
             </span>
-            {");"}
+            {" });"}
           </pre>
         </div>
 
