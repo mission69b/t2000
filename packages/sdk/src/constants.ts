@@ -200,6 +200,12 @@ export const DEFAULT_RPC_URL = 'https://fullnode.mainnet.sui.io:443';
 // Reads stay JSON-RPC; only write paths that need gasless eligibility detection
 // build via gRPC. Override with T2000_GRPC_URL for local dev / testnet.
 export const DEFAULT_GRPC_URL = 'https://fullnode.mainnet.sui.io:443';
+// [gRPC migration Stage 1] Mainnet GraphQL endpoint for `getSuiGraphQLClient()`.
+// Only the history read (`queryTransactionBlocks`) has no Core/gRPC equivalent —
+// Stage 2 routes `history.ts` through GraphQL while every other read moves to
+// `client.core.*`. Stage 2 confirms this endpoint against the parity probe before
+// wiring; override with T2000_GRAPHQL_URL for local dev / testnet.
+export const DEFAULT_GRAPHQL_URL = 'https://sui-mainnet.mysten.app/graphql';
 export const DEFAULT_KEY_PATH = '~/.t2000/wallet.key';
 export const DEFAULT_CONFIG_PATH = '~/.t2000/config.json';
 

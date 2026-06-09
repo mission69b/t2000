@@ -1,9 +1,10 @@
 import { EventEmitter } from 'eventemitter3';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { ClientWithCoreApi } from '@mysten/sui/client';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, coinWithBalance, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { createPaymentTransactionUri } from '@mysten/payment-kit';
-import { getSuiClient, getSuiGrpcClient } from './utils/sui.js';
+import { getSuiClient, getSuiGrpcClient, getSuiReadClient } from './utils/sui.js';
 import {
   generateKeypair,
   keypairFromPrivateKey,
@@ -119,6 +120,11 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly _signer: TransactionSigner;
   private readonly _keypair?: Ed25519Keypair;
   private readonly client: SuiJsonRpcClient;
+  // [gRPC migration Stage 1] Transport-agnostic READ client, selected by
+  // `T2000_TRANSPORT`. Defaults to `this.client` (JSON-RPC); flips to gRPC when
+  // `T2000_TRANSPORT=grpc`. Only the balance read path uses it today — writes
+  // and execution stay on `this.client` until Stage 4.
+  private readonly readClient: ClientWithCoreApi;
   private readonly _address: string;
   private readonly registry: ProtocolRegistry;
   readonly enforcer: SafeguardEnforcer;
@@ -145,6 +151,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       this._address = getAddress(kp);
     }
     this.client = client;
+    this.readClient = getSuiReadClient(client);
     this.registry = registry ?? T2000.createDefaultRegistry(client);
     this.enforcer = new SafeguardEnforcer(configDir);
     this.enforcer.load();
@@ -654,7 +661,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async balance(): Promise<BalanceResponse> {
-    const bal = await queryBalance(this.client, this._address);
+    const bal = await queryBalance(this.readClient, this._address);
 
     let chainTotal = bal.available + bal.gasReserve.usdEquiv;
 
@@ -1072,7 +1079,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       .reduce((sum, p) => sum + p.amount, 0);
 
     if (savingsTotal < shortfall * 0.95) {
-      const bal = await queryBalance(this.client, this._address);
+      const bal = await queryBalance(this.readClient, this._address);
       throw new T2000Error(
         'INSUFFICIENT_BALANCE',
         `Insufficient funds. Available: $${bal.available.toFixed(2)}, savings: $${savingsTotal.toFixed(2)}, requested shortfall: $${shortfall.toFixed(2)}`,

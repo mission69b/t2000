@@ -1,7 +1,9 @@
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { SuiGraphQLClient } from '@mysten/sui/graphql';
+import type { ClientWithCoreApi } from '@mysten/sui/client';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
-import { DEFAULT_GRPC_URL, DEFAULT_RPC_URL } from '../constants.js';
+import { DEFAULT_GRAPHQL_URL, DEFAULT_GRPC_URL, DEFAULT_RPC_URL } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
 /**
@@ -26,6 +28,16 @@ function resolveGrpcUrl(grpcUrl?: string): string {
   const envUrl = process.env.T2000_GRPC_URL?.trim();
   if (envUrl) return envUrl;
   return DEFAULT_GRPC_URL;
+}
+
+/**
+ * Same shape as `resolveRpcUrl` for the GraphQL endpoint.
+ */
+function resolveGraphqlUrl(graphqlUrl?: string): string {
+  if (graphqlUrl) return graphqlUrl;
+  const envUrl = process.env.T2000_GRAPHQL_URL?.trim();
+  if (envUrl) return envUrl;
+  return DEFAULT_GRAPHQL_URL;
 }
 
 /**
@@ -84,6 +96,78 @@ export function getSuiGrpcClient(grpcUrl?: string): SuiGrpcClient {
   const client = new SuiGrpcClient({ baseUrl, network: 'mainnet' });
   grpcClientCache.set(baseUrl, client);
   return client;
+}
+
+/**
+ * GraphQL client cache, keyed by URL. Same rationale as the JSON-RPC / gRPC
+ * caches: different URLs must produce different clients.
+ */
+const graphqlClientCache = new Map<string, SuiGraphQLClient>();
+
+/**
+ * Cached `SuiGraphQLClient` for the transaction-history read.
+ *
+ * [gRPC migration Stage 1 — stub; wired in Stage 2]
+ *
+ * Why this exists: every portfolio read except history has a Core/gRPC
+ * equivalent and moves to `client.core.*` (Stage 1+). The history read
+ * (legacy `queryTransactionBlocks`) has NO Core/gRPC method, so when Mysten
+ * deactivates the public JSON-RPC fullnode (2026-07-31) it must go through
+ * GraphQL instead. This client is the home for that path. Stage 2 rewrites
+ * `history.ts` to query through `getSuiGraphQLClient()` and validates it
+ * against the parity probe; until then this is an unused, ready entry point.
+ *
+ * Override the endpoint with the `T2000_GRAPHQL_URL` env var or the
+ * `graphqlUrl` arg. Cache is keyed by URL so multiple endpoints can co-exist.
+ */
+export function getSuiGraphQLClient(graphqlUrl?: string): SuiGraphQLClient {
+  const url = resolveGraphqlUrl(graphqlUrl);
+  const cached = graphqlClientCache.get(url);
+  if (cached) return cached;
+  const client = new SuiGraphQLClient({ url, network: 'mainnet' });
+  graphqlClientCache.set(url, client);
+  return client;
+}
+
+/**
+ * Resolve the active read transport from `T2000_TRANSPORT` (`grpc` | `jsonrpc`).
+ * Default is `jsonrpc` so the flip is opt-in per the migration plan; an
+ * unrecognized value also falls back to `jsonrpc` (fail-safe to the live
+ * transport rather than the not-yet-soaked one).
+ */
+function resolveReadTransport(): 'grpc' | 'jsonrpc' {
+  return process.env.T2000_TRANSPORT?.trim().toLowerCase() === 'grpc' ? 'grpc' : 'jsonrpc';
+}
+
+/**
+ * Transport-agnostic READ client, selected by `T2000_TRANSPORT`.
+ *
+ * [gRPC migration Stage 1 — SPEC_FULL_GRPC_MIGRATION §Stage 1]
+ *
+ * Both `SuiJsonRpcClient` and `SuiGrpcClient` expose `.core` (the unified
+ * `CoreClient`), so callers that read only through `client.core.*` (today:
+ * `balance.ts`) work identically on either transport. This selector is the
+ * single seam the env flag flips: `T2000_TRANSPORT=grpc` routes reads over
+ * gRPC, anything else stays on JSON-RPC. Writes/execution are NOT affected —
+ * they keep their own `SuiJsonRpcClient` until Stage 4.
+ *
+ * Returned as `ClientWithCoreApi` so callers can only reach the parity-safe
+ * `.core` surface, not transport-specific methods.
+ *
+ * On the `jsonrpc` branch we reuse the caller's existing JSON-RPC client (it
+ * already carries the resolved/overridden RPC URL) rather than re-resolving a
+ * fresh one — so a custom `rpcUrl` keeps working when the flag is off.
+ *
+ * NOTE: a custom `rpcUrl` does NOT carry over to the gRPC branch — when
+ * `T2000_TRANSPORT=grpc`, the gRPC endpoint comes from the `grpcUrl` arg, then
+ * `T2000_GRPC_URL`, then `DEFAULT_GRPC_URL`. A caller pointing reads at a
+ * non-default fullnode must set `T2000_GRPC_URL` (or pass `grpcUrl`) to match.
+ */
+export function getSuiReadClient(
+  jsonRpcClient: SuiJsonRpcClient,
+  grpcUrl?: string,
+): ClientWithCoreApi {
+  return resolveReadTransport() === 'grpc' ? getSuiGrpcClient(grpcUrl) : jsonRpcClient;
 }
 
 export function validateAddress(address: string): string {
