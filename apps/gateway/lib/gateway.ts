@@ -26,8 +26,20 @@ type RouteHandler = (request: Request) => Promise<Response> | Response;
 const pendingReports = new Map<string, PaymentReport>();
 
 function createMppx() {
+  // [S.413] HMAC-bind issued challenges. Without a secretKey the echoed
+  // challenge's fields (incl. `expires`) are client-forgeable, which lets
+  // the original payer re-present an old digest past the 24h store TTL
+  // with a fresh self-signed proof (self-replay for free service). With
+  // the key, Challenge.verify rejects any edited echo and the 5-minute
+  // challenge expiry caps the legacy replay window for real.
+  if (!env.MPP_CHALLENGE_SECRET) {
+    console.warn(
+      '[gateway] MPP_CHALLENGE_SECRET is not set — legacy-dialect challenges are not HMAC-bound (self-replay window extends past the digest TTL). Set it in the environment.',
+    );
+  }
   return Mppx.create({
     realm: 'mpp.t2000.ai',
+    secretKey: env.MPP_CHALLENGE_SECRET,
     methods: [sui({
       currency: USDC,
       recipient: TREASURY_ADDRESS,

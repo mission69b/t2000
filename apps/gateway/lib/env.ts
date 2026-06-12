@@ -125,6 +125,13 @@ const serverSchema = z.object({
   KV_REST_API_URL: requiredString,
   KV_REST_API_TOKEN: requiredString,
 
+  // [S.413] HMAC secret binding mppx challenges to this server. Without it
+  // an echoed challenge's fields (incl. `expires`) are forgeable, which
+  // re-opens the legacy-dialect self-replay window past the digest TTL.
+  // Optional for deploy-sequencing only (set in Vercel, then this can be
+  // promoted to requiredString); a loud boot warning fires when absent.
+  MPP_CHALLENGE_SECRET: optionalString,
+
   // ---- Optional with explicit defaults ----
   TREASURY_ADDRESS: optionalStringWithDefault(
     '0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012',
@@ -211,6 +218,7 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
     KV_REST_API_URL: process.env.KV_REST_API_URL,
     KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
+    MPP_CHALLENGE_SECRET: process.env.MPP_CHALLENGE_SECRET,
     // Server — optional with defaults / optional / test
     TREASURY_ADDRESS: process.env.TREASURY_ADDRESS,
     GATEWAY_URL: process.env.GATEWAY_URL,
@@ -284,6 +292,7 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'INTERNAL_API_KEY',
   'KV_REST_API_URL',
   'KV_REST_API_TOKEN',
+  'MPP_CHALLENGE_SECRET',
   // Optional / defaulted server-only
   'TREASURY_ADDRESS',
   'GATEWAY_URL',

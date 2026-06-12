@@ -11,7 +11,7 @@ import {
   type X402SettleResponse,
 } from '@suimpp/mpp/x402';
 import { Challenge } from 'mppx';
-import { getDigestStore } from './upstash-digest-store';
+import { getX402DigestStore } from './upstash-digest-store';
 
 /**
  * x402 dual-dialect for the gateway (SPEC_AGENT_PAYMENTS_X402 item 1.2,
@@ -208,7 +208,9 @@ export async function settleX402Request(
   if (!headerValue) throw new Error('[x402] Missing X-PAYMENT header');
 
   const payment = parseX402Header(headerValue);
-  const store = getDigestStore();
+  // 72h-TTL store — must outlive the payment's on-chain ValidDuring window
+  // (see upstash-digest-store.ts S.413 note), unlike the legacy 24h store.
+  const store = getX402DigestStore();
 
   const challengeKey = `x402c:${payment.payload.challengeId}`;
   if (await store.has(challengeKey)) {

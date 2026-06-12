@@ -5,15 +5,19 @@ vi.mock('./prisma', () => ({
   prisma: { mppPayment: { create: vi.fn() } },
 }));
 
-// In-memory digest store — the real one needs Upstash env vars.
+// In-memory digest store — the real one needs Upstash env vars. Mirrors
+// the nx semantics (set throws on duplicate) so race assertions are honest.
 const storeState = new Set<string>();
+const memoryStore = {
+  has: async (k: string) => storeState.has(k),
+  set: async (k: string) => {
+    if (storeState.has(k)) throw new Error(`Digest already used: ${k}`);
+    storeState.add(k);
+  },
+};
 vi.mock('./upstash-digest-store', () => ({
-  getDigestStore: () => ({
-    has: async (k: string) => storeState.has(k),
-    set: async (k: string) => {
-      storeState.add(k);
-    },
-  }),
+  getDigestStore: () => memoryStore,
+  getX402DigestStore: () => memoryStore,
 }));
 
 // Mock ONLY settlement (needs a live chain); requirements/parse/encode stay real.
