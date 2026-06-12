@@ -31,7 +31,7 @@ function abbreviateEndpoint(endpoint: string): string {
   return endpoint.replace(/^\/+/, "").slice(0, 32);
 }
 
-export function MppActivityPage({ treasuryAddress }: { treasuryAddress: string }) {
+export function MppActivityPage() {
   const [rows, setRows] = useState<Payment[]>([]);
   const [stats, setStats] = useState<{
     totalCalls: number;
@@ -103,7 +103,7 @@ export function MppActivityPage({ treasuryAddress }: { treasuryAddress: string }
           </h1>
         </header>
 
-        <div className="mb-3 grid gap-3 md:grid-cols-4">
+        <div className="mb-8 grid gap-3 md:grid-cols-4">
           <CounterCard
             label="Calls settled"
             value={loaded ? stats.totalCalls.toLocaleString() : null}
@@ -122,24 +122,6 @@ export function MppActivityPage({ treasuryAddress }: { treasuryAddress: string }
           <CounterCard label="Settle" value="~400" suffix="ms" />
         </div>
 
-        {/* [1.5] The verifiability line — the counter anyone can audit.
-            Self-reported numbers are what every rail shows; an on-chain
-            treasury anyone can open is the differentiator. */}
-        <p
-          className="mb-8 font-mono"
-          style={{ fontSize: 11, color: "var(--fg-subtle)" }}
-        >
-          Every payment settles on-chain to{" "}
-          <a
-            href={`https://suivision.xyz/account/${treasuryAddress}`}
-            rel="noopener noreferrer"
-            style={{ color: "var(--t2k-accent)", textDecoration: "none" }}
-            target="_blank"
-          >
-            {treasuryAddress.slice(0, 6)}…{treasuryAddress.slice(-4)} ↗
-          </a>{" "}
-          — verify these numbers yourself.
-        </p>
 
         <div className="t2k-card overflow-hidden">
           <div
