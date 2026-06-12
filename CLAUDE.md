@@ -23,7 +23,7 @@ t2000/
 ├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
-├── packages/engine  ← @t2000/engine (agent engine — AISDKEngine, tools, MCP)
+├── packages/engine  ← @t2000/engine (agent harness library — tools, guards, prompt assembly, MCP; host composes the loop)
 ├── packages/mcp     ← @t2000/mcp (npm)
 ├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
 ├── packages/models  ← @t2000/models (PLANNED, H2 — Agent Models: OpenAI-compatible gateway to self-hosted Qwen + resold frontier)
@@ -42,7 +42,7 @@ t2000/
 | Audric product | What it is | t2000 layer |
 |---|---|---|
 | 🪪 **Audric Passport** | The trust layer. Identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` |
-| 🧠 **Audric Intelligence** | The brain (the moat). Four systems orchestrate every money decision — Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal), AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." (v0.7d Phase 6 Block A — 2026-05-21 — collapsed former "Silent Profile" + "Chain Memory" into a single MemWal-backed "Memory" system. S.245 — 2026-05-22 — deleted `pay_api` + `mpp_services` tools per V07E_D_QUESTION_AUDITS D-2 reframe; 37 → 35. S.269 — 2026-05-23 — deleted `save_contact` (dead) + V07E_INVOICE_DEPRECATION deleted 3 invoice tools; 35 → 31. S.277 — 2026-05-23 — "Earns Its Keep" audit cut Volo trio + `web_search` + `protocol_deep_dive` + 2 dead guards; 31 → 26 tools, 14 → 12 guards.) | `@t2000/engine` (AISDKEngine + tools + reasoning + guards) + `@t2000/mcp` (skills exposed as MCP prompts) + `@mysten-incubation/memwal` (vector memory) |
+| 🧠 **Audric Intelligence** | The brain (the moat). Four systems orchestrate every money decision — Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal), AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." (v0.7d Phase 6 Block A — 2026-05-21 — collapsed former "Silent Profile" + "Chain Memory" into a single MemWal-backed "Memory" system. S.245 — 2026-05-22 — deleted `pay_api` + `mpp_services` tools per V07E_D_QUESTION_AUDITS D-2 reframe; 37 → 35. S.269 — 2026-05-23 — deleted `save_contact` (dead) + V07E_INVOICE_DEPRECATION deleted 3 invoice tools; 35 → 31. S.277 — 2026-05-23 — "Earns Its Keep" audit cut Volo trio + `web_search` + `protocol_deep_dive` + 2 dead guards; 31 → 26 tools, 14 → 12 guards. S.391 — 2026-06-09 — the runnable `AISDKEngine` loop retired; the engine is now a harness library the host composes.) | `@t2000/engine` (harness library — tools + reasoning + guards) + `@t2000/mcp` (skills exposed as MCP prompts) + `@mysten-incubation/memwal` (vector memory) |
 | 💰 **Audric Finance** | Manage your money on Sui. Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception added in v0.51.0), Credit (NAVI borrow USDC or USDsui against savings, health factor visible at all times — repay must use the same asset as the borrow), Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee), Charts (interactive yield / health / portfolio visualizations rendered from chat). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
 | 💸 **Audric Pay** | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / QR. No bank, no borders, no fees. (Invoicing is covered by payment links — set the label/memo to encode invoice context. Invoice as a distinct product retired in V07E_INVOICE_DEPRECATION / S.269 item 7, 2026-05-23.) | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract) |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. 92% to creator. **Coming soon (Phase 5).** | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) |
@@ -66,7 +66,7 @@ Every Audric action runs through Passport. It's the wallet itself.
 
 | System | What it does | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 26 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `AISDKEngine` + 26 tools (18 read / 8 write) |
+| 🎛️ **Agent Harness** | 26 tools, one agent. The toolset + composition primitives that orchestrate Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads; serial writes via the AI SDK step model + `needsApproval` round-trip. | `@t2000/engine` harness primitives + 26 tools (18 read / 8 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 14 safety guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` at build time and exposed to Cursor / Claude Desktop as MCP prompts. The engine no longer ships a YAML recipe runtime (deleted v0.7a Phase 6, May 2026); skill content guides the LLM, the engine just runs the tools the LLM picks. | `classify-effort.ts`, `guards.ts`, `t2000-skills/skills/`, extended thinking always-on |
 | 🧠 **Memory (MemWal)** | Knows your finances. `@mysten-incubation/memwal` vector memory holds long-term facts about preferences, goals, risk tolerance, on-chain patterns. `prepareStep` recalls top-K facts each turn → `<memory_recall>` system-prompt block; `onFinish` calls `memwal.analyze()` to extract new facts post-turn. Used silently to calibrate answers — never surfaced as nudges. (Audric retired its daily `UserFinancialContext` snapshot + cron in S.375 (2026-06-07), and the engine's now-unused `financialContextBlock` prompt layer was removed in S.376 — the agent orients via fresh tool calls. v0.7d Phase 6 Block A absorbed the former "Silent Profile" + "Chain Memory" systems into this one.) | `@mysten-incubation/memwal` SDK + `memwal-prepare-step.ts` + `memwal-write-callback.ts` |
 | 📓 **AdviceLog** | Remembers what it told you. Every recommendation is logged so the agent doesn't contradict itself across sessions. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` (last 30 days hydrated each turn) |
@@ -254,37 +254,37 @@ Powers **Audric** — the conversational finance agent. Wraps `@t2000/sdk` in an
 
 ### Import patterns
 
-> **Removed exports (do NOT import — verified against `packages/engine/src/index.ts`):** `AISDKAnthropicProvider` (removed v3.1.0), `buildMcpTools` + `registerEngineTools` (removed v3.0.0 — the MCP server now wraps the SDK wallet, not engine tools), `defineTool` / `toolsToDefinitions` / `findTool` / `buildTool` (no public tool-factory export — engine tools are defined inside the package with the AI SDK `tool()` factory), and the legacy QueryEngine helpers `TxMutex` / `runTools` / `EarlyToolDispatcher` / `budgetToolResult` / `engineToSSE`. The v2 `AISDKEngine` serialises writes structurally (AI SDK step model + `needsApproval` round-trip) and dispatches read-only `isConcurrencySafe` tools mid-stream natively — no separate dispatcher.
+> **Removed exports (do NOT import — verified against `packages/engine/src/index.ts`):** **`AISDKEngine` itself (removed S.391, 2026-06-09 — the runnable agent loop was retired; the engine is now a harness LIBRARY that hosts compose, not a runnable agent)**, along with its SSE/checkpoint transport — `serializeSSE` / `parseSSE` / `SSEEvent`, `withStreamState`, `InMemoryStreamCheckpointStore` / `StreamCheckpointStore` / `detectInFlightTool`, and the `EngineEvent` / `ProviderEvent` protocol types (all S.391). Also removed earlier: `AISDKAnthropicProvider` (v3.1.0), `buildMcpTools` + `registerEngineTools` (v3.0.0 — the MCP server now wraps the SDK wallet, not engine tools), `defineTool` / `toolsToDefinitions` / `findTool` / `buildTool` (no public tool-factory export — engine tools are native AI SDK `tool()` instances), and the legacy QueryEngine helpers `TxMutex` / `runTools` / `EarlyToolDispatcher` / `budgetToolResult` / `engineToSSE`. **Hosts compose the loop themselves** via `Experimental_Agent` from `ai` + the engine's host-composition primitives (`buildToolContext`, `buildInternalContext`, `buildStepFinishHandler`, `READ_TOOL_SET` / `WRITE_TOOL_SET`). Writes serialize structurally (AI SDK step model + `needsApproval` round-trip); read-only `isConcurrencySafe` tools dispatch mid-stream natively — no separate dispatcher.
 
 ```ts
-// Core
-import { AISDKEngine, getDefaultTools } from '@t2000/engine';
-import { TOOL_POLICY, getToolPolicy } from '@t2000/engine';
+// [S.391 — 2026-06-09] The engine is a HARNESS LIBRARY, not a runnable
+// agent. The host owns the AI SDK loop and wires these primitives into
+// `Experimental_Agent`. There is no `AISDKEngine`, no `serializeSSE`/
+// `parseSSE`, no `StreamCheckpointStore` — those were removed with the
+// runnable loop. Streaming is the host's AI SDK `fullStream` parts;
+// page-reload resume is the host's Redis `resumable-stream` (audric), not
+// an engine checkpoint store. See `SPEC_AUDRIC_CODEBASE_AUDIT.md` §1.2A.
 
-// Streaming + sessions
-import { serializeSSE, parseSSE } from '@t2000/engine';
+// Core — tools + host-composition primitives
+import {
+  READ_TOOL_SET, WRITE_TOOL_SET, getDefaultTools,
+  buildToolContext, buildInternalContext, buildStepFinishHandler,
+  DEFAULT_GUARD_CONFIG, TOOL_POLICY, getToolPolicy,
+} from '@t2000/engine';
+import type { AISDKEngineConfig } from '@t2000/engine'; // per-turn config shape buildToolContext takes
+
+// Sessions
 import { MemorySessionStore } from '@t2000/engine';
 
-// [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice C] Stream checkpoint store —
-// wire `EngineConfig.streamCheckpointStore` for page-reload / cold-start
-// resume of the LIVE stream. Engine emits `stream_started` first
-// (carries the engine-generated streamId), appends every event
-// fire-and-forget, and replays the checkpoint when host passes the
-// id back as `EngineConfig.resumeStreamId`. In-flight tool on resume
-// is Path B (error + re-prompt). CLI / MCP / tests use the in-memory
-// default; multi-instance hosts (audric on Vercel) inject Upstash.
-import { InMemoryStreamCheckpointStore } from '@t2000/engine';
-import type { StreamCheckpointStore } from '@t2000/engine';
-
-// [v2.7.0 / SPEC_PHASE_7_DRAFT.md] Memory layer — wire
-// `EngineConfig.memoryStore` and the engine assembles the system prompt
-// in F-4 4-layer order via `prepareStep`:
+// [v2.7.0 / SPEC_PHASE_7_DRAFT.md] Memory layer — the host injects a
+// `MemoryStore` and assembles the system prompt in F-4 4-layer order in
+// its own `prepareStep`:
 // 1. base systemPrompt → 2. <memory_recall>
 // (top-K MemoryStore.recall(latestUserMessage)) → 3. skillRecipeBlock →
-// 4. messages[]. Per-turn caching (single recall per submitMessage call)
-// is load-bearing; recall failures degrade gracefully (empty memory layer).
+// 4. messages[]. Per-turn caching (single recall per turn) is
+// load-bearing; recall failures degrade gracefully (empty memory layer).
 // CLI / MCP / tests use the InMemoryMemoryStore default; production
-// audric will inject MemWalMemoryStore post-2026-05-29 MemWal stability.
+// audric injects MemWalMemoryStore.
 // See `.cursor/rules/memory-injection-architecture.mdc` for the contract.
 import { InMemoryMemoryStore } from '@t2000/engine';
 import type { MemoryStore, MemoryRecord } from '@t2000/engine';
@@ -315,21 +315,25 @@ import {
 } from '@t2000/sdk';
 ```
 
-### Engine event types
+### Stream events — the host's AI SDK `fullStream` (no engine event protocol)
+
+> **[S.391 — 2026-06-09] The engine no longer defines an `EngineEvent` protocol.** The `EngineEvent` / `ProviderEvent` union + the SSE transport that emitted it were removed with the runnable loop. The host iterates **AI SDK `fullStream` parts** directly (`text-delta`, `reasoning-delta`, `tool-call`, `tool-result`, `finish`, `error`, etc.) and renders its own UI from them. Two engine-owned concerns still cross the boundary, but as data the host reads off the stream / tool results, not as a custom event type:
+
+- **`pending_action` (`PendingAction`)** — a write tool's `needsApproval` round-trip. `PendingAction.attemptId` is a UUID v4 stamped per-yield; the host persists it on `TurnMetrics` and keys the resume `updateMany` on it (see `agent-harness-spec.mdc`).
+- **`StopReason`** — derived from the AI SDK `finish` part.
 
 ```ts
-type EngineEvent =
-  | { type: 'text_delta'; text: string }
-  | { type: 'thinking_delta'; text: string }
-  | { type: 'thinking_done' }
-  | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
-  | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
-  | { type: 'pending_action'; action: PendingAction } // PendingAction.attemptId is a UUID v4 stamped per-yield — host persists it on TurnMetrics + keys resume updateMany on it
-  | { type: 'canvas'; html: string }
-  | { type: 'turn_complete'; stopReason: StopReason }
-  | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
-  | { type: 'error'; error: Error }
-  | { type: 'stream_started'; streamId: string }; // [v2.2.0 Slice C] emitted FIRST when streamCheckpointStore configured
+// Host loop (audric/web-v2): iterate the AI SDK stream, not EngineEvent.
+for await (const part of agent.stream({ messages }).fullStream) {
+  switch (part.type) {
+    case 'text-delta':      /* render text */ break;
+    case 'reasoning-delta': /* render thinking */ break;
+    case 'tool-call':       /* tool started */ break;
+    case 'tool-result':     /* tool finished (read) */ break;
+    case 'finish':          /* StopReason; usage on part.totalUsage */ break;
+    case 'error':           /* surface */ break;
+  }
+}
 ```
 
 ### Tool permission levels
@@ -346,11 +350,11 @@ Tools can set `maxResultSizeChars` to cap output size. Results exceeding the lim
 
 ### Streaming tool execution (B.1)
 
-In `AISDKEngine` (v2), AI SDK natively dispatches read-only `isConcurrencySafe` tools mid-stream — each `tool-call` event triggers execution as soon as the tool block completes (no separate dispatcher needed). Write tools still go through the permission gate (`needsApproval` callback) after the stream's `start-step` / `finish-step` boundary. Results stream back via `tool-result` events in original dispatch order. The legacy `EarlyToolDispatcher` is still exported for back-compat with non-AISDKEngine callers (CLI, MCP), but the v2 engine doesn't use it — the AI SDK step model is the native mechanism.
+In the host's `Experimental_Agent` loop, AI SDK natively dispatches read-only `isConcurrencySafe` tools mid-stream — each `tool-call` triggers execution as soon as the tool block completes (no separate dispatcher needed). Write tools still go through the permission gate (`needsApproval` callback) after the stream's `start-step` / `finish-step` boundary. Results stream back via `tool-result` parts in original dispatch order. (`EarlyToolDispatcher` was removed with the runnable loop in S.391 — the AI SDK step model is the native mechanism.)
 
 ### Microcompact (B.3)
 
-`microcompact(messages)` deduplicates identical tool calls (same name + input) in conversation history, replacing repeated results with `[Same result as turn N]`. Runs as Phase -1 in `compactMessages` (`packages/engine/src/context.ts`), invoked every turn by the v2 `AISDKEngine`.
+`microcompact(messages)` deduplicates identical tool calls (same name + input) in conversation history, replacing repeated results with `[Same result as turn N]`. Runs as Phase -1 in `compactMessages` (`packages/engine/src/context.ts`); the host calls it each turn before invoking the agent.
 
 ### Built-in tools
 

@@ -17,10 +17,10 @@
    │         │              │              │
    │         ▼              ▼              ▼
    │  ┌──────────────────────────────────────────────────────────────────┐
-   │  │                     @t2000/engine                                │
+   │  │              @t2000/engine (harness library)                     │
    │  │                                                                  │
-   │  │  AISDKEngine · AI SDK v6 (streamText) · Tool System · MCP Client │
-   │  │  Streaming · Sessions · Cost Tracking · Context Management       │
+   │  │  Tool System · Guards · USD Permissions · Prompt Assembly        │
+   │  │  Host-composition primitives · MCP Client · Context Mgmt         │
    │  └────────┬──────────────────────────────────────────────────────┘
    │           │
    │           ▼
@@ -67,7 +67,7 @@
 | Package             | npm             | What it does                                                                      |
 | ------------------- | --------------- | --------------------------------------------------------------------------------- |
 | `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
-| `@t2000/engine`     | Published       | Agent engine — `AISDKEngine` (AI SDK v6), financial tools, MCP client/server |
+| `@t2000/engine`     | Published       | Agent harness library — financial tools, guards, USD permissions, prompt assembly, MCP client + host-composition primitives (host owns the AI SDK loop) |
 | `@t2000/cli`        | Published       | Agent Wallet CLI — `t2 init` / `send` / `swap` / `pay` / `mcp install` / etc. v4 is intentionally narrow (no DeFi verbs in CLI). |
 | `@t2000/mcp`        | Published       | MCP server — wraps the engine's tool registry (26 tools post-S.277) + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport. The MCP package exports its own `t2000_*` wrappers (27 tools post-S.323; Volo wrappers cut alongside the SDK/CLI removal). |
 | `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
@@ -122,17 +122,17 @@ All transactions are gas-free for the user. Enoki sponsors gas.
 
 ### Engine chat (Audric / @t2000/engine)
 
-For freeform queries typed into the chat, `AISDKEngine` processes the request via SSE streaming:
+For freeform queries typed into the chat, the host (audric/web-v2) composes AI SDK's `Experimental_Agent` from the engine's tools + primitives and streams the result (the runnable `AISDKEngine` was retired in S.391):
 
 ```
 User types "What's my current balance?"
   │
-  ├── POST /api/chat (SSE stream, JWT auth, Sui address)
-  ├── AISDKEngine → AI SDK v6 streamText → @ai-sdk/anthropic → Claude with tool definitions
+  ├── POST /api/chat (streamed UIMessage chunks, JWT auth, Sui address)
+  ├── host Experimental_Agent (engine READ/WRITE_TOOL_SET + buildInternalContext) → AI SDK streamText → gateway/@ai-sdk/anthropic → Claude with tool definitions
   ├── Tool calls (balance_check, savings_info, etc.) executed server-side
   │   └── MCP-first with SDK fallback for financial reads
-  ├── Write tools → pending_action event → user confirms on-chain → client POSTs back to /api/chat with attemptId + tx result (inline resume)
-  ├── Streaming text_delta, tool_start, tool_result, usage events
+  ├── Write tools → needsApproval → pending_action → user confirms on-chain → client POSTs back to /api/chat with attemptId + tx result (inline resume)
+  ├── Streaming AI SDK fullStream parts (text-delta, reasoning-delta, tool-call, tool-result, finish)
   ├── Session persisted to Upstash KV
   └── Response rendered in streaming chat UI
 ```
@@ -580,7 +580,7 @@ Local-only enforcement on the agent's machine:
 
 The skill bodies are baked into the published bundle at build time (`tsup.config.ts`) — no runtime filesystem reads, no path-resolution gymnastics. Hand-rolled workflow prompts (`financial-report`, `optimize-yield`, `morning-briefing`, etc.) were deleted in S.336 (every prompt composed against v3 DeFi skills that were retired); the `skill-*` set is now the entire prompt surface.
 
-Write operations serialize structurally — `confirm`-tier writes yield a `pending_action` event so the host round-trips through user confirmation before the next step runs (prevents concurrent transactions + Sui object version conflicts). Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset. Safeguards are checked before every write. (Pre-v2.0.0 used an in-process `TxMutex`; v2 engine `AISDKEngine` doesn't instantiate one — the AI SDK step model + `needsApproval` round-trip is the actual serialization mechanism. Legacy `TxMutex` is still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts` lines 33-45.)
+Write operations serialize structurally — `confirm`-tier writes yield via `needsApproval` so the host round-trips through user confirmation before the next step runs (prevents concurrent transactions + Sui object version conflicts). Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset. Safeguards are checked before every write. (Pre-v2.0.0 used an in-process `TxMutex`; the host's AI SDK step model + `needsApproval` round-trip is the actual serialization mechanism. Legacy `TxMutex` is still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts`.)
 
 ---
 
@@ -601,8 +601,8 @@ Write operations serialize structurally — `confirm`-tier writes yield a `pendi
 
 | System | Owns | Implementation files |
 |---|---|---|
-| 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch | `v2/engine.ts`, `v2/define-tool.ts`, `v2/tool-policy.ts`, `v2/tool-wrapper.ts`, `tools/*` |
-| ⚡ **Reasoning Engine** | Adaptive thinking, 12 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
+| 🎛️ **Agent Harness** | 26 tools (18 read + 8 write), parallel reads via AI SDK step model, serial writes via `needsApproval` round-trip, permission gates, mid-stream tool dispatch. Host composes via `buildToolContext` / `buildInternalContext` / `buildStepFinishHandler` | `v2/tool-context.ts`, `v2/internal-context.ts`, `v2/step-finish.ts`, `v2/tool-policy.ts`, `v2/tool-wrapper.ts`, `tools/*` |
+| ⚡ **Reasoning Engine** | Adaptive thinking, 12 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `prompt/cache.ts`, `t2000-skills/skills/` |
 | 🧠 **Memory (MemWal)** | Long-term vector memory (preferences, goals, risk tolerance, on-chain patterns) recalled per-turn via `prepareStep` → `<memory_recall>` | engine-side: `MemoryStore` interface, `InMemoryMemoryStore`, `memwal-prepare-step.ts`, `memwal-write-callback.ts`; audric-side: `MemWalMemoryStore` adapter |
 | 📓 **AdviceLog** | Every recommendation logged (`record_advice` audric-side tool); last 30 days hydrated each turn | audric-side: `AdviceLog` Prisma model + `buildAdviceContext()` |
 
@@ -610,37 +610,40 @@ Write operations serialize structurally — `confirm`-tier writes yield a `pendi
 
 The rest of this section is the technical deep-dive: how each system is wired in code, then the two recent harness upgrades — **Spec 1 (Correctness)** and **Spec 2 (Intelligence)**.
 
-### AISDKEngine
+### Host composition (the engine is a harness library)
 
-Stateful async-generator loop that drives conversations. (Pre-v2.0.0 this was a hand-rolled `QueryEngine`; v2.0.0 cut over to wrapping Vercel AI SDK v6's `streamText` while preserving the same public API surface — `QueryEngine` was deleted, `AISDKEngine` is the only engine.)
+> **[S.391 — 2026-06-09] The runnable `AISDKEngine` loop was retired.** It was a stateful async-generator (`submitMessage(prompt) → AsyncGenerator<EngineEvent>`) wrapping AI SDK `streamText`, but it had zero live consumers — audric composes AI SDK's `Experimental_Agent` directly, and CLI/MCP are wallet surfaces with no chat loop. The engine now ships the **primitives** a host wires into its own AI SDK loop. See `SPEC_AUDRIC_CODEBASE_AUDIT.md` §1.2A.
+
+The host owns the loop; the engine supplies the tool set, per-turn context, and the post-step handler:
 
 ```
 User prompt
-    → LLM (Anthropic Claude via AISDKAnthropicProvider → @ai-sdk/anthropic)
+    → host builds the turn: buildToolContext(config, input) + buildInternalContext({...})
+    → host: new Experimental_Agent({ model, tools: {...READ_TOOL_SET, ...WRITE_TOOL_SET},
+             experimental_context, onStepFinish: buildStepFinishHandler(...) })
     → AI SDK step lifecycle (start-step / tool-call / tool-result / finish-step)
-    → Per-step dedupe of duplicate concurrent read tool_calls
     → Per-tool needsApproval check (auto / confirm / explicit, USD-aware)
-    → Tool execution (read tools parallel within a step; write tools yield pending_action then resume)
-    → Results fed back to LLM
-    → Repeat until end_turn or max_turns
+    → Tool execution (read tools parallel within a step; write tools yield via needsApproval then resume)
+    → buildStepFinishHandler runs guard-state update + trusted-address capture + spend ledger + cache invalidation
+    → Repeat until finish
 ```
 
-`AISDKEngine.submitMessage(prompt)` returns `AsyncGenerator<EngineEvent>` — consumers iterate over events to build their UI (terminal, web, extension).
+The host iterates the agent's AI SDK `fullStream` parts to build its UI; there is no engine `EngineEvent` protocol anymore.
 
 ### Tool System
 
-Tools are built with `defineTool()` (the v2 factory; the pre-v2.0.0 `buildTool` was deleted in engine 1.38.0) which enforces:
+Tools are native AI SDK `tool({...})` instances (the legacy `defineTool` / `buildTool` factories were removed) wrapped with `wrapEngineExecute` for preflight + guards + budgeting, which enforces:
 
 - **Zod input validation** with auto-generated JSON schema for the LLM
 - **Permission tiers**: `auto` (no approval), `confirm` (user must approve), `explicit` (manual only)
 - **Concurrency flags**: `isReadOnly` and `isConcurrencySafe` (drive per-step dedupe, not a mutex)
 
-Tool dispatch in `AISDKEngine`:
+Tool dispatch (in the host's `Experimental_Agent` loop):
 
-- Read-only `isConcurrencySafe` tools → AI SDK runs them in parallel within a step; identical concurrent calls are deduped per-step (engine.ts L1145-L1149)
+- Read-only `isConcurrencySafe` tools → AI SDK runs them in parallel within a step
 - Write tools → serial via the step + `needsApproval` round-trip: confirm-tier writes yield `pending_action`, host round-trips through user confirm, next step runs the next write. Prevents Sui object version conflicts structurally without an in-process mutex.
 
-(Legacy `runTools()` + `TxMutex` from `orchestration.ts` are still exported for back-compat with non-AISDKEngine callers and certain MCP server tests — but the v2 engine doesn't use them.)
+(`runTools()` + the `EarlyToolDispatcher` were removed with the runnable loop in S.391; `TxMutex` remains exported for back-compat consumers but the AI SDK step model is the actual mechanism.)
 
 ### Built-in Financial Tools
 
@@ -692,7 +695,7 @@ Additional features:
 - **Context compaction** — `ContextBudget` (200k limit, 85% compact trigger) with LLM summarizer + truncation fallback
 - **Tool flags** — `ToolFlags` interface on all tools (mutating, requiresBalance, affectsHealth, irreversible, etc.)
 - **Preflight validation** — input validation gate on `send_transfer`, `swap_execute`, `borrow`, `save_deposit`
-- **Streaming tool dispatch** — AI SDK v6's `streamText` natively dispatches read-only `isConcurrencySafe` tools as soon as each `tool-call` event completes (no separate dispatcher; legacy `EarlyToolDispatcher` exported for back-compat with non-AISDKEngine callers)
+- **Streaming tool dispatch** — AI SDK's `streamText` natively dispatches read-only `isConcurrencySafe` tools as soon as each `tool-call` completes (no separate dispatcher; `EarlyToolDispatcher` was removed with the runnable loop in S.391)
 - **Tool result budgeting** — `maxResultSizeChars` caps output; truncated with re-call hint
 - **Microcompact** — deduplicates identical tool calls in history with back-references
 - **Granular permissions** — USD-aware `resolvePermissionTier()` with conservative/balanced/aggressive presets
@@ -762,13 +765,15 @@ This stateless flow is serverless-friendly — no long-lived SSE connections nee
 
 | Module                      | Purpose                                                             |
 | --------------------------- | ------------------------------------------------------------------- |
-| `AnthropicProvider`         | Streaming LLM provider with tool use and usage reporting            |
+| `buildToolContext`          | Builds a fresh per-turn `ToolContext` from config + input (host-composition primitive) |
+| `buildInternalContext`      | Constructs the `experimental_context` envelope tools read in `.execute()` |
+| `buildStepFinishHandler`    | `onStepFinish` handler bundling guard-state update, trusted-address capture, spend ledger, post-write cache invalidation |
 | `CostTracker`               | Cumulative token usage, USD cost estimation, budget kill switch     |
 | `MemorySessionStore`        | In-memory session store with TTL and data isolation                 |
-| `compactMessages`           | Three-phase context window compaction (summarize → drop → truncate) |
-| `serializeSSE` / `parseSSE` | Wire-safe SSE event format for web transport (the only wire-format SSOT) |
-| `validateHistory`           | Pre-flight message history validation before every LLM call         |
-| `withStreamState`           | SPEC 21.1 stream-state wrapper — `routing`/`quoting`/etc → `stream_state` events for UI motion (hosts wrap EngineEvent iteration; `engineToSSE` adapter was removed in v2.2.0) |
+| `compactMessages` / `microcompact` | Context window compaction (summarize → drop → truncate) + tool-call dedupe |
+| `runGuards` / `DEFAULT_GUARD_CONFIG` | The 12-guard reasoning pipeline (host runs it via the step-finish handler) |
+
+> The SSE/streaming transport (`serializeSSE` / `parseSSE`, `withStreamState`, `validateHistory`) and the `AnthropicProvider` abstraction were removed (S.391 + v3.1.0) — the host streams AI SDK `fullStream` parts and passes its own `LanguageModel` (gateway or `@ai-sdk/anthropic`).
 
 
 ### NAVI MCP Integration
@@ -864,7 +869,7 @@ See `PRODUCT_ROADMAP.md` for the canonical taxonomy + naming rules.
 
 | System | One-line pitch | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 26 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (18 read + 8 write) |
+| 🎛️ **Agent Harness** | 26 tools, one agent — the toolset + primitives that manage your money in one conversation. | `@t2000/engine` `READ_TOOL_SET` + `WRITE_TOOL_SET` / `getDefaultTools()` (18 read + 8 write) composed into the host's AI SDK loop |
 | ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 12 guards, prompt caching. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
 | 🧠 **Memory (MemWal)** | Knows the user — vector memory of preferences / goals / risk tolerance / on-chain patterns recalled per-turn. | `MemoryStore` + MemWal vector memory + `MemWalMemoryStore` adapter |
 | 📓 **AdviceLog** | Remembers what it told you — last 30 days hydrated each turn, no two contradictory answers. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |
@@ -1010,7 +1015,7 @@ Override on a per-call basis with `--force` on `t2 send` / `t2 swap` / `t2 pay` 
 
 Write serialization is the caller's responsibility, NOT the SDK's. In practice:
 - **CLI** (`t2 send` / `t2 swap` / `t2 pay`): interactive single-command → naturally serial.
-- **Engine** (`AISDKEngine` driving the conversational harness): structural via AI SDK step model + `needsApproval` round-trip (confirm-tier writes yield `pending_action`, host round-trips, next step runs next write).
+- **Engine** (host's `Experimental_Agent` composed from engine primitives): structural via AI SDK step model + `needsApproval` round-trip (confirm-tier writes yield `pending_action`, host round-trips, next step runs next write).
 - **Audric web**: per-user single-session writes serialize through the sponsored-tx flow (`/api/transactions/prepare` → user signs → `/api/transactions/execute`).
 
 The daily budget resets automatically at UTC midnight.
@@ -1054,10 +1059,10 @@ Agent (local)                    Gateway (Vercel)              Upstream API
 
 Write serialization is enforced at the caller layer, not inside `@t2000/sdk`:
 - **CLI** (interactive single-command) is naturally serial.
-- **`@t2000/engine` `AISDKEngine`** serializes structurally via the AI SDK step model + `needsApproval` round-trip — confirm-tier writes yield `pending_action`, host round-trips through user confirm, the next step runs the next write. Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset.
+- **`@t2000/engine`** (host's `Experimental_Agent` composed from engine primitives) serializes structurally via the AI SDK step model + `needsApproval` round-trip — confirm-tier writes yield `pending_action`, host round-trips through user confirm, the next step runs the next write. Auto-execute writes (USD-aware permission resolver, sub-threshold amounts) inherit one-write-per-step from the LLM's planning + the conservative-default preset.
 - **Audric web** serializes per-user via the sponsored-tx flow (one transaction prepare → sign → execute round-trip at a time per session).
 
-Pre-v2.0.0 the engine instantiated an in-process `TxMutex` (still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts` L33-45); v2.0.0 deleted that wiring in favor of the structural mechanism above. Sui object version conflicts are prevented by the structural one-write-per-step contract, not a lock.
+Pre-v2.0.0 the engine instantiated an in-process `TxMutex` (still exported for back-compat consumers — see `packages/engine/src/v2/tool-policy.ts`); the structural mechanism above replaced it. Sui object version conflicts are prevented by the structural one-write-per-step contract, not a lock.
 
 ### What the server knows vs doesn't
 

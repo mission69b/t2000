@@ -55,7 +55,7 @@ Register the tool's policy (read/write, flags, permission level, `maxResultSizeC
 ## Read tool patterns
 
 1. Keep them **fast** (target < 500ms p50). They're called per-turn.
-2. Mark them read-only + `isConcurrencySafe` in `TOOL_POLICY`. The v2 `AISDKEngine` dispatches concurrency-safe reads mid-stream natively (no separate dispatcher).
+2. Mark them read-only + `isConcurrencySafe` in `TOOL_POLICY`. The host's AI SDK `Experimental_Agent` loop dispatches concurrency-safe reads mid-stream natively (no separate dispatcher; the runnable `AISDKEngine` was retired in S.391).
 3. Cache common reads via `cacheable: true` (default) — the per-turn `turn-read-cache.ts` dedupes identical calls.
 4. Use `ctx.portfolioCache` (per-request `Map<address, AddressPortfolio>`) for shared portfolio reads — avoids 200–500ms BlockVision RTT amplification across tools in the same turn.
 5. Set `maxResultSizeChars` to keep the LLM context lean. Tools that can return large responses MUST cap.
