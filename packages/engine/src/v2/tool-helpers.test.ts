@@ -17,17 +17,20 @@
 import { describe, expect, it } from 'vitest';
 import { wrapEngineExecute, buildNeedsApproval } from './tool-helpers.js';
 import { GuardBlockedError } from './guard-runner.js';
-import { ratesInfoTool } from '../tools/rates.js';
+import { transactionHistoryTool } from '../tools/history.js';
 import { balanceCheckTool } from '../tools/balance.js';
-import { saveDepositTool } from '../tools/save.js';
+import { withdrawTool } from '../tools/withdraw.js';
 // [P4.1 / v3.0.0 / 2026-05-25] Pre-Phase-C each tool exported both
 // a legacy `xxxTool` AND a `xxxToolNative` (native AI SDK shape).
 // After Phase C there's only one — the canonical short name — and
 // it IS native. Tests below alias to the legacy names so the existing
 // assertions keep working without per-line edits.
-const ratesInfoToolNative = ratesInfoTool;
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] The original pilot tools
+// rates_info + save_deposit were deleted; transaction_history + withdraw
+// stand in (same read/write shape contract).
+const transactionHistoryToolNative = transactionHistoryTool;
 const balanceCheckToolNative = balanceCheckTool;
-const saveDepositToolNative = saveDepositTool;
+const withdrawToolNative = withdrawTool;
 import { buildInternalContext } from './internal-context.js';
 import type { InternalContext } from './internal-context.js';
 import type { ToolContext } from '../types.js';
@@ -233,13 +236,13 @@ describe('pilot native tools', () => {
     it('rates_info native tool exposes description + inputSchema + execute + needsApproval', () => {
       // AI SDK v6 wraps tool({...}) into an object with these fields. The
       // exact runtime shape matches the Vercel docs example.
-      expect(ratesInfoToolNative).toHaveProperty('description');
-      expect(ratesInfoToolNative).toHaveProperty('inputSchema');
-      expect(ratesInfoToolNative).toHaveProperty('execute');
+      expect(transactionHistoryToolNative).toHaveProperty('description');
+      expect(transactionHistoryToolNative).toHaveProperty('inputSchema');
+      expect(transactionHistoryToolNative).toHaveProperty('execute');
       // needsApproval is always set by buildNeedsApproval (even for reads —
       // it returns the no-op `() => false` callback). This guarantees the
       // policy lookup stays centralized.
-      expect(ratesInfoToolNative).toHaveProperty('needsApproval');
+      expect(transactionHistoryToolNative).toHaveProperty('needsApproval');
     });
 
     it('balance_check native tool exposes the same surface', () => {
@@ -250,10 +253,10 @@ describe('pilot native tools', () => {
     });
 
     it('save_deposit native tool exposes the same surface', () => {
-      expect(saveDepositToolNative).toHaveProperty('description');
-      expect(saveDepositToolNative).toHaveProperty('inputSchema');
-      expect(saveDepositToolNative).toHaveProperty('execute');
-      expect(saveDepositToolNative).toHaveProperty('needsApproval');
+      expect(withdrawToolNative).toHaveProperty('description');
+      expect(withdrawToolNative).toHaveProperty('inputSchema');
+      expect(withdrawToolNative).toHaveProperty('execute');
+      expect(withdrawToolNative).toHaveProperty('needsApproval');
     });
   });
 
@@ -262,8 +265,8 @@ describe('pilot native tools', () => {
       // Both shapes must reference the same module-level constants; tests
       // catch the day someone copy-pastes the description and lets them
       // drift.
-      expect(ratesInfoToolNative.description).toBe(
-        ratesInfoTool.description,
+      expect(transactionHistoryToolNative.description).toBe(
+        transactionHistoryTool.description,
       );
     });
 
@@ -274,15 +277,15 @@ describe('pilot native tools', () => {
     });
 
     it('save_deposit: native + legacy share description + schema', () => {
-      expect(saveDepositToolNative.description).toBe(
-        saveDepositTool.description,
+      expect(withdrawToolNative.description).toBe(
+        withdrawTool.description,
       );
     });
   });
 
   describe('needsApproval policy lookup', () => {
-    it('rates_info needsApproval returns false (read-only, policy=auto)', () => {
-      const callback = buildNeedsApproval('rates_info');
+    it('transaction_history needsApproval returns false (read-only, policy=auto)', () => {
+      const callback = buildNeedsApproval('transaction_history');
       // Read tools' callback is the constant `() => false` — no async cost.
       const verdict = callback(
         {},
@@ -300,12 +303,12 @@ describe('pilot native tools', () => {
       expect(verdict).toBe(false);
     });
 
-    it('save_deposit needsApproval is dynamic (policy=confirm, requires context)', () => {
+    it('withdraw needsApproval is dynamic (policy=confirm, requires context)', () => {
       // Confirm-tier callback returns a function that inspects
       // experimental_context. Without it threaded, it must fail closed
       // (return true). This matches the production safeguard in
       // need-approval.ts L113-115 + L117-119.
-      const callback = buildNeedsApproval('save_deposit');
+      const callback = buildNeedsApproval('withdraw');
       const verdict = callback(
         { amount: 10, asset: 'USDC' },
         { toolCallId: 'tid', messages: [] },

@@ -6,11 +6,12 @@
  * per-user configuration.
  */
 
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] 'save' + 'borrow' operations
+// removed with their tools. 'withdraw' / 'repay' / 'swap' stay through the
+// 7-day exit window (§2d).
 export type PermissionOperation =
-  | 'save'
   | 'withdraw'
   | 'send'
-  | 'borrow'
   | 'repay'
   | 'swap'
   | 'pay';
@@ -35,9 +36,7 @@ export const DEFAULT_PERMISSION_CONFIG: UserPermissionConfig = {
   globalAutoBelow: 10,
   autonomousDailyLimit: 200,
   rules: [
-    { operation: 'save', autoBelow: 50, confirmBetween: 1000 },
     { operation: 'send', autoBelow: 10, confirmBetween: 200 },
-    { operation: 'borrow', autoBelow: 0, confirmBetween: 500 },
     { operation: 'withdraw', autoBelow: 25, confirmBetween: 500 },
     { operation: 'swap', autoBelow: 25, confirmBetween: 300 },
     { operation: 'pay', autoBelow: 1, confirmBetween: 50 },
@@ -50,9 +49,7 @@ export const PERMISSION_PRESETS = {
     globalAutoBelow: 5,
     autonomousDailyLimit: 100,
     rules: [
-      { operation: 'save' as const, autoBelow: 5, confirmBetween: 100 },
       { operation: 'send' as const, autoBelow: 5, confirmBetween: 100 },
-      { operation: 'borrow' as const, autoBelow: 0, confirmBetween: 100 },
       { operation: 'withdraw' as const, autoBelow: 5, confirmBetween: 100 },
       { operation: 'swap' as const, autoBelow: 5, confirmBetween: 100 },
       { operation: 'pay' as const, autoBelow: 1, confirmBetween: 25 },
@@ -64,20 +61,7 @@ export const PERMISSION_PRESETS = {
     globalAutoBelow: 25,
     autonomousDailyLimit: 500,
     rules: [
-      { operation: 'save' as const, autoBelow: 100, confirmBetween: 2000 },
       { operation: 'send' as const, autoBelow: 25, confirmBetween: 500 },
-      // [F14 / 2026-05-03] Was `autoBelow: 10` — violated the absolute
-      // invariant in `.cursor/rules/safeguards-defense-in-depth.mdc`:
-      // "borrow always confirms (autoBelow: 0 across every preset) —
-      // debt is too consequential to silently take on." A user on the
-      // aggressive preset had a 6-op bundle (repay/swap/swap/save/borrow/send)
-      // silently auto-execute because step[0]=`repay $2` resolved to
-      // `auto` and the host gate only inspected step[0] (Bug A, fixed
-      // separately on the audric host). Holding the engine constant to
-      // the documented contract here is the second half of defense in
-      // depth — locks every preset to `borrow.autoBelow: 0` regardless
-      // of host-side bundle iteration.
-      { operation: 'borrow' as const, autoBelow: 0, confirmBetween: 1000 },
       { operation: 'withdraw' as const, autoBelow: 50, confirmBetween: 1000 },
       { operation: 'swap' as const, autoBelow: 50, confirmBetween: 500 },
       { operation: 'pay' as const, autoBelow: 5, confirmBetween: 100 },
@@ -165,10 +149,8 @@ export function resolvePermissionTier(
 }
 
 const TOOL_TO_OPERATION: Record<string, PermissionOperation> = {
-  save_deposit: 'save',
   withdraw: 'withdraw',
   send_transfer: 'send',
-  borrow: 'borrow',
   repay_debt: 'repay',
   swap_execute: 'swap',
   mpp_call: 'pay',
@@ -188,10 +170,8 @@ export function resolveUsdValue(
   priceCache: Map<string, number>,
 ): number {
   switch (toolName) {
-    case 'save_deposit':
     case 'withdraw':
     case 'repay_debt':
-    case 'borrow':
       return safeNum(input.amount);
 
     case 'send_transfer': {

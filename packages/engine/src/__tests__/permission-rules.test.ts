@@ -9,20 +9,23 @@ import {
 } from '../permission-rules.js';
 
 describe('resolvePermissionTier', () => {
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] 'save' + 'borrow' operations
+  // were removed with their tools; boundary tests now pin 'withdraw'
+  // (autoBelow 25 / confirmBetween 500 in the balanced default).
   it('returns auto when amount is below autoBelow', () => {
-    expect(resolvePermissionTier('save', 5, DEFAULT_PERMISSION_CONFIG)).toBe('auto');
-    expect(resolvePermissionTier('save', 49, DEFAULT_PERMISSION_CONFIG)).toBe('auto');
+    expect(resolvePermissionTier('withdraw', 5, DEFAULT_PERMISSION_CONFIG)).toBe('auto');
+    expect(resolvePermissionTier('withdraw', 24, DEFAULT_PERMISSION_CONFIG)).toBe('auto');
   });
 
   it('returns confirm when amount is between autoBelow and confirmBetween', () => {
-    expect(resolvePermissionTier('save', 50, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
-    expect(resolvePermissionTier('save', 500, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
-    expect(resolvePermissionTier('save', 999, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
+    expect(resolvePermissionTier('withdraw', 25, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
+    expect(resolvePermissionTier('withdraw', 250, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
+    expect(resolvePermissionTier('withdraw', 499, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
   });
 
   it('returns explicit when amount exceeds confirmBetween', () => {
-    expect(resolvePermissionTier('save', 1000, DEFAULT_PERMISSION_CONFIG)).toBe('explicit');
-    expect(resolvePermissionTier('save', 5000, DEFAULT_PERMISSION_CONFIG)).toBe('explicit');
+    expect(resolvePermissionTier('withdraw', 500, DEFAULT_PERMISSION_CONFIG)).toBe('explicit');
+    expect(resolvePermissionTier('withdraw', 5000, DEFAULT_PERMISSION_CONFIG)).toBe('explicit');
   });
 
   it('uses globalAutoBelow for unknown operations', () => {
@@ -30,12 +33,7 @@ describe('resolvePermissionTier', () => {
     expect(resolvePermissionTier('unknown_op', 10, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
   });
 
-  it('borrow always requires confirmation (autoBelow: 0)', () => {
-    expect(resolvePermissionTier('borrow', 0, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
-    expect(resolvePermissionTier('borrow', 1, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
-  });
-
-  it('send has different thresholds than save', () => {
+  it('send has different thresholds than withdraw', () => {
     expect(resolvePermissionTier('send', 5, DEFAULT_PERMISSION_CONFIG)).toBe('auto');
     expect(resolvePermissionTier('send', 10, DEFAULT_PERMISSION_CONFIG)).toBe('confirm');
     expect(resolvePermissionTier('send', 200, DEFAULT_PERMISSION_CONFIG)).toBe('explicit');
@@ -48,8 +46,8 @@ describe('resolveUsdValue', () => {
     ['USDC', 1],
   ]);
 
-  it('returns 1:1 for USDC save_deposit', () => {
-    expect(resolveUsdValue('save_deposit', { amount: 100 }, priceCache)).toBe(100);
+  it('returns 1:1 for repay_debt', () => {
+    expect(resolveUsdValue('repay_debt', { amount: 100 }, priceCache)).toBe(100);
   });
 
   it('returns 1:1 for withdraw', () => {
@@ -73,23 +71,22 @@ describe('resolveUsdValue', () => {
   });
 
   it('returns 0 when no amount present', () => {
-    expect(resolveUsdValue('save_deposit', {}, priceCache)).toBe(0);
+    expect(resolveUsdValue('withdraw', {}, priceCache)).toBe(0);
   });
 });
 
 describe('toolNameToOperation', () => {
   it('maps known tool names', () => {
-    expect(toolNameToOperation('save_deposit')).toBe('save');
     expect(toolNameToOperation('send_transfer')).toBe('send');
-    expect(toolNameToOperation('borrow')).toBe('borrow');
     expect(toolNameToOperation('repay_debt')).toBe('repay');
     expect(toolNameToOperation('withdraw')).toBe('withdraw');
     expect(toolNameToOperation('swap_execute')).toBe('swap');
   });
 
-  it('returns undefined for unknown tool names', () => {
+  it('returns undefined for unknown / removed tool names', () => {
     expect(toolNameToOperation('balance_check')).toBeUndefined();
-    expect(toolNameToOperation('health_check')).toBeUndefined();
+    expect(toolNameToOperation('save_deposit')).toBeUndefined();
+    expect(toolNameToOperation('borrow')).toBeUndefined();
   });
 });
 
@@ -176,7 +173,7 @@ describe('resolvePermissionTier — send-safety contact rule', () => {
 
   it('does not affect non-send operations (no contact check)', () => {
     expect(
-      resolvePermissionTier('save', 5, DEFAULT_PERMISSION_CONFIG, undefined, {
+      resolvePermissionTier('withdraw', 5, DEFAULT_PERMISSION_CONFIG, undefined, {
         to: unknownAddress,
         contacts,
       }),
@@ -228,43 +225,8 @@ describe('PERMISSION_PRESETS', () => {
     expect(agg.autonomousDailyLimit).toBeGreaterThan(bal.autonomousDailyLimit);
   });
 
-  // [F14 / 2026-05-03] Lock the absolute invariant from
-  // `.cursor/rules/safeguards-defense-in-depth.mdc`:
-  // "borrow always confirms (autoBelow: 0 across every preset)".
-  // Regression: aggressive preset shipped with autoBelow: 10 between v1.4
-  // and v1.11.2; a user on aggressive had a 6-op bundle silently auto-
-  // execute because step[0]=`repay $2` resolved to `auto` and the host
-  // gate only inspected step[0]. This invariant guards the engine half
-  // of defense-in-depth (`shouldClientAutoApprove` bundle iteration is
-  // the host half).
-  it('borrow.autoBelow is 0 across every preset (debt is non-auto)', () => {
-    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
-      const borrowRule = config.rules.find((r) => r.operation === 'borrow');
-      expect(
-        borrowRule,
-        `${presetName} preset must define an explicit borrow rule`,
-      ).toBeDefined();
-      expect(
-        borrowRule!.autoBelow,
-        `${presetName} preset must have borrow.autoBelow === 0 (debt is too consequential to silently take on)`,
-      ).toBe(0);
-    }
-  });
-
-  // [F14 / 2026-05-03] Direct resolver assertion — even at $0 amount,
-  // borrow under any preset must NOT resolve to `auto`. Catches a future
-  // refactor that introduces a bypass (e.g. amountUsd === 0 short-circuit).
-  it('resolvePermissionTier(borrow, $0..$9, *preset*) never returns auto', () => {
-    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
-      for (const amount of [0, 0.01, 1, 5, 9.99]) {
-        const tier = resolvePermissionTier('borrow', amount, config);
-        expect(
-          tier,
-          `${presetName} preset / borrow $${amount} must not be auto`,
-        ).not.toBe('auto');
-      }
-    }
-  });
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] The F14 borrow-always-
+  // confirms invariant tests were removed with the 'borrow' operation.
 
   // ---------------------------------------------------------------------------
   // [SPEC 37 v0.7a Phase 8 verification walk / 2026-05-18]
@@ -290,7 +252,7 @@ describe('PERMISSION_PRESETS', () => {
   // ---------------------------------------------------------------------------
 
   it('every preset defines a rule for every PermissionOperation (no gaps)', () => {
-    const operations = ['save', 'send', 'borrow', 'withdraw', 'swap', 'pay', 'repay'] as const;
+    const operations = ['send', 'withdraw', 'swap', 'pay', 'repay'] as const;
     for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
       for (const op of operations) {
         const rule = config.rules.find((r) => r.operation === op);
@@ -380,20 +342,20 @@ describe('PERMISSION_PRESETS', () => {
   it('preset autonomousDailyLimit gates auto→confirm downgrade for every preset', () => {
     for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
       const tag = `${presetName}`;
-      // save rule under every preset has autoBelow > 0, so a small save WITH
-      // sessionSpendUsd ≈ limit should downgrade. Test a near-limit cumulative.
-      const saveRule = config.rules.find((r) => r.operation === 'save')!;
-      const smallSave = Math.min(saveRule.autoBelow / 2, 1);
+      // withdraw rule under every preset has autoBelow > 0, so a small
+      // withdraw WITH sessionSpendUsd ≈ limit should downgrade.
+      const withdrawRule = config.rules.find((r) => r.operation === 'withdraw')!;
+      const smallWithdraw = Math.min(withdrawRule.autoBelow / 2, 1);
       // Below limit → still auto.
       expect(
-        resolvePermissionTier('save', smallSave, config, /* sessionSpend */ 0),
-        `${tag}: small save with $0 prior spend should be auto`,
+        resolvePermissionTier('withdraw', smallWithdraw, config, /* sessionSpend */ 0),
+        `${tag}: small withdraw with $0 prior spend should be auto`,
       ).toBe('auto');
       // Pushing cumulative over autonomousDailyLimit → downgraded to confirm.
       const spendThatPushesOver = config.autonomousDailyLimit;
       expect(
-        resolvePermissionTier('save', smallSave, config, spendThatPushesOver),
-        `${tag}: small save with $${spendThatPushesOver} prior spend (limit=$${config.autonomousDailyLimit}) should downgrade to confirm`,
+        resolvePermissionTier('withdraw', smallWithdraw, config, spendThatPushesOver),
+        `${tag}: small withdraw with $${spendThatPushesOver} prior spend (limit=$${config.autonomousDailyLimit}) should downgrade to confirm`,
       ).toBe('confirm');
     }
   });

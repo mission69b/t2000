@@ -132,25 +132,21 @@ const WRITE_EXPLICIT: ToolPolicy = {
   cacheable: false,
 };
 
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] DeFi tool policies removed
+// with their tools (savings_info, health_check, portfolio_analysis,
+// pending_rewards, rates_info, explain_tx, token_prices,
+// spending_analytics, yield_summary, activity_summary, render_canvas,
+// save_deposit, borrow, claim_rewards, harvest_rewards). withdraw /
+// repay_debt / swap_execute / swap_quote stay through the 7-day exit
+// window (§2d).
 export const TOOL_POLICY: Record<string, ToolPolicy> = {
   // Mutable reads (state changes after every write — never dedupe)
   balance_check: READ_MUTABLE,
-  savings_info: READ_MUTABLE,
-  health_check: READ_MUTABLE,
-  portfolio_analysis: READ_MUTABLE,
-  pending_rewards: READ_MUTABLE,
 
   // Read-only with non-mutable results (cacheable across turns)
-  rates_info: READ_DEFAULT,
   swap_quote: { ...READ_DEFAULT, cacheable: false }, // quotes go stale
   transaction_history: READ_DEFAULT,
-  explain_tx: READ_DEFAULT,
-  token_prices: { ...READ_DEFAULT, cacheable: false }, // prices go stale
-  spending_analytics: READ_DEFAULT,
-  yield_summary: READ_DEFAULT,
-  activity_summary: READ_DEFAULT,
   resolve_suins: READ_DEFAULT,
-  render_canvas: READ_DEFAULT,
   // Live gateway catalog fetch — never dedupe across turns (the catalog is
   // the SSOT and can change between turns; see tools/mpp.ts).
   mpp_services: { ...READ_DEFAULT, cacheable: false },
@@ -175,13 +171,9 @@ export const TOOL_POLICY: Record<string, ToolPolicy> = {
 
   // Write tools — confirm tier (USD resolver may downgrade to auto for small
   // amounts; engine's buildNeedsApproval handles the per-call override)
-  save_deposit: WRITE_CONFIRM,
   withdraw: WRITE_CONFIRM,
   send_transfer: WRITE_CONFIRM,
-  borrow: WRITE_CONFIRM, // always confirms — autoBelow=0 across every preset
   repay_debt: WRITE_CONFIRM,
-  claim_rewards: WRITE_CONFIRM,
-  harvest_rewards: WRITE_CONFIRM,
   swap_execute: WRITE_CONFIRM,
   // Metered consumption — confirm-tier in the engine. The sub-threshold
   // tap-free path is a host-side (audric) budget decision (Gap B2/B3), not

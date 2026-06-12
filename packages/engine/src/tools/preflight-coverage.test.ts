@@ -13,9 +13,11 @@
  *
  * Post-S.269 + S.277: `save_contact` (S.269 item 6, dead host-side tool)
  * and Volo trio (S.277 "Earns Its Keep" cut) were deleted from the engine.
- * Surviving write tools with preflight smokes below: `save_deposit`,
- * `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`,
- * `harvest_rewards`, `swap_execute`.
+ * Post-DeFi-removal window-start cut (SPEC_AUDRIC_DEFI_REMOVAL §2a,
+ * 2026-06-10): `save_deposit`, `borrow`, `claim_rewards`,
+ * `harvest_rewards` deleted too. Surviving write tools with preflight
+ * smokes below: `withdraw`, `send_transfer`, `repay_debt`,
+ * `swap_execute`, `mpp_call`.
  *
  * This test exists so a future write tool added without preflight
  * fails CI immediately, instead of slipping through review and
@@ -28,14 +30,10 @@ import { describe, it, expect } from 'vitest';
 
 import { WRITE_TOOL_NAMES, WRITE_TOOL_SET } from './index.js';
 import { withdrawTool } from './withdraw.js';
-import { claimRewardsTool } from './claim.js';
-import { harvestRewardsTool } from './harvest-rewards.js';
 
 import { legacyToolView } from '../__tests__/_helpers/call-tool-body.js';
 
 const withdrawView = legacyToolView(withdrawTool, 'withdraw');
-const claimRewardsView = legacyToolView(claimRewardsTool, 'claim_rewards');
-const harvestRewardsView = legacyToolView(harvestRewardsTool, 'harvest_rewards');
 
 describe('preflight coverage — every write tool implements preflight', () => {
   it('every write tool exposes a preflight function via the test view', () => {
@@ -74,24 +72,6 @@ describe('preflight smoke — newly-covered tools (SPEC 30 Phase 1B follow-up)',
     });
   });
 
-  describe('claim_rewards', () => {
-    it('preflight is a no-op (no inputs to validate) and accepts empty input', () => {
-      const r = claimRewardsView.preflight!({});
-      expect(r.valid).toBe(true);
-    });
-  });
-
-  describe('harvest_rewards', () => {
-    it('rejects out-of-range slippage', () => {
-      expect(harvestRewardsView.preflight!({ slippage: 0.0001 }).valid).toBe(false);
-      expect(harvestRewardsView.preflight!({ slippage: 0.5 }).valid).toBe(false);
-    });
-    it('rejects negative minRewardUsd', () => {
-      expect(harvestRewardsView.preflight!({ minRewardUsd: -1 }).valid).toBe(false);
-    });
-    it('accepts defaults (no input)', () => {
-      expect(harvestRewardsView.preflight!({}).valid).toBe(true);
-    });
-  });
-
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] claim_rewards +
+  // harvest_rewards smokes removed with their tools.
 });

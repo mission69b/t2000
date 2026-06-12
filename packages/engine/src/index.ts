@@ -349,26 +349,22 @@ export type {
 // already exported above from the legacy guards block (~L160-181). Hosts
 // composing via `Agent` use those exports + `buildInternalContext` together.
 
-// Canvas
-export { CANVAS_TEMPLATES } from './tools/canvas.js';
-export type { CanvasTemplate } from './tools/canvas.js';
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a/§2e — 2026-06-10] The `render_canvas`
+// subsystem (tool + CANVAS_TEMPLATES) was deleted with the DeFi
+// window-start cut, along with the DeFi read tools (savings_info,
+// health_check, rates_info, explain_tx, portfolio_analysis,
+// spending_analytics, yield_summary, activity_summary, pending_rewards,
+// token_prices) and writes (save_deposit, borrow, claim_rewards,
+// harvest_rewards). withdraw / repay_debt / swap_execute / swap_quote
+// stay through the 7-day exit window (§2d) and are cut when it closes.
 
 // Built-in tools — reads
 export {
   READ_TOOL_SET,
   READ_TOOL_NAMES,
-  renderCanvasTool,
   balanceCheckTool,
-  savingsInfoTool,
-  healthCheckTool,
-  ratesInfoTool,
   transactionHistoryTool,
   swapQuoteTool,
-  explainTxTool,
-  portfolioAnalysisTool,
-  spendingAnalyticsTool,
-  yieldSummaryTool,
-  activitySummaryTool,
   resolveSuinsTool,
   mppServicesTool,
 } from './tools/index.js';
@@ -377,12 +373,9 @@ export {
 export {
   WRITE_TOOL_SET,
   WRITE_TOOL_NAMES,
-  saveDepositTool,
   withdrawTool,
   sendTransferTool,
-  borrowTool,
   repayDebtTool,
-  claimRewardsTool,
   swapExecuteTool,
   mppCallTool,
 } from './tools/index.js';
@@ -505,11 +498,10 @@ export type {
 } from './audric-api.js';
 
 // [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed from the engine.
-// Spot prices live on `tokenPricesTool` (BlockVision). The surviving
-// DefiLlama caller — `protocolDeepDiveTool` — was cut in S.277 (engine
-// 2.18.0, "Earns Its Keep" audit). The engine no longer talks to
-// `api.llama.fi`.
-export { tokenPricesTool } from './tools/token-prices.js';
+// `tokenPricesTool` (their BlockVision-backed replacement) was cut in the
+// DeFi-removal window-start cut (2026-06-10) — a price lookup is a Service
+// call, not a native verb (SPEC_AUDRIC_DEFI_REMOVAL §2e LOCKED). The
+// `fetchTokenPrices` fetcher export above stays (internal pricing).
 
 // System prompt
 export { DEFAULT_SYSTEM_PROMPT } from './prompt/index.js';

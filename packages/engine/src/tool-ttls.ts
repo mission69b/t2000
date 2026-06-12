@@ -22,13 +22,11 @@
  * re-runnable read tool: append it to `TOOL_TTL_MS` here AND ensure the
  * bundle composer's contributing-reads detector picks it up.
  */
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] DeFi read TTLs removed with
+// their tools (rates_info, portfolio_analysis, savings_info, health_check).
 export const TOOL_TTL_MS: Record<string, number> = {
   swap_quote: 30_000,
-  rates_info: 90_000,
   balance_check: 120_000,
-  portfolio_analysis: 120_000,
-  savings_info: 120_000,
-  health_check: 90_000,
 };
 
 /** Default TTL for read tools not in `TOOL_TTL_MS` (60s — conservative). */
@@ -63,9 +61,5 @@ export function bundleShortestTtl(
 /** The set of read tools whose results re-fire on REGENERATE. */
 export const REGENERATABLE_READ_TOOLS: ReadonlySet<string> = new Set([
   'swap_quote',
-  'rates_info',
   'balance_check',
-  'portfolio_analysis',
-  'savings_info',
-  'health_check',
 ]);

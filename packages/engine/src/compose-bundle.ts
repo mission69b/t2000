@@ -120,14 +120,14 @@ export const MAX_BUNDLE_OPS = 4;
  * - `claim_rewards → *` — produces N reward coins, structurally
  *   different. Phase 5+.
  */
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] Pairs involving the deleted
+// save_deposit / borrow tools removed. The surviving pairs are exactly the
+// §2d exit-window shapes (withdraw → swap → send / repay).
 export const VALID_PAIRS: ReadonlySet<string> = new Set([
   'swap_execute->send_transfer',
-  'swap_execute->save_deposit',
   'swap_execute->repay_debt',
   'withdraw->swap_execute',
   'withdraw->send_transfer',
-  'borrow->send_transfer',
-  'borrow->repay_debt',
 ]);
 
 /**
@@ -162,7 +162,7 @@ export function inferProducerOutputAsset(toolName: string, input: unknown): stri
   if (toolName === 'swap_execute') {
     return typeof i.to === 'string' ? i.to.toLowerCase() : null;
   }
-  if (toolName === 'withdraw' || toolName === 'borrow') {
+  if (toolName === 'withdraw') {
     return typeof i.asset === 'string' ? i.asset.toLowerCase() : 'usdc';
   }
   return null;
@@ -178,7 +178,6 @@ export function inferConsumerInputAsset(toolName: string, input: unknown): strin
   const i = input as Record<string, unknown>;
   if (
     toolName === 'send_transfer' ||
-    toolName === 'save_deposit' ||
     toolName === 'repay_debt'
   ) {
     return typeof i.asset === 'string' ? i.asset.toLowerCase() : 'usdc';

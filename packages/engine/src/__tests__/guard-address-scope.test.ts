@@ -19,7 +19,9 @@ import type { PendingToolCall } from '../types.js';
  */
 
 const balanceCheck = makeGuardView('balance_check');
-const portfolioAnalysis = makeGuardView('portfolio_analysis');
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] portfolio_analysis was
+// deleted; transaction_history is the other surviving address-param read.
+const transactionHistory = makeGuardView('transaction_history');
 const swapQuote = makeGuardView('swap_quote');
 
 const SIGNED_IN_USER = '0x1111111111111111111111111111111111111111111111111111111111111111';
@@ -52,10 +54,10 @@ describe('guardAddressScope (read-tool address safety)', () => {
     expect(result.blockReason).toContain('balance_check');
   });
 
-  it('blocks portfolio_analysis when call targets the signed-in user but the user named someone else', () => {
+  it('blocks transaction_history when call targets the signed-in user but the user named someone else', () => {
     const result = runGuards(
-      portfolioAnalysis,
-      makeCall('portfolio_analysis', { address: SIGNED_IN_USER }),
+      transactionHistory,
+      makeCall('transaction_history', { address: SIGNED_IN_USER }),
       createGuardRunnerState(),
       DEFAULT_GUARD_CONFIG,
       makeConvCtx(`Give me a full portfolio overview of ${WATCHED}`),
@@ -271,8 +273,8 @@ describe('guardAddressScope (read-tool address safety)', () => {
     // "give" is intentionally NOT a send verb — this is a read that must
     // stay scope-checked.
     const result = runGuards(
-      portfolioAnalysis,
-      makeCall('portfolio_analysis', {}),
+      transactionHistory,
+      makeCall('transaction_history', {}),
       createGuardRunnerState(),
       DEFAULT_GUARD_CONFIG,
       makeConvCtx(`Give me a portfolio overview of ${WATCHED}`),

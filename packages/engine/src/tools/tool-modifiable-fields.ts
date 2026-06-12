@@ -18,10 +18,10 @@ import type { PendingActionModifiableField } from '../types.js';
  * Tool name → ordered list of modifiable input fields. Order matters for
  * UI rendering — the first entry typically becomes the prominent control.
  */
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] save_deposit + borrow
+// entries removed with their tools. withdraw / repay_debt stay through
+// the 7-day exit window (§2d).
 export const TOOL_MODIFIABLE_FIELDS: Record<string, PendingActionModifiableField[]> = {
-  save_deposit: [
-    { name: 'amount', kind: 'amount', asset: 'USDC' },
-  ],
   withdraw: [
     { name: 'amount', kind: 'amount', asset: 'USDC' },
   ],
@@ -33,9 +33,6 @@ export const TOOL_MODIFIABLE_FIELDS: Record<string, PendingActionModifiableField
   ],
   swap_execute: [
     { name: 'amount', kind: 'amount' },
-  ],
-  borrow: [
-    { name: 'amount', kind: 'amount', asset: 'USDC' },
   ],
   repay_debt: [
     { name: 'amount', kind: 'amount', asset: 'USDC' },
@@ -53,9 +50,7 @@ export const TOOL_MODIFIABLE_FIELDS: Record<string, PendingActionModifiableField
  *    (the UI shows the input-side asset from the tx itself).
  */
 const ASSET_OVERRIDABLE_TOOLS = new Set<string>([
-  'save_deposit',
   'withdraw',
-  'borrow',
   'repay_debt',
 ]);
 

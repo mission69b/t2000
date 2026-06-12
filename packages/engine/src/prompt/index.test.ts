@@ -38,8 +38,19 @@ describe('DEFAULT_SYSTEM_PROMPT — MPP re-enabled (Channel A)', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/coding help/);
   });
 
-  it('header advertises the 4-system brain (Memory absorbed Silent Profile + Chain Memory in v0.7d Block A)', () => {
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/4-system brain/);
-    expect(DEFAULT_SYSTEM_PROMPT).not.toMatch(/5-system brain/);
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] DeFi-product framing left
+  // the prompt with the window-start cut. Pin the new thesis header + the
+  // wind-down section that governs the 7-day exit window.
+  it('header leads with the agent-payments thesis, not finance framing', () => {
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/pays for Services for you on Sui/);
+    expect(DEFAULT_SYSTEM_PROMPT).not.toMatch(/Audric Finance/);
+    expect(DEFAULT_SYSTEM_PROMPT).not.toMatch(/Savings = USDC or USDsui/);
+  });
+
+  it('contains the DeFi wind-down section steering exits, not new positions', () => {
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/## DeFi WIND-DOWN/);
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/NEVER suggest opening a NEW position/);
+    expect(DEFAULT_SYSTEM_PROMPT).not.toMatch(/save_deposit/);
+    expect(DEFAULT_SYSTEM_PROMPT).not.toMatch(/render_canvas/);
   });
 });

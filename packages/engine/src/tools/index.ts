@@ -28,37 +28,40 @@
 //
 // The guard runner synthesizes a `GuardToolView` ({name, flags, preflight})
 // per dispatch — it does NOT iterate this file.
+//
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a/§2f — window-start cut, 2026-06-10]
+// The user-facing DeFi surface was deleted from source (engine's sole
+// consumer is the Audric host — "drop from the default set" = delete):
+//   reads:  render_canvas (whole canvas subsystem), savings_info,
+//           health_check, rates_info, yield_summary, pending_rewards,
+//           explain_tx, portfolio_analysis, token_prices,
+//           spending_analytics, activity_summary
+//   writes: save_deposit, borrow, claim_rewards, harvest_rewards
+// KEPT THROUGH THE 7-DAY EXIT WINDOW (cut after it closes — §2d):
+//   withdraw, repay_debt, swap_execute (+ swap_quote: the read companion
+//   stays as long as the verb does — guardSwapPreview fail-closes
+//   swap_execute without a matching same-turn quote, so cutting the
+//   quote first would brick the exit path the window exists for).
+// Payment-link tools (create/list/cancel_payment_link) are RETAINED in
+// the engine for Audric Store (the host drops them from its active set).
+// SDK DeFi builders are untouched (§2b — host-surface removal, not an
+// SDK deletion).
 // ---------------------------------------------------------------------------
 
 import type { ToolSet } from 'ai';
 import { balanceCheckTool } from './balance.js';
-import { savingsInfoTool } from './savings.js';
-import { healthCheckTool } from './health.js';
-import { ratesInfoTool } from './rates.js';
 import { transactionHistoryTool } from './history.js';
-import { saveDepositTool } from './save.js';
 import { withdrawTool } from './withdraw.js';
 import { sendTransferTool } from './transfer.js';
-import { borrowTool } from './borrow.js';
 import { repayDebtTool } from './repay.js';
-import { claimRewardsTool } from './claim.js';
 import { swapExecuteTool } from './swap.js';
 import { swapQuoteTool } from './swap-quote.js';
-import { explainTxTool } from './explain-tx.js';
-import { portfolioAnalysisTool } from './portfolio-analysis.js';
 import {
   createPaymentLinkTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
 } from './receive.js';
-import { renderCanvasTool } from './canvas.js';
-import { spendingAnalyticsTool } from './spending.js';
-import { yieldSummaryTool } from './yield-summary.js';
-import { activitySummaryTool } from './activity-summary.js';
 import { resolveSuinsTool } from './resolve-suins.js';
-import { pendingRewardsTool } from './pending-rewards.js';
-import { harvestRewardsTool, narrateHarvestResult } from './harvest-rewards.js';
-import { tokenPricesTool } from './token-prices.js';
 import { mppServicesTool, mppCallTool } from './mpp.js';
 
 // ---------------------------------------------------------------------------
@@ -68,35 +71,20 @@ import { mppServicesTool, mppCallTool } from './mpp.js';
 // ---------------------------------------------------------------------------
 
 export const READ_TOOL_NAMES = [
-  'render_canvas',
   'balance_check',
-  'savings_info',
-  'health_check',
-  'rates_info',
   'transaction_history',
   'swap_quote',
-  'explain_tx',
-  'portfolio_analysis',
-  'token_prices',
   'list_payment_links',
   'cancel_payment_link',
   'create_payment_link',
-  'spending_analytics',
-  'yield_summary',
-  'activity_summary',
   'resolve_suins',
-  'pending_rewards',
   'mpp_services',
 ] as const;
 
 export const WRITE_TOOL_NAMES = [
-  'save_deposit',
   'withdraw',
   'send_transfer',
-  'borrow',
   'repay_debt',
-  'claim_rewards',
-  'harvest_rewards',
   'swap_execute',
   'mpp_call',
 ] as const;
@@ -110,35 +98,20 @@ export type ToolName = ReadToolName | WriteToolName;
 // ---------------------------------------------------------------------------
 
 export const READ_TOOL_SET: ToolSet = {
-  render_canvas: renderCanvasTool,
   balance_check: balanceCheckTool,
-  savings_info: savingsInfoTool,
-  health_check: healthCheckTool,
-  rates_info: ratesInfoTool,
   transaction_history: transactionHistoryTool,
   swap_quote: swapQuoteTool,
-  explain_tx: explainTxTool,
-  portfolio_analysis: portfolioAnalysisTool,
-  token_prices: tokenPricesTool,
   list_payment_links: listPaymentLinksTool,
   cancel_payment_link: cancelPaymentLinkTool,
   create_payment_link: createPaymentLinkTool,
-  spending_analytics: spendingAnalyticsTool,
-  yield_summary: yieldSummaryTool,
-  activity_summary: activitySummaryTool,
   resolve_suins: resolveSuinsTool,
-  pending_rewards: pendingRewardsTool,
   mpp_services: mppServicesTool,
 };
 
 export const WRITE_TOOL_SET: ToolSet = {
-  save_deposit: saveDepositTool,
   withdraw: withdrawTool,
   send_transfer: sendTransferTool,
-  borrow: borrowTool,
   repay_debt: repayDebtTool,
-  claim_rewards: claimRewardsTool,
-  harvest_rewards: harvestRewardsTool,
   swap_execute: swapExecuteTool,
   mpp_call: mppCallTool,
 };
@@ -156,33 +129,17 @@ export function getDefaultTools(): ToolSet {
 }
 
 export {
-  renderCanvasTool,
   balanceCheckTool,
-  savingsInfoTool,
-  healthCheckTool,
-  ratesInfoTool,
   transactionHistoryTool,
-  saveDepositTool,
   withdrawTool,
   sendTransferTool,
-  borrowTool,
   repayDebtTool,
-  claimRewardsTool,
   swapExecuteTool,
   swapQuoteTool,
-  explainTxTool,
-  portfolioAnalysisTool,
-  tokenPricesTool,
   createPaymentLinkTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
-  spendingAnalyticsTool,
-  yieldSummaryTool,
-  activitySummaryTool,
   resolveSuinsTool,
-  pendingRewardsTool,
-  harvestRewardsTool,
-  narrateHarvestResult,
   mppServicesTool,
   mppCallTool,
 };

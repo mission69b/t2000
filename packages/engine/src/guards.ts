@@ -189,10 +189,10 @@ export class BalanceTracker {
   }
 }
 
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] savings_info / health_check
+// deleted; balance_check is the surviving balance-refreshing read.
 const BALANCE_READ_TOOLS = new Set([
   'balance_check',
-  'savings_info',
-  'health_check',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -378,7 +378,10 @@ function guardHealthFactor(
       verdict: 'hint',
       gate: 'health_factor',
       tier: 'financial',
-      message: 'Health factor has not been checked this session. Call health_check before this action.',
+      // [SPEC_AUDRIC_DEFI_REMOVAL §2a] health_check was deleted —
+      // balance_check is the surviving debt/health read (zero debt on a
+      // self-query records an unbounded HF in recordToolResult).
+      message: 'Debt status has not been checked this session. Call balance_check and verify outstanding debt before this action.',
     };
   }
 
@@ -786,16 +789,12 @@ export function extractTrustedAddressesFromResult(
 // always pass through (they either don't take an address or use a
 // different param name).
 // ---------------------------------------------------------------------------
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] DeFi reads removed with
+// their tools (portfolio_analysis, savings_info, health_check,
+// spending_analytics, yield_summary, activity_summary, explain_tx).
 const READ_TOOLS_WITH_ADDRESS_PARAM = new Set([
   'balance_check',
-  'portfolio_analysis',
   'transaction_history',
-  'savings_info',
-  'health_check',
-  'spending_analytics',
-  'yield_summary',
-  'activity_summary',
-  'explain_tx',
 ]);
 
 // Loose match for Sui addresses inside conversational text. The strict
@@ -1145,11 +1144,16 @@ export function updateGuardStateAfterToolResult(
     state.balanceTracker.recordWrite();
   }
 
-  if (toolName === 'health_check' && result && typeof result === 'object') {
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] `health_check` was deleted;
+  // `balance_check` is the surviving health-relevant read. A self-query
+  // showing zero outstanding debt means HF is unbounded (no liquidation
+  // surface), so record +Infinity — this lets `withdraw` (affectsHealth)
+  // clear guardHealthFactor without the deleted tool. Any positive debt
+  // leaves lastHealthFactor as-is (null → the guard hints, fail-safe).
+  if (toolName === 'balance_check' && result && typeof result === 'object') {
     const r = result as Record<string, unknown>;
-    const hf = Number(r.healthFactor ?? r.health_factor ?? r.hf);
-    if (!isNaN(hf) && hf > 0) {
-      state.lastHealthFactor = hf;
+    if (r.isSelfQuery === true && Number(r.debt) === 0) {
+      state.lastHealthFactor = Number.POSITIVE_INFINITY;
     }
   }
 

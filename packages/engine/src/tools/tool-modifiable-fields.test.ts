@@ -11,9 +11,15 @@ import {
 } from './tool-modifiable-fields.js';
 
 describe('getModifiableFields — back-compat (no input)', () => {
-  it('returns registry default (USDC) for save_deposit when input is omitted', () => {
-    const fields = getModifiableFields('save_deposit');
+  it('returns registry default (USDC) for withdraw when input is omitted', () => {
+    const fields = getModifiableFields('withdraw');
     expect(fields).toEqual([{ name: 'amount', kind: 'amount', asset: 'USDC' }]);
+  });
+
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] deleted tools have no entries
+  it('returns undefined for the deleted save_deposit / borrow tools', () => {
+    expect(getModifiableFields('save_deposit')).toBeUndefined();
+    expect(getModifiableFields('borrow')).toBeUndefined();
   });
 
   it('returns undefined for unregistered tool names', () => {
@@ -31,7 +37,7 @@ describe('getModifiableFields — back-compat (no input)', () => {
 });
 
 describe('getModifiableFields — F-11 asset override (USDC vs USDsui)', () => {
-  for (const toolName of ['save_deposit', 'withdraw', 'borrow', 'repay_debt'] as const) {
+  for (const toolName of ['withdraw', 'repay_debt'] as const) {
     describe(toolName, () => {
       it(`rewrites asset to USDsui when input.asset === 'USDsui'`, () => {
         const fields = getModifiableFields(toolName, { amount: 0.5, asset: 'USDsui' });

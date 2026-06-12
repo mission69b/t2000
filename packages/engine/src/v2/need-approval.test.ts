@@ -51,7 +51,7 @@ const callOptions = (experimental_context: unknown) => ({
 
 describe('buildNeedsApproval — agent-absent guard (Day 13.2 regression)', () => {
   it('forces approval for confirm-tier writes when ctx.agent is undefined (audric pattern)', async () => {
-    const needsApproval = buildNeedsApproval('save_deposit');
+    const needsApproval = buildNeedsApproval('withdraw');
 
     // Match audric's wiring: agent is undefined (client-signed sponsored tx),
     // permissionConfig + priceCache are populated, USD value is sub-threshold
@@ -62,7 +62,7 @@ describe('buildNeedsApproval — agent-absent guard (Day 13.2 regression)', () =
       permissionConfig: {
         globalAutoBelow: 10,
         autonomousDailyLimit: 200,
-        rules: [{ operation: 'save', autoBelow: 50, confirmBetween: 1000 }],
+        rules: [{ operation: 'withdraw', autoBelow: 50, confirmBetween: 1000 }],
       },
       priceCache: new Map([['USDC', 1]]),
       sessionSpendUsd: 0,
@@ -76,14 +76,14 @@ describe('buildNeedsApproval — agent-absent guard (Day 13.2 regression)', () =
   });
 
   it('falls through to USD-aware resolver when ctx.agent IS set (CLI / non-audric pattern)', async () => {
-    const needsApproval = buildNeedsApproval('save_deposit');
+    const needsApproval = buildNeedsApproval('withdraw');
 
     const ctx = baseToolContext({
       agent: { signTx: () => Promise.resolve('0xfake') },
       permissionConfig: {
         globalAutoBelow: 10,
         autonomousDailyLimit: 200,
-        rules: [{ operation: 'save', autoBelow: 50, confirmBetween: 1000 }],
+        rules: [{ operation: 'withdraw', autoBelow: 50, confirmBetween: 1000 }],
       },
       priceCache: new Map([['USDC', 1]]),
       sessionSpendUsd: 0,
@@ -98,14 +98,14 @@ describe('buildNeedsApproval — agent-absent guard (Day 13.2 regression)', () =
   });
 
   it('still forces approval for over-threshold writes when ctx.agent IS set', async () => {
-    const needsApproval = buildNeedsApproval('save_deposit');
+    const needsApproval = buildNeedsApproval('withdraw');
 
     const ctx = baseToolContext({
       agent: { signTx: () => Promise.resolve('0xfake') },
       permissionConfig: {
         globalAutoBelow: 10,
         autonomousDailyLimit: 200,
-        rules: [{ operation: 'save', autoBelow: 50, confirmBetween: 1000 }],
+        rules: [{ operation: 'withdraw', autoBelow: 50, confirmBetween: 1000 }],
       },
       priceCache: new Map([['USDC', 1]]),
       sessionSpendUsd: 0,
@@ -120,7 +120,7 @@ describe('buildNeedsApproval — agent-absent guard (Day 13.2 regression)', () =
   });
 
   it('returns true (fail-closed) when InternalContext is missing entirely', async () => {
-    const needsApproval = buildNeedsApproval('save_deposit');
+    const needsApproval = buildNeedsApproval('withdraw');
 
     const result = await needsApproval(
       { amount: 0.05, asset: 'USDC' },
@@ -130,7 +130,7 @@ describe('buildNeedsApproval — agent-absent guard (Day 13.2 regression)', () =
   });
 
   it('returns true (fail-closed) for confirm-tier tools when permissionConfig is missing', async () => {
-    const needsApproval = buildNeedsApproval('save_deposit');
+    const needsApproval = buildNeedsApproval('withdraw');
 
     // agent is set so the audric guard doesn't fire, but no permissionConfig
     // means the resolver can't decide → fail closed.

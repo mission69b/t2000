@@ -27,8 +27,11 @@ import type { PendingToolCall } from '../types.js';
  * NOT seeded; stale-balance detection survives seeding).
  */
 
-const SAVE = makeGuardView('save_deposit');
-const BORROW = makeGuardView('borrow');
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] save_deposit / borrow were
+// deleted; repay_debt (requiresBalance) + withdraw (affectsHealth) carry
+// the same flag shapes for these guard regressions.
+const REPAY = makeGuardView('repay_debt');
+const WITHDRAW = makeGuardView('withdraw');
 
 function makeCall(name: string, input: Record<string, unknown>): PendingToolCall {
   return { id: 'tool_use_1', name, input };
@@ -82,8 +85,8 @@ describe('runGuards with seeded balanceTracker (F2 v1.11)', () => {
     state.balanceTracker.recordReadAt(Date.now() - 30_000);
 
     const result = runGuards(
-      SAVE,
-      makeCall('save_deposit', { amount: 10, asset: 'USDC' }),
+      REPAY,
+      makeCall('repay_debt', { amount: 10, asset: 'USDC' }),
       state,
       DEFAULT_GUARD_CONFIG,
       makeConvCtx(),
@@ -98,8 +101,8 @@ describe('runGuards with seeded balanceTracker (F2 v1.11)', () => {
     const state = createGuardRunnerState();
 
     const result = runGuards(
-      SAVE,
-      makeCall('save_deposit', { amount: 10, asset: 'USDC' }),
+      REPAY,
+      makeCall('repay_debt', { amount: 10, asset: 'USDC' }),
       state,
       DEFAULT_GUARD_CONFIG,
       makeConvCtx(),
@@ -116,15 +119,15 @@ describe('runGuards with seeded balanceTracker (F2 v1.11)', () => {
     state.lastHealthFactor = 4.28;
 
     const result = runGuards(
-      BORROW,
-      makeCall('borrow', { amount: 5, asset: 'USDC' }),
+      WITHDRAW,
+      makeCall('withdraw', { amount: 5, asset: 'USDC' }),
       state,
       DEFAULT_GUARD_CONFIG,
       makeConvCtx(),
     );
 
     expect(
-      injectionMessages(result).filter((m) => m.includes('Health factor has not been checked')),
+      injectionMessages(result).filter((m) => m.includes('Debt status has not been checked')),
     ).toEqual([]);
   });
 
@@ -133,15 +136,15 @@ describe('runGuards with seeded balanceTracker (F2 v1.11)', () => {
     state.balanceTracker.recordReadAt(Date.now() - 30_000);
 
     const result = runGuards(
-      BORROW,
-      makeCall('borrow', { amount: 5, asset: 'USDC' }),
+      WITHDRAW,
+      makeCall('withdraw', { amount: 5, asset: 'USDC' }),
       state,
       DEFAULT_GUARD_CONFIG,
       makeConvCtx(),
     );
 
     expect(
-      injectionMessages(result).filter((m) => m.includes('Health factor has not been checked')),
+      injectionMessages(result).filter((m) => m.includes('Debt status has not been checked')),
     ).not.toEqual([]);
   });
 
@@ -151,8 +154,8 @@ describe('runGuards with seeded balanceTracker (F2 v1.11)', () => {
     state.balanceTracker.recordWrite();
 
     const result = runGuards(
-      SAVE,
-      makeCall('save_deposit', { amount: 10, asset: 'USDC' }),
+      REPAY,
+      makeCall('repay_debt', { amount: 10, asset: 'USDC' }),
       state,
       DEFAULT_GUARD_CONFIG,
       makeConvCtx(),

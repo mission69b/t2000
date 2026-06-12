@@ -36,12 +36,13 @@ describe('tool-ttls', () => {
   });
 
   it('REGENERATABLE_READ_TOOLS includes the canonical regeneratable set', () => {
+    // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] rates_info /
+    // portfolio_analysis / savings_info / health_check left the set with
+    // their tools.
     expect(REGENERATABLE_READ_TOOLS.has('swap_quote')).toBe(true);
-    expect(REGENERATABLE_READ_TOOLS.has('rates_info')).toBe(true);
     expect(REGENERATABLE_READ_TOOLS.has('balance_check')).toBe(true);
-    expect(REGENERATABLE_READ_TOOLS.has('portfolio_analysis')).toBe(true);
-    expect(REGENERATABLE_READ_TOOLS.has('savings_info')).toBe(true);
-    expect(REGENERATABLE_READ_TOOLS.has('health_check')).toBe(true);
+    expect(REGENERATABLE_READ_TOOLS.has('rates_info')).toBe(false);
+    expect(REGENERATABLE_READ_TOOLS.has('savings_info')).toBe(false);
   });
 
   it('REGENERATABLE_READ_TOOLS excludes write tools', () => {

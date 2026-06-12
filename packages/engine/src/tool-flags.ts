@@ -21,14 +21,10 @@ import type { ToolFlags } from './types.js';
  */
 export const TOOL_FLAGS: Record<string, ToolFlags> = {
   // Write tools — financial (bundleable — SPEC 7 Layer 2)
-  save_deposit:    { mutating: true, requiresBalance: true, bundleable: true },
   withdraw:        { mutating: true, affectsHealth: true, bundleable: true },
   send_transfer:   { mutating: true, requiresBalance: true, irreversible: true, bundleable: true },
   swap_execute:    { mutating: true, requiresBalance: true, bundleable: true },
-  borrow:          { mutating: true, affectsHealth: true, bundleable: true },
   repay_debt:      { mutating: true, requiresBalance: true, bundleable: true },
-  claim_rewards:   { mutating: true, bundleable: true },
-  harvest_rewards: { mutating: true, requiresBalance: true, bundleable: true },
 
   // [SIMPLIFICATION DAY 7] Removed flag entries for deleted tools:
   //   create_schedule, cancel_schedule (DCA schedules retired)
@@ -40,6 +36,10 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
   // [S.323 — 2026-05-25] Volo fully removed from SDK + CLI + MCP. vSUI
   //   remains as a passive token (NAVI reward, Cetus swap target) but
   //   no mint/redeem surfaces exist anywhere in the t2000 stack.
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] Removed flag entries for
+  //   deleted DeFi writes: save_deposit, borrow, claim_rewards,
+  //   harvest_rewards. withdraw / repay_debt / swap_execute stay through
+  //   the 7-day exit window (§2d) and are cut when it closes.
 
   // Receive tools — create/cancel mutate server state
   create_payment_link: { mutating: true },
@@ -72,11 +72,11 @@ export function getToolFlags(name: string): ToolFlags {
  * "PAYMENT INTENT" sections (see `t2000-rebalance` / `t2000-save` /
  * `t2000-withdraw` SKILL.md files).
  *
- * The set is the 7 confirm-tier write tools whose on-chain effect is
- * fully expressible at compose time (post-S.277; Volo trio cut):
+ * The set is the confirm-tier write tools whose on-chain effect is
+ * fully expressible at compose time (post-DeFi-removal window-start
+ * cut, 2026-06-10):
  *
- *   save_deposit, withdraw, borrow, repay_debt, send_transfer,
- *   swap_execute, claim_rewards.
+ *   withdraw, repay_debt, send_transfer, swap_execute.
  */
 export function isBundleableTool(name: string): boolean {
   return TOOL_FLAGS[name]?.bundleable === true;

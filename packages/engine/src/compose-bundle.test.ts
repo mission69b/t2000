@@ -36,9 +36,11 @@ const noopCall = async () => ({ ok: true as const, data: {} });
 
 // Use the names of two real bundleable tools (the helper looks up
 // `bundleable: true` on each registered tool via `tool-flags.ts`).
-const saveDepositMock = defineTool({
-  name: 'save_deposit',
-  description: 'mock save_deposit for bundle composition test',
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] save_deposit was deleted;
+// repay_debt is the surviving bundleable consumer with the same shape.
+const repayDebtMock = defineTool({
+  name: 'repay_debt',
+  description: 'mock repay_debt for bundle composition test',
   inputSchema: z.object({ amount: z.number(), asset: z.string() }),
   call: noopCall,
   isReadOnly: false,
@@ -62,13 +64,13 @@ const sendTransferMock = defineTool({
 // (P4.1 Phase C — it reads bundleable flag from the central registry by
 // tool name). Keep the stubs alive so the policy registry is updated by
 // `defineToolForTest`'s side effect at module load.
-void saveDepositMock;
+void repayDebtMock;
 void sendTransferMock;
 
 const pendingWrites: PendingToolCall[] = [
   {
-    id: 'toolu_save_1',
-    name: 'save_deposit',
+    id: 'toolu_repay_1',
+    name: 'repay_debt',
     input: { amount: 10, asset: 'USDC' },
   },
   {
@@ -147,7 +149,7 @@ describe('composeBundleFromToolResults — D-6.1 approvalId alias invariant', ()
 //
 // Without this, chained-asset bundles fall back to wallet-mode pre-fetches
 // that fail for assets not yet in the wallet (e.g. `swap_execute(USDC →
-// USDsui) → save_deposit(USDsui)` reverts at PREPARE because USDsui
+// USDsui) → repay_debt(USDsui)` reverts at PREPARE because USDsui
 // isn't already in the wallet — the swap's output hasn't transferred yet).
 //
 // Pinning this invariant here catches the regression at the source. The
@@ -184,8 +186,10 @@ void swapExecuteMock;
 
 describe('composeBundleFromToolResults — P7.2 chain-mode inputCoinFromStep', () => {
   it('populates inputCoinFromStep on consumer for whitelisted, asset-aligned pair', () => {
-    // `swap_execute(USDC → USDsui) → save_deposit(USDsui)` — the
-    // canonical chained-asset bundle that motivated SPEC 13.
+    // `swap_execute(USDC → USDsui) → repay_debt(USDsui)` — the
+    // surviving chained-asset shape (exit-window repay symmetry; the
+    // original SPEC 13 motivator `swap → save_deposit` left with the
+    // DeFi removal).
     const action = composeBundleFromToolResults({
       pendingWrites: [
         {
@@ -194,8 +198,8 @@ describe('composeBundleFromToolResults — P7.2 chain-mode inputCoinFromStep', (
           input: { from: 'USDC', to: 'USDsui', amount: 50 },
         },
         {
-          id: 'toolu_save_2',
-          name: 'save_deposit',
+          id: 'toolu_repay_2',
+          name: 'repay_debt',
           input: { amount: 50, asset: 'USDsui' },
         },
       ],
@@ -237,14 +241,14 @@ describe('composeBundleFromToolResults — P7.2 chain-mode inputCoinFromStep', (
   });
 
   it('does NOT populate inputCoinFromStep for non-whitelisted pair', () => {
-    // `save_deposit → send_transfer` — not in `VALID_PAIRS` (save is
+    // `repay_debt → send_transfer` — not in `VALID_PAIRS` (repay is
     // not a producer in the whitelist). Same-asset (USDC) but pair is
     // outside the safe set, so chain mode must not fire.
     const action = composeBundleFromToolResults({
       pendingWrites: [
         {
-          id: 'toolu_save_1',
-          name: 'save_deposit',
+          id: 'toolu_repay_1',
+          name: 'repay_debt',
           input: { amount: 10, asset: 'USDC' },
         },
         {

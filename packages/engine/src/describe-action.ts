@@ -21,29 +21,16 @@ function resolveTokenSymbol(nameOrType: string): string {
 
 export function describeAction(toolName: string, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] save_deposit / borrow /
+  // claim_rewards cases removed with their tools. withdraw / repay_debt /
+  // swap_execute stay through the 7-day exit window (§2d).
   switch (toolName) {
-    case 'save_deposit': {
-      // [1.13.1] Per the savings-usdc-only.mdc strategic exception, save_deposit
-      // accepts both USDC and USDsui. The previous hardcoded 'USDC' rendered
-      // a USDsui save as "Save 4.997 USDC into lending" on the bundle confirm
-      // card, even though the on-chain action correctly deposited USDsui. Read
-      // the asset from input (default USDC matches the SDK's allowAsset default).
-      const sAsset = (input.asset as string | undefined) ?? 'USDC';
-      return `Save ${input.amount} ${sAsset} into lending`;
-    }
     case 'withdraw': {
       const wAsset = input.asset ?? '';
       return `Withdraw ${input.amount}${wAsset ? ' ' + wAsset : ''} from lending`;
     }
     case 'send_transfer':
       return `Send $${input.amount} to ${input.to}`;
-    case 'borrow': {
-      // [1.13.1] Same class of bug as save_deposit — borrow accepts USDC or
-      // USDsui per the strategic exception, but the description didn't surface
-      // the asset. Defaults to USDC to match the SDK's resolveSaveableAsset.
-      const bAsset = (input.asset as string | undefined) ?? 'USDC';
-      return `Borrow $${input.amount} ${bAsset} against collateral`;
-    }
     case 'repay_debt': {
       // [1.13.1] repay_debt enforces "repay with the same asset as the
       // borrow" per savings-usdc-only.mdc; surfacing the asset here makes
@@ -51,8 +38,6 @@ export function describeAction(toolName: string, call: PendingToolCall): string 
       const rAsset = (input.asset as string | undefined) ?? 'USDC';
       return `Repay $${input.amount} ${rAsset} of outstanding debt`;
     }
-    case 'claim_rewards':
-      return 'Claim all pending protocol rewards';
     case 'mpp_call': {
       const max = input.maxPriceUsd;
       let host = 'a Service';
