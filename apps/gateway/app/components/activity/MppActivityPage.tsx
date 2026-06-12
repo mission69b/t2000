@@ -31,11 +31,16 @@ function abbreviateEndpoint(endpoint: string): string {
   return endpoint.replace(/^\/+/, "").slice(0, 32);
 }
 
-export function MppActivityPage() {
+export function MppActivityPage({ treasuryAddress }: { treasuryAddress: string }) {
   const [rows, setRows] = useState<Payment[]>([]);
-  const [stats, setStats] = useState<{ totalCalls: number; totalVolume: number }>({
+  const [stats, setStats] = useState<{
+    totalCalls: number;
+    totalVolume: number;
+    uniqueWallets: number;
+  }>({
     totalCalls: 0,
     totalVolume: 0,
+    uniqueWallets: 0,
   });
   const [loaded, setLoaded] = useState(false);
   const seenIdsRef = useRef<Set<number>>(new Set());
@@ -51,13 +56,18 @@ export function MppActivityPage() {
         ]);
         if (!pRes.ok || !sRes.ok) return;
         const pData: { payments: Payment[] } = await pRes.json();
-        const sData: { totalPayments: number; totalVolume: string } = await sRes.json();
+        const sData: {
+          totalPayments: number;
+          totalVolume: string;
+          uniqueWallets?: number;
+        } = await sRes.json();
         if (cancelled) return;
         for (const row of pData.payments) seenIdsRef.current.add(row.id);
         setRows(pData.payments);
         setStats({
           totalCalls: sData.totalPayments,
           totalVolume: parseFloat(sData.totalVolume) || 0,
+          uniqueWallets: sData.uniqueWallets ?? 0,
         });
         setLoaded(true);
       } catch {
@@ -93,7 +103,7 @@ export function MppActivityPage() {
           </h1>
         </header>
 
-        <div className="mb-8 grid gap-3 md:grid-cols-3">
+        <div className="mb-3 grid gap-3 md:grid-cols-4">
           <CounterCard
             label="Calls settled"
             value={loaded ? stats.totalCalls.toLocaleString() : null}
@@ -104,8 +114,32 @@ export function MppActivityPage() {
             value={loaded ? `$${stats.totalVolume.toFixed(2)}` : null}
             loading={!loaded}
           />
+          <CounterCard
+            label="Paying wallets"
+            value={loaded ? stats.uniqueWallets.toLocaleString() : null}
+            loading={!loaded}
+          />
           <CounterCard label="Settle" value="~400" suffix="ms" />
         </div>
+
+        {/* [1.5] The verifiability line — the counter anyone can audit.
+            Self-reported numbers are what every rail shows; an on-chain
+            treasury anyone can open is the differentiator. */}
+        <p
+          className="mb-8 font-mono"
+          style={{ fontSize: 11, color: "var(--fg-subtle)" }}
+        >
+          Every payment settles on-chain to{" "}
+          <a
+            href={`https://suivision.xyz/account/${treasuryAddress}`}
+            rel="noopener noreferrer"
+            style={{ color: "var(--t2k-accent)", textDecoration: "none" }}
+            target="_blank"
+          >
+            {treasuryAddress.slice(0, 6)}…{treasuryAddress.slice(-4)} ↗
+          </a>{" "}
+          — verify these numbers yourself.
+        </p>
 
         <div className="t2k-card overflow-hidden">
           <div

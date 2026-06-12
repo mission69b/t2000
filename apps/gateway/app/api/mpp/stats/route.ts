@@ -3,10 +3,17 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const [totalPayments, allPayments] = await Promise.all([
+  // [1.5 / S.416] `uniqueWallets` = distinct senders — the third public
+  // credibility counter (calls · settled · wallets, the BlockRun trio).
+  const [totalPayments, allPayments, distinctSenders] = await Promise.all([
     prisma.mppPayment.count(),
     prisma.mppPayment.findMany({
       select: { service: true, amount: true },
+    }),
+    prisma.mppPayment.findMany({
+      where: { sender: { not: null } },
+      distinct: ['sender'],
+      select: { sender: true },
     }),
   ]);
 
@@ -36,6 +43,7 @@ export async function GET() {
   return Response.json({
     totalPayments,
     totalVolume: totalVolume.toFixed(2),
+    uniqueWallets: distinctSenders.length,
     services,
   });
 }

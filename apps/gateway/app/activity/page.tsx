@@ -2,6 +2,7 @@ import { MppNav } from "../components/site/MppNav";
 import { MppFooter } from "../components/site/MppFooter";
 import { MppActivityPage } from "../components/activity/MppActivityPage";
 import { totalServices, totalEndpoints } from "@/lib/catalog";
+import { TREASURY_ADDRESS } from "@/lib/constants";
 
 export const metadata = {
   title: "Activity — mpp.t2000.ai",
@@ -13,7 +14,7 @@ export default function ActivityPage() {
     <>
       <MppNav currentPage="activity" />
       <main>
-        <MppActivityPage />
+        <MppActivityPage treasuryAddress={TREASURY_ADDRESS} />
       </main>
       <MppFooter
         serviceCount={totalServices()}
