@@ -8,6 +8,12 @@ import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
 import { getEndpointPrice } from './services';
 import { getDigestStore } from './upstash-digest-store';
+import {
+  hasX402Payment,
+  settleX402Request,
+  withX402Accepts,
+  withX402Receipt,
+} from './x402-dialect';
 import { env } from '@/lib/env';
 
 const NETWORK = (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
@@ -52,6 +58,83 @@ function inferServiceEndpoint(rawUrl: string): { service: string; endpoint: stri
   } catch {
     return { service: 'unknown', endpoint: '/' };
   }
+}
+
+/**
+ * Shared x402 branch for both charge wrappers (SPEC_AGENT_PAYMENTS_X402
+ * item 1.2). When the request carries `X-PAYMENT`: settle-then-serve —
+ * verify + submit the client-signed gasless payment FIRST (terms from the
+ * catalog, never the client), then run the upstream, then attach the
+ * `X-PAYMENT-RESPONSE` receipt. Returns null when the request has no
+ * x402 payment or settlement fails (caller falls through to the legacy
+ * mppx path, which re-issues the dual-dialect 402).
+ *
+ * Upstream failure AFTER a successful settle is logged as `refund_due` —
+ * automated refunds are Phase 2 (x402 spec 2.6); until then the log line
+ * + payment row are the audit trail for the (rare, price-bounded) manual
+ * refund.
+ */
+async function runX402Path(
+  req: Request,
+  params: {
+    service: string;
+    endpoint: string;
+    amount: string;
+    runUpstream: () => Promise<Response>;
+  },
+): Promise<Response | null> {
+  if (!hasX402Payment(req)) return null;
+
+  let settled;
+  try {
+    settled = await settleX402Request(req, {
+      amount: params.amount,
+      currency: USDC,
+      recipient: TREASURY_ADDRESS,
+      network: NETWORK,
+    });
+  } catch (err) {
+    console.error(
+      '[x402] X-PAYMENT settlement rejected:',
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+
+  const { settle, report } = settled;
+  after(() =>
+    logPayment({
+      service: params.service,
+      endpoint: params.endpoint,
+      amount: report.amount,
+      digest: settle.transaction,
+      sender: report.sender,
+    }),
+  );
+
+  let upstreamResponse: Response;
+  try {
+    upstreamResponse = await params.runUpstream();
+  } catch (err) {
+    console.error(
+      `[x402] refund_due digest=${settle.transaction} payer=${settle.payer} amount=${params.amount} reason=upstream-threw:`,
+      err instanceof Error ? err.message : err,
+    );
+    return withX402Receipt(
+      Response.json(
+        { error: 'Upstream service failed after payment settled' },
+        { status: 502 },
+      ),
+      settle,
+    );
+  }
+  if (!upstreamResponse.ok) {
+    console.error(
+      `[x402] refund_due digest=${settle.transaction} payer=${settle.payer} amount=${params.amount} upstreamStatus=${upstreamResponse.status}`,
+    );
+  }
+
+  return withX402Receipt(await normalizeResponse(upstreamResponse), settle);
 }
 
 interface ProxyOptions {
@@ -174,27 +257,48 @@ export function chargeProxy(
     const handler: RouteHandler = async () =>
       fetchAndTransformUpstream(upstream, upstreamHeaders, bodyText, options);
 
+    // [x402 1.2] Settle-then-serve for X-PAYMENT requests; falls through to
+    // the legacy mppx dialect (and its dual-dialect 402) on absence/failure.
+    const x402Response = await runX402Path(req, {
+      service,
+      endpoint,
+      amount,
+      runUpstream: async () => handler(req),
+    });
+    if (x402Response) return x402Response;
+
     const response = await mppx.charge({ amount })(handler)(
       new Request(req.url, { method: req.method, headers: req.headers })
     );
 
-    if (response.status !== 402) {
-      const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
-      const report = digest ? pendingReports.get(digest) : undefined;
-      if (digest) pendingReports.delete(digest);
-      // [Bug 1 / dogfood 2026-05-31] Log the VERIFIED on-chain amount from
-      // the PaymentReport when present, not the route's expected `amount`.
-      // They should match (challenge price == on-chain charge), but the
-      // verified figure is the source of truth for the analytics DB.
-      //
-      // [Activity-log race / dogfood 2026-06-01] Run the write via `after()`
-      // so it survives the serverless freeze. Fire-and-forget (un-awaited)
-      // writes get torn down when the function suspends after the response is
-      // sent — fast/parallel calls were charged on-chain but never logged,
-      // so they vanished from the activity page. `after()` keeps the function
-      // alive until the write commits without adding response latency.
-      after(() => logPayment({ service, endpoint, amount: report?.amount ?? amount, digest, sender: report?.sender }));
+    if (response.status === 402) {
+      // [x402 1.2] Dual-dialect: append the x402 accepts[] envelope to the
+      // legacy challenge (same challenge identity in both dialects).
+      return withX402Accepts(response, {
+        amount,
+        currency: USDC,
+        recipient: TREASURY_ADDRESS,
+        network: NETWORK,
+        resource: req.url,
+      });
     }
+
+    // Paid legacy-dialect response from here down (402 returned above).
+    const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
+    const report = digest ? pendingReports.get(digest) : undefined;
+    if (digest) pendingReports.delete(digest);
+    // [Bug 1 / dogfood 2026-05-31] Log the VERIFIED on-chain amount from
+    // the PaymentReport when present, not the route's expected `amount`.
+    // They should match (challenge price == on-chain charge), but the
+    // verified figure is the source of truth for the analytics DB.
+    //
+    // [Activity-log race / dogfood 2026-06-01] Run the write via `after()`
+    // so it survives the serverless freeze. Fire-and-forget (un-awaited)
+    // writes get torn down when the function suspends after the response is
+    // sent — fast/parallel calls were charged on-chain but never logged,
+    // so they vanished from the activity page. `after()` keeps the function
+    // alive until the write commits without adding response latency.
+    after(() => logPayment({ service, endpoint, amount: report?.amount ?? amount, digest, sender: report?.sender }));
 
     // [Bug 2 / dogfood 2026-05-31] Single normalizer: host binary bodies AND
     // re-host provider-CDN asset URLs in JSON (fal etc.) to our artifact store
@@ -255,19 +359,37 @@ export function chargeCustom(
 
     const wrappedHandler: RouteHandler = async () => handler(bodyText);
 
+    // [x402 1.2] Same dual-dialect choreography as chargeProxy.
+    const x402Response = await runX402Path(req, {
+      service,
+      endpoint,
+      amount: resolvedAmount,
+      runUpstream: () => handler(bodyText),
+    });
+    if (x402Response) return x402Response;
+
     const response = await mppx.charge({ amount: resolvedAmount })(wrappedHandler)(
       new Request(req.url, { method: req.method, headers: req.headers })
     );
 
-    if (response.status !== 402) {
-      const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
-      const report = digest ? pendingReports.get(digest) : undefined;
-      if (digest) pendingReports.delete(digest);
-      // [Bug 1] Verified on-chain amount wins over the resolved expected price.
-      // [Activity-log race] `after()` so the write survives the serverless
-      // freeze (see chargeProxy note above).
-      after(() => logPayment({ service, endpoint, amount: report?.amount ?? resolvedAmount, digest, sender: report?.sender }));
+    if (response.status === 402) {
+      return withX402Accepts(response, {
+        amount: resolvedAmount,
+        currency: USDC,
+        recipient: TREASURY_ADDRESS,
+        network: NETWORK,
+        resource: req.url,
+      });
     }
+
+    // Paid legacy-dialect response from here down (402 returned above).
+    const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
+    const report = digest ? pendingReports.get(digest) : undefined;
+    if (digest) pendingReports.delete(digest);
+    // [Bug 1] Verified on-chain amount wins over the resolved expected price.
+    // [Activity-log race] `after()` so the write survives the serverless
+    // freeze (see chargeProxy note above).
+    after(() => logPayment({ service, endpoint, amount: report?.amount ?? resolvedAmount, digest, sender: report?.sender }));
 
     // [Bug 2] Covers custom binary handlers (qrcode, stability image) too.
     return normalizeResponse(response);
