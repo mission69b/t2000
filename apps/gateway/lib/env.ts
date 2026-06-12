@@ -128,9 +128,13 @@ const serverSchema = z.object({
   // [S.413] HMAC secret binding mppx challenges to this server. Without it
   // an echoed challenge's fields (incl. `expires`) are forgeable, which
   // re-opens the legacy-dialect self-replay window past the digest TTL.
-  // Promoted to required (S.414) once set in Vercel — empty/missing fails
-  // the boot gate rather than silently degrading replay protection.
-  MPP_CHALLENGE_SECRET: requiredString,
+  // [S.415] Kept OPTIONAL (with a loud boot warning in gateway.ts): the
+  // S.414 requiredString promotion failed every Vercel build — the var
+  // wasn't visible to the BUILD environment (the gate runs during static
+  // generation). Re-promote to requiredString only after a green deploy
+  // confirms build-time visibility (Vercel: correct project, Production
+  // scope, available-at-build).
+  MPP_CHALLENGE_SECRET: optionalString,
 
   // ---- Optional with explicit defaults ----
   TREASURY_ADDRESS: optionalStringWithDefault(
