@@ -1,6 +1,13 @@
+import { USDC } from '@suimpp/mpp/server';
+import { x402Network } from '@suimpp/mpp/x402';
 import { services } from './services';
 import { getEndpointSchema } from './schemas';
 import { TREASURY_ADDRESS } from './constants';
+import { env } from '@/lib/env';
+
+const X402_NETWORK = x402Network(
+  (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet',
+);
 
 interface OpenApiDocument {
   openapi: string;
@@ -40,12 +47,21 @@ export function generateOpenApiDocument(): OpenApiDocument {
         operationId,
         summary: `${endpoint.description}`,
         tags: service.categories,
+        // [1.3] `protocols` gained 'x402' with the dual-dialect gateway;
+        // the `x402` block mirrors the static half of the live accepts[]
+        // entry (scheme/network/asset/payTo — dynamic fields ride the 402).
         'x-payment-info': {
           pricingMode: pricingMode(endpoint.price),
           ...(endpoint.price !== 'dynamic'
             ? { price: formatPrice(endpoint.price) }
             : {}),
-          protocols: ['mpp'],
+          protocols: ['mpp', 'x402'],
+          x402: {
+            scheme: 'exact',
+            network: X402_NETWORK,
+            asset: USDC.type,
+            payTo: TREASURY_ADDRESS,
+          },
         },
         responses: {
           '200': {
@@ -98,6 +114,8 @@ export function generateOpenApiDocument(): OpenApiDocument {
     },
     'x-discovery': {
       ownershipProofs: [],
+      // [1.3] Machine-readable pointer to the x402 discovery manifest.
+      x402Manifest: '/.well-known/x402.json',
     },
     paths,
   };
