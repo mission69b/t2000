@@ -5,6 +5,8 @@ alwaysApply: false
 
 # Metrics + Monitoring
 
+> **Note (2026-06-14):** `@t2000/engine` was retired/deleted and BlockVision removed from t2000. The engine-harness telemetry described below (`TurnMetrics`, `attemptId`, engine-version bisection, BlockVision spend, `packages/engine/src/cost.ts`) is **historical for this repo** — it now lives only in the frozen legacy Audric app on the published `@t2000/engine@4.x`. The non-engine guidance (durable-vs-transient split, the "what MUST NOT happen" discipline, adding a new metric) still applies.
+
 The signal that tells us the agent is working. Everything we measure is for one of three purposes:
 1. **Cost control** — Anthropic + BlockVision + Upstash spend.
 2. **Correctness** — Was the agent helpful? Did the user confirm? Did the tx succeed?

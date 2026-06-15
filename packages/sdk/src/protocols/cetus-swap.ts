@@ -16,9 +16,9 @@
  */
 import { AggregatorClient, Env, type FindRouterParams, type RouterDataV3 } from '@cetusprotocol/aggregator-sdk';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import BN from 'bn.js';
 import { resolveTokenType, getDecimalsForCoinType } from '../token-registry.js';
+import type { SuiCoreClient } from '../utils/sui.js';
 import type { SponsoredCoinMergeCache } from '../wallet/coinSelection.js';
 
 export interface OverlayFeeConfig {
@@ -447,7 +447,7 @@ export async function buildSwapTx(params: {
  */
 export async function addSwapToTx(
   tx: Transaction,
-  client: SuiJsonRpcClient,
+  client: SuiCoreClient,
   address: string,
   input: {
     from: string;
@@ -639,23 +639,6 @@ export async function addSwapToTx(
     route,
     usedPrecomputedRoute,
   };
-}
-
-/**
- * Simulate a swap transaction without executing it.
- */
-export async function simulateSwap(params: {
-  walletAddress: string;
-  tx: Transaction;
-  overlayFee?: OverlayFeeConfig;
-}): Promise<{ success: boolean; error?: string }> {
-  const client = getClient(params.walletAddress, params.overlayFee);
-  try {
-    await client.devInspectTransactionBlock(params.tx);
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
-  }
 }
 
 // Re-export from the canonical token registry for backward-compat.

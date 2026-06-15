@@ -1,5 +1,7 @@
 # Tool Surface Topology
 
+> **⚠️ PARTIALLY HISTORICAL (2026-06-14):** Two things below are now stale. (1) `@t2000/engine` was **retired/deleted** from the monorepo — the "Engine" surface and the entire "Engine tool" column are historical (the published `@t2000/engine@4.x` lives on only for the frozen legacy Audric app). (2) **NAVI / DeFi was removed from `@t2000/sdk`** — the Save / Withdraw / Borrow / Repay / Claim / Compound rows no longer exist on any current t2000 surface. The live surfaces are **SDK · CLI · MCP · Skills (4)**, and the live user-facing write operations are **send · swap · pay (x402)**. The MCP-wiring + Skills-wiring facts below remain accurate. The rest is kept for rationale/lineage.
+
 Codifies where each user-facing financial operation lives across the 5 surfaces — SDK, CLI, MCP, Skills, Engine — and the load-bearing fact about how `@t2000/mcp` consumes them.
 
 ## Why this rule exists

@@ -5,7 +5,7 @@ description: >-
   address. Use when asked to pay someone, transfer funds, send money, tip
   a creator, or make a payment to a specific Sui address, SuiNS name, or
   saved contact. Do NOT use for API payments — use the t2000-pay skill
-  for MPP-protected services.
+  for x402-protected services.
 license: MIT
 metadata:
   author: t2000

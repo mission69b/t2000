@@ -5,13 +5,13 @@
 <h3 align="center">The agentic stack for stablecoins on Sui.</h3>
 
 <p align="center">
-  Agent Wallet · Agent Payments · Agent SDK · Agent Engine
+  Agent Wallet · Agent Payments · Agent SDK
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/engine">Engine</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -21,16 +21,15 @@
 
 ---
 
-t2000 is the open-source agentic stack for stablecoins on Sui — everything an AI agent (or a developer building one) needs to hold a wallet, move USDC, pay APIs, and orchestrate financial flows. Four products, one repo.
+t2000 is the open-source agentic stack for stablecoins on Sui — everything an AI agent (or a developer building one) needs to hold a wallet, move USDC, pay APIs, and orchestrate financial flows. Three packages, one repo.
 
 ## The stack
 
 | Product | npm | What it gives you |
 |---|---|---|
-| **[Agent Wallet](https://developers.t2000.ai/agent-wallet)** | `@t2000/cli` + `@t2000/mcp` + skills | A terminal Agent Wallet + MCP server for Claude / Cursor / Windsurf. Gasless USDC + USDsui sends, Cetus swaps, MPP paid API access. One install. |
-| **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any MPP-protected API in USDC. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
-| **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless transfers, swap routing, MPP, NAVI lending builders. |
-| **[Agent Engine](https://developers.t2000.ai/agent-engine)** | `@t2000/engine` | The agent **harness library** for conversational finance — 26 financial tools, 12 safety guards, USD-aware permissions, prompt assembly, MCP client + host-composition primitives. Powers [Audric](https://audric.ai). |
+| **[Agent Wallet](https://developers.t2000.ai/agent-wallet)** | `@t2000/cli` + `@t2000/mcp` + skills | A terminal Agent Wallet + MCP server for Claude / Cursor / Windsurf. Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. One install. |
+| **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
+| **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless USDC/USDsui sends, Cetus swap routing, x402 pay. |
 
 ## Install
 
@@ -55,14 +54,13 @@ Full reference, command surface, SDK API, examples → [developers.t2000.ai](htt
 t2000/
 ├── packages/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK
-│   ├── engine/           @t2000/engine — Agent engine
 │   ├── cli/              @t2000/cli — terminal Agent Wallet (`t2`)
 │   └── mcp/              @t2000/mcp — MCP server
 │
 ├── apps/
 │   ├── web/              t2000.ai — marketing site + skills routes
 │   ├── docs/             developers.t2000.ai — Mintlify developer docs
-│   └── gateway/          mpp.t2000.ai — MPP gateway (40+ paid APIs)
+│   └── gateway/          mpp.t2000.ai — x402 gateway (40+ paid APIs)
 │
 └── t2000-skills/         Agent Skills (markdown playbooks)
 ```
@@ -76,7 +74,7 @@ pnpm build
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
-Releases happen via the `release.yml` GitHub Actions workflow (bumps all 4 packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
+Releases happen via the `release.yml` GitHub Actions workflow (bumps all 3 packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
 
 ## Security
 
@@ -84,7 +82,7 @@ Releases happen via the `release.yml` GitHub Actions workflow (bumps all 4 packa
 - **Plain Bech32 wallets** — `~/.t2000/wallet.key`, JSON, `0o600` perms. Move between machines with `t2 export` + `t2 init --import`.
 - **Opt-in spending limits** — `t2 limit set --per-tx <USD> --daily <USD>`. Default = no limits + warning footer at `init`.
 - **Transaction simulation** — every write dry-runs before signing.
-- **Gasless trust boundary** — USDC + USDsui sends + MPP pays use Sui foundation's `0x2::balance::send_funds` sponsor. Swap + SUI send keep their full self-funded gas model.
+- **Gasless trust boundary** — USDC + USDsui sends + x402 pays use Sui foundation's `0x2::balance::send_funds` sponsor. Swap + SUI send keep their full self-funded gas model.
 
 ## License
 

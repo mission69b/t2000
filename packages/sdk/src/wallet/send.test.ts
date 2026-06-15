@@ -5,12 +5,16 @@ import { SUPPORTED_ASSETS } from '../constants.js';
 
 function mockClient(balanceOverride?: bigint, coinType?: string) {
   return {
-    getBalance: vi.fn().mockResolvedValue({
-      coinType: coinType ?? SUPPORTED_ASSETS.USDC.type,
-      coinObjectCount: 1,
-      totalBalance: (balanceOverride ?? 10_000_000n).toString(),
-      lockedBalance: {},
-    }),
+    core: {
+      getBalance: vi.fn().mockResolvedValue({
+        balance: {
+          coinType: coinType ?? SUPPORTED_ASSETS.USDC.type,
+          balance: (balanceOverride ?? 10_000_000n).toString(),
+          coinBalance: '0',
+          addressBalance: '0',
+        },
+      }),
+    },
   } as any;
 }
 

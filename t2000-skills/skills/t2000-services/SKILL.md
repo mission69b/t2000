@@ -1,7 +1,7 @@
 ---
 name: t2000-services
 description: >-
-  Discover MPP services payable via `t2 pay`. Use when the user asks
+  Discover x402 services payable via `t2 pay`. Use when the user asks
   "what can I pay for?", "what AI models are available?", "show me the
   service catalog", "is there a weather API?", or any other discovery
   question. Pairs with the t2000-pay skill (discovery first, then pay).
@@ -12,11 +12,11 @@ metadata:
   requires: t2000 CLI (npm install -g @t2000/cli)
 ---
 
-# t2000: Discover MPP Services
+# t2000: Discover x402 Services
 
 ## Purpose
 
-Browse the live MPP gateway catalog at `mpp.t2000.ai` to find a service that matches the user's intent (chat, image gen, search, weather, email, code exec, mail, etc.) before calling `t2 pay`. The catalog spans every major AI + data API, with per-call prices that vary by endpoint — always check the live catalog rather than assuming a fixed count or price.
+Browse the live x402 gateway catalog at `mpp.t2000.ai` to find a service that matches the user's intent (chat, image gen, search, weather, email, code exec, mail, etc.) before calling `t2 pay`. The catalog spans every major AI + data API, with per-call prices that vary by endpoint — always check the live catalog rather than assuming a fixed count or price.
 
 ## Rules
 

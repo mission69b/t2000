@@ -50,11 +50,16 @@ function makeSigner(): TransactionSigner {
 function makeClient(): SuiJsonRpcClient {
   return {
     network: 'mainnet',
-    executeTransactionBlock: vi.fn(async () => ({
-      digest: '0xdigest',
-      effects: { gasUsed: { computationCost: '1000', storageCost: '0', storageRebate: '0' } },
-    })),
-    waitForTransaction: vi.fn(async () => ({})),
+    core: {
+      executeTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: {
+          digest: '0xdigest',
+          effects: { gasUsed: { computationCost: '1000', storageCost: '0', storageRebate: '0' } },
+        },
+      })),
+      waitForTransaction: vi.fn(async () => ({})),
+    },
   } as unknown as SuiJsonRpcClient;
 }
 

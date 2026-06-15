@@ -1,6 +1,6 @@
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { SUPPORTED_ASSETS, STABLE_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
 import type { StableAsset } from '../constants.js';
+import type { SuiCoreClient } from '../utils/sui.js';
 import type { BalanceResponse } from '../types.js';
 
 const SUI_PRICE_FALLBACK = 1.0;
@@ -21,20 +21,22 @@ const PRICE_CACHE_TTL_MS = 60_000;
  *
  * Equivalently: 1000 / raw_price
  */
-async function fetchSuiPrice(client: SuiJsonRpcClient): Promise<number> {
+async function fetchSuiPrice(client: SuiCoreClient): Promise<number> {
   const now = Date.now();
   if (_cachedSuiPrice > 0 && now - _priceLastFetched < PRICE_CACHE_TTL_MS) {
     return _cachedSuiPrice;
   }
 
   try {
-    const pool = await client.getObject({
-      id: CETUS_USDC_SUI_POOL,
-      options: { showContent: true },
+    // [gRPC migration] `core.getObject` returns BCS content; request `json`
+    // to read parsed Move fields (the legacy `content.fields` path is gone).
+    const pool = await client.core.getObject({
+      objectId: CETUS_USDC_SUI_POOL,
+      include: { json: true },
     });
 
-    if (pool.data?.content?.dataType === 'moveObject') {
-      const fields = pool.data.content.fields as Record<string, unknown>;
+    const fields = pool.object?.json as Record<string, unknown> | null | undefined;
+    if (fields) {
       const currentSqrtPrice = BigInt(String(fields.current_sqrt_price ?? '0'));
 
       if (currentSqrtPrice > 0n) {
@@ -56,17 +58,17 @@ async function fetchSuiPrice(client: SuiJsonRpcClient): Promise<number> {
 }
 
 export async function queryBalance(
-  client: SuiJsonRpcClient,
+  client: SuiCoreClient,
   address: string,
 ): Promise<BalanceResponse> {
   const stableBalancePromises = STABLE_ASSETS.map((asset) =>
-    client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS[asset].type })
-      .then((b) => ({ asset, amount: Number(b.totalBalance) / 10 ** SUPPORTED_ASSETS[asset].decimals }))
+    client.core.getBalance({ owner: address, coinType: SUPPORTED_ASSETS[asset].type })
+      .then((b) => ({ asset, amount: Number(b.balance.balance) / 10 ** SUPPORTED_ASSETS[asset].decimals }))
       .catch(() => ({ asset, amount: 0 })),
   );
 
   const [suiBalance, suiPriceUsd, ...stableResults] = await Promise.all([
-    client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS.SUI.type }),
+    client.core.getBalance({ owner: address, coinType: SUPPORTED_ASSETS.SUI.type }),
     fetchSuiPrice(client),
     ...stableBalancePromises,
   ]);
@@ -78,7 +80,7 @@ export async function queryBalance(
     totalStables += amount;
   }
 
-  const suiAmount = Number(suiBalance.totalBalance) / Number(MIST_PER_SUI);
+  const suiAmount = Number(suiBalance.balance.balance) / Number(MIST_PER_SUI);
   const savings = 0; // Merged from NAVI in T2000.balance()
   const usdEquiv = suiAmount * suiPriceUsd;
   const total = totalStables + savings + usdEquiv;

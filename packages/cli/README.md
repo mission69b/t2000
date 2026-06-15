@@ -1,6 +1,6 @@
 # @t2000/cli
 
-The terminal Agent Wallet for AI agents on Sui — gasless USDC + USDsui sends, Cetus swaps, MPP paid API access. Scriptable from any shell.
+The terminal Agent Wallet for AI agents on Sui — gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. Scriptable from any shell.
 
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
 [![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)

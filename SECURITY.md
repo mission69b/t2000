@@ -33,14 +33,16 @@ If you discover a security vulnerability in t2000, please report it responsibly.
 ### Scope
 
 The following are in scope:
-- `@t2000/sdk` — Key management, transaction building, adapter routing
-- `@t2000/engine` — LLM orchestration, tool permissions, cost limits, abort handling
-- `@t2000/cli` — Input validation, PIN handling
+- `@t2000/sdk` — Key management, transaction building, send / swap / pay routing
+- `@t2000/cli` — Input validation, wallet file handling
 - `@t2000/mcp` — MCP server tool permissions, input validation
-- `@suimpp/mpp` — MPP payment method (Sui USDC)
-- Server API — Fee ledger, indexer, daily-intel cron orchestration
+- `@suimpp/mpp` — x402 / MPP payment method (Sui USDC)
 - Move contracts — On-chain fee collection, admin controls
 - Website — XSS, injection, authentication bypass
+
+> `@t2000/engine` was retired and deleted from this monorepo (2026-06-14). The published
+> `@t2000/engine@4.x` remains on npm for the frozen legacy Audric app and is out of scope
+> for this repo's security policy.
 
 ### Out of scope
 
@@ -55,17 +57,13 @@ The following are in scope:
 - Transaction simulation before execution
 - On-chain timelocked governance (7-day fee change delay)
 - Automated security scanning via GitHub Actions (CodeQL, dependency audit)
-- Adapter compliance test suite (500+ tests across SDK, engine, and CLI)
+- Transaction simulation + input validation across SDK and CLI
 
-### Engine Security Model (`@t2000/engine`)
-
-- **Permission tiers** — Tools are classified as `auto` (read-only, no approval), `confirm` (requires user approval before execution), or `explicit` (manual-only, never auto-dispatched by LLM)
-- **Delegated execution** — Write tools yield `pending_action` events; the client executes the transaction on-chain and resumes the engine via `resumeWithToolResult`. Session state is persisted so the flow is stateless and serverless-friendly.
-- **Transaction serialization** — Write tools serialize structurally via the AI SDK step model + `needsApproval` round-trip: confirm-tier writes yield a `pending_action`, the host round-trips through user confirm, and the next step runs the next write — preventing Sui object version conflicts from concurrent mutations without an in-process lock. (Pre-v2.0.0 used an in-process `TxMutex`; v2 engine `AISDKEngine` doesn't instantiate one — legacy `TxMutex` is still exported for back-compat consumers.)
-- **Budget limits** — `CostTracker` enforces configurable `budgetLimitUsd`; engine stops when the threshold is reached
-- **Max turns** — `AISDKEngine` enforces `maxTurns` to prevent runaway LLM loops
-- **Input validation** — All tool inputs are validated through Zod schemas before execution
-- **Context isolation** — `MemorySessionStore` uses `structuredClone` to prevent cross-session data leaks
+> **Engine Security Model — historical.** `@t2000/engine` (the conversational-finance
+> harness — permission tiers, guards, delegated `pending_action` execution, cost limits,
+> session isolation) was retired and deleted from this monorepo on 2026-06-14. Its security
+> model applied to the engine package only and is no longer part of this repo. The published
+> `@t2000/engine@4.x` consumed by the frozen legacy Audric app is out of scope here.
 
 ## Audit Status
 

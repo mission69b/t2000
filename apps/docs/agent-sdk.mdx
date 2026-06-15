@@ -1,11 +1,11 @@
 ---
 title: "Agent SDK"
-description: "@t2000/sdk — the TypeScript SDK for Agent Wallets on Sui. Send USDC + USDsui gasless, swap via Cetus Aggregator, pay MPP-protected APIs, and (programmatically) lend + borrow via NAVI."
+description: "@t2000/sdk — the TypeScript SDK for Agent Wallets on Sui. Send USDC + USDsui gasless, swap via Cetus Aggregator, and pay any API in USDC over the x402 rail."
 ---
 
-`@t2000/sdk` is the TypeScript SDK for Agent Wallets on Sui — the layer underneath `@t2000/cli` and `@t2000/mcp`. One class (`T2000`) that handles wallet signing, gasless USDC + USDsui transfers, Cetus swap routing, MPP paid API access, and (programmatically only, no CLI alias) NAVI save/borrow/withdraw/repay.
+`@t2000/sdk` is the TypeScript SDK for Agent Wallets on Sui — the layer underneath `@t2000/cli` and `@t2000/mcp`. One class (`T2000`) that handles wallet signing, gasless USDC + USDsui transfers, Cetus swap routing, and x402 paid API access (pay any API in USDC).
 
-In [Audric](https://audric.ai), this SDK powers Audric Passport (wallet, signing), Audric Finance (NAVI lending + Cetus swap), and Audric Pay (USDC transfers, payment links).
+The SDK's write surface is **send (gasless USDC/USDsui), swap (Cetus, any Sui token), and pay (x402)** — plus the wallet reads (`balance`, `history`, `receive`).
 
 ## Install
 
@@ -40,7 +40,7 @@ await agent.send({ to: '0x8b3e…', amount: 5, asset: 'USDsui' });
 // Swap — Cetus Aggregator V3 across 20+ Sui DEXs. Requires SUI for gas.
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });
 
-// Pay — MPP-protected API. Gasless USDC; handles HTTP 402 transparently.
+// Pay — any x402-protected API. Gasless USDC; handles HTTP 402 transparently.
 const result = await agent.pay({
   url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
   method: 'POST',
@@ -59,18 +59,18 @@ const result = await agent.pay({
 
 ## Agent Wallet API
 
-These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending USDC, receiving, swapping, paying for MPP APIs.
+These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending USDC, receiving, swapping, paying for x402 APIs.
 
 | Method | Returns | Notes |
 |---|---|---|
 | `agent.address()` | `string` | Sui address. |
 | `agent.balance()` | `BalanceResponse` | USDC / USDsui / SUI + gas reserve + total USD. |
-| `agent.history({ limit? })` | `TransactionRecord[]` | Sends / swaps / MPP payments with Suiscan digests. |
+| `agent.history({ limit? })` | `TransactionRecord[]` | Sends / swaps / x402 payments with Suiscan digests. |
 | `agent.send({ to, amount, asset })` | `SendResult` | **`asset` is required** (`'USDC'` / `'USDsui'` / `'SUI'`). USDC + USDsui are gasless via Sui foundation's `0x2::balance::send_funds`; SUI uses standard gas. `to` resolves: hex address > SuiNS (`alice.sui`) > `@audric` handle > saved contact. |
 | `agent.resolveRecipient(input)` | `{ address, suinsName?, contactName? }` | Public resolver — same lookup `send` uses. Handy for dry-run previews. |
 | `agent.swap({ from, to, amount, slippage? })` | `SwapResult` | Cetus Aggregator V3 (20+ DEXs). User-friendly names (`'USDC'`, `'SUI'`, `'CETUS'`, …) or full coin types. Default slippage 1%, max 5%. **Requires SUI for gas.** |
 | `agent.swapQuote({ from, to, amount, slippage? })` | `SwapQuoteResult` | Preview route + output + price impact (no execution). |
-| `agent.pay(options)` | `PayResult` | MPP-protected paid API. Handles 402 → quote → USDC payment → retry. USDC transfer is gasless. `options.maxPrice` caps spend (default 1 USDC). |
+| `agent.pay(options)` | `PayResult` | x402-protected paid API. Handles 402 → quote → USDC payment → retry. USDC transfer is gasless. `options.maxPrice` caps spend (default 1 USDC). |
 | `agent.receive({ amount?, currency?, memo?, label? })` | `PaymentRequest` | Builds a Payment Kit `sui:pay?…` URI with a unique nonce. Scannable by any Sui wallet. |
 | `agent.exportKey()` | `string` | Print the Bech32 (`suiprivkey1…`) secret for the underlying keypair. |
 
@@ -86,32 +86,13 @@ agent.on('error', (e) => { /* T2000Error */ });
 
 ### Exposed Internals
 
-For integrations (`@suimpp/mpp`, [`@t2000/engine`](/agent-engine), `audric/apps/web-v2`):
+For integrations (`@suimpp/mpp`, `audric/apps/web-v2`):
 
 ```typescript
 agent.suiClient;   // SuiJsonRpcClient
 agent.signer;      // TransactionSigner (works for keypair + zkLogin)
 agent.keypair;     // Ed25519Keypair (throws for zkLogin instances)
 ```
-
-## DeFi API (programmatic only)
-
-NAVI lend / borrow / repay / withdraw, plus the supporting reads. These are **programmatic only** — the CLI is a focused Agent Wallet (send / swap / pay); DeFi flows live in consumer apps and the [`@t2000/engine`](/agent-engine) Agent Harness.
-
-| Method | Notes |
-|---|---|
-| `agent.save({ amount, asset?, protocol? })` | Deposit **USDC or USDsui** to NAVI savings (default `'USDC'`). `amount` can be `'all'`. |
-| `agent.withdraw({ amount, asset?, protocol? })` | Withdraw from savings (default `'USDC'`; also supports USDsui + legacy USDe / SUI positions). `amount` can be `'all'`. |
-| `agent.borrow({ amount, asset?, protocol? })` | Borrow USDC or USDsui against collateral (default `'USDC'`). |
-| `agent.repay({ amount, asset?, protocol? })` | Repay outstanding debt. **Symmetry enforced** — USDsui debt is repaid with USDsui (USDC with USDC). `amount` can be `'all'`. |
-| `agent.claimRewards()` | Claim pending NAVI rewards. |
-| `agent.healthFactor()` | NAVI lending health factor. |
-| `agent.maxWithdraw()` · `agent.maxBorrow()` | Safe limits without breaching health factor. |
-| `agent.positions()` | Open save + borrow positions across protocols. |
-| `agent.rates()` | Best save/borrow APYs across protocols. |
-| `agent.earnings()` | Yield earned to date. |
-| `agent.fundStatus()` | Complete savings summary. |
-| `agent.deposit()` · `agent.fund()` | Wallet address + funding instructions. |
 
 ## Utility Exports
 
@@ -146,12 +127,12 @@ import {
 
 Token metadata + tiers live in `COIN_REGISTRY` (`packages/sdk/src/token-registry.ts`). **19 tokens** total.
 
-- **Tier 1 — financial layer (1):** USDC. Save / borrow / receive / yield, marketplace, MPP.
+- **Tier 1 — financial layer (1):** USDC. Send / receive / swap, marketplace, x402 pay.
 - **Tier 2 — swap assets (15):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST. Hold + swap + send only.
-- **Legacy — no tier, display only (3):** USDT, USDe, USDsui. Kept so existing NAVI positions still render accurately.
+- **Legacy — no tier, display only (3):** USDT, USDe, USDsui. Kept so existing balances still render accurately.
 
 <Note>
-**Strategic exception.** `OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` accept **both** USDC and USDsui — USDsui is no-tier in the registry but saveable/borrowable via the allowlist (NAVI runs a separate USDsui pool, often at a different APY than the USDC pool). Repay symmetry is enforced: USDsui debt must be repaid with USDsui (USDC debt with USDC).
+**Note.** `OPERATION_ASSETS` still ships the per-operation allowlist constants (including `save` / `borrow` entries), but the SDK no longer exposes lending methods — NAVI / DeFi left `@t2000/sdk`. The live write operations are `send`, `swap`, and `pay`.
 </Note>
 
 ```typescript
@@ -166,9 +147,9 @@ assertAllowedAsset('send', 'USDY'); // throws — not in the allowlist
 
 ## Gasless
 
-USDC + USDsui sends and MPP USDC payments are gasless. The SDK builds the transaction through `SuiGrpcClient` so the gasless-eligibility resolver detects the `0x2::balance::send_funds` Move call at build time and zeroes out `gasPrice` / `gasBudget` / `gasPayment` automatically. Submission still goes through the JSON-RPC client (hybrid pattern documented at [`docs.sui.io`](https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers)).
+USDC + USDsui sends and x402 USDC payments are gasless. The SDK builds the transaction through `SuiGrpcClient` so the gasless-eligibility resolver detects the `0x2::balance::send_funds` Move call at build time and zeroes out `gasPrice` / `gasBudget` / `gasPayment` automatically. Submission still goes through the JSON-RPC client (hybrid pattern documented at [`docs.sui.io`](https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers)).
 
-Other writes (SUI sends, Cetus swaps, NAVI save / borrow / withdraw / repay / claim) require gas. Keep ~0.05 SUI on hand. The SDK throws `INSUFFICIENT_GAS` if you run dry.
+Other writes (SUI sends, Cetus swaps) require gas. Keep ~0.05 SUI on hand. The SDK throws `INSUFFICIENT_GAS` if you run dry.
 
 <Note>
 **Consumer apps:** sponsored gas via Enoki / zkLogin is the host's responsibility. The SDK is sponsorship-agnostic — Audric wires Enoki at the host layer (`audric/apps/web-v2`); the SDK doesn't know or care.
@@ -199,20 +180,17 @@ try {
 
 Common codes:
 
-`WALLET_NOT_FOUND` · `WALLET_CORRUPT` · `INVALID_KEY` · `INSUFFICIENT_BALANCE` · `INSUFFICIENT_GAS` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `ASSET_NOT_SUPPORTED` · `SUINS_NOT_REGISTERED` · `CONTACT_NOT_FOUND` · `SWAP_NO_ROUTE` · `SWAP_FAILED` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WITHDRAW_WOULD_LIQUIDATE` · `PROTOCOL_PAUSED` · `SIMULATION_FAILED` · `TRANSACTION_FAILED`
+`WALLET_NOT_FOUND` · `WALLET_CORRUPT` · `INVALID_KEY` · `INSUFFICIENT_BALANCE` · `INSUFFICIENT_GAS` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `ASSET_NOT_SUPPORTED` · `SUINS_NOT_REGISTERED` · `CONTACT_NOT_FOUND` · `SWAP_NO_ROUTE` · `SWAP_FAILED` · `SIMULATION_FAILED` · `TRANSACTION_FAILED`
 
 ## Architecture
 
-t2000 uses an MCP-first model for DeFi reads + thin transaction builders for writes. No protocol SDK dependencies needed in user code.
+t2000 builds Sui transactions with thin builders — no protocol SDK dependencies needed in user code (Cetus aside).
 
 | Protocol | Integration | Used for |
 |---|---|---|
-| Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, MPP USDC payments |
+| Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, x402 USDC payments |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
-| NAVI | NAVI MCP (reads) + thin tx builders (writes) | Save / borrow / withdraw / repay / rewards / positions / rates |
-| MPP | `mppx` + `@suimpp/mpp/client` | Paid API access — every major AI + data API on `mpp.t2000.ai` |
-
-Each NAVI op exposes both `buildXxxTx()` (standalone) and `addXxxToTx()` (composable fragment) so multi-step flows compose atomically as a single Programmable Transaction Block — any step failing reverts the whole bundle.
+| x402 / MPP | `mppx` + `@suimpp/mpp/client` | Paid API access — every major AI + data API on `mpp.t2000.ai` |
 
 ## Testing
 

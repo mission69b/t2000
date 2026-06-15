@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Engine Tool Development
 
+> **⚠️ HISTORICAL (2026-06-14): `@t2000/engine` was retired/deleted (S.442).** There is no engine package to author tools for. This documented the engine's tool factory (`tool()` + `wrapEngineExecute`, permission levels, flags, preflight, result budgeting); Audric v3 defines tools in its own host over `@t2000/sdk`. Kept for rationale only.
+
 The contract for every tool that lives in `packages/engine/src/tools/`. Tools are AI SDK `tool()` instances whose `execute` is wrapped by `wrapEngineExecute` and whose write-gating comes from `buildNeedsApproval` — both from `../v2/tool-helpers.js`. (The old `buildTool()` / `packages/engine/src/tool.ts` factory was removed; do NOT reintroduce it.) Per-tool policy (read/write, concurrency-safe, flags, permission level) lives in the `TOOL_POLICY` registry in `v2/tool-policy.ts`, keyed by tool name.
 
 ## Tool anatomy

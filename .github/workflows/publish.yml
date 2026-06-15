@@ -22,14 +22,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
-      - run: pnpm --filter @t2000/engine build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/sdk typecheck
-      - run: pnpm --filter @t2000/engine typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/cli typecheck
       - run: pnpm --filter @t2000/sdk test
-      - run: pnpm --filter @t2000/engine test
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/cli test
@@ -51,7 +48,6 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
-      - run: pnpm --filter @t2000/engine build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/cli build
 
@@ -69,12 +65,6 @@ jobs:
 
       - name: Publish @t2000/mcp
         run: pnpm --filter @t2000/mcp publish --no-git-checks --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish @t2000/engine
-        run: pnpm --filter @t2000/engine publish --no-git-checks --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true

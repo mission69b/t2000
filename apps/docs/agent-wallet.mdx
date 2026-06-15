@@ -1,6 +1,6 @@
 ---
 title: "Agent Wallet"
-description: "The t2 CLI for AI agents on Sui — gasless USDC + USDsui sends, Cetus swaps, MPP paid API access, scriptable from any shell. Plus the @t2000/mcp server and 8 agent skills."
+description: "The t2 CLI for AI agents on Sui — gasless USDC + USDsui sends, Cetus swaps, x402 paid API access, scriptable from any shell. Plus the @t2000/mcp server and 8 agent skills."
 ---
 
 The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — one CLI, one MCP server, eight skills. The CLI is the human surface (`t2 <verb>`); the MCP server is the AI-client surface (wallet tools as MCP tools); skills are the orchestration playbooks both surfaces share.
@@ -30,11 +30,11 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 export` | Print the wallet's Bech32 secret — pair with `t2 init --import` on another machine to move wallets. |
 | `t2 receive` | Print the wallet address + ANSI QR. `--qr-only` for embedding; `--json` for scripts. |
 | `t2 balance` | USDC / USDsui / SUI holdings + USD totals. |
-| `t2 history` | Recent on-chain activity (sends / swaps / MPP payments) with Suiscan digests. |
+| `t2 history` | Recent on-chain activity (sends / swaps / x402 payments) with Suiscan digests. |
 | `t2 send <amount> <asset> <recipient>` | Send USDC / USDsui / SUI. **Asset is required** — no implicit USDC default. USDC + USDsui are gasless via `0x2::balance::send_funds`; SUI sends use standard gas. Recipient resolves in priority order: hex address → SuiNS name (`alice.sui`) → `@audric` handle → saved contact alias. |
 | `t2 swap <amount> <from> <to>` | Best-route swap via Cetus Aggregator V3 across 20+ Sui DEXs. `--slippage <pct>` (default 1%, max 5%), `--quote` for a preview without signing. Requires SUI for gas. |
-| `t2 pay <url>` | Pay for an MPP-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). |
-| `t2 services search <query>` · `inspect <url>` | Discover MPP services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
+| `t2 pay <url>` | Pay for an x402-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). |
+| `t2 services search <query>` · `inspect <url>` | Discover x402 services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
 | `t2 limit set --per-tx <USD>` · `--daily <USD>` | Opt-in spending caps written to `~/.t2000/config.json`. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
 | `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
@@ -42,7 +42,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 
 ## Gasless
 
-USDC + USDsui sends and MPP `pay` are gasless — the Sui foundation sponsors the protocol-level `0x2::balance::send_funds` flow. SUI sends and Cetus swaps need gas; keep ~0.05 SUI on hand. Any Sui exchange or DEX will fund the gas balance.
+USDC + USDsui sends and x402 `pay` are gasless — the Sui foundation sponsors the protocol-level `0x2::balance::send_funds` flow. SUI sends and Cetus swaps need gas; keep ~0.05 SUI on hand. Any Sui exchange or DEX will fund the gas balance.
 
 ## Examples
 
@@ -82,7 +82,7 @@ t2 history --json --limit 5
 |---|---|
 | `T2000_RPC_URL` | Custom Sui JSON-RPC endpoint (defaults to Sui public fullnode). |
 | `T2000_GRPC_URL` | Custom Sui gRPC endpoint (defaults to `fullnode.mainnet.sui.io`). Used during gasless USDC/USDsui send + pay builds. |
-| `T2000_GATEWAY_URL` | Override the MPP gateway URL for `t2 services` + `t2 pay`. Defaults to `https://mpp.t2000.ai`. |
+| `T2000_GATEWAY_URL` | Override the x402 gateway URL for `t2 services` + `t2 pay`. Defaults to `https://mpp.t2000.ai`. |
 
 ## MCP Integration
 
@@ -118,10 +118,10 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_address` | read | Wallet's Sui address. |
 | `t2000_receive` | read | Payment request — address, Payment Kit `sui:pay?…` URI, optional `amount` / `memo` / `label`. |
 | `t2000_history` | read | Recent on-chain activity with Suiscan digests. |
-| `t2000_services` | read | Discover MPP services on `mpp.t2000.ai`. Call before `t2000_pay`. |
+| `t2000_services` | read | Discover x402 services on `mpp.t2000.ai`. Call before `t2000_pay`. |
 | `t2000_send` | write | Send USDC / USDsui / SUI. **`asset` is required.** USDC + USDsui gasless. `dryRun: true` for previews. |
 | `t2000_swap` | write | Cetus Aggregator V3 swap. Requires SUI for gas. |
-| `t2000_pay` | write | Pay an MPP-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
+| `t2000_pay` | write | Pay an x402-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
 | `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
 Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 8 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-mcp`.
@@ -157,8 +157,8 @@ npx skills add mission69b/t2000-skills
 | [`t2000-send`](https://t2000.ai/skills/t2000-send) | Explicit `--asset`, gasless USDC / USDsui, SUI sends that need gas. |
 | [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Address share, ANSI QR, Payment Kit `sui:pay?…` URIs. |
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Cetus Aggregator routing, `--quote`, slippage, swap-needs-SUI gotcha. |
-| [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover MPP services before `t2 pay`. |
-| [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | MPP 402 → quote → pay → retry flow. |
+| [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services before `t2 pay`. |
+| [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | x402 402 → quote → pay → retry flow. |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the MCP server into Claude / Cursor / Windsurf. |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
@@ -177,7 +177,7 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 | Skills | 8 markdown playbooks shipped as `skill-<name>` MCP prompts |
 | Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |
 
-The Agent Wallet is intentionally narrow — focused on USDC payments, swaps, and MPP API access. DeFi flows (save / borrow / withdraw / repay) are programmatic-only in [`@t2000/sdk`](/agent-sdk).
+The Agent Wallet is intentionally narrow — focused on USDC sends, swaps, and x402 API access. For programmatic access to the same surface, use [`@t2000/sdk`](/agent-sdk).
 
 ## Programmatic usage
 

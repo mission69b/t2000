@@ -16,9 +16,8 @@ t2000/
 │   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
 │   ├── gateway/                             (MPP API gateway — mpp.t2000.ai)
 │   └── web/                                 (t2000.ai marketing site)
-├── packages/                                ← npm packages
+├── packages/                                ← npm packages (3 published: sdk, cli, mcp)
 │   ├── cli/                                 (@t2000/cli)
-│   ├── engine/                              (@t2000/engine — agent engine)
 │   ├── mcp/                                 (@t2000/mcp)
 │   ├── sdk/                                 (@t2000/sdk)
 │   └── ui/                                  (@t2000/ui — design system; shipped 2026-05-27)

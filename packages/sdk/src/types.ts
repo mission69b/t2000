@@ -40,102 +40,6 @@ export interface SendResult {
   balance: BalanceResponse;
 }
 
-export interface SaveResult {
-  success: boolean;
-  tx: string;
-  amount: number;
-  apy: number;
-  fee: number;
-  gasCost: number;
-  savingsBalance: number;
-}
-
-export interface WithdrawResult {
-  success: boolean;
-  tx: string;
-  amount: number;
-  asset?: string;
-  gasCost: number;
-}
-
-export interface BorrowResult {
-  success: boolean;
-  tx: string;
-  amount: number;
-  /** [v0.51.0] Asset borrowed — 'USDC' or 'USDsui'. Optional for backward compat. */
-  asset?: string;
-  fee: number;
-  healthFactor: number;
-  gasCost: number;
-}
-
-export interface RepayResult {
-  success: boolean;
-  tx: string;
-  amount: number;
-  /** [v0.51.1] Asset repaid — 'USDC' or 'USDsui'. Optional for backward compat. */
-  asset?: string;
-  remainingDebt: number;
-  gasCost: number;
-}
-
-export interface HealthFactorResult {
-  healthFactor: number;
-  supplied: number;
-  borrowed: number;
-  maxBorrow: number;
-  liquidationThreshold: number;
-}
-
-export interface MaxWithdrawResult {
-  maxAmount: number;
-  healthFactorAfter: number;
-  currentHF: number;
-}
-
-export interface MaxBorrowResult {
-  maxAmount: number;
-  healthFactorAfter: number;
-  currentHF: number;
-}
-
-export interface AssetRates {
-  saveApy: number;
-  borrowApy: number;
-}
-
-export interface RatesResult {
-  [asset: string]: AssetRates;
-}
-
-export interface PositionEntry {
-  protocol: string;
-  asset: string;
-  type: 'save' | 'borrow';
-  amount: number;
-  amountUsd?: number;
-  apy: number;
-}
-
-export interface PositionsResult {
-  positions: PositionEntry[];
-}
-
-export interface EarningsResult {
-  totalYieldEarned: number;
-  currentApy: number;
-  dailyEarning: number;
-  supplied: number;
-}
-
-export interface FundStatusResult {
-  supplied: number;
-  apy: number;
-  earnedToday: number;
-  earnedAllTime: number;
-  projectedMonthly: number;
-}
-
 export interface DepositInfo {
   address: string;
   network: string;
@@ -228,35 +132,6 @@ export interface TransactionRecord {
   gasCost?: number;
 }
 
-// --- Claim rewards types ---
-
-export interface PendingReward {
-  protocol: string;
-  asset: string;
-  coinType: string;
-  symbol: string;
-  amount: number;
-  estimatedValueUsd: number;
-}
-
-export interface ClaimRewardsResult {
-  success: boolean;
-  tx: string;
-  rewards: PendingReward[];
-  totalValueUsd: number;
-  gasCost: number;
-}
-
-export interface CompoundRewardsResult {
-  success: boolean;
-  claimTx: string;
-  swapTxs: string[];
-  depositTx: string;
-  rewards: PendingReward[];
-  totalCompoundedUsdc: number;
-  totalGasCost: number;
-}
-
 // [S.323 / 2026-05-25] StakeVSuiResult + UnstakeVSuiResult removed —
 // see `t2000.ts` for the cut rationale. vSUI remains as a passive token
 // (NAVI reward, Cetus swap target) but the mint/redeem surfaces are gone.
@@ -318,22 +193,3 @@ export interface PayResult {
   };
 }
 
-// --- Financial summary (for notifications / cron) ---
-
-export type HFAlertLevel = 'none' | 'warn' | 'critical';
-
-export interface FinancialSummary {
-  walletAddress: string;
-  usdcAvailable: number;
-  savingsBalance: number;
-  debtBalance: number;
-  idleUsdc: number;
-  healthFactor: number;
-  hfAlertLevel: HFAlertLevel;
-  saveApy: number;
-  borrowApy: number;
-  dailyYield: number;
-  gasReserveSui: number;
-  gasReserveUsd: number;
-  fetchedAt: number;
-}

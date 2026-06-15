@@ -8,10 +8,10 @@
  * gas station can't deserialize). Address-balance-only wallets must get a clear
  * `ADDRESS_BALANCE_UNSPONSORABLE` error instead of the cryptic Enoki failure.
  */
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { describe, expect, it, vi } from 'vitest';
 import { T2000Error } from '../errors.js';
+import type { SuiCoreClient } from '../utils/sui.js';
 import {
   selectAndSplitCoin,
   selectSuiCoin,
@@ -21,20 +21,32 @@ import {
 const OWNER = `0x${'a'.repeat(64)}`;
 const USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 
+// [gRPC migration] Mocks the unified `.core` API: `listCoins` (was `getCoins`)
+// returns `{ objects: [{ objectId, balance }], cursor }`; `getBalance` returns
+// `{ balance: { balance, ... } }`. Test inputs keep the legacy `coinObjectId`
+// shape for readability and map to `objectId` here.
 function mockClient(opts: {
   coins?: Array<{ coinObjectId: string; balance: string }>;
   totalBalance?: string;
-}): SuiJsonRpcClient {
+}): SuiCoreClient {
   const coins = opts.coins ?? [];
   return {
-    getCoins: async () => ({ data: coins, nextCursor: null, hasNextPage: false }),
-    getBalance: async ({ coinType }: { coinType: string }) => ({
-      coinType,
-      coinObjectCount: coins.length,
-      totalBalance: opts.totalBalance ?? coins.reduce((a, c) => a + BigInt(c.balance), 0n).toString(),
-      lockedBalance: {},
-    }),
-  } as unknown as SuiJsonRpcClient;
+    core: {
+      listCoins: async () => ({
+        objects: coins.map((c) => ({ objectId: c.coinObjectId, balance: c.balance })),
+        cursor: null,
+        hasNextPage: false,
+      }),
+      getBalance: async ({ coinType }: { coinType: string }) => ({
+        balance: {
+          coinType,
+          balance: opts.totalBalance ?? coins.reduce((a, c) => a + BigInt(c.balance), 0n).toString(),
+          coinBalance: '0',
+          addressBalance: '0',
+        },
+      }),
+    },
+  } as unknown as SuiCoreClient;
 }
 
 function commandKinds(tx: Transaction): string[] {
@@ -152,30 +164,38 @@ describe('selectSuiCoin — sponsored (coin objects only, no GasCoin)', () => {
   it('self-funded path splits from tx.gas (no getCoins)', async () => {
     const tx = new Transaction();
     tx.setSender(OWNER);
-    const getCoins = vi.fn();
-    const client = { getCoins } as unknown as Parameters<typeof selectSuiCoin>[1];
+    const listCoins = vi.fn();
+    const client = { core: { listCoins } } as unknown as Parameters<typeof selectSuiCoin>[1];
 
     const r = await selectSuiCoin(tx, client, OWNER, 1_000_000_000n, false);
 
     expect(r.effectiveAmount).toBe(1_000_000_000n);
-    expect(getCoins).not.toHaveBeenCalled();
+    expect(listCoins).not.toHaveBeenCalled();
     expect(JSON.stringify(tx.getData().commands)).toContain('GasCoin');
   });
 });
 
 describe('selectSuiCoin — sponsored merge cache (multi-leg bundle)', () => {
   function countingClient(coins: Array<{ coinObjectId: string; balance: string }>) {
-    const getCoins = vi.fn(async () => ({ data: coins, nextCursor: null, hasNextPage: false }));
+    const listCoins = vi.fn(async () => ({
+      objects: coins.map((c) => ({ objectId: c.coinObjectId, balance: c.balance })),
+      cursor: null,
+      hasNextPage: false,
+    }));
     const client = {
-      getCoins,
-      getBalance: async ({ coinType }: { coinType: string }) => ({
-        coinType,
-        coinObjectCount: coins.length,
-        totalBalance: coins.reduce((a, c) => a + BigInt(c.balance), 0n).toString(),
-        lockedBalance: {},
-      }),
-    } as unknown as SuiJsonRpcClient;
-    return { client, getCoins };
+      core: {
+        listCoins,
+        getBalance: async ({ coinType }: { coinType: string }) => ({
+          balance: {
+            coinType,
+            balance: coins.reduce((a, c) => a + BigInt(c.balance), 0n).toString(),
+            coinBalance: '0',
+            addressBalance: '0',
+          },
+        }),
+      },
+    } as unknown as SuiCoreClient;
+    return { client, getCoins: listCoins };
   }
 
   it('merges the SUI coin objects exactly ONCE across two legs (the bundle fix)', async () => {
@@ -257,17 +277,25 @@ describe('selectAndSplitCoin — sponsored merge cache (non-SUI, NOT SUI-specifi
   // save USDC, or two USDC swaps) hit the same double-merge bug and the
   // shared cache fixes them identically to SUI.
   function countingClient(coins: Array<{ coinObjectId: string; balance: string }>) {
-    const getCoins = vi.fn(async () => ({ data: coins, nextCursor: null, hasNextPage: false }));
+    const listCoins = vi.fn(async () => ({
+      objects: coins.map((c) => ({ objectId: c.coinObjectId, balance: c.balance })),
+      cursor: null,
+      hasNextPage: false,
+    }));
     const client = {
-      getCoins,
-      getBalance: async ({ coinType }: { coinType: string }) => ({
-        coinType,
-        coinObjectCount: coins.length,
-        totalBalance: coins.reduce((a, c) => a + BigInt(c.balance), 0n).toString(),
-        lockedBalance: {},
-      }),
-    } as unknown as SuiJsonRpcClient;
-    return { client, getCoins };
+      core: {
+        listCoins,
+        getBalance: async ({ coinType }: { coinType: string }) => ({
+          balance: {
+            coinType,
+            balance: coins.reduce((a, c) => a + BigInt(c.balance), 0n).toString(),
+            coinBalance: '0',
+            addressBalance: '0',
+          },
+        }),
+      },
+    } as unknown as SuiCoreClient;
+    return { client, getCoins: listCoins };
   }
 
   it('merges USDC coin objects exactly ONCE across two sponsored legs', async () => {

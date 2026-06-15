@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The TypeScript SDK for Agent Wallets on Sui. One class (`T2000`) — wallet signing, gasless USDC + USDsui sends, Cetus swap routing, MPP paid API access, and programmatic NAVI lending builders.
+The TypeScript SDK for Agent Wallets on Sui. One class (`T2000`) — wallet signing, gasless USDC + USDsui sends, Cetus swap routing, and x402 paid-API access (pay any API in USDC, no keys).
 
 [![npm @t2000/sdk](https://img.shields.io/npm/v/@t2000/sdk?label=%40t2000%2Fsdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
@@ -29,11 +29,11 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });         // Cetus, ne
 await agent.pay({ url: 'https://mpp.t2000.ai/openai/v1/chat/completions', method: 'POST', body, maxPrice: 0.10 });
 ```
 
-USDC + USDsui sends and MPP USDC payments are gasless (Sui foundation's `0x2::balance::send_funds` sponsor). SUI sends and Cetus swaps need gas — keep ~0.05 SUI on hand.
+USDC + USDsui sends and x402 USDC payments are gasless (Sui foundation's `0x2::balance::send_funds` sponsor). SUI sends and Cetus swaps need gas — keep ~0.05 SUI on hand.
 
 ## Full reference
 
-Factory methods, full API surface, supported assets, NAVI lending builders, error handling, architecture →
+Factory methods, full API surface, supported assets, Cetus swap routing, x402 payments, error handling, architecture →
 **[developers.t2000.ai/agent-sdk](https://developers.t2000.ai/agent-sdk)**
 
 ## License

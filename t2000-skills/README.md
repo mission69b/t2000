@@ -1,6 +1,6 @@
 # t2000 Agent Skills
 
-Ship USDC apps on Sui faster with **t2000 Skills** — best-practice guidance for the t2000 Agent Wallet (sponsored sends, swaps, MPP API payments) — plus the **t2000 MCP server** for live wallet tools in your AI client.
+Ship USDC apps on Sui faster with **t2000 Skills** — best-practice guidance for the t2000 Agent Wallet (sponsored sends, swaps, x402 API payments) — plus the **t2000 MCP server** for live wallet tools in your AI client.
 
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
 [![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
@@ -53,8 +53,8 @@ The CLI always fetches the latest from [`t2000.ai/.well-known/agent-skills/index
 | [`t2000-send`](https://t2000.ai/skills/t2000-send) | Send USDC, USDsui, or SUI to a Sui address, SuiNS name, or saved contact. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
 | [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Share the wallet address, render an ANSI QR in terminal, or emit a Payment Kit `sui:pay?…` URI via MCP. Use for "share my address", "create a payment link", or "QR code". |
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
-| [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover MPP services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
-| [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an MPP-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
+| [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
+| [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 9-tool surface, and the most common "MCP doesn't load" failure modes. |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
@@ -112,7 +112,7 @@ The wallet must exist at `~/.t2000/wallet.key` (or `--key <path>`) before any sk
 
 Skills are markdown files with YAML frontmatter. Your agent reads the relevant `SKILL.md` while planning and generating responses; you stay in control of what actually executes.
 
-- **Decision frameworks**: USDC vs USDsui vs SUI on `t2 send`, gasless vs gas-required transactions, `--quote` first vs direct `t2 swap`, MPP discover → inspect → pay.
+- **Decision frameworks**: USDC vs USDsui vs SUI on `t2 send`, gasless vs gas-required transactions, `--quote` first vs direct `t2 swap`, x402 discover → inspect → pay.
 - **Correct patterns**: explicit `--asset` on `t2 send`, `suiprivkey1…` import via `t2 init --import`, `0x2::balance::send_funds` for sponsored USDC, `t2 limit show` before any large write.
 - **Common mistakes**: `WALLET_CORRUPT` recovery, swaps not being gasless, sending the wrong stable, missing SUI for gas on non-USDC sends.
 
@@ -144,7 +144,7 @@ You can use skills alone — the agent will produce correct `t2` commands for yo
 `~/.t2000/wallet.key` — a plain JSON file with a `suiprivkey1…` Bech32 secret and `0o600` perms. No PIN, no AES, no `.session` file. Use `t2 export` to print the secret, `t2 init --import` to restore on another machine.
 
 **What's the difference between t2000 and Audric?**
-t2000 is the infra brand: `@t2000/sdk`, `@t2000/cli`, `@t2000/mcp`, `@t2000/engine`. Audric is the consumer product built on top — see [audric.ai](https://audric.ai). This repo is the canonical home for skills that ship with the infra surface.
+t2000 is the infra brand: `@t2000/sdk`, `@t2000/cli`, `@t2000/mcp`. Audric is the consumer product built on top — see [audric.ai](https://audric.ai). This repo is the canonical home for skills that ship with the infra surface.
 
 ## Resources
 

@@ -26,12 +26,12 @@
  * of the migration — the legacy path could see `0` from `getCoins` and
  * mistakenly throw before `coinWithBalance` ever ran.
  */
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import {
   Transaction,
   coinWithBalance,
   type TransactionObjectArgument,
 } from '@mysten/sui/transactions';
+import type { SuiCoreClient } from '../utils/sui.js';
 import { T2000Error } from '../errors.js';
 
 export interface CoinPage {
@@ -52,26 +52,26 @@ export interface CoinPage {
  * ID list — both round-trips, but they happen in parallel.
  */
 export async function fetchAllCoins(
-  client: SuiJsonRpcClient,
+  client: SuiCoreClient,
   owner: string,
   coinType: string,
 ): Promise<CoinPage> {
   const [balance, ids] = await Promise.all([
-    client.getBalance({ owner, coinType }),
+    client.core.getBalance({ owner, coinType }),
     (async () => {
       const out: string[] = [];
       let cursor: string | null | undefined;
       let hasNext = true;
       while (hasNext) {
-        const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
-        for (const c of page.data) out.push(c.coinObjectId);
-        cursor = page.nextCursor;
+        const page = await client.core.listCoins({ owner, coinType, cursor: cursor ?? undefined });
+        for (const c of page.objects) out.push(c.objectId);
+        cursor = page.cursor;
         hasNext = page.hasNextPage;
       }
       return out;
     })(),
   ]);
-  return { ids, totalBalance: BigInt(balance.totalBalance) };
+  return { ids, totalBalance: BigInt(balance.balance.balance) };
 }
 
 export interface SelectAndSplitResult {
@@ -118,7 +118,7 @@ export interface SelectAndSplitResult {
  */
 export async function selectAndSplitCoin(
   tx: Transaction,
-  client: SuiJsonRpcClient,
+  client: SuiCoreClient,
   owner: string,
   coinType: string,
   amount: bigint | 'all',
@@ -150,8 +150,8 @@ export async function selectAndSplitCoin(
     );
   }
 
-  const balanceResp = await client.getBalance({ owner, coinType });
-  const totalBalance = BigInt(balanceResp.totalBalance);
+  const balanceResp = await client.core.getBalance({ owner, coinType });
+  const totalBalance = BigInt(balanceResp.balance.balance);
 
   if (totalBalance === 0n) {
     throw new T2000Error('INSUFFICIENT_BALANCE', `No balance found for ${coinType}`);
@@ -218,7 +218,7 @@ export type SponsoredCoinMergeCache = Map<
 
 async function selectCoinObjectsOnly(
   tx: Transaction,
-  client: SuiJsonRpcClient,
+  client: SuiCoreClient,
   owner: string,
   coinType: string,
   amount: bigint | 'all',
@@ -255,12 +255,12 @@ async function selectCoinObjectsOnly(
   let cursor: string | null | undefined;
   let hasNext = true;
   while (hasNext) {
-    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
-    for (const c of page.data) {
-      objects.push({ objectId: c.coinObjectId, balance: BigInt(c.balance) });
+    const page = await client.core.listCoins({ owner, coinType, cursor: cursor ?? undefined });
+    for (const c of page.objects) {
+      objects.push({ objectId: c.objectId, balance: BigInt(c.balance) });
       coinObjectTotal += BigInt(c.balance);
     }
-    cursor = page.nextCursor;
+    cursor = page.cursor;
     hasNext = page.hasNextPage;
   }
 
@@ -334,7 +334,7 @@ async function selectCoinObjectsOnly(
  */
 export async function selectSuiCoin(
   tx: Transaction,
-  client: SuiJsonRpcClient,
+  client: SuiCoreClient,
   owner: string,
   amountMist: bigint,
   sponsoredContext: boolean,

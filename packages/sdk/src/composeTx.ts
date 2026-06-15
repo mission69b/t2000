@@ -61,21 +61,12 @@
  * - Write-side rule → `audric/.cursor/rules/audric-canonical-write.mdc`
  */
 
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { SuiCoreClient } from './utils/sui.js';
 import {
   Transaction,
   type TransactionObjectArgument,
 } from '@mysten/sui/transactions';
 import type { OverlayFeeConfig } from './protocols/cetus-swap.js';
-import {
-  addSaveToTx,
-  addWithdrawToTx,
-  addBorrowToTx,
-  addRepayToTx,
-  addClaimRewardsToTx,
-} from './protocols/navi.js';
-import { addHarvestToTx } from './protocols/navi-harvest.js';
-import type { PendingReward } from './adapters/types.js';
 import { addSwapToTx, type SwapRouteResult } from './protocols/cetus-swap.js';
 import { addSendToTx } from './wallet/send.js';
 import {
@@ -107,39 +98,16 @@ import { validateAddress } from './utils/sui.js';
  * Excluded by design:
  * - `save_contact` — no on-chain leg (Prisma-only).
  */
+// [S.444 — NAVI/DeFi removed] Canonical write tools narrowed to the two
+// surviving on-chain verbs: gasless send + Cetus swap. save/withdraw/borrow/
+// repay/claim/harvest were deleted with NAVI (v2 keeps them on @t2000/sdk@4.x).
 export type WriteToolName =
-  | 'save_deposit'
-  | 'withdraw'
-  | 'borrow'
-  | 'repay_debt'
   | 'send_transfer'
-  | 'swap_execute'
-  | 'claim_rewards'
-  | 'harvest_rewards';
+  | 'swap_execute';
 
 // Per-tool input contracts. Match the engine tool input schemas, not the
 // audric host's loosely-typed `params` blob — the registry is the typed
 // surface that lets the host shed the `any`-typed switch statement.
-
-export interface SaveDepositInput {
-  amount: number;
-  asset?: 'USDC' | 'USDsui';
-}
-
-export interface WithdrawInput {
-  amount: number;
-  asset?: 'USDC' | 'USDsui';
-}
-
-export interface BorrowInput {
-  amount: number;
-  asset?: 'USDC' | 'USDsui';
-}
-
-export interface RepayDebtInput {
-  amount: number;
-  asset?: 'USDC' | 'USDsui';
-}
 
 /**
  * [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
@@ -187,21 +155,6 @@ export interface SwapExecuteInput {
   precomputedRoute?: SwapRouteResult;
 }
 
-export type ClaimRewardsInput = Record<string, never>;
-
-/**
- * [Track B] `harvest_rewards` accepts only optional tunables — no required
- * inputs, since the user's choice is binary ("harvest now" or not). Default
- * slippage 1%, default dust floor $0.01. The audric host's HARVEST chip
- * passes literal `{}` and gets sensible defaults.
- */
-export interface HarvestRewardsInput {
-  /** Per-swap slippage tolerance (0.001–0.05). Default 0.01 (1%). */
-  slippage?: number;
-  /** USD floor for "is this worth swapping?" — dust below transfers to wallet. Default $0.01. */
-  minRewardUsd?: number;
-}
-
 /**
  * Discriminated union mapping `toolName` → `input`. Used to type
  * `WriteStep` so consumers get autocomplete + compile-time validation
@@ -214,29 +167,15 @@ export interface HarvestRewardsInput {
  * bypassing the wallet pre-fetch path. The producer's terminal
  * `tx.transferObjects([coin], sender)` is suppressed automatically so
  * the same handle isn't double-consumed.
- *
- * Producer-only tools (`withdraw`, `borrow`, `claim_rewards`) don't
- * accept the field — they have no input coin slot. Consumer +
- * dual-mode tools all accept it.
  */
 export type WriteStep =
-  | { toolName: 'save_deposit'; input: SaveDepositInput; inputCoinFromStep?: number }
-  | { toolName: 'withdraw'; input: WithdrawInput }
-  | { toolName: 'borrow'; input: BorrowInput }
-  | { toolName: 'repay_debt'; input: RepayDebtInput; inputCoinFromStep?: number }
   | { toolName: 'send_transfer'; input: SendTransferInput; inputCoinFromStep?: number }
-  | { toolName: 'swap_execute'; input: SwapExecuteInput; inputCoinFromStep?: number }
-  | { toolName: 'claim_rewards'; input: ClaimRewardsInput }
-  // Self-contained compound — internally claims, swaps, and deposits in
-  // one PTB. Doesn't accept `inputCoinFromStep` because it's the only
-  // step in the bundle (it's a "macro" appender, not a chainable producer
-  // or consumer).
-  | { toolName: 'harvest_rewards'; input: HarvestRewardsInput };
+  | { toolName: 'swap_execute'; input: SwapExecuteInput; inputCoinFromStep?: number };
 
 export interface ComposeTxOptions {
   sender: string;
   steps: WriteStep[];
-  client: SuiJsonRpcClient;
+  client: SuiCoreClient;
   /**
    * S.38 Pyth flag (sponsorship-critical). When true:
    * - NAVI borrow/withdraw appenders apply `skipPythUpdate: true`
@@ -262,90 +201,12 @@ export interface ComposeTxOptions {
    * `addSwapToTx`'s `input.overlayFee`.
    */
   overlayFee?: OverlayFeeConfig;
-  /**
-   * Optional fee-injection hooks for save_deposit + borrow. Fires inside
-   * the appender at the exact moment the user's coin is in hand and BEFORE
-   * the protocol step consumes (save) or the canonical transferObjects
-   * finalizes (borrow). Audric host uses this to inline `addFeeTransfer`
-   * for USDC SAVE_FEE_BPS / BORROW_FEE_BPS without ever leaving the
-   * canonical write contract — keeps the SDK fee-free per CLAUDE.md
-   * rule #9 while letting hosts charge their own overlay fees.
-   *
-   * Hooks are fire-and-forget (no return value). They mutate `tx` directly
-   * (e.g., `addFeeTransfer(tx, coin, ...)` splits the fee chunk off and
-   * appends a top-level `transferObjects` to the host's fee wallet — that
-   * recipient automatically appears in `derivedAllowedAddresses`).
-   */
-  feeHooks?: ComposeTxFeeHooks;
-}
-
-/**
- * Per-tool fee-injection callbacks. Each hook fires at a tool-specific
- * moment in the appender flow (see field JSDoc). Currently scoped to
- * the 2 fee-eligible tools — extend if/when new ones land.
- */
-export interface ComposeTxFeeHooks {
-  /**
-   * Fires inside the `save_deposit` appender AFTER the user's USDC/USDsui
-   * coin is split into the deposit amount, BEFORE NAVI's `deposit` move
-   * call consumes the coin. Order matters: the `coin` reference passed in
-   * is the SAME `TransactionObjectArgument` that flows into the deposit,
-   * so any `splitCoins(coin, [feeAmount])` inside the hook reduces the
-   * deposit by exactly that fee.
-   */
-  save_deposit?: (ctx: ComposeTxFeeHookContext<SaveDepositInput>) => void | Promise<void>;
-  /**
-   * Fires inside the `borrow` appender AFTER NAVI returns the borrowed
-   * coin, BEFORE the canonical `transferObjects(coin, sender)` finalizes.
-   * The `coin` reference is the borrowed-and-not-yet-transferred output;
-   * splitting a fee here means the user receives the remainder.
-   */
-  borrow?: (ctx: ComposeTxFeeHookContext<BorrowInput>) => void | Promise<void>;
-}
-
-/**
- * Context object passed to every fee hook. Carries the `tx` (mutate it),
- * the in-flight `coin` (split fees off it), the resolved tool input
- * (asset/amount for fee-policy decisions), and the sender (rarely needed
- * but kept for symmetry with `AppenderContext`).
- */
-export interface ComposeTxFeeHookContext<TInput> {
-  tx: Transaction;
-  coin: TransactionObjectArgument;
-  input: TInput;
-  sender: string;
 }
 
 /** Per-step preview returned by each registry appender. Tool-specific shape. */
 export type StepPreview =
-  | { toolName: 'save_deposit'; effectiveAmount: number; asset: 'USDC' | 'USDsui' }
-  | { toolName: 'withdraw'; effectiveAmount: number; asset: 'USDC' | 'USDsui' }
-  | { toolName: 'borrow'; effectiveAmount: number; asset: 'USDC' | 'USDsui' }
-  | { toolName: 'repay_debt'; effectiveAmount: number; asset: 'USDC' | 'USDsui' }
   | { toolName: 'send_transfer'; effectiveAmount: number; recipient: string; asset: SendableAsset }
-  | { toolName: 'swap_execute'; effectiveAmountIn: number; expectedAmountOut: number; route: SwapRouteResult }
-  | { toolName: 'claim_rewards'; rewards: PendingReward[] }
-  // Compact: the audric host renders a multi-line "Claim → Swap → Save"
-  // breakdown card from this preview (claimed[], swaps[], skipped[],
-  // expectedUsdcDeposited). One signature, one settlement.
-  | {
-      toolName: 'harvest_rewards';
-      claimed: PendingReward[];
-      swaps: Array<{
-        fromSymbol: string;
-        fromCoinType: string;
-        toSymbol: 'USDC';
-        inputAmount: number;
-        expectedOutputUsdc: number;
-      }>;
-      skipped: Array<{
-        symbol: string;
-        coinType: string;
-        amount: number;
-        reason: 'untradeable' | 'dust' | 'no-route';
-      }>;
-      expectedUsdcDeposited: number;
-    };
+  | { toolName: 'swap_execute'; effectiveAmountIn: number; expectedAmountOut: number; route: SwapRouteResult };
 
 export interface ComposeTxResult {
   tx: Transaction;
@@ -371,11 +232,10 @@ export interface ComposeTxResult {
  * fee config (Cetus swaps), and SPEC 13 Phase 1 chain-mode fields.
  */
 export interface AppenderContext {
-  client: SuiJsonRpcClient;
+  client: SuiCoreClient;
   sender: string;
   sponsoredContext: boolean;
   overlayFee?: OverlayFeeConfig;
-  feeHooks?: ComposeTxFeeHooks;
   /**
    * [SPEC 13 Phase 1] When set, the consumer appender consumes this
    * coin handle directly instead of pre-fetching from the wallet via
@@ -416,12 +276,12 @@ export interface AppenderContext {
 /**
  * [SPEC 13 Phase 1] Appender return shape. Producers populate
  * `outputCoin` so the orchestration loop can thread it into a
- * downstream consumer's `chainedCoin`. Terminal consumers
- * (`save_deposit`, `repay_debt`, `send_transfer`) omit it.
+ * downstream consumer's `chainedCoin`. The terminal consumer
+ * (`send_transfer`) omits it.
  *
  * `swap_execute` is the only dual-mode tool — it accepts `chainedCoin`
- * AND populates `outputCoin`. (`volo_stake` / `volo_unstake` were also
- * dual-mode prior to S.323 / 2026-05-25; cut with the full Volo removal.)
+ * AND populates `outputCoin`. (Pre-S.444 the DeFi tools
+ * save/withdraw/borrow/repay were also producers/consumers; removed with NAVI.)
  */
 export interface AppenderResult<TPreview extends StepPreview> {
   preview: TPreview;
@@ -470,140 +330,18 @@ export async function getSponsoredSwapProviders(): Promise<string[]> {
   return getProvidersExcluding([...SPONSORED_PYTH_DEPENDENT_PROVIDERS]);
 }
 
-/** Resolve canonical asset symbol or throw `INVALID_ASSET`. */
-function resolveSaveableAsset(asset: 'USDC' | 'USDsui' | undefined): 'USDC' | 'USDsui' {
-  if (!asset) return 'USDC';
-  if (asset !== 'USDC' && asset !== 'USDsui') {
-    throw new T2000Error('ASSET_NOT_SUPPORTED', `Saveable asset must be USDC or USDsui, got ${asset}`);
-  }
-  return asset;
-}
-
 /**
  * The typed registry. Each entry is a wallet-mode dispatcher that takes
  * (tx, input, ctx) and returns a per-step preview. Compile-time check
- * that all 8 `WriteToolName` values have an entry — TypeScript will
+ * that all `WriteToolName` values have an entry — TypeScript will
  * fail the build if a tool is missing.
+ *
+ * [S.444] Narrowed to send_transfer + swap_execute after the NAVI/DeFi cut.
  */
 export const WRITE_APPENDER_REGISTRY: {
-  save_deposit: AppenderFn<SaveDepositInput, Extract<StepPreview, { toolName: 'save_deposit' }>>;
-  withdraw: AppenderFn<WithdrawInput, Extract<StepPreview, { toolName: 'withdraw' }>>;
-  borrow: AppenderFn<BorrowInput, Extract<StepPreview, { toolName: 'borrow' }>>;
-  repay_debt: AppenderFn<RepayDebtInput, Extract<StepPreview, { toolName: 'repay_debt' }>>;
   send_transfer: AppenderFn<SendTransferInput, Extract<StepPreview, { toolName: 'send_transfer' }>>;
   swap_execute: AppenderFn<SwapExecuteInput, Extract<StepPreview, { toolName: 'swap_execute' }>>;
-  claim_rewards: AppenderFn<ClaimRewardsInput, Extract<StepPreview, { toolName: 'claim_rewards' }>>;
-  harvest_rewards: AppenderFn<HarvestRewardsInput, Extract<StepPreview, { toolName: 'harvest_rewards' }>>;
 } = {
-  save_deposit: async (tx, input, ctx) => {
-    const asset = resolveSaveableAsset(input.asset);
-    const assetInfo = SUPPORTED_ASSETS[asset];
-    if (input.amount <= 0) {
-      throw new T2000Error('INVALID_AMOUNT', 'Save amount must be greater than zero');
-    }
-    const rawAmount = BigInt(Math.floor(input.amount * 10 ** assetInfo.decimals));
-
-    let coin: TransactionObjectArgument;
-    let effectiveAmount: bigint;
-    if (ctx.chainedCoin) {
-      coin = ctx.chainedCoin;
-      effectiveAmount = rawAmount;
-    } else {
-      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount, {
-        sponsoredContext: ctx.sponsoredContext,
-        mergeCache: ctx.coinMergeCache,
-      });
-      coin = r.coin;
-      effectiveAmount = r.effectiveAmount;
-    }
-
-    if (ctx.feeHooks?.save_deposit) {
-      await ctx.feeHooks.save_deposit({ tx, coin, input, sender: ctx.sender });
-    }
-    await addSaveToTx(tx, ctx.client, ctx.sender, coin, { asset });
-    return {
-      preview: {
-        toolName: 'save_deposit',
-        effectiveAmount: Number(effectiveAmount) / 10 ** assetInfo.decimals,
-        asset,
-      },
-    };
-  },
-
-  withdraw: async (tx, input, ctx) => {
-    const asset = resolveSaveableAsset(input.asset);
-    if (input.amount <= 0) {
-      throw new T2000Error('INVALID_AMOUNT', 'Withdraw amount must be greater than zero');
-    }
-    const { coin, effectiveAmount } = await addWithdrawToTx(
-      tx, ctx.client, ctx.sender, input.amount,
-      { asset, skipPythUpdate: ctx.sponsoredContext },
-    );
-    if (!ctx.isOutputConsumed) {
-      tx.transferObjects([coin], ctx.sender);
-    }
-    return {
-      preview: { toolName: 'withdraw', effectiveAmount, asset },
-      outputCoin: coin,
-    };
-  },
-
-  borrow: async (tx, input, ctx) => {
-    const asset = resolveSaveableAsset(input.asset);
-    if (input.amount <= 0) {
-      throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be greater than zero');
-    }
-    const coin = await addBorrowToTx(
-      tx, ctx.client, ctx.sender, input.amount,
-      { asset, skipPythUpdate: ctx.sponsoredContext },
-    );
-    if (ctx.feeHooks?.borrow) {
-      await ctx.feeHooks.borrow({ tx, coin, input, sender: ctx.sender });
-    }
-    if (!ctx.isOutputConsumed) {
-      tx.transferObjects([coin], ctx.sender);
-    }
-    return {
-      preview: { toolName: 'borrow', effectiveAmount: input.amount, asset },
-      outputCoin: coin,
-    };
-  },
-
-  repay_debt: async (tx, input, ctx) => {
-    const asset = resolveSaveableAsset(input.asset);
-    const assetInfo = SUPPORTED_ASSETS[asset];
-    if (input.amount <= 0) {
-      throw new T2000Error('INVALID_AMOUNT', 'Repay amount must be greater than zero');
-    }
-    const rawAmount = BigInt(Math.floor(input.amount * 10 ** assetInfo.decimals));
-
-    let coin: TransactionObjectArgument;
-    let effectiveAmount: bigint;
-    if (ctx.chainedCoin) {
-      coin = ctx.chainedCoin;
-      effectiveAmount = rawAmount;
-    } else {
-      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount, {
-        sponsoredContext: ctx.sponsoredContext,
-        mergeCache: ctx.coinMergeCache,
-      });
-      coin = r.coin;
-      effectiveAmount = r.effectiveAmount;
-    }
-
-    await addRepayToTx(tx, ctx.client, ctx.sender, coin, {
-      asset,
-      skipOracle: ctx.sponsoredContext,
-    });
-    return {
-      preview: {
-        toolName: 'repay_debt',
-        effectiveAmount: Number(effectiveAmount) / 10 ** assetInfo.decimals,
-        asset,
-      },
-    };
-  },
-
   send_transfer: async (tx, input, ctx) => {
     const recipient = validateAddress(input.to);
     // [v4.0 Phase A Day 2] Asset is required (no `?? 'USDC'` default).
@@ -679,10 +417,10 @@ export const WRITE_APPENDER_REGISTRY: {
     // Pre-flight balance check (composeTx's selectAndSplitCoin used to
     // do this; we lose the coin-selection but keep the balance gate so
     // build-time errors stay actionable for audric's prepare route).
-    const balanceResp = await ctx.client.getBalance({ owner: ctx.sender, coinType: assetInfo.type });
-    if (BigInt(balanceResp.totalBalance) < rawAmount) {
+    const balanceResp = await ctx.client.core.getBalance({ owner: ctx.sender, coinType: assetInfo.type });
+    if (BigInt(balanceResp.balance.balance) < rawAmount) {
       throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${asset} balance`, {
-        available: Number(balanceResp.totalBalance) / 10 ** assetInfo.decimals,
+        available: Number(balanceResp.balance.balance) / 10 ** assetInfo.decimals,
         required: input.amount,
       });
     }
@@ -745,45 +483,8 @@ export const WRITE_APPENDER_REGISTRY: {
     };
   },
 
-  claim_rewards: async (tx, _input, ctx) => {
-    const rewards = await addClaimRewardsToTx(tx, ctx.client, ctx.sender);
-    return { preview: { toolName: 'claim_rewards', rewards } };
-  },
-
-  // [Track B / 2026-05-08] Macro appender — assembles claim → swap(s) →
-  // save inline. The audric host wires `getSponsoredSwapProviders()` into
-  // `options.providers` automatically when `ctx.sponsoredContext === true`
-  // (parity with `swap_execute` below). Slippage + dust-floor pulled from
-  // the input; price cache is forwarded from the host so the dust filter
-  // can compare claimed amounts to USD.
-  harvest_rewards: async (tx, input, ctx) => {
-    const providers = ctx.sponsoredContext ? await getSponsoredSwapProviders() : undefined;
-    // [v1.24.2 fee wiring] Forward host fee config into the harvest macro
-    // so each internal swap leg charges the overlay AND the deposit leg
-    // skims the save fee. Without this, harvest_rewards bypassed both
-    // mechanisms (live-prod regression observed 2026-05-08 — see S.120).
-    // The save_deposit hook is reused as-is; the harvest macro calls it
-    // with `input.asset === 'USDC'` and the merged USDC deposit coin,
-    // matching what the audric host's hook already expects.
-    const plan = await addHarvestToTx(tx, ctx.client, ctx.sender, {
-      slippage: input.slippage,
-      minRewardUsd: input.minRewardUsd,
-      providers,
-      overlayFee: ctx.overlayFee,
-      saveFeeHook: ctx.feeHooks?.save_deposit,
-    });
-    return {
-      preview: {
-        toolName: 'harvest_rewards',
-        claimed: plan.claimed,
-        swaps: plan.swaps,
-        skipped: plan.skipped,
-        expectedUsdcDeposited: plan.expectedUsdcDeposited,
-      },
-    };
-  },
-
-  // [S.323 / 2026-05-25] volo_stake / volo_unstake appenders removed.
+  // [S.444] claim_rewards / harvest_rewards appenders removed with NAVI.
+  // [S.323] volo_stake / volo_unstake appenders removed earlier.
 };
 
 // Reference unused import to suppress noUnusedLocals; SUI_TYPE is used
@@ -904,7 +605,6 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
     sender: opts.sender,
     sponsoredContext: opts.sponsoredContext ?? false,
     overlayFee: opts.overlayFee,
-    feeHooks: opts.feeHooks,
     // One cache per compose run — shared across all legs (any coin type)
     // so multi-leg sponsored bundles that source the same coin (two SUI
     // swaps, swap USDC + save USDC, ...) merge that coin's objects once.
@@ -930,18 +630,12 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
     }
 
     const producer = opts.steps[idx];
-    if (
-      producer.toolName === 'save_deposit' ||
-      producer.toolName === 'repay_debt' ||
-      producer.toolName === 'send_transfer' ||
-      producer.toolName === 'claim_rewards'
-    ) {
+    if (producer.toolName === 'send_transfer') {
       throw new T2000Error(
         'CHAIN_MODE_INVALID',
         `Step ${i} (${step.toolName}) references step ${idx} (${producer.toolName}) as ` +
-        `producer, but '${producer.toolName}' is a terminal consumer that does not ` +
-        `produce a chainable coin handle. Allowed producers: withdraw, borrow, ` +
-        `swap_execute.`,
+        `producer, but 'send_transfer' is a terminal consumer that does not ` +
+        `produce a chainable coin handle. Allowed producers: swap_execute.`,
       );
     }
 

@@ -56,6 +56,8 @@ Before coding, identify which layer owns the bug.
 
 ## 6. Engine cache pattern — factor when LOGIC duplicates, not when SHAPE does
 
+> **⚠️ HISTORICAL (2026-06-14):** `@t2000/engine` was retired/deleted from the monorepo, so the specific cache modules cited below no longer exist here. The *principle* — factor when the duplication is the LOGIC, not just the SHAPE — still stands and is the point of this section. The engine example is kept for illustration only.
+
 The `@t2000/engine` package has 5 cache modules (`cache/defi`, `cache/wallet`, `cache/turn-read`, `navi/cache`, `prompt/cache`). 3 of them (`cache/defi`, `cache/wallet`, `navi/cache`) share an identical structural pattern: `XCacheStore` interface + `InMemoryXCacheStore` impl + `setXCacheStore` / `getXCacheStore` / `resetXCacheStore` injectors.
 
 **Decision (SPEC 12 Phase 1, 2026-05-07): keep them separate. Do NOT factor a `cache/base.ts`.**

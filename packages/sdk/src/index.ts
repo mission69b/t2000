@@ -12,32 +12,14 @@ export type {
   BalanceResponse,
   GasReserve,
   SendResult,
-  SaveResult,
-  WithdrawResult,
-  BorrowResult,
-  RepayResult,
-  HealthFactorResult,
-  MaxWithdrawResult,
-  MaxBorrowResult,
-  AssetRates,
-  RatesResult,
-  PositionEntry,
-  PositionsResult,
-  EarningsResult,
-  FundStatusResult,
   DepositInfo,
   PaymentRequest,
   TransactionRecord,
   TransactionLeg,
-  PendingReward,
-  ClaimRewardsResult,
-  CompoundRewardsResult,
   PayOptions,
   PayResult,
   SwapResult,
   SwapQuoteResult,
-  FinancialSummary,
-  HFAlertLevel,
 } from './types.js';
 export {
   MIST_PER_SUI,
@@ -58,8 +40,6 @@ export {
   GASLESS_MIN_STABLE_AMOUNT,
   GASLESS_STABLE_TYPES,
   DEFAULT_GRPC_URL,
-  SAVEABLE_ASSETS,
-  ALL_NAVI_ASSETS,
   GAS_RESERVE_MIN,
   CETUS_USDC_SUI_POOL,
   OPERATION_ASSETS,
@@ -155,48 +135,15 @@ export type {
   WriteStep,
   ComposeTxOptions,
   ComposeTxResult,
-  ComposeTxFeeHooks,
-  ComposeTxFeeHookContext,
   AppenderContext,
   StepPreview,
-  SaveDepositInput,
-  WithdrawInput,
-  BorrowInput,
-  RepayDebtInput,
   SendTransferInput,
   SwapExecuteInput,
-  ClaimRewardsInput,
 } from './composeTx.js';
 export { calculateFee, addFeeTransfer } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
-export {
-  getFinancialSummary,
-  HF_WARN_THRESHOLD,
-  HF_CRITICAL_THRESHOLD,
-} from './protocols/financialSummary.js';
-export type { FinancialSummaryOptions } from './protocols/financialSummary.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
-export {
-  getRates,
-  getPendingRewards,
-  getPendingRewardsByAddress,
-  addClaimRewardsToTx,
-  buildClaimRewardsTx,
-  aggregateClaimableRewards,
-} from './protocols/navi.js';
-// [Track B / 2026-05-08] Single-PTB compound flow: claim NAVI rewards,
-// swap each non-USDC reward to USDC inline (Cetus chain mode), deposit
-// the merged USDC into the NAVI USDC pool. ONE confirm card, atomic
-// settlement. Powers the engine's `harvest_rewards` tool and the
-// audric "🌾 HARVEST" chip.
-export { buildHarvestRewardsTx } from './protocols/navi-harvest.js';
-export type {
-  HarvestPlan,
-  HarvestSwapLeg,
-  HarvestSkippedLeg,
-  BuildHarvestRewardsTxOptions,
-} from './protocols/navi-harvest.js';
 export { getSwapQuote } from './swap-quote.js';
 export {
   findSwapRoute,
@@ -258,7 +205,6 @@ export type {
   BuildRevokeLeafParams,
   LabelValidationResult,
 } from './protocols/suins-leaf.js';
-export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
 export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';

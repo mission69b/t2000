@@ -116,7 +116,7 @@ You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and
 | `t2000_address` | Wallet address. |
 | `t2000_receive` | Generate a payment request: address + Payment Kit URI + nonce. |
 | `t2000_history` | Recent on-chain activity (sends / swaps / pays). |
-| `t2000_services` | Discover MPP services (gateway catalog at mpp.t2000.ai). |
+| `t2000_services` | Discover x402 services (gateway catalog at mpp.t2000.ai). |
 
 ### Write (3)
 
@@ -126,7 +126,7 @@ All support `dryRun: true` for previews without signing (where applicable).
 |------|-------------|
 | `t2000_send` | Send USDC / USDsui / SUI. Asset REQUIRED. USDC + USDsui are gasless. |
 | `t2000_swap` | Swap tokens via Cetus Aggregator. Requires SUI for gas. |
-| `t2000_pay` | Pay for an MPP-protected API service (USDC, gasless). |
+| `t2000_pay` | Pay for an x402-protected API service (USDC, gasless). |
 
 ### Settings (1)
 
@@ -166,21 +166,6 @@ Invoking the prompt loads the full skill markdown as the user message — equiva
 | Server fails with `WALLET_CORRUPT` | File at `~/.t2000/wallet.key` is not a v4 wallet (e.g. a pre-v4 file, hand-edited JSON, or a wallet from a different tool) | Move or delete the file, then run `t2 init` to create a fresh wallet |
 | Client shows no `t2000_*` tools after restart | Wrong config path, or stale npx cache | Verify with the `printf | npx ...` test above; clear cache with `rm -rf ~/.npm/_npx` |
 | `SuiClient export not found` error from old install | Cached pre-fix bundle in `~/.npm/_npx` | `rm -rf ~/.npm/_npx` then restart the client |
-
-## Engine MCP Adapter (Audric)
-
-`@t2000/engine` can also expose its financial tools as MCP tools, enabling Audric to serve as an MCP server alongside `@t2000/mcp`:
-
-```typescript
-import { registerEngineTools, getDefaultTools } from '@t2000/engine';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-
-const server = new McpServer({ name: 'audric', version: '0.1.0' });
-registerEngineTools(server, getDefaultTools());
-// Exposes: audric_balance_check, audric_save_deposit, etc.
-```
-
-Engine tools use `audric_` prefix to avoid collisions with `t2000_` prefixed tools from `@t2000/mcp`. The engine adapter includes permission-level metadata and supports the full confirmation flow.
 
 ## Security
 

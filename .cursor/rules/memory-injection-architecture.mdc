@@ -1,5 +1,7 @@
 # Memory Injection Architecture (Phase 7)
 
+> **⚠️ HISTORICAL (2026-06-14): `@t2000/engine` was retired/deleted (S.442).** This documented the engine's `MemoryStore` / `prepareStep` memory-injection layer. Audric v3 owns its own memory layer in the host. Kept for rationale only.
+
 Codifies the F-4 4-layer system-prompt assembly that ships in engine v2.7.0+ when `EngineConfig.memoryStore` is configured. Re-read before touching `prepareStep`, `buildMemoryBlock`, the `MemoryStore` interface, or any code path that affects what the LLM sees at turn start.
 
 > **S.376 (2026-06-07):** the optional `<financial_context>` prompt layer was removed. Audric retired its daily snapshot in S.375 and no other host supplied a `financialContextBlock`, so the unused `config.financialContextBlock` field + its layer (and the never-wired `financialContextSeed` guard-seed field) were deleted. The assembly dropped from 5 layers to 4. The integration test was renamed `prompt-layer-ordering.test.ts`.

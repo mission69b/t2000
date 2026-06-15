@@ -27,7 +27,7 @@
  *  - De-duplicates when the same address appears multiple times.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { SuiCoreClient } from './utils/sui.js';
 import { Transaction } from '@mysten/sui/transactions';
 import { deriveAllowedAddressesFromPtb } from './composeTx.js';
 
@@ -36,64 +36,28 @@ const RECIPIENT_1 = '0x' + 'b'.repeat(64);
 const RECIPIENT_2 = '0x' + 'c'.repeat(64);
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 
-function mockRpcClient(coins: Record<string, Array<{ coinObjectId: string; balance: string }>>): SuiJsonRpcClient {
+function mockRpcClient(coins: Record<string, Array<{ coinObjectId: string; balance: string }>>): SuiCoreClient {
   return {
-    getBalance: vi.fn(async ({ coinType }: { coinType: string }) => {
-      const coinData = coins[coinType] ?? [];
-      const total = coinData.reduce((acc, c) => acc + BigInt(c.balance), 0n);
-      return {
-        coinType,
-        coinObjectCount: coinData.length,
-        totalBalance: total.toString(),
-        lockedBalance: {},
-      };
-    }),
-    getCoins: vi.fn(async ({ coinType }: { coinType: string }) => ({
-      data: coins[coinType] ?? [],
-      nextCursor: null,
-      hasNextPage: false,
-    })),
-  } as unknown as SuiJsonRpcClient;
-}
-
-function mockNaviAdapter() {
-  vi.doMock('@naviprotocol/lending', () => ({
-    depositCoinPTB: vi.fn(async () => undefined),
-    withdrawCoinPTB: vi.fn(async (tx: Transaction) => {
-      const [coin] = tx.moveCall({ target: '0x123::test::mock_withdraw', arguments: [] });
-      return coin;
-    }),
-    borrowCoinPTB: vi.fn(async (tx: Transaction) => {
-      const [coin] = tx.moveCall({ target: '0x123::test::mock_borrow', arguments: [] });
-      return coin;
-    }),
-    repayCoinPTB: vi.fn(async () => undefined),
-    claimLendingRewardsPTB: vi.fn(async (tx: Transaction) => {
-      // claim_rewards transfers reward coins to the sender at top-level —
-      // this is the PR-H1 bug class (audric host forgot to add sender to
-      // allowedAddresses pre-fix).
-      const [rewardCoin] = tx.moveCall({ target: '0x123::test::mock_claim', arguments: [] });
-      tx.transferObjects([rewardCoin], SENDER);
-    }),
-    getUserAvailableLendingRewards: vi.fn(async () => [{
-      asset: { coinType: USDC_TYPE, decimals: 6, symbol: 'USDC' },
-      amount: '1000000',
-      userClaimableReward: '1000000',
-    }]),
-    summaryLendingRewards: vi.fn((rewards: unknown[]) => rewards),
-    updateOraclePriceBeforeUserOperationPTB: vi.fn(async () => undefined),
-    getLendingPositions: vi.fn(async () => [{
-      type: 'navi-lending-supply',
-      'navi-lending-supply': {
-        token: { symbol: 'USDC', coinType: USDC_TYPE },
-        amount: '100',
-        valueUSD: '100',
-        pool: { supplyIncentiveApyInfo: { apy: '5.0' }, borrowIncentiveApyInfo: { apy: '4.0' } },
-      },
-    }]),
-    getPools: vi.fn(async () => []),
-    getHealthFactor: vi.fn(async () => 1e18),
-  }));
+    core: {
+      getBalance: vi.fn(async ({ coinType }: { coinType: string }) => {
+        const coinData = coins[coinType] ?? [];
+        const total = coinData.reduce((acc, c) => acc + BigInt(c.balance), 0n);
+        return {
+          balance: {
+            coinType,
+            balance: total.toString(),
+            coinBalance: '0',
+            addressBalance: '0',
+          },
+        };
+      }),
+      listCoins: vi.fn(async ({ coinType }: { coinType: string }) => ({
+        objects: (coins[coinType] ?? []).map((c) => ({ objectId: c.coinObjectId, balance: c.balance })),
+        cursor: null,
+        hasNextPage: false,
+      })),
+    },
+  } as unknown as SuiCoreClient;
 }
 
 describe('deriveAllowedAddressesFromPtb — pure-function tests', () => {
@@ -176,7 +140,6 @@ describe('deriveAllowedAddressesFromPtb — pure-function tests', () => {
 describe('composeTx — derivedAllowedAddresses regression suite per write tool', () => {
   beforeEach(() => {
     vi.resetModules();
-    mockNaviAdapter();
     vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]));
   });
 
@@ -196,83 +159,5 @@ describe('composeTx — derivedAllowedAddresses regression suite per write tool'
     });
 
     expect(result.derivedAllowedAddresses).toEqual([RECIPIENT_1]);
-  });
-
-  it('save_deposit — derives empty (deposit consumes coin, no transferObjects)', async () => {
-    const { composeTx } = await import('./composeTx.js');
-    const client = mockRpcClient({
-      [USDC_TYPE]: [{ coinObjectId: '0x' + '2'.repeat(64), balance: '10000000' }],
-    });
-
-    const result = await composeTx({
-      sender: SENDER, client, sponsoredContext: true,
-      steps: [{ toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } }],
-    });
-
-    expect(result.derivedAllowedAddresses).toEqual([]);
-  });
-
-  it('withdraw — derives sender (output coin transferred back) — fixes PR-H4', async () => {
-    const { composeTx } = await import('./composeTx.js');
-    const client = mockRpcClient({});
-
-    const result = await composeTx({
-      sender: SENDER, client, sponsoredContext: true,
-      steps: [{ toolName: 'withdraw', input: { amount: 5, asset: 'USDC' } }],
-    });
-
-    expect(result.derivedAllowedAddresses).toEqual([SENDER]);
-  });
-
-  it('borrow — derives sender (borrowed coin transferred back) — fixes PR-H4', async () => {
-    const { composeTx } = await import('./composeTx.js');
-    const client = mockRpcClient({});
-
-    const result = await composeTx({
-      sender: SENDER, client, sponsoredContext: true,
-      steps: [{ toolName: 'borrow', input: { amount: 10, asset: 'USDC' } }],
-    });
-
-    expect(result.derivedAllowedAddresses).toEqual([SENDER]);
-  });
-
-  it('claim_rewards (with claimable rewards) — derives sender — fixes PR-H1', async () => {
-    const { composeTx } = await import('./composeTx.js');
-    const client = mockRpcClient({});
-
-    const result = await composeTx({
-      sender: SENDER, client, sponsoredContext: true,
-      steps: [{ toolName: 'claim_rewards', input: {} }],
-    });
-
-    // claim_rewards's mocked PTB does a top-level transferObjects to sender,
-    // which is the exact pattern that PR-H1 missed in the hand-rolled array.
-    expect(result.derivedAllowedAddresses).toEqual([SENDER]);
-  });
-
-  it('claim_rewards (no claimable rewards) — derives empty', async () => {
-    vi.resetModules();
-    vi.doMock('@naviprotocol/lending', () => ({
-      depositCoinPTB: vi.fn(async () => undefined),
-      withdrawCoinPTB: vi.fn(),
-      borrowCoinPTB: vi.fn(),
-      repayCoinPTB: vi.fn(),
-      claimLendingRewardsPTB: vi.fn(),
-      getUserAvailableLendingRewards: vi.fn(async () => []),
-      summaryLendingRewards: vi.fn(() => []),
-      updateOraclePriceBeforeUserOperationPTB: vi.fn(),
-      getLendingPositions: vi.fn(async () => []),
-      getPools: vi.fn(async () => []),
-      getHealthFactor: vi.fn(async () => 1e18),
-    }));
-    const { composeTx } = await import('./composeTx.js');
-    const client = mockRpcClient({});
-
-    const result = await composeTx({
-      sender: SENDER, client, sponsoredContext: true,
-      steps: [{ toolName: 'claim_rewards', input: {} }],
-    });
-
-    expect(result.derivedAllowedAddresses).toEqual([]);
   });
 });

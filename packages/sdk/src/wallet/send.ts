@@ -2,7 +2,6 @@ import {
   Transaction,
   type TransactionObjectArgument,
 } from '@mysten/sui/transactions';
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import {
   GASLESS_MIN_STABLE_AMOUNT,
   GASLESS_STABLE_TYPES,
@@ -11,7 +10,7 @@ import {
   type SendableAsset,
 } from '../constants.js';
 import { T2000Error } from '../errors.js';
-import { validateAddress } from '../utils/sui.js';
+import { validateAddress, type SuiCoreClient } from '../utils/sui.js';
 import { displayToRaw } from '../utils/format.js';
 
 /**
@@ -48,7 +47,7 @@ export async function buildSendTx({
   amount,
   asset,
 }: {
-  client: SuiJsonRpcClient;
+  client: SuiCoreClient;
   address: string;
   to: string;
   amount: number;
@@ -74,11 +73,11 @@ export async function buildSendTx({
   const tx = new Transaction();
   tx.setSender(address);
 
-  // Balance pre-flight against `getBalance().totalBalance` (sums coins +
-  // address balance). The legacy `getCoins` page miss broke for users
-  // whose stables had drifted into address balance via @suimpp/mpp 0.7+.
-  const balanceResp = await client.getBalance({ owner: address, coinType: assetInfo.type });
-  const totalBalance = BigInt(balanceResp.totalBalance);
+  // Balance pre-flight against `core.getBalance().balance.balance` (sums
+  // coins + address balance). The legacy `getCoins` page miss broke for
+  // users whose stables had drifted into address balance via @suimpp/mpp 0.7+.
+  const balanceResp = await client.core.getBalance({ owner: address, coinType: assetInfo.type });
+  const totalBalance = BigInt(balanceResp.balance.balance);
   if (totalBalance < rawAmount) {
     throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${asset} balance`, {
       available: Number(totalBalance) / 10 ** assetInfo.decimals,

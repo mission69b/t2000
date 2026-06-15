@@ -41,7 +41,6 @@ export {
 export type { SupportedAsset, StableAsset } from './constants.js';
 export {
   STABLE_ASSETS,
-  ALL_NAVI_ASSETS,
   GAS_RESERVE_MIN,
 } from './constants.js';
 
@@ -115,24 +114,9 @@ export type {
   BalanceResponse,
   GasReserve,
   SendResult,
-  SaveResult,
-  WithdrawResult,
-  BorrowResult,
-  RepayResult,
-  HealthFactorResult,
-  MaxWithdrawResult,
-  MaxBorrowResult,
-  AssetRates,
-  RatesResult,
-  PositionEntry,
-  PositionsResult,
-  EarningsResult,
-  FundStatusResult,
   DepositInfo,
   TransactionRecord,
   TransactionLeg,
-  ClaimRewardsResult,
-  PendingReward,
   PayOptions,
   PayResult,
 } from './types.js';

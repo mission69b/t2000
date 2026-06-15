@@ -1,8 +1,24 @@
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { SuiGraphQLClient } from '@mysten/sui/graphql';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
-import { DEFAULT_GRPC_URL, DEFAULT_RPC_URL } from '../constants.js';
+import { DEFAULT_GRAPHQL_URL, DEFAULT_GRPC_URL, DEFAULT_RPC_URL } from '../constants.js';
 import { T2000Error } from '../errors.js';
+
+/**
+ * [gRPC migration / S.438] Transport-agnostic client type for the migration.
+ *
+ * Both `SuiJsonRpcClient` and `SuiGrpcClient` extend `BaseClient` and expose
+ * an identical `.core.*` API. During the migration, call sites are rewritten
+ * from legacy methods (`getBalance`, `getObject`, `executeTransactionBlock`)
+ * to the unified `client.core.*` API and typed against this union — so the
+ * rewrite is behavior-preserving while still on JSON-RPC, and the final
+ * transport flip (gRPC) is a one-line change in `getSuiClient()`.
+ *
+ * The query surface that has no gRPC `core` equivalent (`queryTransactionBlocks`
+ * / `queryEvents`, Stage 0 finding A) uses `getSuiGraphQLClient()` instead.
+ */
+export type SuiCoreClient = SuiJsonRpcClient | SuiGrpcClient;
 
 /**
  * Resolve the effective JSON-RPC URL: explicit arg > env var > default.
@@ -26,6 +42,16 @@ function resolveGrpcUrl(grpcUrl?: string): string {
   const envUrl = process.env.T2000_GRPC_URL?.trim();
   if (envUrl) return envUrl;
   return DEFAULT_GRPC_URL;
+}
+
+/**
+ * Same shape as `resolveRpcUrl` for the GraphQL endpoint.
+ */
+function resolveGraphqlUrl(graphqlUrl?: string): string {
+  if (graphqlUrl) return graphqlUrl;
+  const envUrl = process.env.T2000_GRAPHQL_URL?.trim();
+  if (envUrl) return envUrl;
+  return DEFAULT_GRAPHQL_URL;
 }
 
 /**
@@ -83,6 +109,29 @@ export function getSuiGrpcClient(grpcUrl?: string): SuiGrpcClient {
   if (cached) return cached;
   const client = new SuiGrpcClient({ baseUrl, network: 'mainnet' });
   grpcClientCache.set(baseUrl, client);
+  return client;
+}
+
+/**
+ * GraphQL client cache, keyed by URL. Same rationale as the other caches.
+ */
+const graphqlClientCache = new Map<string, SuiGraphQLClient>();
+
+/**
+ * Cached `SuiGraphQLClient` for the query surface that has NO gRPC `core`
+ * equivalent: `queryTransactionBlocks` + `queryEvents` (Stage 0 finding A —
+ * `SPEC_FULL_GRPC_MIGRATION.md`). Mysten's gRPC successor doesn't cover the
+ * historical query/event API; GraphQL is its documented home. Consumers:
+ * `wallet/history.ts` + the swap-event read in `protocols/cetus-swap.ts`.
+ *
+ * Override the endpoint with `T2000_GRAPHQL_URL` or the `graphqlUrl` arg.
+ */
+export function getSuiGraphQLClient(graphqlUrl?: string): SuiGraphQLClient {
+  const url = resolveGraphqlUrl(graphqlUrl);
+  const cached = graphqlClientCache.get(url);
+  if (cached) return cached;
+  const client = new SuiGraphQLClient({ url, network: 'mainnet' });
+  graphqlClientCache.set(url, client);
   return client;
 }
 

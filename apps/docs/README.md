@@ -2,15 +2,16 @@
 
 Source for the Mintlify-hosted developer documentation site at [`developers.t2000.ai`](https://developers.t2000.ai).
 
-Five pages, flat nav, mirrors [`developers.circle.com/agent-stack`](https://developers.circle.com/agent-stack):
+Four pages, flat nav, mirrors [`developers.circle.com/agent-stack`](https://developers.circle.com/agent-stack):
 
 | Page | Path | What's on it |
 |---|---|---|
-| Quickstart | `/` (`index.mdx`) | Install + first-send walkthrough + 4-card landing |
+| Quickstart | `/` (`index.mdx`) | Install + first-send walkthrough + 3-card landing |
 | Agent Wallet | `/agent-wallet` | `t2` CLI command surface + MCP integration + Skills inventory |
-| Agent Payments | `/agent-payments` | `t2 pay` + MPP gateway service catalog (40+ paid APIs) |
-| Agent SDK | `/agent-sdk` | `@t2000/sdk` TypeScript reference — Agent Wallet API + programmatic DeFi |
-| Agent Engine | `/agent-engine` | `@t2000/engine` overview — Agent Harness / Reasoning / Memory / AdviceLog |
+| Agent Payments | `/agent-payments` | `t2 pay` + x402 gateway service catalog (40+ paid APIs) |
+| Agent SDK | `/agent-sdk` | `@t2000/sdk` TypeScript reference — Agent Wallet API (send / swap / pay) |
+
+> `agent-engine.mdx` is retained as a **retired** deprecation stub (out of nav). `@t2000/engine` was deleted from the monorepo; the published `@t2000/engine@4.x` remains on npm for the frozen legacy Audric app.
 
 ## Local development
 
@@ -48,7 +49,7 @@ Each page is a curated, Mintlify-flavored view of the canonical package README:
 | `agent-wallet.mdx` | `packages/cli/README.md` + `packages/mcp/README.md` + `t2000-skills/README.md` |
 | `agent-payments.mdx` | `apps/gateway/README.md` + `packages/cli/README.md` (pay section) |
 | `agent-sdk.mdx` | `packages/sdk/README.md` |
-| `agent-engine.mdx` | `packages/engine/` description + `CLAUDE.md` (Audric Intelligence 4-system model) |
+| `agent-engine.mdx` | Retired deprecation stub — `@t2000/engine` was deleted from the monorepo. |
 
 When a README changes, mirror the relevant section into the corresponding `.mdx`. Don't fork — keep the README the source-of-truth.
 

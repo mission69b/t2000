@@ -1,7 +1,7 @@
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { T2000Error } from '../errors.js';
 import { mapMoveAbortCode } from '../errors.js';
+import type { SuiCoreClient } from './sui.js';
 
 export interface SimulationResult {
   success: boolean;
@@ -15,20 +15,24 @@ export interface SimulationResult {
 }
 
 export async function simulateTransaction(
-  client: SuiJsonRpcClient,
+  client: SuiCoreClient,
   tx: Transaction,
   sender: string,
 ): Promise<SimulationResult> {
   tx.setSender(sender);
 
   try {
+    // [gRPC migration] `core.simulateTransaction` replaces `dryRunTransactionBlock`.
+    // It returns a discriminated union; effects.status is `{ success, error }`
+    // where `error` is a structured `ExecutionError` (not the legacy raw string).
     const txBytes = await tx.build({ client });
-    const dryRun = await client.dryRunTransactionBlock({
-      transactionBlock: Buffer.from(txBytes).toString('base64'),
+    const sim = await client.core.simulateTransaction({
+      transaction: txBytes,
+      include: { effects: true },
     });
-
-    const status = dryRun.effects?.status;
-    const gasUsed = dryRun.effects?.gasUsed;
+    const txn = sim.$kind === 'Transaction' ? sim.Transaction : sim.FailedTransaction;
+    const effects = txn.effects;
+    const gasUsed = effects?.gasUsed;
 
     const gasEstimateSui = gasUsed
       ? (Number(gasUsed.computationCost) +
@@ -36,17 +40,23 @@ export async function simulateTransaction(
           Number(gasUsed.storageRebate)) / 1e9
       : 0;
 
-    if (status?.status === 'failure') {
-      const rawError = status.error ?? 'Unknown simulation error';
+    const errObj = effects && !effects.status.success ? effects.status.error : undefined;
+    if (sim.$kind === 'FailedTransaction' || errObj) {
+      const rawError = errObj?.message ?? 'Unknown simulation error';
+      // Prefer the structured MoveAbort code; fall back to regex-parsing the
+      // message for non-abort errors / pre-structured formats.
+      const structuredAbort =
+        errObj?.$kind === 'MoveAbort' ? Number(errObj.MoveAbort.abortCode) : undefined;
       const parsed = parseMoveAbort(rawError);
+      const abortCode = structuredAbort ?? parsed.abortCode;
 
       return {
         success: false,
         gasEstimateSui,
         error: {
-          moveAbortCode: parsed.abortCode,
+          moveAbortCode: abortCode,
           moveModule: parsed.module,
-          reason: parsed.reason,
+          reason: abortCode != null ? mapMoveAbortCode(abortCode) : parsed.reason,
           rawError,
         },
       };

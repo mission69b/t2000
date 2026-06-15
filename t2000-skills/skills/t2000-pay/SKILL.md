@@ -1,10 +1,10 @@
 ---
 name: t2000-pay
 description: >-
-  Pay for an MPP-protected API service using the t2000 wallet. Use when asked
+  Pay for an x402-protected API service using the t2000 wallet. Use when asked
   to call an AI model, search the web, generate images, send email, buy gift
   cards, send physical mail, check weather, execute code, or any task that
-  requires a paid API. Handles the full MPP 402 challenge automatically.
+  requires a paid API. Handles the full x402 402 challenge automatically.
   Use t2000_services to discover all available services first.
 license: MIT
 status: active
@@ -15,7 +15,7 @@ metadata:
   available: true
 ---
 
-# t2000: Pay for MPP API Service
+# t2000: Pay for x402 API Service
 
 ## Status
 Active — bundled with `@t2000/cli` (no separate install).
@@ -23,7 +23,7 @@ Active — bundled with `@t2000/cli` (no separate install).
 **USDC payment is gasless.** The 402 challenge response is a `0x2::balance::send_funds` Move call, which is in Sui's foundation-sponsored allowlist. The wallet can pay even with 0 SUI in the gas reserve.
 
 ## Purpose
-Make a paid HTTP request to any MPP-protected endpoint. Handles the 402
+Make a paid HTTP request to any x402-protected endpoint. Handles the 402
 challenge, pays via Sui USDC, and returns the API response.
 
 ## Service Discovery
@@ -265,7 +265,7 @@ t2 pay https://mpp.t2000.ai/pushover/v1/push \
 
 ## Flow (automatic)
 1. Makes initial HTTP request to the URL
-2. If 402: reads MPP challenge for amount and terms
+2. If 402: reads x402 challenge for amount and terms
 3. If price <= --max-price: pays via Sui USDC
 4. Retries with credential header
 5. Returns the API response body
@@ -279,7 +279,7 @@ t2 pay https://mpp.t2000.ai/pushover/v1/push \
 ## Errors
 - `PRICE_EXCEEDS_LIMIT`: API asking more than --max-price
 - `INSUFFICIENT_BALANCE`: not enough available USDC
-- `UNSUPPORTED_NETWORK`: MPP requires a network other than Sui
+- `UNSUPPORTED_NETWORK`: x402 requires a network other than Sui
 - `PAYMENT_EXPIRED`: payment challenge has expired
 - `DUPLICATE_PAYMENT`: nonce already used on-chain
 

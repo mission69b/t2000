@@ -27,7 +27,7 @@ Floor to the token's on-chain decimals (capped at 8):
 
 ## SDK transaction amounts
 
-When `sdk.swap()` or `sdk.save()` receives an amount, it converts to raw units via `amount * 10^decimals`. If the display amount was rounded UP, this produces more raw units than the user actually has → transaction fails.
+When `sdk.swap()` (or any SDK builder that takes an amount) receives an amount, it converts to raw units via `amount * 10^decimals`. If the display amount was rounded UP, this produces more raw units than the user actually has → transaction fails. (`sdk.save()` was removed with DeFi, S.444 — the floor-not-round principle still applies to every surviving amount path: send, swap, pay.)
 
 ## Preset amounts for chip flows
 

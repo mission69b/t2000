@@ -3,7 +3,7 @@
 ## @t2000/cli (packages/cli)
 
 - Entry: `src/index.ts` → Commander.js. Bin: `t2` (primary) + `t2000` (alias).
-- Post-v4 (S.336) the CLI is a **wallet + payments** surface: `send`, `swap`, `pay`, `balance`, `receive`, `history`, `services`, `limit`, `mcp`, `skills`, `init`. The DeFi commands (`save`/`withdraw`/`borrow`/`repay`/`claim`) and Volo `stake`/`unstake` were removed — the SDK keeps those builders for programmatic use; the CLI does not expose them.
+- Post-v4 (S.336) the CLI is a **wallet + payments** surface: `send`, `swap`, `pay`, `balance`, `receive`, `history`, `services`, `limit`, `mcp`, `skills`, `init`. The DeFi commands (`save`/`withdraw`/`borrow`/`repay`/`claim`) and Volo `stake`/`unstake` were removed. **NAVI / DeFi has since left `@t2000/sdk` entirely (2026-06-14)** — the SDK write surface is now send (gasless USDC/USDsui), swap (Cetus), pay (x402); there are no DeFi builders to expose.
 - Keep command output consistent with the existing commands; test with `--help` / `--dry-run` where applicable.
 - Scope: `cli` in commit messages
 
@@ -14,19 +14,11 @@
 - All public functions need explicit return types
 - Scope: `sdk` in commit messages
 
-## @t2000/engine (packages/engine)
+## @t2000/engine (packages/engine) — RETIRED
 
-- Entry: `src/index.ts`. Verify the public surface against `src/index.ts` exports before documenting — many legacy names are gone (see below).
-- Exports: `AISDKEngine`, `getDefaultTools`, `TOOL_POLICY`, MCP client (`McpClientManager`), streaming (`serializeSSE`/`parseSSE`), sessions, cost tracking, memory store, permission resolver.
-- **Removed — do NOT cite as exports:** `AISDKAnthropicProvider` (v3.1.0), `buildMcpTools`/`registerEngineTools` (v3.0.0), `defineTool`/`buildTool` (no public tool factory), `TxMutex`/`runTools`/`EarlyToolDispatcher`/`budgetToolResult`/`engineToSSE`.
-- Build: `tsup` → ESM bundle. Test: `vitest run`. All public functions need explicit return types. Scope: `engine`.
-- Key files:
-  - `v2/engine.ts` — `AISDKEngine` (wraps AI SDK v6).
-  - `v2/tool-helpers.ts` — `wrapEngineExecute` + `buildNeedsApproval` (how tools are built — AI SDK `tool()` + these helpers; there is no `buildTool`/`defineTool` factory).
-  - `v2/tool-policy.ts` — `TOOL_POLICY` registry (read/write + concurrency-safe + permission level + result budgeting).
-  - `mcp/client.ts` — `McpClientManager` (backed by `@ai-sdk/mcp`; public API preserved).
-  - `navi/` — NAVI MCP integration (`config.ts`, `transforms.ts`, `reads.ts`, `cache.ts`).
-  - `tools/*.ts` — built-in financial tools (**26 total: 18 read + 8 write**).
+> **⚠️ HISTORICAL (2026-06-14):** `@t2000/engine` was retired and **deleted** from the monorepo. There is no `packages/engine` here anymore and no future engine releases. The already-published `@t2000/engine@4.x` remains on npm for the frozen legacy Audric app. New work composes the Vercel AI SDK directly over `@t2000/sdk`. The detail below is kept for lineage only and no longer describes anything in this repo.
+>
+> Former exports / key files (historical): `AISDKEngine`, `getDefaultTools`, `TOOL_POLICY`, `McpClientManager`, sessions, cost tracking, memory store, permission resolver; `v2/*`, `mcp/client.ts`, `navi/`, `tools/*.ts` (26 tools: 18 read + 8 write).
 
 ## @t2000/mcp (packages/mcp)
 

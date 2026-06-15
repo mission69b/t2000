@@ -322,17 +322,19 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
   function mockClient(coins: Array<{ coinObjectId: string; balance: string }>) {
     const totalBalance = coins.reduce((acc, c) => acc + BigInt(c.balance), 0n);
     const getBalance = vi.fn().mockResolvedValue({
-      coinType: 'unused',
-      coinObjectCount: coins.length,
-      totalBalance: totalBalance.toString(),
-      lockedBalance: {},
+      balance: {
+        coinType: 'unused',
+        balance: totalBalance.toString(),
+        coinBalance: '0',
+        addressBalance: '0',
+      },
     });
-    const getCoins = vi.fn().mockResolvedValue({
-      data: coins,
-      nextCursor: null,
+    const listCoins = vi.fn().mockResolvedValue({
+      objects: coins.map((c) => ({ objectId: c.coinObjectId, balance: c.balance })),
+      cursor: null,
       hasNextPage: false,
     });
-    return { getBalance, getCoins } as unknown as Parameters<typeof import('./cetus-swap.js').addSwapToTx>[1];
+    return { core: { getBalance, listCoins } } as unknown as Parameters<typeof import('./cetus-swap.js').addSwapToTx>[1];
   }
 
   it('wallet mode (USDC → USDT): fetches coins, builds tx, returns expected shape', async () => {
@@ -378,7 +380,7 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
 
     expect(result.coin).toBeDefined();
     expect(result.effectiveAmountIn).toBeCloseTo(5, 6);
-    expect((client as unknown as { getCoins: ReturnType<typeof vi.fn> }).getCoins).not.toHaveBeenCalled();
+    expect((client as unknown as { core: { listCoins: ReturnType<typeof vi.fn> } }).core.listCoins).not.toHaveBeenCalled();
   });
 
   it('wallet mode swapAll: requested >= total balance → consumes the entire merged primary', async () => {

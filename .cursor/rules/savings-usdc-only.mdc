@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Savings = USDC or USDsui (Engine)
 
+> **⚠️ HISTORICAL (2026-06-14): DeFi was removed from `@t2000/sdk` + `@t2000/engine` retired (S.442/S.444).** `save_deposit`/`borrow` engine tools + the SDK lending builders no longer exist, so this USDC-or-USDsui allow-list is moot for current t2000 (the `OPERATION_ASSETS`/`SAVEABLE_ASSETS` constants still sit in `constants.ts`, but there are no save/borrow methods to gate). Frozen audric/web-v2 still honors it via `@t2000/*@4.x`. Kept for rationale only.
+
 > **Strategic exception (v0.51.0+):** USDsui is permitted alongside USDC for `save_deposit` and `borrow`. The USDC-canonical thesis still applies to **every other asset** (GOLD, SUI, USDT, USDe, ETH, NAVX, WAL): they are holdable/swappable but **never** saveable.
 >
 > Why USDsui is the exception: it's the only other Sui-native stable with a productive NAVI pool (USDC pool ~4.6% APY, USDsui pool variable, often higher). Adding it as a saveable asset captures yield optimization without inviting "save anything stable" creep (which would pull in USDe/USDT and break the simplicity invariant).

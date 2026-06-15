@@ -1,9 +1,9 @@
 ---
 title: "Agent Payments"
-description: "Pay any MPP-protected API in USDC. Every major AI + data API, no signup, no API keys — gasless USDC over Sui."
+description: "Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless USDC over Sui."
 ---
 
-**Agent Payments** is the MPP (Machine Payments Protocol) gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) — paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.02 – $0.10` per LLM call. Pay `$2.00 – $3.00` per physical postcard.
+**Agent Payments** is the x402 rail — the gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) serves paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.02 – $0.10` per LLM call. Pay `$2.00 – $3.00` per physical postcard.
 
 Two surfaces use it:
 
@@ -46,7 +46,7 @@ t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
   --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello, world!"}]}'
 ```
 
-That's it. The MPP 402 challenge is handled automatically; payment broadcasts to Sui mainnet; the response comes back.
+That's it. The x402 challenge is handled automatically; payment broadcasts to Sui mainnet; the response comes back.
 
 ## Hero examples
 
@@ -168,7 +168,7 @@ Fetch `url` to get the file. This keeps responses safe to pass through any JSON 
 |---|---|
 | `t2 services search <query>` | Substring search across the whole catalog. |
 | `t2 services inspect <url>` | Show service info + endpoint list + pricing. Works on both service base URLs and specific endpoint URLs. |
-| `t2 pay <url>` | Pay for an MPP-protected API. `--data`, `--method`, `--header <K:V>` (repeatable), `--max-price <USD>`, `--estimate` (parse 402 without paying). |
+| `t2 pay <url>` | Pay for an x402-protected API. `--data`, `--method`, `--header <K:V>` (repeatable), `--max-price <USD>`, `--estimate` (parse 402 without paying). |
 | `t2 history` | List recent payments with Suiscan digests + amount + service. |
 
 ## MCP
@@ -180,7 +180,7 @@ Fetch `url` to get the file. This keeps responses safe to pass through any JSON 
 ```
 
 <Note>
-**Lead a fresh session with "use t2 services."** In a brand-new chat, if you name an external API directly ("generate an image via fal.ai"), some AI clients default to their own sandbox and reply that they can't reach it — they never consider the wallet. Starting your request with **"use t2 services"** (e.g. *"Use t2 services to generate a hero image via fal.ai."*) tells the client to load the `t2000_*` tools and pay via MPP from the first message. Every recipe prompt in these docs already starts this way. Once any `t2000_*` tool has run, the rest of the session routes correctly without the prefix.
+**Lead a fresh session with "use t2 services."** In a brand-new chat, if you name an external API directly ("generate an image via fal.ai"), some AI clients default to their own sandbox and reply that they can't reach it — they never consider the wallet. Starting your request with **"use t2 services"** (e.g. *"Use t2 services to generate a hero image via fal.ai."*) tells the client to load the `t2000_*` tools and pay via x402 from the first message. Every recipe prompt in these docs already starts this way. Once any `t2000_*` tool has run, the rest of the session routes correctly without the prefix.
 </Note>
 
 See [Agent Wallet → MCP Integration](/agent-wallet#mcp-integration) for full client setup.
@@ -206,17 +206,17 @@ Full SDK reference: [Agent SDK](/agent-sdk).
 
 ## Architecture
 
-- **Gateway** — Next.js 16 on Vercel at [`mpp.t2000.ai`](https://mpp.t2000.ai). Proxies upstream APIs behind MPP 402 challenges.
-- **Protocol** — MPP (Machine Payments Protocol), implemented via [`mppx`](https://www.npmjs.com/package/mppx) + [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp).
+- **Gateway** — Next.js 16 on Vercel at [`mpp.t2000.ai`](https://mpp.t2000.ai). Proxies upstream APIs behind x402 (HTTP 402) payment challenges.
+- **Protocol** — the x402 rail (HTTP 402 payments on Sui), implemented via [`mppx`](https://www.npmjs.com/package/mppx) + [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp).
 - **Network** — Sui mainnet. USDC = `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`.
 - **Gasless** — USDC transfers via `0x2::balance::send_funds` (Sui foundation sponsor).
 - **Logging** — Prisma + NeonDB. Every payment is logged with its tx digest; browse at [`mpp.t2000.ai/explorer`](https://mpp.t2000.ai/explorer).
 
-## Why MPP
+## Why x402
 
 **No signup.** Every service on the gateway is pay-per-call. Your agent discovers an endpoint, pays for it, gets the response — no account creation, no API key management, no subscription overhead.
 
-**No vendor lock-in.** MPP is an open protocol — any service can implement the 402 challenge spec at [`suimpp.dev`](https://suimpp.dev). The gateway is one host; you can run your own.
+**No vendor lock-in.** x402 is an open standard — any service can implement the HTTP 402 challenge spec (the Sui profile lives at [`suimpp.dev`](https://suimpp.dev)). The gateway is one host; you can run your own.
 
 **Sui-native.** USDC settlement, gasless transfer, finality in ~400ms. The whole flow — pay + retry — usually completes in under 2 seconds.
 

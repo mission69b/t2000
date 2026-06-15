@@ -1,14 +1,13 @@
 ---
 title: "Quickstart"
-description: "Agentic Finance Infrastructure on Sui — SDK, CLI, MCP, and Engine for AI agents that move money."
+description: "Agentic Finance Infrastructure on Sui — SDK, CLI, and MCP for AI agents that move money."
 ---
 
-**t2000** is the infra layer for AI agents that move money on Sui. Four packages, one stack:
+**t2000** is the infra layer for AI agents that move money on Sui. Three packages, one stack:
 
-- **`@t2000/cli`** — the Agent Wallet CLI (`t2`). Gasless USDC + USDsui sends, Cetus swaps, MPP paid API access.
+- **`@t2000/cli`** — the Agent Wallet CLI (`t2`). Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access.
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
-- **`@t2000/sdk`** — the TypeScript SDK. Programmatic wallet + gasless transfers + NAVI lending + Cetus routing.
-- **`@t2000/engine`** — the agent engine. 26 tools, 12 guards, silent intelligence. Powers [Audric](https://audric.ai).
+- **`@t2000/sdk`** — the TypeScript SDK. Programmatic wallet + gasless transfers + Cetus routing + x402 pay.
 
 Five-minute setup. No banks, no borders, no fees on the t2000 layer.
 
@@ -100,13 +99,10 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
     The `t2` CLI command surface, MCP integration for AI clients, and the 8 skills your agent reads on demand.
   </Card>
   <Card title="Agent Payments" icon="credit-card" href="/agent-payments">
-    Pay any MPP-protected API in USDC. Discover 40+ paid services on the `mpp.t2000.ai` gateway.
+    Pay any API in USDC over the x402 rail. Discover 40+ paid services on the `mpp.t2000.ai` gateway.
   </Card>
   <Card title="Agent SDK" icon="code" href="/agent-sdk">
-    `@t2000/sdk` — TypeScript surface for programmatic wallets, gasless transfers, Cetus swaps, NAVI lending.
-  </Card>
-  <Card title="Agent Engine" icon="brain" href="/agent-engine">
-    `@t2000/engine` — agent harness, reasoning engine, memory, advice log. The brain behind Audric.
+    `@t2000/sdk` — TypeScript surface for programmatic wallets, gasless transfers, Cetus swaps, x402 pay.
   </Card>
 </CardGroup>
 
@@ -117,8 +113,7 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 | Wallet + signing | `@t2000/sdk` | npm |
 | CLI surface | `@t2000/cli` | npm |
 | MCP server | `@t2000/mcp` | npm |
-| Agent engine | `@t2000/engine` | npm |
-| MPP API gateway | — | [`mpp.t2000.ai`](https://mpp.t2000.ai) |
+| x402 API gateway | — | [`mpp.t2000.ai`](https://mpp.t2000.ai) |
 | Skills | — | [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) |
 | Consumer app | Audric | [`audric.ai`](https://audric.ai) |
 
@@ -126,13 +121,12 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 
 - **A USDC-paying agent.** Drop `@t2000/cli` into any agent loop; it runs `t2 pay` against 40+ paid APIs without you holding SUI for gas.
 - **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets 9 live wallet tools + 8 skill prompts.
-- **A Sui-native fintech.** `@t2000/sdk` is the same library that powers Audric — gasless transfers, Cetus swaps, NAVI save/borrow, all from one class.
-- **A custom agent stack.** `@t2000/engine` exposes the 26-tool harness + 12-guard reasoning layer with your own LLM provider, your own host.
+- **A Sui-native fintech.** `@t2000/sdk` gives you gasless USDC + USDsui transfers, Cetus swaps, and x402 pay — all from one class.
 
 ## Prerequisites
 
 - A Sui address (the wallet creates one for you).
-- ~$1 of USDC to send + a tiny bit of SUI (~0.05) for gas on swaps. USDC + USDsui sends and MPP API payments are **gasless** via Sui's `0x2::balance::send_funds` sponsor.
+- ~$1 of USDC to send + a tiny bit of SUI (~0.05) for gas on swaps. USDC + USDsui sends and x402 API payments are **gasless** via Sui's `0x2::balance::send_funds` sponsor.
 - An MCP-compatible AI client if you want the agent to call the wallet directly (Claude Desktop / Cursor / Windsurf / Cline / Continue / Codex).
 
 ## Why t2000
@@ -141,7 +135,7 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 
 **Gasless by default for the things that matter.** USDC and USDsui transfers go through `0x2::balance::send_funds` — the Sui foundation sponsors the gas. Your agent never needs SUI to pay another agent in USDC.
 
-**One stack, one brand.** `@t2000/{sdk,cli,mcp,engine}` are version-locked and ship together. No mix-and-match version drift.
+**One stack, one brand.** `@t2000/{sdk,cli,mcp}` are version-locked and ship together. No mix-and-match version drift.
 
 ## Links
 
@@ -149,6 +143,5 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 - **npm `@t2000/cli`** — [`npmjs.com/package/@t2000/cli`](https://www.npmjs.com/package/@t2000/cli)
 - **npm `@t2000/sdk`** — [`npmjs.com/package/@t2000/sdk`](https://www.npmjs.com/package/@t2000/sdk)
 - **npm `@t2000/mcp`** — [`npmjs.com/package/@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp)
-- **npm `@t2000/engine`** — [`npmjs.com/package/@t2000/engine`](https://www.npmjs.com/package/@t2000/engine)
-- **MPP Gateway** — [`mpp.t2000.ai`](https://mpp.t2000.ai)
+- **x402 Gateway** — [`mpp.t2000.ai`](https://mpp.t2000.ai)
 - **Consumer app** — [`audric.ai`](https://audric.ai)

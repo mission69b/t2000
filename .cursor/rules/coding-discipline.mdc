@@ -49,6 +49,20 @@ When your changes create orphans:
 
 **The test:** Every changed line should trace directly to the user's request.
 
+## 4. Remove Completely — No Orphans, No Stale
+
+**When you remove a feature, remove ALL of it. Stale/dead code is a defect, not a keepsake.**
+
+A removal's blast radius IS "related code" — so #3's "don't touch unrelated code" does NOT shield the remnants of the thing you're deleting. When you cut a feature, package, or dependency, sweep every layer in the same pass:
+- Source (functions, types, constants, error codes), tests, and their imports.
+- Dependencies in `package.json` / `pnpm.overrides` / `patchedDependencies` + the now-empty `patches/` entries.
+- Docs, READMEs, rules, specs, CI steps, and export barrels (`index.ts` / `browser.ts`).
+- Empty directories and config subpaths left behind (e.g. `exports` map entries).
+
+Don't leave a type "in case someone needs it," a dep "to be safe," or a doc section "for history" (that's what the build tracker + git history are for). If it no longer has a live caller, it goes.
+
+This is the one principled exception to #3's "mention, don't delete" — that rule is about code *unrelated* to your task. Dead remnants of *your own* removal are squarely in scope and must not survive the diff. (Reference: the NAVI/DeFi + `@t2000/engine` removal swept source, types, errors, deps, patches, CI, docs, and rules together — not piecemeal.)
+
 ## Why this matters in this codebase
 
 We've shipped fixes that took 4+ iterations because:

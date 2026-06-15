@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Safeguards — Engine-Side (Defense in Depth)
 
+> **⚠️ HISTORICAL (2026-06-14): `@t2000/engine` was retired/deleted (S.442) and NAVI/DeFi removed from `@t2000/sdk` (S.444).** This rule documented the engine's preflight + `runGuards()` + USD-aware permission resolver — all in the now-deleted engine. The guards are agent-loop guards (not builder guards), so Audric v3's HOST owns them: tap-to-confirm is the primary gate + a thin pre-dispatch wrapper + the SDK limits module (see `SPEC_AUDRIC_V3.md` §7 / tracker S.443). The published `@t2000/engine@4.x` (frozen audric/web-v2) still carries this. Kept for rationale only — does not describe live t2000 code.
+
 The engine sits in the middle of a 6-layer defense stack. Layer 1 (UI), Layer 4 (user confirm), Layer 5 (server validation), and Layer 6 (on-chain) are host concerns. Engine owns Layer 2 (preflight) and Layer 3 (guards). Get those wrong and the whole stack degrades.
 
 ## Layer 2 — Preflight (`tool.preflight()`)
