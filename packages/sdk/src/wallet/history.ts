@@ -8,20 +8,22 @@ import {
 } from './classify.js';
 
 // ---------------------------------------------------------------------------
-// [gRPC migration / S.447] Transaction history is the one surface with NO
-// gRPC `core.*` equivalent (Stage 0 finding A): list-by-sender +
+// [gRPC migration / S.447 + S.450] Transaction history is the one surface with
+// NO gRPC `core.*` equivalent (Stage 0 finding A): list-by-sender +
 // per-tx-by-digest live in the GraphQL RPC, not gRPC. Both go through the
 // Sui GraphQL endpoint (`getSuiGraphQLClient()`), share one node fragment +
 // one mapper, and feed the existing (tested) classifier in `classify.ts`.
 //
-// ⚠️ LIVE-VERIFY GATE: the GraphQL query string below is grounded in the
-// Sui GraphQL beta schema but was NOT runtime-smoked from the build env
-// (no egress to Sui RPC). It MUST pass a live smoke against
-// `sui-mainnet.mystenlabs.com/graphql` (a real sender address) alongside
-// the mainnet money-path verify BEFORE the transport flip ships. The
-// mapper + classifier ARE unit-tested (history.test.ts) against a mocked
-// node shape — only the on-the-wire field names need the live check.
-// Schema ref: https://docs.sui.io/references/sui-graphql
+// LIVE-VERIFIED 2026-06-15 (S.450) against `graphql.mainnet.sui.io` with a
+// real sender (send + Cetus swap digests). The live schema differs from the
+// older `transactionBlocks` one: the query is `transactions` / `transaction`
+// (filter `sentAddress`), the programmable kind is `ProgrammableTransaction`
+// (was `ProgrammableTransactionBlock`) with `commands { nodes }` (was
+// `transactions`), and a move call is `MoveCallCommand` with a nested
+// `function { name module { name package { address } } }` (was a flat
+// `MoveCallTransaction { package module functionName }`). GraphQL errors are
+// now SURFACED, not swallowed (the old `?? []` hid this schema drift as an
+// empty history for a whole session). Schema ref: https://docs.sui.io/references/sui-graphql
 // ---------------------------------------------------------------------------
 
 const TX_NODE_FRAGMENT = `
@@ -33,36 +35,59 @@ const TX_NODE_FRAGMENT = `
   }
   kind {
     __typename
-    ... on ProgrammableTransactionBlock {
-      transactions {
-        nodes { __typename ... on MoveCallTransaction { package module functionName } }
+    ... on ProgrammableTransaction {
+      commands {
+        nodes {
+          __typename
+          ... on MoveCallCommand { function { name module { name package { address } } } }
+        }
       }
     }
   }
 `;
 
 const HISTORY_QUERY = `query History($address: SuiAddress!, $last: Int!) {
-  transactionBlocks(last: $last, filter: { sentAddress: $address }) {
+  transactions(last: $last, filter: { sentAddress: $address }) {
     nodes {${TX_NODE_FRAGMENT}}
   }
 }`;
 
 const TX_BY_DIGEST_QUERY = `query TxByDigest($digest: String!) {
-  transactionBlock(digest: $digest) {${TX_NODE_FRAGMENT}}
+  transaction(digest: $digest) {${TX_NODE_FRAGMENT}}
 }`;
 
-/** Minimal shape of a Sui GraphQL transactionBlock node we consume. */
+/** Minimal shape of a Sui GraphQL transaction node we consume. */
 interface GqlTxNode {
   digest?: string;
   effects?: {
     timestamp?: string;
-    gasEffects?: { gasSummary?: { computationCost?: string; storageCost?: string; storageRebate?: string } };
+    // Live schema returns gas as numbers; `Number()` in the mapper tolerates both.
+    gasEffects?: { gasSummary?: { computationCost?: string | number; storageCost?: string | number; storageRebate?: string | number } };
     balanceChanges?: { nodes?: Array<{ amount?: string; coinType?: { repr?: string }; owner?: { address?: string } }> };
   };
   kind?: {
     __typename?: string;
-    transactions?: { nodes?: Array<{ __typename?: string; package?: string; module?: string; functionName?: string }> };
+    commands?: {
+      nodes?: Array<{
+        __typename?: string;
+        function?: { name?: string; module?: { name?: string; package?: { address?: string } } };
+      }>;
+    };
   };
+}
+
+/** GraphQL transport result with the optional `errors` array surfaced. */
+interface GqlResult<T> {
+  data?: T;
+  errors?: Array<{ message?: string }>;
+}
+
+function assertNoGqlErrors(res: GqlResult<unknown>, what: string): void {
+  if (res.errors?.length) {
+    throw new Error(
+      `Sui GraphQL ${what} failed: ${res.errors.map((e) => e.message ?? 'unknown error').join('; ')}`,
+    );
+  }
 }
 
 export async function queryHistory(
@@ -70,9 +95,11 @@ export async function queryHistory(
   limit = 20,
 ): Promise<TransactionRecord[]> {
   const gql = getSuiGraphQLClient();
-  const res = await gql.query({ query: HISTORY_QUERY, variables: { address, last: limit } });
-  const nodes = (res.data as { transactionBlocks?: { nodes?: GqlTxNode[] } } | undefined)
-    ?.transactionBlocks?.nodes ?? [];
+  const res = (await gql.query({ query: HISTORY_QUERY, variables: { address, last: limit } })) as GqlResult<{
+    transactions?: { nodes?: GqlTxNode[] };
+  }>;
+  assertNoGqlErrors(res, 'history query');
+  const nodes = res.data?.transactions?.nodes ?? [];
   // GraphQL `last` returns ascending; the legacy JSON-RPC path returned
   // descending (newest first) — reverse to preserve caller expectations.
   return nodes.map((n) => recordFromGqlNode(n, address)).reverse();
@@ -82,15 +109,14 @@ export async function queryTransaction(
   digest: string,
   senderAddress: string,
 ): Promise<TransactionRecord | null> {
-  try {
-    const gql = getSuiGraphQLClient();
-    const res = await gql.query({ query: TX_BY_DIGEST_QUERY, variables: { digest } });
-    const node = (res.data as { transactionBlock?: GqlTxNode } | undefined)?.transactionBlock;
-    if (!node) return null;
-    return recordFromGqlNode(node, senderAddress);
-  } catch {
-    return null;
-  }
+  const gql = getSuiGraphQLClient();
+  const res = (await gql.query({ query: TX_BY_DIGEST_QUERY, variables: { digest } })) as GqlResult<{
+    transaction?: GqlTxNode | null;
+  }>;
+  assertNoGqlErrors(res, 'transaction query');
+  const node = res.data?.transaction;
+  if (!node) return null; // genuine not-found (distinct from a query error, which throws above)
+  return recordFromGqlNode(node, senderAddress);
 }
 
 /**
@@ -111,14 +137,18 @@ function recordFromGqlNode(node: GqlTxNode, address: string): TransactionRecord 
 
   const moveCallTargets: string[] = [];
   const commandTypes: string[] = [];
-  if (node.kind?.__typename === 'ProgrammableTransactionBlock') {
-    for (const cmd of node.kind.transactions?.nodes ?? []) {
-      if (cmd.__typename === 'MoveCallTransaction') {
+  if (node.kind?.__typename === 'ProgrammableTransaction') {
+    for (const cmd of node.kind.commands?.nodes ?? []) {
+      if (cmd.__typename === 'MoveCallCommand') {
         commandTypes.push('MoveCall');
-        if (cmd.package && cmd.module && cmd.functionName) {
-          moveCallTargets.push(`${cmd.package}::${cmd.module}::${cmd.functionName}`);
+        const fn = cmd.function;
+        const pkg = fn?.module?.package?.address;
+        const mod = fn?.module?.name;
+        const name = fn?.name;
+        if (pkg && mod && name) {
+          moveCallTargets.push(`${pkg}::${mod}::${name}`);
         }
-      } else if (cmd.__typename === 'TransferObjectsTransaction') {
+      } else if (cmd.__typename === 'TransferObjectsCommand') {
         commandTypes.push('TransferObjects');
       }
     }

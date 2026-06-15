@@ -1,11 +1,11 @@
 /**
- * history.ts — GraphQL mapper tests (S.447 gRPC migration).
+ * history.ts — GraphQL mapper tests (S.447 + S.450 gRPC migration).
  *
- * These verify the GraphQL-node → TransactionRecord mapping + the wiring
- * into the shared classifier — i.e. everything EXCEPT whether the GraphQL
- * query STRING matches the live Sui schema (that's the founder's live smoke,
- * since the build env can't egress to Sui RPC). The mocked node shape mirrors
- * `transactionBlocks.nodes[*]` / `transactionBlock` per the beta schema.
+ * Verifies the GraphQL-node → TransactionRecord mapping, the move-call
+ * classification wiring, and the error-surfacing contract. The node shape
+ * mirrors the LIVE `graphql.mainnet.sui.io` schema confirmed S.450
+ * (`transactions`/`transaction`, `ProgrammableTransaction` + `commands`,
+ * `MoveCallCommand.function { name module { name package { address } } }`).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -18,18 +18,51 @@ import { queryHistory, queryTransaction } from './history.js';
 
 const SENDER = `0x${'a'.repeat(64)}`;
 const USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+const SUI = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+
+// gas values come back as NUMBERS on the live schema (mapper tolerates both).
+const GAS = { computationCost: 1000000, storageCost: 2000000, storageRebate: 500000 };
 
 function sendNode(digest: string) {
   return {
     digest,
     effects: {
       timestamp: '2026-06-15T00:00:00.000Z',
-      gasEffects: { gasSummary: { computationCost: '1000000', storageCost: '2000000', storageRebate: '500000' } },
+      gasEffects: { gasSummary: GAS },
       balanceChanges: { nodes: [{ amount: '-5000000', coinType: { repr: USDC }, owner: { address: SENDER } }] },
     },
     kind: {
-      __typename: 'ProgrammableTransactionBlock',
-      transactions: { nodes: [{ __typename: 'MoveCallTransaction', package: '0x2', module: 'balance', functionName: 'send_funds' }] },
+      __typename: 'ProgrammableTransaction',
+      commands: {
+        nodes: [
+          { __typename: 'MoveCallCommand', function: { name: 'public_transfer', module: { name: 'transfer', package: { address: '0x2' } } } },
+        ],
+      },
+    },
+  };
+}
+
+function swapNode(digest: string) {
+  return {
+    digest,
+    effects: {
+      timestamp: '2026-06-15T00:00:00.000Z',
+      gasEffects: { gasSummary: GAS },
+      balanceChanges: {
+        nodes: [
+          { amount: '-200000000', coinType: { repr: SUI }, owner: { address: SENDER } },
+          { amount: '161311', coinType: { repr: USDC }, owner: { address: SENDER } },
+        ],
+      },
+    },
+    kind: {
+      __typename: 'ProgrammableTransaction',
+      commands: {
+        nodes: [
+          { __typename: 'MoveCallCommand', function: { name: 'swap', module: { name: 'flowx_amm', package: { address: '0x66d7' } } } },
+          { __typename: 'TransferObjectsCommand' },
+        ],
+      },
     },
   };
 }
@@ -37,8 +70,8 @@ function sendNode(digest: string) {
 describe('queryHistory (GraphQL)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('maps transactionBlocks nodes → TransactionRecord[], newest-first', async () => {
-    mockQuery.mockResolvedValue({ data: { transactionBlocks: { nodes: [sendNode('0xolder'), sendNode('0xnewer')] } } });
+  it('maps transactions nodes → TransactionRecord[], newest-first', async () => {
+    mockQuery.mockResolvedValue({ data: { transactions: { nodes: [sendNode('0xolder'), sendNode('0xnewer')] } } });
 
     const recs = await queryHistory(SENDER, 20);
 
@@ -53,12 +86,19 @@ describe('queryHistory (GraphQL)', () => {
     expect(r.timestamp).toBe(Date.parse('2026-06-15T00:00:00.000Z'));
     expect(r.asset).toBe('USDC');
     expect(r.amount).toBeCloseTo(5, 6);
-    expect(typeof r.action).toBe('string');
+    expect(r.action).toBe('send'); // 0x2::transfer::public_transfer
     expect(r.legs.length).toBeGreaterThan(0);
   });
 
+  it('classifies a Cetus swap via move-call targets', async () => {
+    mockQuery.mockResolvedValue({ data: { transactions: { nodes: [swapNode('0xswap')] } } });
+    const [r] = await queryHistory(SENDER, 20);
+    expect(r.action).toBe('swap'); // flowx_amm::swap matches the DEX target patterns
+    expect(r.legs.length).toBe(2); // SUI out + USDC in
+  });
+
   it('passes the sender + limit through as GraphQL variables', async () => {
-    mockQuery.mockResolvedValue({ data: { transactionBlocks: { nodes: [] } } });
+    mockQuery.mockResolvedValue({ data: { transactions: { nodes: [] } } });
     await queryHistory(SENDER, 7);
     expect(mockQuery).toHaveBeenCalledWith(
       expect.objectContaining({ variables: { address: SENDER, last: 7 } }),
@@ -66,16 +106,21 @@ describe('queryHistory (GraphQL)', () => {
   });
 
   it('returns [] when there are no nodes', async () => {
-    mockQuery.mockResolvedValue({ data: { transactionBlocks: { nodes: [] } } });
+    mockQuery.mockResolvedValue({ data: { transactions: { nodes: [] } } });
     expect(await queryHistory(SENDER, 20)).toEqual([]);
+  });
+
+  it('THROWS on GraphQL errors (no longer swallowed as [])', async () => {
+    mockQuery.mockResolvedValue({ data: null, errors: [{ message: 'Unknown field "transactionBlocks"' }] });
+    await expect(queryHistory(SENDER, 20)).rejects.toThrow(/history query failed.*transactionBlocks/);
   });
 });
 
 describe('queryTransaction (GraphQL)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('maps a single transactionBlock → record', async () => {
-    mockQuery.mockResolvedValue({ data: { transactionBlock: sendNode('0xone') } });
+  it('maps a single transaction → record', async () => {
+    mockQuery.mockResolvedValue({ data: { transaction: sendNode('0xone') } });
     const r = await queryTransaction('0xone', SENDER);
     expect(r?.digest).toBe('0xone');
     expect(r?.asset).toBe('USDC');
@@ -83,12 +128,12 @@ describe('queryTransaction (GraphQL)', () => {
   });
 
   it('returns null when the digest is not found', async () => {
-    mockQuery.mockResolvedValue({ data: { transactionBlock: null } });
+    mockQuery.mockResolvedValue({ data: { transaction: null } });
     expect(await queryTransaction('0xmissing', SENDER)).toBeNull();
   });
 
-  it('returns null on query error (swallowed)', async () => {
-    mockQuery.mockRejectedValue(new Error('graphql down'));
-    expect(await queryTransaction('0xboom', SENDER)).toBeNull();
+  it('THROWS on GraphQL errors (not swallowed as null)', async () => {
+    mockQuery.mockResolvedValue({ data: null, errors: [{ message: 'boom' }] });
+    await expect(queryTransaction('0xboom', SENDER)).rejects.toThrow(/transaction query failed.*boom/);
   });
 });
