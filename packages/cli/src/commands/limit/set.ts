@@ -3,12 +3,7 @@
 
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import {
-  readConfig,
-  writeConfig,
-  setLimits,
-  type LimitsConfig,
-} from '../../lib/config-store.js';
+import { setLimits, getLimits, type LimitsConfig } from '@t2000/sdk';
 import {
   printSuccess,
   printKeyValue,
@@ -22,7 +17,8 @@ import {
 export interface LimitSetOptions {
   perTx?: string;
   daily?: string;
-  configPath?: string;
+  /** Test injection — dir holding config.json; absent → `~/.t2000`. */
+  configDir?: string;
 }
 
 /**
@@ -42,7 +38,7 @@ export function parseLimitSetArgs(opts: { perTx?: string; daily?: string }): Lim
 
   const limits: LimitsConfig = {};
   if (perTx !== undefined) limits.perTxUsd = perTx;
-  if (daily !== undefined) limits.dailySendUsd = daily;
+  if (daily !== undefined) limits.dailyUsd = daily;
   return limits;
 }
 
@@ -59,35 +55,34 @@ export function registerLimitSet(parent: Command) {
     .command('set')
     .description('Set spending limits (opt-in; either flag is optional)')
     .option('--per-tx <usd>', 'Max USD per single transaction (send | swap | pay)')
-    .option('--daily <usd>', 'Max USD per send transaction (applies to `t2 send` only)')
+    .option('--daily <usd>', 'Max CUMULATIVE USD spend per day across all writes')
     .addHelpText(
       'after',
       `
 Examples:
   $ t2 limit set --per-tx 50         Cap every write at $50
-  $ t2 limit set --daily 100         Cap every send at $100
+  $ t2 limit set --daily 100         Cap total spend at $100/day (cumulative)
   $ t2 limit set --per-tx 50 --daily 100   Set both
 `,
     )
     .action(async (opts: LimitSetOptions) => {
       try {
         const limits = parseLimitSetArgs({ perTx: opts.perTx, daily: opts.daily });
-        const current = await readConfig(opts.configPath);
-        const next = setLimits(current, limits);
-        const filePath = await writeConfig(next, opts.configPath);
+        setLimits(limits, opts.configDir);
+        const next = getLimits(opts.configDir);
 
         if (isJsonMode()) {
-          printJson({ ok: true, configPath: filePath, limits: next.limits });
+          printJson({ ok: true, limits: next });
           return;
         }
 
         printBlank();
         printSuccess('Spending limits updated.');
-        if (next.limits?.perTxUsd !== undefined) {
-          printKeyValue('Per-transaction', pc.green(`$${next.limits.perTxUsd}`));
+        if (next?.perTxUsd !== undefined) {
+          printKeyValue('Per-transaction', pc.green(`$${next.perTxUsd}`));
         }
-        if (next.limits?.dailySendUsd !== undefined) {
-          printKeyValue('Daily send', pc.green(`$${next.limits.dailySendUsd}`));
+        if (next?.dailyUsd !== undefined) {
+          printKeyValue('Daily (cumulative)', pc.green(`$${next.dailyUsd}`));
         }
         printBlank();
         printInfo('Use `t2 limit show` to view; `t2 limit reset` to clear.');

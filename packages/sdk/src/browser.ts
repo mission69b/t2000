@@ -93,11 +93,9 @@ export type { SimulationResult } from './utils/simulate.js';
 export { findSwapRoute, buildSwapTx, OVERLAY_FEE_RATE } from './protocols/cetus-swap.js';
 export type { SwapRouteResult, OverlayFeeConfig } from './protocols/cetus-swap.js';
 
-// Safeguards — only browser-safe exports (SafeguardEnforcer uses node:fs)
-export { SafeguardError } from './safeguards/errors.js';
-export type { SafeguardRule, SafeguardErrorDetails } from './safeguards/errors.js';
-export type { SafeguardConfig, TxMetadata } from './safeguards/types.js';
-export { DEFAULT_SAFEGUARD_CONFIG } from './safeguards/types.js';
+// Spending limits are Node-only (`@t2000/sdk/limits` uses node:fs) — NOT
+// exported here. The browser (Audric) write path skips client-side limits;
+// the server budget ledger is the cap there.
 
 // Types
 export type {

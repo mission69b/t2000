@@ -12,15 +12,11 @@ import { errorResult } from '../errors.js';
 //   t2000_contact_add / t2000_contact_remove (SuiNS supersedes local
 //   contacts; the deprecation banner already shipped in S.279.x)
 //
-// PHASE D NOTE — limit enforcement parity. The CLI's `t2 send/swap/pay`
-// commands gate writes on `~/.t2000/config.json` `limits.*` via
-// `assertWithinLimits()` (in `packages/cli/src/commands/limit/enforce.ts`).
-// MCP write tools currently DO NOT mirror that gate — they call the SDK
-// directly. Closing this gap requires moving `enforce.ts` + `config-store.ts`
-// from the CLI package into `@t2000/sdk/limits/` so both CLI + MCP can
-// share one gate. Deferred to Phase D (paired with full SafeguardEnforcer
-// removal — the legacy v3 `maxPerTx` / `maxDailySend` schema is dead code
-// for v4 wallets but still wired in `t2000.ts`).
+// H5 CLOSED (R-0 F1, 2026-06-15). The spending-limit gate lives in the SDK
+// write paths (`@t2000/sdk/limits` → enforced inside `agent.send/swap/pay`),
+// so these MCP write tools inherit the SAME per-tx + cumulative-daily cap the
+// CLI obeys — one gate, no bypass. (The legacy v3 `SafeguardEnforcer` +
+// `maxPerTx`/`maxDailySend` schema were deleted in the same slice.)
 
 function extractImageUrls(data: unknown): string[] {
   const urls: string[] = [];

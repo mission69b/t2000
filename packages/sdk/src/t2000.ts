@@ -46,7 +46,7 @@ import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, assertAllowedAsset, type SendableAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
-import { SafeguardEnforcer } from './safeguards/enforcer.js';
+import { LimitEnforcer, approxUsdValue } from './limits/index.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -67,7 +67,9 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly _keypair?: Ed25519Keypair;
   private readonly client: SuiGrpcClient;
   private readonly _address: string;
-  readonly enforcer: SafeguardEnforcer;
+  /** Unified spending-limit gate (per-tx + cumulative daily, USD). Shared by
+   *  CLI + MCP + programmatic writes — one gate, no bypass (R-0 Finding 1). */
+  readonly limits: LimitEnforcer;
 
   private constructor(keypair: Ed25519Keypair, client: SuiGrpcClient, configDir?: string);
   private constructor(signer: TransactionSigner, client: SuiGrpcClient, configDir: string | undefined, isSignerMode: true);
@@ -89,8 +91,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       this._address = getAddress(kp);
     }
     this.client = client;
-    this.enforcer = new SafeguardEnforcer(configDir);
-    this.enforcer.load();
+    this.limits = new LimitEnforcer(configDir);
   }
 
   static async create(options: T2000Options = {}): Promise<T2000> {
@@ -154,17 +155,18 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- MPP Payments --
 
   async pay(options: PayOptions): Promise<PayResult> {
-    this.enforcer.assertNotLocked();
-    this.enforcer.check({ operation: 'pay', amount: options.maxPrice ?? 1.0 });
+    // Gate on the maxPrice ceiling pre-flight (USD); record the ACTUAL cost
+    // post-settle. `force` bypasses (caller owns consent).
+    this.limits.assert({ operation: 'pay', amountUsd: options.maxPrice ?? 0, force: options.force });
 
     // Canonical gasless MPP pay loop lives in `wallet/pay.ts` (browser-safe,
     // shared with the Audric client's unified gasless write path). T2000
-    // owns only the enforcer book-ends; the server budget ledger is the cap
-    // on the browser side, so the client caller skips the enforcer.
+    // owns only the limit book-ends; the server budget ledger is the cap on
+    // the browser side, so the browser caller skips the SDK limit gate.
     const result = await payWithMpp({ signer: this._signer, client: this.client, options });
 
     if (result.paid) {
-      this.enforcer.recordUsage(result.cost ?? options.maxPrice ?? 1.0);
+      this.limits.record(result.cost ?? options.maxPrice ?? 0);
     }
 
     return result;
@@ -187,8 +189,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     amount: number;
     byAmountIn?: boolean;
     slippage?: number;
+    force?: boolean;
   }): Promise<SwapResult> {
-    this.enforcer.assertNotLocked();
+    // Gate on the input-side USD value (stables 1:1; SUI/other → ungated).
+    this.limits.assert({
+      operation: 'swap',
+      amountUsd: approxUsdValue(params.from, params.amount) ?? 0,
+      force: params.force,
+    });
 
     const { findSwapRoute, buildSwapTx, resolveTokenType } = await import('./protocols/cetus-swap.js');
 
@@ -310,6 +318,9 @@ export class T2000 extends EventEmitter<T2000Events> {
       .slice(0, 3)
       .join(' + ') ?? 'Cetus Aggregator';
 
+    // Record the settled input-side USD against the cumulative daily total.
+    this.limits.record(approxUsdValue(params.from, params.amount) ?? 0);
+
     return {
       success: true,
       tx: gasResult.digest,
@@ -375,9 +386,7 @@ export class T2000 extends EventEmitter<T2000Events> {
    * expects JSON-RPC for read paths, and Sui's docs explicitly support
    * the "build via gRPC, execute via JSON-RPC" hybrid).
    */
-  async send(params: { to: string; amount: number; asset: SupportedAsset }): Promise<SendResult> {
-    this.enforcer.assertNotLocked();
-
+  async send(params: { to: string; amount: number; asset: SupportedAsset; force?: boolean }): Promise<SendResult> {
     // [v4.0 Phase A Day 2] Asset is REQUIRED at runtime (no more silent
     // USDC default). The parameter type is `SupportedAsset` (the wider
     // SDK surface) rather than `SendableAsset` so callers that still
@@ -399,6 +408,13 @@ export class T2000 extends EventEmitter<T2000Events> {
     // one of `SendableAsset` (USDC / USDsui / SUI). Cast statically.
     const sendableAsset = asset as SendableAsset;
 
+    // Spending-limit gate (USD; stables 1:1, SUI ungated). `force` bypasses.
+    this.limits.assert({
+      operation: 'send',
+      amountUsd: approxUsdValue(sendableAsset, params.amount) ?? 0,
+      force: params.force,
+    });
+
     const resolved = await this.resolveRecipient(params.to);
     const sendAmount = params.amount;
     const sendTo = resolved.address;
@@ -417,7 +433,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       { buildClient },
     );
 
-    this.enforcer.recordUsage(sendAmount);
+    this.limits.record(approxUsdValue(sendableAsset, sendAmount) ?? 0);
     const balance = await this.balance();
 
     this.emitBalanceChange(sendableAsset, sendAmount, 'send', gasResult.digest);

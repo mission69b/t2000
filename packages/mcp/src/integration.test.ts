@@ -230,7 +230,7 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     const content = result.content as Array<{ type: string; text: string }>;
     const data = JSON.parse(content[0].text);
     expect(typeof data.configured).toBe('boolean');
-    expect(typeof data.configPath).toBe('string');
+    expect(typeof data.spentTodayUsd).toBe('number');
   });
 
   it('returns error for invalid tool arguments', async () => {

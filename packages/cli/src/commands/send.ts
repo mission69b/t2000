@@ -32,7 +32,6 @@ import {
   explorerUrl,
 } from '../output.js';
 import { withAgent } from '../lib/with-agent.js';
-import { assertWithinLimits, approxUsdValue } from './limit/enforce.js';
 
 const ACCEPTED_ASSETS = ['USDC', 'USDsui', 'SUI'] as const;
 type AcceptedAsset = (typeof ACCEPTED_ASSETS)[number];
@@ -132,13 +131,11 @@ Examples:
       try {
         const { amount: parsedAmount, asset, recipient } = parseSendArgs([amount, ...args]);
 
-        const usdValue = approxUsdValue(asset, parsedAmount);
-        if (usdValue !== null) {
-          await assertWithinLimits({ operation: 'send', amountUsd: usdValue, force: opts.force });
-        }
-
         const agent = await withAgent({ keyPath: opts.key });
 
+        // The spending-limit gate now lives in the SDK write path (one gate
+        // for CLI + MCP + programmatic). Pass `--force` through; the SDK
+        // throws LimitExceededError, which handleError() renders.
         const result = await agent.send({
           to: recipient,
           amount: parsedAmount,
@@ -146,6 +143,7 @@ Examples:
           // the SDK accepts `SupportedAsset` and re-validates via
           // `assertAllowedAsset('send', …)` at runtime.
           asset: asset as SupportedAsset,
+          force: opts.force,
         });
 
         if (isJsonMode()) {

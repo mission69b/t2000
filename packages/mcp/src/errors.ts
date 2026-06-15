@@ -1,4 +1,4 @@
-import { T2000Error, SafeguardError } from '@t2000/sdk';
+import { T2000Error, LimitExceededError } from '@t2000/sdk';
 
 interface McpToolError {
   code: string;
@@ -8,12 +8,17 @@ interface McpToolError {
 }
 
 export function mapError(err: unknown): McpToolError {
-  if (err instanceof SafeguardError) {
+  if (err instanceof LimitExceededError) {
     return {
-      code: 'SAFEGUARD_BLOCKED',
+      code: err.code, // 'LIMIT_EXCEEDED'
       message: err.message,
       retryable: false,
-      details: { rule: err.rule, ...err.details },
+      details: {
+        operation: err.operation,
+        limitKind: err.limitKind,
+        limit: err.limit,
+        attempted: err.attempted,
+      },
     };
   }
 

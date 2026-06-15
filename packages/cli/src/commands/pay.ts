@@ -29,7 +29,6 @@ import {
   handleError,
 } from '../output.js';
 import { withAgent } from '../lib/with-agent.js';
-import { assertWithinLimits } from './limit/enforce.js';
 
 interface PayOptions {
   key?: string;
@@ -81,8 +80,6 @@ Examples:
           throw new Error(`Invalid --max-price: "${opts.maxPrice}". Must be a positive number.`);
         }
 
-        await assertWithinLimits({ operation: 'pay', amountUsd: maxPrice, force: opts.force });
-
         const agent = await withAgent({ keyPath: opts.key });
 
         const startTime = Date.now();
@@ -99,6 +96,7 @@ Examples:
           headers: opts.header,
           body: opts.data,
           maxPrice,
+          force: opts.force,
         });
 
         const elapsed = Date.now() - startTime;

@@ -1,16 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { mapError, errorResult } from './errors.js';
-import { T2000Error, SafeguardError } from '@t2000/sdk';
+import { T2000Error, LimitExceededError } from '@t2000/sdk';
 
 describe('mapError', () => {
-  it('should map SafeguardError to SAFEGUARD_BLOCKED', () => {
-    const err = new SafeguardError('maxPerTx', { attempted: 200, limit: 100 });
+  it('should map LimitExceededError to LIMIT_EXCEEDED', () => {
+    const err = new LimitExceededError({ operation: 'send', limitKind: 'perTxUsd', limit: 100, attempted: 200 });
     const mapped = mapError(err);
-    expect(mapped.code).toBe('SAFEGUARD_BLOCKED');
+    expect(mapped.code).toBe('LIMIT_EXCEEDED');
     expect(mapped.retryable).toBe(false);
-    expect(mapped.details?.rule).toBe('maxPerTx');
+    expect(mapped.details?.limitKind).toBe('perTxUsd');
     expect(mapped.details?.attempted).toBe(200);
     expect(mapped.details?.limit).toBe(100);
+    expect(mapped.details?.operation).toBe('send');
   });
 
   it('should map T2000Error preserving code and retryable', () => {

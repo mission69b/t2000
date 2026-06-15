@@ -10,13 +10,13 @@ describe('parseLimitSetArgs', () => {
   });
 
   it('parses --daily', () => {
-    expect(parseLimitSetArgs({ daily: '100' })).toEqual({ dailySendUsd: 100 });
+    expect(parseLimitSetArgs({ daily: '100' })).toEqual({ dailyUsd: 100 });
   });
 
   it('parses both flags', () => {
     expect(parseLimitSetArgs({ perTx: '50', daily: '100' })).toEqual({
       perTxUsd: 50,
-      dailySendUsd: 100,
+      dailyUsd: 100,
     });
   });
 

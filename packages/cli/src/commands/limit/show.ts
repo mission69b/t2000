@@ -3,7 +3,7 @@
 
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { readConfig } from '../../lib/config-store.js';
+import { getLimits } from '@t2000/sdk';
 import {
   printKeyValue,
   printBlank,
@@ -14,8 +14,8 @@ import {
 } from '../../output.js';
 
 export interface LimitShowOptions {
-  /** Test injection; absent → uses default `~/.t2000/config.json`. */
-  configPath?: string;
+  /** Test injection — dir holding config.json; absent → `~/.t2000`. */
+  configDir?: string;
 }
 
 export function registerLimitShow(parent: Command) {
@@ -24,10 +24,9 @@ export function registerLimitShow(parent: Command) {
     .description('Show current spending limits')
     .action(async (opts: LimitShowOptions) => {
       try {
-        const config = await readConfig(opts.configPath);
-        const limits = config.limits ?? {};
+        const limits = getLimits(opts.configDir) ?? {};
         const hasAny =
-          limits.perTxUsd !== undefined || limits.dailySendUsd !== undefined;
+          limits.perTxUsd !== undefined || limits.dailyUsd !== undefined;
 
         if (isJsonMode()) {
           printJson({
@@ -50,8 +49,8 @@ export function registerLimitShow(parent: Command) {
         if (limits.perTxUsd !== undefined) {
           printKeyValue('Per-transaction', pc.green(`$${limits.perTxUsd}`));
         }
-        if (limits.dailySendUsd !== undefined) {
-          printKeyValue('Daily send', pc.green(`$${limits.dailySendUsd}`));
+        if (limits.dailyUsd !== undefined) {
+          printKeyValue('Daily (cumulative)', pc.green(`$${limits.dailyUsd}`));
         }
         printBlank();
         printInfo('Use `--force` on `t2 send` / `t2 swap` / `t2 pay` to override per-call.');

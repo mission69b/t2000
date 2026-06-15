@@ -173,6 +173,8 @@ export interface PayOptions {
   body?: string;
   headers?: Record<string, string>;
   maxPrice?: number;
+  /** Bypass the spending-limit gate for this call (caller owns consent). */
+  force?: boolean;
 }
 
 export interface PayResult {

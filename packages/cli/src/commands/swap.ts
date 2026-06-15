@@ -27,7 +27,6 @@ import {
   explorerUrl,
 } from '../output.js';
 import { withAgent } from '../lib/with-agent.js';
-import { assertWithinLimits, approxUsdValue } from './limit/enforce.js';
 
 /**
  * Pure parser for the v4 `t2 swap` positional args. v4 is strictly
@@ -83,17 +82,6 @@ Examples:
         try {
           const parsed = parseSwapArgs(amountStr, from, to);
 
-          if (!opts.quote) {
-            const usdValue = approxUsdValue(parsed.from, parsed.amount);
-            if (usdValue !== null) {
-              await assertWithinLimits({
-                operation: 'swap',
-                amountUsd: usdValue,
-                force: opts.force,
-              });
-            }
-          }
-
           const agent = await withAgent({ keyPath: opts.key });
 
           if (opts.quote) {
@@ -120,11 +108,13 @@ Examples:
           }
 
           const slippage = Math.min(parseFloat(opts.slippage ?? '1') / 100, 0.05);
+          // Spending-limit gate lives in the SDK write path now; pass --force.
           const result = await agent.swap({
             from: parsed.from,
             to: parsed.to,
             amount: parsed.amount,
             slippage,
+            force: opts.force,
           });
 
           if (isJsonMode()) {

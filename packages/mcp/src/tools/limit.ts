@@ -1,50 +1,35 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { homedir } from 'node:os';
+import { getLimits, dailySpentToday } from '@t2000/sdk';
 import { errorResult } from '../errors.js';
 
-// [v4.0 Phase B — 2026-05-26] `t2000_limit` (read-only) mirrors
-// `t2 limit show` — the LLM can SEE what spending caps the user
-// has set in `~/.t2000/config.json`, but cannot set or clear them
-// via MCP. Setting / clearing flows through the CLI (`t2 limit set`,
-// `t2 limit reset`) where the user has terminal access.
+// [v4.0 Phase B — 2026-05-26; R-0 F1 — 2026-06-15] `t2000_limit` (read-only)
+// mirrors `t2 limit show` — the LLM can SEE the user's spending caps but
+// cannot set/clear them via MCP (that flows through the CLI, where the user
+// has terminal access). Reads through the SAME `@t2000/sdk/limits` gate the
+// write path enforces (single source of truth).
 //
-// PHASE D NOTE — limit enforcement parity. The CLI's `t2 send/swap/pay`
-// commands gate writes on these limits. MCP write tools currently do
-// NOT (see tools/write.ts header). Closing the gap requires moving
-// the enforce code into `@t2000/sdk/limits/` so both surfaces share
-// one gate. Until then, this tool is informational — the LLM can read
-// limits to narrate context to the user, but MCP writes proceed
-// without gating.
+// H5 CLOSED (R-0 F1): MCP writes ARE now gated — `agent.send/swap/pay` enforce
+// the unified limit in the SDK, so this tool is no longer "informational only";
+// it narrates the caps the writes actually obey, plus today's cumulative spend.
 
 export interface LimitsView {
   configured: boolean;
   perTxUsd?: number;
-  dailySendUsd?: number;
-  configPath: string;
+  dailyUsd?: number;
+  /** Cumulative USD spent so far today (UTC) — counts against `dailyUsd`. */
+  spentTodayUsd: number;
 }
 
-function defaultConfigPath(): string {
-  return resolve(homedir(), '.t2000', 'config.json');
-}
-
-export async function readLimits(configPath?: string): Promise<LimitsView> {
-  const path = configPath ?? defaultConfigPath();
-  try {
-    const content = await readFile(path, 'utf-8');
-    const raw = JSON.parse(content);
-    if (typeof raw !== 'object' || raw === null) return { configured: false, configPath: path };
-    const limits = (raw as Record<string, unknown>).limits;
-    if (typeof limits !== 'object' || limits === null) return { configured: false, configPath: path };
-    const l = limits as Record<string, unknown>;
-    const perTxUsd = typeof l.perTxUsd === 'number' && l.perTxUsd > 0 ? l.perTxUsd : undefined;
-    const dailySendUsd = typeof l.dailySendUsd === 'number' && l.dailySendUsd > 0 ? l.dailySendUsd : undefined;
-    const configured = perTxUsd !== undefined || dailySendUsd !== undefined;
-    return { configured, perTxUsd, dailySendUsd, configPath: path };
-  } catch {
-    return { configured: false, configPath: path };
-  }
+export function readLimits(configDir?: string): LimitsView {
+  const limits = getLimits(configDir);
+  const perTxUsd = limits?.perTxUsd;
+  const dailyUsd = limits?.dailyUsd;
+  return {
+    configured: perTxUsd !== undefined || dailyUsd !== undefined,
+    perTxUsd,
+    dailyUsd,
+    spentTodayUsd: dailySpentToday(configDir),
+  };
 }
 
 export function registerLimitTool(server: McpServer): void {
@@ -58,7 +43,7 @@ Use the returned values to inform the user about their own configured caps befor
     {},
     async () => {
       try {
-        const view = await readLimits();
+        const view = readLimits();
         return { content: [{ type: 'text', text: JSON.stringify(view) }] };
       } catch (err) {
         return errorResult(err);

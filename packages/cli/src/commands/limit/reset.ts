@@ -2,12 +2,7 @@
 // `t2 limit reset` — clear opt-in spending limits.
 
 import type { Command } from 'commander';
-import {
-  readConfig,
-  writeConfig,
-  clearLimits,
-  hasLimits,
-} from '../../lib/config-store.js';
+import { clearLimits, hasLimits } from '@t2000/sdk';
 import {
   printSuccess,
   printBlank,
@@ -18,7 +13,8 @@ import {
 } from '../../output.js';
 
 export interface LimitResetOptions {
-  configPath?: string;
+  /** Test injection — dir holding config.json; absent → `~/.t2000`. */
+  configDir?: string;
 }
 
 export function registerLimitReset(parent: Command) {
@@ -27,8 +23,7 @@ export function registerLimitReset(parent: Command) {
     .description('Clear all spending limits')
     .action(async (opts: LimitResetOptions) => {
       try {
-        const current = await readConfig(opts.configPath);
-        if (!hasLimits(current)) {
+        if (!hasLimits(opts.configDir)) {
           if (isJsonMode()) {
             printJson({ ok: true, cleared: false, reason: 'no limits were set' });
             return;
@@ -39,11 +34,10 @@ export function registerLimitReset(parent: Command) {
           return;
         }
 
-        const next = clearLimits(current);
-        const filePath = await writeConfig(next, opts.configPath);
+        clearLimits(opts.configDir);
 
         if (isJsonMode()) {
-          printJson({ ok: true, cleared: true, configPath: filePath });
+          printJson({ ok: true, cleared: true });
           return;
         }
 

@@ -194,6 +194,20 @@ export type {
   BuildRevokeLeafParams,
   LabelValidationResult,
 } from './protocols/suins-leaf.js';
-export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
-export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
-export { DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';
+// Unified spending limits (per-tx + cumulative daily, USD) — one gate for
+// CLI + MCP + programmatic writes (R-0 Finding 1; closes H5). Node-only.
+export {
+  LimitEnforcer,
+  LimitExceededError,
+  approxUsdValue,
+  assertLimitConfig,
+  getLimits,
+  hasLimits,
+  setLimits,
+  clearLimits,
+  dailySpentToday,
+  recordDailySpend,
+  readLimitsFile,
+  writeLimitsFile,
+} from './limits/index.js';
+export type { LimitsConfig, DailySpend, LimitsFile, LimitKind, LimitOperation, LimitAssertInput } from './limits/index.js';
