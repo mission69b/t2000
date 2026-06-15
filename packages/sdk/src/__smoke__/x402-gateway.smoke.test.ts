@@ -36,9 +36,12 @@
  *
  *   *  the SDK pay() does ONE balance read (address-balance check) then signs
  *      offline; the pure offline-sign property lives in the protocol package.
- *   ** H9 is settle-then-serve + MANUAL refund today (S.412 `refund_due`);
- *      automated refund-on-upstream-failure is Phase 2 item 2.6. An assertion
- *      of "zero charge on failure" would be premature until 2.6 ships.
+ *   ** H9 shipped (S.456, item 2.6): an upstream failure after settle triggers
+ *      an automated gasless USDC refund (treasury → payer) — settle-then-refund,
+ *      net zero (NOT never-charged; settle-first is kept so forged payments
+ *      can't burn upstream cost). A live assertion needs a deliberately-failing
+ *      endpoint + the TREASURY_PRIVATE_KEY set — a gateway/founder e2e, not a
+ *      pure client smoke. Falls back to manual `refund_due` without the key.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 

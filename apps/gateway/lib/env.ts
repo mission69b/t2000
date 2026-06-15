@@ -136,6 +136,13 @@ const serverSchema = z.object({
   // scope, available-at-build).
   MPP_CHALLENGE_SECRET: optionalString,
 
+  // [2.6] Treasury wallet Bech32 secret (suiprivkey1…) — signs the gasless
+  // USDC refund (treasury → payer) when an upstream fails AFTER settlement.
+  // OPTIONAL (loud boot warning when absent): refunds degrade to the manual
+  // `refund_due` log. Set in Vercel (Production, available-at-build) to
+  // activate auto-refund. The treasury address must match TREASURY_ADDRESS.
+  TREASURY_PRIVATE_KEY: optionalString,
+
   // ---- Optional with explicit defaults ----
   TREASURY_ADDRESS: optionalStringWithDefault(
     '0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012',
@@ -223,6 +230,7 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     KV_REST_API_URL: process.env.KV_REST_API_URL,
     KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
     MPP_CHALLENGE_SECRET: process.env.MPP_CHALLENGE_SECRET,
+    TREASURY_PRIVATE_KEY: process.env.TREASURY_PRIVATE_KEY,
     // Server — optional with defaults / optional / test
     TREASURY_ADDRESS: process.env.TREASURY_ADDRESS,
     GATEWAY_URL: process.env.GATEWAY_URL,
@@ -297,6 +305,7 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'KV_REST_API_URL',
   'KV_REST_API_TOKEN',
   'MPP_CHALLENGE_SECRET',
+  'TREASURY_PRIVATE_KEY',
   // Optional / defaulted server-only
   'TREASURY_ADDRESS',
   'GATEWAY_URL',

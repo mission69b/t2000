@@ -14,6 +14,7 @@ import {
   withX402Accepts,
   withX402Receipt,
 } from './x402-dialect';
+import { refundUsdc, refundsEnabled } from './refund';
 import { env } from '@/lib/env';
 
 const NETWORK = (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
@@ -81,10 +82,10 @@ function inferServiceEndpoint(rawUrl: string): { service: string; endpoint: stri
  * x402 payment or settlement fails (caller falls through to the legacy
  * mppx path, which re-issues the dual-dialect 402).
  *
- * Upstream failure AFTER a successful settle is logged as `refund_due` —
- * automated refunds are Phase 2 (x402 spec 2.6); until then the log line
- * + payment row are the audit trail for the (rare, price-bounded) manual
- * refund.
+ * Upstream failure AFTER a successful settle triggers an automated gasless
+ * USDC refund (treasury → payer) via `autoRefund` (x402 spec 2.6). If the
+ * treasury key is unset or the refund tx fails, it logs `refund_due` and a
+ * human refunds (the price-bounded manual backstop).
  */
 async function runX402Path(
   req: Request,
@@ -128,25 +129,64 @@ async function runX402Path(
   try {
     upstreamResponse = await params.runUpstream();
   } catch (err) {
-    console.error(
-      `[x402] refund_due digest=${settle.transaction} payer=${settle.payer} amount=${params.amount} reason=upstream-threw:`,
-      err instanceof Error ? err.message : err,
+    const refundTx = await autoRefund(
+      settle,
+      params.amount,
+      `upstream-threw: ${err instanceof Error ? err.message : String(err)}`,
     );
     return withX402Receipt(
       Response.json(
-        { error: 'Upstream service failed after payment settled' },
+        {
+          error: 'Upstream service failed after payment settled',
+          refunded: !!refundTx,
+          ...(refundTx ? { refundTx } : {}),
+        },
         { status: 502 },
       ),
       settle,
     );
   }
   if (!upstreamResponse.ok) {
-    console.error(
-      `[x402] refund_due digest=${settle.transaction} payer=${settle.payer} amount=${params.amount} upstreamStatus=${upstreamResponse.status}`,
-    );
+    // Refund the charge, then still serve the upstream's error response so the
+    // caller sees what failed (and that they were made whole).
+    await autoRefund(settle, params.amount, `upstreamStatus=${upstreamResponse.status}`);
   }
 
   return withX402Receipt(await normalizeResponse(upstreamResponse), settle);
+}
+
+/**
+ * Refund-on-upstream-failure (x402 spec 2.6). Issues a gasless USDC refund
+ * (treasury → payer) when an upstream fails AFTER a successful settle. Returns
+ * the refund tx digest, or null when refunds are disabled (no key) or the
+ * refund tx fails — both cases log `refund_due` for the manual backstop.
+ * `settle-first` already rejects unsettleable/forged payments before any
+ * upstream cost, so this only ever refunds a real, on-chain-confirmed charge.
+ */
+async function autoRefund(
+  settle: { transaction: string; payer: string },
+  amount: string,
+  reason: string,
+): Promise<string | null> {
+  if (!refundsEnabled()) {
+    console.error(
+      `[x402] refund_due digest=${settle.transaction} payer=${settle.payer} amount=${amount} reason=${reason} (no TREASURY_PRIVATE_KEY — manual refund)`,
+    );
+    return null;
+  }
+  try {
+    const refundTx = await refundUsdc({ payer: settle.payer, amount, network: NETWORK });
+    console.error(
+      `[x402] refunded digest=${settle.transaction} payer=${settle.payer} amount=${amount} refundTx=${refundTx} reason=${reason}`,
+    );
+    return refundTx;
+  } catch (err) {
+    console.error(
+      `[x402] refund_due digest=${settle.transaction} payer=${settle.payer} amount=${amount} reason=${reason} (auto-refund FAILED — manual):`,
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
 }
 
 interface ProxyOptions {
