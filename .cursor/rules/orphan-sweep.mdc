@@ -11,10 +11,26 @@ The skill for t2000's first agent loop. A removal is never done when the file is
 
 ## The four parts
 
-1. **Trigger (heartbeat):** on-event after a PR/commit whose message starts `refactor`/`chore`/`🔥`/`♻️` or touches `packages/**`, and/or a weekly cron. Harness = founder pick (Cursor cloud agent / Codex automation / Claude Code routine).
+1. **Trigger (heartbeat):** Phase 1 = run by hand (`node scripts/loops/orphan-sweep-agent.mjs`) — get one run reliable first. Phase 2 = schedule it (weekly cron / launchd, or a Cursor Cloud Agent) once it is trustworthy.
 2. **Skill:** this file (the procedure below).
 3. **State:** `spec/loops/orphan-sweep-STATE.md` — what was swept, what was found, removed-symbol patterns to keep watching. Read at start, write at end.
-4. **Gate:** `scripts/loops/orphan-sweep-gate.sh` — objective; exits non-zero on lint/typecheck/test failure. NO PR unless green.
+4. **Gate:** `scripts/loops/orphan-sweep-gate.sh` — objective; exits non-zero on lint/typecheck/unit-test failure. NO commit/PR unless green.
+
+## Harness (Cursor) — Phase 1: local, manual-first
+
+The runner is `scripts/loops/orphan-sweep-agent.mjs` (Cursor SDK, `Agent.prompt`, local runtime). It runs the maker pass against the **full workspace** so it sees BOTH repos.
+
+```bash
+pnpm add -Dw @cursor/sdk            # once (or: npm i -g @cursor/sdk)
+export CURSOR_API_KEY=cursor_...    # Cursor Dashboard -> Integrations
+node scripts/loops/orphan-sweep-agent.mjs   # run from the workspace root that contains spec/
+```
+
+Then YOU review `git diff` in both repos, run the gate yourself, and commit if green (the human approval gate). The agent does not commit or push.
+
+**Why local (not t2000 GitHub Actions):** this loop sweeps t2000 code AND the `spec/` private repo (tracker/roadmap/handoff staleness). t2000's CI checks out only the public repo — `spec/` is not there, so CI would be blind to half the job and could not read/update the STATE file. The local runner runs where `spec/` is already mounted.
+
+**Phase 2 (after manual runs are reliable):** schedule it — a local cron/launchd calling the runner, or a Cursor Cloud Agent configured with BOTH repos (`t2000` + `t2000-internal`) so the cloud VM can see `spec/`; add `autoCreatePR` + a second cheap-model verifier sub-agent (per `agent-loops.mdc`). Do not schedule until the manual run is trustworthy.
 
 ## The procedure (maker)
 
