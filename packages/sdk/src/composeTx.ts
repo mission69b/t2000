@@ -70,7 +70,6 @@ import type { OverlayFeeConfig } from './protocols/cetus-swap.js';
 import { addSwapToTx, type SwapRouteResult } from './protocols/cetus-swap.js';
 import { addSendToTx } from './wallet/send.js';
 import {
-  selectAndSplitCoin,
   selectSuiCoin,
   type SponsoredCoinMergeCache,
 } from './wallet/coinSelection.js';
