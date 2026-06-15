@@ -57,10 +57,9 @@
     "@mysten/sui": "^2.17.0",
     "@mysten/suins": "^1.1.1",
     "@mysten/zklogin": "^0.8.1",
-    "@suimpp/mpp": "^0.7.0",
+    "@suimpp/mpp": "^0.8.1",
     "bn.js": "^5.2.1",
-    "eventemitter3": "^5",
-    "mppx": "^0.4.9"
+    "eventemitter3": "^5"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",

@@ -179,6 +179,14 @@ export interface PayResult {
   status: number;
   body: unknown;
   paid: boolean;
+  /**
+   * Which payment dialect settled the call. `'x402'` = the sign-then-settle
+   * x402 `sui-exact` scheme (client signs, gateway settles); `'legacy'` = the
+   * pre-x402 MPP digest dialect (client broadcasts, retries with the digest).
+   * Undefined when nothing was paid (free/cached endpoint). See
+   * SUIMPP_X402_SCHEME.md.
+   */
+  dialect?: 'x402' | 'legacy';
   cost?: number;
   /**
    * SUI gas cost actually paid on chain. Zero for gasless payments —

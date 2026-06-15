@@ -32,7 +32,7 @@ run pnpm --filter @t2000/cli exec vitest run --exclude '**/*.integration.test.ts
 #    confirmed removed in the cutover. Extend STALE_PATTERNS as new removals land
 #    (the "compounding skill" — see orphan-sweep.mdc). Findings are for the maker
 #    to review; they do NOT fail the gate (comments may legitimately mention them).
-STALE_PATTERNS='@t2000/engine|/adapters/|protocolFee|addFeeTransfer|ContactManager|createSuiClient|transactionBlocks\(|\bisTier1\b|\bisTier2\b|SAVEABLE_ASSETS|gasReserve|@naviprotocol/lending'
+STALE_PATTERNS='@t2000/engine|/adapters/|protocolFee|addFeeTransfer|ContactManager|createSuiClient|transactionBlocks\(|\bisTier1\b|\bisTier2\b|SAVEABLE_ASSETS|gasReserve|@naviprotocol/lending|mpp-cost|parseChallengeAmount|payViaLegacy'
 echo ""
 echo "── stale-ref scan (informational) ──"
 if rg -n -e "$STALE_PATTERNS" \

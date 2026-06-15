@@ -182,7 +182,7 @@ t2000 builds Sui transactions with thin builders — no protocol SDK dependencie
 |---|---|---|
 | Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, x402 USDC payments |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
-| x402 / MPP | `mppx` + `@suimpp/mpp/client` | Paid API access — every major AI + data API on `mpp.t2000.ai` |
+| x402 | `@suimpp/mpp/x402` (sign-then-settle) | Paid API access — every major AI + data API on `mpp.t2000.ai` |
 
 ## Testing
 

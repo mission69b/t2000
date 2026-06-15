@@ -4,11 +4,12 @@
 // Contract changes vs. the pre-pivot legacy command:
 //   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`.
 //   - Adds `--estimate` flag: issues the request WITHOUT a payment
-//     header, parses the 402 challenge via `mppx.Challenge.fromResponse`,
-//     prints `realm` + `intent` + `amount` + `currency` + `recipient`,
-//     and exits 0 without paying. SPEC verification gate
-//     ("t2 pay <url> --estimate" → prints price + service info, returns
-//     exit 0 without executing).
+//     header, reads the x402 `accepts[]` envelope from the 402 body,
+//     prints price + asset + recipient + resource, and exits 0 without
+//     paying. SPEC verification gate ("t2 pay <url> --estimate" → prints
+//     price + service info, returns exit 0 without executing).
+//     x402-only (SUIMPP_X402_SCHEME): the gateway always advertises the
+//     x402 envelope; the legacy mppx challenge parser was retired here.
 //   - Surfaces the SDK's gasless badge (`gasCostSui === 0`) — when an
 //     MPP payment hits the Sui gasless stablecoin allowlist, the
 //     receipt renders `gasless ⚡` instead of a SUI cost.
@@ -194,31 +195,40 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
     return;
   }
 
-  // Parse the 402 challenge via mppx. Dynamic import keeps the
-  // top-level pay.ts file lightweight in non-pay invocations.
-  const { Challenge } = await import('mppx');
-  let challenge: ReturnType<typeof Challenge.fromResponse>;
+  // Read the x402 `accepts[]` envelope from the 402 body. The gateway
+  // advertises it on every 402 (SUIMPP_X402_SCHEME); we no longer parse the
+  // legacy WWW-Authenticate challenge.
+  interface X402Accept {
+    scheme?: string;
+    network?: string;
+    asset?: string;
+    maxAmountRequired?: string;
+    payTo?: string;
+    resource?: string;
+    maxTimeoutSeconds?: number;
+  }
+  let accepts: X402Accept[] = [];
   try {
-    challenge = Challenge.fromResponse(response);
-  } catch (err) {
+    const body = (await response.json()) as { accepts?: X402Accept[] };
+    accepts = body.accepts ?? [];
+  } catch {
+    accepts = [];
+  }
+  const req = accepts.find((a) => a.scheme === 'exact' && a.network?.startsWith('sui:')) ?? accepts[0];
+  if (!req) {
     throw new Error(
-      `Service returned 402 but the WWW-Authenticate challenge could not be parsed: ${err instanceof Error ? err.message : String(err)}`,
+      'Service returned 402 but advertised no x402 payment requirement (accepts[]). ' +
+        'This CLI only speaks the x402 dialect.',
     );
   }
 
-  const request = challenge.request as {
-    amount?: string;
-    currency?: string;
-    recipient?: string;
-  };
-  const amountRaw = request.amount;
-  const currency = request.currency ?? 'unknown';
-  const recipient = request.recipient ?? 'unknown';
+  const amountRaw = req.maxAmountRequired;
+  const asset = req.asset ?? 'unknown';
+  const recipient = req.payTo ?? 'unknown';
 
-  // Convert USDC raw units (6-decimal) to a USD display value when the
-  // currency type ends in `::usdc::USDC` — best-effort, falls back to
-  // raw if anything looks unfamiliar.
-  const looksLikeUsdc = /::usdc::USDC/i.test(currency);
+  // Convert USDC raw units (6-decimal) to a USD display value when the asset
+  // type ends in `::usdc::USDC` — best-effort, falls back to raw otherwise.
+  const looksLikeUsdc = /::usdc::USDC/i.test(asset);
   const display =
     amountRaw && looksLikeUsdc
       ? `$${(Number(amountRaw) / 1_000_000).toFixed(4)} USDC`
@@ -230,14 +240,13 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
       method,
       status: 402,
       estimate: {
-        realm: challenge.realm,
-        method: challenge.method,
-        intent: challenge.intent,
-        description: challenge.description,
-        expires: challenge.expires,
+        scheme: req.scheme,
+        network: req.network,
+        resource: req.resource,
+        maxTimeoutSeconds: req.maxTimeoutSeconds,
         amount: amountRaw,
         amountDisplay: display,
-        currency,
+        asset,
         recipient,
       },
     });
@@ -245,17 +254,13 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
   }
 
   printBlank();
-  printSuccess(`Service requires payment (402 challenge parsed)`);
-  printKeyValue('Realm', challenge.realm);
-  printKeyValue('Method', `${challenge.method} / ${challenge.intent}`);
+  printSuccess(`Service requires payment (x402 ${req.scheme ?? 'exact'} on ${req.network ?? 'sui'})`);
   printKeyValue('Price', pc.green(display));
-  if (challenge.description) {
-    printKeyValue('Description', challenge.description);
-  }
-  if (challenge.expires) {
-    printKeyValue('Expires', challenge.expires);
-  }
+  printKeyValue('Asset', asset);
   printKeyValue('Recipient', recipient);
+  if (req.resource) {
+    printKeyValue('Resource', req.resource);
+  }
   printBlank();
   printInfo(`Run without --estimate to pay and execute.`);
   printBlank();

@@ -1,34 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { toBase64 } from '@mysten/sui/utils';
 import type { TransactionSigner } from '../signer.js';
 import type { SuiGrpcClient } from '@mysten/sui/grpc';
 
-// --- Mocks for the dynamically-imported MPP stack -------------------------
-// payWithMpp dynamically imports mppx/client, @suimpp/mpp/client, and
-// @mysten/sui/grpc. We mock all three so the pay loop is exercised without
-// network / chain access.
+// --- Mocks for the dynamically-imported stacks -----------------------------
+// payWithMpp probes with global fetch, then takes the x402 path
+// (@suimpp/mpp/x402). We mock the dynamic deps so the pay loop is exercised
+// without network / chain access.
 
-const fetchMock = vi.fn();
-const onChallengeRef: { current?: (c: unknown) => Promise<unknown> } = {};
-const executeRef: { current?: (tx: unknown) => Promise<unknown> } = {};
-
-vi.mock('mppx/client', () => ({
-  Mppx: {
-    create: (opts: {
-      onChallenge?: (c: unknown) => Promise<unknown>;
-      methods: Array<{ execute?: (tx: unknown) => Promise<unknown> }>;
-    }) => {
-      onChallengeRef.current = opts.onChallenge;
-      executeRef.current = opts.methods[0]?.execute;
-      return { fetch: fetchMock };
-    },
-  },
-}));
-
-vi.mock('@suimpp/mpp/client', () => ({
-  USDC: { symbol: 'USDC' },
-  // `sui(...)` returns the method object; payWithMpp only reads `.execute`
-  // off it via methods[0], which our Mppx mock captures.
-  sui: (cfg: { execute: (tx: unknown) => Promise<unknown> }) => cfg,
+const buildX402Mock = vi.fn(async (..._args: unknown[]) => ({ header: 'signed-x402-header', payment: {} }));
+vi.mock('@suimpp/mpp/x402', () => ({
+  buildX402SignedPayment: (...args: unknown[]) => buildX402Mock(...args),
+  X402_PAYMENT_HEADER: 'X-PAYMENT',
+  X402_PAYMENT_RESPONSE_HEADER: 'X-PAYMENT-RESPONSE',
 }));
 
 vi.mock('@mysten/sui/grpc', () => ({
@@ -37,7 +21,36 @@ vi.mock('@mysten/sui/grpc', () => ({
   },
 }));
 
+vi.mock('../token-registry.js', () => ({ getDecimalsForCoinType: () => 6 }));
+
+// migration path deps — invoke the buildTx callback so the inner
+// selectAndSplitCoin + moveCall run (matches the real executeTx).
+const executeTxMock = vi.fn(
+  async (_client: unknown, _signer: unknown, buildTx: () => Promise<unknown>, _opts?: unknown) => {
+    await buildTx();
+    return { digest: '0xmigration', gasCostSui: 0, effects: undefined };
+  },
+);
+vi.mock('./executeTx.js', () => ({
+  executeTx: (client: unknown, signer: unknown, buildTx: () => Promise<unknown>, opts: unknown) =>
+    executeTxMock(client, signer, buildTx, opts),
+}));
+const selectMock = vi.fn(async (..._args: unknown[]) => ({ coin: {}, effectiveAmount: 20000n, swapAll: false }));
+vi.mock('./coinSelection.js', () => ({ selectAndSplitCoin: (...args: unknown[]) => selectMock(...args) }));
+vi.mock('@mysten/sui/transactions', () => ({
+  Transaction: class {
+    pure = { address: (_: string) => ({}) };
+    moveCall(_: unknown) {}
+    setSender(_: string) {}
+    async build() {
+      return new Uint8Array([1]);
+    }
+  },
+}));
+
 import { payWithMpp } from './pay.js';
+
+const USDC_TYPE = '0xusdc::usdc::USDC';
 
 function makeSigner(): TransactionSigner {
   return {
@@ -47,66 +60,157 @@ function makeSigner(): TransactionSigner {
   } as unknown as TransactionSigner;
 }
 
-function makeClient(): SuiGrpcClient {
+function makeClient(opts: { total?: string; coins?: Array<{ objectId: string; balance: string }> } = {}): SuiGrpcClient {
+  const { total = '1000000', coins = [] } = opts;
   return {
     network: 'mainnet',
     core: {
-      executeTransaction: vi.fn(async () => ({
-        $kind: 'Transaction',
-        Transaction: {
-          digest: '0xdigest',
-          effects: { gasUsed: { computationCost: '1000', storageCost: '0', storageRebate: '0' } },
-        },
-      })),
-      waitForTransaction: vi.fn(async () => ({})),
+      getBalance: vi.fn(async () => ({ balance: { balance: total } })),
+      listCoins: vi.fn(async () => ({ objects: coins, cursor: null, hasNextPage: false })),
     },
   } as unknown as SuiGrpcClient;
 }
 
-// Minimal Transaction stand-in for the `execute` callback → executeTx path.
-function makeTx() {
-  return { setSender: vi.fn(), build: vi.fn(async () => new Uint8Array([1, 2, 3])) };
+const fetchMock = vi.fn();
+vi.stubGlobal('fetch', fetchMock);
+
+interface MockResponseInit {
+  status: number;
+  body: unknown;
+  headers?: Record<string, string>;
+}
+function mockResponse({ status, body, headers = {} }: MockResponseInit): Response {
+  const lower = new Map(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]));
+  const resp = {
+    status,
+    headers: {
+      get: (k: string) => lower.get(k.toLowerCase()) ?? (k.toLowerCase() === 'content-type' ? 'application/json' : null),
+      has: (k: string) => lower.has(k.toLowerCase()),
+    },
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+    clone: () => resp,
+  };
+  return resp as unknown as Response;
 }
 
-function jsonResponse(status: number, payload: unknown): Response {
+function x402Accepts(amountRaw = '20000') {
   return {
-    status,
-    headers: { get: () => 'application/json' },
-    json: async () => payload,
-    text: async () => JSON.stringify(payload),
-  } as unknown as Response;
+    accepts: [
+      {
+        scheme: 'exact',
+        network: 'sui:mainnet',
+        asset: USDC_TYPE,
+        maxAmountRequired: amountRaw,
+        payTo: '0xtreasury',
+        resource: 'https://mpp.t2000.ai/x',
+        maxTimeoutSeconds: 60,
+        extra: { suimpp: { challengeId: 'cid', nonce: 1, chain: 'c', minEpoch: '1', maxEpoch: '2' } },
+      },
+    ],
+  };
+}
+
+function settleHeaderValue(digest = '0xsettled') {
+  return toBase64(
+    new TextEncoder().encode(JSON.stringify({ success: true, network: 'sui:mainnet', transaction: digest, payer: '0xsender' })),
+  );
 }
 
 afterEach(() => {
   vi.clearAllMocks();
-  onChallengeRef.current = undefined;
-  executeRef.current = undefined;
 });
 
-describe('payWithMpp', () => {
-  it('reports paid + the real charged amount from the 402 challenge', async () => {
-    fetchMock.mockImplementation(async () => {
-      // Simulate mppx parsing a 402 challenge, then executing the payment PTB.
-      await onChallengeRef.current?.({ request: { amount: '0.02' } });
-      await executeRef.current?.(makeTx());
-      return jsonResponse(200, { ok: true });
-    });
+describe('payWithMpp — x402 sign-then-settle', () => {
+  it('signs an X-PAYMENT and reports paid + cost + digest (address balance covers it)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') })) // probe
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue('0xabc') } }),
+      ); // paid re-request
 
     const result = await payWithMpp({
+      // address balance fully covers (no coins) → no migration
       signer: makeSigner(),
-      client: makeClient(),
+      client: makeClient({ total: '1000000', coins: [] }),
       options: { url: 'https://mpp.t2000.ai/x', method: 'POST', body: '{}', maxPrice: 0.05 },
     });
 
+    expect(buildX402Mock).toHaveBeenCalledTimes(1);
+    expect(executeTxMock).not.toHaveBeenCalled(); // no migration
     expect(result.paid).toBe(true);
+    expect(result.dialect).toBe('x402');
     expect(result.status).toBe(200);
-    expect(result.cost).toBe(0.02); // challenge amount, NOT the 0.05 ceiling
-    expect(result.body).toEqual({ ok: true });
-    expect(result.receipt?.reference).toBeTypeOf('string');
+    expect(result.cost).toBe(0.02); // 20000 / 10^6
+    expect(result.receipt?.reference).toBe('0xabc');
+    expect(result.gasCostSui).toBe(0);
   });
 
-  it('reports not-paid (no charge) when no payment executes', async () => {
-    fetchMock.mockImplementation(async () => jsonResponse(200, { cached: true }));
+  it('migrates coin objects into the address balance when it is short', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
+      );
+
+    const result = await payWithMpp({
+      // all funds in coin objects, address balance = 0 → migration runs
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [{ objectId: '0xc', balance: '1000000' }] }),
+      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+    });
+
+    expect(executeTxMock).toHaveBeenCalledTimes(1); // the coin→AB migration tx
+    expect(selectMock).toHaveBeenCalledTimes(1);
+    expect(result.paid).toBe(true);
+    expect(result.dialect).toBe('x402');
+  });
+
+  it('reports not-paid when settlement fails (no X-PAYMENT-RESPONSE)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts() }))
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: { error: 'settle failed' } })); // no receipt header
+
+    const result = await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+    });
+
+    expect(result.paid).toBe(false);
+    expect(result.cost).toBeUndefined();
+    expect(result.receipt).toBeUndefined();
+  });
+
+  it('throws INSUFFICIENT_BALANCE when the wallet cannot cover the amount', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }));
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '5000', coins: [] }), // 0.005 USDC < 0.02
+        options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      }),
+    ).rejects.toThrow(/insufficient/i);
+  });
+
+  it('throws when a 402 carries no x402 payment requirement (no legacy fallback)', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: { detail: 'Payment required' } }));
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient(),
+        options: { url: 'https://legacy.example/x', maxPrice: 0.05 },
+      }),
+    ).rejects.toThrow(/x402/i);
+    expect(buildX402Mock).not.toHaveBeenCalled();
+  });
+});
+
+describe('payWithMpp — free / cached', () => {
+  it('reports not-paid when the endpoint serves without a 402', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { cached: true } }));
 
     const result = await payWithMpp({
       signer: makeSigner(),
@@ -115,25 +219,7 @@ describe('payWithMpp', () => {
     });
 
     expect(result.paid).toBe(false);
-    expect(result.cost).toBeUndefined();
-    expect(result.gasCostSui).toBeUndefined();
-    expect(result.receipt).toBeUndefined();
-  });
-
-  it('falls back to maxPrice for cost when the challenge amount is unparseable', async () => {
-    fetchMock.mockImplementation(async () => {
-      await onChallengeRef.current?.({ request: {} }); // no amount
-      await executeRef.current?.(makeTx());
-      return jsonResponse(200, {});
-    });
-
-    const result = await payWithMpp({
-      signer: makeSigner(),
-      client: makeClient(),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.07 },
-    });
-
-    expect(result.paid).toBe(true);
-    expect(result.cost).toBe(0.07);
+    expect(result.body).toEqual({ cached: true });
+    expect(buildX402Mock).not.toHaveBeenCalled();
   });
 });
