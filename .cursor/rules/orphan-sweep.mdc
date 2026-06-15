@@ -11,30 +11,24 @@ The skill for t2000's first agent loop. A removal is never done when the file is
 
 ## The four parts
 
-1. **Trigger (heartbeat):** Phase 1 = run by hand (`node scripts/loops/orphan-sweep-agent.mjs`) — get one run reliable first. Phase 2 = schedule it (weekly cron / launchd, or a Cursor Cloud Agent) once it is trustworthy.
+1. **Trigger (heartbeat):** `.github/workflows/orphan-sweep-loop.yml` — `workflow_dispatch` (manual) first, get one run reliable, THEN uncomment the `schedule`.
 2. **Skill:** this file (the procedure below).
-3. **State:** `spec/loops/orphan-sweep-STATE.md` — what was swept, what was found, removed-symbol patterns to keep watching. Read at start, write at end.
-4. **Gate:** `scripts/loops/orphan-sweep-gate.sh` — objective; exits non-zero on lint/typecheck/unit-test failure. NO commit/PR unless green.
+3. **State:** `scripts/loops/orphan-sweep-STATE.md` (in t2000, so CI can read + write it) — what was swept, removed-symbol patterns to watch, lessons. Read at start, write at end.
+4. **Gate:** `scripts/loops/orphan-sweep-gate.sh` — objective; exits non-zero on lint/typecheck/unit-test failure. NO PR unless green.
 
-## Harness (Cursor) — Phase 1: local, manual-first
+## Harness (Cursor) — GitHub Actions + the Cursor CLI
 
-The runner is `scripts/loops/orphan-sweep-agent.mjs` (Cursor SDK, `Agent.prompt`, local runtime). It runs the maker pass against the **full workspace** so it sees BOTH repos.
+The loop runs in CI via the **Cursor CLI in print mode** (`agent -p --force`, edits-only), NOT the `@cursor/sdk` library (it pulls puppeteer + sqlite3 and the native sqlite3 binding has no node-25 build; the CLI is a standalone binary and CI runs node 22). Cursor's own docs recommend the CLI-in-Actions split: the agent only edits files; deterministic workflow steps run the gate and open the DRAFT PR. A human reviews + merges.
 
-```bash
-pnpm add -Dw @cursor/sdk            # once (or: npm i -g @cursor/sdk)
-export CURSOR_API_KEY=cursor_...    # Cursor Dashboard -> Integrations
-node scripts/loops/orphan-sweep-agent.mjs   # run from the workspace root that contains spec/
-```
+- **Setup (one-time):** add a `CURSOR_API_KEY` repo secret (mint at `cursor.com/dashboard/api`). Optional: a `CURSOR_MODEL` repo variable to pin a model.
+- **Run:** Actions tab -> "Orphan Sweep Loop" -> Run workflow (`workflow_dispatch`). It edits, runs the gate, and opens a draft PR if green.
+- **Schedule:** uncomment the `schedule:` cron once the manual runs are trustworthy.
 
-Then YOU review `git diff` in both repos, run the gate yourself, and commit if green (the human approval gate). The agent does not commit or push.
-
-**Why local (not t2000 GitHub Actions):** this loop sweeps t2000 code AND the `spec/` private repo (tracker/roadmap/handoff staleness). t2000's CI checks out only the public repo — `spec/` is not there, so CI would be blind to half the job and could not read/update the STATE file. The local runner runs where `spec/` is already mounted.
-
-**Phase 2 (after manual runs are reliable):** schedule it — a local cron/launchd calling the runner, or a Cursor Cloud Agent configured with BOTH repos (`t2000` + `t2000-internal`) so the cloud VM can see `spec/`; add `autoCreatePR` + a second cheap-model verifier sub-agent (per `agent-loops.mdc`). Do not schedule until the manual run is trustworthy.
+**Scope = t2000 only.** CI checks out one repo, so this loop sweeps t2000 code + docs. The private `spec/` doc-staleness (tracker/roadmap/handoff) is a separate, occasional **local** run: `agent -p --force "<this procedure>"` from the workspace root that has `spec/` mounted (the only place that sees both repos) — review + commit by hand. (`@t2000/engine` marketing in `apps/web` is known-deferred to the launch-batch site rewrite — leave it; see the STATE file.)
 
 ## The procedure (maker)
 
-1. Read `spec/loops/orphan-sweep-STATE.md` + the latest `spec/audric-build-tracker.md` entries for what was recently removed.
+1. Read `scripts/loops/orphan-sweep-STATE.md` (+ recent `git log` / commits for what was removed; on a LOCAL run also skim `spec/audric-build-tracker.md`).
 2. For each recently-removed symbol/dir/dep, grep the repo for surviving references (exclude `dist/`, `node_modules/`, `spec/`, and `*.test.ts` for code refs; INCLUDE docs/READMEs/`.mdc`/workflows for stale mentions):
    - dead imports / unused exports (lint `no-unused-vars` catches most)
    - deleted dirs still referenced (e.g. `src/adapters/`, `COPY patches/`)
@@ -44,20 +38,17 @@ Then YOU review `git diff` in both repos, run the gate yourself, and commit if g
 3. Draft surgical removals/updates ONLY for the orphans (do not refactor adjacent code — `coding-discipline.mdc` principle 3).
 4. Run `scripts/loops/orphan-sweep-gate.sh`. Iterate until green.
 
-## The checker (verifier sub-agent — required)
+## The checker
 
-A SEPARATE agent (different instructions, cheaper model — see `agent-loops.mdc`) confirms, against the gate output + the diff:
-- every changed line traces to an orphan of the removal (no scope creep);
-- `scripts/loops/orphan-sweep-gate.sh` exited 0;
-- docs/tracker/roadmap/handoff now match code reality (version, package list, tool counts).
-Only on a clean verifier verdict does the loop open a DRAFT PR. A human approves the merge.
+- **Phase 1 (now):** the workflow re-runs the objective gate (`scripts/loops/orphan-sweep-gate.sh`) AFTER the maker, and opens the DRAFT PR only if it exits 0. The gate is the checker; a human reviews the diff before merge (the approval gate). The maker is told to edit only — it never runs git.
+- **Phase 2 (later):** add a SEPARATE cheap-model verifier sub-agent (see `agent-loops.mdc`) that confirms, against the gate output + diff: every changed line traces to an orphan (no scope creep); docs match code (version/package-list/tool-counts). Then auto-open the PR.
 
 ## Hard stops + scope
 
-- Stop after the gate is green + verifier passes, or after N iterations / a token cap — whichever first.
+- Stop after the gate is green (Phase 2: + verifier passes), or after N iterations / a token cap — whichever first.
 - IN scope: dead code, stale docs, orphaned deps/CI, version/count drift.
 - OUT of scope (hard no — escalate to a human): the money path (`send`/`swap`/`pay`/guards), `packages/sdk/src/wallet/*` execution logic, any architecture/judgment call. This loop only deletes orphans and fixes stale text.
 
 ## Compounding
 
-When a new removal lands, append its removed-symbol patterns to the gate's `STALE_PATTERNS` and a one-line lesson to `spec/loops/orphan-sweep-STATE.md`. The gate gets sharper every cutover — a regression guard that the removed thing stays removed.
+When a new removal lands, append its removed-symbol patterns to the gate's `STALE_PATTERNS` and a one-line lesson to `scripts/loops/orphan-sweep-STATE.md`. The gate gets sharper every cutover — a regression guard that the removed thing stays removed.
