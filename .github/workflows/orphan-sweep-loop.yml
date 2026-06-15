@@ -2,8 +2,8 @@ name: Orphan Sweep Loop
 
 # The post-change orphan + doc-staleness sweep loop (.cursor/rules/orphan-sweep.mdc),
 # run via the Cursor CLI in print mode. The agent ONLY edits files; deterministic
-# steps run the gate and open a DRAFT PR (the "restricted autonomy" split Cursor
-# recommends for CI). Scope = t2000 only (CI checks out one repo); the private
+# steps run the gate and push a gate-green branch + print a one-click PR link (the
+# "restricted autonomy" split Cursor recommends for CI). Scope = t2000 only (CI checks out one repo); the private
 # spec/ doc-staleness sweep is an occasional LOCAL run — see the skill.
 #
 # Setup (one-time): add a CURSOR_API_KEY repo secret
@@ -23,8 +23,7 @@ on:
   #   - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: write # push the loop branch; we print a PR link rather than calling the PR API (org policy)
 
 concurrency:
   group: orphan-sweep-loop
@@ -78,15 +77,31 @@ jobs:
       - name: Gate (authoritative checker — no PR unless green)
         run: bash scripts/loops/orphan-sweep-gate.sh
 
-      - name: Open draft PR if the sweep changed anything
-        uses: peter-evans/create-pull-request@v7
-        with:
-          draft: true
-          branch: loop/orphan-sweep
-          delete-branch: true
-          title: "🧹 Orphan + doc-staleness sweep (loop)"
-          commit-message: "🧹 chore(loop): orphan + doc-staleness sweep"
-          body: |
-            Automated orphan + doc-staleness sweep (Cursor CLI in CI). The gate passed.
-
-            **Read the diff before merging — this is loop output.** See `scripts/loops/orphan-sweep-STATE.md` for what changed + the lesson recorded this run.
+      # Push the gate-green branch + print a one-click PR link. We do NOT use the
+      # API to open the PR: the mission69b ORG disallows "Actions create/approve
+      # PRs". Pushing a branch only needs contents:write (works under that policy).
+      # To upgrade to a real auto-draft-PR, enable the org setting (see the skill)
+      # and swap this step back to peter-evans/create-pull-request.
+      - name: Push sweep branch + emit PR link (if anything changed)
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No orphans found — nothing to sweep. ✅" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          BRANCH="loop/orphan-sweep"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add -A
+          git commit -m "🧹 chore(loop): orphan + doc-staleness sweep"
+          git push -f origin "$BRANCH"
+          URL="${{ github.server_url }}/${{ github.repository }}/compare/main...${BRANCH}?expand=1"
+          {
+            echo "### 🧹 Orphan sweep — changes ready for review"
+            echo ""
+            echo "The gate passed. **Review the diff, then open the PR:**"
+            echo ""
+            echo "[Open PR: main...${BRANCH}]($URL)"
+            echo ""
+            echo "See \`scripts/loops/orphan-sweep-STATE.md\` for what changed + the lesson recorded this run."
+          } | tee -a "$GITHUB_STEP_SUMMARY"

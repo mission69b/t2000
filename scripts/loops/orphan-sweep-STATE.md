@@ -1,6 +1,6 @@
 # Loop state - orphan + doc-staleness sweep
 
-> The memory for the orphan-sweep loop (`.cursor/rules/orphan-sweep.mdc`). Lives in the t2000 repo (public) so the CI loop can read AND write it (a draft PR carries the update). Read at start, write before finishing. The agent forgets; this file does not.
+> The memory for the orphan-sweep loop (`.cursor/rules/orphan-sweep.mdc`). Lives in the t2000 repo (public) so the CI loop can read AND write it (the loop branch carries the update). Read at start, write before finishing. The agent forgets; this file does not.
 >
 > **Scope:** the CI loop (`.github/workflows/orphan-sweep-loop.yml`) sweeps **t2000 only** (CI checks out one repo). The private `spec/` doc-staleness sweep (tracker/roadmap/handoff) is done by an occasional **local** full-workspace run (`agent -p --force` from the workspace root that has `spec/` mounted) or by hand.
 
@@ -30,6 +30,7 @@ Removed in the S.444-S.450 cutover; must NOT reappear in live t2000 code. Mirror
 - 2026-06-15: the SDK GraphQL history bug hid behind `?? []` (swallowed the schema-validation error as empty history). Lesson: surface errors, never `?? []` a network result.
 - 2026-06-15: `pnpm lint` (turbo, all) fails on `@t2000/docs` (mintlify, node 25 + network) - the gate lints code packages only (sdk/cli/mcp/ui), matching CI.
 - 2026-06-15: CLI `program.integration.test.ts` is timing-flaky + load-correlated (fails under the gate's CPU load, passes standalone). The gate runs CLI UNIT tests only (`vitest run --exclude '**/*.integration.test.ts'`); CI + the weekly `gateway-e2e` are the authoritative integration gates.
+- 2026-06-15 (run #2): branch push succeeded but the PR-API call was rejected - `mission69b` is an ORG that disallows "Actions create/approve PRs" (409, can't override at repo level). Fix: the workflow now PUSHES the gate-green branch + prints a one-click PR link instead of calling the PR API (needs only `contents:write`). Upgrade path to auto-draft-PR = enable the org setting (see orphan-sweep.mdc). Lesson: prefer the lowest-permission mechanism that works under existing policy over flipping an org-wide security setting for one loop.
 - 2026-06-15 (run #1): the maker edited `.github/workflows/release-ui.yml` → `create-pull-request` push was REJECTED ("refusing to allow a GitHub App to create or update workflow ... without `workflows` permission"). The default `GITHUB_TOKEN` cannot push workflow-file changes — by design. Fix: workflows are now a hard-no for the maker + a deterministic "strip workflow edits" step runs before the gate. Lesson: the agent + gate worked; the only failure was infra-permission on a file it shouldn't touch.
 - 2026-06-15: **harness = GitHub Actions + Cursor CLI** (not the `@cursor/sdk` library - it pulls puppeteer + sqlite3 and the native sqlite3 binding has no build for node 25). The CLI is a standalone binary; CI runs node 22 where everything works. Pin node via `.nvmrc`.
 
@@ -46,9 +47,9 @@ Removed in the S.444-S.450 cutover; must NOT reappear in live t2000 code. Mirror
 
 ## Harness
 
-- **CI (primary):** `.github/workflows/orphan-sweep-loop.yml` - Cursor CLI in print mode (`agent -p --force`), edits only; the workflow runs the gate (deterministic checker) and opens a DRAFT PR. `workflow_dispatch` first; `schedule` enabled after manual runs are trusted. Needs the `CURSOR_API_KEY` repo secret.
+- **CI (primary):** `.github/workflows/orphan-sweep-loop.yml` - Cursor CLI in print mode (`agent -p --force`), edits only; the workflow runs the gate (deterministic checker), then pushes `loop/orphan-sweep` + prints a one-click PR link in the run summary (the org disallows Actions opening PRs via API — see lesson below). `workflow_dispatch` first; `schedule` enabled after manual runs are trusted. Needs the `CURSOR_API_KEY` repo secret.
 - **Local (both-repos, occasional):** `agent -p --force "<orphan-sweep prompt>"` from the workspace root that contains `spec/` - the only way to also sweep the private spec docs. Review + commit by hand.
 
 ## Stop conditions
 
-- Gate green (`scripts/loops/orphan-sweep-gate.sh` exits 0) -> the workflow opens a DRAFT PR. A human reviews the diff and merges (the approval gate). Phase 2: add a cheap-model verifier sub-agent before the PR.
+- Gate green (`scripts/loops/orphan-sweep-gate.sh` exits 0) -> the workflow pushes `loop/orphan-sweep` + prints a PR link. A human reviews the diff, opens + merges (the approval gate). Phase 2: add a cheap-model verifier sub-agent before the push.

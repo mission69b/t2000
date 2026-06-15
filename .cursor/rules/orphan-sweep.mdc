@@ -18,10 +18,12 @@ The skill for t2000's first agent loop. A removal is never done when the file is
 
 ## Harness (Cursor) — GitHub Actions + the Cursor CLI
 
-The loop runs in CI via the **Cursor CLI in print mode** (`agent -p --force`, edits-only), NOT the `@cursor/sdk` library (it pulls puppeteer + sqlite3 and the native sqlite3 binding has no node-25 build; the CLI is a standalone binary and CI runs node 22). Cursor's own docs recommend the CLI-in-Actions split: the agent only edits files; deterministic workflow steps run the gate and open the DRAFT PR. A human reviews + merges.
+The loop runs in CI via the **Cursor CLI in print mode** (`agent -p --force`, edits-only), NOT the `@cursor/sdk` library (it pulls puppeteer + sqlite3 and the native sqlite3 binding has no node-25 build; the CLI is a standalone binary and CI runs node 22). Cursor's own docs recommend the CLI-in-Actions split: the agent only edits files; deterministic workflow steps run the gate, then push a gate-green branch and print a one-click PR link in the run summary. A human reviews + opens/merges.
+
+> Why push-a-branch-and-link, not an auto-opened PR: the `mission69b` ORG disallows "Actions create/approve PRs" (a 409 from the PR API). Pushing a branch only needs `contents:write` (works under that policy). To upgrade to a real auto-draft-PR, enable the org setting (Org Settings -> Actions -> General -> Workflow permissions -> "Allow GitHub Actions to create and approve pull requests", or `gh api --method PUT orgs/mission69b/actions/permissions/workflow -F can_approve_pull_request_reviews=true`) and swap the final workflow step back to `peter-evans/create-pull-request`.
 
 - **Setup (one-time):** add a `CURSOR_API_KEY` repo secret (mint at `cursor.com/dashboard/api`). Optional: a `CURSOR_MODEL` repo variable to pin a model.
-- **Run:** Actions tab -> "Orphan Sweep Loop" -> Run workflow (`workflow_dispatch`). It edits, runs the gate, and opens a draft PR if green.
+- **Run:** Actions tab -> "Orphan Sweep Loop" -> Run workflow (`workflow_dispatch`). It edits, runs the gate, and (if green + anything changed) pushes `loop/orphan-sweep` + prints a PR link in the run summary.
 - **Schedule:** uncomment the `schedule:` cron once the manual runs are trustworthy.
 
 **Scope = t2000 only.** CI checks out one repo, so this loop sweeps t2000 code + docs. The private `spec/` doc-staleness (tracker/roadmap/handoff) is a separate, occasional **local** run: `agent -p --force "<this procedure>"` from the workspace root that has `spec/` mounted (the only place that sees both repos) — review + commit by hand. (`@t2000/engine` marketing in `apps/web` is known-deferred to the launch-batch site rewrite — leave it; see the STATE file.)
@@ -40,7 +42,7 @@ The loop runs in CI via the **Cursor CLI in print mode** (`agent -p --force`, ed
 
 ## The checker
 
-- **Phase 1 (now):** the workflow re-runs the objective gate (`scripts/loops/orphan-sweep-gate.sh`) AFTER the maker, and opens the DRAFT PR only if it exits 0. The gate is the checker; a human reviews the diff before merge (the approval gate). The maker is told to edit only — it never runs git.
+- **Phase 1 (now):** the workflow re-runs the objective gate (`scripts/loops/orphan-sweep-gate.sh`) AFTER the maker, and pushes the branch + prints the PR link only if it exits 0. The gate is the checker; a human reviews the diff before opening/merging (the approval gate). The maker is told to edit only — it never runs git.
 - **Phase 2 (later):** add a SEPARATE cheap-model verifier sub-agent (see `agent-loops.mdc`) that confirms, against the gate output + diff: every changed line traces to an orphan (no scope creep); docs match code (version/package-list/tool-counts). Then auto-open the PR.
 
 ## Hard stops + scope
