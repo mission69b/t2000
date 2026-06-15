@@ -4,7 +4,6 @@ export const MIST_PER_SUI = 1_000_000_000n;
 export const SUI_DECIMALS = 9;
 export const USDC_DECIMALS = 6;
 
-export const BPS_DENOMINATOR = 10_000n;
 export const PRECISION = 1_000_000_000_000_000_000n;
 
 export const MIN_DEPOSIT = 1_000_000n; // 1 USDC (6 decimals)

@@ -46,9 +46,9 @@ describe('SafeguardEnforcer', () => {
       expect(() => enforcer.check({ operation: 'send', amount: 1 })).not.toThrow();
     });
 
-    it('blocks internal ops when locked', () => {
+    it('blocks pay when locked', () => {
       enforcer.lock();
-      expect(() => enforcer.check({ operation: 'save', amount: 100 })).toThrow(SafeguardError);
+      expect(() => enforcer.check({ operation: 'pay', amount: 100 })).toThrow(SafeguardError);
     });
 
     it('persists lock state to disk', () => {
@@ -68,14 +68,6 @@ describe('SafeguardEnforcer', () => {
     it('allows send within per-tx limit', () => {
       enforcer.set('maxPerTx', 500);
       expect(() => enforcer.check({ operation: 'send', amount: 500 })).not.toThrow();
-    });
-
-    it('does not apply to internal ops', () => {
-      enforcer.set('maxPerTx', 100);
-      expect(() => enforcer.check({ operation: 'save', amount: 5000 })).not.toThrow();
-      expect(() => enforcer.check({ operation: 'withdraw', amount: 5000 })).not.toThrow();
-      expect(() => enforcer.check({ operation: 'borrow', amount: 5000 })).not.toThrow();
-      expect(() => enforcer.check({ operation: 'repay', amount: 5000 })).not.toThrow();
     });
 
     it('applies to pay ops', () => {
@@ -119,12 +111,6 @@ describe('SafeguardEnforcer', () => {
       enforcer.recordUsage(200);
       expect(() => enforcer.check({ operation: 'send', amount: 201 })).toThrow(SafeguardError);
       expect(() => enforcer.check({ operation: 'send', amount: 200 })).not.toThrow();
-    });
-
-    it('does not apply to internal ops', () => {
-      enforcer.set('maxDailySend', 100);
-      enforcer.recordUsage(100);
-      expect(() => enforcer.check({ operation: 'save', amount: 5000 })).not.toThrow();
     });
 
     it('error contains correct details', () => {

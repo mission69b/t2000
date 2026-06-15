@@ -1,4 +1,4 @@
-import { MIST_PER_SUI, BPS_DENOMINATOR, USDC_DECIMALS, SUPPORTED_ASSETS } from '../constants.js';
+import { MIST_PER_SUI, USDC_DECIMALS, SUPPORTED_ASSETS } from '../constants.js';
 import type { SupportedAsset } from '../constants.js';
 
 export function mistToSui(mist: bigint): number {
@@ -35,10 +35,6 @@ export function rawToDisplay(raw: bigint, decimals: number): number {
 
 export function displayToRaw(amount: number, decimals: number): bigint {
   return BigInt(Math.round(amount * 10 ** decimals));
-}
-
-export function bpsToPercent(bps: bigint): number {
-  return Number(bps) / Number(BPS_DENOMINATOR) * 100;
 }
 
 export function formatUsd(amount: number): string {

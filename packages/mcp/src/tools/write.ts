@@ -66,7 +66,6 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
                 canSend: balance.available >= amount,
                 amount,
                 to: resolved.address,
-                contactName: resolved.contactName,
                 suinsName: resolved.suinsName,
                 asset,
                 gasless: asset === 'USDC' || asset === 'USDsui',

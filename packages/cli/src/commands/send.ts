@@ -159,9 +159,7 @@ Examples:
 
         const displayTo = result.suinsName
           ? `${result.suinsName} ${pc.dim(`(${truncateAddress(result.to)})`)}`
-          : result.contactName
-            ? `${result.contactName} ${pc.dim(`(${truncateAddress(result.to)})`)}`
-            : truncateAddress(result.to);
+          : truncateAddress(result.to);
 
         const amountDisplay = asset === 'SUI'
           ? `${result.amount.toFixed(4)} SUI`

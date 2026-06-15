@@ -4,13 +4,12 @@ export { KeypairSigner } from './wallet/keypairSigner.js';
 export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 export { payWithMpp } from './wallet/pay.js';
 export { executeTx } from './wallet/executeTx.js';
-export { ContactManager } from './contacts.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';
 export type {
   T2000Options,
   BalanceResponse,
-  GasReserve,
+  SuiHolding,
   SendResult,
   DepositInfo,
   PaymentRequest,
@@ -25,7 +24,6 @@ export {
   MIST_PER_SUI,
   SUI_DECIMALS,
   USDC_DECIMALS,
-  BPS_DENOMINATOR,
   T2000_OVERLAY_FEE_WALLET,
   SUPPORTED_ASSETS,
   CLOCK_ID,
@@ -202,4 +200,4 @@ export type {
 } from './protocols/suins-leaf.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
-export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';
+export { DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';

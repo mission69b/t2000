@@ -47,7 +47,6 @@ import { SUPPORTED_ASSETS, assertAllowedAsset, type SendableAsset, type Supporte
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
-import { ContactManager } from './contacts.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -69,7 +68,6 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly client: SuiGrpcClient;
   private readonly _address: string;
   readonly enforcer: SafeguardEnforcer;
-  readonly contacts: ContactManager;
 
   private constructor(keypair: Ed25519Keypair, client: SuiGrpcClient, configDir?: string);
   private constructor(signer: TransactionSigner, client: SuiGrpcClient, configDir: string | undefined, isSignerMode: true);
@@ -93,7 +91,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.client = client;
     this.enforcer = new SafeguardEnforcer(configDir);
     this.enforcer.load();
-    this.contacts = new ContactManager(configDir);
   }
 
   static async create(options: T2000Options = {}): Promise<T2000> {
@@ -359,8 +356,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   /**
-   * Send `amount` of `asset` to `to` (hex address, SuiNS name, or
-   * `@audric` handle / saved contact).
+   * Send `amount` of `asset` to `to` (hex address or SuiNS name).
    *
    * [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
    *
@@ -407,12 +403,10 @@ export class T2000 extends EventEmitter<T2000Events> {
     const sendAmount = params.amount;
     const sendTo = resolved.address;
 
-    // [v4.0 Phase A Day 2] Build path picks gRPC for the two
-    // gasless-eligible stables (USDC / USDsui) so the resolver can
-    // zero gas at simulate. SUI uses the JSON-RPC build path because
-    // SUI is not on the protocol allowlist for `balance::send_funds`
-    // — there's no upside to gRPC for SUI, and the JSON-RPC singleton
-    // is already initialised (one fewer cold-start cost).
+    // Gasless-eligible stables (USDC / USDsui) build via the dedicated gRPC
+    // client so the resolver can zero gas at simulate. SUI is not on the
+    // `balance::send_funds` allowlist, so it builds via the default client
+    // (also gRPC post-cutover) with normal gas — no separate build client.
     const useGrpc = sendableAsset === 'USDC' || sendableAsset === 'USDsui';
     const buildClient = useGrpc ? getSuiGrpcClient() : undefined;
 
@@ -433,7 +427,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       tx: gasResult.digest,
       amount: sendAmount,
       to: resolved.address,
-      contactName: resolved.contactName,
       suinsName: resolved.suinsName,
       gasCost: gasResult.gasCostSui,
       gasCostUnit: 'SUI',
@@ -442,45 +435,29 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   /**
-   * [S.279 / CLI-CONTACTS-CLEANUP — 2026-05-23] Resolve a recipient
-   * string into a canonical 0x address, trying each shape in priority
-   * order:
+   * Resolve a recipient string into a canonical 0x address:
    *   1. **hex** — `0x…` is used directly (no RPC round-trip).
    *   2. **SuiNS** — `alex.sui` resolves via `suix_resolveNameServiceAddress`.
-   *   3. **saved contact** — `ContactManager.resolve()` falls back to the
-   *      legacy `~/.t2000/contacts.json` alias map. Deprecated; the
-   *      manager surfaces a one-time `console.warn` when this path fires.
    *
-   * Returns `{ address, suinsName?, contactName? }` so `send()` can stamp
-   * the name source on the receipt without re-resolving.
+   * Anything else is rejected. (The legacy `contacts.json` alias map was
+   * removed — SuiNS supersedes local contacts.)
    *
-   * Throws `T2000Error('SUINS_NOT_REGISTERED', …)` for well-formed but
-   * unregistered SuiNS names (vs. propagating the engine-style
-   * `SuinsNotRegisteredError` — keeps the SDK's error surface
-   * `T2000Error`-only, consistent with every other write helper).
+   * Returns `{ address, suinsName? }` so `send()` can stamp the name source
+   * on the receipt without re-resolving. Throws
+   * `T2000Error('SUINS_NOT_REGISTERED', …)` for well-formed but unregistered
+   * SuiNS names, keeping the SDK error surface `T2000Error`-only.
    *
-   * [S.279.1 / 2026-05-23 — patch v2.19.1] Promoted from `private` to
-   * `public` so MCP's `t2000_send` dryRun preview path can share the
-   * same resolution logic as the live execute path. Pre-2.19.1 the
-   * MCP dryRun called `agent.contacts.resolve(to)` directly, which
-   * rejected SuiNS names — preview-then-execute flows broke for
-   * `alex.sui`-style recipients. SSOT: never let preview and execute
-   * resolve the same input differently.
+   * Public so MCP's `t2000_send` dryRun preview shares one resolution path
+   * with the live execute path (never resolve the same input two ways).
    */
   async resolveRecipient(
     input: string,
-  ): Promise<{ address: string; contactName?: string; suinsName?: string }> {
+  ): Promise<{ address: string; suinsName?: string }> {
     const trimmed = input.trim();
     if (SUI_ADDRESS_REGEX.test(trimmed)) {
-      // Path 1 — already a hex address. ContactManager.resolve also
-      // accepts hex, but routing through it adds a disk read for nothing.
       return { address: trimmed.toLowerCase() };
     }
     if (looksLikeSuiNs(trimmed)) {
-      // Path 2 — SuiNS lookup. Falls through to ContactManager only if
-      // the name is well-formed but unregistered AND the user happens
-      // to have a contact alias with the exact same string (vanishingly
-      // rare — `.sui` suffixes are reserved-looking).
       try {
         const name = trimmed.toLowerCase();
         const address = await resolveSuinsViaRpc(name);
@@ -498,8 +475,10 @@ export class T2000 extends EventEmitter<T2000Events> {
         throw err;
       }
     }
-    // Path 3 — saved contact alias (deprecated; ContactManager warns).
-    return this.contacts.resolve(input);
+    throw new T2000Error(
+      'INVALID_ADDRESS',
+      `Cannot resolve recipient "${input}". Provide a 0x address or a .sui name.`,
+    );
   }
 
   async balance(): Promise<BalanceResponse> {

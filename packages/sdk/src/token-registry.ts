@@ -3,9 +3,9 @@
  *
  * ZERO heavy dependencies. Safe to import from any context (server, browser, Edge).
  *
- * Tier 1: USDC — the financial layer (save, borrow, receive, yield, allowances, marketplace, MPP).
- * Tier 2: 15 curated swap assets — hold, trade, and send only.
- * No tier: Legacy tokens kept for display accuracy (existing NAVI positions). No new operations.
+ * Tier 1: USDC — the settlement stable (send, receive, x402 pay).
+ * Tier 2: curated swap assets — hold, trade, and send only.
+ * No tier: tokens kept for display/classification accuracy. No new operations.
  *
  * To add a new token: add ONE entry to COIN_REGISTRY below. Everything else derives from it.
  * Gate for Tier 2 addition: confirmed deep Cetus liquidity + clear user need.
@@ -23,7 +23,7 @@ export interface CoinMeta {
  * Key = user-friendly name (used in swap_execute, CLI, prompts).
  */
 export const COIN_REGISTRY: Record<string, CoinMeta> = {
-  // ── Tier 1 — Financial layer ──────────────────────────────────────────
+  // ── Tier 1 — Settlement stable ────────────────────────────────────────
   USDC:     { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6, symbol: 'USDC', tier: 1 },
 
   // ── Tier 2 — Swap assets (15 tokens) ──────────────────────────────────

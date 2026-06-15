@@ -9,11 +9,10 @@ function createMockAgent() {
   return {
     address: vi.fn().mockReturnValue('0xtest123'),
     balance: vi.fn().mockResolvedValue({
-      available: 96.81,
-      gasReserve: { sui: 0.86, usdEquiv: 0.84 },
-      total: 102.75,
-      assets: { USDC: 96.81 },
       stables: { USDC: 96.81 },
+      available: 96.81,
+      sui: { amount: 0.86, usdValue: 0.84 },
+      totalUsd: 102.75,
     }),
     history: vi.fn().mockResolvedValue([
       { digest: '0xabc', action: 'send', amount: 10, asset: 'USDC', timestamp: Date.now() },
@@ -72,7 +71,7 @@ describe('read tools (v4 surface)', () => {
     const result = await handler({});
     const data = JSON.parse(result.content[0].text);
     expect(data.available).toBe(96.81);
-    expect(data.total).toBe(102.75);
+    expect(data.totalUsd).toBe(102.75);
   });
 
   it('t2000_address returns address JSON', async () => {

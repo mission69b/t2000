@@ -11,11 +11,10 @@ function createMockAgent() {
   return {
     address: vi.fn().mockReturnValue('0xowner'),
     balance: vi.fn().mockResolvedValue({
-      available: 96.81,
-      gasReserve: { sui: 0.86, usdEquiv: 0.84 },
-      total: 102.75,
-      assets: { USDC: 96.81 },
       stables: { USDC: 96.81 },
+      available: 96.81,
+      sui: { amount: 0.86, usdValue: 0.84 },
+      totalUsd: 102.75,
     }),
     send: vi.fn().mockResolvedValue({
       success: true,

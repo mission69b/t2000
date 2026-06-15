@@ -54,13 +54,14 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: balance check (read-only, gRPC)'
 
   it('returns a wallet-only balance response', async () => {
     const balance = await agent.balance();
-    expect(balance.total).toBeGreaterThanOrEqual(0);
+    expect(balance.totalUsd).toBeGreaterThanOrEqual(0);
     expect(typeof balance.available).toBe('number');
-    expect(typeof balance.gasReserve.sui).toBe('number');
+    expect(typeof balance.sui.amount).toBe('number');
+    expect(typeof balance.sui.usdValue).toBe('number');
     expect(balance.stables).toBeDefined();
     // DeFi fields are gone.
     expect('savings' in balance).toBe(false);
-    expect('debt' in balance).toBe(false);
+    expect('gasReserve' in balance).toBe(false);
   });
 });
 

@@ -16,7 +16,7 @@ import { errorResult } from '../errors.js';
 export function registerReadTools(server: McpServer, agent: T2000): void {
   server.tool(
     't2000_balance',
-    "Get the agent's wallet balance — available USD across the v4 send/swap/pay allowlist (USDC + USDsui + SUI) plus gas reserve. v4 wallet is payments-only; for savings positions / lending APYs see audric.ai.",
+    "Get the agent's wallet balance — spendable stablecoins (USDC + USDsui) plus the SUI holding (used for swaps). v4 wallet is payments-only; for savings positions / lending APYs see audric.ai.",
     {},
     async () => {
       try {

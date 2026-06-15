@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SafeguardConfig, TxMetadata } from './types.js';
-import { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './types.js';
+import { DEFAULT_SAFEGUARD_CONFIG } from './types.js';
 import { SafeguardError } from './errors.js';
 
 export class SafeguardEnforcer {
@@ -44,8 +44,8 @@ export class SafeguardEnforcer {
       throw new SafeguardError('locked', {});
     }
 
-    if (!OUTBOUND_OPS.has(metadata.operation)) return;
-
+    // Every remaining op (send, pay) is an outbound spend → all count against
+    // the per-tx + daily-send limits. (Internal DeFi ops were removed.)
     const amount = metadata.amount ?? 0;
 
     if (this.config.maxPerTx > 0 && amount > this.config.maxPerTx) {

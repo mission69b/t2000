@@ -29,8 +29,8 @@ export function registerBalance(program: Command) {
           printJson({
             available: bal.available,
             stables: bal.stables,
-            gasReserve: bal.gasReserve,
-            walletTotal: walletTotal(bal),
+            sui: bal.sui,
+            totalUsd: bal.totalUsd,
           });
           return;
         }
@@ -51,22 +51,18 @@ export function registerBalance(program: Command) {
           }
         }
 
-        if (bal.gasReserve && bal.gasReserve.usdEquiv >= 0.001) {
+        if (bal.sui && bal.sui.usdValue >= 0.001) {
           printKeyValue(
             'SUI',
-            `${formatUsd(bal.gasReserve.usdEquiv)}  ${pc.dim(`(${bal.gasReserve.sui.toFixed(4)} SUI — gas)`)}`,
+            `${formatUsd(bal.sui.usdValue)}  ${pc.dim(`(${bal.sui.amount.toFixed(4)} SUI — for swaps)`)}`,
           );
         }
 
         printSeparator();
-        printKeyValue('Wallet total', formatUsd(walletTotal(bal)));
+        printKeyValue('Wallet total', formatUsd(bal.totalUsd));
         printBlank();
       } catch (error) {
         handleError(error);
       }
     });
-}
-
-function walletTotal(bal: { available: number; gasReserve?: { usdEquiv: number } }): number {
-  return bal.available + (bal.gasReserve?.usdEquiv ?? 0);
 }

@@ -24,11 +24,10 @@ function createMockAgent() {
   return {
     address: vi.fn().mockReturnValue('0xtest_integration'),
     balance: vi.fn().mockResolvedValue({
-      available: 96.81,
-      gasReserve: { sui: 0.86, usdEquiv: 0.84 },
-      total: 102.75,
-      assets: { USDC: 101.91 },
       stables: { USDC: 96.81 },
+      available: 96.81,
+      sui: { amount: 0.86, usdValue: 0.84 },
+      totalUsd: 102.75,
     }),
     history: vi.fn().mockResolvedValue([
       { digest: '0xabc', action: 'send', amount: 10, asset: 'USDC' },
@@ -153,7 +152,7 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     const content = result.content as Array<{ type: string; text: string }>;
     const data = JSON.parse(content[0].text);
     expect(data.available).toBe(96.81);
-    expect(data.total).toBe(102.75);
+    expect(data.totalUsd).toBe(102.75);
   });
 
   it('calls t2000_address and returns address', async () => {

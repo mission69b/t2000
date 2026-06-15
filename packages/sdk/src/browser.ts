@@ -1,12 +1,8 @@
 /**
  * Browser-safe entry point for @t2000/sdk.
  *
- * Exports everything the web app needs WITHOUT Node-only modules:
- *   - keyManager (fs-based wallet encryption)
- *   - ContactManager (file-based contacts)
- *
- * Protocol adapters are NOT statically exported here — import them
- * via dynamic import() in the web app to keep the initial bundle small.
+ * Exports everything the web app needs WITHOUT Node-only modules
+ * (e.g. the fs-based keyManager is excluded).
  */
 
 // Signer abstraction
@@ -30,7 +26,6 @@ export {
   MIST_PER_SUI,
   SUI_DECIMALS,
   USDC_DECIMALS,
-  BPS_DENOMINATOR,
   T2000_OVERLAY_FEE_WALLET,
   SUPPORTED_ASSETS,
   CLOCK_ID,
@@ -102,12 +97,12 @@ export type { SwapRouteResult, OverlayFeeConfig } from './protocols/cetus-swap.j
 export { SafeguardError } from './safeguards/errors.js';
 export type { SafeguardRule, SafeguardErrorDetails } from './safeguards/errors.js';
 export type { SafeguardConfig, TxMetadata } from './safeguards/types.js';
-export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/types.js';
+export { DEFAULT_SAFEGUARD_CONFIG } from './safeguards/types.js';
 
 // Types
 export type {
   BalanceResponse,
-  GasReserve,
+  SuiHolding,
   SendResult,
   DepositInfo,
   TransactionRecord,

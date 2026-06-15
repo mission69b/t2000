@@ -8,17 +8,22 @@ export interface T2000Options {
   rpcUrl?: string;
 }
 
-export interface GasReserve {
-  sui: number;
-  usdEquiv: number;
+export interface SuiHolding {
+  /** SUI balance in whole SUI (not MIST). */
+  amount: number;
+  /** USD value of the SUI holding. */
+  usdValue: number;
 }
 
 export interface BalanceResponse {
-  /** Spendable stable USD (USDC + USDsui). Used for send pre-checks. */
-  available: number;
-  gasReserve: GasReserve;
-  total: number;
+  /** Spendable stablecoins keyed by symbol (USDC, USDsui) — gasless to send/pay. */
   stables: Record<string, number>;
+  /** Sum of spendable stables in USD. Used for send/pay pre-checks. */
+  available: number;
+  /** SUI holding — used for swaps (and any non-gasless gas). Not a "reserve". */
+  sui: SuiHolding;
+  /** Total wallet value in USD (available + sui.usdValue). */
+  totalUsd: number;
 }
 
 export interface SendResult {
@@ -26,8 +31,6 @@ export interface SendResult {
   tx: string;
   amount: number;
   to: string;
-  /** Set when the recipient was resolved via the legacy `contacts.json` alias. */
-  contactName?: string;
   /**
    * [S.279] Set when the recipient was resolved via SuiNS (e.g. `alex.sui`).
    * CLI receipts render "Sent to alex.sui (0xabc...)" when present.

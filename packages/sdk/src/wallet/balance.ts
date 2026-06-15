@@ -81,16 +81,15 @@ export async function queryBalance(
   }
 
   const suiAmount = Number(suiBalance.balance.balance) / Number(MIST_PER_SUI);
-  const usdEquiv = suiAmount * suiPriceUsd;
-  const total = totalStables + usdEquiv;
+  const suiUsdValue = suiAmount * suiPriceUsd;
 
   return {
-    available: totalStables,
-    gasReserve: {
-      sui: suiAmount,
-      usdEquiv,
-    },
-    total,
     stables,
+    available: totalStables,
+    sui: {
+      amount: suiAmount,
+      usdValue: suiUsdValue,
+    },
+    totalUsd: totalStables + suiUsdValue,
   };
 }

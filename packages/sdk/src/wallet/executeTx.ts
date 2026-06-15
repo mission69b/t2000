@@ -6,7 +6,7 @@ import type { SuiCoreClient } from '../utils/sui.js';
 // ---------------------------------------------------------------------------
 // executeTx — build + sign + submit + wait, the SDK's one tx-execution helper.
 //
-// Browser-safe (no fs / keyManager / ContactManager imports) so it can back
+// Browser-safe (no fs / keyManager imports) so it can back
 // both the Node-side `T2000` methods AND the browser-side `payWithMpp`
 // (gasless MPP runs client-side on the zkLogin session key). Moved out of
 // `t2000.ts` so `wallet/pay.ts` can share it without pulling the Node-only

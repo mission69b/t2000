@@ -9,7 +9,6 @@ import {
   getDecimals,
   rawToDisplay,
   displayToRaw,
-  bpsToPercent,
   formatUsd,
   formatSui,
   formatLargeNumber,
@@ -94,28 +93,6 @@ describe('format utilities', () => {
       const display = rawToDisplay(raw, 9);
       expect(display).toBe(2.5);
       expect(displayToRaw(display, 9)).toBe(raw);
-    });
-  });
-
-  describe('bpsToPercent', () => {
-    it('converts 100 bps to 1%', () => {
-      expect(bpsToPercent(100n)).toBe(1);
-    });
-
-    it('converts 10 bps to 0.1%', () => {
-      expect(bpsToPercent(10n)).toBe(0.1);
-    });
-
-    it('converts 10000 bps to 100%', () => {
-      expect(bpsToPercent(10_000n)).toBe(100);
-    });
-
-    it('converts 0 bps to 0%', () => {
-      expect(bpsToPercent(0n)).toBe(0);
-    });
-
-    it('converts 5 bps to 0.05%', () => {
-      expect(bpsToPercent(5n)).toBe(0.05);
     });
   });
 

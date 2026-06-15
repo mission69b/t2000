@@ -9,20 +9,9 @@ export interface SafeguardConfig {
 }
 
 export interface TxMetadata {
-  operation:
-    | 'send'
-    | 'save'
-    | 'withdraw'
-    | 'borrow'
-    | 'repay'
-    | 'pay';
+  operation: 'send' | 'pay';
   amount?: number;
 }
-
-export const OUTBOUND_OPS = new Set<TxMetadata['operation']>([
-  'send',
-  'pay',
-]);
 
 export const DEFAULT_SAFEGUARD_CONFIG: SafeguardConfig = {
   locked: false,
