@@ -80,7 +80,7 @@ Releases happen via the `release.yml` GitHub Actions workflow (bumps all 3 packa
 
 - **Non-custodial** — keys live on the agent's machine, never transmitted.
 - **Plain Bech32 wallets** — `~/.t2000/wallet.key`, JSON, `0o600` perms. Move between machines with `t2 export` + `t2 init --import`.
-- **Opt-in spending limits** — `t2 limit set --per-tx <USD> --daily <USD>`. Default = no limits + warning footer at `init`.
+- **Spending limits ON by default** — `t2 init` seeds conservative caps ($25/tx, $100/day cumulative). Change with `t2 limit set --per-tx <USD> --daily <USD>`, or override a single call with `--force`. Enforced in the SDK write path, so CLI + MCP + programmatic all obey one gate.
 - **Transaction simulation** — every write dry-runs before signing.
 - **Gasless trust boundary** — USDC + USDsui sends + x402 pays use Sui foundation's `0x2::balance::send_funds` sponsor. Swap + SUI send keep their full self-funded gas model.
 

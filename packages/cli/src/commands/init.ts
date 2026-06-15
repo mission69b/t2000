@@ -9,8 +9,8 @@
 // etc.) can use it. v3 AES files at the default path still throw
 // `WALLET_CORRUPT` — they're not silently migrated.
 //
-// Footer banner: "No spending limits set. Run `t2 limit set --daily <usd>`
-// to add them." — visible reminder, no prompt friction.
+// Footer banner: surfaces the default spending limits seeded on init
+// (limits ON by default — 2.2). Visible reminder, no prompt friction.
 
 import {
   T2000,
@@ -20,6 +20,8 @@ import {
   saveBech32,
   walletExists,
   getAddress,
+  setLimits,
+  hasLimits,
 } from '@t2000/sdk';
 import { Command } from 'commander';
 import {
@@ -39,8 +41,15 @@ export interface InitOptions {
   import?: string | boolean;
 }
 
-const NO_LIMITS_FOOTER =
-  'No spending limits set. Run `t2 limit set --daily <usd>` to add them.';
+// [2.2 — limits ON by default] A fresh wallet ships with conservative,
+// USD-denominated caps so an agent can't drain it on day one. The user raises
+// them with `t2 limit set` or bypasses per-call with `--force`. Cumulative
+// daily is enforced across all writes (send + swap + pay) — see @t2000/sdk/limits.
+const DEFAULT_PER_TX_USD = 25;
+const DEFAULT_DAILY_USD = 100;
+
+const limitsFooter = (perTx: number, daily: number) =>
+  `Spending limits ON: $${perTx}/tx, $${daily}/day (cumulative). Change with \`t2 limit set\`, or override a single call with --force.`;
 
 export function registerInit(program: Command) {
   program
@@ -80,8 +89,19 @@ export function registerInit(program: Command) {
           address = getAddress(keypair);
         }
 
+        // Limits ON by default — only seed when the user has none yet (don't
+        // clobber a config they configured before creating a wallet).
+        if (!hasLimits()) {
+          setLimits({ perTxUsd: DEFAULT_PER_TX_USD, dailyUsd: DEFAULT_DAILY_USD });
+        }
+
         if (isJsonMode()) {
-          printJson({ address, imported, configPath: opts.key ?? '~/.t2000/wallet.key' });
+          printJson({
+            address,
+            imported,
+            configPath: opts.key ?? '~/.t2000/wallet.key',
+            limits: { perTxUsd: DEFAULT_PER_TX_USD, dailyUsd: DEFAULT_DAILY_USD },
+          });
           return;
         }
 
@@ -90,7 +110,7 @@ export function registerInit(program: Command) {
         printKeyValue('Address', address);
         printKeyValue('Path', opts.key ?? '~/.t2000/wallet.key');
         printBlank();
-        printLine(`⚠  ${NO_LIMITS_FOOTER}`);
+        printLine(`⚠  ${limitsFooter(DEFAULT_PER_TX_USD, DEFAULT_DAILY_USD)}`);
         printBlank();
 
         // Eager construct + warm a SuiClient so the next command doesn't pay
@@ -105,5 +125,3 @@ export function registerInit(program: Command) {
       }
     });
 }
-
-export { NO_LIMITS_FOOTER };
