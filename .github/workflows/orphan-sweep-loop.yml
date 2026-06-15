@@ -66,9 +66,14 @@ jobs:
           3. Make SURGICAL edits only — every changed line must trace to an orphan of a removal. Do NOT refactor adjacent code.
           4. Run: bash scripts/loops/orphan-sweep-gate.sh — iterate until it exits 0.
           5. Update scripts/loops/orphan-sweep-STATE.md (append a one-line lesson + refresh the "Last run" line).
-          HARD RULES: never touch the money path (send/swap/pay/guards, packages/sdk/src/wallet/* execution) or make architecture/judgment changes — write those under "Open items" in the STATE file and STOP. Do NOT run git, commit, push, branch, or open PRs — only edit files; CI does the git.
+          HARD RULES: never touch the money path (send/swap/pay/guards, packages/sdk/src/wallet/* execution) or make architecture/judgment changes — write those under "Open items" in the STATE file and STOP. Never edit anything under .github/workflows/ (sensitive CI; the runner token cannot push workflow changes — note any stale ref there under "Open items" and leave the file unchanged). Do NOT run git, commit, push, branch, or open PRs — only edit files; CI does the git.
           PROMPT
           )"
+
+      - name: Strip any workflow-file edits (token can't push them)
+        run: |
+          git checkout -- .github/workflows/ 2>/dev/null || true
+          git clean -fd .github/workflows/ 2>/dev/null || true
 
       - name: Gate (authoritative checker — no PR unless green)
         run: bash scripts/loops/orphan-sweep-gate.sh

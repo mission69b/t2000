@@ -47,7 +47,7 @@ The loop runs in CI via the **Cursor CLI in print mode** (`agent -p --force`, ed
 
 - Stop after the gate is green (Phase 2: + verifier passes), or after N iterations / a token cap — whichever first.
 - IN scope: dead code, stale docs, orphaned deps/CI, version/count drift.
-- OUT of scope (hard no — escalate to a human): the money path (`send`/`swap`/`pay`/guards), `packages/sdk/src/wallet/*` execution logic, any architecture/judgment call. This loop only deletes orphans and fixes stale text.
+- OUT of scope (hard no — escalate to a human): the money path (`send`/`swap`/`pay`/guards), `packages/sdk/src/wallet/*` execution logic, **anything under `.github/workflows/`** (sensitive CI; the runner token cannot push workflow changes — note stale refs in STATE instead), any architecture/judgment call. This loop only deletes orphans and fixes stale text.
 
 ## Compounding
 
