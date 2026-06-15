@@ -7,8 +7,7 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   // Bundle ALL deps so the CLI is a self-contained binary. Fixes Node 25+ ESM
-  // strictness with transitive deps (@suilend/sdk, @naviprotocol/lending, etc.)
-  // that have broken imports when npm flattens them in global installs.
+  // strictness when npm flattens transitive deps in global installs.
   noExternal: [/.*/],
   banner: {
     js: [

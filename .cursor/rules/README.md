@@ -21,8 +21,8 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 
 | File | Scope |
 |------|---------|
-| `engine-tool-development.mdc` | `packages/engine/src/tools/**/*.ts` — tool factory, permission levels, flags, preflight |
-| `blockvision-resilience.mdc` | `packages/engine/src/**/*.ts` — retry, circuit breaker, sticky cache |
+| `engine-tool-development.mdc` | **HISTORICAL** — `@t2000/engine` deleted S.442; kept for rationale only |
+| `blockvision-resilience.mdc` | **HISTORICAL** — BlockVision left with engine; kept for rationale only |
 | `metrics-and-monitoring.mdc` | Reference — TurnMetrics, SessionUsage, dashboards |
 
 ## Skills are NOT mirrored here

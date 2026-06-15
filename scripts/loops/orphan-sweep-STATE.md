@@ -6,7 +6,7 @@
 
 ## Last run
 
-(none yet - scaffolded S.451, 2026-06-15. First run = whenever the founder adds the `CURSOR_API_KEY` secret and triggers the workflow via `workflow_dispatch`.)
+2026-06-15 (run #3, CI maker) — swept NAVI/engine comment orphans from S.444-S.450 cutover: removed dead `@naviprotocol/lending` Dependabot ignore, updated stale tsup bundle rationale comments (CLI/MCP), refreshed SDK suins/suins-leaf header comments + `token-data-architecture.mdc` + `.cursor/rules/README.md` engine rows. Gate green after `@t2000/sdk` build (fresh checkout has no `dist/` — CI publish job builds first; the loop workflow should ensure this).
 
 ## Removed-symbol patterns being watched (regression guards)
 
@@ -26,6 +26,7 @@ Removed in the S.444-S.450 cutover; must NOT reappear in live t2000 code. Mirror
 
 ## Lessons learned (write here, not in chat)
 
+- 2026-06-15 (run #3): comment-only orphans survive deletion longest — grep `packages/engine` in `.ts` file headers and `.mdc` rule tables, not just imports/deps. The stale-scan still surfaces `@t2000/engine` in `suins.ts` as an intentional historical mention ("promoted from the deleted engine"); that's fine.
 - 2026-06-15: a removal's CI footprint is separate from publish CI - the "Adapter Compliance" job in `.github/workflows/ci.yml` failed every push for ~6 commits while `publish.yml` (own CI) stayed green. Always grep `.github/workflows/` for the removed dir/symbol.
 - 2026-06-15: the SDK GraphQL history bug hid behind `?? []` (swallowed the schema-validation error as empty history). Lesson: surface errors, never `?? []` a network result.
 - 2026-06-15: `pnpm lint` (turbo, all) fails on `@t2000/docs` (mintlify, node 25 + network) - the gate lints code packages only (sdk/cli/mcp/ui), matching CI.
@@ -36,11 +37,9 @@ Removed in the S.444-S.450 cutover; must NOT reappear in live t2000 code. Mirror
 
 ## Open items / candidates (investigate next run)
 
-- **FIRST-RUN TARGETS (real orphans surfaced by the gate's stale-scan, 2026-06-15):**
-  - `.github/dependabot.yml` still has an `ignore` entry for `@naviprotocol/lending` (dep removed S.444) — dead rule, delete it.
-  - `.github/workflows/security.yml` comment references "dropping @naviprotocol/lending — a separate cleanup" — reconcile/remove now the dep is gone.
-  - `packages/mcp/tsup.config.ts` + `packages/cli/tsup.config.ts` comments claim `@t2000/sdk` pulls in `@naviprotocol/lending` / `@suilend/sdk` — now FALSE. JUDGMENT: confirm whether the `noExternal`/bundling config those comments justify is still needed without NAVI before editing (build-config rationale, not a pure text orphan — verify, don't blindly strip).
+- **HUMAN TASK (loop won't touch workflows):** `.github/workflows/security.yml` lines 38–41 still reference `@naviprotocol/lending` / `@pythnetwork/pyth-sui-js` in a comment ("dropping @naviprotocol/lending — a separate cleanup. Until…") — reconcile now that the dep is gone.
 - **HUMAN TASK (loop won't touch workflows):** run #1's maker tried to edit `.github/workflows/release-ui.yml` — investigate whether it has a stale ref (the loop is now barred from editing `.github/workflows/*`, so this must be done by hand).
+- **HUMAN TASK (gate infra):** fresh checkout gate fails typecheck/tests until `pnpm --filter @t2000/sdk build` — confirm the orphan-sweep-loop workflow builds SDK before the gate (publish CI already does).
 - **KNOWN-DEFERRED (NOT orphans — leave them):**
   - `apps/docs/agent-engine.mdx` + `apps/docs/README.md` — intentional **retired** deprecation stubs (clearly labeled; `@t2000/engine@4.x` stays on npm for frozen legacy Audric).
   - `apps/web` (the `t2000.ai` marketing site) still markets `@t2000/engine` as a product - `app/data/t2k.ts`, `components/engine/EngineHero.tsx` + `EngineCloser.tsx`, `components/site/ProductStrip.tsx`, `home/Showcase.tsx` + `Pricing.tsx`, `docs/page.tsx`, `TabbedTerminal.tsx`, `sdk/SdkHeroCode.tsx`. Stale (engine retired S.442) BUT intentionally deferred to the ONE launch-batch site rewrite (`spec/active/SITE_REPOSITIONING_BRIEF.md` §2c + §3 Pass 1). Do NOT clean piecemeal. The stale scan will keep surfacing it; expected until the rewrite.

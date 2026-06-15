@@ -1,15 +1,10 @@
 /**
  * [S.279 / CLI-CONTACTS-CLEANUP — 2026-05-23] Focused SDK-side smoke
- * test for the SuiNS utilities now living in `@t2000/sdk`. The engine's
- * exhaustive test suite (`packages/engine/src/__tests__/sui-address.test.ts`)
- * still runs against the same code via the engine's re-export shim, so
- * we deliberately don't duplicate it here — this file only confirms the
- * SDK's exports are wired correctly and the synchronous helpers behave.
+ * test for the SuiNS utilities in `@t2000/sdk`. Confirms exports are wired
+ * correctly and the synchronous helpers behave.
  *
- * Async lookups (`resolveSuinsViaRpc`, `normalizeAddressInput`) are NOT
- * tested here because the engine suite already mocks the RPC layer and
- * proves behavior end-to-end. Re-mocking the same fetcher in two places
- * is the same drift problem this consolidation eliminates.
+ * Async lookups (`resolveSuinsViaRpc`, `normalizeAddressInput`) are not
+ * covered here — they need RPC mocks and are exercised in higher-level tests.
  */
 
 import { describe, expect, it } from 'vitest';
