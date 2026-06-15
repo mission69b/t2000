@@ -64,7 +64,8 @@ jobs:
           2. Sweep t2000 for orphans + doc-staleness from recent removals: dead imports / unused exports, deleted dirs/symbols/deps still referenced, stale CI steps, and stale version numbers / tool counts / package lists in docs. Do NOT touch apps/web engine marketing (known-deferred per the STATE file).
           3. Make SURGICAL edits only — every changed line must trace to an orphan of a removal. Do NOT refactor adjacent code.
           4. Run: bash scripts/loops/orphan-sweep-gate.sh — iterate until it exits 0.
-          5. Update scripts/loops/orphan-sweep-STATE.md (append a one-line lesson + refresh the "Last run" line).
+          5. Keep the gate current (self-maintenance): scan recent `git log` for symbols/dirs/deps removed since the last run. If any is NOT already in the STALE_PATTERNS line of scripts/loops/orphan-sweep-gate.sh, add it (that script is editable — it is NOT under .github/workflows/). This is how the gate stays in sync without anyone remembering to update it.
+          6. Update scripts/loops/orphan-sweep-STATE.md (append a one-line lesson + refresh the "Last run" line).
           HARD RULES: never touch the money path (send/swap/pay/guards, packages/sdk/src/wallet/* execution) or make architecture/judgment changes — write those under "Open items" in the STATE file and STOP. Never edit anything under .github/workflows/ (sensitive CI; the runner token cannot push workflow changes — note any stale ref there under "Open items" and leave the file unchanged). Do NOT run git, commit, push, branch, or open PRs — only edit files; CI does the git.
           PROMPT
           )"

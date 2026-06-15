@@ -54,3 +54,7 @@ The loop runs in CI via the **Cursor CLI in print mode** (`agent -p --force`, ed
 ## Compounding
 
 When a new removal lands, append its removed-symbol patterns to the gate's `STALE_PATTERNS` and a one-line lesson to `scripts/loops/orphan-sweep-STATE.md`. The gate gets sharper every cutover — a regression guard that the removed thing stays removed.
+
+**Keeping the gate in sync (anti-drift).** Two mechanisms, so it never silently rots:
+1. **The hard gate can't drift** — `lint`/`typecheck`/`test` are tool-driven; dead code / broken types fail CI no matter what `STALE_PATTERNS` contains. Only the *informational* stale-ref scan is list-maintained, and an incomplete list loses a hint, never produces a false green.
+2. **The loop self-maintains the list** — the maker (workflow step 5) scans recent `git log` and adds any newly-removed symbol missing from `STALE_PATTERNS` (the gate script is editable; it is not a workflow file). So the list tracks removals automatically; the manual "append on removal" above is the belt to that suspenders.
