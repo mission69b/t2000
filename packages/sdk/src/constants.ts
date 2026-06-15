@@ -194,16 +194,20 @@ export const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
   ?? '0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a';
 
 export const DEFAULT_NETWORK = 'mainnet' as const;
+// gRPC fullnode endpoint. Post-flip this is the canonical transport for the
+// whole SDK: `getSuiClient()` (reads + execution) AND `getSuiGrpcClient()`
+// (gasless stablecoin build detection) both target it. Override the read/exec
+// client with T2000_RPC_URL and the build client with T2000_GRPC_URL.
 export const DEFAULT_RPC_URL = 'https://fullnode.mainnet.sui.io:443';
-// [v4.0 Phase A Day 2] gRPC fullnode endpoint used by `getSuiGrpcClient()` for
-// gasless stablecoin transfer detection (T2000.send + composeTx send_transfer).
-// Reads stay JSON-RPC; only write paths that need gasless eligibility detection
-// build via gRPC. Override with T2000_GRPC_URL for local dev / testnet.
 export const DEFAULT_GRPC_URL = 'https://fullnode.mainnet.sui.io:443';
-// [gRPC migration / S.438] GraphQL endpoint for the query surface that has NO
-// gRPC `core` equivalent — `queryTransactionBlocks` + `queryEvents` (Stage 0
-// finding A). Used by `getSuiGraphQLClient()`. Override with T2000_GRAPHQL_URL.
-export const DEFAULT_GRAPHQL_URL = 'https://sui-mainnet.mystenlabs.com/graphql';
+// [gRPC migration] GraphQL endpoint for the query surface that has NO gRPC
+// `core` equivalent — `transactionBlocks` (history). Used by
+// `getSuiGraphQLClient()`. The canonical mainnet host is `graphql.mainnet.sui.io`
+// (parallel to the gRPC fullnode); the older `sui-mainnet.mystenlabs.com/graphql`
+// host was dropped 2026-06-15 after it began resetting TLS connections (live
+// smoke). Public endpoint is rate-limited — production hosts override with
+// T2000_GRAPHQL_URL to a dedicated provider.
+export const DEFAULT_GRAPHQL_URL = 'https://graphql.mainnet.sui.io/graphql';
 export const DEFAULT_KEY_PATH = '~/.t2000/wallet.key';
 export const DEFAULT_CONFIG_PATH = '~/.t2000/config.json';
 
