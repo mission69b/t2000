@@ -21,6 +21,24 @@
  *     --data '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}' --estimate
  *
  *   # MCP — the t2000_pay tool routes through the same SDK pay() path.
+ *
+ * Property coverage matrix (the x402 guarantees proven in S.414) — what each
+ * is verified BY, so we don't duplicate gateway/protocol tests in the client:
+ *
+ *   | Property                                   | Verified by                          | Here? |
+ *   |--------------------------------------------|--------------------------------------|-------|
+ *   | x402 settle on mainnet (digest)            | this pay smoke + gateway e2e (S.414) | YES   |
+ *   | on-chain-verifiable (settle digest)        | receipt.reference assert (below)     | YES   |
+ *   | offline-signable, no RPC round-trip        | @suimpp/mpp/x402 unit tests          | no*   |
+ *   | replay-protected (ValidDuring nonce +      | gateway x402-dialect.ts +            | no    |
+ *   |   challenge-once + digest-once)            |   @suimpp/mpp tests                  |       |
+ *   | settle-then-serve / no-charge-on-failure   | gateway; AUTOMATED refund = Phase 2  | no**  |
+ *
+ *   *  the SDK pay() does ONE balance read (address-balance check) then signs
+ *      offline; the pure offline-sign property lives in the protocol package.
+ *   ** H9 is settle-then-serve + MANUAL refund today (S.412 `refund_due`);
+ *      automated refund-on-upstream-failure is Phase 2 item 2.6. An assertion
+ *      of "zero charge on failure" would be premature until 2.6 ships.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 
