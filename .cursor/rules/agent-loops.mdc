@@ -1,0 +1,37 @@
+---
+description: Conventions for running agent loops on this codebase — the maker/checker (verifier sub-agent) split and model routing (orchestrator/worker/grader). Read when designing or running any dev loop, or spawning sub-agents for a multi-step task.
+alwaysApply: false
+---
+
+# Agent loops — maker/checker + model routing
+
+The binding conventions for any dev loop here. Background + the honest 4-condition test: `spec/team-docs/AGENT_LOOP_ENGINEERING.md`. Our first loop: `orphan-sweep.mdc`.
+
+## Maker/checker split (required for any loop that opens a PR)
+
+The model that wrote the code is too lenient grading its own homework — it sees its own reasoning trail and prefers conclusions consistent with it. Every loop separates the two roles:
+
+- **Maker** — finds the work, drafts the change, runs the gate, iterates until green.
+- **Checker (verifier sub-agent)** — a SEPARATE agent (different instructions, ideally a different/cheaper model) that sees only the artifact + the gate output + the rule, not the maker's reasoning. It confirms: the gate exited 0, every changed line traces to the task (no scope creep, per `coding-discipline.mdc` #3), and docs match code. Only on a clean verdict does a DRAFT PR open. A human approves the merge.
+
+Mechanism in Cursor: spawn the verifier via the Task tool as a separate sub-agent (a read-only/`explore`-type agent for review, or a `generalPurpose` one with verifier instructions). The verifier never inherits the maker's chat.
+
+The gate itself stays OBJECTIVE — a test/typecheck/lint that returns non-zero (e.g. `scripts/loops/orphan-sweep-gate.sh`), never "a second agent's opinion". The verifier checks that the gate ran and the diff is in-scope; it does not REPLACE the gate. A loop whose only check is an agent's opinion is the Ralph-Wiggum failure (exits on a half-done job).
+
+## Model routing (capability where it pays)
+
+Route by task complexity; reserve the expensive tier for the orchestrator. Tiers (pick concrete models from the Task tool's available list at run time — do not hardcode slugs here, they rotate):
+
+- **Orchestrator — top reasoning tier.** Plans across steps, delegates, distills lessons into the state file. The one role that earns the premium model.
+- **Worker — fast mid tier.** High-volume fan-out: lint-fix, simple refactor, scaffolding, the maker's drafting in a well-specified loop.
+- **Grader/verifier — cheap, independent model.** The checker role above. Low cost, separate context — exactly what a verifier wants. Spend a second opinion only where it is worth paying for; sub-agents each burn their own model + tool budget.
+
+This is the same pattern as Audric's product funding model (free Fast model orchestrates Services, premium models for heavy generation) — keep them mentally aligned.
+
+## Hard rules (finance codebase)
+
+- **Never loop the money path.** Loops are for docs / deps / lint / stale-sweeps / scaffolding. `send`/`swap`/`pay`/guards, `packages/sdk/src/wallet/*` execution, and any architecture/judgment call stay human-driven (single well-aimed prompt). Mirrors `safeguards-defense-in-depth.mdc` + the articles' "no auth/payments/architecture loops".
+- **Human approval gate** before any merge / deploy / dependency change. The loop drafts; a human merges.
+- **Deterministic gate.** Keep timing-flaky integration/e2e out of the fast inner-loop gate (push them to CI, which runs on the PR before merge) — see the `orphan-sweep-STATE.md` lesson on the CLI integration flake.
+- **Read the diffs.** Comprehension debt compounds; a loop you do not review is debt at interest.
+- **Hard stop** on every loop: iteration count, token cap, or time limit. No loop runs until someone notices the bill.

@@ -1,0 +1,47 @@
+---
+description: The post-change orphan + doc-staleness sweep loop — find dead code/refs and stale docs left behind by a removal/refactor. Read when running the sweep loop or after deleting a feature/package/symbol.
+alwaysApply: false
+---
+
+# Orphan + doc-staleness sweep (our first dev loop)
+
+The skill for t2000's first agent loop. A removal is never done when the file is deleted — its blast radius (imports, types, deps, CI jobs, docs, tracker/roadmap/handoff) must be swept in the same pass. This loop catches what the human (or a prior loop run) missed. Pairs with `coding-discipline.mdc` principle 4 ("Remove Completely — No Orphans, No Stale").
+
+> Why this is our first loop: we ran it MANUALLY 4+ times in the S.444-S.450 cutover (stale tracker/roadmap/handoff, the `selectAndSplitCoin` unused import, the CI "Adapter Compliance" job that failed every push). It repeats, it is fully machine-checkable, and it is zero money-path risk — the only safe place to start.
+
+## The four parts
+
+1. **Trigger (heartbeat):** on-event after a PR/commit whose message starts `refactor`/`chore`/`🔥`/`♻️` or touches `packages/**`, and/or a weekly cron. Harness = founder pick (Cursor cloud agent / Codex automation / Claude Code routine).
+2. **Skill:** this file (the procedure below).
+3. **State:** `spec/loops/orphan-sweep-STATE.md` — what was swept, what was found, removed-symbol patterns to keep watching. Read at start, write at end.
+4. **Gate:** `scripts/loops/orphan-sweep-gate.sh` — objective; exits non-zero on lint/typecheck/test failure. NO PR unless green.
+
+## The procedure (maker)
+
+1. Read `spec/loops/orphan-sweep-STATE.md` + the latest `spec/audric-build-tracker.md` entries for what was recently removed.
+2. For each recently-removed symbol/dir/dep, grep the repo for surviving references (exclude `dist/`, `node_modules/`, `spec/`, and `*.test.ts` for code refs; INCLUDE docs/READMEs/`.mdc`/workflows for stale mentions):
+   - dead imports / unused exports (lint `no-unused-vars` catches most)
+   - deleted dirs still referenced (e.g. `src/adapters/`, `COPY patches/`)
+   - removed deps still in `package.json` / `pnpm.overrides` / `patchedDependencies`
+   - stale CI jobs/steps in `.github/workflows/`
+   - stale version numbers, tool counts, `S.N` tags, package lists in docs
+3. Draft surgical removals/updates ONLY for the orphans (do not refactor adjacent code — `coding-discipline.mdc` principle 3).
+4. Run `scripts/loops/orphan-sweep-gate.sh`. Iterate until green.
+
+## The checker (verifier sub-agent — required)
+
+A SEPARATE agent (different instructions, cheaper model — see `agent-loops.mdc`) confirms, against the gate output + the diff:
+- every changed line traces to an orphan of the removal (no scope creep);
+- `scripts/loops/orphan-sweep-gate.sh` exited 0;
+- docs/tracker/roadmap/handoff now match code reality (version, package list, tool counts).
+Only on a clean verifier verdict does the loop open a DRAFT PR. A human approves the merge.
+
+## Hard stops + scope
+
+- Stop after the gate is green + verifier passes, or after N iterations / a token cap — whichever first.
+- IN scope: dead code, stale docs, orphaned deps/CI, version/count drift.
+- OUT of scope (hard no — escalate to a human): the money path (`send`/`swap`/`pay`/guards), `packages/sdk/src/wallet/*` execution logic, any architecture/judgment call. This loop only deletes orphans and fixes stale text.
+
+## Compounding
+
+When a new removal lands, append its removed-symbol patterns to the gate's `STALE_PATTERNS` and a one-line lesson to `spec/loops/orphan-sweep-STATE.md`. The gate gets sharper every cutover — a regression guard that the removed thing stays removed.
