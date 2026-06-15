@@ -1,18 +1,15 @@
 // ---------------------------------------------------------------------------
 // Sui address + SuiNS normalization — single source of truth.
 //
-// [S.279 / CLI-CONTACTS-CLEANUP — 2026-05-23] Promoted from the engine
-// (`packages/engine/src/sui/address.ts`) to the SDK so the CLI's
-// `T2000.send()` can accept SuiNS names (`alex.sui`) the same way the
-// engine's read tools already do. The engine now re-exports from this
-// module — one canonical resolver, zero drift risk.
+// [S.279 / CLI-CONTACTS-CLEANUP — 2026-05-23] Promoted from the deleted
+// `@t2000/engine` package to the SDK so the CLI's `T2000.send()` can accept
+// SuiNS names (`alex.sui`) alongside hex addresses — one canonical resolver.
 //
-// Background. Six engine read tools (balance, health, savings, history,
-// activity-summary, portfolio-analysis) accept an optional `address`
-// parameter so the LLM can inspect any public Sui wallet. Each tool calls
-// `normalizeAddressInput()` to accept either `0x...` or `alex.sui` and
-// returns a structured `{ address, suinsName, raw }` triple. The SDK's
-// `T2000.send()` now uses the same primitive, so a CLI user can run
+// Background. Host read tools accept an optional `address` parameter so the
+// LLM can inspect any public Sui wallet. Each calls `normalizeAddressInput()`
+// to accept either `0x...` or `alex.sui` and returns a structured
+// `{ address, suinsName, raw }` triple. The SDK's `T2000.send()` uses the
+// same primitive, so a CLI user can run
 // `t2000 send alex.sui 10 USDC` without looking up the hex address first.
 //
 // Single source of truth — see `.cursor/rules/single-source-of-truth.mdc`

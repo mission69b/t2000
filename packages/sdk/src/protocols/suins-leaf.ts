@@ -69,9 +69,8 @@ export type LabelValidationResult = { valid: true } | { valid: false; reason: st
  * consistent with DNS conventions).
  *
  * SUINS-LABEL-RULE — paired with `audric/apps/web/lib/identity/validate-label.ts`.
- * The audric host duplicates these rules inline to avoid pulling the SDK's
- * transitive deps (e.g. `@pythnetwork/pyth-sui-js` → `node:buffer`) into the
- * client bundle when the picker uses validation. If SuiNS ever changes its
+ * The audric host duplicates these rules inline to avoid pulling the full SDK
+ * (and its server-side transitive deps) into the client bundle. If SuiNS ever
  * label rules, BOTH this file and the audric copy need updating.
  */
 const LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;

@@ -94,11 +94,8 @@ export default defineConfig({
     __BAKED_SKILLS__: JSON.stringify(JSON.stringify(bakedSkills)),
   },
   // Bundle ALL deps so the MCP server is a self-contained binary. Mirrors the
-  // CLI pattern. Critical because @t2000/sdk pulls in @naviprotocol/lending,
-  // whose published ESM dist imports SuiClient/getFullnodeUrl from
-  // @mysten/sui/client — names that don't exist in @mysten/sui@2.x. The
-  // monorepo patches lending via pnpm but npm/npx consumers never get the
-  // patch, so we bake the (patched) sources into our published bundle.
+  // CLI pattern — npx consumers get a self-contained bundle without relying
+  // on workspace-only pnpm patch resolution.
   noExternal: [/.*/],
   banner: {
     js: [
