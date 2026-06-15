@@ -38,9 +38,6 @@ spec/
 # marketing — wiped in S.20; ignore by default in case someone recreates locally
 marketing/
 
-# docs/marketing — litepaper local-only until marketing site relaunch (founder lock 2026-05-18 SPEC 38a Q-promote-public)
-docs/marketing/
-
 # raise / investor docs — local reference only
 audric-raise-strategy.canvas.tsx
 audric-litepaper.html

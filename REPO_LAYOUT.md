@@ -22,23 +22,21 @@ t2000/
 │   ├── sdk/                                 (@t2000/sdk)
 │   └── ui/                                  (@t2000/ui — design system; shipped 2026-05-27)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source)
-├── patches/                                 ← pnpm patches
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
 ```
 
-> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access. Founder-local marketing artifacts (litepaper, decks) live in a gitignored `docs/marketing/` folder. The brand redesign designer handoff source lives in a gitignored `t2000-AFI/` folder (static React+Babel prototype; shipped artifacts live in `packages/ui/`).
+> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access. The brand redesign designer handoff source lives in a gitignored `t2000-AFI/` folder (static React+Babel prototype; shipped artifacts live in `packages/ui/`).
 
 ## Where does X go?
 
 | If X is a... | Put it in... |
 |---|---|
 | Public developer docs page (setup, API ref, examples) | `apps/docs/<slug>.mdx` (Mintlify; deploys to `developers.t2000.ai`) |
-| Marketing artifact (litepaper, deck) | `docs/marketing/<NAME>.md` (gitignored) |
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
 
-All public developer docs live in `apps/docs/` (Mintlify). There is no public `docs/` folder — the `docs/marketing/` path exists only as a gitignored convenience for founder-local marketing artifacts.
+All public developer docs live in `apps/docs/` (Mintlify). There is no public `docs/` folder.
 
 If a file would go at the repo root and it's not on the allowlist below, push it into one of the above subdirectories instead.
 
