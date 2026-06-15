@@ -14,10 +14,8 @@ export interface GasReserve {
 }
 
 export interface BalanceResponse {
+  /** Spendable stable USD (USDC + USDsui). Used for send pre-checks. */
   available: number;
-  savings: number;
-  debt: number;
-  pendingRewards: number;
   gasReserve: GasReserve;
   total: number;
   stables: Record<string, number>;

@@ -83,28 +83,11 @@ export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
 export type StableAsset = 'USDC' | 'USDsui';
 export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDsui'] as const;
 
-// [SPEC_AGENTIC_STACK P1 / SDK F4 — 2026-05-25]
-// `SaveableAsset` = "what you can deposit into a NAVI lending pool to earn yield".
-// Semantically distinct from STABLE_ASSETS even though the sets are identical today:
-// if USDe-on-NAVI lands in the future, USDe would join STABLE_ASSETS but NOT
-// SAVEABLE_ASSETS until the NAVI USDe pool is verified live.
-// See `.cursor/rules/savings-usdc-only.mdc` for the rule that gates additions.
-export type SaveableAsset = 'USDC' | 'USDsui';
-export const SAVEABLE_ASSETS: readonly SaveableAsset[] = ['USDC', 'USDsui'] as const;
-
-export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_ASSETS) as SupportedAsset[];
-
 // ---------------------------------------------------------------------------
 // Operation → allowed asset rules (single source of truth)
 // ---------------------------------------------------------------------------
 
-// [v0.51.0] Saveable/borrowable set: USDC + USDsui.
-// USDC is the canonical default; USDsui is a strategic exception backed by an
-// existing NAVI pool. See `.cursor/rules/savings-usdc-only.mdc` for the
-// rationale and the rule that gates additional stables (don't add more here
-// without updating that file).
-//
-// [v4.0 Phase A Day 2 — 2026-05-26] `send` constrained from `'*'` (any) to
+// [v4.0 Phase A Day 2 — 2026-05-26] `send` is constrained to
 // `['USDC', 'USDsui', 'SUI']`. Rationale (SPEC_AGENT_WALLET_GREENFIELD §A):
 // - USDC + USDsui are gasless via `0x2::balance::send_funds` (Sui mainnet
 //   protocol allowlist) — the two foundation stables.
@@ -112,15 +95,11 @@ export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_
 //   stablecoin balance can still pay gas-native SUI transfers.
 // - USDT, USDe, WAL, ETH, NAVX, GOLD are NOT sendable — users must swap to
 //   USDC/USDsui first (one-step) or hold SUI and use a manual Move call.
-// - Tracking the full Sui gasless allowlist (suiUSDe, USDY, FDUSD, AUSD, USDB)
-//   is intentionally deferred to follow-up SPEC; minimal allowlist now.
+// `swap` is unrestricted (Cetus routes any pair). The DeFi operations
+// (save/borrow/withdraw/repay) were removed with NAVI.
 export const OPERATION_ASSETS = {
-  save:     ['USDC', 'USDsui'],
-  borrow:   ['USDC', 'USDsui'],
-  withdraw: '*',
-  repay:    '*',
-  send:     ['USDC', 'USDsui', 'SUI'],
-  swap:     '*',
+  send: ['USDC', 'USDsui', 'SUI'],
+  swap: '*',
 } as const;
 
 export type Operation = keyof typeof OPERATION_ASSETS;
@@ -141,11 +120,9 @@ export function isAllowedAsset(op: Operation, asset: string): boolean {
  *
  * [v4.0 Phase A Day 2] Pre-v4 this allowed `undefined` as a silent default
  * to USDC. Removed because every write path now requires explicit asset
- * (see `T2000.send` + `buildSendTx` + `composeTx.send_transfer`). Save /
- * borrow / repay still call this with `params.asset` (which may be
- * undefined when the caller relies on the per-method `?? 'USDC'` default
- * before this assertion fires), so the `undefined → no-op` branch stays
- * for back-compat; the `send_transfer` flow validates non-undefined.
+ * (see `T2000.send` + `buildSendTx` + `composeTx.send_transfer`). The
+ * `undefined → no-op` branch is kept defensively; the `send_transfer` flow
+ * validates non-undefined.
  */
 export function assertAllowedAsset(op: Operation, asset: string | undefined): void {
   if (!asset) return;
@@ -153,9 +130,7 @@ export function assertAllowedAsset(op: Operation, asset: string | undefined): vo
     const allowed = OPERATION_ASSETS[op];
     const list = Array.isArray(allowed) ? allowed.join(', ') : 'any';
     const swapHint =
-      op === 'save' ? ' Swap to USDC or USDsui first.'
-      : op === 'send' ? ' Swap to USDC or USDsui first, or send SUI.'
-      : '';
+      op === 'send' ? ' Swap to USDC or USDsui first, or send SUI.' : '';
     throw new T2000Error(
       'INVALID_ASSET',
       `${op} only supports ${list}. Cannot use ${asset}.${swapHint}`,

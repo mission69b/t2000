@@ -503,12 +503,8 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async balance(): Promise<BalanceResponse> {
-    // [S.444 — NAVI removed] Wallet balance only. The savings/debt/rewards
-    // merge (via the deleted NAVI lending registry) is gone; those fields
-    // stay 0 (set by `queryBalance`). Total = available stables + gas reserve.
-    const bal = await queryBalance(this.client, this._address);
-    bal.total = bal.available + bal.gasReserve.usdEquiv;
-    return bal;
+    // [NAVI removed] Wallet-only balance: spendable stables + SUI gas reserve.
+    return queryBalance(this.client, this._address);
   }
 
   async history(params?: { limit?: number }): Promise<TransactionRecord[]> {

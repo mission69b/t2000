@@ -81,15 +81,11 @@ export async function queryBalance(
   }
 
   const suiAmount = Number(suiBalance.balance.balance) / Number(MIST_PER_SUI);
-  const savings = 0; // Merged from NAVI in T2000.balance()
   const usdEquiv = suiAmount * suiPriceUsd;
-  const total = totalStables + savings + usdEquiv;
+  const total = totalStables + usdEquiv;
 
   return {
     available: totalStables,
-    savings,
-    debt: 0,
-    pendingRewards: 0,
     gasReserve: {
       sui: suiAmount,
       usdEquiv,

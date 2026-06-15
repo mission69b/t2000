@@ -33,7 +33,7 @@ export {
   CLOCK_ID,
   DEFAULT_NETWORK,
 } from './constants.js';
-export type { SupportedAsset, StableAsset, SaveableAsset, SendableAsset } from './constants.js';
+export type { SupportedAsset, StableAsset, SendableAsset } from './constants.js';
 export {
   STABLE_ASSETS,
   SENDABLE_ASSETS,
