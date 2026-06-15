@@ -5,10 +5,6 @@ import {
   getDecimalsForCoinType,
   resolveSymbol,
   resolveTokenType,
-  isTier1,
-  isTier2,
-  isSupported,
-  getTier,
   SUI_TYPE,
   USDC_TYPE,
   USDSUI_TYPE,
@@ -21,27 +17,17 @@ import {
 } from './token-registry.js';
 
 describe('COIN_REGISTRY', () => {
-  it('contains all Tier 1 tokens', () => {
+  it('contains the settlement stable + common swap assets', () => {
     expect(COIN_REGISTRY.USDC).toBeDefined();
-    expect(COIN_REGISTRY.USDC.tier).toBe(1);
-  });
-
-  it('contains all 15 Tier 2 tokens', () => {
-    const tier2Keys = ['SUI', 'wBTC', 'ETH', 'GOLD', 'DEEP', 'WAL', 'NS', 'IKA', 'CETUS', 'NAVX', 'vSUI', 'haSUI', 'afSUI', 'LOFI', 'MANIFEST'];
-    for (const key of tier2Keys) {
+    for (const key of ['SUI', 'wBTC', 'ETH', 'GOLD', 'DEEP', 'WAL', 'NS', 'IKA', 'CETUS', 'NAVX', 'vSUI', 'haSUI', 'afSUI', 'LOFI', 'MANIFEST']) {
       expect(COIN_REGISTRY[key], `missing ${key}`).toBeDefined();
-      expect(COIN_REGISTRY[key].tier, `${key} should be tier 2`).toBe(2);
     }
-    expect(tier2Keys.length).toBe(15);
   });
 
-  it('contains legacy tokens without tier', () => {
+  it('contains the other known stables', () => {
     expect(COIN_REGISTRY.USDT).toBeDefined();
-    expect(COIN_REGISTRY.USDT.tier).toBeUndefined();
     expect(COIN_REGISTRY.USDe).toBeDefined();
-    expect(COIN_REGISTRY.USDe.tier).toBeUndefined();
     expect(COIN_REGISTRY.USDSUI).toBeDefined();
-    expect(COIN_REGISTRY.USDSUI.tier).toBeUndefined();
   });
 
   it('does not contain removed tokens', () => {
@@ -86,43 +72,8 @@ describe('COIN_REGISTRY', () => {
     expect(COIN_REGISTRY.GOLD.type).toContain('xaum::XAUM');
   });
 
-  it('has exactly 19 entries (1 tier1 + 15 tier2 + 3 legacy)', () => {
+  it('has exactly 19 entries', () => {
     expect(Object.keys(COIN_REGISTRY).length).toBe(19);
-  });
-});
-
-describe('tier helpers', () => {
-  it('isTier1 returns true only for USDC', () => {
-    expect(isTier1(USDC_TYPE)).toBe(true);
-    expect(isTier1(SUI_TYPE)).toBe(false);
-    expect(isTier1(USDSUI_TYPE)).toBe(false);
-    expect(isTier1('0xunknown::token::TOKEN')).toBe(false);
-  });
-
-  it('isTier2 returns true for swap assets', () => {
-    expect(isTier2(SUI_TYPE)).toBe(true);
-    expect(isTier2(ETH_TYPE)).toBe(true);
-    expect(isTier2(IKA_TYPE)).toBe(true);
-    expect(isTier2(LOFI_TYPE)).toBe(true);
-    expect(isTier2(MANIFEST_TYPE)).toBe(true);
-    expect(isTier2(USDC_TYPE)).toBe(false);
-    expect(isTier2(USDSUI_TYPE)).toBe(false);
-  });
-
-  it('isSupported returns true for Tier 1 and Tier 2', () => {
-    expect(isSupported(USDC_TYPE)).toBe(true);
-    expect(isSupported(SUI_TYPE)).toBe(true);
-    expect(isSupported(ETH_TYPE)).toBe(true);
-    expect(isSupported(USDSUI_TYPE)).toBe(false);
-    expect(isSupported(USDE_TYPE)).toBe(false);
-    expect(isSupported('0xunknown::token::TOKEN')).toBe(false);
-  });
-
-  it('getTier returns correct tier or undefined', () => {
-    expect(getTier(USDC_TYPE)).toBe(1);
-    expect(getTier(SUI_TYPE)).toBe(2);
-    expect(getTier(USDSUI_TYPE)).toBeUndefined();
-    expect(getTier('0xunknown::token::TOKEN')).toBeUndefined();
   });
 });
 

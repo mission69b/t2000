@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 
-Fetch the current wallet balance — stablecoin holdings (USDC, USDsui, other Sui-native stables) plus the SUI gas reserve. Wallet only; **no savings or debt** rollup (those live on audric.ai, not in the Agent Wallet CLI).
+Fetch the current wallet balance — stablecoin holdings (USDC, USDsui, other Sui-native stables) plus the SUI holding (used for swaps). Wallet only; **no savings or debt** rollup (those live on audric.ai, not in the Agent Wallet CLI).
 
 ## Commands
 
@@ -44,8 +44,8 @@ The list shows every stablecoin with a balance ≥ $0.01, sorted with USDC first
 {
   "available": 170.0,
   "stables": { "USDC": 150.0, "USDsui": 20.0 },
-  "gasReserve": { "sui": 0.5, "usdEquiv": 0.5 },
-  "walletTotal": 170.5
+  "sui": { "amount": 0.5, "usdValue": 0.5 },
+  "totalUsd": 170.5
 }
 ```
 
@@ -57,6 +57,6 @@ The list shows every stablecoin with a balance ≥ $0.01, sorted with USDC first
 
 ## Notes
 
-- `gasReserve.usdEquiv` is an estimate at current SUI price; it fluctuates.
+- `sui.usdValue` is an estimate at current SUI price; it fluctuates.
 - If balance shows $0.00 and the wallet was just created, fund it first via `t2 receive` (prints the address + QR).
-- USDC + USDsui sends are gasless (Sui foundation sponsored), so you can send with 0 SUI in the gas reserve. Swaps via Cetus DO need a small SUI balance.
+- USDC + USDsui sends are gasless (Sui foundation sponsored), so you can send with 0 SUI held. Swaps via Cetus DO need a small SUI balance.

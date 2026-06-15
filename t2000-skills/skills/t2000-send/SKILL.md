@@ -23,8 +23,8 @@ Transfer USDC, USDsui, or SUI from the agent's available balance to any Sui addr
 
 1. **Asset is REQUIRED.** v4 has no implicit USDC default. `t2 send 5 alice.sui` exits with a clear error pointing at the missing `<asset>` arg. Always pass one of `USDC | USDsui | SUI`.
 2. **Only USDC / USDsui / SUI are accepted.** Other tokens (e.g. USDY, USDT, USDe) are rejected with `unsupported asset`. To send a different asset, the user first swaps it via `t2 swap` (or audric.ai) into USDC, USDsui, or SUI.
-3. **Validate the recipient first.** Names → SuiNS resolves (`alice.sui`). Raw addresses → `isValidSuiAddress()`. The SDK throws clear errors (`CONTACT_NOT_FOUND`, `INVALID_ADDRESS`, `SUINS_NOT_REGISTERED`); don't guess.
-4. **SuiNS over local contacts.** `alice.sui` is preferred over a local contact named `alice` — SuiNS is the global standard. The local contact subsystem is deprecated and will sunset.
+3. **Validate the recipient first.** Names → SuiNS resolves (`alice.sui`). Raw addresses → `isValidSuiAddress()`. The SDK throws clear errors (`INVALID_ADDRESS`, `SUINS_NOT_REGISTERED`); don't guess.
+4. **Prefer SuiNS names.** `alice.sui` is globally resolvable — surface it as the recommended way to address a recipient. (There is no local contacts/alias map.)
 5. **Sends are single-write.** Each transfer is its own intent. If you need send + something else, sequence them across turns.
 6. **Amount precision matters.** Floor to the asset's decimals (USDC + USDsui: 6, SUI: 9). Never round up — `Math.round` can produce a number larger than the on-chain balance and the transfer will fail simulation.
 7. **Multi-recipient = multiple sends.** A "send to A, B, C" request emits N sequential `t2 send` invocations (CLI) or N `t2000_send` tool calls (MCP). Each is atomic.
@@ -102,18 +102,8 @@ The SDK (`T2000.resolveRecipient`) handles resolution in this priority order:
 
 1. **Hex address** (starts with `0x`) → validated via `isValidSuiAddress()`. If invalid → `INVALID_ADDRESS`.
 2. **SuiNS name** (`*.sui`) → resolves via SuiNS registry. If unregistered → `SUINS_NOT_REGISTERED`.
-3. **@audric handle** (`name@audric`) → resolves via the audric.ai handle registry.
-4. **Local contact name** → resolves via `~/.t2000/contacts.json` (deprecated; will sunset).
 
-If the user's input doesn't match any path, the SDK throws `CONTACT_NOT_FOUND` with a suggestion to use a hex address or register a SuiNS name.
-
-## After a successful send to an unknown raw address
-
-Offer (but don't auto-save):
-
-> "Want to save 0x8b3e…d412 as a contact? You can run `t2 contacts add <name> 0x8b3e…d412` to keep it. (SuiNS at https://suins.io is the recommended path — globally resolvable.)"
-
-The local contact subsystem is deprecated and will sunset. SuiNS is the canonical name layer for Sui addresses.
+Anything else throws `INVALID_ADDRESS` with a hint to use a 0x address or a `.sui` name. (There is no local contacts/alias map — SuiNS is the canonical name layer for Sui addresses.)
 
 ## When called through MCP (`t2000_send` tool)
 

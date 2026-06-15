@@ -1,49 +1,50 @@
 /**
- * Unified token registry — single source of truth for coin types, decimals, symbols, and tiers.
+ * Unified token registry — single source of truth for coin types, decimals,
+ * and symbols. ZERO heavy dependencies; safe to import anywhere (server,
+ * browser, Edge).
  *
- * ZERO heavy dependencies. Safe to import from any context (server, browser, Edge).
+ * Used for swap-by-symbol resolution, amount formatting (decimals), and
+ * history/balance display. USDC is the settlement stable (send / receive /
+ * x402 pay); everything else is holdable / swappable. There is no curated
+ * "tier" gate — swaps accept any coin type (Cetus routes); the registry just
+ * makes the common tokens ergonomic to reference by symbol.
  *
- * Tier 1: USDC — the settlement stable (send, receive, x402 pay).
- * Tier 2: curated swap assets — hold, trade, and send only.
- * No tier: tokens kept for display/classification accuracy. No new operations.
- *
- * To add a new token: add ONE entry to COIN_REGISTRY below. Everything else derives from it.
- * Gate for Tier 2 addition: confirmed deep Cetus liquidity + clear user need.
+ * To add a token: add ONE entry to COIN_REGISTRY below — everything derives
+ * from it.
  */
 
 export interface CoinMeta {
   type: string;
   decimals: number;
   symbol: string;
-  tier?: 1 | 2;
 }
 
 /**
  * Canonical coin registry.
- * Key = user-friendly name (used in swap_execute, CLI, prompts).
+ * Key = user-friendly name (used in swap, CLI, prompts).
  */
 export const COIN_REGISTRY: Record<string, CoinMeta> = {
-  // ── Tier 1 — Settlement stable ────────────────────────────────────────
-  USDC:     { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6, symbol: 'USDC', tier: 1 },
+  // ── Settlement stable ─────────────────────────────────────────────────
+  USDC:     { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6, symbol: 'USDC' },
 
-  // ── Tier 2 — Swap assets (15 tokens) ──────────────────────────────────
-  SUI:      { type: '0x2::sui::SUI', decimals: 9, symbol: 'SUI', tier: 2 },
-  wBTC:     { type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC', decimals: 8, symbol: 'wBTC', tier: 2 },
-  ETH:      { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8, symbol: 'ETH', tier: 2 },
-  GOLD:     { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9, symbol: 'GOLD', tier: 2 },
-  DEEP:     { type: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP', decimals: 6, symbol: 'DEEP', tier: 2 },
-  WAL:      { type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL', decimals: 9, symbol: 'WAL', tier: 2 },
-  NS:       { type: '0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS', decimals: 6, symbol: 'NS', tier: 2 },
-  IKA:      { type: '0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA', decimals: 9, symbol: 'IKA', tier: 2 },
-  CETUS:    { type: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS', decimals: 9, symbol: 'CETUS', tier: 2 },
-  NAVX:     { type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', decimals: 9, symbol: 'NAVX', tier: 2 },
-  vSUI:     { type: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', decimals: 9, symbol: 'vSUI', tier: 2 },
-  haSUI:    { type: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI', decimals: 9, symbol: 'haSUI', tier: 2 },
-  afSUI:    { type: '0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI', decimals: 9, symbol: 'afSUI', tier: 2 },
-  LOFI:     { type: '0xf22da9a24ad027cccb5f2d496cbe91de953d363513db08a3a734d361c7c17503::LOFI::LOFI', decimals: 9, symbol: 'LOFI', tier: 2 },
-  MANIFEST: { type: '0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST', decimals: 9, symbol: 'MANIFEST', tier: 2 },
+  // ── Common swap assets (symbol ergonomics — any coin type still swaps) ─
+  SUI:      { type: '0x2::sui::SUI', decimals: 9, symbol: 'SUI' },
+  wBTC:     { type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC', decimals: 8, symbol: 'wBTC' },
+  ETH:      { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8, symbol: 'ETH' },
+  GOLD:     { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9, symbol: 'GOLD' },
+  DEEP:     { type: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP', decimals: 6, symbol: 'DEEP' },
+  WAL:      { type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL', decimals: 9, symbol: 'WAL' },
+  NS:       { type: '0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS', decimals: 6, symbol: 'NS' },
+  IKA:      { type: '0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA', decimals: 9, symbol: 'IKA' },
+  CETUS:    { type: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS', decimals: 9, symbol: 'CETUS' },
+  NAVX:     { type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', decimals: 9, symbol: 'NAVX' },
+  vSUI:     { type: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', decimals: 9, symbol: 'vSUI' },
+  haSUI:    { type: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI', decimals: 9, symbol: 'haSUI' },
+  afSUI:    { type: '0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI', decimals: 9, symbol: 'afSUI' },
+  LOFI:     { type: '0xf22da9a24ad027cccb5f2d496cbe91de953d363513db08a3a734d361c7c17503::LOFI::LOFI', decimals: 9, symbol: 'LOFI' },
+  MANIFEST: { type: '0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST', decimals: 9, symbol: 'MANIFEST' },
 
-  // ── Legacy — no tier, kept for display accuracy on existing positions ──
+  // ── Other stables (display / classification) ──────────────────────────
   USDT:     { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6, symbol: 'USDT' },
   USDe:     { type: '0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE', decimals: 6, symbol: 'USDe' },
   USDSUI:   { type: '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI', decimals: 6, symbol: 'USDsui' },
@@ -59,56 +60,26 @@ for (const meta of Object.values(COIN_REGISTRY)) {
 
 /**
  * Returns the registry metadata for a coin type, or `undefined` if the coin
- * is not in the registry. Use this when you need to distinguish "known coin"
- * from "supported coin" — `isSupported` only flags tiered (active) coins,
- * but legacy coins like USDsui / USDe / USDT are in the registry without a
- * tier and still need canonical-symbol resolution.
+ * is not in the registry. Used for canonical-symbol + decimal resolution.
  */
 export function getCoinMeta(coinType: string): CoinMeta | undefined {
   return BY_TYPE.get(coinType);
 }
 
 /**
- * Returns true if the coin type appears anywhere in COIN_REGISTRY (tier 1, 2,
- * OR legacy/no-tier). Different from `isSupported`, which excludes legacy
- * entries. The blockvision-prices canonical-symbol gate uses this looser
- * check so that USDsui (legacy/no-tier today, but with a registry-canonical
- * mixed-case symbol) still wins over BlockVision's uppercase 'USDSUI'.
+ * Returns true if the coin type appears in COIN_REGISTRY. Useful as a
+ * canonical-symbol gate — e.g. so the registry's mixed-case `USDsui` wins
+ * over a vendor feed's uppercase `USDSUI`.
  */
 export function isInRegistry(coinType: string): boolean {
   return BY_TYPE.has(coinType);
 }
 
-// ── Tier helpers ─────────────────────────────────────────────────────────
-
-/** Returns true if the coin type is Tier 1 (USDC — the financial layer). */
-export function isTier1(coinType: string): boolean {
-  const meta = BY_TYPE.get(coinType);
-  return meta?.tier === 1;
-}
-
-/** Returns true if the coin type is Tier 2 (curated swap asset). */
-export function isTier2(coinType: string): boolean {
-  const meta = BY_TYPE.get(coinType);
-  return meta?.tier === 2;
-}
-
-/** Returns true if the coin type is actively supported (Tier 1 or Tier 2). */
-export function isSupported(coinType: string): boolean {
-  const meta = BY_TYPE.get(coinType);
-  return meta?.tier !== undefined;
-}
-
-/** Returns the tier for a coin type, or undefined if legacy/unknown. */
-export function getTier(coinType: string): 1 | 2 | undefined {
-  return BY_TYPE.get(coinType)?.tier;
-}
-
 // ── Lookup helpers ───────────────────────────────────────────────────────
 
 /**
- * Get decimals for any coin type. Checks full type match, then suffix match, then defaults to 9.
- * Works for both tiered and legacy tokens.
+ * Get decimals for any coin type. Checks full type match, then suffix match,
+ * then defaults to 9. Works for any token, registered or not.
  */
 export function getDecimalsForCoinType(coinType: string): number {
   const direct = BY_TYPE.get(coinType);

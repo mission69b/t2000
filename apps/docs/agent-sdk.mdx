@@ -104,7 +104,6 @@ import {
 
   // Token data
   COIN_REGISTRY, TOKEN_MAP, SUI_TYPE, USDC_TYPE,
-  isTier1, isTier2, isSupported, getTier,
   getDecimalsForCoinType, resolveSymbol, resolveTokenType,
 
   // Asset allowlist
@@ -125,29 +124,22 @@ import {
 
 ## Supported Assets
 
-Token metadata + tiers live in `COIN_REGISTRY` (`packages/sdk/src/token-registry.ts`). **19 tokens** total.
+Token metadata lives in `COIN_REGISTRY` (`packages/sdk/src/token-registry.ts`) — coin type, decimals, and symbol for the common tokens. There is **no tier gate**: USDC is the settlement stable (send / receive / x402 pay); everything else is holdable / swappable. Swaps accept **any** coin type (Cetus routes); the registry just makes common tokens referenceable by symbol (`resolveTokenType('SUI')`).
 
-- **Tier 1 — financial layer (1):** USDC. Send / receive / swap, marketplace, x402 pay.
-- **Tier 2 — swap assets (15):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST. Hold + swap + send only.
-- **Legacy — no tier, display only (3):** USDT, USDe, USDsui. Kept so existing balances still render accurately.
-
-<Note>
-**Note.** `OPERATION_ASSETS` still ships the per-operation allowlist constants (including `save` / `borrow` entries), but the SDK no longer exposes lending methods — NAVI / DeFi left `@t2000/sdk`. The live write operations are `send`, `swap`, and `pay`.
-</Note>
+The only per-operation allowlist is `send` (gasless-eligible stables + SUI) — `swap` is unrestricted:
 
 ```typescript
 import { OPERATION_ASSETS, assertAllowedAsset } from '@t2000/sdk';
 
 OPERATION_ASSETS.send;   // ['USDC', 'USDsui', 'SUI']
-OPERATION_ASSETS.save;   // ['USDC', 'USDsui']
-OPERATION_ASSETS.borrow; // ['USDC', 'USDsui']
+OPERATION_ASSETS.swap;   // '*'  (any token)
 
-assertAllowedAsset('send', 'USDY'); // throws — not in the allowlist
+assertAllowedAsset('send', 'USDY'); // throws — not sendable; swap to USDC first
 ```
 
 ## Gasless
 
-USDC + USDsui sends and x402 USDC payments are gasless. The SDK builds the transaction through `SuiGrpcClient` so the gasless-eligibility resolver detects the `0x2::balance::send_funds` Move call at build time and zeroes out `gasPrice` / `gasBudget` / `gasPayment` automatically. Submission still goes through the JSON-RPC client (hybrid pattern documented at [`docs.sui.io`](https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers)).
+USDC + USDsui sends and x402 USDC payments are gasless. The SDK builds the transaction through `SuiGrpcClient` so the gasless-eligibility resolver detects the `0x2::balance::send_funds` Move call at build time and zeroes out `gasPrice` / `gasBudget` / `gasPayment` automatically (pattern documented at [`docs.sui.io`](https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers)). Reads + execution run over gRPC (JSON-RPC deactivates 2026-07-31).
 
 Other writes (SUI sends, Cetus swaps) require gas. Keep ~0.05 SUI on hand. The SDK throws `INSUFFICIENT_GAS` if you run dry.
 
