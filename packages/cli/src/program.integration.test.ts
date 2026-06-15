@@ -276,7 +276,7 @@ describeOrSkip('CLI integration — limit set / show / reset round-trip', () => 
     const showR = runCli(['--json', 'limit', 'show'], { home });
     const parsed = JSON.parse(showR.stdout);
     expect(parsed.limits.perTxUsd).toBe(50);
-    expect(parsed.limits.dailySendUsd).toBe(100);
+    expect(parsed.limits.dailyUsd).toBe(100);
   });
 
   it('t2 limit reset clears every limit', () => {
