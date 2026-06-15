@@ -34,11 +34,19 @@ jobs:
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/cli typecheck
+      - run: pnpm --filter @t2000/ui typecheck
       # @t2000/web has no Prisma stack post-S.224 (Block C.2). gateway still
       # owns its own schema (MppPayment + ReputationCache) — its `typecheck`
       # script runs `prisma generate` first.
       - run: pnpm --filter @t2000/web typecheck
       - run: pnpm --filter gateway typecheck
+      # Lint the published packages (the job's namesake — was previously
+      # build+typecheck only). docs lint = mintlify/broken-links (network +
+      # node-specific), kept out of code CI on purpose.
+      - run: pnpm --filter @t2000/sdk lint
+      - run: pnpm --filter @t2000/cli lint
+      - run: pnpm --filter @t2000/mcp lint
+      - run: pnpm --filter @t2000/ui lint
 
   test:
     name: Unit Tests
@@ -57,5 +65,6 @@ jobs:
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/cli test
+      - run: pnpm --filter @t2000/ui test
       - run: pnpm --filter @t2000/web test
       - run: pnpm --filter gateway test
