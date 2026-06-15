@@ -26,8 +26,6 @@ export {
   SUI_DECIMALS,
   USDC_DECIMALS,
   BPS_DENOMINATOR,
-  SAVE_FEE_BPS,
-  BORROW_FEE_BPS,
   T2000_OVERLAY_FEE_WALLET,
   SUPPORTED_ASSETS,
   CLOCK_ID,
@@ -139,8 +137,6 @@ export type {
   SendTransferInput,
   SwapExecuteInput,
 } from './composeTx.js';
-export { calculateFee, addFeeTransfer } from './protocols/protocolFee.js';
-export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
 export { getSwapQuote } from './swap-quote.js';

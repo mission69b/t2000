@@ -31,8 +31,6 @@ export {
   SUI_DECIMALS,
   USDC_DECIMALS,
   BPS_DENOMINATOR,
-  SAVE_FEE_BPS,
-  BORROW_FEE_BPS,
   T2000_OVERLAY_FEE_WALLET,
   SUPPORTED_ASSETS,
   CLOCK_ID,
@@ -95,9 +93,6 @@ export { toBase64, fromBase64 } from './utils/base64.js';
 export type { SimulationResult } from './utils/simulate.js';
 
 // Protocol fee
-export { calculateFee, addFeeTransfer } from './protocols/protocolFee.js';
-export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
-
 // Cetus aggregator helpers — Audric prepare/route.ts uses these directly to
 // build swap PTBs with overlay fees (per-call, not module-global).
 export { findSwapRoute, buildSwapTx, OVERLAY_FEE_RATE } from './protocols/cetus-swap.js';

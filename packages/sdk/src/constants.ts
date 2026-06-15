@@ -9,9 +9,6 @@ export const PRECISION = 1_000_000_000_000_000_000n;
 
 export const MIN_DEPOSIT = 1_000_000n; // 1 USDC (6 decimals)
 
-export const SAVE_FEE_BPS = 10n; // 0.1%
-export const BORROW_FEE_BPS = 5n; // 0.05%
-
 export const CLOCK_ID = '0x6';
 
 export const SUPPORTED_ASSETS = {
@@ -158,10 +155,9 @@ export const GASLESS_STABLE_TYPES: Record<'USDC' | 'USDsui', string> = {
   USDsui: SUPPORTED_ASSETS.USDsui.type,
 };
 
-// All protocol fees route here as a regular USDC wallet transfer. Audric's
-// prepare/route.ts adds `addFeeTransfer(...)` inline for save/borrow and passes
-// `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` for swaps. The CLI/SDK never
-// charge fees — this constant is exported for consumer apps only.
+// Swap overlay fees route here. Audric's prepare/route.ts passes
+// `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` to the Cetus aggregator. The
+// CLI/SDK never charge fees — this constant is exported for consumer apps only.
 //
 // Address corresponds to the treasury admin wallet. Override via env for local dev /
 // testnet only — production must use the canonical mainnet address below.

@@ -485,31 +485,28 @@ This flow does NOT go through `executeTx`. It's a host-layer concern, documented
 
 ## Protocol Fees (wallet-direct architecture)
 
-**Fees are an Audric (consumer) concern, not a t2000 (infra) concern.** As of `@t2000/sdk@1.1.0` (2026-04-30), no Move treasury contract is involved — fees flow inline within the consumer's PTB:
+**Fees are an Audric (consumer) concern, not a t2000 (infra) concern.** As of `@t2000/sdk@1.1.0` (2026-04-30), no Move treasury contract is involved. With the DeFi surface removed, the only live fee is the **Cetus swap overlay fee** — the aggregator takes it from swap output and transfers it to the configured receiver inside the same PTB:
 
 ```
-Audric prepare/route.ts
+Audric prepare/route.ts (swap)
   │
-  ├── splitCoins(paymentCoin, feeRaw)  [1]
-  ├── transferObjects([feeCoin], T2000_OVERLAY_FEE_WALLET)  [2]
-  ├── (continue with NAVI deposit / borrow / Cetus swap)
+  ├── buildSwapTx({ ..., overlayFee: { rate, receiver: T2000_OVERLAY_FEE_WALLET } })
+  ├──   → Cetus aggregator emits the overlay-fee transfer in-PTB
   └── tx submitted via Enoki sponsorship
                 ↓
-                on-chain — USDC transferred to T2000_OVERLAY_FEE_WALLET
-                           in the same PTB as the operation
+                on-chain — overlay fee transferred to T2000_OVERLAY_FEE_WALLET
+                           in the same PTB as the swap
 ```
 
 **Properties:**
-- **Atomic with the operation.** `splitCoins + transferObjects` are PTB ops; if anything in the PTB reverts, the fee transfer reverts too.
-- **No SDK fee logic.** `@t2000/sdk` (and therefore the CLI) is fee-free by design. Audric is the only fee owner; Audric's `prepare/route.ts` ALWAYS adds `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and ALWAYS passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. Structural inclusion (can't be forgotten because it IS the code).
-- **Wallet IS the live ledger.** `client.getBalance({ owner: treasuryWallet })` reads "what's in the treasury right now." The marketing stats API (`apps/web/app/api/stats/route.ts`) uses live Sui RPC for the treasury + gateway balances. Historical aggregates (total fees collected across all time, including amounts already withdrawn) live in Audric's NeonDB, populated by Audric's Vercel cron — see the audric repo. (Pre-v0.7d, an `apps/server` ECS indexer wrote a `ProtocolFeeLedger` table here; that responsibility moved to Audric in Block C.)
+- **Atomic with the operation.** The overlay-fee transfer is part of the swap PTB; if anything reverts, the fee reverts too.
+- **No SDK fee logic.** `@t2000/sdk` (and the CLI) is fee-free by design. Audric is the only fee owner; it passes `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` to `buildSwapTx`. The old `addFeeTransfer`/`protocolFee` helper (only ever used for the now-removed save/borrow fees) was deleted with the DeFi surface; a consumer wanting a non-swap fee splits + transfers to a wallet in its own PTB.
+- **Wallet IS the live ledger.** `core.getBalance({ owner: treasuryWallet })` reads "what's in the treasury right now." Historical aggregates live in Audric's NeonDB, populated by Audric's Vercel cron — see the audric repo.
 
 **Fee rates:**
 
 | Operation | Rate (bps) | Rate (decimal) | Source |
 |-----------|------------|----------------|--------|
-| `save`    | 10         | 0.001          | `SAVE_FEE_BPS` in `packages/sdk/src/constants.ts` |
-| `borrow`  | 5          | 0.0005         | `BORROW_FEE_BPS` in `packages/sdk/src/constants.ts` |
 | `swap`    | 10         | 0.001          | `OVERLAY_FEE_RATE` in `packages/sdk/src/protocols/cetus-swap.ts` |
 
 ---

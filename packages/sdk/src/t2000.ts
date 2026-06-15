@@ -29,7 +29,7 @@ import {
   resolveSuinsViaRpc,
 } from './utils/suins.js';
 // [B5 v2 / 2026-04-30] No fee imports — CLI / direct SDK is fee-free. Consumer
-// apps (Audric) own fee policy via `addFeeTransfer` from `./protocols/protocolFee.js`.
+// apps (Audric) own fee policy (Cetus `overlayFee` on swaps → T2000_OVERLAY_FEE_WALLET).
 import type {
   T2000Options,
   BalanceResponse,
