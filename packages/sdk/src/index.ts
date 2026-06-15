@@ -53,7 +53,6 @@ export {
   normalizeCoinType,
   getSuiClient,
   getSuiGrpcClient,
-  createSuiClient,
 } from './utils/sui.js';
 export {
   SUI_ADDRESS_REGEX,

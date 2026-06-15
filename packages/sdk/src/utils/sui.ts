@@ -1,4 +1,4 @@
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { SuiGraphQLClient } from '@mysten/sui/graphql';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
@@ -55,23 +55,29 @@ function resolveGraphqlUrl(graphqlUrl?: string): string {
 }
 
 /**
- * JSON-RPC client cache, keyed by URL. The earlier impl cached
+ * Canonical agent client cache, keyed by URL. The earlier impl cached
  * unconditionally and ignored URL changes after the first call —
  * brittle for testnet smokes and custom-RPC test setups.
  */
-const rpcClientCache = new Map<string, SuiJsonRpcClient>();
+const rpcClientCache = new Map<string, SuiGrpcClient>();
 
-export function getSuiClient(rpcUrl?: string): SuiJsonRpcClient {
+/**
+ * [gRPC cutover] The canonical agent client is now gRPC. Mysten deactivates
+ * the JSON-RPC fullnode interface on 2026-07-31, so reads (`.core.*`) and
+ * execution route over gRPC — transaction *builds* already do
+ * (`getSuiGrpcClient`). The whole SDK was first refactored onto the unified
+ * `.core` API (behavior-preserving on JSON-RPC), then flipped here. The
+ * `rpcUrl` arg / `T2000_RPC_URL` override now resolve a gRPC `baseUrl`
+ * (`DEFAULT_RPC_URL` is the same host as `DEFAULT_GRPC_URL`). The historical
+ * query surface stays on `getSuiGraphQLClient()`.
+ */
+export function getSuiClient(rpcUrl?: string): SuiGrpcClient {
   const url = resolveRpcUrl(rpcUrl);
   const cached = rpcClientCache.get(url);
   if (cached) return cached;
-  const client = new SuiJsonRpcClient({ url, network: 'mainnet' });
+  const client = new SuiGrpcClient({ baseUrl: url, network: 'mainnet' });
   rpcClientCache.set(url, client);
   return client;
-}
-
-export function createSuiClient(network: 'mainnet' | 'testnet' = 'mainnet'): SuiJsonRpcClient {
-  return new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(network), network });
 }
 
 /**

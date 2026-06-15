@@ -1,4 +1,4 @@
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { SuiGrpcClient } from '@mysten/sui/grpc';
 import type { TransactionSigner } from '../signer.js';
 import type { PayOptions, PayResult } from '../types.js';
 import { parseChallengeAmount } from '../mpp-cost.js';
@@ -17,7 +17,7 @@ import { executeTx } from './executeTx.js';
 
 export async function payWithMpp(args: {
   signer: TransactionSigner;
-  client: SuiJsonRpcClient;
+  client: SuiGrpcClient;
   options: PayOptions;
 }): Promise<PayResult> {
   const { signer, client, options } = args;

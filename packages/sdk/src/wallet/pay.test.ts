@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TransactionSigner } from '../signer.js';
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { SuiGrpcClient } from '@mysten/sui/grpc';
 
 // --- Mocks for the dynamically-imported MPP stack -------------------------
 // payWithMpp dynamically imports mppx/client, @suimpp/mpp/client, and
@@ -47,7 +47,7 @@ function makeSigner(): TransactionSigner {
   } as unknown as TransactionSigner;
 }
 
-function makeClient(): SuiJsonRpcClient {
+function makeClient(): SuiGrpcClient {
   return {
     network: 'mainnet',
     core: {
@@ -60,7 +60,7 @@ function makeClient(): SuiJsonRpcClient {
       })),
       waitForTransaction: vi.fn(async () => ({})),
     },
-  } as unknown as SuiJsonRpcClient;
+  } as unknown as SuiGrpcClient;
 }
 
 // Minimal Transaction stand-in for the `execute` callback → executeTx path.

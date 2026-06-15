@@ -1,5 +1,5 @@
 import { EventEmitter } from 'eventemitter3';
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { SuiGrpcClient } from '@mysten/sui/grpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, coinWithBalance, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { createPaymentTransactionUri } from '@mysten/payment-kit';
@@ -66,16 +66,16 @@ interface T2000Events {
 export class T2000 extends EventEmitter<T2000Events> {
   private readonly _signer: TransactionSigner;
   private readonly _keypair?: Ed25519Keypair;
-  private readonly client: SuiJsonRpcClient;
+  private readonly client: SuiGrpcClient;
   private readonly _address: string;
   readonly enforcer: SafeguardEnforcer;
   readonly contacts: ContactManager;
 
-  private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, configDir?: string);
-  private constructor(signer: TransactionSigner, client: SuiJsonRpcClient, configDir: string | undefined, isSignerMode: true);
+  private constructor(keypair: Ed25519Keypair, client: SuiGrpcClient, configDir?: string);
+  private constructor(signer: TransactionSigner, client: SuiGrpcClient, configDir: string | undefined, isSignerMode: true);
   private constructor(
     keypairOrSigner: Ed25519Keypair | TransactionSigner,
-    client: SuiJsonRpcClient,
+    client: SuiGrpcClient,
     configDir?: string,
     isSignerMode?: boolean,
   ) {
@@ -136,8 +136,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Gas --
 
-  /** SuiJsonRpcClient used by this agent — exposed for integrations. */
-  get suiClient(): SuiJsonRpcClient {
+  /** SuiGrpcClient used by this agent — exposed for integrations. */
+  get suiClient(): SuiGrpcClient {
     return this.client;
   }
 

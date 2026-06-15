@@ -64,11 +64,11 @@ export type {
   TxDirection,
 } from './wallet/classify.js';
 /**
- * RPC tx parsing helpers. Safe in the browser — they only do shape
+ * Tx parsing helpers. Safe in the browser — they only do shape
  * inspection / classification and do not import any Node-only modules.
  * `queryHistory` and `queryTransaction` are not re-exported here
- * because they take a Node `SuiJsonRpcClient`; consumers can build
- * the same flow with `parseSuiRpcTx` + their own RPC fetch.
+ * because they reach the network (GraphQL) directly; browser consumers
+ * can build the same flow with `parseSuiRpcTx` + their own fetch.
  */
 export {
   parseSuiRpcTx,
