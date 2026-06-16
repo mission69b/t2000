@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { T2000, SupportedAsset } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
+import { fetchServiceCatalog, deriveCategoryTools } from './service-catalog.js';
 
 // [v4.0 Phase B — 2026-05-26] MCP write surface mirrors the v4 CLI:
 //   t2 send (asset-required) | t2 swap (Cetus aggregator) | t2 pay
@@ -36,7 +37,54 @@ function extractImageUrls(data: unknown): string[] {
   return urls;
 }
 
-export function registerWriteTools(server: McpServer, agent: T2000): void {
+// Shared x402 pay input shape — used by `t2000_pay` AND the dynamic
+// `t2000_<category>` capability tools (2.4), so they stay in lockstep.
+const PAY_INPUT_SHAPE = {
+  url: z.string().describe('Full URL of the MPP service endpoint (use t2000_services to discover available URLs)'),
+  method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('POST').describe('HTTP method (most services use POST)'),
+  body: z.string().optional().describe('JSON request body (required for POST endpoints)'),
+  headers: z.record(z.string()).optional().describe('Additional HTTP headers'),
+  maxPrice: z.number().default(1.0).describe('Max USD to pay (default: $1.00). Set higher for commerce services.'),
+};
+
+interface PayInput {
+  url: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  body?: string;
+  headers?: Record<string, string>;
+  maxPrice?: number;
+}
+
+/**
+ * Run a paid x402 request through the shared write mutex, surface generated
+ * image URLs, and cap the response size. The single implementation behind both
+ * `t2000_pay` and every `t2000_<category>` tool.
+ */
+async function executePay(agent: T2000, mutex: TxMutex, args: PayInput) {
+  try {
+    const result = await mutex.run(() => agent.pay(args));
+    let text = JSON.stringify(result);
+    try {
+      const data = typeof result === 'string' ? JSON.parse(result) : result;
+      const imageUrls = extractImageUrls(data);
+      if (imageUrls.length > 0) {
+        const urlList = imageUrls.slice(0, 4).map((u) => `- ${u}`).join('\n');
+        text = `Generated images:\n${urlList}\n\n${text}`;
+      }
+    } catch {
+      /* not JSON or no images */
+    }
+    const MAX_BYTES = 800_000;
+    if (text.length > MAX_BYTES) {
+      text = text.slice(0, MAX_BYTES) + '\n\n[Response truncated — exceeded size limit]';
+    }
+    return { content: [{ type: 'text' as const, text }] };
+  } catch (err) {
+    return errorResult(err);
+  }
+}
+
+export async function registerWriteTools(server: McpServer, agent: T2000): Promise<void> {
   const mutex = new TxMutex();
 
   server.tool(
@@ -135,39 +183,27 @@ Common examples:
 - Cohere: POST https://mpp.t2000.ai/cohere/v1/chat {"model":"command-r-plus","message":"Hello"}
 
 `,
-    {
-      url: z.string().describe('Full URL of the MPP service endpoint (use t2000_services to discover available URLs)'),
-      method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('POST').describe('HTTP method (most services use POST)'),
-      body: z.string().optional().describe('JSON request body (required for POST endpoints)'),
-      headers: z.record(z.string()).optional().describe('Additional HTTP headers'),
-      maxPrice: z.number().default(1.0).describe('Max USD to pay (default: $1.00). Set higher for commerce services.'),
-    },
-    async ({ url, method, body, headers, maxPrice }) => {
-      try {
-        const result = await mutex.run(() =>
-          agent.pay({ url, method, body, headers, maxPrice }),
-        );
-
-        let text = JSON.stringify(result);
-
-        try {
-          const data = typeof result === 'string' ? JSON.parse(result) : result;
-          const imageUrls = extractImageUrls(data);
-          if (imageUrls.length > 0) {
-            const urlList = imageUrls.slice(0, 4).map((u) => `- ${u}`).join('\n');
-            text = `Generated images:\n${urlList}\n\n${text}`;
-          }
-        } catch { /* not JSON or no images */ }
-
-        const MAX_BYTES = 800_000;
-        if (text.length > MAX_BYTES) {
-          text = text.slice(0, MAX_BYTES) + '\n\n[Response truncated — exceeded size limit]';
-        }
-
-        return { content: [{ type: 'text' as const, text }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
+    PAY_INPUT_SHAPE,
+    async ({ url, method, body, headers, maxPrice }) =>
+      executePay(agent, mutex, { url, method, body, headers, maxPrice }),
   );
+
+  // [2.4] Catalog-driven capability tools. Register one `t2000_<category>`
+  // tool per gateway category (ai, search, data, media, commerce, …) from the
+  // LIVE catalog so the agent sees category-scoped entry points instead of
+  // only the generic `t2000_pay`. Degrades silently to the generic tools if
+  // the catalog is unreachable (offline / startup). Each tool is a scoped
+  // alias of `t2000_pay` (same input shape + handler + mutex).
+  const catalog = await fetchServiceCatalog();
+  if (catalog) {
+    for (const spec of deriveCategoryTools(catalog)) {
+      server.tool(
+        spec.toolName,
+        `Pay an x402 **${spec.category}** service (${spec.endpointCount} endpoints on the gateway). Examples:\n${spec.examples.join('\n')}\n\nScoped alias of t2000_pay — provide the full URL + JSON body. See t2000_services for the full ${spec.category} catalog + input schemas.`,
+        PAY_INPUT_SHAPE,
+        async ({ url, method, body, headers, maxPrice }) =>
+          executePay(agent, mutex, { url, method, body, headers, maxPrice }),
+      );
+    }
+  }
 }

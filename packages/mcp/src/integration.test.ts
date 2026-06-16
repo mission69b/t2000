@@ -65,6 +65,9 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
   let serverTransport: InMemoryTransport;
 
   beforeAll(async () => {
+    // Deterministic tool list: skip the dynamic catalog-driven category tools
+    // (2.4) so the static-surface assertions below hold without a live fetch.
+    process.env.T2000_MCP_DISABLE_CATEGORY_TOOLS = '1';
     const agent = createMockAgent();
     server = new McpServer(
       { name: 't2000-test', version: '0.0.1' },
@@ -72,7 +75,7 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     );
 
     registerReadTools(server, agent);
-    registerWriteTools(server, agent);
+    await registerWriteTools(server, agent);
     registerLimitTool(server);
     // Inject loaded skills since vitest doesn't run tsup (no
     // `__BAKED_SKILLS__` define) — same data as production.
@@ -86,6 +89,7 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
   });
 
   afterAll(async () => {
+    delete process.env.T2000_MCP_DISABLE_CATEGORY_TOOLS;
     await client.close();
     await server.close();
   });

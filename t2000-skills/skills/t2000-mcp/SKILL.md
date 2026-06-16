@@ -18,7 +18,7 @@ metadata:
 
 ## Purpose
 
-Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **9 tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
+Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **9 core tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`), plus **auto-registered `t2000_<category>` capability tools** (`t2000_ai`, `t2000_search`, `t2000_data`, …) derived from the live gateway catalog at server start — scoped aliases of `t2000_pay` (degrade to `t2000_pay` if the catalog is unreachable). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
 
 ## ⚠️ The most common confusion
 
