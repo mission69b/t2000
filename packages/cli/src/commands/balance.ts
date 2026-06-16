@@ -6,10 +6,16 @@ import {
   printKeyValue,
   printBlank,
   printJson,
+  printLine,
   isJsonMode,
   handleError,
   printSeparator,
 } from '../output.js';
+
+/** Trim a token amount to ≤6 dp without trailing-zero noise. */
+function formatTokenAmount(n: number): string {
+  return n.toLocaleString('en-US', { maximumFractionDigits: 6, useGrouping: false });
+}
 
 export interface BalanceOptions {
   key?: string;
@@ -18,7 +24,7 @@ export interface BalanceOptions {
 export function registerBalance(program: Command) {
   program
     .command('balance')
-    .description('Show stablecoin + SUI holdings (USDC, USDsui, SUI; wallet only)')
+    .description('Show all wallet holdings — USDC / USDsui / SUI (USD-priced) + any other tokens (amount-only)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .action(async (opts: BalanceOptions) => {
       try {
@@ -30,6 +36,7 @@ export function registerBalance(program: Command) {
             available: bal.available,
             stables: bal.stables,
             sui: bal.sui,
+            tokens: bal.tokens,
             totalUsd: bal.totalUsd,
           });
           return;
@@ -51,15 +58,28 @@ export function registerBalance(program: Command) {
           }
         }
 
-        if (bal.sui && bal.sui.usdValue >= 0.001) {
+        if (bal.sui && bal.sui.amount > 0) {
           printKeyValue(
             'SUI',
-            `${formatUsd(bal.sui.usdValue)}  ${pc.dim(`(${bal.sui.amount.toFixed(4)} SUI — for swaps)`)}`,
+            `${formatUsd(bal.sui.usdValue)}  ${pc.dim(`(${bal.sui.amount.toFixed(4)} SUI · gas)`)}`,
           );
         }
 
+        // Other held tokens — amount-only (no USD price oracle for arbitrary tokens).
+        const tokens = bal.tokens ?? [];
+        for (const t of tokens) {
+          printKeyValue(t.symbol.padEnd(8), pc.dim(formatTokenAmount(t.amount)));
+        }
+
         printSeparator();
-        printKeyValue('Wallet total', formatUsd(bal.totalUsd));
+        printKeyValue('Wallet total', `${formatUsd(bal.totalUsd)}  ${pc.dim('(priced holdings)')}`);
+        if (tokens.length > 0) {
+          printLine(
+            pc.dim(
+              `  + ${tokens.length} token${tokens.length === 1 ? '' : 's'} above with no USD price — not counted in the total`,
+            ),
+          );
+        }
         printBlank();
       } catch (error) {
         handleError(error);

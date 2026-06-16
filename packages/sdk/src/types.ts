@@ -15,14 +15,34 @@ export interface SuiHolding {
   usdValue: number;
 }
 
+/**
+ * A non-stable, non-SUI coin held in the wallet (e.g. a token swapped into).
+ * `usdValue` is `null` — the SDK only prices stables ($1) + SUI (Cetus oracle);
+ * arbitrary tokens have no price feed (no BlockVision), so we surface the
+ * amount honestly rather than guessing a USD value.
+ */
+export interface TokenHolding {
+  coinType: string;
+  symbol: string;
+  amount: number;
+  usdValue: number | null;
+}
+
 export interface BalanceResponse {
   /** Spendable stablecoins keyed by symbol (USDC, USDsui) — gasless to send/pay. */
   stables: Record<string, number>;
   /** Sum of spendable stables in USD. Used for send/pay pre-checks. */
   available: number;
-  /** SUI holding — used for swaps (and any non-gasless gas). Not a "reserve". */
+  /** SUI holding — gas for swaps + any non-gasless op. Not a "reserve". */
   sui: SuiHolding;
-  /** Total wallet value in USD (available + sui.usdValue). */
+  /** Other held coins (anything not a stable or SUI) — amount-only, `usdValue: null`. */
+  tokens: TokenHolding[];
+  /**
+   * Total wallet value in USD — **priced holdings only** (stables + SUI). Tokens
+   * with `usdValue: null` are listed in `tokens` but NOT summed here, so the
+   * total never overstates by guessing a price. `tokens.length > 0` signals
+   * there's more in the wallet than the USD total reflects.
+   */
   totalUsd: number;
 }
 

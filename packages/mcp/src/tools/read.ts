@@ -16,7 +16,7 @@ import { errorResult } from '../errors.js';
 export function registerReadTools(server: McpServer, agent: T2000): void {
   server.tool(
     't2000_balance',
-    "Get the agent's wallet balance — spendable stablecoins (USDC + USDsui) plus the SUI holding (used for swaps). v4 wallet is payments-only; for savings positions / lending APYs see audric.ai.",
+    "Get the agent's full wallet balance — spendable stablecoins (USDC + USDsui), the SUI gas holding, and any other tokens held (returned in `tokens[]`, amount-only since arbitrary tokens have no USD price oracle). `totalUsd` counts priced holdings only (stables + SUI). v4 wallet is payments-only; for savings positions / lending APYs see audric.ai.",
     {},
     async () => {
       try {

@@ -70,6 +70,17 @@ t2 services inspect https://mpp.t2000.ai/resend
 
 Lists email + messaging services; inspect Resend to see `/v1/emails` at $0.05.
 
+### "What's the price of SUI?" (market data)
+
+Live crypto prices, stock quotes, and forex are brokered through the gateway's **Finance** providers (CoinGecko, AlphaVantage, ExchangeRate) — t2000 doesn't host its own market-data API; it routes to these and bills per call in USDC. (Wallet reads like `t2 balance` stay amount-only on purpose — pricing is an explicit, opt-in paid call, not baked into balance.)
+
+```bash
+t2 services search "price"
+t2 services inspect https://mpp.t2000.ai/coingecko
+```
+
+Lists the Finance providers, then shows CoinGecko's endpoints with exact per-call price. Copy the endpoint URL into `t2 pay <url>` to fetch the quote. (For SUI-name resolution — the ENS analog — use `t2` SuiNS resolution directly; it's in-house, not a paid service.)
+
 ## Output (default — search)
 
 ```
