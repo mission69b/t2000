@@ -26,7 +26,7 @@ Convert between tokens at the best available rate. Cetus Aggregator routes acros
 2. **Decline obviously bad swaps.** If `priceImpact > 0.5%` (50 bps), warn the user and require explicit confirmation. If `priceImpact > 5%`, refuse — that's almost certainly a thin-liquidity trap.
 3. **One swap per intent.** Cetus aggregator handles multi-hop internally; don't chain `swap` calls.
 4. **Don't auto-decide stables.** If the user says "swap to USD", ASK whether USDC or USDsui — they're both Sui-native stables.
-5. **Limits apply to CLI writes.** If the user set `t2 limit set --per-tx 50` and the swap exceeds the cap (when the from-side is USDC / USDsui), the CLI throws `LIMIT_EXCEEDED`. Use `--force` to override.
+5. **Limits apply to every swap (CLI and MCP).** Limits are on by default ($25/tx · $100/day); if the swap exceeds a cap (on the from-side USD value) the write throws `LIMIT_EXCEEDED`. Use `--force` (CLI) to override one time.
 
 ## Command
 
@@ -114,7 +114,7 @@ USDC, USDsui, USDT, USDe, SUI, vSUI, ETH, GOLD (XAUM), NAVX, WAL, and the long t
 }
 ```
 
-- The MCP tool currently does NOT honor `t2 limit set` caps (Phase D consolidation). Use the CLI for limit-gated swaps.
+- Both CLI and MCP swaps honor `t2 limit set` caps (enforced in `@t2000/sdk`, on the from-side USD value). Default caps: $25/tx · $100/day cumulative.
 - Returns the same shape as `--json` mode (digest + amounts + price impact + route).
 
 ## What NOT to do

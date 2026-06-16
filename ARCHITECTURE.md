@@ -312,7 +312,8 @@ t2 init
   ├─ Encode the Sui secret as Bech32 (`suiprivkey1…`)
   ├─ Write { version: 2, secret } JSON to ~/.t2000/wallet.key (mode 0600)
   ├─ Print the wallet's Sui address
-  └─ Print a warning footer: "Run `t2 limit set --per-tx <USD>` to opt into spending caps."
+  ├─ Seed default spending caps ($25/tx · $100/day cumulative) to ~/.t2000/config.json
+  └─ Print the caps: "Spending limits ON: $25/tx, $100/day — change with `t2 limit set`, or --force per-call."
 ```
 
 `t2 init --import` accepts an existing `suiprivkey1…` Bech32 secret (via hidden-input prompt or `--secret` arg) and writes the same file format. Pair with `t2 export` on the source machine to move wallets.
@@ -374,14 +375,14 @@ After t2 init:
 ```
 ~/.t2000/
   ├── wallet.key       # Plain Bech32 JSON — { version: 2, secret: "suiprivkey1…" }
-  └── config.json      # (only present after `t2 limit set` — opt-in spending caps + daily usage)
+  └── config.json      # spending caps + daily usage (seeded at `t2 init`: $25/tx · $100/day; `t2 limit reset` clears)
 ```
 
 The agent now has:
 
 - A Sui address (empty — fund it with USDC via any Sui exchange / wallet)
 - No MCP install (run `t2 mcp install` to wire Claude / Cursor / Windsurf)
-- No spending limits (run `t2 limit set` to opt in)
+- Default spending limits ON ($25/tx · $100/day; `t2 limit set` to adjust, `t2 limit reset` to clear)
 - Ready for `t2 send`, `t2 swap`, `t2 pay`, or any MCP tool call once funded
 
 ---
@@ -729,7 +730,7 @@ Current published version: `4.0.x`. The release workflow lives at `.github/workf
 | ----------------- | ---------------------------------------------------------------------- |
 | **Keys**          | Ed25519 keypair, plain Bech32 JSON at rest, `0o600` POSIX file permissions |
 | **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it  |
-| **Safeguards**    | Opt-in spending limits (`t2 limit set`), per-tx + daily caps           |
+| **Safeguards**    | Default-on spending limits (`t2 limit set` to adjust), per-tx + daily caps, enforced on CLI **and** MCP writes |
 | **On-chain**      | Inline fee transfer (Audric only), atomic Payment Intents, indexed ledger |
 | **MPP**           | HMAC-bound challenges (stateless), on-chain USDC verification          |
 | **API keys**      | Upstream keys stored as Vercel env vars, never exposed to agents       |
@@ -744,12 +745,12 @@ Current published version: `4.0.x`. The release workflow lives at `.github/workf
 
 ### Safeguard enforcement
 
-Spending limits are **opt-in**. After `t2 init`, the user runs `t2 limit set --per-tx <USD> --daily <USD>` to write caps to `~/.t2000/config.json`. By default no limits are enforced; the init footer warns the user about this.
+Spending limits are **on by default**. `t2 init` seeds $25/tx and $100/day (cumulative USD) to `~/.t2000/config.json`; the user adjusts with `t2 limit set --per-tx <USD> --daily <USD>` or clears with `t2 limit reset`. Enforcement lives in `@t2000/sdk` (the `LimitEnforcer` gate), so **every write — CLI and MCP — is gated** (the early-v4 MCP-bypass gap is closed).
 
 ```
 Any outbound write operation (send / swap / pay)
   │
-  ├── Limit check (only if t2 limit set was run)
+  ├── Limit check (caps seeded at init; skipped only after `t2 limit reset`)
   │   ├── Amount ≤ per-tx cap?
   │   └── dailyUsed + amount ≤ daily cap?
   │

@@ -102,7 +102,7 @@ npm install -g @t2000/cli
 # 2. Create your Agent Wallet (no PIN, plain Bech32 file, 0o600 perms)
 t2 init
 
-# 3. (Optional) opt in to spending limits
+# 3. (Optional) adjust the default spending limits ($25/tx · $100/day)
 t2 limit set --per-tx 50 --daily 100
 ```
 

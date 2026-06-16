@@ -38,7 +38,7 @@ t2 init
 
 That's it. No PIN. No safeguards gate. The MCP server starts as soon as the wallet file exists at `~/.t2000/wallet.key`.
 
-> Optional: set opt-in spending limits via `t2 limit set --per-tx 50` / `t2 limit set --daily 200`. These limits gate CLI writes (`t2 send/swap/pay`). MCP writes do NOT currently honor them (Phase D consolidation). The MCP `t2000_limit` tool surfaces them for the LLM to read.
+> Spending limits are ON by default ($25/tx, $100/day cumulative; adjust with `t2 limit set --per-tx 50` / `--daily 200`, clear with `t2 limit reset`). Every write — CLI **and** MCP — honors the caps and throws `LIMIT_EXCEEDED` when exceeded (enforced in `@t2000/sdk`). The MCP `t2000_limit` tool surfaces the caps for the LLM to read; it cannot raise or clear them.
 
 ### 2. Wire MCP into your AI client — the easy way
 
@@ -172,4 +172,4 @@ Invoking the prompt loads the full skill markdown as the user message — equiva
 - v4 wallets are plain Bech32 JSON files (`0o600` perms) — no PIN. Anyone with read access to `~/.t2000/wallet.key` owns the wallet.
 - Local-only stdio transport — the key never leaves the machine.
 - `dryRun: true` previews operations before signing (on `t2000_send`).
-- Opt-in spending limits via `t2 limit set` gate CLI writes (MCP writes don't gate yet — Phase D consolidation).
+- Spending limits (default $25/tx · $100/day; `t2 limit set`) gate ALL writes — CLI and MCP — enforced in `@t2000/sdk`; `t2000_limit` is read-only.

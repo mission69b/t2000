@@ -28,7 +28,7 @@ Transfer USDC, USDsui, or SUI from the agent's available balance to any Sui addr
 5. **Sends are single-write.** Each transfer is its own intent. If you need send + something else, sequence them across turns.
 6. **Amount precision matters.** Floor to the asset's decimals (USDC + USDsui: 6, SUI: 9). Never round up — `Math.round` can produce a number larger than the on-chain balance and the transfer will fail simulation.
 7. **Multi-recipient = multiple sends.** A "send to A, B, C" request emits N sequential `t2 send` invocations (CLI) or N `t2000_send` tool calls (MCP). Each is atomic.
-8. **Limits apply to CLI writes.** If the user set `t2 limit set --per-tx 50` and the request exceeds the cap, the CLI throws `LIMIT_EXCEEDED`. The user can override one time with `--force`. MCP writes do NOT currently gate on limits (Phase D consolidation).
+8. **Limits apply to every write (CLI and MCP).** Limits are on by default ($25/tx · $100/day cumulative); if the request exceeds a cap the write throws `LIMIT_EXCEEDED`. Override one time with `--force` (CLI).
 
 ## Command
 
@@ -120,4 +120,4 @@ The MCP `t2000_send` tool has the same asset-required contract:
 
 - `dryRun: true` returns a preview without signing — useful for confirming the resolved address + gasless badge before the actual write.
 - `asset` is REQUIRED — calls without it return an error.
-- MCP writes do NOT honor `t2 limit set` caps in v4 Phase B. Use the CLI for limit-gated workflows.
+- Both CLI and MCP writes honor `t2 limit set` caps (enforced in `@t2000/sdk`). Default caps: $25/tx · $100/day cumulative.

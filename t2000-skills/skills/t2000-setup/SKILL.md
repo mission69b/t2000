@@ -47,7 +47,7 @@ npm install -g @t2000/cli
 Verify:
 ```bash
 t2 --version
-# Should print: 4.x.x
+# Should print: 5.x.x
 ```
 
 If `npm` is missing, point the user to https://nodejs.org/ (Node 18+).
@@ -66,7 +66,7 @@ t2 init --import suiprivkey1xxx...   # import via flag (warns: shell history exp
 - Generates a fresh Ed25519 keypair on Sui mainnet.
 - Writes the plain Bech32 private key to `~/.t2000/wallet.key` (mode `0o600`).
 - Prints the wallet address.
-- Prints a warning footer if no spending limits are set (those are opt-in, see Step 4).
+- **Seeds conservative spending limits by default** — $25/tx and $100/day (cumulative USD) — and prints them. Adjust or clear in Step 4.
 
 `t2 init --import`:
 - Prompts for a `suiprivkey1...` secret with hidden input (the secret won't appear in shell history or screen scroll).
@@ -87,16 +87,16 @@ Shows the deposit address + Payment Kit URI + an ANSI QR code. Tell the user:
 - For swaps via Cetus, the wallet needs a small SUI balance (~0.05 SUI covers many swaps; cost is typically < $0.01 each).
 - 1 USDC is enough to get going (the gateway service catalog at `t2 services list` shows prices from $0.005).
 
-### Step 4 — (Optional) Set spending limits
+### Step 4 — (Optional) Adjust spending limits
 
 ```bash
 t2 limit set --per-tx 50         # cap every write at $50 USD
-t2 limit set --daily 200         # cap every send at $200 USD
+t2 limit set --daily 200         # cap cumulative daily spend at $200 USD
 ```
 
-v4 ships with **no default limits** — wallets are unconstrained until the user opts in. The `t2 limit` command writes to `~/.t2000/config.json`; CLI writes (`t2 send`, `t2 swap`, `t2 pay`) honor the caps and surface a `LIMIT_EXCEEDED` error when exceeded. Use `--force` on a write to override one time.
+Limits are **ON by default** — `t2 init` seeds $25/tx and $100/day (cumulative USD). The `t2 limit` command rewrites `~/.t2000/config.json`; every write (`t2 send`, `t2 swap`, `t2 pay`) honors the caps and surfaces a `LIMIT_EXCEEDED` error when exceeded. Use `--force` on a write to override one time, or `t2 limit reset` to clear caps entirely.
 
-> **⚠️ Limits gate CLI writes only — NOT MCP (the AI-client path).** Today `t2 limit` constrains `t2 send/swap/pay` run from the terminal. Writes initiated through the **MCP server you wire up in Step 5** are **not** gated yet — enforcement parity is a Phase D item. Do **not** set a daily cap and then fund the wallet assuming the AI agent can't exceed it: the MCP path is exactly the one that currently bypasses the cap. Treat `t2 limit` as a CLI-only guardrail, and keep agent-wallet balances small, until parity ships.
+> **Limits gate ALL writes — CLI *and* MCP.** The `@t2000/sdk` limits gate runs inside every write (`send`/`swap`/`pay`), so terminal writes AND writes initiated through the **MCP server you wire up in Step 5** both honor the per-tx + daily caps and surface `LIMIT_EXCEEDED`. (This was a real gap in early v4 — the MCP path used to bypass the cap — closed when limit enforcement moved into the SDK.) Override one call with `--force` (CLI); there is no MCP override path — the LLM cannot raise or clear caps, only read them via `t2000_limit`.
 
 To view current limits:
 ```bash
@@ -168,7 +168,7 @@ After setup the user has:
 
 - **Does not move money.** Setup is read + config only. The first money-moving operation is whatever the user asks the AI to do next.
 - **Does not back up the private key.** The Bech32 key lives in `~/.t2000/wallet.key`. To back up, the user runs `t2 export` manually — never volunteer this unless asked. v4 has no PIN, so anyone with read access to the file owns the wallet.
-- **Does not gate MCP writes on `t2 limit`.** v4 Phase B: the CLI writes (`t2 send/swap/pay`) honor the caps; MCP writes do NOT yet. Enforcement parity is a Phase D consolidation. Until then, MCP can read limits via `t2000_limit` for narration but writes proceed without gating.
+- **Does not move money or change limits.** Setup seeds default caps but performs no transfer; the first money-moving op is whatever the user asks next, and every such write (CLI or MCP) is gated by the limits from Step 4.
 
 ## Next steps to suggest
 
