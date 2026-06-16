@@ -59,6 +59,10 @@ The CLI always fetches the latest from [`t2000.ai/.well-known/agent-skills/index
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
 
+### Operating guide — [`AGENTS.md`](https://t2000.ai/AGENTS.md)
+
+The per-task skills above assume a shared **agent-ops layer**: payment-error recovery (don't blind-retry), free-first ordering (discover before paying), spending limits (on by default, gate CLI **and** MCP), no-charge-on-failure (settle-then-refund), and async/artifact semantics. It lives in [`AGENTS.md`](AGENTS.md) (served at [`t2000.ai/AGENTS.md`](https://t2000.ai/AGENTS.md)) — read it once per session.
+
 ## t2000 MCP Server
 
 Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools* — 9 in total: 5 read (`balance`, `address`, `receive`, `history`, `services`), 3 write (`send`, `swap`, `pay`), 1 settings (`limit`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.

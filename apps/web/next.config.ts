@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/skills/*": ["../../t2000-skills/skills/**/SKILL.md"],
     "/.well-known/agent-skills/index.json": ["../../t2000-skills/skills/**/SKILL.md"],
+    "/AGENTS.md": ["../../t2000-skills/AGENTS.md"],
   },
   async headers() {
     return [
