@@ -43,7 +43,7 @@ t2 send 50 USDC to mission69b@audric          # @audric handle (gasless)
 t2 send 0.1 SUI 0x8b3e...d412                 # 0.1 SUI to a hex address (gas required)
 ```
 
-Use `--force` to bypass an opt-in limit one time. Use `--key <path>` to point at a non-default wallet file.
+Use `--force` to bypass a spending limit one time. Use `--key <path>` to point at a non-default wallet file.
 
 ## Output (default)
 

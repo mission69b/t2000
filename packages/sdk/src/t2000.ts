@@ -21,7 +21,7 @@ import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
-import { getDecimalsForCoinType, resolveSymbol, resolveCoinDecimals } from './token-registry.js';
+import { resolveSymbol, resolveCoinDecimals } from './token-registry.js';
 import {
   SUI_ADDRESS_REGEX,
   SuinsNotRegisteredError,
