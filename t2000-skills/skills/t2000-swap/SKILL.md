@@ -101,7 +101,7 @@ Returns (no signing, no execution):
 
 ## Supported tokens
 
-USDC, USDsui, USDT, USDe, SUI, vSUI, ETH, GOLD (XAUM), NAVX, WAL, and the long tail Cetus routes through. Use the canonical symbol or pass a full coin type (`0x...::module::TYPE`). The `@t2000/sdk` token registry resolves common symbols automatically.
+USDC, USDsui, USDT, USDe, SUI, vSUI, ETH, GOLD (XAUM), NAVX, WAL, and the long tail Cetus routes through. Use the canonical symbol or pass a full coin type (`0x...::module::TYPE`). The `@t2000/sdk` token registry resolves common symbols automatically; for a coin type **not** in the registry the decimals are read **on-chain** (coin metadata) so the input amount is exact — never a guess.
 
 ## When called through MCP (`t2000_swap` tool)
 

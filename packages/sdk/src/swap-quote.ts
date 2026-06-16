@@ -34,6 +34,14 @@ export async function getSwapQuote(params: {
    * keep access to the full provider set including Pyth-dependent pools.
    */
   providers?: string[];
+  /**
+   * [2.11] On-chain-resolved decimals for `from` / `to`, supplied by callers
+   * that hold a client (e.g. `T2000.swapQuote`). When omitted (standalone /
+   * sponsored callers), falls back to the registry — correct for registry
+   * tokens, a 9-decimal guess for an unknown coin type.
+   */
+  fromDecimals?: number;
+  toDecimals?: number;
 }): Promise<SwapQuoteResult> {
   const { findSwapRoute, resolveTokenType } = await import('./protocols/cetus-swap.js');
 
@@ -58,7 +66,7 @@ export async function getSwapQuote(params: {
 
   const byAmountIn = params.byAmountIn ?? true;
 
-  const fromDecimals = getDecimalsForCoinType(fromType);
+  const fromDecimals = params.fromDecimals ?? getDecimalsForCoinType(fromType);
   const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
 
   const route = await findSwapRoute({
@@ -75,7 +83,7 @@ export async function getSwapQuote(params: {
     throw new T2000Error('SWAP_FAILED', `Insufficient liquidity for ${params.from} -> ${params.to}.`);
   }
 
-  const toDecimals = getDecimalsForCoinType(toType);
+  const toDecimals = params.toDecimals ?? getDecimalsForCoinType(toType);
   const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
   const toAmount = Number(route.amountOut) / 10 ** toDecimals;
 

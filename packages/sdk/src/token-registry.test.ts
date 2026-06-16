@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   COIN_REGISTRY,
   TOKEN_MAP,
   getDecimalsForCoinType,
+  resolveCoinDecimals,
   resolveSymbol,
   resolveTokenType,
   SUI_TYPE,
@@ -15,6 +16,41 @@ import {
   LOFI_TYPE,
   MANIFEST_TYPE,
 } from './token-registry.js';
+
+describe('resolveCoinDecimals (2.11 — any-token swap)', () => {
+  const UNKNOWN = '0xabc123::wtf::WTF';
+  const mkClient = (impl: () => Promise<unknown>) => ({ core: { getCoinMetadata: vi.fn(impl) } });
+
+  it('uses registry decimals WITHOUT an on-chain call for a known token', async () => {
+    const client = mkClient(async () => ({ metadata: { decimals: 99 } }));
+    expect(await resolveCoinDecimals(client, USDC_TYPE)).toBe(6);
+    expect(client.core.getCoinMetadata).not.toHaveBeenCalled();
+  });
+
+  it('fetches decimals on-chain for an unknown coin type (nested shape)', async () => {
+    const client = mkClient(async () => ({ metadata: { decimals: 8 } }));
+    expect(await resolveCoinDecimals(client, UNKNOWN)).toBe(8);
+    expect(client.core.getCoinMetadata).toHaveBeenCalledWith({ coinType: UNKNOWN });
+  });
+
+  it('handles a flat { decimals } response shape', async () => {
+    const client = mkClient(async () => ({ decimals: 2 }));
+    expect(await resolveCoinDecimals(client, UNKNOWN)).toBe(2);
+  });
+
+  it('falls back to the registry heuristic when the on-chain read throws', async () => {
+    const client = mkClient(async () => {
+      throw new Error('rpc down');
+    });
+    // Unknown type with no suffix match → the 9-decimal default.
+    expect(await resolveCoinDecimals(client, UNKNOWN)).toBe(9);
+  });
+
+  it('falls back when metadata has no usable decimals', async () => {
+    const client = mkClient(async () => ({ metadata: {} }));
+    expect(await resolveCoinDecimals(client, UNKNOWN)).toBe(9);
+  });
+});
 
 describe('COIN_REGISTRY', () => {
   it('contains the settlement stable + common swap assets', () => {

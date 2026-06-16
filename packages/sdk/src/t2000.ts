@@ -21,7 +21,7 @@ import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
-import { getDecimalsForCoinType, resolveSymbol } from './token-registry.js';
+import { getDecimalsForCoinType, resolveSymbol, resolveCoinDecimals } from './token-registry.js';
 import {
   SUI_ADDRESS_REGEX,
   SuinsNotRegisteredError,
@@ -208,7 +208,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const byAmountIn = params.byAmountIn ?? true;
     const slippage = Math.min(params.slippage ?? 0.01, 0.05);
 
-    const fromDecimals = getDecimalsForCoinType(fromType);
+    const fromDecimals = await resolveCoinDecimals(this.client, fromType);
     const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
 
     const route = await findSwapRoute({
@@ -225,7 +225,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       console.warn(`[swap] High price impact: ${(route.priceImpact * 100).toFixed(2)}%`);
     }
 
-    const toDecimals = getDecimalsForCoinType(toType);
+    const toDecimals = await resolveCoinDecimals(this.client, toType);
 
     // Snapshot pre-swap balance for fallback diff calculation
     let preBalRaw = 0n;
@@ -350,6 +350,12 @@ export class T2000 extends EventEmitter<T2000Events> {
     providers?: string[];
   }): Promise<SwapQuoteResult> {
     const { getSwapQuote } = await import('./swap-quote.js');
+    const { resolveTokenType } = await import('./protocols/cetus-swap.js');
+    // [2.11] Resolve decimals on-chain for non-registry coin types so the quote
+    // matches what a real swap would compute (the standalone getSwapQuote can't
+    // — it has no client). Falls back to its registry default if unresolved.
+    const fromType = resolveTokenType(params.from);
+    const toType = resolveTokenType(params.to);
     return getSwapQuote({
       walletAddress: this._address,
       from: params.from,
@@ -357,6 +363,8 @@ export class T2000 extends EventEmitter<T2000Events> {
       amount: params.amount,
       byAmountIn: params.byAmountIn,
       providers: params.providers,
+      fromDecimals: fromType ? await resolveCoinDecimals(this.client, fromType) : undefined,
+      toDecimals: toType ? await resolveCoinDecimals(this.client, toType) : undefined,
     });
   }
 

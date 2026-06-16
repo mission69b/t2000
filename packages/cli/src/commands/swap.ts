@@ -55,9 +55,9 @@ export function registerSwap(program: Command) {
   program
     .command('swap')
     .argument('<amount>', 'Amount of <from> to swap (denominated in <from> units)')
-    .argument('<from>', 'Source token symbol (e.g. USDC, SUI, USDsui)')
-    .argument('<to>', 'Destination token symbol (e.g. SUI, USDC, USDsui)')
-    .description('Swap tokens via Cetus aggregator (20+ DEXs)')
+    .argument('<from>', 'Source token — symbol (USDC, SUI, …) or full coin type (0x…::mod::TOK)')
+    .argument('<to>', 'Destination token — symbol (SUI, USDC, …) or full coin type (0x…::mod::TOK)')
+    .description('Swap any token pair via Cetus aggregator (20+ DEXs). Unknown coin types resolve decimals on-chain.')
     .option('--quote', 'Preview the swap (price, route, impact) without executing')
     .option('--slippage <pct>', 'Max slippage percentage (default: 1)', '1')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')

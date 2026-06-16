@@ -96,6 +96,37 @@ export function getDecimalsForCoinType(coinType: string): number {
   return 9;
 }
 
+/** Minimal structural client — just the coin-metadata read this needs. */
+interface CoinMetadataClient {
+  core: { getCoinMetadata: (opts: { coinType: string }) => Promise<unknown> };
+}
+
+/**
+ * [2.11] Decimals for any coin type, resolved correctly for arbitrary tokens.
+ * Registry tokens return their known decimals (no network). A coin type NOT in
+ * the registry is read ON-CHAIN via coin metadata — never the 9-default guess,
+ * because a wrong `from` decimal would corrupt a swap's input amount
+ * (financial-amounts rule). Falls back to the registry heuristic only if the
+ * on-chain read fails or returns no usable decimals.
+ */
+export async function resolveCoinDecimals(
+  client: CoinMetadataClient,
+  coinType: string,
+): Promise<number> {
+  if (isInRegistry(coinType)) return getDecimalsForCoinType(coinType);
+  try {
+    const res = (await client.core.getCoinMetadata({ coinType })) as {
+      metadata?: { decimals?: number };
+      decimals?: number;
+    };
+    const d = res?.metadata?.decimals ?? res?.decimals;
+    if (typeof d === 'number' && Number.isFinite(d)) return d;
+  } catch {
+    /* on-chain read failed — fall through to the registry heuristic */
+  }
+  return getDecimalsForCoinType(coinType);
+}
+
 /**
  * Resolve a full coin type to a user-friendly symbol.
  * Returns the last `::` segment if not in the registry.
