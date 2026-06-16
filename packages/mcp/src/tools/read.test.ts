@@ -50,7 +50,7 @@ describe('read tools (v4 surface)', () => {
     expect(tools.size).toBe(5);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
-    expect(tools.has('t2000_fund')).toBe(true);
+    expect(tools.has('t2000_receive')).toBe(true);
     expect(tools.has('t2000_history')).toBe(true);
     expect(tools.has('t2000_services')).toBe(true);
   });
@@ -81,8 +81,8 @@ describe('read tools (v4 surface)', () => {
     expect(data.address).toBe('0xtest123');
   });
 
-  it('t2000_fund returns a payment request URI', async () => {
-    const handler = tools.get('t2000_fund')!;
+  it('t2000_receive returns a payment request URI', async () => {
+    const handler = tools.get('t2000_receive')!;
     const result = await handler({ amount: 10, memo: 'Test' });
     const data = JSON.parse(result.content[0].text);
     expect(data.address).toBe('0xtest123');

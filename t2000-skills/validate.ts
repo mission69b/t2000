@@ -192,7 +192,7 @@ function main() {
     't2000-check-balance',
     't2000-mcp',
     't2000-pay',
-    't2000-fund',
+    't2000-receive',
     't2000-send',
     't2000-services',
     't2000-setup',

@@ -564,13 +564,13 @@ Local-only enforcement on the agent's machine:
 
 | Category | Tools                                                                                                  |
 | -------- | ------------------------------------------------------------------------------------------------------ |
-| Read (5) | `t2000_balance`, `t2000_address`, `t2000_fund`, `t2000_history`, `t2000_services`                   |
+| Read (5) | `t2000_balance`, `t2000_address`, `t2000_receive`, `t2000_history`, `t2000_services`                   |
 | Write (3)| `t2000_send`, `t2000_swap`, `t2000_pay`                                                                |
 | Config (1) | `t2000_limit`                                                                                        |
 
 **Prompts (8 — one per skill, auto-registered from `t2000-skills/skills/*/SKILL.md`):**
 
-`skill-setup`, `skill-mcp`, `skill-check-balance`, `skill-fund`, `skill-send`, `skill-swap`, `skill-pay`, `skill-services`
+`skill-setup`, `skill-mcp`, `skill-check-balance`, `skill-receive`, `skill-send`, `skill-swap`, `skill-pay`, `skill-services`
 
 The skill bodies are baked into the published bundle at build time (`tsup.config.ts`) — no runtime filesystem reads, no path-resolution gymnastics. Hand-rolled workflow prompts (`financial-report`, `optimize-yield`, `morning-briefing`, etc.) were deleted in S.336 (every prompt composed against v3 DeFi skills that were retired); the `skill-*` set is now the entire prompt surface.
 

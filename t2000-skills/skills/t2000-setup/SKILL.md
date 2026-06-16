@@ -147,7 +147,7 @@ The MCP server doesn't just expose tools — it also exposes one `skill-<name>` 
 - `skill-send` — sending USDC / USDsui / SUI
 - `skill-swap` — swapping via Cetus
 - `skill-pay` — paying for x402 services
-- `skill-fund` — generating payment requests
+- `skill-receive` — generating payment requests
 - `skill-services` — discovering x402 gateway services
 - `skill-check-balance` — reading the wallet
 - `skill-mcp` — MCP integration deep-dive
@@ -176,7 +176,7 @@ After verify succeeds, surface a short menu of natural next moves:
 - "Send USDC to someone" → `t2000-send`
 - "Swap tokens via Cetus" → `t2000-swap`
 - "Pay for a service via x402" → `t2000-pay`
-- "Generate a payment request" → `t2000-fund`
+- "Generate a payment request" → `t2000-receive`
 - "See available paid services" → `t2000-services`
 - "Connect more AI clients" → `t2000-mcp`
 - "See what else t2 can do" → run `t2 --help` or browse https://developers.t2000.ai/agent-wallet#skills

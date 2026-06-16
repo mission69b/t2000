@@ -1,5 +1,5 @@
 ---
-name: t2000-fund
+name: t2000-receive
 description: >-
   Generate a payment request for the t2000 Agent Wallet — print the
   wallet address, an ANSI QR code, and (via MCP) a Payment Kit URI
@@ -19,7 +19,7 @@ metadata:
 Surface the wallet address (and optionally a Payment Kit URI with a pre-filled amount + memo) so anyone with a Sui wallet can send tokens to the Agent Wallet. Two surfaces:
 
 - **CLI (`t2 fund`)** — prints the wallet address + an ANSI QR code + the value-promise in the terminal. Minimal; no amount or memo.
-- **MCP (`t2000_fund`)** — returns a JSON payload with the address, an optional Payment Kit URI (`sui:pay?…`), a nonce, plus an optional amount / currency / memo / label. Use this when the LLM is building a payment-request flow.
+- **MCP (`t2000_receive`)** — returns a JSON payload with the address, an optional Payment Kit URI (`sui:pay?…`), a nonce, plus an optional amount / currency / memo / label. Use this when the LLM is building a payment-request flow.
 
 ## Rules
 
@@ -56,7 +56,7 @@ Address  0x55b223b0...0dd1b6
 
 The CLI prints to ANSI — it will look right in any terminal but won't render as image data in MCP responses. Use the MCP tool for a structured JSON response.
 
-## MCP tool (`t2000_fund`)
+## MCP tool (`t2000_receive`)
 
 ```json
 // Request
@@ -97,8 +97,8 @@ The amount-bearing form uses raw on-chain units (USDC: × 10^6, SUI: × 10^9) so
 |---|---|
 | "What's my wallet address?" | `t2 fund` (CLI) or `t2000_address` (MCP — address only, no QR) |
 | "Show me the QR" | `t2 fund` (CLI prints ANSI QR) |
-| "Generate a payment link for $10" | `t2000_fund { amount: 10, currency: "USDC" }` (MCP) |
-| "Generate a 'tip jar' link" (no amount) | `t2000_fund { memo: "Tip jar", label: "Tip funkii" }` (MCP) |
+| "Generate a payment link for $10" | `t2000_receive { amount: 10, currency: "USDC" }` (MCP) |
+| "Generate a 'tip jar' link" (no amount) | `t2000_receive { memo: "Tip jar", label: "Tip funkii" }` (MCP) |
 
 ## Notes
 

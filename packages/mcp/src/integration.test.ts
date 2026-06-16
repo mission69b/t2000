@@ -98,10 +98,10 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     expect(names).toEqual([
       't2000_address',
       't2000_balance',
-      't2000_fund',
       't2000_history',
       't2000_limit',
       't2000_pay',
+      't2000_receive',
       't2000_send',
       't2000_services',
       't2000_swap',

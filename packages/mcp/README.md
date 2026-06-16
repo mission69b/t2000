@@ -23,7 +23,7 @@ Restart your AI client, then ask **"What's my t2000 balance?"**
 
 9 tools namespaced as `t2000_*` (5 read · 3 write · 1 settings):
 
-`t2000_balance` · `t2000_address` · `t2000_fund` · `t2000_history` · `t2000_services` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_limit`
+`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_limit`
 
 Plus 8 auto-registered `skill-<name>` prompts (setup, send, swap, pay, receive, check-balance, services, mcp).
 
