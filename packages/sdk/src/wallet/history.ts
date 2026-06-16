@@ -9,7 +9,7 @@ import {
 
 // ---------------------------------------------------------------------------
 // [gRPC migration / S.447 + S.450] Transaction history is the one surface with
-// NO gRPC `core.*` equivalent (Stage 0 finding A): list-by-sender +
+// NO gRPC `core.*` equivalent (Stage 0 finding A): list-by-affected-address +
 // per-tx-by-digest live in the GraphQL RPC, not gRPC. Both go through the
 // Sui GraphQL endpoint (`getSuiGraphQLClient()`), share one node fragment +
 // one mapper, and feed the existing (tested) classifier in `classify.ts`.
@@ -17,7 +17,7 @@ import {
 // LIVE-VERIFIED 2026-06-15 (S.450) against `graphql.mainnet.sui.io` with a
 // real sender (send + Cetus swap digests). The live schema differs from the
 // older `transactionBlocks` one: the query is `transactions` / `transaction`
-// (filter `sentAddress`), the programmable kind is `ProgrammableTransaction`
+// (filter `affectedAddress` — sender, sponsor, or recipient), the programmable kind is `ProgrammableTransaction`
 // (was `ProgrammableTransactionBlock`) with `commands { nodes }` (was
 // `transactions`), and a move call is `MoveCallCommand` with a nested
 // `function { name module { name package { address } } }` (was a flat
@@ -46,8 +46,14 @@ const TX_NODE_FRAGMENT = `
   }
 `;
 
+// `affectedAddress` (not `sentAddress`) so history includes INCOMING transactions
+// — received payments, x402/MPP refunds, airdrops — not just ones the agent
+// signed. Per the Sui GraphQL schema: "transactions that interacted with the
+// given address … as a sender, sponsor, or recipient." The shared classifier
+// already labels each leg's direction ('in' / 'out'), so inbound txns render
+// correctly downstream.
 const HISTORY_QUERY = `query History($address: SuiAddress!, $last: Int!) {
-  transactions(last: $last, filter: { sentAddress: $address }) {
+  transactions(last: $last, filter: { affectedAddress: $address }) {
     nodes {${TX_NODE_FRAGMENT}}
   }
 }`;

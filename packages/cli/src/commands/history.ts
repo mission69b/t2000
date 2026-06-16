@@ -38,10 +38,17 @@ function printTxSummary(tx: TransactionRecord) {
   const label = ACTION_LABELS[tx.action] ?? `📦 ${tx.action}`;
   const time = tx.timestamp ? relativeTime(tx.timestamp) : '';
   const amount = formatAmount(tx);
-  const recipient = tx.recipient ? pc.dim(`→ ${truncateAddress(tx.recipient)}`) : '';
+  // Inbound (received payments / refunds) has no recipient — flag the direction
+  // so it doesn't read like an outgoing tx with a missing arrow.
+  const direction =
+    tx.direction === 'in'
+      ? pc.green('← received')
+      : tx.recipient
+        ? pc.dim(`→ ${truncateAddress(tx.recipient)}`)
+        : '';
   const link = pc.dim(explorerUrl(tx.digest));
 
-  printLine(`${label}  ${amount}  ${recipient}`);
+  printLine(`${label}  ${amount}  ${direction}`);
   printLine(`  ${pc.dim(truncateAddress(tx.digest))}  ${pc.dim(time)}`);
   printLine(`  ${link}`);
 }
@@ -53,6 +60,7 @@ function printTxDetail(tx: TransactionRecord) {
   printKeyValue('Type', label);
   printKeyValue('Digest', tx.digest);
   if (tx.amount) printKeyValue('Amount', `${tx.amount.toFixed(tx.amount < 0.01 ? 6 : 4)} ${tx.asset ?? ''}`);
+  if (tx.direction) printKeyValue('Direction', tx.direction === 'in' ? 'Received' : 'Sent');
   if (tx.recipient) printKeyValue('Recipient', tx.recipient);
   if (tx.timestamp) {
     printKeyValue('Time', `${new Date(tx.timestamp).toLocaleString()} (${relativeTime(tx.timestamp)})`);
