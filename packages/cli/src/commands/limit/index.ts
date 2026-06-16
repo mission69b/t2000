@@ -10,7 +10,7 @@ import { registerLimitReset } from './reset.js';
 export function registerLimit(program: Command) {
   const group = program
     .command('limit')
-    .description('Manage opt-in spending limits (no defaults)')
+    .description('Manage spending limits (on by default: $25/tx, $100/day)')
     .addHelpText(
       'after',
       `

@@ -61,7 +61,7 @@ export function registerSwap(program: Command) {
     .option('--quote', 'Preview the swap (price, route, impact) without executing')
     .option('--slippage <pct>', 'Max slippage percentage (default: 1)', '1')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--force', 'Override opt-in spending limits (see `t2 limit`)')
+    .option('--force', 'Override spending limits for this call (see `t2 limit`)')
     .addHelpText(
       'after',
       `

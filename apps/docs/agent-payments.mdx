@@ -220,6 +220,8 @@ Full SDK reference: [Agent SDK](/agent-sdk).
 
 **Sui-native.** USDC settlement, gasless transfer, finality in ~400ms. The whole flow — pay + retry — usually completes in under 2 seconds.
 
+**No charge on failure.** Payment settles on-chain *before* the upstream runs (so a forged or unfunded payment can never burn an upstream call), and if that upstream then fails, the gateway issues an **automated gasless USDC refund** back to your wallet in the same request — net-zero, on-chain-verifiable. You only pay for calls that succeed.
+
 ## Links
 
 - [`mpp.t2000.ai`](https://mpp.t2000.ai) — Live gateway

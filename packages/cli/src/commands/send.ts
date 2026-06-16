@@ -117,7 +117,7 @@ export function registerSend(program: Command) {
     )
     .description('Send USDC, USDsui, or SUI. USDC + USDsui are gasless (no SUI required).')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--force', 'Override opt-in spending limits (see `t2 limit`)')
+    .option('--force', 'Override spending limits for this call (see `t2 limit`)')
     .addHelpText(
       'after',
       `

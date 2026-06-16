@@ -26,7 +26,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 
 | Group | What it does |
 |---|---|
-| `t2 init` · `t2 init --import` | Create a new wallet, or import an existing `suiprivkey1…` Bech32 secret. Prints a warning footer about opt-in `t2 limit` settings. |
+| `t2 init` · `t2 init --import` | Create a new wallet, or import an existing `suiprivkey1…` Bech32 secret. Seeds default spending limits ($25/tx · $100/day) and prints them. |
 | `t2 export` | Print the wallet's Bech32 secret — pair with `t2 init --import` on another machine to move wallets. |
 | `t2 receive` | Print the wallet address + ANSI QR. `--qr-only` for embedding; `--json` for scripts. |
 | `t2 balance` | USDC / USDsui / SUI holdings + USD totals. |
@@ -35,7 +35,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 swap <amount> <from> <to>` | Best-route swap via Cetus Aggregator V3 across 20+ Sui DEXs. `--slippage <pct>` (default 1%, max 5%), `--quote` for a preview without signing. Requires SUI for gas. |
 | `t2 pay <url>` | Pay for an x402-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). |
 | `t2 services search <query>` · `inspect <url>` | Discover x402 services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
-| `t2 limit set --per-tx <USD>` · `--daily <USD>` | Opt-in spending caps written to `~/.t2000/config.json`. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
+| `t2 limit set --per-tx <USD>` · `--daily <USD>` | Spending caps in `~/.t2000/config.json` — **on by default** ($25/tx · $100/day, daily = cumulative); enforced on CLI **and** MCP writes. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
 | `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
 | `t2 skills install [--target=cursor\|claude-code\|agents]` · `list` · `uninstall` | Install per-skill `SKILL.md` files locally (alternative to running the MCP server). |
@@ -61,7 +61,7 @@ t2 init --import                             # interactive hidden-input prompt
 t2 services search "image"
 t2 pay https://mpp.t2000.ai/fal/fal-ai/flux/dev --data '{"prompt":"a sunset"}' --max-price 0.10
 
-# Opt into spending limits
+# Adjust the default spending limits ($25/tx · $100/day)
 t2 limit set --per-tx 50 --daily 200
 t2 send 100 USDC alice.sui                   # blocked
 t2 send 100 USDC alice.sui --force           # explicit override
@@ -76,7 +76,7 @@ t2 history --json --limit 5
 | Path | Purpose |
 |---|---|
 | `~/.t2000/wallet.key` | Plain JSON wallet — `{ version: 2, secret: "suiprivkey1…" }`, `0o600` perms. |
-| `~/.t2000/config.json` | Opt-in spending limits (only present after `t2 limit set`). |
+| `~/.t2000/config.json` | Spending limits + daily usage (seeded at `t2 init`: $25/tx · $100/day; `t2 limit reset` clears). |
 
 | Env var | Effect |
 |---|---|
@@ -172,7 +172,7 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 | Wallet file | Plain Bech32 JSON at `~/.t2000/wallet.key`, `0o600` perms |
 | Sendable assets | USDC, USDsui, SUI (asset required on every `send`) |
 | Gasless | USDC + USDsui via Sui foundation's `0x2::balance::send_funds` sponsor |
-| Spending limits | Opt-in via `t2 limit set` — default is no limits |
+| Spending limits | On by default ($25/tx · $100/day); `t2 limit set` to adjust; gates CLI **and** MCP writes |
 | MCP tools | 9 (5 read + 3 write + 1 settings) |
 | Skills | 8 markdown playbooks shipped as `skill-<name>` MCP prompts |
 | Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |

@@ -60,7 +60,7 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
     ls -l "$NPM_BIN"/t2 "$NPM_BIN"/t2000
 
     # Does it run via full path? (proves the package is healthy)
-    "$NPM_BIN/t2" --version          # expect 4.x.x
+    "$NPM_BIN/t2" --version          # expect 5.x.x
 
     # Is that dir actually on PATH?
     case ":$PATH:" in *":$NPM_BIN:"*) echo "✓ on PATH";; *) echo "✗ NOT on PATH → $NPM_BIN";; esac

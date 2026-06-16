@@ -53,7 +53,7 @@ export function registerPay(program: Command) {
       '--estimate',
       'Preview the price + service info (no signing, no payment). Exits 0 if the service responds with a 402 challenge.',
     )
-    .option('--force', 'Override opt-in spending limits (see `t2 limit`)')
+    .option('--force', 'Override spending limits for this call (see `t2 limit`)')
     .addHelpText(
       'after',
       `
@@ -123,7 +123,7 @@ Examples:
                 ? pc.green(' · gasless ⚡')
                 : pc.dim(` · gas: ${result.gasCostSui.toFixed(6)} SUI`)
               : '';
-          printSuccess(`Paid via MPP (tx: ${result.receipt.reference.slice(0, 10)}…)${gasNote}`);
+          printSuccess(`Paid via ${result.dialect ?? 'x402'} (tx: ${result.receipt.reference.slice(0, 10)}…)${gasNote}`);
         }
         printInfo(`← ${result.status} OK  ${pc.dim(`[${elapsed}ms]`)}`);
 
