@@ -43,7 +43,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
-    't2000_receive',
+    't2000_fund',
     'Generate a payment request — returns wallet address, Payment Kit URI (sui:pay?…), nonce, and optional amount/memo. The URI is scannable by any Sui wallet. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds. Mirrors `t2 fund`.',
     {
       amount: z.number().optional().describe('Amount to request (omit for open amount)'),

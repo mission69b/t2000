@@ -118,7 +118,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 |---|---|---|
 | `t2000_balance` | read | USDC / USDsui / SUI holdings + gas reserve + USD totals. |
 | `t2000_address` | read | Wallet's Sui address. |
-| `t2000_receive` | read | Payment request — address, Payment Kit `sui:pay?…` URI, optional `amount` / `memo` / `label`. |
+| `t2000_fund` | read | Payment request — address, Payment Kit `sui:pay?…` URI, optional `amount` / `memo` / `label`. |
 | `t2000_history` | read | Recent on-chain activity with Suiscan digests. |
 | `t2000_services` | read | Discover x402 services on `mpp.t2000.ai`. Call before `t2000_pay`. |
 | `t2000_send` | write | Send USDC / USDsui / SUI. **`asset` is required.** USDC + USDsui gasless. `dryRun: true` for previews. |
@@ -126,7 +126,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_pay` | write | Pay an x402-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
 | `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
-Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 8 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-mcp`.
+Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 8 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-fund`, `skill-swap`, `skill-services`, `skill-pay`, `skill-mcp`.
 
 ### Security
 
@@ -157,7 +157,7 @@ npx skills add mission69b/t2000-skills
 | [`t2000-setup`](https://t2000.ai/skills/t2000-setup) | End-to-end wallet bootstrap (`t2 init` + optional limits + MCP install). Read first when onboarding a new user. |
 | [`t2000-check-balance`](https://t2000.ai/skills/t2000-check-balance) | Inspect USDC / USDsui / SUI before any write. |
 | [`t2000-send`](https://t2000.ai/skills/t2000-send) | Explicit `--asset`, gasless USDC / USDsui, SUI sends that need gas. |
-| [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Address share, ANSI QR, Payment Kit `sui:pay?…` URIs. |
+| [`t2000-fund`](https://t2000.ai/skills/t2000-fund) | Address share, ANSI QR, Payment Kit `sui:pay?…` URIs. |
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Cetus Aggregator routing, `--quote`, slippage, swap-needs-SUI gotcha. |
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services before `t2 pay`. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | x402 402 → quote → pay → retry flow. |

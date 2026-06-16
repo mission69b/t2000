@@ -114,7 +114,7 @@ You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and
 |------|-------------|
 | `t2000_balance` | Current wallet balance (USDC + USDsui + SUI + gas reserve). |
 | `t2000_address` | Wallet address. |
-| `t2000_receive` | Generate a payment request: address + Payment Kit URI + nonce. |
+| `t2000_fund` | Generate a payment request: address + Payment Kit URI + nonce. |
 | `t2000_history` | Recent on-chain activity (sends / swaps / pays). |
 | `t2000_services` | Discover x402 services (gateway catalog at mpp.t2000.ai). |
 
@@ -147,7 +147,7 @@ The current set of skill prompts mirrors `t2000-skills/skills/`:
 | `skill-setup` | `t2000-setup` — one-prompt install entry point |
 | `skill-check-balance` | `t2000-check-balance` |
 | `skill-send` | `t2000-send` |
-| `skill-receive` | `t2000-receive` |
+| `skill-fund` | `t2000-fund` |
 | `skill-swap` | `t2000-swap` |
 | `skill-pay` | `t2000-pay` |
 | `skill-services` | `t2000-services` |
