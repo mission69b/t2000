@@ -16,7 +16,26 @@
 // and `.cursor/rules/engineering-principles.mdc` Principle 2.
 // ---------------------------------------------------------------------------
 
-const SUI_MAINNET_URL = 'https://fullnode.mainnet.sui.io:443';
+import { getSuiGraphQLClient } from './sui.js';
+
+// [gRPC migration] SuiNS resolution moved off JSON-RPC
+// (`suix_resolveNameServiceAddress` / `suix_resolveNameServiceNames`) onto the
+// Sui GraphQL endpoint — the last JSON-RPC caller in the SDK. Both directions
+// use the unified `address(...)` query: `address(name:)` for forward
+// (name → address) and `address(address:){ defaultNameRecord { domain } }` for
+// reverse (address → primary name).
+const RESOLVE_NAME_QUERY = `query ResolveSuins($name: String!) {
+  address(name: $name) { address }
+}`;
+
+const REVERSE_NAME_QUERY = `query ReverseSuins($address: SuiAddress!) {
+  address(address: $address) { defaultNameRecord { domain } }
+}`;
+
+interface GqlResult<T> {
+  data?: T;
+  errors?: Array<{ message?: string }>;
+}
 
 /**
  * Canonical 0x-address shape. Loose lower bound (>= 1 hex char) so
@@ -81,14 +100,13 @@ export function looksLikeSuiNs(value: string): boolean {
 }
 
 /**
- * Resolve a SuiNS name to its on-chain Sui address via the public
- * `suix_resolveNameServiceAddress` JSON-RPC method. Returns `null` if
- * the name resolves to no address (= not registered or expired). Throws
- * `SuinsRpcError` on RPC/network failure.
+ * Resolve a SuiNS name to its on-chain Sui address via the Sui GraphQL
+ * `address(name:)` query. Returns `null` if the name resolves to no address
+ * (= not registered or expired). Throws `SuinsRpcError` on transport failure.
  *
- * The host SHOULD pass a `rpcUrl` that includes any vendor key (e.g.
- * audric's BlockVision-keyed URL) so the call benefits from the host's
- * paid retry/cache budget. Falls back to the public mainnet endpoint.
+ * `ctx.signal` is honored for cancellation. (`ctx.suiRpcUrl` is retained for
+ * call-site back-compat but no longer used — resolution runs against the
+ * canonical GraphQL endpoint via `getSuiGraphQLClient()`.)
  */
 export async function resolveSuinsViaRpc(
   rawName: string,
@@ -99,59 +117,45 @@ export async function resolveSuinsViaRpc(
     throw new InvalidAddressError(rawName);
   }
 
-  const url = ctx.suiRpcUrl || SUI_MAINNET_URL;
-
-  let res: Response;
+  const gql = getSuiGraphQLClient();
+  let res: GqlResult<{ address?: { address?: string } | null }>;
   try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'suix_resolveNameServiceAddress',
-        params: [name],
-      }),
-      signal: ctx.signal ?? AbortSignal.timeout(8_000),
-    });
+    res = (await gql.query({
+      query: RESOLVE_NAME_QUERY,
+      variables: { name },
+      signal: ctx.signal,
+    })) as typeof res;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new SuinsRpcError(name, msg);
   }
 
-  if (!res.ok) {
-    throw new SuinsRpcError(name, `HTTP ${res.status}`);
+  if (res.errors?.length) {
+    throw new SuinsRpcError(name, res.errors.map((e) => e.message ?? 'unknown error').join('; '));
   }
 
-  let body: { result?: string | null; error?: { code: number; message: string } };
-  try {
-    body = (await res.json()) as typeof body;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new SuinsRpcError(name, `JSON parse failed: ${msg}`);
-  }
-
-  if (body.error) {
-    throw new SuinsRpcError(name, body.error.message);
-  }
-
-  // result is the 0x…64-hex address, or null when the name has never
-  // been registered (or has expired and the record was reaped).
-  return body.result ?? null;
+  // `address(name:)` returns the Address the name points to, or null when the
+  // name has never been registered (or has expired and the record was reaped).
+  return res.data?.address?.address ?? null;
 }
 
 /**
- * Reverse-resolve a 0x address to its registered SuiNS names via
- * `suix_resolveNameServiceNames`. Returns the names sorted by the
- * registry (the first entry is conventionally the user's "primary"
- * name on dApps that show one), or `[]` when the address has no
- * SuiNS records. Throws `SuinsRpcError` on RPC/network failure.
+ * Reverse-resolve a 0x address to its SuiNS name via the Sui GraphQL
+ * `address(address:){ defaultNameRecord { domain } }` query. Returns a
+ * single-element array with the address's **default (primary)** name, or
+ * `[]` when it has none. Throws `SuinsRpcError` on transport failure.
  *
- * Why this is its own helper (not folded into `normalizeAddressInput`):
- * a reverse lookup adds a second RPC round-trip per tool call. We don't
- * want every read tool that takes an `address` to silently double its
- * latency. The lookup primitive is opt-in via the `resolve_suins` tool;
- * normalizers stay forward-only.
+ * Behavior note: the legacy JSON-RPC path returned *all* names for the
+ * address; GraphQL exposes the explicitly-configured default record, which is
+ * the one every consumer here actually uses (the LLM `resolve_suins` tool +
+ * card titles only ever render the primary). Returning `[primary]` keeps the
+ * `string[]` contract intact.
+ *
+ * Why this is its own helper (not folded into `normalizeAddressInput`): a
+ * reverse lookup adds a second round-trip per tool call. We don't want every
+ * read tool that takes an `address` to silently double its latency. The lookup
+ * primitive is opt-in via the `resolve_suins` tool; normalizers stay
+ * forward-only.
  */
 export async function resolveAddressToSuinsViaRpc(
   rawAddress: string,
@@ -162,50 +166,25 @@ export async function resolveAddressToSuinsViaRpc(
     throw new InvalidAddressError(rawAddress);
   }
 
-  const url = ctx.suiRpcUrl || SUI_MAINNET_URL;
-
-  let res: Response;
+  const gql = getSuiGraphQLClient();
+  let res: GqlResult<{ address?: { defaultNameRecord?: { domain?: string } | null } | null }>;
   try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'suix_resolveNameServiceNames',
-        params: [address],
-      }),
-      signal: ctx.signal ?? AbortSignal.timeout(8_000),
-    });
+    res = (await gql.query({
+      query: REVERSE_NAME_QUERY,
+      variables: { address },
+      signal: ctx.signal,
+    })) as typeof res;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new SuinsRpcError(address, msg);
   }
 
-  if (!res.ok) {
-    throw new SuinsRpcError(address, `HTTP ${res.status}`);
+  if (res.errors?.length) {
+    throw new SuinsRpcError(address, res.errors.map((e) => e.message ?? 'unknown error').join('; '));
   }
 
-  // SuiNS reverse-lookup returns a paginated page object. We don't
-  // bother paginating because (a) the LLM consumer only needs the
-  // primary name, and (b) addresses with >50 names are vanishingly
-  // rare. The first page (default 50) is the canonical view.
-  let body: {
-    result?: { data: string[]; nextCursor: string | null; hasNextPage: boolean };
-    error?: { code: number; message: string };
-  };
-  try {
-    body = (await res.json()) as typeof body;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new SuinsRpcError(address, `JSON parse failed: ${msg}`);
-  }
-
-  if (body.error) {
-    throw new SuinsRpcError(address, body.error.message);
-  }
-
-  return body.result?.data ?? [];
+  const domain = res.data?.address?.defaultNameRecord?.domain;
+  return domain ? [domain] : [];
 }
 
 export interface NormalizedAddress {
