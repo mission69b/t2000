@@ -26,10 +26,16 @@ export interface ReceiveOptions {
   qrOnly?: boolean;
 }
 
-export function registerReceive(program: Command) {
+// [2.12] `t2 fund` is the primary verb (funding is step 1 of onboarding);
+// `receive` stays as a hidden back-compat alias so existing scripts/docs keep
+// working. The value-promise (what a top-up buys) is folded into the output.
+const VALUE_PROMISE = '$5 USDC ≈ ~250 paid API calls (at the $0.02 floor).';
+
+export function registerFund(program: Command) {
   program
-    .command('receive')
-    .description('Print your wallet address + QR code for incoming transfers')
+    .command('fund')
+    .alias('receive')
+    .description('Show your wallet address + QR to fund it (USDC / USDsui / SUI on Sui)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--qr-only', 'Print only the QR code (no address text)')
     .action(async (opts: ReceiveOptions) => {
@@ -38,7 +44,7 @@ export function registerReceive(program: Command) {
         const address = agent.address();
 
         if (isJsonMode()) {
-          printJson({ address, qrEncodedFor: address });
+          printJson({ address, qrEncodedFor: address, valuePromise: VALUE_PROMISE });
           return;
         }
 
@@ -47,6 +53,7 @@ export function registerReceive(program: Command) {
           printKeyValue('Address', address);
           printBlank();
           printLine(pc.dim('Accepts USDC, USDsui, or SUI on Sui mainnet.'));
+          printLine(pc.dim(VALUE_PROMISE));
           printLine(pc.dim('Scan to send to this wallet:'));
           printBlank();
         }

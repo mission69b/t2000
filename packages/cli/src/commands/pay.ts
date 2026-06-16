@@ -25,6 +25,7 @@ import {
   printJson,
   printInfo,
   printKeyValue,
+  printLine,
   isJsonMode,
   handleError,
 } from '../output.js';
@@ -232,6 +233,11 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
       ? `$${(Number(amountRaw) / 1_000_000).toFixed(4)} USDC`
       : amountRaw ?? 'unknown';
 
+  // [2.13] Probe the input schema WITHOUT paying — from the gateway's OpenAPI
+  // doc (which carries per-endpoint requestBody schemas). Best-effort: a missing
+  // schema or an unreachable doc never fails the estimate.
+  const inputSchema = await fetchInputSchema(url, method);
+
   if (isJsonMode()) {
     printJson({
       url,
@@ -246,6 +252,7 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
         amountDisplay: display,
         asset,
         recipient,
+        inputSchema,
       },
     });
     return;
@@ -258,6 +265,14 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
   printKeyValue('Recipient', recipient);
   if (req.resource) {
     printKeyValue('Resource', req.resource);
+  }
+  const fields = describeSchemaFields(inputSchema);
+  if (fields.length > 0) {
+    printBlank();
+    printInfo('Input (request body):');
+    for (const f of fields) {
+      printLine('  ' + pc.dim(f));
+    }
   }
   printBlank();
   printInfo(`Run without --estimate to pay and execute.`);
@@ -273,4 +288,45 @@ export function collectHeaders(
     previous[key.trim()] = rest.join('=').trim();
   }
   return previous;
+}
+
+interface JsonSchema {
+  type?: string;
+  description?: string;
+  enum?: unknown[];
+  required?: string[];
+  properties?: Record<string, JsonSchema>;
+}
+
+/**
+ * [2.13] Fetch the endpoint's input (requestBody) schema from the gateway's
+ * OpenAPI doc — the only place per-endpoint schemas live. The OpenAPI path key
+ * is `/${service.id}${endpoint.path}`, which equals the pay URL's pathname, so
+ * the lookup is a direct match. Best-effort: returns `null` on any failure.
+ */
+export async function fetchInputSchema(url: string, method: string): Promise<JsonSchema | null> {
+  try {
+    const u = new URL(url);
+    const res = await fetch(`${u.origin}/openapi.json`);
+    if (!res.ok) return null;
+    const doc = (await res.json()) as {
+      paths?: Record<string, Record<string, { requestBody?: { content?: Record<string, { schema?: JsonSchema }> } }>>;
+    };
+    const op = doc.paths?.[u.pathname]?.[method.toLowerCase()];
+    return op?.requestBody?.content?.['application/json']?.schema ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Render an object schema's top-level fields as `name[?]: type — description` lines. */
+export function describeSchemaFields(schema: JsonSchema | null): string[] {
+  if (!schema || schema.type !== 'object' || !schema.properties) return [];
+  const required = new Set(schema.required ?? []);
+  return Object.entries(schema.properties).map(([name, prop]) => {
+    const type = prop.type ?? (prop.enum ? `enum(${prop.enum.join('|')})` : 'any');
+    const opt = required.has(name) ? '' : '?';
+    const desc = prop.description ? ` — ${prop.description}` : '';
+    return `${name}${opt}: ${type}${desc}`;
+  });
 }

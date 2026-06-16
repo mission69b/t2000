@@ -16,7 +16,8 @@ Requires Node.js 18+.
 ```bash
 t2 init                              # plain Bech32 wallet, 0o600 perms
 t2 init --import                     # restore from a suiprivkey1… secret
-t2 receive                           # address + ANSI QR
+t2 fund                              # address + ANSI QR to fund the wallet
+t2 status                            # health check (wallet, balances, limits, MCP, gateway)
 t2 send 5 USDC alice.sui             # gasless USDC send
 ```
 
@@ -28,12 +29,13 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 |---|---|
 | `t2 init` · `t2 init --import` | Create a new wallet, or import an existing `suiprivkey1…` Bech32 secret. Seeds default spending limits ($25/tx · $100/day) and prints them. |
 | `t2 export` | Print the wallet's Bech32 secret — pair with `t2 init --import` on another machine to move wallets. |
-| `t2 receive` | Print the wallet address + ANSI QR. `--qr-only` for embedding; `--json` for scripts. |
+| `t2 fund` (alias `t2 receive`) | Print the wallet address + ANSI QR to fund it, plus the value-promise ($5 ≈ ~250 paid calls). `--qr-only` for embedding; `--json` for scripts. |
+| `t2 status` | One-shot health/doctor check: CLI version, wallet + balances, spending limits, gateway reachability, and which AI clients have the MCP server wired. The "is my setup healthy?" command. |
 | `t2 balance` | USDC / USDsui / SUI holdings + USD totals. |
 | `t2 history` | Recent on-chain activity (sends / swaps / x402 payments) with Suiscan digests. |
 | `t2 send <amount> <asset> <recipient>` | Send USDC / USDsui / SUI. **Asset is required** — no implicit USDC default. USDC + USDsui are gasless via `0x2::balance::send_funds`; SUI sends use standard gas. Recipient resolves in priority order: hex address → SuiNS name (`alice.sui`) → `@audric` handle → saved contact alias. |
 | `t2 swap <amount> <from> <to>` | Best-route swap via Cetus Aggregator V3 across 20+ Sui DEXs. `--slippage <pct>` (default 1%, max 5%), `--quote` for a preview without signing. Requires SUI for gas. |
-| `t2 pay <url>` | Pay for an x402-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). |
+| `t2 pay <url>` | Pay for an x402-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). `--estimate` previews the price **and the endpoint's input schema** without paying. |
 | `t2 services search <query>` · `inspect <url>` | Discover x402 services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
 | `t2 limit set --per-tx <USD>` · `--daily <USD>` | Spending caps in `~/.t2000/config.json` — **on by default** ($25/tx · $100/day, daily = cumulative); enforced on CLI **and** MCP writes. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
@@ -48,7 +50,7 @@ USDC + USDsui sends and x402 `pay` are gasless — the Sui foundation sponsors t
 
 ```bash
 # Fresh wallet → first send
-t2 init && t2 receive
+t2 init && t2 fund
 # (fund the wallet with USDC from any source)
 t2 send 5 USDC alice.sui
 

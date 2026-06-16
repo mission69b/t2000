@@ -38,7 +38,7 @@ A blind retry can double-spend or burn calls. Diagnose first:
 | Symptom | Cause | Action |
 |---|---|---|
 | `WALLET_NOT_FOUND` | no wallet yet | run `t2 init` (or `install.sh`); don't retry the pay |
-| `INSUFFICIENT_BALANCE` | wallet underfunded | `t2 receive` → add USDC, then retry once |
+| `INSUFFICIENT_BALANCE` | wallet underfunded | `t2 fund` → add USDC, then retry once |
 | `LIMIT_EXCEEDED` | over a spend cap | surface to the user; `--force` only with consent; never loop |
 | `4xx` from the upstream | bad request (e.g. wrong model name) | fix the request — you were auto-refunded (below); do NOT retry unchanged |
 | `5xx` / timeout | upstream flaked | you were auto-refunded; retry at most once |

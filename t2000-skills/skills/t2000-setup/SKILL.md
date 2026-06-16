@@ -78,7 +78,7 @@ t2 init --import suiprivkey1xxx...   # import via flag (warns: shell history exp
 ### Step 3 — Fund the wallet
 
 ```bash
-t2 receive
+t2 fund          # alias: t2 receive
 ```
 
 Shows the deposit address + Payment Kit URI + an ANSI QR code. Tell the user:

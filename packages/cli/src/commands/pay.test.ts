@@ -3,8 +3,8 @@
 // require live network calls; those are smoked in Phase G. These tests
 // lock down the pure parser semantics.
 
-import { describe, it, expect } from 'vitest';
-import { collectHeaders } from './pay.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { collectHeaders, describeSchemaFields, fetchInputSchema } from './pay.js';
 
 describe('collectHeaders', () => {
   it('parses key=value into the accumulator', () => {
@@ -42,5 +42,66 @@ describe('collectHeaders', () => {
     const acc: Record<string, string> = {};
     const next = collectHeaders('=value', acc);
     expect(next).toEqual({});
+  });
+});
+
+describe('describeSchemaFields (2.13)', () => {
+  it('renders required/optional fields with type + description', () => {
+    const fields = describeSchemaFields({
+      type: 'object',
+      required: ['model', 'messages'],
+      properties: {
+        model: { type: 'string', description: 'Model id' },
+        messages: { type: 'array' },
+        temperature: { type: 'number' },
+      },
+    });
+    expect(fields).toEqual([
+      'model: string — Model id',
+      'messages: array',
+      'temperature?: number',
+    ]);
+  });
+
+  it('returns [] for a null or non-object schema', () => {
+    expect(describeSchemaFields(null)).toEqual([]);
+    expect(describeSchemaFields({ type: 'string' })).toEqual([]);
+  });
+
+  it('renders enums', () => {
+    const fields = describeSchemaFields({
+      type: 'object',
+      properties: { size: { enum: ['1024x1024', '512x512'] } },
+    });
+    expect(fields[0]).toBe('size?: enum(1024x1024|512x512)');
+  });
+});
+
+describe('fetchInputSchema (2.13)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('extracts the requestBody schema for the URL pathname + method', async () => {
+    const doc = {
+      paths: {
+        '/openai/v1/chat/completions': {
+          post: {
+            requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { model: { type: 'string' } } } } } },
+          },
+        },
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(doc), { status: 200 })));
+    const schema = await fetchInputSchema('https://mpp.t2000.ai/openai/v1/chat/completions', 'POST');
+    expect(schema?.properties?.model?.type).toBe('string');
+  });
+
+  it('returns null when the doc fetch fails (best-effort)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })));
+    expect(await fetchInputSchema('https://mpp.t2000.ai/openai/v1/chat/completions', 'POST')).toBeNull();
+  });
+
+  it('returns null when the endpoint has no schema in the doc', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ paths: {} }), { status: 200 })));
+    expect(await fetchInputSchema('https://mpp.t2000.ai/unknown/path', 'POST')).toBeNull();
   });
 });

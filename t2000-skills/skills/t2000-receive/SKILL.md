@@ -18,24 +18,24 @@ metadata:
 
 Surface the wallet address (and optionally a Payment Kit URI with a pre-filled amount + memo) so anyone with a Sui wallet can send tokens to the Agent Wallet. Two surfaces:
 
-- **CLI (`t2 receive`)** — prints the wallet address + an ANSI QR code in the terminal. Minimal; no amount or memo.
+- **CLI (`t2 fund`, alias `t2 receive`)** — prints the wallet address + an ANSI QR code + the value-promise in the terminal. Minimal; no amount or memo.
 - **MCP (`t2000_receive`)** — returns a JSON payload with the address, an optional Payment Kit URI (`sui:pay?…`), a nonce, plus an optional amount / currency / memo / label. Use this when the LLM is building a payment-request flow.
 
 ## Rules
 
 1. **Receive is non-custodial.** The user's address is public; sharing it can't move money — only signed transactions can. Don't add scary disclaimers; the operation is safe.
 2. **Show the QR + the address text.** Some users scan, some copy. Both surfaces.
-3. **No PIN, no sign-in.** v4 wallets are plain Bech32; `t2 receive` is a pure read with no authentication step.
+3. **No PIN, no sign-in.** v4 wallets are plain Bech32; `t2 fund` is a pure read with no authentication step.
 4. **Default currency is USDC.** When asking the user to fund the wallet, USDC is the most useful (every paid service is USDC-denominated, USDC sends are gasless). USDsui also works.
 5. **Don't generate a Payment Kit URI without an amount unless asked.** A bare address scans just as well; URIs with amounts force the sender into a particular tx shape.
 
 ## CLI command
 
 ```bash
-t2 receive                            # address + ANSI QR + share line
-t2 receive --qr-only                  # just the QR (e.g. for embedding in a screenshot)
-t2 receive --key <path>               # custom wallet path
-t2 receive --json                     # { address, qrEncodedFor }
+t2 fund                               # address + ANSI QR + share line (alias: t2 receive)
+t2 fund --qr-only                     # just the QR (e.g. for embedding in a screenshot)
+t2 fund --key <path>                  # custom wallet path
+t2 fund --json                        # { address, qrEncodedFor, valuePromise }
 ```
 
 CLI output (default):
@@ -95,8 +95,8 @@ The amount-bearing form uses raw on-chain units (USDC: × 10^6, SUI: × 10^9) so
 
 | Need | Use |
 |---|---|
-| "What's my wallet address?" | `t2 receive` (CLI) or `t2000_address` (MCP — address only, no QR) |
-| "Show me the QR" | `t2 receive` (CLI prints ANSI QR) |
+| "What's my wallet address?" | `t2 fund` (CLI) or `t2000_address` (MCP — address only, no QR) |
+| "Show me the QR" | `t2 fund` (CLI prints ANSI QR) |
 | "Generate a payment link for $10" | `t2000_receive { amount: 10, currency: "USDC" }` (MCP) |
 | "Generate a 'tip jar' link" (no amount) | `t2000_receive { memo: "Tip jar", label: "Tip funkii" }` (MCP) |
 

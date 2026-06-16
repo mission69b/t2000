@@ -7,9 +7,10 @@ const { version: CLI_VERSION } = require('../package.json') as { version: string
 
 import { registerInit } from './commands/init.js';
 import { registerExport } from './commands/export.js';
-import { registerReceive } from './commands/receive.js';
+import { registerFund } from './commands/receive.js';
 import { registerBalance } from './commands/balance.js';
 import { registerHistory } from './commands/history.js';
+import { registerStatus } from './commands/status.js';
 
 import { registerSend } from './commands/send.js';
 import { registerSwap } from './commands/swap.js';
@@ -35,21 +36,23 @@ export function createProgram(): Command {
 Examples:
   $ t2 init                            Create a new Agent Wallet
   $ t2 init --import                   Import an existing Bech32 secret (interactive)
-  $ t2 receive                         Show address + QR for incoming transfers
+  $ t2 fund                            Show address + QR to fund the wallet
+  $ t2 status                          Health check: wallet, balances, limits, MCP, gateway
   $ t2 balance                         Show USDC / USDsui / SUI holdings
   $ t2 send 5 USDC alice.sui           Send 5 USDC (gasless; asset required)
   $ t2 swap 100 USDC SUI               Swap 100 USDC for SUI via Cetus
-  $ t2 pay <mpp_url>                   Pay an MPP / x402 service
-  $ t2 services search "image"         Discover MPP services in the gateway catalog
-  $ t2 limit set --daily 100           Opt in to a $100 daily-send spending cap
+  $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
+  $ t2 services search "image"         Discover x402 services in the gateway catalog
+  $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
   $ t2 mcp install                     Connect Claude / Cursor / Windsurf
   $ t2 skills install                  Install skills as local SKILL.md files`);
 
   registerInit(program);
   registerExport(program);
-  registerReceive(program);
+  registerFund(program);
   registerBalance(program);
   registerHistory(program);
+  registerStatus(program);
 
   registerSend(program);
   registerSwap(program);

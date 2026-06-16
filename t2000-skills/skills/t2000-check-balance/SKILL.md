@@ -58,5 +58,5 @@ The list shows every stablecoin with a balance ≥ $0.01, sorted with USDC first
 ## Notes
 
 - `sui.usdValue` is an estimate at current SUI price; it fluctuates.
-- If balance shows $0.00 and the wallet was just created, fund it first via `t2 receive` (prints the address + QR).
+- If balance shows $0.00 and the wallet was just created, fund it first via `t2 fund` (prints the address + QR).
 - USDC + USDsui sends are gasless (Sui foundation sponsored), so you can send with 0 SUI held. Swaps via Cetus DO need a small SUI balance.
