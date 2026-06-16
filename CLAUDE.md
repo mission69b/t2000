@@ -368,3 +368,8 @@ When shipping a feature, update these files:
 - [ ] Root README (`README.md`)
 - [ ] Package READMEs (`packages/*/README.md`)
 - [ ] Version bump + build all packages
+- [ ] **Feature/benefit capture** — append the slice's feature + proof point to `SITE_REPOSITIONING_BRIEF.md` §6 (positioning SSOT), and land the `developers.t2000.ai` factual delta when the dev-facing contract changed (CLI/SDK/MCP surface, version, or behavior)
+
+**Docs cadence (two tiers, not "dump as you go"):**
+- **Per-slice** — keep `developers.t2000.ai` *factually correct* only (version, command surface, behavior like limits-on / no-charge-on-failure). Cheap; prevents the staleness class.
+- **Per-PHASE** — a dedicated structured-docs task: turn the phase's shipped specs into a cohesive, **story-driven product + technical section** (features → benefits → how it works), NOT a textbook manual. The marketing-site positioning rewrite batches at launch via `SITE_REPOSITIONING_BRIEF.md`.

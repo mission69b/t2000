@@ -26,6 +26,13 @@ const FULLNODE_URLS: Record<string, string> = {
   testnet: 'https://fullnode.testnet.sui.io:443',
 };
 
+// The Sui mainnet allowlist enforces a $0.01 floor on gasless
+// `0x2::balance::send_funds` (anti-dust). A refund below this can't go gasless,
+// so we fail fast to the manual `refund_due` log rather than submit a tx that
+// reverts on-chain. (The gateway price floor is kept ≥ $0.01 so this is an
+// edge guard, not the common path — see SPEC_AGENT_PAYMENTS_X402 §3 scope lock.)
+const GASLESS_MIN_USDC = 0.01;
+
 // undefined = not yet loaded; null = no/invalid key (refunds disabled)
 let _treasury: Ed25519Keypair | null | undefined;
 
@@ -94,6 +101,11 @@ export async function refundUsdc(params: RefundParams): Promise<string> {
   // Floor to USDC atomic units (6dp) — never refund more than was charged.
   const atomic = Math.floor(Number(params.amount) * 1_000_000);
   if (!Number.isFinite(atomic) || atomic <= 0) throw new Error(`Invalid refund amount: "${params.amount}"`);
+  if (Number(params.amount) < GASLESS_MIN_USDC) {
+    throw new Error(
+      `Refund ${params.amount} below the $${GASLESS_MIN_USDC} gasless minimum — manual refund required`,
+    );
+  }
   const amountRaw = BigInt(atomic);
 
   const client = new SuiGrpcClient({

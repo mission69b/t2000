@@ -121,4 +121,12 @@ describe('refundUsdc', () => {
     __resetTreasury();
     await expect(refundUsdc({ payer: '0xp', amount: '0', network: 'mainnet' })).rejects.toThrow(/invalid refund/i);
   });
+
+  it('rejects a sub-$0.01 refund (below the gasless floor → manual)', async () => {
+    mockEnv.TREASURY_PRIVATE_KEY = VALID_KEY;
+    __resetTreasury();
+    await expect(refundUsdc({ payer: '0xp', amount: '0.005', network: 'mainnet' })).rejects.toThrow(
+      /gasless minimum|manual refund/i,
+    );
+  });
 });
