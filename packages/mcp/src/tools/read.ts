@@ -4,7 +4,7 @@ import type { T2000 } from '@t2000/sdk';
 import { errorResult } from '../errors.js';
 
 // [v4.0 Phase B — 2026-05-26] MCP read surface mirrors the v4 CLI:
-//   t2 balance | t2 wallet address | t2 receive | t2 history | t2 services
+//   t2 balance | t2 wallet address | t2 fund | t2 history | t2 services
 // Deleted in S.332 (Day 5 bulk delete) and reflected here in S.336:
 //   t2000_overview / t2000_positions / t2000_rates / t2000_all_rates /
 //   t2000_health / t2000_earnings / t2000_fund_status / t2000_pending_rewards /
@@ -30,7 +30,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_address',
-    "Get the agent's Sui wallet address. Same value as the first line of `t2 receive`.",
+    "Get the agent's Sui wallet address. Same value as the first line of `t2 fund`.",
     {},
     async () => {
       try {
@@ -44,7 +44,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_receive',
-    'Generate a payment request — returns wallet address, Payment Kit URI (sui:pay?…), nonce, and optional amount/memo. The URI is scannable by any Sui wallet. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds. Mirrors `t2 receive`.',
+    'Generate a payment request — returns wallet address, Payment Kit URI (sui:pay?…), nonce, and optional amount/memo. The URI is scannable by any Sui wallet. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds. Mirrors `t2 fund`.',
     {
       amount: z.number().optional().describe('Amount to request (omit for open amount)'),
       currency: z.string().optional().describe('Currency symbol (default: USDC)'),

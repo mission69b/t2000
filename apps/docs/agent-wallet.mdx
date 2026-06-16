@@ -29,7 +29,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 |---|---|
 | `t2 init` · `t2 init --import` | Create a new wallet, or import an existing `suiprivkey1…` Bech32 secret. Seeds default spending limits ($25/tx · $100/day) and prints them. |
 | `t2 export` | Print the wallet's Bech32 secret — pair with `t2 init --import` on another machine to move wallets. |
-| `t2 fund` (alias `t2 receive`) | Print the wallet address + ANSI QR to fund it, plus the value-promise ($5 ≈ ~250 paid calls). `--qr-only` for embedding; `--json` for scripts. |
+| `t2 fund` | Print the wallet address + ANSI QR to fund it, plus the value-promise ($5 ≈ ~250 paid calls). `--qr-only` for embedding; `--json` for scripts. |
 | `t2 status` | One-shot health/doctor check: CLI version, wallet + balances, spending limits, gateway reachability, and which AI clients have the MCP server wired. The "is my setup healthy?" command. |
 | `t2 balance` | USDC / USDsui / SUI holdings + USD totals. |
 | `t2 history` | Recent on-chain activity (sends / swaps / x402 payments) with Suiscan digests. |

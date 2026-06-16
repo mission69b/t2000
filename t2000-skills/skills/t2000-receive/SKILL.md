@@ -18,7 +18,7 @@ metadata:
 
 Surface the wallet address (and optionally a Payment Kit URI with a pre-filled amount + memo) so anyone with a Sui wallet can send tokens to the Agent Wallet. Two surfaces:
 
-- **CLI (`t2 fund`, alias `t2 receive`)** — prints the wallet address + an ANSI QR code + the value-promise in the terminal. Minimal; no amount or memo.
+- **CLI (`t2 fund`)** — prints the wallet address + an ANSI QR code + the value-promise in the terminal. Minimal; no amount or memo.
 - **MCP (`t2000_receive`)** — returns a JSON payload with the address, an optional Payment Kit URI (`sui:pay?…`), a nonce, plus an optional amount / currency / memo / label. Use this when the LLM is building a payment-request flow.
 
 ## Rules
@@ -32,7 +32,7 @@ Surface the wallet address (and optionally a Payment Kit URI with a pre-filled a
 ## CLI command
 
 ```bash
-t2 fund                               # address + ANSI QR + share line (alias: t2 receive)
+t2 fund                               # address + ANSI QR + share line
 t2 fund --qr-only                     # just the QR (e.g. for embedding in a screenshot)
 t2 fund --key <path>                  # custom wallet path
 t2 fund --json                        # { address, qrEncodedFor, valuePromise }

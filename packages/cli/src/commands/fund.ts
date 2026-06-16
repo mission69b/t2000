@@ -1,12 +1,7 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 1 — 2026-05-26]
-// `t2 receive` — print the wallet address + an ASCII QR code so an
-// agent / human can fund it. Replaces the old `t2000 wallet fund`
-// (which generated a payment link — now superseded by SuiNS handles
-// + this minimal flow).
-//
-// The old `commands/receive.ts` was about invoice generation (S.269
-// deprecated the invoice flow); the slug is reused for the right
-// abstraction.
+// [SPEC_AGENT_PAYMENTS_X402 item 2.12] `t2 fund` — print the wallet address +
+// an ASCII QR code so an agent / human can fund it, plus the value-promise.
+// Renamed from `t2 receive` (S.463) — the `receive` alias was dropped in S.464
+// for a single clean verb (no back-compat shim).
 
 import qrcode from 'qrcode';
 import pc from 'picocolors';
@@ -34,7 +29,6 @@ const VALUE_PROMISE = '$5 USDC ≈ ~250 paid API calls (at the $0.02 floor).';
 export function registerFund(program: Command) {
   program
     .command('fund')
-    .alias('receive')
     .description('Show your wallet address + QR to fund it (USDC / USDsui / SUI on Sui)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--qr-only', 'Print only the QR code (no address text)')

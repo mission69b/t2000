@@ -527,8 +527,8 @@ export class T2000 extends EventEmitter<T2000Events> {
   /**
    * [SPEC_AGENTIC_STACK P1 / SDK F2 — 2026-05-25; refreshed S.342 / 2026-05-26]
    * Preferred alias of `deposit()`. Was introduced to mirror the v3 `t2000 fund`
-   * CLI command; the v4 CLI surface is `t2 receive` (deleted `fund` in the
-   * S.332 bulk cut). `deposit()` stays as the canonical method name for
+   * CLI command; the v4 CLI surface is `t2 fund` (renamed back from the
+   * interim `t2 receive` in S.464). `deposit()` stays as the canonical method name for
    * back-compat; `fund()` stays as a programmatic alias for audric + other
    * SDK consumers that prefer the verb.
    */

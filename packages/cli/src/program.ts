@@ -7,7 +7,7 @@ const { version: CLI_VERSION } = require('../package.json') as { version: string
 
 import { registerInit } from './commands/init.js';
 import { registerExport } from './commands/export.js';
-import { registerFund } from './commands/receive.js';
+import { registerFund } from './commands/fund.js';
 import { registerBalance } from './commands/balance.js';
 import { registerHistory } from './commands/history.js';
 import { registerStatus } from './commands/status.js';

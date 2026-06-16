@@ -19,7 +19,7 @@ Requires Node.js 18+.
 
 ```bash
 t2 init                              # create a wallet (plain Bech32, 0o600 perms)
-t2 receive                           # show address + ANSI QR
+t2 fund                           # show address + ANSI QR
 t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
 t2 swap 100 USDC SUI                 # best-route swap via Cetus
 t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'

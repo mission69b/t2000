@@ -363,7 +363,7 @@ CLI agents are **self-funded** for gas. USDC + USDsui sends + MPP pays are **gas
 
 ```
 After t2 init:
-  → Print the wallet address from `t2 init` output (also reachable via `t2 receive`)
+  → Print the wallet address from `t2 init` output (also reachable via `t2 fund`)
   → Send USDC from any Sui exchange or wallet to that address → ready to send + pay gasless
   → For swaps / SUI sends: also send a small amount of SUI (~0.05) for gas
 ```
