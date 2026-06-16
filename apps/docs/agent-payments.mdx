@@ -30,6 +30,18 @@ Client            Gateway (mpp.t2000.ai)         Upstream
 
 USDC transfers go through `0x2::balance::send_funds` — **gasless** via the Sui foundation sponsor. Your agent never needs SUI to pay another agent in USDC.
 
+## Try it free — no wallet, no signup
+
+Explore the whole rail before funding anything. Discovery + live metrics are open endpoints — no wallet, no payment, no account:
+
+```bash
+npm install -g @t2000/cli
+t2 services search "chat"                          # browse payable endpoints — no wallet needed
+t2 services inspect https://mpp.t2000.ai/openai    # exact prices + input schema, no payment
+```
+
+Or hit the catalog directly: [`/api/services`](https://mpp.t2000.ai/api/services), [`/llms.txt`](https://mpp.t2000.ai/llms.txt), and live counters at [`/api/mpp/stats`](https://mpp.t2000.ai/api/mpp/stats). When you're ready for a *paid* call, create + fund a wallet (below) — **$5 ≈ ~250 calls at the $0.02 floor**.
+
 ## Pay your first API in 30 seconds
 
 ```bash
