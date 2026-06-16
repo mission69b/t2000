@@ -42,7 +42,18 @@ Writes `<slug>/SKILL.md` folders into `./.agents/skills/` — the [agentskills.i
 npx skills add mission69b/t2000-skills
 ```
 
-The CLI always fetches the latest from [`t2000.ai/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json), so you get current skills regardless of the package version you have installed. For offline installs, `git clone https://github.com/mission69b/t2000` and copy the desired `t2000-skills/skills/<slug>/SKILL.md` files by hand.
+Resolves the public **[`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills)** repo (auto-synced from this monorepo's `t2000-skills/` on every push) and auto-detects your agent (Claude Code, Cursor, Codex, Windsurf, Cline, Continue, …). Add a single skill with `-s`, e.g. `npx skills add mission69b/t2000-skills -s t2000-pay`.
+
+### Claude Code plugin marketplace
+
+```bash
+/plugin marketplace add mission69b/t2000-skills
+/plugin install t2000-agent-wallet@t2000-skills
+```
+
+Installs all eight skills (the `t2000-agent-wallet` plugin) via Claude Code's native plugin marketplace — backed by `.claude-plugin/marketplace.json` in the same repo.
+
+> Offline / by hand: `git clone https://github.com/mission69b/t2000-skills` (or the monorepo) and copy `skills/<slug>/SKILL.md` into your agent's skills dir.
 
 ## Skills
 
