@@ -54,6 +54,17 @@ describe('normalizeResponse — passthrough', () => {
     const out = await normalizeResponse(res);
     expect(out).toBe(res);
   });
+
+  it('passes a non-OK JSON error body through untouched (no rehost on 4xx/5xx)', async () => {
+    // Regression: an upstream error (e.g. OpenAI model_not_found 404) must reach
+    // the caller verbatim — never run rehost I/O on it (intermittent throw → 500).
+    const res = Response.json(
+      { error: { message: 'model not found', code: 'model_not_found' } },
+      { status: 404 },
+    );
+    const out = await normalizeResponse(res);
+    expect(out).toBe(res);
+  });
 });
 
 describe('normalizeResponse — binary hosting (shape #1)', () => {

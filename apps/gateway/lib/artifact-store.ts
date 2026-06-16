@@ -316,9 +316,15 @@ async function rehostProviderAssets(response: Response): Promise<Response> {
  * binary body → host bytes; JSON with a provider-CDN asset URL → re-host +
  * rewrite; everything else (text, plain JSON) → untouched. Preserves all
  * headers (notably `Payment-Receipt`) and skips 402 challenges.
+ *
+ * Non-OK responses pass through untouched: an upstream error body carries no
+ * provider assets to re-host, and running the rehost I/O on it can throw
+ * intermittently — turning a clean 4xx/5xx (already auto-refunded on the x402
+ * path) into an opaque 500. Error bodies must reach the caller verbatim.
  */
 export async function normalizeResponse(response: Response): Promise<Response> {
   if (response.status === 402) return response;
+  if (!response.ok) return response;
 
   const contentType = response.headers.get('content-type');
   if (isBinaryContentType(contentType)) {
