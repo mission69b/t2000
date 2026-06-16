@@ -17,7 +17,8 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Transaction } from '@mysten/sui/transactions';
-import { SUI_USDC_TYPE } from './constants';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { env } from './env';
 
 const FULLNODE_URLS: Record<string, string> = {
@@ -37,7 +38,22 @@ function getTreasury(): Ed25519Keypair | null {
   }
   try {
     const { secretKey } = decodeSuiPrivateKey(secret);
-    _treasury = Ed25519Keypair.fromSecretKey(secretKey);
+    const keypair = Ed25519Keypair.fromSecretKey(secretKey);
+    // The key MUST control the address the rail collects to (payTo =
+    // TREASURY_ADDRESS). A mismatch means we'd advertise one wallet but
+    // refund from another (likely empty) — fail loud, disable auto-refund,
+    // fall back to the manual `refund_due` log rather than refund wrong.
+    const derived = normalizeSuiAddress(keypair.toSuiAddress());
+    const expected = normalizeSuiAddress(TREASURY_ADDRESS);
+    if (derived !== expected) {
+      console.error(
+        `[refund] TREASURY_PRIVATE_KEY controls ${derived} but TREASURY_ADDRESS is ${expected} — ` +
+          `auto-refund disabled (key/address mismatch). Set the key for the collecting wallet.`,
+      );
+      _treasury = null;
+      return null;
+    }
+    _treasury = keypair;
   } catch (err) {
     console.error(
       '[refund] TREASURY_PRIVATE_KEY is set but could not be decoded — auto-refund disabled:',

@@ -8,7 +8,7 @@ MPP API gateway at mpp.t2000.ai. Proxies 40+ AI/search/commerce services with Su
 
 - Uses `@suimpp/mpp` server plugin for payment verification
 - `onPayment` callback receives on-chain data (digest, amount, sender, recipient, currency, network); the gateway captures it via `pendingReports: Map<digest, PaymentReport>` and joins it with HTTP context (service, endpoint) inside `chargeProxy` / `chargeCustom` for `logPayment()`
-- Recipient address: `0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012`
+- Recipient address: `0xb012ac774bee4ee6e4e571a13457eeb7a75c4f2319551bf9d436fd497d57aca1` (rotated S.457; the prior `0x76d70cf9…` treasury key was unrecoverable — funds there (~$20.87) are stranded until/unless the key surfaces)
 - No external registry — `suimpp.dev` is now a spec + docs site (no `/api/report` endpoint). Payment logging is gateway-local to its NeonDB.
 
 ## When modifying

@@ -1,8 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// Mutable mock env (hoisted so the vi.mock factory can close over it).
-const { mockEnv } = vi.hoisted(() => ({
-  mockEnv: { TREASURY_PRIVATE_KEY: undefined as string | undefined, TREASURY_ADDRESS: undefined as string | undefined },
+// Mutable mock env + keypair address (hoisted so the vi.mock factories can
+// close over them). `constants.TREASURY_ADDRESS` is captured from env at
+// module load (a `const`), so the default here is what the key must match;
+// `kp.addr` is the address the mocked keypair derives (mutate it to simulate
+// a key/address mismatch).
+const { mockEnv, kp } = vi.hoisted(() => ({
+  mockEnv: {
+    TREASURY_PRIVATE_KEY: undefined as string | undefined,
+    TREASURY_ADDRESS: '0xtreasury' as string | undefined,
+  },
+  kp: { addr: '0xtreasury' },
 }));
 vi.mock('./env', () => ({ env: mockEnv }));
 
@@ -15,7 +23,7 @@ vi.mock('@mysten/sui/cryptography', () => ({
 vi.mock('@mysten/sui/keypairs/ed25519', () => ({
   Ed25519Keypair: {
     fromSecretKey: () => ({
-      toSuiAddress: () => '0xtreasury',
+      toSuiAddress: () => kp.addr,
       signTransaction: vi.fn(async () => ({ signature: 'treasury-sig' })),
     }),
   },
@@ -54,6 +62,7 @@ const VALID_KEY = 'suiprivkey1qreallyanythingsincedecodeIsMocked';
 afterEach(() => {
   moveCalls.length = 0;
   mockEnv.TREASURY_PRIVATE_KEY = undefined;
+  kp.addr = '0xtreasury';
   __resetTreasury();
 });
 
@@ -67,6 +76,12 @@ describe('refundsEnabled', () => {
     mockEnv.TREASURY_PRIVATE_KEY = VALID_KEY;
     __resetTreasury();
     expect(refundsEnabled()).toBe(true);
+  });
+  it('false when the key controls a different address than TREASURY_ADDRESS', () => {
+    mockEnv.TREASURY_PRIVATE_KEY = VALID_KEY;
+    kp.addr = '0xsomeotherwallet'; // key/address mismatch — must fail closed
+    __resetTreasury();
+    expect(refundsEnabled()).toBe(false);
   });
 });
 

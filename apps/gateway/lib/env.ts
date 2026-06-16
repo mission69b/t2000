@@ -145,7 +145,7 @@ const serverSchema = z.object({
 
   // ---- Optional with explicit defaults ----
   TREASURY_ADDRESS: optionalStringWithDefault(
-    '0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012',
+    '0xb012ac774bee4ee6e4e571a13457eeb7a75c4f2319551bf9d436fd497d57aca1',
   ),
   GATEWAY_URL: optionalStringWithDefault('https://mpp.t2000.ai'),
   SUI_NETWORK: optionalStringWithDefault('mainnet'),
