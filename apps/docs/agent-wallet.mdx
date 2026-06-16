@@ -124,8 +124,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_send` | write | Send USDC / USDsui / SUI. **`asset` is required.** USDC + USDsui gasless. `dryRun: true` for previews. |
 | `t2000_swap` | write | Cetus Aggregator V3 swap. Requires SUI for gas. |
 | `t2000_pay` | write | Pay an x402-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
-| `t2000_<category>` | write | **Auto-registered per gateway category** (`t2000_ai`, `t2000_search`, `t2000_data`, `t2000_media`, `t2000_commerce`, …) — scoped aliases of `t2000_pay` so an agent picks a capability directly. Derived from the live catalog at server start; degrades to `t2000_pay` if the catalog is unreachable. |
-| `t2000_limit` | settings | **Read-only.** Surface the user's spending caps to the LLM. Setting / clearing flows through CLI (security boundary). |
+| `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
 Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 8 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-mcp`.
 

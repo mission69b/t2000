@@ -1,14 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerWriteTools } from './write.js';
 import { T2000Error } from '@t2000/sdk';
-
-// The dynamic catalog-driven category tools (2.4) are disabled across this
-// file so the static write-surface assertions stay deterministic (no live
-// `/api/services` fetch, no extra tools).
-afterAll(() => {
-  delete process.env.T2000_MCP_DISABLE_CATEGORY_TOOLS;
-});
 
 // [v4.0 Phase B — 2026-05-26] Write surface is 3 tools: send, swap, pay.
 // All DeFi (save/withdraw/borrow/repay/claim_rewards) + contact-store
@@ -64,8 +57,7 @@ describe('write tools (v4 surface)', () => {
   let agent: ReturnType<typeof createMockAgent>;
   let tools: Map<string, Function>;
 
-  beforeEach(async () => {
-    process.env.T2000_MCP_DISABLE_CATEGORY_TOOLS = '1';
+  beforeEach(() => {
     server = new McpServer({ name: 'test', version: '0.0.1' });
     agent = createMockAgent();
     tools = new Map();
@@ -78,7 +70,7 @@ describe('write tools (v4 surface)', () => {
       return origTool(...args);
     }) as any;
 
-    await registerWriteTools(server, agent);
+    registerWriteTools(server, agent);
   });
 
   it('registers 3 v4 write tools', () => {

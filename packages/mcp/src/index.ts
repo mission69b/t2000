@@ -39,7 +39,7 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
   );
 
   registerReadTools(server, agent);
-  await registerWriteTools(server, agent);
+  registerWriteTools(server, agent);
   registerLimitTool(server);
 
   // SPEC v0.7a Phase 6 (6C) — auto-expose every t2000-skills SKILL.md
