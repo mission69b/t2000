@@ -5,6 +5,44 @@ import type { TransactionSigner } from '../signer.js';
 import type { PayOptions, PayResult } from '../types.js';
 import { T2000Error } from '../errors.js';
 import { executeTx } from './executeTx.js';
+import {
+  type PreflightResult,
+  PREFLIGHT_OK,
+  preflightFail,
+  checkPositiveAmount,
+} from '../preflight.js';
+
+/**
+ * Synchronous, network-free preflight for `pay` (x402 Service call). Validates
+ * the target URL shape and the `maxPrice` ceiling when present — the cheap
+ * checks the v3 host runs before dispatching the paid tool / showing the
+ * tap-to-confirm card. Returns a `PreflightResult`; never throws. The probe +
+ * 402 handshake + balance migration stay in `payWithMpp` (network).
+ */
+export function preflightPay(input: { url: string; maxPrice?: number }): PreflightResult {
+  if (typeof input.url !== 'string' || input.url.trim() === '') {
+    return preflightFail('FACILITATOR_REJECTION', 'A target URL is required to pay');
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(input.url);
+  } catch {
+    return preflightFail('FACILITATOR_REJECTION', `Invalid URL: ${input.url}`);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return preflightFail(
+      'FACILITATOR_REJECTION',
+      `URL must be http(s): got ${parsed.protocol}//`,
+    );
+  }
+  // `maxPrice` is optional (no ceiling = pay whatever the 402 asks). Validate
+  // only when the caller set one — a malformed ceiling is a fat-finger.
+  if (input.maxPrice !== undefined) {
+    const priceCheck = checkPositiveAmount(input.maxPrice, 'maxPrice');
+    if (!priceCheck.valid) return priceCheck;
+  }
+  return PREFLIGHT_OK;
+}
 
 // ---------------------------------------------------------------------------
 // payWithMpp — the SDK's single source of truth for the pay loop. Browser-safe
@@ -31,6 +69,11 @@ export async function payWithMpp(args: {
   options: PayOptions;
 }): Promise<PayResult> {
   const { signer, client, options } = args;
+
+  // Layer 2 — cheap synchronous preflight (URL shape + maxPrice sanity) before
+  // any network round-trip. Rethrow the precise code+message verbatim.
+  const pf = preflightPay({ url: options.url, maxPrice: options.maxPrice });
+  if (!pf.valid) throw new T2000Error(pf.code, pf.error);
 
   const method = (options.method ?? 'GET').toUpperCase();
   const canHaveBody = method !== 'GET' && method !== 'HEAD';

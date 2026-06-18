@@ -12,6 +12,52 @@ import {
 import { T2000Error } from '../errors.js';
 import { validateAddress, type SuiCoreClient } from '../utils/sui.js';
 import { displayToRaw } from '../utils/format.js';
+import {
+  type PreflightResult,
+  PREFLIGHT_OK,
+  preflightFail,
+  checkPositiveAmount,
+  checkSuiAddress,
+} from '../preflight.js';
+
+/**
+ * Synchronous, network-free preflight for `send`. Validates asset membership,
+ * amount sanity, the gasless stable floor, and recipient address shape — the
+ * cheap checks the v3 host runs before the LLM round-trip / tap-to-confirm.
+ * Returns a `PreflightResult`; never throws. `buildSendTx` calls this first,
+ * then layers the network balance read on top.
+ */
+export function preflightSend(input: {
+  to: string;
+  amount: number;
+  asset: string;
+}): PreflightResult {
+  // Asset membership — reuse the canonical message (single source of truth).
+  try {
+    assertAllowedAsset('send', input.asset);
+  } catch (e) {
+    return preflightFail('INVALID_ASSET', (e as T2000Error).message);
+  }
+
+  const amountCheck = checkPositiveAmount(input.amount);
+  if (!amountCheck.valid) return amountCheck;
+
+  // Gasless protocol allowlist enforces a 0.01 minimum on the stables.
+  if (
+    (input.asset === 'USDC' || input.asset === 'USDsui') &&
+    input.amount < GASLESS_MIN_STABLE_AMOUNT
+  ) {
+    return preflightFail(
+      'INVALID_AMOUNT',
+      `Minimum gasless transfer is ${GASLESS_MIN_STABLE_AMOUNT} ${input.asset}. Got ${input.amount}.`,
+    );
+  }
+
+  const addressCheck = checkSuiAddress(input.to);
+  if (!addressCheck.valid) return addressCheck;
+
+  return PREFLIGHT_OK;
+}
 
 /**
  * Build a PTB that sends `amount` of `asset` from `address` to `to`.
@@ -53,21 +99,14 @@ export async function buildSendTx({
   amount: number;
   asset: SendableAsset;
 }): Promise<Transaction> {
-  assertAllowedAsset('send', asset);
+  // Layer 2 — cheap synchronous preflight (asset / amount / gasless floor /
+  // recipient shape). Rethrow the precise code+message verbatim.
+  const pf = preflightSend({ to, amount, asset });
+  if (!pf.valid) throw new T2000Error(pf.code, pf.error);
+
   const recipient = validateAddress(to);
   const assetInfo = SUPPORTED_ASSETS[asset];
   if (!assetInfo) throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
-  if (amount <= 0) throw new T2000Error('INVALID_AMOUNT', 'Amount must be greater than zero');
-
-  // Gasless protocol allowlist enforces a 0.01 minimum on the stables.
-  // Surface a clear error before signing rather than letting the tx
-  // revert on-chain. SUI has no analogous floor.
-  if ((asset === 'USDC' || asset === 'USDsui') && amount < GASLESS_MIN_STABLE_AMOUNT) {
-    throw new T2000Error(
-      'INVALID_AMOUNT',
-      `Minimum gasless transfer is ${GASLESS_MIN_STABLE_AMOUNT} ${asset}. Got ${amount}.`,
-    );
-  }
 
   const rawAmount = displayToRaw(amount, assetInfo.decimals);
   const tx = new Transaction();

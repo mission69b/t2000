@@ -2,7 +2,7 @@ export { T2000 } from './t2000.js';
 export type { TransactionSigner } from './signer.js';
 export { KeypairSigner } from './wallet/keypairSigner.js';
 export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
-export { payWithMpp } from './wallet/pay.js';
+export { payWithMpp, preflightPay } from './wallet/pay.js';
 export { executeTx } from './wallet/executeTx.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';
@@ -88,6 +88,7 @@ export {
   queryTransaction,
 } from './wallet/history.js';
 export type { SuiRpcTxBlock } from './wallet/history.js';
+export { queryBalance } from './wallet/balance.js';
 export {
   mistToSui,
   suiToMist,
@@ -111,7 +112,7 @@ export {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
-export { buildSendTx, addSendToTx } from './wallet/send.js';
+export { buildSendTx, addSendToTx, preflightSend } from './wallet/send.js';
 export {
   fetchAllCoins,
   selectAndSplitCoin,
@@ -142,6 +143,7 @@ export {
   findSwapRoute,
   buildSwapTx,
   addSwapToTx,
+  preflightSwap,
   OVERLAY_FEE_RATE,
   serializeCetusRoute,
   deserializeCetusRoute,
@@ -211,3 +213,15 @@ export {
   writeLimitsFile,
 } from './limits/index.js';
 export type { LimitsConfig, DailySpend, LimitsFile, LimitKind, LimitOperation, LimitAssertInput } from './limits/index.js';
+// Synchronous, network-free preflight (layer 2) — pure input validation the
+// v3 host runs before the LLM round-trip / tap-to-confirm. Per-builder
+// validators (`preflightSend`/`preflightPay`/`preflightSwap`) are exported
+// alongside their builders above; these are the shared primitives.
+export {
+  type PreflightResult,
+  PREFLIGHT_MAX_AMOUNT,
+  PREFLIGHT_OK,
+  preflightFail,
+  checkPositiveAmount,
+  checkSuiAddress,
+} from './preflight.js';

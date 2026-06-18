@@ -14,7 +14,7 @@ export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 // the zkLogin session key (unified gasless write path). Same canonical loop
 // `T2000.pay()` delegates to. Pair with `executeTx` for advanced callers.
 // (`PayOptions` / `PayResult` are exported from the types block below.)
-export { payWithMpp } from './wallet/pay.js';
+export { payWithMpp, preflightPay } from './wallet/pay.js';
 export { executeTx } from './wallet/executeTx.js';
 
 // Error handling
@@ -90,8 +90,22 @@ export type { SimulationResult } from './utils/simulate.js';
 // Protocol fee
 // Cetus aggregator helpers — Audric prepare/route.ts uses these directly to
 // build swap PTBs with overlay fees (per-call, not module-global).
-export { findSwapRoute, buildSwapTx, OVERLAY_FEE_RATE } from './protocols/cetus-swap.js';
+export { findSwapRoute, buildSwapTx, OVERLAY_FEE_RATE, preflightSwap } from './protocols/cetus-swap.js';
 export type { SwapRouteResult, OverlayFeeConfig } from './protocols/cetus-swap.js';
+
+// Synchronous, network-free preflight (layer 2) — pure, browser-safe. The v3
+// host runs these in the agent loop before the tap-to-confirm card.
+// buildSendTx is browser-safe (builds a gasless PTB; the client is injected) —
+// the Audric client signs it in-browser with the zkLogin session (send_transfer).
+export { buildSendTx, preflightSend } from './wallet/send.js';
+export {
+  type PreflightResult,
+  PREFLIGHT_MAX_AMOUNT,
+  PREFLIGHT_OK,
+  preflightFail,
+  checkPositiveAmount,
+  checkSuiAddress,
+} from './preflight.js';
 
 // Spending limits are Node-only (`@t2000/sdk/limits` uses node:fs) — NOT
 // exported here. The browser (Audric) write path skips client-side limits;

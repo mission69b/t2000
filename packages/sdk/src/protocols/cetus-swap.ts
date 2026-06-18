@@ -20,6 +20,56 @@ import BN from 'bn.js';
 import { resolveTokenType, getDecimalsForCoinType } from '../token-registry.js';
 import type { SuiCoreClient } from '../utils/sui.js';
 import type { SponsoredCoinMergeCache } from '../wallet/coinSelection.js';
+import {
+  type PreflightResult,
+  PREFLIGHT_OK,
+  preflightFail,
+  checkPositiveAmount,
+} from '../preflight.js';
+
+/**
+ * Synchronous, network-free preflight for `swap`. Validates the from/to token
+ * args + amount sanity, and rejects an identity swap — the cheap checks the
+ * host runs before routing. Returns a `PreflightResult`; never throws.
+ * Route-finding, liquidity, slippage + decimals resolution stay in the async
+ * path (`findSwapRoute`/`buildSwapTx`/`getSwapQuote`).
+ *
+ * v3 drops the swap *tool*, but `swap` survives as an SDK/CLI builder (§8) so
+ * it gets the same builder-appropriate preflight as send/pay.
+ */
+export function preflightSwap(input: {
+  from: string;
+  to: string;
+  amount: number;
+}): PreflightResult {
+  if (typeof input.from !== 'string' || input.from.trim() === '') {
+    return preflightFail('INVALID_ASSET', 'A `from` token is required to swap');
+  }
+  if (typeof input.to !== 'string' || input.to.trim() === '') {
+    return preflightFail('INVALID_ASSET', 'A `to` token is required to swap');
+  }
+
+  // No upper ceiling — swaps route arbitrary tokens, and low-unit-value tokens
+  // legitimately trade in millions/billions of units.
+  const amountCheck = checkPositiveAmount(input.amount, 'Amount', Number.POSITIVE_INFINITY);
+  if (!amountCheck.valid) return amountCheck;
+
+  // Identity swap is a no-op the router can't route — catch it cheaply.
+  // Resolve symbol → coin type so "USDC" and the USDC coin type compare equal.
+  // Guard the null===null case (two unknown symbols both resolve to null) by
+  // also requiring the resolved value to be non-null, falling back to a raw
+  // string compare.
+  const resolvedFrom = resolveTokenType(input.from);
+  const resolvedTo = resolveTokenType(input.to);
+  const sameToken =
+    input.from.trim() === input.to.trim() ||
+    (resolvedFrom !== null && resolvedFrom === resolvedTo);
+  if (sameToken) {
+    return preflightFail('INVALID_ASSET', `Cannot swap ${input.from} to itself`);
+  }
+
+  return PREFLIGHT_OK;
+}
 
 export interface OverlayFeeConfig {
   /** Fee rate as a fraction (e.g. 0.001 = 0.1%). Pass 0 to disable. */

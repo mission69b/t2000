@@ -198,7 +198,12 @@ export class T2000 extends EventEmitter<T2000Events> {
       force: params.force,
     });
 
-    const { findSwapRoute, buildSwapTx, resolveTokenType } = await import('./protocols/cetus-swap.js');
+    const { findSwapRoute, buildSwapTx, resolveTokenType, preflightSwap } = await import('./protocols/cetus-swap.js');
+
+    // Layer 2 — cheap synchronous preflight (from/to/amount sanity, identity
+    // swap). Runs before any route-finding network call.
+    const pf = preflightSwap({ from: params.from, to: params.to, amount: params.amount });
+    if (!pf.valid) throw new T2000Error(pf.code, pf.error);
 
     const fromType = resolveTokenType(params.from);
     const toType = resolveTokenType(params.to);
