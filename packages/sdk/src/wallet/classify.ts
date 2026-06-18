@@ -9,7 +9,28 @@
  * already producing fine-grained labels.
  */
 
+import { normalizeStructTag } from '@mysten/sui/utils';
 import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '../token-registry.js';
+
+/**
+ * Canonical SUI coin-type check. SUI's gas coin is referenced as the short
+ * `0x2::sui::SUI` by JSON-RPC balance changes but as the fully-expanded
+ * `0x000…0002::sui::SUI` by the GraphQL transport — a raw `=== SUI_TYPE` string
+ * compare lets the GraphQL gas delta pass as a "non-SUI" change, so it can be
+ * mis-picked as the transaction's principal asset/amount (and corrupt the
+ * lending direction). Compare normalized struct tags so SUI is detected
+ * regardless of address form (without false-matching an impostor
+ * `0xother::sui::SUI`, since the package address is part of the normalized tag).
+ * Per `token-data-architecture.mdc`: never equality-compare raw coin-type strings.
+ */
+const NORMALIZED_SUI_TYPE = normalizeStructTag(SUI_TYPE);
+function isSuiCoinType(coinType: string): boolean {
+  try {
+    return normalizeStructTag(coinType) === NORMALIZED_SUI_TYPE;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Coarse action bucket — one of `'send' | 'lending' | 'swap' |
@@ -165,12 +186,12 @@ export function refineLendingLabel(
   if (labelMatchedSpecific) return currentLabel;
 
   const userNonSuiOutflow = changes.find(
-    (c) => resolveOwner(c.owner) === address && c.coinType !== SUI_TYPE && BigInt(c.amount) < 0n,
+    (c) => resolveOwner(c.owner) === address && !isSuiCoinType(c.coinType) && BigInt(c.amount) < 0n,
   );
   if (userNonSuiOutflow) return 'deposit';
 
   const userNonSuiInflow = changes.find(
-    (c) => resolveOwner(c.owner) === address && c.coinType !== SUI_TYPE && BigInt(c.amount) > 0n,
+    (c) => resolveOwner(c.owner) === address && !isSuiCoinType(c.coinType) && BigInt(c.amount) > 0n,
   );
   if (userNonSuiInflow) return 'withdraw';
 
@@ -244,7 +265,7 @@ export function extractTransferDetails(
   const userChanges = changes.filter((c) => resolveOwner(c.owner) === sender);
   if (userChanges.length === 0) return {};
 
-  const userNonSui = userChanges.filter((c) => c.coinType !== SUI_TYPE);
+  const userNonSui = userChanges.filter((c) => !isSuiCoinType(c.coinType));
   const pool = userNonSui.length > 0 ? userNonSui : userChanges;
 
   let primary = pool[0];

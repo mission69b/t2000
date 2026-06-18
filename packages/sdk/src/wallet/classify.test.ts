@@ -452,3 +452,26 @@ describe('extractAllUserLegs (multi-leg / bundle awareness)', () => {
     expect(legs.every((l) => l.asset === 'USDC' || l.asset === 'SUI')).toBe(true);
   });
 });
+
+describe('extractTransferDetails — long-form SUI gas exclusion (GraphQL transport)', () => {
+  // GraphQL history feeds SUI's coin type fully-expanded; the classifier must
+  // still recognize it as SUI (gas noise) and not let it become the principal.
+  const LONG_SUI = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+
+  it('keeps a smaller stablecoin transfer as the principal over a larger long-form SUI gas delta', () => {
+    const { asset, amount, direction } = extractTransferDetails(
+      [
+        // larger-raw SUI movement (9 decimals) — must be excluded as gas
+        bc(ADDR, LONG_SUI, '-5000000000'),
+        // the real transfer: 1 USDC inflow (6 decimals), smaller raw
+        bc(ADDR, USDC_TYPE, '1000000'),
+      ],
+      ADDR,
+    );
+    // Without the canonical SUI check the long-form SUI (abs 5e9 > 1e6) wins as
+    // principal → asset 'SUI', amount 5, direction 'out'. Correct is USDC/1/in.
+    expect(asset).toBe('USDC');
+    expect(amount).toBe(1);
+    expect(direction).toBe('in');
+  });
+});
