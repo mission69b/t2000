@@ -35,8 +35,14 @@ vi.mock('./executeTx.js', () => ({
   executeTx: (client: unknown, signer: unknown, buildTx: () => Promise<unknown>, opts: unknown) =>
     executeTxMock(client, signer, buildTx, opts),
 }));
-const selectMock = vi.fn(async (..._args: unknown[]) => ({ coin: {}, effectiveAmount: 20000n, swapAll: false }));
-vi.mock('./coinSelection.js', () => ({ selectAndSplitCoin: (...args: unknown[]) => selectMock(...args) }));
+// The gasless coin→AB migration: whole-coin `coin::send_funds`, no merge/split.
+const migrationMock = vi.fn((..._args: unknown[]) => ({
+  tx: { setSender() {} },
+  migratedRaw: 1_000_000n,
+}));
+vi.mock('./coinSelection.js', () => ({
+  buildCoinToAddressBalanceMigration: (...args: unknown[]) => migrationMock(...args),
+}));
 vi.mock('@mysten/sui/transactions', () => ({
   Transaction: class {
     pure = { address: (_: string) => ({}) };
@@ -161,7 +167,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     });
 
     expect(executeTxMock).toHaveBeenCalledTimes(1); // the coin→AB migration tx
-    expect(selectMock).toHaveBeenCalledTimes(1);
+    expect(migrationMock).toHaveBeenCalledTimes(1); // gasless whole-coin migration
     expect(result.paid).toBe(true);
     expect(result.dialect).toBe('x402');
   });

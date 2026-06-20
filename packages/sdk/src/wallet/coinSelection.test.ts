@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { T2000Error } from '../errors.js';
 import type { SuiCoreClient } from '../utils/sui.js';
 import {
+  buildCoinToAddressBalanceMigration,
   selectAndSplitCoin,
   selectSuiCoin,
   type SponsoredCoinMergeCache,
@@ -375,5 +376,108 @@ describe('selectAndSplitCoin — sponsored merge cache (non-SUI, NOT SUI-specifi
     // One merge per coin type (USDC + SUI), three splits (two USDC, one SUI).
     expect(commandKinds(tx).filter((k) => k === 'MergeCoins')).toHaveLength(2);
     expect(commandKinds(tx).filter((k) => k === 'SplitCoins')).toHaveLength(3);
+  });
+});
+
+describe('buildCoinToAddressBalanceMigration — gasless x402 coin→AB migration', () => {
+  // The launch-blocker fix: the coin→address-balance migration must emit ONLY
+  // allowlisted `0x2::coin::send_funds` MoveCalls (whole coins, no native
+  // SplitCoins/MergeCoins) so the gRPC build resolver can zero gas. The old
+  // merge+split shape had native commands → fell outside the gasless allowlist
+  // → forced SUI gas → "insufficient SUI" for coin-object holders.
+  const coin = (idChar: string, balance: bigint) => ({
+    objectId: `0x${idChar.repeat(64)}`,
+    balance,
+  });
+
+  function moveCallTargets(tx: Transaction): string[] {
+    return tx.getData().commands.flatMap((c) =>
+      c.$kind === 'MoveCall' && c.MoveCall ? [`${c.MoveCall.module}::${c.MoveCall.function}`] : [],
+    );
+  }
+
+  it('emits a single whole-coin coin::send_funds — no SplitCoins/MergeCoins', () => {
+    const { tx, migratedRaw } = buildCoinToAddressBalanceMigration({
+      coins: [coin('1', 5_000_000n)],
+      coinType: USDC,
+      owner: OWNER,
+      minAmount: 1_000_000n,
+    });
+
+    expect(migratedRaw).toBe(5_000_000n); // whole coin migrated (over-covers, harmless)
+    const kinds = commandKinds(tx);
+    expect(kinds).not.toContain('SplitCoins');
+    expect(kinds).not.toContain('MergeCoins');
+    expect(kinds).not.toContain('$Intent'); // no coinWithBalance / FundsWithdrawal
+    expect(moveCallTargets(tx)).toEqual(['coin::send_funds']);
+  });
+
+  it('every command is an allowlisted 0x2 coin::send_funds MoveCall', () => {
+    const { tx } = buildCoinToAddressBalanceMigration({
+      coins: [coin('1', 600_000n), coin('2', 600_000n)],
+      coinType: USDC,
+      owner: OWNER,
+      minAmount: 1_000_000n,
+    });
+
+    const cmds = tx.getData().commands;
+    expect(cmds.every((c) => c.$kind === 'MoveCall')).toBe(true);
+    expect(moveCallTargets(tx)).toEqual(['coin::send_funds', 'coin::send_funds']);
+  });
+
+  it('selects the FEWEST coins (largest first) to cover the shortfall', () => {
+    const { tx, migratedRaw } = buildCoinToAddressBalanceMigration({
+      coins: [coin('1', 300_000n), coin('2', 900_000n), coin('3', 200_000n)],
+      coinType: USDC,
+      owner: OWNER,
+      minAmount: 1_000_000n,
+    });
+
+    // 900k + 300k = 1.2M ≥ 1M with just two coins (skips the 200k dust).
+    expect(migratedRaw).toBe(1_200_000n);
+    expect(moveCallTargets(tx)).toHaveLength(2);
+  });
+
+  it('sends each coin to the OWNER (self-deposit into the address balance)', () => {
+    const { tx } = buildCoinToAddressBalanceMigration({
+      coins: [coin('1', 5_000_000n)],
+      coinType: USDC,
+      owner: OWNER,
+      minAmount: 1_000_000n,
+    });
+
+    const data = tx.getData();
+    const call = data.commands[0];
+    expect(call.$kind).toBe('MoveCall');
+    const recipientArg = call.MoveCall!.arguments[call.MoveCall!.arguments.length - 1];
+    // The recipient is a Pure input encoding OWNER.
+    expect(recipientArg.$kind).toBe('Input');
+    const input = data.inputs[(recipientArg as { Input: number }).Input];
+    expect(JSON.stringify(input)).toContain('Pure');
+  });
+
+  it('ignores zero-balance coin objects', () => {
+    const { tx, migratedRaw } = buildCoinToAddressBalanceMigration({
+      coins: [coin('1', 0n), coin('2', 2_000_000n)],
+      coinType: USDC,
+      owner: OWNER,
+      minAmount: 1_000_000n,
+    });
+
+    expect(migratedRaw).toBe(2_000_000n);
+    expect(moveCallTargets(tx)).toHaveLength(1);
+  });
+
+  it('throws INSUFFICIENT_BALANCE when coin objects under-cover the shortfall', () => {
+    expect(() =>
+      buildCoinToAddressBalanceMigration({
+        coins: [coin('1', 500_000n)],
+        coinType: USDC,
+        owner: OWNER,
+        minAmount: 1_000_000n,
+      }),
+    ).toThrowError(
+      expect.objectContaining({ code: 'INSUFFICIENT_BALANCE' } as Partial<T2000Error>),
+    );
   });
 });

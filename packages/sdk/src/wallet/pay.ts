@@ -208,45 +208,37 @@ async function ensureAddressBalanceCovers(args: {
     });
   }
 
-  // address balance = total − discrete coin-object sum (listCoins excludes AB)
+  // address balance = total − discrete coin-object sum (listCoins excludes AB).
+  // Collect the coin objects too — we reuse them to build the migration.
+  const coins: { objectId: string; balance: bigint }[] = [];
   let coinSum = 0n;
   let cursor: string | null | undefined;
   let hasNext = true;
   while (hasNext) {
     const page = await client.core.listCoins({ owner, coinType: asset, cursor: cursor ?? undefined });
-    for (const c of page.objects) coinSum += BigInt(c.balance);
+    for (const c of page.objects) {
+      coins.push({ objectId: c.objectId, balance: BigInt(c.balance) });
+      coinSum += BigInt(c.balance);
+    }
     cursor = page.cursor;
     hasNext = page.hasNextPage;
   }
   const addressBalance = total - coinSum;
   if (addressBalance >= amountRaw) return 0; // address balance already covers it
 
-  // Move the shortfall from coin objects into the address balance via a
-  // self `0x2::coin::send_funds` (allowlisted). Coin-objects-only sourcing
-  // (sponsoredContext) so we never withdraw from — and re-deposit to — the
-  // address balance. Built on gRPC so the gasless resolver runs.
+  // Move the shortfall from coin objects into the address balance by sending
+  // WHOLE coin objects to self via `0x2::coin::send_funds` — one allowlisted
+  // framework MoveCall per coin, NO native merge/split. Built on the gRPC
+  // client so its resolver detects the all-allowlisted-MoveCall shape and zeros
+  // gas: the migration itself is gasless (the same eligibility the x402
+  // withdrawal + the gasless send rely on). The old merge+split+send shape had
+  // native `SplitCoins`/`MergeCoins` commands → fell outside the allowlist →
+  // forced SUI gas, breaking coin-object holders with 0 SUI.
   const shortfall = amountRaw - addressBalance;
-  const { Transaction } = await import('@mysten/sui/transactions');
-  const { selectAndSplitCoin } = await import('./coinSelection.js');
+  const { buildCoinToAddressBalanceMigration } = await import('./coinSelection.js');
   const grpcClient = await makeGrpcBuildClient(client);
-  const migration = await executeTx(
-    client,
-    signer,
-    async () => {
-      const tx = new Transaction();
-      const { coin } = await selectAndSplitCoin(tx, client, owner, asset, shortfall, {
-        sponsoredContext: true, // coin-objects-only — never the address balance
-        allowSwapAll: false,
-      });
-      tx.moveCall({
-        target: '0x2::coin::send_funds',
-        typeArguments: [asset],
-        arguments: [coin, tx.pure.address(owner)],
-      });
-      return tx;
-    },
-    { buildClient: grpcClient },
-  );
+  const { tx } = buildCoinToAddressBalanceMigration({ coins, coinType: asset, owner, minAmount: shortfall });
+  const migration = await executeTx(client, signer, () => tx, { buildClient: grpcClient });
   return migration.gasCostSui;
 }
 

@@ -318,6 +318,66 @@ async function selectCoinObjectsOnly(
 }
 
 /**
+ * Build a GASLESS coin→address-balance migration.
+ *
+ * Sends WHOLE `Coin<T>` objects to `owner`'s OWN SIP-58 address balance via
+ * `0x2::coin::send_funds(coin, owner)` — one allowlisted framework MoveCall
+ * per coin, with NO native `SplitCoins` / `MergeCoins` commands. That shape is
+ * what makes it gasless: the gRPC build resolver only zeros gas for PTBs whose
+ * every command is a MoveCall into the `0x2` gasless allowlist (`send_funds` /
+ * `redeem_funds` / `withdrawal_split` / `into_balance`). The same eligibility
+ * the gasless `balance::send_funds` send + the x402 `redeem_funds`+`send_funds`
+ * withdrawal rely on. (The old migration merged+split first → native commands →
+ * fell outside the allowlist → needed SUI. See `pay.ts ensureAddressBalanceCovers`.)
+ *
+ * Selects the FEWEST coins (largest first) whose combined balance covers
+ * `minAmount`, minimizing the MoveCall count. Over-migration is harmless — the
+ * surplus just lands in the address balance. Pure / network-free: callers pass
+ * coins they've already fetched, so this is unit-testable offline.
+ *
+ * Throws `INSUFFICIENT_BALANCE` when the supplied coin objects can't cover
+ * `minAmount`.
+ */
+export function buildCoinToAddressBalanceMigration(args: {
+  coins: { objectId: string; balance: bigint }[];
+  coinType: string;
+  owner: string;
+  minAmount: bigint;
+}): { tx: Transaction; migratedRaw: bigint } {
+  const { coins, coinType, owner, minAmount } = args;
+
+  // Largest first → fewest whole-coin sends to cover the shortfall.
+  const sorted = [...coins]
+    .filter((c) => c.balance > 0n)
+    .sort((a, b) => (b.balance > a.balance ? 1 : b.balance < a.balance ? -1 : 0));
+
+  const selected: { objectId: string; balance: bigint }[] = [];
+  let migratedRaw = 0n;
+  for (const c of sorted) {
+    if (migratedRaw >= minAmount) break;
+    selected.push(c);
+    migratedRaw += c.balance;
+  }
+
+  if (migratedRaw < minAmount) {
+    throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${coinType} coin objects to migrate`, {
+      available: migratedRaw.toString(),
+      required: minAmount.toString(),
+    });
+  }
+
+  const tx = new Transaction();
+  for (const c of selected) {
+    tx.moveCall({
+      target: '0x2::coin::send_funds',
+      typeArguments: [coinType],
+      arguments: [tx.object(c.objectId), tx.pure.address(owner)],
+    });
+  }
+  return { tx, migratedRaw };
+}
+
+/**
  * SUI-specific coin selection. Branches on sponsorship context:
  *
  * - **Self-funded (`sponsoredContext: false`)** — splits from `tx.gas`
