@@ -34,63 +34,20 @@ t2000/
 
 **t2000** = infra. Names the underlying capabilities (SDK, CLI, MCP, x402 gateway, contracts). Used in technical docs, package names, READMEs, dev-facing surfaces. (The `@t2000/engine` harness package was retired 2026-06-14.)
 
-**Audric** = consumer. Names the surfaces a user touches. Always one of exactly **five products** (post-S.18 reframe): **Audric Passport, Audric Intelligence, Audric Finance, Audric Pay, Audric Store**. (S.17's 4-product cut overloaded Intelligence as both "moat" and "home for every financial verb." S.18 splits Finance back out — it's the home for save / borrow / swap / charts. Send + Receive collapse into Pay.)
+**Audric** = consumer. The product a user touches at audric.ai.
 
-#### The five products
+#### Audric v3 — the current product (the canon)
 
-| Audric product | What it is | t2000 layer |
-|---|---|---|
-| 🪪 **Audric Passport** | The trust layer. Identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` |
-| 🧠 **Audric Intelligence** | The brain (the moat). Four systems orchestrate every money decision — Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal), AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." (v0.7d Phase 6 Block A — 2026-05-21 — collapsed former "Silent Profile" + "Chain Memory" into a single MemWal-backed "Memory" system. S.245 — 2026-05-22 — deleted `pay_api` + `mpp_services` tools per V07E_D_QUESTION_AUDITS D-2 reframe; 37 → 35. S.269 — 2026-05-23 — deleted `save_contact` (dead) + V07E_INVOICE_DEPRECATION deleted 3 invoice tools; 35 → 31. S.277 — 2026-05-23 — "Earns Its Keep" audit cut Volo trio + `web_search` + `protocol_deep_dive` + 2 dead guards; 31 → 26 tools, 14 → 12 guards. S.391 — 2026-06-09 — the runnable `AISDKEngine` loop retired; the engine is now a harness library the host composes.) | `@t2000/engine` (harness library — tools + reasoning + guards) + `@t2000/mcp` (skills exposed as MCP prompts) + `@mysten-incubation/memwal` (vector memory) |
-| 💰 **Audric Finance** | Manage your money on Sui. Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception added in v0.51.0), Credit (NAVI borrow USDC or USDsui against savings, health factor visible at all times — repay must use the same asset as the borrow), Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee), Charts (interactive yield / health / portfolio visualizations rendered from chat). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
-| 💸 **Audric Pay** | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / QR. No bank, no borders, no fees. (Invoicing is covered by payment links — set the label/memo to encode invoice context. Invoice as a distinct product retired in V07E_INVOICE_DEPRECATION / S.269 item 7, 2026-05-23.) | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract) |
-| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. 92% to creator. **Coming soon (Phase 5).** | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) |
+> **Private, decentralized AI — truly yours.** A multi-model AI agent with a non-custodial zkLogin (Google) wallet, live at audric.ai. Clean-fork of the Vercel chatbot template (`audric/apps/web-v3`).
 
-#### Audric Passport — the trust layer (4 pillars)
+- **Models** — open/uncensored (Kimi, DeepSeek, Grok, GPT-OSS) + frontier (Claude, GPT-5.x, Gemini); **Auto** routing picks the model + reasoning effort + step budget per turn.
+- **Agent** — live web search, image generation, visible cited multi-step research, curated paid Recipes (x402, paid in USDC).
+- **Passport (wallet)** — non-custodial zkLogin wallet; send USDC + USDsui, free/instant/gasless; tap-to-confirm on every write; sponsored gas.
+- **Privacy** — zero data retention, encrypted private chats & files, decentralized memory on Walrus (opt-in, deletable).
 
-> **Your passport to a new kind of finance.**
+**What changed from v2 (2026-06-14):** DeFi (NAVI save/borrow) removed and `@t2000/engine` retired — v3 composes the AI SDK directly over `@t2000/sdk`. The SDK write surface is now **send · swap (Cetus) · pay (x402)**.
 
-Every Audric action runs through Passport. It's the wallet itself.
-
-| Pillar | Meaning |
-|---|---|
-| 🪪 **Identity** | Sign in with Google. Your Passport is a cryptographic wallet, created in 3 seconds. No seed phrase. Yours forever. (zkLogin + Enoki) |
-| ✋ **You decide** | Audric never moves money on its own. Every Finance and Pay action — save, send, swap, borrow — waits on your tap-to-confirm. |
-| 🔐 **Sponsored gas** | We pay the network fees so you don't need SUI to transact. Your USDC stays your USDC. (Enoki sponsorship) |
-| ⛓️ **Yours** | Non-custodial. We cannot move your money. Every transaction is on Sui mainnet, verifiable by anyone, forever. |
-
-#### Audric Intelligence — the 5-system moat (the differentiator)
-
-> **Not a chatbot. A financial agent.** Five systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on your Passport tap-to-confirm.
-
-| System | What it does | Implementation |
-|---|---|---|
-| 🎛️ **Agent Harness** | 26 tools, one agent. The toolset + composition primitives that orchestrate Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads; serial writes via the AI SDK step model + `needsApproval` round-trip. | `@t2000/engine` harness primitives + 26 tools (18 read / 8 write) |
-| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 14 safety guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. Multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` at build time and exposed to Cursor / Claude Desktop as MCP prompts. The engine no longer ships a YAML recipe runtime (deleted v0.7a Phase 6, May 2026); skill content guides the LLM, the engine just runs the tools the LLM picks. | `classify-effort.ts`, `guards.ts`, `t2000-skills/skills/`, extended thinking always-on |
-| 🧠 **Memory (MemWal)** | Knows your finances. `@mysten-incubation/memwal` vector memory holds long-term facts about preferences, goals, risk tolerance, on-chain patterns. `prepareStep` recalls top-K facts each turn → `<memory_recall>` system-prompt block; `onFinish` calls `memwal.analyze()` to extract new facts post-turn. Used silently to calibrate answers — never surfaced as nudges. (Audric retired its daily `UserFinancialContext` snapshot + cron in S.375 (2026-06-07), and the engine's now-unused `financialContextBlock` prompt layer was removed in S.376 — the agent orients via fresh tool calls. v0.7d Phase 6 Block A absorbed the former "Silent Profile" + "Chain Memory" systems into this one.) | `@mysten-incubation/memwal` SDK + `memwal-prepare-step.ts` + `memwal-write-callback.ts` |
-| 📓 **AdviceLog** | Remembers what it told you. Every recommendation is logged so the agent doesn't contradict itself across sessions. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` (last 30 days hydrated each turn) |
-
-**Naming rules (binding):**
-
-1. **Five products, no more, no less.** Passport, Intelligence, Finance, Pay, Store. If something doesn't fit one of them, it's either an operation inside one (lowercase verb) or it's infra (use a t2000 name).
-2. **Operation → product mapping (binding):**
-   - **save, swap, borrow, repay, withdraw, charts (yield/health/portfolio viz)** → Audric Finance
-   - **send, receive, payment-link, QR** → Audric Pay (invoicing folded into payment links — see V07E_INVOICE_DEPRECATION / S.269 item 7)
-   - **profile inference, memory extraction, chain-fact classification, advice logging, guard runs, skill orchestration, complexity classification** → Audric Intelligence (silent — never user-facing as a verb)
-   - **sign-in, wallet creation, tap-to-confirm, sponsored gas** → Audric Passport
-   - **listing, pay-to-unlock, Walrus upload, creator payout** → Audric Store
-3. **MPP gateway returns under Audric Store (post-S.245).** The legacy `pay_api` + `mpp_services` engine tools were deleted 2026-05-22 (V07E_D_QUESTION_AUDITS D-2 reframe). Paid third-party APIs (image gen, transcription, TTS, GPT-4o, PDF, mail) return as Commerce primitives in the upcoming Audric Store SPEC — clean-slate redesign, not a port of the legacy 3-leg apps/web flow. Until then, Audric declines those requests honestly ("Image generation isn't available today — coming back as part of Audric Store. I can't give a date yet."). Audric Pay still means money transfer between users; Audric Store will own paid-API commerce.
-4. **Audric Receive is not a product** — it's the receive-half of *Audric Pay*.
-5. **Audric Intelligence has 4 named systems** — Agent Harness, Reasoning Engine, Memory (MemWal), AdviceLog. Always reference by these names. They are the moat. (v0.7d Phase 6 Block A — 2026-05-21 — reduced from 5 to 4 by absorbing former "Silent Profile" + "Chain Memory" into a single MemWal-backed "Memory" system. Pre-Block A docs still mention 5; the canonical is 4.)
-6. **Operations** stay lowercase verbs. The capitalised noun forms (Save, Send, Swap, Credit, Receive, Charts) are UI chip labels — they live inside Finance or Pay.
-7. **Engine system prompts** reference the five product names but should not invent additional ones.
-8. **Marketing copy** leads with the operation ("save USDC", "send USDC"), invokes the product name only when grouping multiple operations or contrasting with another product.
-9. **Invest is REMOVED.** Do not add it back. Savings (an Audric Finance operation on USDC into NAVI) covers yield.
-10. **Audric Finance is back (S.18).** S.17 retired it; S.18 brought it back as the home for save/swap/borrow/repay/charts because "Intelligence" was overloaded. Don't try to re-retire it without re-reading the S.18 entry in `audric-build-tracker.md`.
-
-The canonical reference for these five products is the top of `PRODUCT_ROADMAP.md`.
-
-> **⚠️ [2026-06-14] Audric is being rebuilt as v3 — the product description above is the FROZEN legacy v2.** Audric v3 (`SPEC_AUDRIC_V3.md`, the canon) is a clean-fork "private, decentralized AI" rebuild: **DeFi removed**, `@t2000/engine` **retired** (v3 composes the AI SDK over `@t2000/sdk` directly), positioning = "Private, decentralized AI — truly yours". The Finance/Intelligence rows below describe what web-v2 (engine@4.x) still does until v3 replaces it. Don't treat the engine/NAVI/tool-count details as live infra truth — see `SPEC_AUDRIC_V3.md`.
+For Audric product detail, see **`audric/CLAUDE.md`** + **`SPEC_AUDRIC_V3.md`** (the canon). The legacy v2 app — engine + NAVI, and the "five products / Audric Intelligence" framing — is **frozen** at `legacy.audric.ai` on `@t2000/*@4.x`. It's history, not live truth; don't reintroduce its concepts here.
 
 ### DeFi integration — REMOVED from t2000 (2026-06-14, S.444)
 
@@ -102,13 +59,13 @@ The canonical reference for these five products is the top of `PRODUCT_ROADMAP.m
 
 ## Critical Rules
 
-1. **Never add Invest as a product.** Savings (under Audric Finance) covers yield.
-2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP for reads, thin tx builders for writes.
+1. **DeFi (lending / yield / Invest) was removed (2026-06-14, S.444).** Don't reintroduce `save` / `borrow` / Invest into the SDK — see the "DeFi integration — REMOVED" note above + `SPEC_AUDRIC_V3.md`.
+2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP / thin `@mysten/sui` tx builders instead.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in `@t2000/sdk` or the host agent loop.
 5. **Always check `developers.t2000.ai`** before writing documentation or marketing copy. Mintlify is the live docs SSOT (auto-deployed from `apps/docs/`) — covers product naming, CLI surface, SDK API, MCP tools. For code-level truth (fees, decimals, allowed-asset lists, error codes), read `packages/sdk/src/constants.ts` + `packages/sdk/src/token-registry.ts` directly.
 6. **Always use `token-registry.ts`** for token metadata (`COIN_REGISTRY`, `resolveTokenType`, `getDecimalsForCoinType`, `resolveSymbol`, the `*_TYPE` constants). Never hardcode decimals or coin types. (There is no token "tier" gate — USDC is the settlement stable; everything else is holdable/swappable.)
-7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web-v2/lib/env.ts` — schema + `instrumentation.ts` boot-time validation (audric enforces the no-raw-`process.env` convention via Biome/ultracite + code review, not an ESLint rule). The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
+7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web-v3/lib/env.ts` — schema + `instrumentation.ts` boot-time validation (audric enforces the no-raw-`process.env` convention via Biome/ultracite + code review, not an ESLint rule). The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
 8. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design. Audric is the only fee owner: it passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps (the Cetus aggregator takes the overlay fee from swap output and transfers it to the wallet). The deprecated `t2000::treasury::collect_fee` Move call + `addCollectFeeToTx` helper were removed; the `addFeeTransfer`/`protocolFee` helper (only ever used for the now-removed save/borrow fees) was deleted with the DeFi surface. New consumer apps that want non-swap fees split + transfer to a wallet inside the same PTB; the indexer detects USDC inflows and writes `ProtocolFeeLedger` rows. See S.43 in `audric-build-tracker.md`.
 9. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
@@ -142,7 +99,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 | `.cursor/rules/blockvision-resilience.mdc` | **HISTORICAL** — BlockVision left t2000 with the engine | Rationale only — audric/web-v2 (frozen) keeps it |
 | `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources | Adding tokens, fixing decimal/display bugs |
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — every env var goes through Zod schema | Adding env vars / wiring a new app |
-| `audric/apps/web-v2/lib/env.ts` | Canonical Zod env-validation template (audric/apps/web archived in v0.7e Phase 5 / S.253, 2026-05-22) | Adding env vars, copying the pattern |
+| `audric/apps/web-v3/lib/env.ts` | Canonical Zod env-validation template | Adding env vars, copying the pattern |
 | `audric/.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct (lives in audric repo) | Audric transaction/receipt bugs |
 
 ---
@@ -208,7 +165,7 @@ This runs `.github/workflows/release.yml`, which:
 
 ```bash
 # In audric repo after npm publish completes:
-cd /Users/funkii/dev/audric/apps/web
+cd /Users/funkii/dev/audric/apps/web-v3
 pnpm add @t2000/sdk@latest
 cd /Users/funkii/dev/audric
 git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git push
@@ -301,8 +258,8 @@ import { MIST_PER_SUI, SUI_DECIMALS, isValidSuiAddress, normalizeSuiAddress } fr
 
 ## Styling
 
-- **Current apps:** Tailwind + shadcn/ui (dark theme)
-- **Audric (new):** Agentic Design System — white/black, New York Large + Geist + Departure Mono
+- **t2000 apps (web / docs / gateway):** Tailwind + shadcn/ui
+- **Audric v3:** Tailwind + shadcn/ui, Geist font, light/dark theme
 - Group utilities: layout → spacing → sizing → colors → effects
 - `cn()` for conditional classes, shadcn components from `@/components/ui`
 
@@ -328,7 +285,7 @@ emoji type(scope): subject
 
 - Subject lowercase, ALWAYS use emoji
 - Do NOT add "Generated with Claude"
-- Scopes: `sdk`, `mcp`, `cli`, `web`, `gateway`, `engine`, `contracts`
+- Scopes: `sdk`, `mcp`, `cli`, `web`, `gateway`, `contracts`
 
 ---
 
@@ -352,7 +309,6 @@ emoji type(scope): subject
 | MPP Gateway | `mpp.t2000.ai` |
 | GitHub | `github.com/mission69b/t2000` |
 | npm CLI | `npmjs.com/package/@t2000/cli` |
-| NAVI MCP | `open-api.naviprotocol.io/api/mcp` |
 
 ---
 
