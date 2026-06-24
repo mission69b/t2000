@@ -26,8 +26,7 @@ t2000/
     package.json, pnpm-workspace.yaml
 ```
 
-> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access. The brand redesign designer handoff source lives in a gitignored `t2000-AFI/` folder (static React+Babel prototype; shipped artifacts live in `packages/ui/`).
-
+> Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access.
 ## Where does X go?
 
 | If X is a... | Put it in... |
@@ -63,7 +62,6 @@ Plus founder-local truth source (gitignored, not visible publicly):
 - `HANDOFF_NEXT_AGENT.md` (agent context handoff, ~7d rotation policy)
 - `.smoke-*` (live smoke tooling)
 - `.env.local`, `.env.example`
-- `t2000-AFI/` (designer handoff source for the brand-unification redesign; static React+Babel prototype with Geist Design System tokens + per-property accent overrides; canonical reference during the redesign work — shipped artifacts live in `packages/ui/`)
 
 ## audric repo (sister repo, separate clone)
 
