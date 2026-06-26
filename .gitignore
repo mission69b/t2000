@@ -49,6 +49,11 @@ audric-build-tracker.md
 PRODUCT_ROADMAP.md
 HANDOFF_NEXT_AGENT.md
 
+# local blog-cover render tool (Playwright source → audric/public/blog/*.png);
+# scratch tooling, not part of the public repo root allowlist. Kept locally for
+# re-rendering future blog post images.
+blog-images.html
+
 # MCP registry tokens
 .mcpregistry_*
 
