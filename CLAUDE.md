@@ -45,7 +45,7 @@ t2000/
 - **Passport (wallet)** — non-custodial zkLogin wallet; send USDC + USDsui, free/instant/gasless; tap-to-confirm on every write; sponsored gas.
 - **Privacy** — zero data retention, encrypted private chats & files, decentralized memory on Walrus (opt-in, deletable).
 
-**What changed from v2 (2026-06-14):** DeFi (NAVI save/borrow) removed and `@t2000/engine` retired — v3 composes the AI SDK directly over `@t2000/sdk`. The SDK write surface is now **send · swap (Cetus) · pay (x402)**.
+**What changed from v2 (2026-06-14):** DeFi (NAVI save/borrow) removed and `@t2000/engine` retired — v3 composes the AI SDK directly over `@t2000/sdk` (on **AI SDK 7** as of 2026-06-25). The SDK write surface is now **send · swap (Cetus) · pay (x402)**.
 
 For Audric product detail, see **`audric/CLAUDE.md`** + **`SPEC_AUDRIC_V3.md`** (the canon). The legacy v2 app — engine + NAVI, and the "five products / Audric Intelligence" framing — is **frozen** at `legacy.audric.ai` on `@t2000/*@4.x`. It's history, not live truth; don't reintroduce its concepts here.
 
