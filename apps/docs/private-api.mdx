@@ -1,0 +1,121 @@
+---
+title: "Private API"
+description: "api.t2000.ai — an OpenAI-compatible inference API. Every frontier + open model behind one key, private by default (zero data retention), pay-as-you-go from one balance."
+---
+
+The **Private API** is an OpenAI-compatible inference endpoint at `api.t2000.ai`. Point any OpenAI SDK at it and call frontier + open models through **one key** — private by default (zero data retention), metered per token from a single credit balance.
+
+It's the same models [Audric](https://audric.ai) serves in the app, exposed to developers and agents. Your edge over a raw provider: **privacy by default, every model behind one key, and pay-as-you-go with no per-provider accounts.**
+
+## Base URL
+
+```text
+https://api.t2000.ai/v1
+```
+
+## Get a key
+
+API access is included with **Audric Pro and Max**. Generate a key in [audric.ai](https://audric.ai) → **Settings → API keys**. The secret (`sk-…`) is shown once — store it somewhere safe. Calls debit your existing Audric credit balance (included credit first, then pay-as-you-go).
+
+<Note>
+  Keys are issued to Pro/Max subscribers only. Calls fail closed at a $0 balance — top up in Settings → Billing.
+</Note>
+
+## Quick start
+
+<CodeGroup>
+
+```bash curl
+curl https://api.t2000.ai/v1/chat/completions \
+  -H "Authorization: Bearer $T2000_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zai/glm-5.2",
+    "messages": [{ "role": "user", "content": "Explain x402 in one sentence." }]
+  }'
+```
+
+```python python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.t2000.ai/v1",
+    api_key="sk-...",  # from Settings → API keys
+)
+
+resp = client.chat.completions.create(
+    model="zai/glm-5.2",
+    messages=[{"role": "user", "content": "Explain x402 in one sentence."}],
+)
+print(resp.choices[0].message.content)
+```
+
+```typescript typescript
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "https://api.t2000.ai/v1",
+  apiKey: process.env.T2000_API_KEY, // from Settings → API keys
+});
+
+const resp = await client.chat.completions.create({
+  model: "zai/glm-5.2",
+  messages: [{ role: "user", content: "Explain x402 in one sentence." }],
+});
+console.log(resp.choices[0].message.content);
+```
+
+</CodeGroup>
+
+## Streaming
+
+Set `"stream": true` for server-sent `chat.completion.chunk` events (OpenAI-compatible), terminated by `data: [DONE]`. Pass `"stream_options": { "include_usage": true }` to receive a final token-usage chunk.
+
+```typescript
+const stream = await client.chat.completions.create({
+  model: "zai/glm-5.2",
+  messages: [{ role: "user", content: "Write a haiku about Sui." }],
+  stream: true,
+});
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
+}
+```
+
+## Models
+
+`GET /v1/models` returns the live catalog with per-model pricing (the charged rate), context window, and privacy tier.
+
+```bash
+curl https://api.t2000.ai/v1/models -H "Authorization: Bearer $T2000_API_KEY"
+```
+
+The launch set is curated, not a 250-model dump — the models developers actually run agents on, plus the frontier set for completeness:
+
+| Tier | Models |
+|---|---|
+| **Open** | `zai/glm-5.2` · `deepseek/deepseek-v3.2` · `moonshotai/kimi-k2.5` · `alibaba/qwen3-max` · `openai/gpt-oss-120b` |
+| **Frontier** | `anthropic/claude-sonnet-4.6` · `anthropic/claude-opus-4.8` · `openai/gpt-5.5` · `google/gemini-3.1-pro-preview` · `xai/grok-4.3` |
+
+## Privacy
+
+Every request runs with **zero data retention (ZDR)** — providers are contractually bound not to store or train on your prompts. A verifiable confidential (TEE-attested) tier is on the roadmap.
+
+## Pricing
+
+One price per model, billed per token from your credit balance — the same rate shown in `GET /v1/models`. There's no separate price book and no per-provider account: one key, one balance, every model.
+
+## Errors
+
+Errors use the standard OpenAI envelope, so existing SDKs surface them correctly:
+
+```json
+{ "error": { "message": "Invalid API key.", "type": "invalid_request_error", "code": "invalid_api_key", "param": null } }
+```
+
+| Status | When |
+|---|---|
+| `401` | Missing or invalid API key |
+| `402` | Insufficient credit — top up at audric.ai |
+| `403` | Key's plan doesn't include API access (upgrade to Pro/Max) |
+| `404` | Unknown model — see `GET /v1/models` |

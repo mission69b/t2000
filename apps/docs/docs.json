@@ -24,7 +24,8 @@
         "pages": [
           "agent-wallet",
           "agent-payments",
-          "agent-sdk"
+          "agent-sdk",
+          "private-api"
         ]
       },
       {
