@@ -96,10 +96,20 @@ The launch set is curated, not a 250-model dump — the models developers actual
 |---|---|
 | **Open** | `zai/glm-5.2` · `deepseek/deepseek-v3.2` · `moonshotai/kimi-k2.5` · `alibaba/qwen3-max` · `openai/gpt-oss-120b` |
 | **Frontier** | `anthropic/claude-sonnet-4.6` · `anthropic/claude-opus-4.8` · `openai/gpt-5.5` · `google/gemini-3.1-pro-preview` · `xai/grok-4.3` |
+| **Confidential** (GPU-TEE) | `phala/gpt-oss-120b` · `phala/glm-4.7-flash` · `phala/qwen3.5-27b` · `phala/uncensored-24b` |
+
+Each model in `GET /v1/models` carries a `privacy` field (`private` or `confidential`) so you can choose your posture programmatically.
 
 ## Privacy
 
-Every request runs with **zero data retention (ZDR)** — providers are contractually bound not to store or train on your prompts. A verifiable confidential (TEE-attested) tier is on the roadmap.
+Two rungs, selectable per model:
+
+- **Private (default, every model)** — **zero data retention (ZDR)**: providers are contractually bound not to store or train on your prompts.
+- **Confidential (`phala/*` models)** — inference runs inside a **GPU-TEE (hardware enclave)**, so prompts are encrypted in use, not just contractually protected. Each response returns an **`x-receipt-id`** (non-streaming: HTTP header; streaming: `x_receipt_id` on the final usage chunk) — a hardware-attestation receipt for that run.
+
+<Note>
+  The confidential tier is real TEE isolation **consumed** today; a full self-serve **verifier** (check the attestation + signature yourself, anchored on Sui) is on the roadmap. Until then, treat `x-receipt-id` as an audit reference.
+</Note>
 
 ## Pricing
 
