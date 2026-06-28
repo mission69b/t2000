@@ -5,7 +5,9 @@ description: "api.t2000.ai — an OpenAI-compatible inference API. Every frontie
 
 The **Private API** is an OpenAI-compatible inference endpoint at `api.t2000.ai`. Point any OpenAI SDK at it and call frontier + open models through **one key** — private by default (zero data retention), metered per token from a single credit balance.
 
-It's the same models [Audric](https://audric.ai) serves in the app, exposed to developers and agents. Your edge over a raw provider: **privacy by default, every model behind one key, and pay-as-you-go with no per-provider accounts.**
+Manage everything — keys, credit, usage, the model catalog — at the developer console: **[platform.t2000.ai](https://platform.t2000.ai)**. Sign in with Google (zkLogin); it's the same Passport identity + credit balance as [Audric](https://audric.ai), so one account spans the app and the API.
+
+Your edge over a raw provider: **privacy by default, every model (private + confidential) behind one key, and pay-as-you-go with no per-provider accounts.**
 
 ## Base URL
 
@@ -15,10 +17,14 @@ https://api.t2000.ai/v1
 
 ## Get a key
 
-API access is included with **Audric Pro and Max**. Generate a key in [audric.ai](https://audric.ai) → **Settings → API keys**. The secret (`sk-…`) is shown once — store it somewhere safe. Calls debit your existing Audric credit balance (included credit first, then pay-as-you-go).
+1. Sign in at **[platform.t2000.ai](https://platform.t2000.ai)** with Google.
+2. **Add credit** — top up with a card (Billing → Add credit), or use the included credit from an Audric Pro/Max plan.
+3. **API keys → Create API key** — the secret (`sk-…`) is shown **once**, so store it safely.
+
+Calls are metered per token from your credit balance. **Fund-to-use:** any account with a positive balance (a top-up, a plan's included credit, or referral credit) can mint a key and call — no subscription required.
 
 <Note>
-  Keys are issued to Pro/Max subscribers only. Calls fail closed at a $0 balance — top up in Settings → Billing.
+  Calls fail closed at a $0 balance — add credit at platform.t2000.ai. Keep keys server-side; rotate (revoke + recreate) if one leaks.
 </Note>
 
 ## Quick start
@@ -87,7 +93,7 @@ for await (const chunk of stream) {
 `GET /v1/models` returns the live catalog with per-model pricing (the charged rate), context window, and privacy tier.
 
 ```bash
-curl https://api.t2000.ai/v1/models -H "Authorization: Bearer $T2000_API_KEY"
+curl https://api.t2000.ai/v1/models
 ```
 
 The launch set is curated, not a 250-model dump — the models developers actually run agents on, plus the frontier set for completeness:
@@ -96,7 +102,9 @@ The launch set is curated, not a 250-model dump — the models developers actual
 |---|---|
 | **Open** | `zai/glm-5.2` · `deepseek/deepseek-v3.2` · `moonshotai/kimi-k2.5` · `alibaba/qwen3-max` · `openai/gpt-oss-120b` |
 | **Frontier** | `anthropic/claude-sonnet-4.6` · `anthropic/claude-opus-4.8` · `openai/gpt-5.5` · `google/gemini-3.1-pro-preview` · `xai/grok-4.3` |
-| **Confidential** (GPU-TEE) | `phala/gpt-oss-120b` · `phala/glm-4.7-flash` · `phala/qwen3.5-27b` · `phala/uncensored-24b` |
+| **Confidential** (GPU-TEE) | `phala/glm-5.2` · `phala/gpt-oss-120b` · `phala/deepseek-v3.2` · `phala/qwen3.5-27b` · `phala/uncensored-24b` |
+
+The live set is always whatever `GET /v1/models` returns (it intersects the curated list with each backend's live catalog), and the endpoint is **public** — fetch it without a key to browse models + pricing.
 
 Each model in `GET /v1/models` carries a `privacy` field (`private` or `confidential`) so you can choose your posture programmatically.
 
@@ -115,6 +123,10 @@ Two rungs, selectable per model:
 
 One price per model, billed per token from your credit balance — the same rate shown in `GET /v1/models`. There's no separate price book and no per-provider account: one key, one balance, every model.
 
+## Rate limits
+
+Each key is capped at **120 requests/minute** (an abuse guard). Exceeding it returns `429`. Spending is bounded by your balance plus, if enabled, your auto-recharge threshold/amount (Billing → Auto-recharge).
+
 ## Errors
 
 Errors use the standard OpenAI envelope, so existing SDKs surface them correctly:
@@ -126,6 +138,6 @@ Errors use the standard OpenAI envelope, so existing SDKs surface them correctly
 | Status | When |
 |---|---|
 | `401` | Missing or invalid API key |
-| `402` | Insufficient credit — top up at audric.ai |
-| `403` | Key's plan doesn't include API access (upgrade to Pro/Max) |
+| `402` | Insufficient credit — add credit at [platform.t2000.ai](https://platform.t2000.ai) |
 | `404` | Unknown model — see `GET /v1/models` |
+| `429` | Rate limit exceeded (120 req/min per key) |
