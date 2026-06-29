@@ -183,6 +183,10 @@ export type { CoinMeta } from './token-registry.js';
 // vSUI still exists in the codebase as a passive token (NAVI reward type
 // + Cetus swap target), but t2000 no longer exposes mint/redeem surfaces.
 export {
+  AGENT_ID_PARENT,
+  AGENT_ID_PARENT_NAME,
+  AGENT_ID_PARENT_NFT_ID,
+  AUDRIC_PARENT,
   AUDRIC_PARENT_NAME,
   AUDRIC_PARENT_NFT_ID,
   buildAddLeafTx,
@@ -195,6 +199,7 @@ export type {
   BuildAddLeafParams,
   BuildRevokeLeafParams,
   LabelValidationResult,
+  SuinsParent,
 } from './protocols/suins-leaf.js';
 // Unified spending limits (per-tx + cumulative daily, USD) — one gate for
 // CLI + MCP + programmatic writes (R-0 Finding 1; closes H5). Node-only.

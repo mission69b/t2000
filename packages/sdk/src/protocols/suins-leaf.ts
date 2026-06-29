@@ -45,16 +45,52 @@ export const AUDRIC_PARENT_NAME = 'audric.sui';
 export const AUDRIC_PARENT_NFT_ID =
   '0x070456e283ec988b6302bdd6cc5172bbdcb709998cf116586fb98d19b0870198';
 
+/**
+ * A SuiNS parent under which leaf subnames are minted: the registered SLD name
+ * + the on-chain `SuinsRegistration` NFT id the minting service must own/sign.
+ *
+ * Added 2026-06-29 (Agent ID Phase B, gate 2) to let the same leaf machinery
+ * serve a SECOND namespace — `agent-id.sui` for Agent ID handles — without
+ * forking it. Audric stays the default so every existing caller is unchanged.
+ */
+export interface SuinsParent {
+  name: string;
+  nftId: string;
+}
+
+/** The Audric consumer-handle parent (`<label>.audric.sui` → `@audric`). */
+export const AUDRIC_PARENT: SuinsParent = {
+  name: AUDRIC_PARENT_NAME,
+  nftId: AUDRIC_PARENT_NFT_ID,
+};
+
+/** The Agent ID parent (`<label>.agent-id.sui` → `@agent-id`). Distinct from
+ *  audric.sui on purpose (infra/agent registry vs consumer brand). The NFT id
+ *  is set via `AGENT_ID_PARENT_NFT_ID` once `agent-id.sui` is registered + its
+ *  `SuinsRegistration` object id is known; until then the builders throw a
+ *  clear "parent not configured" error rather than minting to a bad parent. */
+export const AGENT_ID_PARENT_NAME = 'agent-id.sui';
+export const AGENT_ID_PARENT_NFT_ID =
+  process.env.AGENT_ID_PARENT_NFT_ID ?? '';
+export const AGENT_ID_PARENT: SuinsParent = {
+  name: AGENT_ID_PARENT_NAME,
+  nftId: AGENT_ID_PARENT_NFT_ID,
+};
+
 export interface BuildAddLeafParams {
   /** Bare label, e.g. `'alice'` — NOT the full `'alice.audric.sui'` path. */
   label: string;
   /** Sui address the leaf will resolve to (typically the user's zkLogin wallet). */
   targetAddress: string;
+  /** Parent to mint under. Defaults to Audric (back-compat). */
+  parent?: SuinsParent;
 }
 
 export interface BuildRevokeLeafParams {
   /** Bare label of the leaf to revoke. */
   label: string;
+  /** Parent the leaf lives under. Defaults to Audric (back-compat). */
+  parent?: SuinsParent;
 }
 
 export type LabelValidationResult = { valid: true } | { valid: false; reason: string };
@@ -126,7 +162,7 @@ export function validateLabel(label: unknown): LabelValidationResult {
  */
 export function buildAddLeafTx(
   suinsClient: SuinsClient,
-  { label, targetAddress }: BuildAddLeafParams,
+  { label, targetAddress, parent = AUDRIC_PARENT }: BuildAddLeafParams,
 ): Transaction {
   const labelCheck = validateLabel(label);
   if (!labelCheck.valid) {
@@ -135,12 +171,15 @@ export function buildAddLeafTx(
   if (typeof targetAddress !== 'string' || !isValidSuiAddress(normalizeSuiAddress(targetAddress))) {
     throw new Error(`buildAddLeafTx: invalid targetAddress "${targetAddress}"`);
   }
+  if (!parent.nftId) {
+    throw new Error(`buildAddLeafTx: parent NFT id not configured for "${parent.name}"`);
+  }
 
   const tx = new Transaction();
   const suinsTx = new SuinsTransaction(suinsClient, tx);
   suinsTx.createLeafSubName({
-    parentNft: AUDRIC_PARENT_NFT_ID,
-    name: `${label}.${AUDRIC_PARENT_NAME}`,
+    parentNft: parent.nftId,
+    name: `${label}.${parent.name}`,
     targetAddress: normalizeSuiAddress(targetAddress),
   });
   return tx;
@@ -161,18 +200,21 @@ export function buildAddLeafTx(
  */
 export function buildRevokeLeafTx(
   suinsClient: SuinsClient,
-  { label }: BuildRevokeLeafParams,
+  { label, parent = AUDRIC_PARENT }: BuildRevokeLeafParams,
 ): Transaction {
   const labelCheck = validateLabel(label);
   if (!labelCheck.valid) {
     throw new Error(`buildRevokeLeafTx: invalid label "${label}" — ${labelCheck.reason}`);
   }
+  if (!parent.nftId) {
+    throw new Error(`buildRevokeLeafTx: parent NFT id not configured for "${parent.name}"`);
+  }
 
   const tx = new Transaction();
   const suinsTx = new SuinsTransaction(suinsClient, tx);
   suinsTx.removeLeafSubName({
-    parentNft: AUDRIC_PARENT_NFT_ID,
-    name: `${label}.${AUDRIC_PARENT_NAME}`,
+    parentNft: parent.nftId,
+    name: `${label}.${parent.name}`,
   });
   return tx;
 }
@@ -195,8 +237,11 @@ export function buildRevokeLeafTx(
  * mainnet 2026-05-08 PF1) — `displayHandle()` is purely a render-layer
  * choice, not a backend storage change.
  */
-export function fullHandle(label: string): string {
-  return `${label}.${AUDRIC_PARENT_NAME}`;
+export function fullHandle(
+  label: string,
+  parentName: string = AUDRIC_PARENT_NAME,
+): string {
+  return `${label}.${parentName}`;
 }
 
 /**
@@ -219,12 +264,13 @@ export function fullHandle(label: string): string {
  * for canonicalization in the input parser (which is a no-op since
  * SuiNS RPC accepts both — kept available for future-proofing).
  */
-export function displayHandle(label: string): string {
-  // Strip trailing `.sui` from the parent for the display form.
-  // Today AUDRIC_PARENT_NAME is `'audric.sui'` → `'audric'`. If the
-  // parent ever changes (e.g. `audric.app.sui` becomes the parent),
-  // this still produces a sensible display form by removing only the
-  // top-level TLD.
-  const parentDisplay = AUDRIC_PARENT_NAME.replace(/\.sui$/, '');
+export function displayHandle(
+  label: string,
+  parentName: string = AUDRIC_PARENT_NAME,
+): string {
+  // Strip the trailing `.sui` TLD for the `@` display form.
+  // `displayHandle('alice')` → `'alice@audric'`; for Agent ID,
+  // `displayHandle('bot', AGENT_ID_PARENT_NAME)` → `'bot@agent-id'`.
+  const parentDisplay = parentName.replace(/\.sui$/, '');
   return `${label}@${parentDisplay}`;
 }

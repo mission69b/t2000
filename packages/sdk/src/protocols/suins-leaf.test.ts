@@ -2,12 +2,15 @@ import { describe, it, expect, vi } from 'vitest';
 import { Transaction } from '@mysten/sui/transactions';
 
 import {
+  AGENT_ID_PARENT,
+  AGENT_ID_PARENT_NAME,
   AUDRIC_PARENT_NAME,
   AUDRIC_PARENT_NFT_ID,
   buildAddLeafTx,
   buildRevokeLeafTx,
   displayHandle,
   fullHandle,
+  type SuinsParent,
   validateLabel,
 } from './suins-leaf.js';
 
@@ -181,6 +184,51 @@ describe('suins-leaf', () => {
       expect(() => buildRevokeLeafTx(fakeSuinsClient, { label: 'AB' })).toThrow(
         /invalid label "AB"/,
       );
+    });
+  });
+
+  // [Agent ID Phase B, gate 2] The leaf machinery is parameterized by parent so
+  // the same builders serve a second namespace (`agent-id.sui`) without forking.
+  describe('parameterized parent (Agent ID)', () => {
+    const AGENT_PARENT: SuinsParent = {
+      name: 'agent-id.sui',
+      nftId: '0xabc0000000000000000000000000000000000000000000000000000000000abc',
+    };
+
+    it('displayHandle / fullHandle accept a parent name', () => {
+      expect(displayHandle('bot', AGENT_ID_PARENT_NAME)).toBe('bot@agent-id');
+      expect(fullHandle('bot', AGENT_ID_PARENT_NAME)).toBe('bot.agent-id.sui');
+    });
+
+    it('default parent is still audric (back-compat)', () => {
+      expect(displayHandle('alice')).toBe('alice@audric');
+      expect(fullHandle('alice')).toBe('alice.audric.sui');
+    });
+
+    it('mints under the supplied parent', () => {
+      createLeafSubName.mockClear();
+      buildAddLeafTx(fakeSuinsClient, {
+        label: 'bot',
+        targetAddress: VALID_TARGET,
+        parent: AGENT_PARENT,
+      });
+      expect(createLeafSubName).toHaveBeenCalledWith({
+        parentNft: AGENT_PARENT.nftId,
+        name: 'bot.agent-id.sui',
+        targetAddress: VALID_TARGET,
+      });
+    });
+
+    it('throws when the parent NFT id is not configured', () => {
+      // AGENT_ID_PARENT.nftId is '' until agent-id.sui is registered.
+      expect(AGENT_ID_PARENT.nftId).toBe('');
+      expect(() =>
+        buildAddLeafTx(fakeSuinsClient, {
+          label: 'bot',
+          targetAddress: VALID_TARGET,
+          parent: AGENT_ID_PARENT,
+        }),
+      ).toThrow(/parent NFT id not configured/);
     });
   });
 });
