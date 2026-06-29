@@ -219,14 +219,18 @@ describe('suins-leaf', () => {
       });
     });
 
-    it('throws when the parent NFT id is not configured', () => {
-      // AGENT_ID_PARENT.nftId is '' until agent-id.sui is registered.
-      expect(AGENT_ID_PARENT.nftId).toBe('');
+    it('agent-id parent has the registered NFT id', () => {
+      expect(AGENT_ID_PARENT.name).toBe('agent-id.sui');
+      expect(AGENT_ID_PARENT.nftId).toMatch(/^0x[0-9a-f]{64}$/);
+    });
+
+    it('throws when a parent NFT id is not configured', () => {
+      const unconfigured: SuinsParent = { name: 'x.sui', nftId: '' };
       expect(() =>
         buildAddLeafTx(fakeSuinsClient, {
           label: 'bot',
           targetAddress: VALID_TARGET,
-          parent: AGENT_ID_PARENT,
+          parent: unconfigured,
         }),
       ).toThrow(/parent NFT id not configured/);
     });

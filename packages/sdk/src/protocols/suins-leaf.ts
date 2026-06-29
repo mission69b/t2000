@@ -65,13 +65,16 @@ export const AUDRIC_PARENT: SuinsParent = {
 };
 
 /** The Agent ID parent (`<label>.agent-id.sui` → `@agent-id`). Distinct from
- *  audric.sui on purpose (infra/agent registry vs consumer brand). The NFT id
- *  is set via `AGENT_ID_PARENT_NFT_ID` once `agent-id.sui` is registered + its
- *  `SuinsRegistration` object id is known; until then the builders throw a
- *  clear "parent not configured" error rather than minting to a bad parent. */
+ *  audric.sui on purpose (infra/agent registry vs consumer brand).
+ *
+ *  Registered on SuiNS mainnet 2026-06-29; the `SuinsRegistration` NFT
+ *  (`0xc8c1…d5d1f`) is held by the custody address
+ *  `0x6988a92d…30e4532`, which signs leaf mints + pays their gas. Override via
+ *  `AGENT_ID_PARENT_NFT_ID` for testnet/dev. */
 export const AGENT_ID_PARENT_NAME = 'agent-id.sui';
 export const AGENT_ID_PARENT_NFT_ID =
-  process.env.AGENT_ID_PARENT_NFT_ID ?? '';
+  process.env.AGENT_ID_PARENT_NFT_ID ??
+  '0xc8c13f5b5a6d4c47c04877014794f65e67e2745d3bfa089b736eb54b0ebd5d1f';
 export const AGENT_ID_PARENT: SuinsParent = {
   name: AGENT_ID_PARENT_NAME,
   nftId: AGENT_ID_PARENT_NFT_ID,
