@@ -10,7 +10,7 @@
 //   3. POST it to mint an API key (returned once).
 
 import type { Command } from 'commander';
-import { formatUsd, type SupportedAsset, truncateAddress } from '@t2000/sdk';
+import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
 import { withAgent } from '../../lib/with-agent.js';
 import {
   handleError,
@@ -26,6 +26,38 @@ const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 
 function normalizeTopupAsset(input: string | undefined): 'USDC' | 'USDsui' {
   return input?.toLowerCase() === 'usdsui' ? 'USDsui' : 'USDC';
+}
+
+/**
+ * Send a gasless stablecoin deposit to the server's treasury and credit it —
+ * the shared funding step behind both `onboard --fund` and `topup`. This is
+ * the "never runs dry" primitive: an agent calls `t2 agent topup` (on a 402
+ * from /v1, or on a schedule) to refill its own credit from its wallet.
+ */
+async function fundCredit(
+  agent: T2000,
+  base: string,
+  amountStr: string,
+  assetOpt: string | undefined,
+): Promise<{ amount: number; asset: 'USDC' | 'USDsui'; balanceUsd: unknown }> {
+  const amount = Number.parseFloat(amountStr);
+  if (Number.isNaN(amount) || amount <= 0) {
+    throw new Error(`amount must be a positive number (got "${amountStr}").`);
+  }
+  const asset = normalizeTopupAsset(assetOpt);
+
+  const cfg = await fetchJson(`${base}/agent/topup`, { method: 'GET' });
+  const treasury = cfg.treasury as string | undefined;
+  if (!treasury) {
+    throw new Error('Could not resolve the t2000 treasury address.');
+  }
+
+  const sent = await agent.send({ to: treasury, amount, asset: asset as SupportedAsset });
+  const topup = await fetchJson(`${base}/agent/topup`, {
+    method: 'POST',
+    body: { address: agent.address(), digest: sent.tx },
+  });
+  return { amount, asset, balanceUsd: topup.balanceUsd };
 }
 
 async function fetchJson(
@@ -84,30 +116,10 @@ Subcommands:
 
           // 1. Optional funding: send stablecoin to the treasury, then credit it.
           if (opts.fund !== undefined) {
-            const amount = Number.parseFloat(opts.fund);
-            if (Number.isNaN(amount) || amount <= 0) {
-              throw new Error(`--fund must be a positive number (got "${opts.fund}").`);
-            }
-            const asset = normalizeTopupAsset(opts.asset);
-
-            const cfg = await fetchJson(`${base}/agent/topup`, { method: 'GET' });
-            const treasury = cfg.treasury as string | undefined;
-            if (!treasury) {
-              throw new Error('Could not resolve the t2000 treasury address.');
-            }
-
-            const sent = await agent.send({
-              to: treasury,
-              amount,
-              asset: asset as SupportedAsset,
-            });
-            const topup = await fetchJson(`${base}/agent/topup`, {
-              method: 'POST',
-              body: { address, digest: sent.tx },
-            });
+            const funded = await fundCredit(agent, base, opts.fund, opts.asset);
             if (!isJsonMode()) {
               printSuccess(
-                `Funded ${formatUsd(amount)} ${asset} → credit $${topup.balanceUsd}`,
+                `Funded ${formatUsd(funded.amount)} ${funded.asset} → credit $${funded.balanceUsd}`,
               );
             }
           }
@@ -145,6 +157,45 @@ Subcommands:
           printKeyValue('Base URL', base);
           printBlank();
           printInfo(`export OPENAI_BASE_URL=${base}  OPENAI_API_KEY=${key}`);
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  group
+    .command('topup')
+    .argument('<amount>', 'Stablecoin amount to deposit as credit')
+    .description(
+      "Top up this wallet's t2000 credit with gasless USDC/USDsui (no new key). The 'never runs dry' primitive — call it on a 402 or a schedule.",
+    )
+    .option('--asset <asset>', 'USDC (default) or USDsui', 'USDC')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(
+      async (
+        amount: string,
+        opts: { asset?: string; key?: string; api?: string },
+      ) => {
+        try {
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const agent = await withAgent({ keyPath: opts.key });
+          const funded = await fundCredit(agent, base, amount, opts.asset);
+
+          if (isJsonMode()) {
+            printJson({
+              address: agent.address(),
+              funded: funded.amount,
+              asset: funded.asset,
+              balanceUsd: funded.balanceUsd,
+            });
+            return;
+          }
+          printBlank();
+          printSuccess(
+            `Topped up ${formatUsd(funded.amount)} ${funded.asset} → credit $${funded.balanceUsd}`,
+          );
           printBlank();
         } catch (error) {
           handleError(error);
