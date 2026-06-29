@@ -23,7 +23,8 @@ t2000/
 ├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
-├── packages/mcp     ← @t2000/mcp (npm)   # (@t2000/engine RETIRED + deleted 2026-06-14 — stack is 3 packages)
+├── packages/mcp     ← @t2000/mcp (npm)   # (@t2000/engine RETIRED + deleted 2026-06-14)
+├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29; stack is 4 packages)
 ├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
 ├── packages/models  ← @t2000/models (PLANNED, H2 — Agent Models: OpenAI-compatible gateway to self-hosted Qwen + resold frontier)
 ├── t2000-skills/    ← Agent skill definitions
@@ -157,7 +158,7 @@ This runs `.github/workflows/release.yml`, which:
 
 `.github/workflows/publish.yml` (triggered by Step 1):
 1. **CI** — lint + typecheck + test + build all packages
-2. **Publish** — `pnpm publish` for each of the 3 packages (`continue-on-error: true` — safe if version already exists)
+2. **Publish** — `pnpm publish` for each of the 4 packages (`continue-on-error: true` — safe if version already exists)
 3. **GitHub Release** — `gh release create vX.Y.Z --generate-notes`
 4. **Discord** — posts release notification to `#releases` channel
 
@@ -188,7 +189,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 - **Never** push multiple tags in the same session to fix failures — fix the code and re-run the workflow
 
 **Key details:**
-- All 3 packages (`sdk`, `cli`, `mcp`) are always at the same version number (currently `4.x`) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x`, frozen on npm for legacy audric/web-v2.)
+- All 4 packages (`sdk`, `cli`, `mcp`, `id`) are always at the same version number (currently `5.x` — `@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x`, frozen on npm for legacy audric/web-v2.)
 - `continue-on-error: true` on publish steps — idempotent if a version already exists
 - `workflow_dispatch` on `publish.yml` serves as a manual fallback if needed
 
