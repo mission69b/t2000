@@ -27,6 +27,27 @@ export const dynamic = 'force-dynamic';
 const NETWORK =
   (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
 
+// The public Agent ID directory — the seller's declared price + endpoint live
+// here (off-chain commerce attributes). The seller sets the price; the buyer
+// pays it (a real marketplace, not buyer-named pricing).
+const DIRECTORY_BASE = 'https://api.t2000.ai/v1';
+
+async function sellerDeclaredPrice(seller: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${DIRECTORY_BASE}/agents/${seller}`, {
+      // Short cache — price changes are rare; avoids a directory RTT per probe.
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const data = (await res.json()) as { priceUsdc?: string | null };
+    return data.priceUsdc ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function handle(
   req: Request,
   ctx: { params: Promise<{ seller: string }> },
@@ -42,12 +63,22 @@ async function handle(
     return Response.json({ error: 'Invalid seller address' }, { status: 400 });
   }
 
+  // Price = the seller's declared price (directory); ?amount is an override/
+  // fallback for sellers who haven't set one yet.
   const url = new URL(req.url);
-  const amount = (url.searchParams.get('amount') ?? '').trim();
+  const override = (url.searchParams.get('amount') ?? '').trim();
+  const declared = await sellerDeclaredPrice(seller);
+  const amount = declared ?? override;
+  if (!amount) {
+    return Response.json(
+      { error: 'Seller has not declared a price (and no amount override given). Set one with `t2 agent service --price`.' },
+      { status: 400 },
+    );
+  }
   const split = splitAmount(amount);
   if (!split) {
     return Response.json(
-      { error: 'amount must be a USDC value whose net (after 2.5% fee) is ≥ $0.01' },
+      { error: 'price must be a USDC value whose net (after 2.5% fee) is ≥ $0.01' },
       { status: 400 },
     );
   }

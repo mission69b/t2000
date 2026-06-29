@@ -402,20 +402,28 @@ Subcommands:
       '--payment-methods <list>',
       'Comma-separated methods you accept, e.g. "x402"',
     )
+    .option('--price <usdc>', 'Price per call in USDC (e.g. 0.02) — buyers pay this')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
       async (opts: {
         mcpEndpoint?: string;
         paymentMethods?: string;
+        price?: string;
         key?: string;
         api?: string;
       }) => {
         try {
-          if (!(opts.mcpEndpoint || opts.paymentMethods)) {
+          if (!(opts.mcpEndpoint || opts.paymentMethods || opts.price)) {
             throw new Error(
-              'Provide at least one of --mcp-endpoint, --payment-methods.',
+              'Provide at least one of --mcp-endpoint, --payment-methods, --price.',
             );
+          }
+          if (opts.price !== undefined) {
+            const p = Number.parseFloat(opts.price);
+            if (Number.isNaN(p) || p <= 0) {
+              throw new Error(`--price must be a positive number (got "${opts.price}").`);
+            }
           }
           const base = opts.api ?? DEFAULT_API_BASE;
           const agent = await withAgent({ keyPath: opts.key });
@@ -432,6 +440,9 @@ Subcommands:
               .split(',')
               .map((s) => s.trim())
               .filter(Boolean);
+          }
+          if (opts.price !== undefined) {
+            prepareBody.priceUsdc = opts.price;
           }
 
           const { digest } = await runSponsoredTx({
@@ -454,6 +465,9 @@ Subcommands:
           if (opts.paymentMethods) {
             printKeyValue('Payment methods', opts.paymentMethods);
           }
+          if (opts.price) {
+            printKeyValue('Price', `$${opts.price} USDC`);
+          }
           printKeyValue('Tx', String(digest));
           printBlank();
         } catch (error) {
@@ -468,8 +482,8 @@ Subcommands:
     .description(
       'Pay a seller agent for a service (gateway-mediated, USDC). t2000 collects, keeps a small fee, and forwards the rest to the seller — with a receipt. [Agent Commerce]',
     )
-    .requiredOption('--amount <usdc>', 'Amount to pay in USDC (e.g. 0.02)')
-    .option('--max-price <usdc>', 'Max USDC to auto-approve (default = amount)')
+    .option('--amount <usdc>', "Override the price (default: the seller's declared price)")
+    .option('--max-price <usdc>', 'Max USDC to auto-approve (default 1.00, or --amount)')
     .option(
       '--gateway <url>',
       `Gateway base URL (default ${DEFAULT_GATEWAY})`,
@@ -480,7 +494,7 @@ Subcommands:
       async (
         seller: string,
         opts: {
-          amount: string;
+          amount?: string;
           maxPrice?: string;
           gateway?: string;
           force?: boolean;
@@ -488,25 +502,41 @@ Subcommands:
         },
       ) => {
         try {
-          const amount = Number.parseFloat(opts.amount);
-          if (Number.isNaN(amount) || amount <= 0) {
-            throw new Error(`--amount must be a positive number (got "${opts.amount}").`);
+          if (opts.amount !== undefined) {
+            const a = Number.parseFloat(opts.amount);
+            if (Number.isNaN(a) || a <= 0) {
+              throw new Error(`--amount must be a positive number (got "${opts.amount}").`);
+            }
           }
-          const maxPrice = opts.maxPrice ? Number.parseFloat(opts.maxPrice) : amount;
+          // Auto-approve ceiling. With no --amount, the seller's declared price
+          // is paid (≤ this ceiling).
+          const maxPrice = opts.maxPrice
+            ? Number.parseFloat(opts.maxPrice)
+            : opts.amount
+              ? Number.parseFloat(opts.amount)
+              : 1.0;
           const gateway = opts.gateway ?? DEFAULT_GATEWAY;
           const agent = await withAgent({ keyPath: opts.key });
-          const url = `${gateway}/commerce/pay/${seller}?amount=${encodeURIComponent(opts.amount)}`;
+          const url = opts.amount
+            ? `${gateway}/commerce/pay/${seller}?amount=${encodeURIComponent(opts.amount)}`
+            : `${gateway}/commerce/pay/${seller}`;
 
           const result = await agent.pay({ url, method: 'POST', maxPrice, force: opts.force });
           const body = result.body as
-            | { receipt?: { netMicros?: number; feeMicros?: number; forwardDigest?: string } }
+            | { receipt?: { grossMicros?: number; netMicros?: number; feeMicros?: number; forwardDigest?: string } }
             | undefined;
           const receipt = body?.receipt;
+          const paidUsd =
+            typeof receipt?.grossMicros === 'number'
+              ? receipt.grossMicros / 1_000_000
+              : opts.amount
+                ? Number.parseFloat(opts.amount)
+                : (result.cost ?? 0);
 
           if (isJsonMode()) {
             printJson({
               seller,
-              amount,
+              amount: paidUsd,
               paid: result.paid,
               cost: result.cost,
               receipt,
@@ -514,7 +544,7 @@ Subcommands:
             return;
           }
           printBlank();
-          printSuccess(`Paid ${formatUsd(amount)} to ${truncateAddress(seller)}`);
+          printSuccess(`Paid ${formatUsd(paidUsd)} to ${truncateAddress(seller)}`);
           if (receipt) {
             if (typeof receipt.netMicros === 'number') {
               printKeyValue('Seller received', `$${(receipt.netMicros / 1_000_000).toFixed(6)}`);
