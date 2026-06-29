@@ -202,4 +202,57 @@ Subcommands:
         }
       },
     );
+
+  group
+    .command('handle')
+    .argument('<label>', 'Desired handle (3–20 chars: lowercase a–z, 0–9, hyphens)')
+    .description(
+      'Claim <label>.agent-id.sui → this wallet — a human-readable Agent ID handle (custody-minted, gasless for you).',
+    )
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(
+      async (label: string, opts: { key?: string; api?: string }) => {
+        try {
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const agent = await withAgent({ keyPath: opts.key });
+          const address = agent.address();
+
+          // Challenge → sign (bound to nonce + label) → mint the leaf.
+          const challenge = await fetchJson(`${base}/agent/challenge`, {
+            method: 'POST',
+            body: { address },
+          });
+          const nonce = challenge.nonce as string | undefined;
+          if (!nonce) {
+            throw new Error('Failed to get a challenge nonce.');
+          }
+          const message = new TextEncoder().encode(`t2000-agent-handle:${nonce}:${label}`);
+          const { signature } = await agent.keypair.signPersonalMessage(message);
+
+          const res = await fetchJson(`${base}/agent/handle`, {
+            method: 'POST',
+            body: { address, label, nonce, signature },
+          });
+
+          if (isJsonMode()) {
+            printJson({
+              address,
+              handle: res.handle,
+              display: res.display,
+              digest: res.digest,
+            });
+            return;
+          }
+          printBlank();
+          printSuccess(`Handle claimed: ${res.display}`);
+          printKeyValue('Address', truncateAddress(address));
+          printKeyValue('Handle', String(res.handle));
+          printKeyValue('Tx', String(res.digest));
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
 }
