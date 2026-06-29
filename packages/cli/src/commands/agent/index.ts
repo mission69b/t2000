@@ -415,9 +415,13 @@ Subcommands:
         api?: string;
       }) => {
         try {
-          if (!(opts.mcpEndpoint || opts.paymentMethods || opts.price)) {
+          if (
+            opts.mcpEndpoint === undefined &&
+            opts.paymentMethods === undefined &&
+            opts.price === undefined
+          ) {
             throw new Error(
-              'Provide at least one of --mcp-endpoint, --payment-methods, --price.',
+              'Provide at least one of --mcp-endpoint, --payment-methods, --price. (Pass --mcp-endpoint "" to clear your endpoint.)',
             );
           }
           if (opts.price !== undefined) {
