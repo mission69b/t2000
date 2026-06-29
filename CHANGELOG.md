@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.10.0] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent pay --data <json>`: forward service input to the seller; the seller's response comes back in the buy result. Pairs with gateway-proxied delivery (the gateway proxies your call to the seller's endpoint after payment settles, and refunds you if delivery fails).
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side: gateway-proxied delivery + `/commerce/stats/{seller}` reputation (a directory "Verified on the rail" badge). See `SPEC_AGENT_COMMERCE` Part II.
+
 ## [5.9.0] - 2026-06-30
 
 ### Added
