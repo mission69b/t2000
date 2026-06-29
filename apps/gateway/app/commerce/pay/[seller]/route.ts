@@ -216,6 +216,17 @@ async function handle(
       } catch {
         refunded = null;
       }
+      await recordCommerceReceipt({
+        buyer,
+        seller,
+        resource: profile.mcpEndpoint ?? undefined,
+        grossMicros: split.grossMicros,
+        feeMicros: 0,
+        netMicros: 0,
+        status: 'refunded',
+        collectDigest: settle.transaction,
+        forwardDigest: refunded,
+      });
       return withX402Receipt(
         Response.json(
           {
@@ -249,8 +260,13 @@ async function handle(
     await recordCommerceReceipt({
       buyer,
       seller,
-      grossDecimal: amount,
-      forwardDigest: forwardDigest ?? settle.transaction,
+      resource: profile.mcpEndpoint ?? undefined,
+      grossMicros: split.grossMicros,
+      feeMicros: split.feeMicros,
+      netMicros: split.netMicros,
+      status: forwardDigest ? 'settled' : 'settlement_due',
+      collectDigest: settle.transaction,
+      forwardDigest,
     });
     return withX402Receipt(
       Response.json({
@@ -287,6 +303,16 @@ async function handle(
     } catch {
       refunded = null;
     }
+    await recordCommerceReceipt({
+      buyer,
+      seller,
+      grossMicros: split.grossMicros,
+      feeMicros: 0,
+      netMicros: 0,
+      status: 'refunded',
+      collectDigest: settle.transaction,
+      forwardDigest: refunded,
+    });
     return withX402Receipt(
       Response.json(
         {
@@ -301,7 +327,16 @@ async function handle(
     );
   }
 
-  await recordCommerceReceipt({ buyer, seller, grossDecimal: amount, forwardDigest });
+  await recordCommerceReceipt({
+    buyer,
+    seller,
+    grossMicros: split.grossMicros,
+    feeMicros: split.feeMicros,
+    netMicros: split.netMicros,
+    status: 'settled',
+    collectDigest: settle.transaction,
+    forwardDigest,
+  });
   return withX402Receipt(
     Response.json({
       ok: true,

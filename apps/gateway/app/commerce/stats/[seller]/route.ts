@@ -22,19 +22,21 @@ async function handle(
     return Response.json({ error: 'Invalid seller address' }, { status: 400 });
   }
 
-  let rows: { amount: string; sender: string | null; createdAt: Date }[] = [];
+  let rows: { buyer: string; netMicros: number; createdAt: Date }[] = [];
   try {
-    rows = await prisma.mppPayment.findMany({
-      where: { service: 'commerce', endpoint: seller },
-      select: { amount: true, sender: true, createdAt: true },
+    rows = await prisma.commerceReceipt.findMany({
+      // Completed sales only (a refunded purchase is not a sale).
+      where: { seller, status: { in: ['settled', 'settlement_due'] } },
+      select: { buyer: true, netMicros: true, createdAt: true },
     });
   } catch {
     rows = [];
   }
 
   const sales = rows.length;
-  const volumeUsd = rows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
-  const buyers = new Set(rows.map((r) => r.sender).filter(Boolean)).size;
+  // Settled volume = net to the seller (what they actually earned).
+  const volumeUsd = rows.reduce((acc, r) => acc + r.netMicros / 1_000_000, 0);
+  const buyers = new Set(rows.map((r) => r.buyer)).size;
   const lastSaleAt =
     rows.length > 0
       ? rows.reduce(

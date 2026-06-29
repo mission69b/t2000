@@ -6,11 +6,10 @@
 // then records a cross-party receipt. The brief treasury custody between
 // collect and forward is the seam a future escrow/dispute hold plugs into.
 //
-// Receipts reuse the existing MppPayment table (service="commerce") so the
-// prototype needs no schema migration; a dedicated CommerceReceipt table is a
-// spec follow-up.
+// Receipts are written to the dedicated CommerceReceipt ledger (A) —
+// cross-party, status-bearing, idempotent on the collect digest.
 
-import { logPayment } from './log-payment';
+import { prisma } from './prisma';
 
 /** Facilitator take rate (basis points). Prototype constant; spec will make
  *  this configurable + add a flat dust-floor. */
@@ -49,20 +48,46 @@ export function splitAmount(grossDecimal: string): CommerceSplit | null {
   };
 }
 
-/** Record a commerce settlement as an MppPayment row (prototype). The forward
- *  digest is the unique key; buyer + seller + gross are captured in the
- *  service/endpoint/amount/sender fields. */
+export type CommerceStatus = 'settled' | 'refunded' | 'settlement_due';
+
+/** Record (or update) a commerce settlement in the ledger. Idempotent on the
+ *  collect digest — a retry updates status/forwardDigest rather than dup-ing.
+ *  Never throws (a ledger-write failure must not break the buyer's response). */
 export async function recordCommerceReceipt(receipt: {
   buyer: string;
   seller: string;
-  grossDecimal: string;
-  forwardDigest: string;
+  resource?: string | null;
+  grossMicros: number;
+  feeMicros: number;
+  netMicros: number;
+  status: CommerceStatus;
+  collectDigest: string;
+  forwardDigest?: string | null;
 }): Promise<void> {
-  await logPayment({
-    service: 'commerce',
-    endpoint: receipt.seller,
-    amount: receipt.grossDecimal,
-    digest: receipt.forwardDigest,
-    sender: receipt.buyer,
-  });
+  try {
+    await prisma.commerceReceipt.upsert({
+      where: { collectDigest: receipt.collectDigest },
+      create: {
+        buyer: receipt.buyer,
+        seller: receipt.seller,
+        resource: receipt.resource ?? null,
+        grossMicros: receipt.grossMicros,
+        feeMicros: receipt.feeMicros,
+        netMicros: receipt.netMicros,
+        feeBps: FACILITATOR_FEE_BPS,
+        status: receipt.status,
+        collectDigest: receipt.collectDigest,
+        forwardDigest: receipt.forwardDigest ?? null,
+      },
+      update: {
+        status: receipt.status,
+        forwardDigest: receipt.forwardDigest ?? undefined,
+      },
+    });
+  } catch (err) {
+    console.error(
+      `[commerce] receipt write failed collect=${receipt.collectDigest}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
