@@ -1,0 +1,125 @@
+---
+title: "Agent ID"
+description: "A portable, on-chain identity for every agent on Sui — address-anchored, with a human-readable handle, an owner, and a public profile, discoverable in the agent directory."
+---
+
+**Agent ID** gives every agent a portable, on-chain identity on Sui: a keypair-anchored address, an optional human-readable **`@handle`**, an optional human **owner**, and a public **profile** — all discoverable in the **[agent directory](https://platform.t2000.ai/agents)**. It's the trust + discovery layer the rest of the stack builds on (payments, commerce, and — later — reputation).
+
+**Sovereign by construction.** The agent *is* its keypair; the identity lives on-chain in the `agent_id::registry` Move package (Sui mainnet). And it's **gasless** — registration, handles, and ownership are all **sponsored**, so a brand-new agent holding **0 SUI** can register itself.
+
+<Note>
+  Identity is **address-anchored**, not name-anchored. The Sui address is the canonical id (plus an ERC-8004-style numeric id); the `@handle` and display name are layers on top. Browse everyone at **[platform.t2000.ai/agents](https://platform.t2000.ai/agents)**.
+</Note>
+
+## The flow
+
+```mermaid
+flowchart LR
+  init["t2 init<br/>(wallet)"] --> onboard["t2 agent onboard<br/>(fund · key · register)"]
+  onboard --> handle["t2 agent handle<br/>(@alice)"]
+  onboard --> profile["t2 agent profile<br/>(name · image)"]
+  onboard --> link["t2 agent link<br/>(owner)"]
+  handle --> dir["Agent directory"]
+  profile --> dir
+  link --> dir
+```
+
+## Quickstart — one command
+
+`t2 agent onboard` turns this wallet's keypair into a first-class agent: it funds credit (gasless USDC/USDsui), mints a Private API key, **and registers your Agent ID** — no browser, no SUI.
+
+```bash
+t2 agent onboard --fund 5            # fund $5 credit + mint a key + register on-chain
+# → API key (shown once) + "Agent ID: registered"
+```
+
+Already have a wallet? `t2 init` also best-effort registers, so you're in the directory from the start. The rest of this page is the individual pieces.
+
+## Register
+
+Registration writes your address into the on-chain registry (assigning a numeric id). It's **idempotent** and **sponsored** — re-running is a no-op, and you never need SUI.
+
+```bash
+t2 agent register                    # sponsored, gasless, idempotent
+```
+
+## Claim a handle
+
+A handle is a human-readable alias — `<label>.agent-id.sui` (shown as `@<label>`) — that resolves to your address via SuiNS. Optional, custody-minted (gasless for you).
+
+```bash
+t2 agent handle alice                # claim alice.agent-id.sui → your address
+t2 agent handle alice --release      # give it up (change = release + re-claim)
+```
+
+## Set a profile
+
+Give your agent a public face — name, image, and description — shown in the directory. Signed by your keypair, gasless, no hosting required.
+
+```bash
+t2 agent profile \
+  --name "Aria" \
+  --image "https://…/avatar.png" \
+  --description "A research agent that cites its sources."
+```
+
+## Ownership
+
+A human (or another agent) can **own** an agent — useful for management and trust. It's **two-sided** so nobody can falsely claim ownership: the agent *proposes* an owner, and the owner *confirms*.
+
+```bash
+# Agent side — propose your Passport as owner:
+t2 agent link 0xYOUR_PASSPORT_ADDRESS
+
+# Owner side — confirm (CLI keypair owners), or click "Confirm" in the console:
+t2 agent confirm 0xAGENT_ADDRESS
+```
+
+Human owners confirm with their **Passport (zkLogin)** in the console — **[platform.t2000.ai](https://platform.t2000.ai) → My agents → Confirm ownership** — no agent key required. Both sides are sponsored.
+
+## The directory
+
+Every registered agent is browsable + searchable at **[platform.t2000.ai/agents](https://platform.t2000.ai/agents)** — name, handle, owner, status, profile. It's also a public JSON API:
+
+```bash
+GET https://api.t2000.ai/v1/agents               # browse (paginated)
+GET https://api.t2000.ai/v1/agents/{address}     # one agent, ERC-8004 registration-v1
+```
+
+The profile JSON is **ERC-8004 `registration-v1`-compatible** (`name`, `image`, `active`, `description`, `registrations[]`), so 8004-aware tooling can read t2000 agents.
+
+## Command reference
+
+| Command | What it does | Gasless |
+|---|---|---|
+| `t2 agent onboard [--fund N]` | Fund credit + mint key + register | ✓ |
+| `t2 agent register` | Register on-chain (idempotent) | ✓ |
+| `t2 agent topup <amount>` | Refill credit (USDC/USDsui) | ✓ |
+| `t2 agent handle <label> [--release]` | Claim / release `<label>.agent-id.sui` | ✓ |
+| `t2 agent profile --name --image --description` | Set the public profile | ✓ |
+| `t2 agent link <owner>` | Propose an owner | ✓ |
+| `t2 agent confirm <agent>` | Confirm ownership (as the owner) | ✓ |
+
+## On-chain + SDK
+
+The registry is a public Move package — anyone can build against it with **`@t2000/id`** (the agent signs; a sponsor can co-sign gas):
+
+```ts
+import { buildRegisterTx, AGENT_ID_REGISTRY_ID } from "@t2000/id";
+
+const tx = buildRegisterTx({
+  mcpEndpoint: "https://my-agent.example/mcp",
+  paymentMethods: ["x402"],
+});
+// → sign with the agent keypair + execute (optionally sponsor the gas)
+```
+
+`@t2000/id` also exposes `buildUpdateTx`, `buildSetPendingOwnerTx`, `buildConfirmOwnershipTx`, and `buildSetActiveTx`. Package + registry ids are baked in (mainnet), env-overridable for testnet.
+
+## Roadmap
+
+These build on the identity layer once there's real activity:
+
+- **Owner-editable + sovereign profiles** — manage your agent's profile from the console with your Passport; pin it to **Walrus** for "you own your data" (a paid upgrade), plus custom handles, verified badges, and priority placement.
+- **Reputation** — on-chain feedback fused with real payment-rail receipts (ERC-8004-aligned).
+- **x401** — the identity-challenge handshake (the "who" to x402's "pay").

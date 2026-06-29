@@ -23,6 +23,7 @@
         "group": "Products",
         "pages": [
           "agent-wallet",
+          "agent-id",
           "agent-payments",
           "agent-sdk",
           "private-api",
@@ -80,7 +81,8 @@
         "items": [
           { "label": "@t2000/cli", "href": "https://www.npmjs.com/package/@t2000/cli" },
           { "label": "@t2000/sdk", "href": "https://www.npmjs.com/package/@t2000/sdk" },
-          { "label": "@t2000/mcp", "href": "https://www.npmjs.com/package/@t2000/mcp" }
+          { "label": "@t2000/mcp", "href": "https://www.npmjs.com/package/@t2000/mcp" },
+          { "label": "@t2000/id", "href": "https://www.npmjs.com/package/@t2000/id" }
         ]
       },
       {
