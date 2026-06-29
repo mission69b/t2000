@@ -28,6 +28,34 @@ async function postJson(
   return json;
 }
 
+/**
+ * Generic sponsored-tx round-trip: prepare (server builds the tx) → sign the
+ * returned bytes → submit (server sponsor-co-signs + executes). Shared by the
+ * ownership-link commands (`link`/`confirm`). Returns the tx digest.
+ */
+export async function runSponsoredTx(opts: {
+  keypair: SigningKeypair;
+  actor: string;
+  prepareUrl: string;
+  prepareBody: Record<string, unknown>;
+  submitUrl: string;
+}): Promise<{ digest?: string }> {
+  const prep = await postJson(opts.prepareUrl, opts.prepareBody);
+  const nonce = prep.nonce as string | undefined;
+  const txBytes = prep.txBytes as string | undefined;
+  if (!(nonce && txBytes)) {
+    throw new Error('Failed to prepare the transaction.');
+  }
+  const bytes = new Uint8Array(Buffer.from(txBytes, 'base64'));
+  const { signature } = await opts.keypair.signTransaction(bytes);
+  const res = await postJson(opts.submitUrl, {
+    nonce,
+    address: opts.actor,
+    signature,
+  });
+  return { digest: res.digest as string | undefined };
+}
+
 export interface RegisterResult {
   digest?: string;
   alreadyRegistered: boolean;

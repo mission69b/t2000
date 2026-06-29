@@ -11,7 +11,7 @@
 
 import type { Command } from 'commander';
 import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
-import { registerWallet } from '../../lib/agent-register.js';
+import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import {
   handleError,
@@ -252,6 +252,75 @@ Subcommands:
         if (reg.digest) {
           printKeyValue('Tx', reg.digest);
         }
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+  group
+    .command('link')
+    .argument('<owner>', "The owner's Sui address (Passport) to propose")
+    .description(
+      "Propose an owner for this agent (two-sided — the owner must then confirm). Sponsored, gasless.",
+    )
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (owner: string, opts: { key?: string; api?: string }) => {
+      try {
+        const base = opts.api ?? DEFAULT_API_BASE;
+        const agent = await withAgent({ keyPath: opts.key });
+        const address = agent.address();
+        const { digest } = await runSponsoredTx({
+          keypair: agent.keypair,
+          actor: address,
+          prepareUrl: `${base}/agent/owner/propose`,
+          prepareBody: { address, owner },
+          submitUrl: `${base}/agent/owner/submit`,
+        });
+        if (isJsonMode()) {
+          printJson({ agent: address, pendingOwner: owner, digest });
+          return;
+        }
+        printBlank();
+        printSuccess(`Proposed owner: ${truncateAddress(owner)}`);
+        printInfo(
+          `They must confirm: \`t2 agent confirm ${address}\` (or via the console).`,
+        );
+        printKeyValue('Tx', String(digest));
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+  group
+    .command('confirm')
+    .argument('<agent>', 'The agent Sui address to confirm ownership of')
+    .description(
+      'Confirm ownership of an agent that proposed you as its owner. Sponsored, gasless.',
+    )
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (agentAddress: string, opts: { key?: string; api?: string }) => {
+      try {
+        const base = opts.api ?? DEFAULT_API_BASE;
+        const owner = await withAgent({ keyPath: opts.key });
+        const address = owner.address();
+        const { digest } = await runSponsoredTx({
+          keypair: owner.keypair,
+          actor: address,
+          prepareUrl: `${base}/agent/owner/confirm`,
+          prepareBody: { owner: address, agent: agentAddress },
+          submitUrl: `${base}/agent/owner/submit`,
+        });
+        if (isJsonMode()) {
+          printJson({ owner: address, agent: agentAddress, digest });
+          return;
+        }
+        printBlank();
+        printSuccess(`Confirmed ownership of ${truncateAddress(agentAddress)}`);
+        printKeyValue('Tx', String(digest));
         printBlank();
       } catch (error) {
         handleError(error);
