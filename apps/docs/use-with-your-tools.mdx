@@ -1,0 +1,148 @@
+---
+title: "Use with your tools"
+description: "t2000 is OpenAI-compatible — point any OpenAI client at api.t2000.ai/v1 with your key and every model (private + confidential) works as a drop-in, billed from one balance."
+---
+
+The Private API speaks the **OpenAI Chat Completions** format, so most tools that accept a custom OpenAI base URL work with **zero code changes** — set two values and you're private by default across every model.
+
+```text
+Base URL:  https://api.t2000.ai/v1
+API key:   sk-…        (create one at platform.t2000.ai → API keys)
+```
+
+<Note>
+  Get a key + add credit at **[platform.t2000.ai](https://platform.t2000.ai)** (sign in with Google — same Passport + balance as Audric). Calls are metered per token and fail closed at a $0 balance. Browse models + pricing any time with `GET /v1/models` (public, no key).
+</Note>
+
+## Environment variables (the universal swap)
+
+Almost every OpenAI client reads these two variables. Set them once and the tool is repointed at t2000:
+
+```bash
+export OPENAI_BASE_URL="https://api.t2000.ai/v1"
+export OPENAI_API_KEY="sk-..."
+```
+
+Then pick a model from the catalog (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-4.6`, or a confidential `phala/glm-5.2`).
+
+## OpenAI SDK
+
+<CodeGroup>
+
+```python python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.t2000.ai/v1",
+    api_key="sk-...",
+)
+
+resp = client.chat.completions.create(
+    model="zai/glm-5.2",
+    messages=[{"role": "user", "content": "Hello from t2000"}],
+)
+print(resp.choices[0].message.content)
+```
+
+```typescript typescript
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "https://api.t2000.ai/v1",
+  apiKey: process.env.T2000_API_KEY,
+});
+
+const resp = await client.chat.completions.create({
+  model: "zai/glm-5.2",
+  messages: [{ role: "user", content: "Hello from t2000" }],
+});
+console.log(resp.choices[0].message.content);
+```
+
+</CodeGroup>
+
+## Cursor
+
+Cursor can route its chat models through any OpenAI-compatible endpoint:
+
+1. **Settings → Models → API Keys → OpenAI API Key.**
+2. Paste your `sk-…` key, expand **Override OpenAI Base URL**, and set it to `https://api.t2000.ai/v1`.
+3. Under **Models**, add the model IDs you want (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-4.6`), then **Verify**.
+
+<Note>
+  Cursor's agentic features are tuned for specific frontier models. For a drop-in private chat model, add a model like `zai/glm-5.2` or `anthropic/claude-sonnet-4.6` and select it in the chat model picker.
+</Note>
+
+## OpenAI Codex CLI
+
+Add t2000 as a model provider in `~/.codex/config.toml`:
+
+```toml
+[model_providers.t2000]
+name = "t2000"
+base_url = "https://api.t2000.ai/v1"
+env_key = "T2000_API_KEY"
+
+[profiles.t2000]
+model = "anthropic/claude-sonnet-4.6"
+model_provider = "t2000"
+```
+
+Then run with the profile (`export T2000_API_KEY=sk-…` first):
+
+```bash
+codex --profile t2000
+```
+
+## Vercel AI SDK
+
+Use the OpenAI-compatible provider:
+
+```typescript
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { generateText } from "ai";
+
+const t2000 = createOpenAICompatible({
+  name: "t2000",
+  baseURL: "https://api.t2000.ai/v1",
+  apiKey: process.env.T2000_API_KEY,
+});
+
+const { text } = await generateText({
+  model: t2000("zai/glm-5.2"),
+  prompt: "Hello from t2000",
+});
+```
+
+## LangChain
+
+```python
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+    base_url="https://api.t2000.ai/v1",
+    api_key="sk-...",
+    model="zai/glm-5.2",
+)
+print(llm.invoke("Hello from t2000").content)
+```
+
+## Other OpenAI-compatible clients
+
+The same base URL + key works in any tool that targets OpenAI Chat Completions — **Continue**, **Cline**, **Aider** (`--openai-api-base`), **LiteLLM** (`openai/<model>`), **LlamaIndex**, and most "bring your own OpenAI key" apps. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`.
+
+## Anthropic-format tools (Claude Code)
+
+Tools that speak the **Anthropic Messages** format (`/v1/messages`) — such as Claude Code — don't talk to an OpenAI Chat Completions endpoint directly. Two options:
+
+- **A translation proxy** today — run [LiteLLM](https://github.com/BerriAI/litellm) (or a similar Anthropic↔OpenAI shim) pointed at `https://api.t2000.ai/v1`, and set the tool's `ANTHROPIC_BASE_URL` to the proxy.
+- **Native `/v1/messages`** is on the roadmap (the additional-endpoints item) — when it ships, Anthropic-format tools will work with the base-URL swap alone.
+
+## Good to know
+
+- **Streaming** works everywhere SSE does — set `stream: true`; pass `stream_options: { include_usage: true }` for a final usage chunk.
+- **Model IDs** are namespaced (`provider/model`); the live list is whatever `GET /v1/models` returns, each tagged `private` or `confidential`.
+- **Keys are secrets** — keep them server-side, one per app/environment so you can revoke independently. Don't ship a raw key in a browser bundle.
+- **Spend** is bounded by your balance (and your auto-recharge threshold, if enabled). Each key is capped at 120 requests/minute.
+
+See the [Private API reference](/private-api) for the full endpoint, model, pricing, privacy, and error details.

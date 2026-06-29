@@ -25,7 +25,8 @@
           "agent-wallet",
           "agent-payments",
           "agent-sdk",
-          "private-api"
+          "private-api",
+          "use-with-your-tools"
         ]
       },
       {
