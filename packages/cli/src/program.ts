@@ -19,6 +19,7 @@ import { registerServices } from './commands/services/index.js';
 import { registerLimit } from './commands/limit/index.js';
 import { registerMcp } from './commands/mcp/index.js';
 import { registerSkills } from './commands/skills/index.js';
+import { registerAgent } from './commands/agent/index.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -61,6 +62,7 @@ Examples:
   registerLimit(program);
   registerMcp(program);
   registerSkills(program);
+  registerAgent(program);
 
   return program;
 }
