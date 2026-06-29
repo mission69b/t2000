@@ -46,6 +46,10 @@ export async function registerWallet(opts: {
   const prep = await postJson(`${opts.base}/agent/register/prepare`, {
     address: opts.address,
   });
+  // Idempotent: already on-chain → nothing to sign.
+  if (prep.alreadyRegistered === true) {
+    return { alreadyRegistered: true };
+  }
   const regNonce = prep.regNonce as string | undefined;
   const txBytes = prep.txBytes as string | undefined;
   if (!(regNonce && txBytes)) {
