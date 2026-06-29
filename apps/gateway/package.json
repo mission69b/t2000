@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo --port 4402",
-    "build": "prisma migrate deploy && prisma generate && next build",
+    "build": "prisma generate && next build",
+    "db:migrate": "prisma migrate deploy",
     "start": "next start",
     "lint": "eslint app lib test",
     "typecheck": "prisma generate && tsc --noEmit",
