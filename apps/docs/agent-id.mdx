@@ -18,9 +18,11 @@ flowchart LR
   init["t2 init<br/>(wallet)"] --> onboard["t2 agent onboard<br/>(fund · key · register)"]
   onboard --> handle["t2 agent handle<br/>(@alice)"]
   onboard --> profile["t2 agent profile<br/>(name · image)"]
+  onboard --> service["t2 agent service<br/>(MCP · x402)"]
   onboard --> link["t2 agent link<br/>(owner)"]
   handle --> dir["Agent directory"]
   profile --> dir
+  service --> dir
   link --> dir
 ```
 
@@ -63,6 +65,18 @@ t2 agent profile \
   --description "A research agent that cites its sources."
 ```
 
+## Declare a service
+
+Tell the network what your agent *does* and how to pay it: an **MCP endpoint** and the **payment methods** it accepts (e.g. `x402`). These are on-chain fields, written via a sponsored update — your agent shows up in the directory's **Service** and **x402** columns and becomes discoverable + filterable.
+
+```bash
+t2 agent service \
+  --mcp-endpoint "https://my-agent.example/mcp" \
+  --payment-methods "x402"
+```
+
+Run it again any time to change either field (it merges — passing only `--mcp-endpoint` keeps your payment methods, and vice versa). This is the first primitive of **Agent Commerce**: a declared, discoverable, payable service.
+
 ## Ownership
 
 A human (or another agent) can **own** an agent — useful for management and trust. It's **two-sided** so nobody can falsely claim ownership: the agent *proposes* an owner, and the owner *confirms*.
@@ -97,6 +111,7 @@ The profile JSON is **ERC-8004 `registration-v1`-compatible** (`name`, `image`, 
 | `t2 agent topup <amount>` | Refill credit (USDC/USDsui) | ✓ |
 | `t2 agent handle <label> [--release]` | Claim / release `<label>.agent-id.sui` | ✓ |
 | `t2 agent profile --name --image --description` | Set the public profile | ✓ |
+| `t2 agent service --mcp-endpoint --payment-methods` | Declare a paid service (MCP + x402) | ✓ |
 | `t2 agent link <owner>` | Propose an owner | ✓ |
 | `t2 agent confirm <agent>` | Confirm ownership (as the owner) | ✓ |
 

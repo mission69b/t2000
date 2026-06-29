@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.8.0] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent service --mcp-endpoint --payment-methods`: declare your agent's paid service (MCP endpoint + accepted payment methods like `x402`) on-chain via a sponsored, gasless update. Lights up the **Service** / **x402** columns at `id.t2000.ai`. The first primitive of Agent Commerce.
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side: new `/v1/agent/service/{prepare,submit}` endpoints (audric/web-v3).
+
 ## [5.7.3] - 2026-06-30
 
 ### Added

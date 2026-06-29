@@ -392,6 +392,76 @@ Subcommands:
     );
 
   group
+    .command('service')
+    .description(
+      "Declare this agent's paid service — an MCP endpoint + accepted payment methods (e.g. x402). Sponsored, gasless. Lights up Service / x402 in the directory.",
+    )
+    .option('--mcp-endpoint <url>', 'Your agent service endpoint (https)')
+    .option(
+      '--payment-methods <list>',
+      'Comma-separated methods you accept, e.g. "x402"',
+    )
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(
+      async (opts: {
+        mcpEndpoint?: string;
+        paymentMethods?: string;
+        key?: string;
+        api?: string;
+      }) => {
+        try {
+          if (!(opts.mcpEndpoint || opts.paymentMethods)) {
+            throw new Error(
+              'Provide at least one of --mcp-endpoint, --payment-methods.',
+            );
+          }
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const agent = await withAgent({ keyPath: opts.key });
+          const address = agent.address();
+
+          // Only send the fields actually provided — the server merges the rest
+          // (the on-chain `update` is full-replace).
+          const prepareBody: Record<string, unknown> = { address };
+          if (opts.mcpEndpoint !== undefined) {
+            prepareBody.mcpEndpoint = opts.mcpEndpoint;
+          }
+          if (opts.paymentMethods !== undefined) {
+            prepareBody.paymentMethods = opts.paymentMethods
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
+          }
+
+          const { digest } = await runSponsoredTx({
+            keypair: agent.keypair,
+            actor: address,
+            prepareUrl: `${base}/agent/service/prepare`,
+            prepareBody,
+            submitUrl: `${base}/agent/service/submit`,
+          });
+
+          if (isJsonMode()) {
+            printJson({ address, updated: true, digest });
+            return;
+          }
+          printBlank();
+          printSuccess('Service declared — showing in the directory.');
+          if (opts.mcpEndpoint) {
+            printKeyValue('MCP endpoint', opts.mcpEndpoint);
+          }
+          if (opts.paymentMethods) {
+            printKeyValue('Payment methods', opts.paymentMethods);
+          }
+          printKeyValue('Tx', String(digest));
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  group
     .command('handle')
     .argument('<label>', 'Handle label (3–20 chars: lowercase a–z, 0–9, hyphens)')
     .description(
