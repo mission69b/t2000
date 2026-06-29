@@ -474,6 +474,7 @@ Subcommands:
       '--gateway <url>',
       `Gateway base URL (default ${DEFAULT_GATEWAY})`,
     )
+    .option('--force', 'Override spending limits for this call (see `t2 limit`)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .action(
       async (
@@ -482,6 +483,7 @@ Subcommands:
           amount: string;
           maxPrice?: string;
           gateway?: string;
+          force?: boolean;
           key?: string;
         },
       ) => {
@@ -495,7 +497,7 @@ Subcommands:
           const agent = await withAgent({ keyPath: opts.key });
           const url = `${gateway}/commerce/pay/${seller}?amount=${encodeURIComponent(opts.amount)}`;
 
-          const result = await agent.pay({ url, method: 'POST', maxPrice });
+          const result = await agent.pay({ url, method: 'POST', maxPrice, force: opts.force });
           const body = result.body as
             | { receipt?: { netMicros?: number; feeMicros?: number; forwardDigest?: string } }
             | undefined;
