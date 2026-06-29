@@ -35,11 +35,19 @@ import {
   handleError,
 } from '../output.js';
 import { askHidden } from '../lib/prompts.js';
+import { registerWallet } from '../lib/agent-register.js';
 
 export interface InitOptions {
   key?: string;
   import?: string | boolean;
+  // `--no-register` sets this false (default true) — skip on-chain Agent ID.
+  register?: boolean;
 }
+
+const DEFAULT_API_BASE =
+  process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
+// Best-effort register must never hang `init` (offline-tolerant).
+const REGISTER_TIMEOUT_MS = 10_000;
 
 // [2.2 — limits ON by default] A fresh wallet ships with conservative,
 // USD-denominated caps so an agent can't drain it on day one. The user raises
@@ -60,6 +68,10 @@ export function registerInit(program: Command) {
       '--import [secret]',
       'Import an existing wallet via Bech32 secret. Omit the value for an interactive hidden-input prompt.',
     )
+    .option(
+      '--no-register',
+      'Skip the best-effort on-chain Agent ID registration (offline/CI).',
+    )
     .action(async (opts: InitOptions) => {
       try {
         if (await walletExists(opts.key)) {
@@ -70,6 +82,7 @@ export function registerInit(program: Command) {
 
         let address: string;
         let imported = false;
+        let signingKeypair: { signTransaction(b: Uint8Array): Promise<{ signature: string }> };
 
         if (opts.import !== undefined) {
           const secret = typeof opts.import === 'string' && opts.import.length > 0
@@ -80,13 +93,35 @@ export function registerInit(program: Command) {
             printWarning('Private key passed as a CLI flag will be in shell history. Prefer the interactive prompt: `t2 init --import` (no value).');
           }
 
+          const kp = keypairFromPrivateKey(secret);
           await saveBech32(secret, opts.key);
-          address = getAddress(keypairFromPrivateKey(secret));
+          address = getAddress(kp);
+          signingKeypair = kp;
           imported = true;
         } else {
           const keypair = generateKeypair();
           await saveKey(keypair, undefined, opts.key);
           address = getAddress(keypair);
+          signingKeypair = keypair;
+        }
+
+        // Best-effort on-chain Agent ID — gives the wallet a registry identity
+        // from the start. Non-blocking + timeout-bounded so `init` stays
+        // offline-tolerant; if it can't reach the sponsor it silently defers
+        // (a later `t2 agent register`/`onboard` completes it).
+        let registered = false;
+        if (opts.register !== false) {
+          try {
+            await Promise.race([
+              registerWallet({ keypair: signingKeypair, address, base: DEFAULT_API_BASE }),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), REGISTER_TIMEOUT_MS),
+              ),
+            ]);
+            registered = true;
+          } catch {
+            // best-effort — deferred to a later online command
+          }
         }
 
         // Limits ON by default — only seed when the user has none yet (don't
@@ -99,6 +134,7 @@ export function registerInit(program: Command) {
           printJson({
             address,
             imported,
+            registered,
             configPath: opts.key ?? '~/.t2000/wallet.key',
             limits: { perTxUsd: DEFAULT_PER_TX_USD, dailyUsd: DEFAULT_DAILY_USD },
           });
@@ -109,6 +145,12 @@ export function registerInit(program: Command) {
         printSuccess(imported ? 'Wallet imported' : 'Wallet created');
         printKeyValue('Address', address);
         printKeyValue('Path', opts.key ?? '~/.t2000/wallet.key');
+        if (opts.register !== false) {
+          printKeyValue(
+            'Agent ID',
+            registered ? 'registered' : 'pending (run: t2 agent register)',
+          );
+        }
         printBlank();
         printLine(`⚠  ${limitsFooter(DEFAULT_PER_TX_USD, DEFAULT_DAILY_USD)}`);
         printBlank();

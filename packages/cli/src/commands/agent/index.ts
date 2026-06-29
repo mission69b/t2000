@@ -11,6 +11,7 @@
 
 import type { Command } from 'commander';
 import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
+import { registerWallet } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import {
   handleError,
@@ -146,14 +147,29 @@ Subcommands:
             throw new Error('Failed to mint an API key.');
           }
 
+          // 3. Ensure an on-chain Agent ID (sponsored/gasless, idempotent).
+          //    Best-effort: a sponsor-empty / transient failure must not fail
+          //    onboarding — the identity registers on a later run.
+          let registered = false;
+          try {
+            await registerWallet({ keypair: agent.keypair, address, base });
+            registered = true;
+          } catch {
+            // best-effort
+          }
+
           if (isJsonMode()) {
-            printJson({ address, apiKey: key, baseUrl: base });
+            printJson({ address, apiKey: key, baseUrl: base, registered });
             return;
           }
           printBlank();
           printSuccess('Agent onboarded — API key minted (shown once, store it now)');
           printKeyValue('Address', truncateAddress(address));
           printKeyValue('API key', key);
+          printKeyValue(
+            'Agent ID',
+            registered ? 'registered' : 'pending (retry: t2 agent register)',
+          );
           printKeyValue('Base URL', base);
           printBlank();
           printInfo(`export OPENAI_BASE_URL=${base}  OPENAI_API_KEY=${key}`);
@@ -204,21 +220,64 @@ Subcommands:
     );
 
   group
-    .command('handle')
-    .argument('<label>', 'Desired handle (3–20 chars: lowercase a–z, 0–9, hyphens)')
+    .command('register')
     .description(
-      'Claim <label>.agent-id.sui → this wallet — a human-readable Agent ID handle (custody-minted, gasless for you).',
+      'Register this wallet on-chain as an Agent ID (sponsored, gasless). Idempotent — safe to re-run.',
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (opts: { key?: string; api?: string }) => {
+      try {
+        const base = opts.api ?? DEFAULT_API_BASE;
+        const agent = await withAgent({ keyPath: opts.key });
+        const address = agent.address();
+        const reg = await registerWallet({ keypair: agent.keypair, address, base });
+
+        if (isJsonMode()) {
+          printJson({
+            address,
+            registered: true,
+            alreadyRegistered: reg.alreadyRegistered,
+            digest: reg.digest,
+          });
+          return;
+        }
+        printBlank();
+        printSuccess(
+          reg.alreadyRegistered
+            ? 'Already registered as an Agent ID'
+            : 'Registered as an Agent ID',
+        );
+        printKeyValue('Address', truncateAddress(address));
+        if (reg.digest) {
+          printKeyValue('Tx', reg.digest);
+        }
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+  group
+    .command('handle')
+    .argument('<label>', 'Handle label (3–20 chars: lowercase a–z, 0–9, hyphens)')
+    .description(
+      'Claim <label>.agent-id.sui → this wallet (custody-minted, gasless). Use --release to give it up.',
+    )
+    .option('--release', 'Release (revoke) this handle instead of claiming it')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
-      async (label: string, opts: { key?: string; api?: string }) => {
+      async (
+        label: string,
+        opts: { release?: boolean; key?: string; api?: string },
+      ) => {
         try {
           const base = opts.api ?? DEFAULT_API_BASE;
           const agent = await withAgent({ keyPath: opts.key });
           const address = agent.address();
 
-          // Challenge → sign (bound to nonce + label) → mint the leaf.
+          // Challenge → sign (bound to nonce + label, action-prefixed).
           const challenge = await fetchJson(`${base}/agent/challenge`, {
             method: 'POST',
             body: { address },
@@ -227,27 +286,30 @@ Subcommands:
           if (!nonce) {
             throw new Error('Failed to get a challenge nonce.');
           }
-          const message = new TextEncoder().encode(`t2000-agent-handle:${nonce}:${label}`);
+          const action = opts.release
+            ? 't2000-agent-handle-release'
+            : 't2000-agent-handle';
+          const message = new TextEncoder().encode(`${action}:${nonce}:${label}`);
           const { signature } = await agent.keypair.signPersonalMessage(message);
 
-          const res = await fetchJson(`${base}/agent/handle`, {
+          const path = opts.release ? '/agent/handle/release' : '/agent/handle';
+          const res = await fetchJson(`${base}${path}`, {
             method: 'POST',
             body: { address, label, nonce, signature },
           });
 
           if (isJsonMode()) {
-            printJson({
-              address,
-              handle: res.handle,
-              display: res.display,
-              digest: res.digest,
-            });
+            printJson({ address, ...res });
             return;
           }
           printBlank();
-          printSuccess(`Handle claimed: ${res.display}`);
+          if (opts.release) {
+            printSuccess(`Handle released: ${String(res.handle)}`);
+          } else {
+            printSuccess(`Handle claimed: ${String(res.display)}`);
+            printKeyValue('Handle', String(res.handle));
+          }
           printKeyValue('Address', truncateAddress(address));
-          printKeyValue('Handle', String(res.handle));
           printKeyValue('Tx', String(res.digest));
           printBlank();
         } catch (error) {
