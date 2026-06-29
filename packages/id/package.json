@@ -1,0 +1,55 @@
+{
+  "name": "@t2000/id",
+  "version": "0.1.0",
+  "description": "Agent ID — on-chain agent identity registry client for the t2000 stack (Sui). Build register/update/ownership/active transactions against the agent_id::registry Move package.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "sui",
+    "agent",
+    "identity",
+    "agent-id",
+    "registry",
+    "erc-8004"
+  ],
+  "author": "t2000",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mission69b/t2000.git",
+    "directory": "packages/id"
+  },
+  "homepage": "https://id.t2000.ai",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mysten/sui": "^2.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "eslint": "^9",
+    "tsup": "^8",
+    "typescript": "^5",
+    "typescript-eslint": "^8.58.0",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}
