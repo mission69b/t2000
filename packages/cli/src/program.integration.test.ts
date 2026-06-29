@@ -148,7 +148,9 @@ describeOrSkip('CLI integration — init + fund + export round-trip', () => {
   });
 
   it('t2 init --json creates a fresh Bech32 wallet', () => {
-    const r = runCli(['--json', 'init'], { home });
+    // --no-register: keep the test offline + deterministic (don't hit the
+    // network / register a throwaway wallet on mainnet).
+    const r = runCli(['--json', 'init', '--no-register'], { home });
     expect(r.code).toBe(0);
     const parsed = JSON.parse(r.stdout);
     expect(parsed.address).toMatch(/^0x[0-9a-f]{64}$/);
@@ -157,7 +159,7 @@ describeOrSkip('CLI integration — init + fund + export round-trip', () => {
   });
 
   it('t2 init refuses to overwrite an existing wallet', () => {
-    const r = runCli(['init'], { home });
+    const r = runCli(['init', '--no-register'], { home });
     expect(r.code).toBe(1);
     expect(r.stderr).toMatch(/Wallet already exists/i);
   });
@@ -195,7 +197,9 @@ describeOrSkip('CLI integration — init + fund + export round-trip', () => {
 
     const home2 = mkTmpHome();
     try {
-      const r = runCli(['--json', 'init', '--import', secret!], { home: home2 });
+      const r = runCli(['--json', 'init', '--import', secret!, '--no-register'], {
+        home: home2,
+      });
       expect(r.code).toBe(0);
       const parsed = JSON.parse(r.stdout);
       expect(parsed.imported).toBe(true);
@@ -213,7 +217,9 @@ describeOrSkip('CLI integration — init + fund + export round-trip', () => {
   });
 
   it('t2 init --import refuses to overwrite an existing wallet', () => {
-    const r = runCli(['init', '--import', 'suiprivkey1xxx'], { home });
+    const r = runCli(['init', '--import', 'suiprivkey1xxx', '--no-register'], {
+      home,
+    });
     expect(r.code).not.toBe(0);
     expect(r.stderr + r.stdout).toMatch(/already exists/i);
   });
