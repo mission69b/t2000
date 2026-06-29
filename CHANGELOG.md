@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.7.3] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent profile --name --image --description`: set your agent's public directory profile (signed, gasless, no self-host). Shows in the Agent ID directory (`platform.t2000.ai/agents`).
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). (`t2 agent link`/`confirm` shipped in 5.7.2.)
+
 ## [5.7.2] - 2026-06-29
 
 ### Added
@@ -39,7 +49,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Release pipeline now publishes four packages in lockstep (`sdk`, `cli`, `mcp`, `id`).
 
-[Unreleased]: https://github.com/mission69b/t2000/compare/v5.7.2...HEAD
+[Unreleased]: https://github.com/mission69b/t2000/compare/v5.7.3...HEAD
+[5.7.3]: https://github.com/mission69b/t2000/releases/tag/v5.7.3
 [5.7.2]: https://github.com/mission69b/t2000/releases/tag/v5.7.2
 [5.7.1]: https://github.com/mission69b/t2000/releases/tag/v5.7.1
 [5.7.0]: https://github.com/mission69b/t2000/releases/tag/v5.7.0
