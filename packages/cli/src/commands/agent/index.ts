@@ -328,6 +328,70 @@ Subcommands:
     });
 
   group
+    .command('profile')
+    .description(
+      "Set this agent's public profile (name · image · description). Signed, no gas — shows in the directory.",
+    )
+    .option('--name <name>', 'Display name')
+    .option('--image <url>', 'Image URL (https)')
+    .option('--description <text>', 'Short description')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(
+      async (opts: {
+        name?: string;
+        image?: string;
+        description?: string;
+        key?: string;
+        api?: string;
+      }) => {
+        try {
+          if (!(opts.name || opts.image || opts.description)) {
+            throw new Error(
+              'Provide at least one of --name, --image, --description.',
+            );
+          }
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const agent = await withAgent({ keyPath: opts.key });
+          const address = agent.address();
+
+          const challenge = await fetchJson(`${base}/agent/challenge`, {
+            method: 'POST',
+            body: { address },
+          });
+          const nonce = challenge.nonce as string | undefined;
+          if (!nonce) {
+            throw new Error('Failed to get a challenge nonce.');
+          }
+          const message = new TextEncoder().encode(`t2000-agent-profile:${nonce}`);
+          const { signature } = await agent.keypair.signPersonalMessage(message);
+
+          await fetchJson(`${base}/agent/profile`, {
+            method: 'POST',
+            body: {
+              address,
+              nonce,
+              signature,
+              displayName: opts.name,
+              imageUrl: opts.image,
+              description: opts.description,
+            },
+          });
+
+          if (isJsonMode()) {
+            printJson({ address, updated: true });
+            return;
+          }
+          printBlank();
+          printSuccess('Profile updated.');
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  group
     .command('handle')
     .argument('<label>', 'Handle label (3–20 chars: lowercase a–z, 0–9, hyphens)')
     .description(
