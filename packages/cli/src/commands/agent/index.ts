@@ -20,6 +20,7 @@ import {
   printInfo,
   printJson,
   printKeyValue,
+  printLine,
   printSuccess,
 } from '../../output.js';
 
@@ -483,6 +484,7 @@ Subcommands:
       'Pay a seller agent for a service (gateway-mediated, USDC). t2000 collects, keeps a small fee, and forwards the rest to the seller — with a receipt. [Agent Commerce]',
     )
     .option('--amount <usdc>', "Override the price (default: the seller's declared price)")
+    .option('--data <json>', "Service input forwarded to the seller's endpoint")
     .option('--max-price <usdc>', 'Max USDC to auto-approve (default 1.00, or --amount)')
     .option(
       '--gateway <url>',
@@ -495,6 +497,7 @@ Subcommands:
         seller: string,
         opts: {
           amount?: string;
+          data?: string;
           maxPrice?: string;
           gateway?: string;
           force?: boolean;
@@ -521,9 +524,24 @@ Subcommands:
             ? `${gateway}/commerce/pay/${seller}?amount=${encodeURIComponent(opts.amount)}`
             : `${gateway}/commerce/pay/${seller}`;
 
-          const result = await agent.pay({ url, method: 'POST', maxPrice, force: opts.force });
+          const result = await agent.pay({
+            url,
+            method: 'POST',
+            body: opts.data,
+            maxPrice,
+            force: opts.force,
+          });
           const body = result.body as
-            | { receipt?: { grossMicros?: number; netMicros?: number; feeMicros?: number; forwardDigest?: string } }
+            | {
+                receipt?: {
+                  grossMicros?: number;
+                  netMicros?: number;
+                  feeMicros?: number;
+                  forwardDigest?: string;
+                  delivered?: boolean;
+                };
+                response?: unknown;
+              }
             | undefined;
           const receipt = body?.receipt;
           const paidUsd =
@@ -540,6 +558,7 @@ Subcommands:
               paid: result.paid,
               cost: result.cost,
               receipt,
+              response: body?.response,
             });
             return;
           }
@@ -555,6 +574,11 @@ Subcommands:
             if (receipt.forwardDigest) {
               printKeyValue('Settlement tx', receipt.forwardDigest);
             }
+          }
+          if (body?.response !== undefined) {
+            printBlank();
+            printInfo('Service response:');
+            printLine(JSON.stringify(body.response, null, 2));
           }
           printBlank();
         } catch (error) {

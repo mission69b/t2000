@@ -16,35 +16,111 @@ import {
 } from '@/lib/x402-dialect';
 import { env } from '@/lib/env';
 
-// POST /commerce/pay/{seller}?amount=0.02 — gateway-mediated agent→agent buy
-// (Agent Commerce C.2 prototype). No payment → x402 402 (payTo = treasury).
-// X-PAYMENT → collect to treasury (proven path), forward net to the seller
-// (gasless), keep the 2.5% fee, record a receipt. Prototype: price is the
-// `amount` query param; spec will source it from the seller's declared terms.
+// POST /commerce/pay/{seller} — gateway-mediated agent→agent buy (Agent
+// Commerce C.2/C.3). No payment → x402 402 (payTo = treasury). X-PAYMENT →
+// collect to treasury, then:
+//   • DELIVERY MODE (seller has an mcpEndpoint): collect → proxy the call to the
+//     seller → on 2xx forward the net (release) + receipt + relay the response;
+//     on failure refund the buyer the GROSS (the treasury-custody window is the
+//     escrow — the seller is paid only after delivery succeeds).
+//   • PAYMENT-ONLY (no endpoint): collect → forward net → receipt.
+// Price is the seller's declared `priceUsdc` (directory); `?amount` overrides.
 
 export const dynamic = 'force-dynamic';
 
 const NETWORK =
   (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
-
-// The public Agent ID directory — the seller's declared price + endpoint live
-// here (off-chain commerce attributes). The seller sets the price; the buyer
-// pays it (a real marketplace, not buyer-named pricing).
 const DIRECTORY_BASE = 'https://api.t2000.ai/v1';
+const DELIVERY_TIMEOUT_MS = 15_000;
 
-async function sellerDeclaredPrice(seller: string): Promise<string | null> {
+interface SellerProfile {
+  priceUsdc: string | null;
+  mcpEndpoint: string | null;
+}
+
+async function fetchSellerProfile(seller: string): Promise<SellerProfile> {
   try {
     const res = await fetch(`${DIRECTORY_BASE}/agents/${seller}`, {
-      // Short cache — price changes are rare; avoids a directory RTT per probe.
       next: { revalidate: 30 },
     });
     if (!res.ok) {
-      return null;
+      return { priceUsdc: null, mcpEndpoint: null };
     }
-    const data = (await res.json()) as { priceUsdc?: string | null };
-    return data.priceUsdc ?? null;
+    const data = (await res.json()) as {
+      priceUsdc?: string | null;
+      mcpEndpoint?: string | null;
+    };
+    return {
+      priceUsdc: data.priceUsdc ?? null,
+      mcpEndpoint: data.mcpEndpoint ?? null,
+    };
   } catch {
-    return null;
+    return { priceUsdc: null, mcpEndpoint: null };
+  }
+}
+
+// SSRF guard: only deliver to public https hosts (the seller's mcpEndpoint is
+// arbitrary on-chain data — never let it point the gateway at an internal host).
+function isSafeDeliveryUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:') {
+    return false;
+  }
+  const host = u.hostname.toLowerCase();
+  if (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host.endsWith('.local') ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+interface DeliveryResult {
+  ok: boolean;
+  status: number;
+  data: unknown;
+}
+
+async function deliverToSeller(
+  endpoint: string,
+  body: string,
+  buyer: string,
+): Promise<DeliveryResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-buyer': buyer },
+      body: body || undefined,
+      signal: controller.signal,
+    });
+    const ct = res.headers.get('content-type') ?? '';
+    const data = ct.includes('application/json')
+      ? await res.json().catch(() => null)
+      : await res.text().catch(() => null);
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      data: err instanceof Error ? err.message : 'delivery failed',
+    };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -63,12 +139,10 @@ async function handle(
     return Response.json({ error: 'Invalid seller address' }, { status: 400 });
   }
 
-  // Price = the seller's declared price (directory); ?amount is an override/
-  // fallback for sellers who haven't set one yet.
   const url = new URL(req.url);
   const override = (url.searchParams.get('amount') ?? '').trim();
-  const declared = await sellerDeclaredPrice(seller);
-  const amount = declared ?? override;
+  const profile = await fetchSellerProfile(seller);
+  const amount = profile.priceUsdc ?? override;
   if (!amount) {
     return Response.json(
       { error: 'Seller has not declared a price (and no amount override given). Set one with `t2 agent service --price`.' },
@@ -102,6 +176,10 @@ async function handle(
     );
   }
 
+  // Capture the buyer's service input (forwarded to the seller on delivery).
+  // settle reads only the X-PAYMENT header, so reading the body here is safe.
+  const buyerBody = await req.text().catch(() => '');
+
   // Collect to the treasury (proven settle-then-serve path; terms server-set).
   let settled: Awaited<ReturnType<typeof settleX402Request>>;
   try {
@@ -120,10 +198,81 @@ async function handle(
 
   const { settle, report } = settled;
   const buyer = report.sender ?? settle.payer;
+  const deliveryMode =
+    Boolean(profile.mcpEndpoint) && isSafeDeliveryUrl(profile.mcpEndpoint as string);
 
-  // Forward the net to the seller (gasless treasury send). On failure, refund
-  // the buyer (best-effort) — they must not be charged for an undelivered
-  // settlement.
+  // DELIVERY MODE — the treasury holds the gross while we attempt delivery
+  // (the escrow window). The seller is released only on a 2xx.
+  if (deliveryMode) {
+    const delivered = await deliverToSeller(
+      profile.mcpEndpoint as string,
+      buyerBody,
+      buyer,
+    );
+    if (!delivered.ok) {
+      let refunded: string | null = null;
+      try {
+        refunded = await refundUsdc({ payer: buyer, amount, network: NETWORK });
+      } catch {
+        refunded = null;
+      }
+      return withX402Receipt(
+        Response.json(
+          {
+            ok: false,
+            error: 'Seller delivery failed — payment refunded.',
+            sellerStatus: delivered.status,
+            refunded: Boolean(refunded),
+            ...(refunded ? { refundTx: refunded } : {}),
+          },
+          { status: 502 },
+        ),
+        settle,
+      );
+    }
+
+    // Delivered → release the net to the seller. If the forward itself fails
+    // (rare — treasury key/floor), the buyer keeps the delivered response; we
+    // log settlement_due for a manual payout rather than clawing back service.
+    let forwardDigest: string | null = null;
+    try {
+      forwardDigest = await treasurySendUsdc({
+        to: seller,
+        amount: split.netDecimal,
+        network: NETWORK,
+      });
+    } catch (err) {
+      console.error(
+        `[commerce] settlement_due seller=${seller} net=${split.netDecimal} buyer=${buyer} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    await recordCommerceReceipt({
+      buyer,
+      seller,
+      grossDecimal: amount,
+      forwardDigest: forwardDigest ?? settle.transaction,
+    });
+    return withX402Receipt(
+      Response.json({
+        ok: true,
+        receipt: {
+          buyer,
+          seller,
+          grossMicros: split.grossMicros,
+          feeMicros: split.feeMicros,
+          netMicros: split.netMicros,
+          feeBps: 250,
+          collectDigest: settle.transaction,
+          forwardDigest,
+          delivered: true,
+        },
+        response: delivered.data,
+      }),
+      settle,
+    );
+  }
+
+  // PAYMENT-ONLY — no seller endpoint to deliver to: collect → forward → receipt.
   let forwardDigest: string;
   try {
     forwardDigest = await treasurySendUsdc({
@@ -141,6 +290,7 @@ async function handle(
     return withX402Receipt(
       Response.json(
         {
+          ok: false,
           error: `Settlement to seller failed: ${err instanceof Error ? err.message : String(err)}`,
           refunded: Boolean(refunded),
           ...(refunded ? { refundTx: refunded } : {}),
@@ -152,7 +302,6 @@ async function handle(
   }
 
   await recordCommerceReceipt({ buyer, seller, grossDecimal: amount, forwardDigest });
-
   return withX402Receipt(
     Response.json({
       ok: true,
@@ -165,6 +314,7 @@ async function handle(
         feeBps: 250,
         collectDigest: settle.transaction,
         forwardDigest,
+        delivered: false,
       },
     }),
     settle,
