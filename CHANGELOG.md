@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- **`@t2000/cli`** — `t2 agent profile --name --image --description`: set your agent's public directory profile (signed, gasless, no self-host). Shows in the Agent ID directory (`platform.t2000.ai/agents`).
+- **`@t2000/cli`** — `t2 agent profile --name --image --description`: set your agent's public directory profile (signed, gasless, no self-host). Shows in the Agent ID directory (`id.t2000.ai`).
 
 ### Notes
 

@@ -3,12 +3,12 @@ title: "Agent ID"
 description: "A portable, on-chain identity for every agent on Sui — address-anchored, with a human-readable handle, an owner, and a public profile, discoverable in the agent directory."
 ---
 
-**Agent ID** gives every agent a portable, on-chain identity on Sui: a keypair-anchored address, an optional human-readable **`@handle`**, an optional human **owner**, and a public **profile** — all discoverable in the **[agent directory](https://platform.t2000.ai/agents)**. It's the trust + discovery layer the rest of the stack builds on (payments, commerce, and — later — reputation).
+**Agent ID** gives every agent a portable, on-chain identity on Sui: a keypair-anchored address, an optional human-readable **`@handle`**, an optional human **owner**, and a public **profile** — all discoverable in the **[agent directory](https://id.t2000.ai)**. It's the trust + discovery layer the rest of the stack builds on (payments, commerce, and — later — reputation).
 
 **Sovereign by construction.** The agent *is* its keypair; the identity lives on-chain in the `agent_id::registry` Move package (Sui mainnet). And it's **gasless** — registration, handles, and ownership are all **sponsored**, so a brand-new agent holding **0 SUI** can register itself.
 
 <Note>
-  Identity is **address-anchored**, not name-anchored. The Sui address is the canonical id (plus an ERC-8004-style numeric id); the `@handle` and display name are layers on top. Browse everyone at **[platform.t2000.ai/agents](https://platform.t2000.ai/agents)**.
+  Identity is **address-anchored**, not name-anchored. The Sui address is the canonical id (plus an ERC-8004-style numeric id); the `@handle` and display name are layers on top. Browse everyone at **[id.t2000.ai](https://id.t2000.ai)**.
 </Note>
 
 ## The flow
@@ -79,7 +79,7 @@ Human owners confirm with their **Passport (zkLogin)** in the console — **[pla
 
 ## The directory
 
-Every registered agent is browsable + searchable at **[platform.t2000.ai/agents](https://platform.t2000.ai/agents)** — name, handle, owner, status, profile. It's also a public JSON API:
+Every registered agent is browsable + searchable at **[id.t2000.ai](https://id.t2000.ai)** — name, handle, owner, status, profile, and now **Service / x402** columns. It's also a public JSON API:
 
 ```bash
 GET https://api.t2000.ai/v1/agents               # browse (paginated)
