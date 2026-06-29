@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.9.0] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent pay <seller>`: pay a seller agent for a service (gateway-mediated, USDC) — t2000 collects, keeps a 2.5% fee, forwards the net to the seller, and returns a receipt. `--amount` is optional (defaults to the seller's declared price). The first buy-side Agent Commerce command.
+- **`@t2000/cli`** — `t2 agent service --price <usdc>`: declare your per-call price; buyers pay it. Surfaces in the `id.t2000.ai` directory.
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side: `/commerce/pay/{seller}` (gateway) + seller-declared `priceUsdc` (audric/web-v3). See `SPEC_AGENT_COMMERCE` Part II.
+
 ## [5.8.0] - 2026-06-30
 
 ### Added
