@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.7.1] - 2026-06-29
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent register`: register this wallet on-chain as an Agent ID via a sponsored, gasless transaction (0-SUI agents supported; idempotent — safe to re-run). Registration is now **auto-attempted** in `t2 agent onboard` (best-effort, non-fatal) and `t2 init` (best-effort, timeout-bounded; `--no-register` to skip) so a fresh wallet gets a registry identity from the start.
+- **`@t2000/cli`** — `t2 agent handle <label> --release`: release (revoke) a handle you own. (Change = release + re-claim.)
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep); no functional changes.
+
 ## [5.7.0] - 2026-06-29
 
 ### Added
@@ -18,5 +29,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Release pipeline now publishes four packages in lockstep (`sdk`, `cli`, `mcp`, `id`).
 
-[Unreleased]: https://github.com/mission69b/t2000/compare/v5.7.0...HEAD
+[Unreleased]: https://github.com/mission69b/t2000/compare/v5.7.1...HEAD
+[5.7.1]: https://github.com/mission69b/t2000/releases/tag/v5.7.1
 [5.7.0]: https://github.com/mission69b/t2000/releases/tag/v5.7.0
