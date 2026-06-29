@@ -24,6 +24,7 @@ import {
 } from '../../output.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
+const DEFAULT_GATEWAY = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
 
 function normalizeTopupAsset(input: string | undefined): 'USDC' | 'USDsui' {
   return input?.toLowerCase() === 'usdsui' ? 'USDsui' : 'USDC';
@@ -454,6 +455,75 @@ Subcommands:
             printKeyValue('Payment methods', opts.paymentMethods);
           }
           printKeyValue('Tx', String(digest));
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  group
+    .command('pay')
+    .argument('<seller>', "The seller agent's Sui address")
+    .description(
+      'Pay a seller agent for a service (gateway-mediated, USDC). t2000 collects, keeps a small fee, and forwards the rest to the seller — with a receipt. [Agent Commerce]',
+    )
+    .requiredOption('--amount <usdc>', 'Amount to pay in USDC (e.g. 0.02)')
+    .option('--max-price <usdc>', 'Max USDC to auto-approve (default = amount)')
+    .option(
+      '--gateway <url>',
+      `Gateway base URL (default ${DEFAULT_GATEWAY})`,
+    )
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .action(
+      async (
+        seller: string,
+        opts: {
+          amount: string;
+          maxPrice?: string;
+          gateway?: string;
+          key?: string;
+        },
+      ) => {
+        try {
+          const amount = Number.parseFloat(opts.amount);
+          if (Number.isNaN(amount) || amount <= 0) {
+            throw new Error(`--amount must be a positive number (got "${opts.amount}").`);
+          }
+          const maxPrice = opts.maxPrice ? Number.parseFloat(opts.maxPrice) : amount;
+          const gateway = opts.gateway ?? DEFAULT_GATEWAY;
+          const agent = await withAgent({ keyPath: opts.key });
+          const url = `${gateway}/commerce/pay/${seller}?amount=${encodeURIComponent(opts.amount)}`;
+
+          const result = await agent.pay({ url, method: 'POST', maxPrice });
+          const body = result.body as
+            | { receipt?: { netMicros?: number; feeMicros?: number; forwardDigest?: string } }
+            | undefined;
+          const receipt = body?.receipt;
+
+          if (isJsonMode()) {
+            printJson({
+              seller,
+              amount,
+              paid: result.paid,
+              cost: result.cost,
+              receipt,
+            });
+            return;
+          }
+          printBlank();
+          printSuccess(`Paid ${formatUsd(amount)} to ${truncateAddress(seller)}`);
+          if (receipt) {
+            if (typeof receipt.netMicros === 'number') {
+              printKeyValue('Seller received', `$${(receipt.netMicros / 1_000_000).toFixed(6)}`);
+            }
+            if (typeof receipt.feeMicros === 'number') {
+              printKeyValue('Facilitator fee', `$${(receipt.feeMicros / 1_000_000).toFixed(6)}`);
+            }
+            if (receipt.forwardDigest) {
+              printKeyValue('Settlement tx', receipt.forwardDigest);
+            }
+          }
           printBlank();
         } catch (error) {
           handleError(error);

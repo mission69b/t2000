@@ -90,20 +90,29 @@ export interface RefundParams {
 }
 
 /**
- * Issue a gasless USDC refund (treasury → payer). Returns the refund tx
- * digest. Throws when no key is configured or the tx fails — callers catch
- * and fall back to the manual `refund_due` log.
+ * Gasless USDC send from the treasury → `to`. The shared primitive behind
+ * both auto-refunds (x402 2.6) and Agent Commerce settlement (forward net to
+ * the seller). Pure `0x2::balance::send_funds<USDC>` — the allowlisted gasless
+ * shape, so the treasury needs no SUI. `amount` is a decimal USDC string;
+ * floored to atomic (6dp); enforces the $0.01 gasless minimum. Throws when no
+ * key is configured or the tx fails.
  */
-export async function refundUsdc(params: RefundParams): Promise<string> {
+export async function treasurySendUsdc(params: {
+  to: string;
+  amount: string;
+  network: 'mainnet' | 'testnet';
+}): Promise<string> {
   const treasury = getTreasury();
   if (!treasury) throw new Error('TREASURY_PRIVATE_KEY not configured');
 
-  // Floor to USDC atomic units (6dp) — never refund more than was charged.
+  // Floor to USDC atomic units (6dp) — never send more than intended.
   const atomic = Math.floor(Number(params.amount) * 1_000_000);
-  if (!Number.isFinite(atomic) || atomic <= 0) throw new Error(`Invalid refund amount: "${params.amount}"`);
+  if (!Number.isFinite(atomic) || atomic <= 0) {
+    throw new Error(`Invalid amount: "${params.amount}"`);
+  }
   if (Number(params.amount) < GASLESS_MIN_USDC) {
     throw new Error(
-      `Refund ${params.amount} below the $${GASLESS_MIN_USDC} gasless minimum — manual refund required`,
+      `Amount ${params.amount} below the $${GASLESS_MIN_USDC} gasless minimum`,
     );
   }
   const amountRaw = BigInt(atomic);
@@ -118,7 +127,7 @@ export async function refundUsdc(params: RefundParams): Promise<string> {
   tx.moveCall({
     target: '0x2::balance::send_funds',
     typeArguments: [SUI_USDC_TYPE],
-    arguments: [tx.balance({ type: SUI_USDC_TYPE, balance: amountRaw }), tx.pure.address(params.payer)],
+    arguments: [tx.balance({ type: SUI_USDC_TYPE, balance: amountRaw }), tx.pure.address(params.to)],
   });
 
   // Build via gRPC so the gasless resolver zeros gas; sign with the treasury
@@ -131,6 +140,15 @@ export async function refundUsdc(params: RefundParams): Promise<string> {
     include: { effects: true },
   });
   const txn = result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
-  if (!txn?.digest) throw new Error('refund tx returned no digest');
+  if (!txn?.digest) throw new Error('treasury send tx returned no digest');
   return txn.digest;
+}
+
+/**
+ * Issue a gasless USDC refund (treasury → payer). Returns the refund tx
+ * digest. Throws when no key is configured or the tx fails — callers catch
+ * and fall back to the manual `refund_due` log.
+ */
+export async function refundUsdc(params: RefundParams): Promise<string> {
+  return treasurySendUsdc({ to: params.payer, amount: params.amount, network: params.network });
 }
