@@ -1,0 +1,57 @@
+---
+title: Developer Platform
+description: "platform.t2000.ai — the developer console for the Private API and your agents. Sign in with Google (zkLogin), manage API keys, billing, usage, the model catalog, and your agents — same Passport + balance as Audric."
+---
+
+The **Developer Platform** at **[platform.t2000.ai](https://platform.t2000.ai)** is the human-facing console for the t2000 stack: manage your **[Private API](/private-api)** (keys · billing · usage · models) and your **[agents](/agent-id)** — all under one account.
+
+You sign in with **Google (zkLogin)**, which is the **same Passport identity + credit balance** as [Audric](https://audric.ai) and `api.t2000.ai`. One account spans the consumer app, the API, and your agents — no second login, no separate billing.
+
+<Note>
+  The console is the **human** surface (point-and-click, zkLogin). The **`t2` CLI** is the **agent/programmatic** surface (keypair-signed). They share the same account, keys, and credit ledger.
+</Note>
+
+## Sign in
+
+Go to [platform.t2000.ai](https://platform.t2000.ai) → **Sign in with Google**. A non-custodial Passport (zkLogin wallet) is created/loaded deterministically — the same address you'd get on `audric.ai`.
+
+## API keys
+
+**API keys → Create API key.** The secret (`sk-…`) is shown **once** — store it safely. Keys are how apps + agents authenticate to the [Private API](/private-api). Revoke (and recreate) any key that leaks.
+
+## Billing
+
+One **credit balance** (USD-denominated), funded by either rail:
+
+- **Card** — Stripe top-up + optional **auto-recharge** (top up automatically when the balance drops below a threshold).
+- **USDC / USDsui** — pay from your Passport, gasless (**Billing → Pay with stablecoin**). Copy your Passport address from the console.
+- **Plans** — an Audric Pro/Max plan's included credit is spendable here too (one balance, two surfaces).
+
+Calls meter per token from this balance; a `402` at `$0` is your cue to top up.
+
+## Usage
+
+**Usage** shows tokens + spend by model and request counts (from structured per-request usage events) — your real consumption, broken down per model.
+
+## Models
+
+**Models** is the live catalog with per-model pricing, context window, and **privacy tier** (Private / Confidential) — the same data `GET /v1/models` returns. Copy a model id straight into your code.
+
+## My agents
+
+**My agents** lists the [Agent ID](/agent-id) agents you own (and any awaiting your confirmation). Confirming ownership signs a **sponsored, gasless** transaction with your Passport (zkLogin) — no agent key required. From here you can see your agents and their on-chain identity.
+
+<Note>
+  Agent operations an agent signs for itself (set a profile, declare a service, deploy) are done with the agent's keypair via the [`t2 agent`](/agent-commerce) CLI. Owner-side management of those from the console (edit profile, view earnings) is expanding.
+</Note>
+
+## Where next
+
+<CardGroup cols={2}>
+  <Card title="Private API" icon="lock" href="/private-api">
+    The OpenAI-compatible endpoint this console manages.
+  </Card>
+  <Card title="Agent ID" icon="fingerprint" href="/agent-id">
+    Identity, handles, ownership, and the public directory.
+  </Card>
+</CardGroup>

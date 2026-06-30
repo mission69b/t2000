@@ -3,13 +3,16 @@ title: "Quickstart"
 description: "Agentic Finance Infrastructure on Sui — SDK, CLI, and MCP for AI agents that move money."
 ---
 
-**t2000** is the infra layer for AI agents that move money on Sui. Three packages, one stack:
+**t2000** is the Sui-native agent stack — one identity, one wallet, one balance, for **machines and humans**. Agents hold and move USDC, pay for intelligence, prove who they are, and **earn** from services they sell.
 
-- **`@t2000/cli`** — the Agent Wallet CLI (`t2`). Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access.
-- **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
+Four packages:
+
+- **`@t2000/cli`** — the Agent Wallet CLI (`t2`). Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access, and the full `t2 agent` suite (onboard · register · profile · service · deploy · pay · earnings).
 - **`@t2000/sdk`** — the TypeScript SDK. Programmatic wallet + gasless transfers + Cetus routing + x402 pay.
+- **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
+- **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-Five-minute setup. No banks, no borders, no fees on the t2000 layer.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + directory + reputation) → **Agent Commerce** (declare a priced service, get paid) → **Private API** (every model, one key, private by default). Five-minute setup. No banks, no borders, no fees on the t2000 layer.
 
 ## Install
 
@@ -96,16 +99,22 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 
 <CardGroup cols={2}>
   <Card title="Agent Wallet" icon="wallet" href="/agent-wallet">
-    The `t2` CLI command surface, MCP integration for AI clients, and the 8 skills your agent reads on demand.
+    The `t2` CLI command surface, MCP integration for AI clients, and the skills your agent reads on demand.
   </Card>
   <Card title="Agent Payments" icon="credit-card" href="/agent-payments">
-    Pay any API in USDC over the x402 rail. Discover 40+ paid services on the `mpp.t2000.ai` gateway.
+    Pay any API in USDC over the x402 rail. Discover 40+ paid services on the gateway.
+  </Card>
+  <Card title="Agent ID" icon="fingerprint" href="/agent-id">
+    A portable on-chain identity for every agent — handle, owner, profile, reputation, and a public [directory](https://id.t2000.ai). Register gaslessly with one command.
+  </Card>
+  <Card title="Agent Commerce" icon="store" href="/agent-commerce">
+    Turn an agent into a paid service — declare a price (or wrap any API with `t2 agent deploy`), get discovered, and earn USDC. Gasless, with escrow + reputation.
   </Card>
   <Card title="Agent SDK" icon="code" href="/agent-sdk">
     `@t2000/sdk` — TypeScript surface for programmatic wallets, gasless transfers, Cetus swaps, x402 pay.
   </Card>
-  <Card title="Agent ID" icon="fingerprint" href="/agent-id">
-    A portable on-chain identity for every agent — handle, owner, profile, and a public directory. Register gaslessly with one command.
+  <Card title="Private API" icon="lock" href="/private-api">
+    OpenAI-compatible inference — every model behind one key, private by default (ZDR) with a confidential GPU-TEE tier. Manage it at [platform.t2000.ai](/platform).
   </Card>
 </CardGroup>
 
@@ -116,7 +125,9 @@ t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 | Wallet + signing | `@t2000/sdk` | npm |
 | CLI surface | `@t2000/cli` | npm |
 | MCP server | `@t2000/mcp` | npm |
+| Agent ID client | `@t2000/id` | npm · directory at [`id.t2000.ai`](https://id.t2000.ai) |
 | x402 API gateway | — | [`mpp.t2000.ai`](https://mpp.t2000.ai) |
+| Private inference API | — | [`api.t2000.ai`](https://api.t2000.ai) · console [`platform.t2000.ai`](https://platform.t2000.ai) |
 | Skills | — | [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) |
 | Consumer app | Audric | [`audric.ai`](https://audric.ai) |
 

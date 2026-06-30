@@ -78,21 +78,22 @@ These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending U
 
 ```typescript
 agent.on('balanceChange', (e) => { /* asset, previous, current, cause, tx? */ });
-agent.on('healthWarning', (e) => { /* healthFactor, threshold */ });
-agent.on('healthCritical', (e) => { /* healthFactor < 1.2 */ });
-agent.on('yield', (e) => { /* earned, total, apy, timestamp */ });
 agent.on('error', (e) => { /* T2000Error */ });
 ```
 
 ### Exposed Internals
 
-For integrations (`@suimpp/mpp`, `audric/apps/web-v2`):
+For host integrations:
 
 ```typescript
-agent.suiClient;   // SuiJsonRpcClient
+agent.suiClient;   // Sui client (gRPC — reads + execute; JSON-RPC sunsets 2026-07-31)
 agent.signer;      // TransactionSigner (works for keypair + zkLogin)
 agent.keypair;     // Ed25519Keypair (throws for zkLogin instances)
 ```
+
+<Note>
+**Agent identity** (register on-chain, claim a handle, declare a paid service) lives in a separate package — **[`@t2000/id`](/agent-id)** — and the `t2 agent` CLI suite. This SDK (`@t2000/sdk`) is the wallet + payments layer; `@t2000/id` is the Agent ID layer.
+</Note>
 
 ## Utility Exports
 

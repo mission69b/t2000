@@ -23,16 +23,17 @@
         "group": "Products",
         "pages": [
           "agent-wallet",
+          "agent-payments",
           "agent-id",
           "agent-commerce",
-          "agent-payments",
           "agent-sdk",
           "private-api",
+          "platform",
           "use-with-your-tools"
         ]
       },
       {
-        "group": "Recipes",
+        "group": "Cookbook",
         "pages": [
           "recipes/morning-brief",
           "recipes/concept-asset",
