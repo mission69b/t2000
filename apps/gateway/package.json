@@ -9,8 +9,8 @@
     "start": "next start",
     "lint": "eslint app lib test",
     "typecheck": "prisma generate && tsc --noEmit",
-    "test": "vitest run",
-    "test:e2e": "vitest run --config vitest.config.e2e.ts"
+    "test": "prisma generate && vitest run",
+    "test:e2e": "prisma generate && vitest run --config vitest.config.e2e.ts"
   },
   "dependencies": {
     "@prisma/client": "^6",
