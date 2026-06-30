@@ -20,7 +20,7 @@ Confidential computing is precise about what it proves. This page states the bou
 
 ## The deferred rung (v3.1)
 
-Full no-trust closes the gap above: the gateway itself runs **in a TEE** (its own attestation), the receipt key lives in **dstack KMS**, and **end-to-end encryption** means even t2000 never sees plaintext. Plus local `dcap-qvl` quote re-verification on the client. This is the heaviest, most security-critical rung — built when a "can't-trust-the-gateway" need pulls for it.
+Full no-trust closes the gap above: the gateway itself runs **in a TEE** (its own attestation), the receipt key lives in **dstack KMS**, and **end-to-end encryption** means even t2000 never sees plaintext. This is the heaviest, most security-critical rung — built when a "can't-trust-the-gateway" need pulls for it. (The TDX quote itself is *already* re-verified client-side with `dcap-qvl` via [`t2 verify`](/confidential-ai/verify) — that's shipped, not deferred.)
 
 <Note>
   This per-rung honesty is non-negotiable: the receipt + docs state *exactly* what each tier proves. Overclaiming "zero-trust" today would be the failure mode this whole design guards against — **a wrong "verifiable" claim is worse than honest ZDR.**

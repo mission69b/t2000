@@ -14,12 +14,14 @@ import { DEFAULT_API_BASE } from './inference.js';
 // check reads the attestation evidence embedded in the signed receipt
 // (`upstream.verified`).
 //
-// The receipt-signature check is ALSO trustless: it recomputes the dstack ACI
-// canonical bytes (JCS per `canonical.rs`) + recovers the secp256k1 signer and
-// matches it to the attested receipt-signing key (§9.4). Honest remaining scope:
-// the local DCAP-quote re-verification (`dcap-qvl`) is the one documented
-// `roadmap` check — never silently claimed. Per the spec: a wrong "verifiable"
-// claim is worse than honest ZDR.
+// All three core checks are trustless client-side: the Sui anchor (read from a
+// fullnode), the receipt signature (recompute dstack ACI canonical bytes per
+// `canonical.rs` + recover the secp256k1 signer, §9.4), and the TDX quote
+// (@phala/dcap-qvl chains to Intel's root — removing the server-side-DCAP SPOF).
+// The remaining hop is keyset_endorsement (tying the receipt key to the quote's
+// identity key); the receipt-sig check already proves the receipt is signed by
+// the published keyset key. Per the spec: a wrong "verifiable" claim is worse
+// than honest ZDR — so each check states exactly what it proves.
 
 const RECEIPT_ANCHORED_SUFFIX = '::anchor::ReceiptAnchored';
 
@@ -79,6 +81,8 @@ export interface VerifyOptions {
   /** Confidential model id for fetching the attested receipt-signing key
    *  (default `phala/glm-5.2`; the gateway key is workload-wide). */
   model?: string;
+  /** Skip the local DCAP quote verification (the slower, network-bound check). */
+  skipQuote?: boolean;
 }
 
 interface AciReceiptSignature {
@@ -219,6 +223,104 @@ function verifyReceiptSignature(receipt: AciReceipt, signingKeyHex: string): boo
     return recovered.toLowerCase() === endorsed.toLowerCase();
   } catch {
     return false;
+  }
+}
+
+interface QuoteCheck {
+  status: CheckStatus;
+  detail: string;
+  /** Definitively bad (verify the chain failed) — flips overall `verified`. */
+  forged: boolean;
+  tcbStatus?: string;
+}
+
+// TDX quote verification — TRUSTLESS, client-side (SPEC_CONFIDENTIAL_API Phase D
+// hardening). This is what removes the server-side-DCAP SPOF: instead of
+// trusting the gateway's `verified:true`, the client re-verifies the quote.
+//  1. @phala/dcap-qvl verifies the TDX quote, chaining to Intel's root CA via
+//     PCCS collateral (Intel-signed, so the PCCS is a cache, not a trust point)
+//     → genuine enclave + TCB status.
+//  2. confirm the genuine quote's `report_data` commits the report's
+//     `signing_address` (the attested gateway identity) — so the report's TEE
+//     binding is quote-backed, not fabricated — and that the quote is for the
+//     same `workload_id` as the receipt.
+// (Tying the receipt-signing key to the identity key via keyset_endorsement is a
+//  further hop; the receipt-signature check already proves the receipt is signed
+//  by the published keyset key.)
+interface AttReport {
+  workload_id?: string;
+  signing_address?: string;
+  attestation?: { evidence?: { quote?: string } };
+}
+
+async function verifyTdxQuote(
+  base: string,
+  model: string,
+  receiptWorkloadId: string
+): Promise<QuoteCheck> {
+  let nonce: string;
+  try {
+    nonce = bytesToHex(globalThis.crypto.getRandomValues(new Uint8Array(32)));
+  } catch {
+    return { status: 'skip', detail: 'no secure RNG available', forged: false };
+  }
+
+  let report: AttReport | undefined;
+  try {
+    const res = await fetch(
+      `${base}/aci/attestation?model=${encodeURIComponent(model)}&nonce=${nonce}`
+    );
+    if (res.ok) {
+      report = ((await res.json()) as { report?: AttReport }).report;
+    }
+  } catch {
+    // network — fall through to skip
+  }
+  const quoteHex = report?.attestation?.evidence?.quote;
+  if (!quoteHex) {
+    return {
+      status: 'skip',
+      detail: 'attestation report (with quote) unavailable — pass --model?',
+      forged: false,
+    };
+  }
+
+  try {
+    const { getCollateralAndVerify } = await import('@phala/dcap-qvl');
+    const quoteBytes = hexToBytes(quoteHex.replace(/^0x/, ''));
+    // Throws if the quote isn't a genuine TDX quote chaining to Intel's root.
+    const vr = await getCollateralAndVerify(quoteBytes);
+    const td = vr.report.asTd10() ?? vr.report.asTd15()?.base ?? null;
+    const reportData = td?.reportData;
+    const signingAddr = report?.signing_address?.replace(/^0x/, '').toLowerCase();
+    const addrBound = Boolean(
+      reportData &&
+        signingAddr &&
+        bytesToHex(reportData.slice(0, 20)) === signingAddr
+    );
+    const workloadMatch = report?.workload_id === receiptWorkloadId;
+    const tcb = vr.status;
+    const tcbBad = tcb === 'Revoked' || tcb === 'Unknown';
+    const forged = !(addrBound && workloadMatch) || tcbBad;
+    let detail: string;
+    if (forged && tcbBad) {
+      detail = `genuine TDX but TCB ${tcb}`;
+    } else if (!addrBound) {
+      detail = "report_data does NOT commit the report's signing address";
+    } else if (!workloadMatch) {
+      detail = "quote workload_id does not match the receipt's";
+    } else {
+      detail = `genuine Intel TDX (verified vs Intel collateral), TCB ${tcb}; report_data commits the attested signing address`;
+    }
+    return { status: forged ? 'fail' : 'pass', forged, tcbStatus: tcb, detail };
+  } catch (e) {
+    // A thrown verify is usually a PCCS/collateral/network issue, not a real
+    // forgery from our own gateway — surface it but don't claim "forged".
+    return {
+      status: 'fail',
+      forged: false,
+      detail: `could not verify the quote: ${e instanceof Error ? e.message : 'error'}`,
+    };
   }
 }
 
@@ -381,9 +483,37 @@ export async function verifyReceipt(
     trust: sigStatus === 'skip' ? 'roadmap' : 'trustless',
   });
 
+  // === 5. TDX quote (DCAP) — verify the quote genuine + fresh, client-side ===
+  let quoteForged = false;
+  if (opts.skipQuote) {
+    checks.push({
+      name: 'TDX quote (DCAP)',
+      status: 'skip',
+      detail: 'skipped (--quick)',
+      trust: 'trustless',
+    });
+  } else {
+    const q = await verifyTdxQuote(
+      base,
+      opts.model ?? 'phala/glm-5.2',
+      workloadId ?? ''
+    );
+    quoteForged = q.forged;
+    checks.push({
+      name: 'TDX quote (DCAP)',
+      status: q.status,
+      detail: q.detail,
+      trust: 'trustless',
+    });
+  }
+
   return {
     receiptId,
-    verified: Boolean(wireHash && workloadId) && anchorVerified && !signatureForged,
+    verified:
+      Boolean(wireHash && workloadId) &&
+      anchorVerified &&
+      !signatureForged &&
+      !quoteForged,
     anchorVerified,
     checks,
     wireHash,

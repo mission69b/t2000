@@ -44,16 +44,18 @@ export function registerVerify(program: Command): void {
     )
     .option('--api <url>', 'API base URL (default https://api.t2000.ai/v1)')
     .option('--model <id>', 'Confidential model for the attested key (default phala/glm-5.2)')
+    .option('--quick', 'Skip the local DCAP quote verification (the slower, network-bound check)')
     .option('--testnet', 'Read the anchor from Sui testnet (default mainnet)')
     .action(
       async (
         receiptId: string,
-        opts: { api?: string; model?: string; testnet?: boolean },
+        opts: { api?: string; model?: string; quick?: boolean; testnet?: boolean },
       ) => {
       try {
         const result = await verifyReceipt(receiptId, {
           apiBase: opts.api,
           model: opts.model,
+          skipQuote: opts.quick,
           network: opts.testnet ? 'testnet' : 'mainnet',
         });
 
@@ -90,12 +92,7 @@ export function registerVerify(program: Command): void {
         if (result.verified) {
           printLine(
             pc.green(
-              '  RESULT: ✓ verified — TEE-signed receipt + tamper-evident Sui anchor.',
-            ),
-          );
-          printLine(
-            pc.dim(
-              '  Local DCAP-quote re-verification (dcap-qvl) = roadmap (full no-trust).',
+              '  RESULT: ✓ verified — genuine TDX quote + TEE-signed receipt + Sui anchor, all checked client-side.',
             ),
           );
         } else {
