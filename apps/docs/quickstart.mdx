@@ -1,0 +1,67 @@
+---
+title: "Quickstart"
+description: "From zero to your first private inference call and your first agent payment in five minutes — with the CLI, the API, or MCP."
+---
+
+t2000 gives an agent (or a person) one identity, one balance, and one key that spans private inference, payments, and on-chain commerce. Here's the five-minute path.
+
+## 1. Install the CLI + create a wallet
+
+```bash
+npm install -g @t2000/cli
+t2 init
+```
+
+`t2 init` creates a non-custodial Sui wallet (your keypair never leaves your machine), and — gas permitting — registers your [Agent ID](/agent-id) so you're discoverable out of the box. See [Authentication](/authentication) for keys + funding.
+
+## 2. Your first private inference call
+
+<CodeGroup>
+
+```bash CLI
+t2 chat "Explain x402 in one sentence." --model zai/glm-5.2     # streams
+t2 chat --model phala/glm-5.2 "Summarize this privately"        # 🔒 confidential (GPU-TEE)
+```
+
+```bash curl
+curl https://api.t2000.ai/v1/chat/completions \
+  -H "Authorization: Bearer $T2000_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "model": "zai/glm-5.2", "messages": [{ "role": "user", "content": "Hello" }] }'
+```
+
+```json MCP
+// Any MCP client (Cursor, Claude Desktop) with T2000_API_KEY in the server env:
+{ "name": "t2000_chat", "arguments": { "prompt": "Explain x402 in one sentence." } }
+```
+
+</CodeGroup>
+
+Get a key (or fund a wallet) at [platform.t2000.ai](https://platform.t2000.ai) — see [Authentication](/authentication). Browse models with `t2 models` or [`GET /v1/models`](/models).
+
+## 3. Your first agent payment
+
+Pay any [x402](/agent-payments) service per call in USDC — no key, gasless, straight from your wallet:
+
+```bash
+t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
+  --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"hi"}]}' \
+  --max-price 0.10
+```
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    API keys, wallet funding, and the no-key x402 path.
+  </Card>
+  <Card title="Private & Confidential API" icon="lock" href="/private-api">
+    OpenAI-compatible inference, two privacy tiers.
+  </Card>
+  <Card title="Agent SDK" icon="code" href="/agent-sdk">
+    Build it programmatically in TypeScript.
+  </Card>
+  <Card title="Verify a response" icon="circle-check" href="/confidential-ai/verify">
+    Check a confidential response yourself.
+  </Card>
+</CardGroup>

@@ -1,0 +1,48 @@
+---
+title: "Receipts"
+description: "A signed receipt is a per-response transparency log that binds your request and response hashes to the attested gateway — hashes, never bodies."
+---
+
+A receipt is the gateway's signed record of one request: an ordered event log capturing what it received, which upstream it verified, and what it returned, with a hash at each step. It's signed by a key published in the [attestation report](/confidential-ai/attestation), so a verified receipt proves the response came from the attested workload and wasn't altered.
+
+Every confidential response returns the receipt id in the **`x-receipt-id`** header (streaming: `x_receipt_id` on the final usage chunk). `t2 chat --model phala/…` surfaces it inline: `🔒 confidential · attested · receipt rcpt-…`.
+
+## Fetch a receipt
+
+```bash
+curl "https://api.t2000.ai/v1/aci/receipts/{x-receipt-id}"
+```
+
+```json
+{
+  "api_version": "aci/1",
+  "receipt_id": "rcpt-…", "chat_id": "…",
+  "workload_id": "sha256:…",            // must match the attestation you verified
+  "workload_keyset_digest": "sha256:…",
+  "endpoint": "/v1/chat/completions", "served_at": 1782817781,
+  "event_log": [ … ],                    // the transparency events below
+  "signature": { "algo": "ecdsa-secp256k1", "key_id": "dstack-kms-receipt-v1", "value": "…" }
+}
+```
+
+## The transparency event log
+
+Each event carries a hash or a fact — never your prompt text:
+
+| Event | Records |
+|---|---|
+| `request.received` | Hash of the request body the gateway observed |
+| `route.selected` | The upstream route the backend accepted |
+| `request.forwarded` | Hash of the provider-facing request body |
+| `upstream.verified` | The upstream verification result + binding + typed claims (see [attested sessions](/confidential-ai/attested-sessions)) |
+| `response.returned` | `wire_hash` of the final response — what you match against the bytes you received |
+
+## Why hashes, not bodies
+
+The gateway stores **hashes**, not your request or response content — proving integrity without warehousing your data (zero data retention). The `response.returned.wire_hash` is what lets you prove the signature covers the exact bytes you received.
+
+## Streaming
+
+For streaming, the `x-receipt-id` can return early, but the signed receipt is complete only after the stream finishes (the `wire_hash` covers the full body). Fetch it after the stream ends.
+
+Next: [verify a response](/confidential-ai/verify) checks the receipt signature + the on-chain anchor yourself.

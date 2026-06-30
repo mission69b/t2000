@@ -1,0 +1,33 @@
+---
+title: "Models"
+description: "The t2000 model catalog — open, frontier, and confidential — behind one key, billed per token from one balance. Curated, not a 250-model dump."
+---
+
+`GET /v1/models` returns the live catalog: per-model pricing (the charged rate), context window, and a `privacy` field. The endpoint is **public** — fetch it without a key to browse.
+
+```bash
+curl https://api.t2000.ai/v1/models
+```
+
+## The catalog
+
+The launch set is curated — the models developers actually run agents on, plus the frontier set for completeness:
+
+| Tier | Models |
+|---|---|
+| **Open** | `zai/glm-5.2` · `deepseek/deepseek-v3.2` · `moonshotai/kimi-k2.5` · `alibaba/qwen3-max` · `openai/gpt-oss-120b` |
+| **Frontier** | `anthropic/claude-sonnet-4.6` · `anthropic/claude-opus-4.8` · `openai/gpt-5.5` · `google/gemini-3.1-pro-preview` · `xai/grok-4.3` |
+| **Confidential** (GPU-TEE) | `phala/glm-5.2` · `phala/gpt-oss-120b` · `phala/deepseek-v3.2` · `phala/qwen3.5-27b` · `phala/uncensored-24b` |
+
+The live set is always whatever `GET /v1/models` returns — it intersects this curated list with each backend's live catalog. List from the CLI with `t2 models`.
+
+## Privacy tiers
+
+Each model carries a `privacy` field so you can choose your posture programmatically:
+
+- **`private`** (default, every model) — **zero data retention**: providers are contractually bound not to store or train on your prompts.
+- **`confidential`** (`phala/*`) — inference runs in a **verified GPU-TEE**, with a signed, Sui-anchored receipt you can [verify yourself](/confidential-ai/verify). See [Confidential AI](/confidential-ai/how-it-works).
+
+## Pricing
+
+One price per model, billed per token from your credit balance — the same rate shown in `GET /v1/models`. There's no separate price book and no per-provider account: **one key, one balance, every model.** Add credit (card, USDC/USDsui, or an Audric plan) at [platform.t2000.ai](https://platform.t2000.ai) — see [Authentication](/authentication).

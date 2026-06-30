@@ -1,0 +1,58 @@
+---
+title: "Attestation"
+description: "The attestation report proves which TEE workload served your request and publishes the keys it signs with. Verify it first — every other guarantee depends on it."
+---
+
+The attestation report is the gateway's proof of identity: it shows the gateway is a specific piece of software running inside a genuine Intel TDX TEE, and publishes the public keys it uses to sign receipts. Every other guarantee depends on this report, so it's the first thing a verifier checks.
+
+## Check a model's attestation
+
+```bash
+curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2"
+# → { verified: true, enforced: true, teeType: "tdx", workloadId, tlsSpkiSha256, signingKey, tcbStatus, attestedAt }
+```
+
+This is the **summary** view — t2000 verifies the Intel TDX quote server-side (DCAP) and returns the result plus the channel binding (`tlsSpkiSha256`) and the receipt-signing key (`signingKey`). It's public — no key required.
+
+## The full report (verify it yourself)
+
+Add a `nonce` to get the **full** ACI report bound to your nonce — the raw artifacts a client needs to verify the quote *trustlessly* (DCAP via [`dcap-qvl`](https://github.com/Phala-Network/dcap-qvl)) and prove freshness:
+
+```bash
+curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2&nonce=$(openssl rand -hex 32)"
+```
+
+```json
+{
+  "verified": true, "workloadId": "sha256:…", "signingKey": "04…", "nonce": "…",
+  "report": {
+    "attestation": {
+      "evidence": { "quote": "…" },          // the hardware-signed TDX quote (DCAP root of trust)
+      "report_data": "…",                     // commits your nonce + the keyset → freshness
+      "workload_keyset": { "receipt_signing_keys": [ … ], "tls_public_keys": [ … ] },
+      "keyset_endorsement": "…",              // ties the keys to the workload identity
+      "source_provenance": { "repo_url": "…", "repo_commit": "…" },
+      "freshness": { "fetched_at": "…", "stale_after": "…" }
+    }
+  }
+}
+```
+
+Why the nonce matters: the gateway mixes your nonce into the hardware-signed quote's `report_data`. A report that commits a nonce you *just* generated can't be a replay — that's how you prove freshness. Generate a new one each time.
+
+## Fail-closed enforcement
+
+For a `phala/*` request, the gateway **verifies the upstream attestation before forwarding your prompt** and **fails closed** if it can't — a genuine, freshly-attested enclave, or the prompt never leaves us. Enforcement is on by default. The verified result is cached briefly (a workload's attestation is stable) so we re-attest periodically, not per request.
+
+## What the report contains
+
+| Field | What it proves |
+|---|---|
+| `workload_id` | A SHA-256 identity for the running workload — the stable "which gateway is this". |
+| `attestation.evidence.quote` | The hardware-signed TDX quote — the root of trust for everything else. |
+| `attestation.report_data` | Commits your `nonce` + the keyset → freshness + key binding. |
+| `attestation.workload_keyset` | The public keys: `receipt_signing_keys`, `tls_public_keys`, keyset epoch. |
+| `attestation.keyset_endorsement` | A signature under the workload identity tying the keys to the identity. |
+| `attestation.source_provenance` | The `repo_url` + `repo_commit` the workload was built from. |
+
+Next: the [receipt](/confidential-ai/receipts) binds a single response to this attested identity, and [verify](/confidential-ai/verify) checks the whole chain.

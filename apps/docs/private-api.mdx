@@ -141,79 +141,33 @@ for await (const chunk of stream) {
 
 ## Models
 
-`GET /v1/models` returns the live catalog with per-model pricing (the charged rate), context window, and privacy tier.
+`GET /v1/models` returns the live, **public** catalog — per-model pricing (the charged rate), context window, and a `privacy` field (`private` or `confidential`) so you can choose your posture programmatically. The set is curated (open · frontier · confidential), not a 250-model dump.
 
 ```bash
 curl https://api.t2000.ai/v1/models
 ```
 
-The launch set is curated, not a 250-model dump — the models developers actually run agents on, plus the frontier set for completeness:
+See **[Models](/models)** for the full catalog and how pricing works.
 
-| Tier | Models |
-|---|---|
-| **Open** | `zai/glm-5.2` · `deepseek/deepseek-v3.2` · `moonshotai/kimi-k2.5` · `alibaba/qwen3-max` · `openai/gpt-oss-120b` |
-| **Frontier** | `anthropic/claude-sonnet-4.6` · `anthropic/claude-opus-4.8` · `openai/gpt-5.5` · `google/gemini-3.1-pro-preview` · `xai/grok-4.3` |
-| **Confidential** (GPU-TEE) | `phala/glm-5.2` · `phala/gpt-oss-120b` · `phala/deepseek-v3.2` · `phala/qwen3.5-27b` · `phala/uncensored-24b` |
+## Confidential tier — verifiable, not just private
 
-The live set is always whatever `GET /v1/models` returns (it intersects the curated list with each backend's live catalog), and the endpoint is **public** — fetch it without a key to browse models + pricing.
-
-Each model in `GET /v1/models` carries a `privacy` field (`private` or `confidential`) so you can choose your posture programmatically.
-
-## Privacy tiers
-
-Two rungs, selectable per model (the `privacy` field in `GET /v1/models`):
-
-- **Private (default, every model)** — **zero data retention (ZDR)**: providers are contractually bound not to store or train on your prompts.
-- **Confidential (`phala/*` models)** — inference runs inside a **GPU-TEE (hardware enclave, Intel TDX + NVIDIA CC)**, so prompts are encrypted in use, not just contractually protected. The gateway **verifies the enclave's attestation before forwarding** your prompt and **fails closed** if it can't (genuine-attested-enclave-or-refuse). Each response returns an **`x-receipt-id`** (non-streaming: HTTP header; streaming: `x_receipt_id` on the final usage chunk) — a signed per-response receipt.
-
-<Note>
-  **What "Confidential" proves — stated honestly.** You can verify that the compute ran in a genuine GPU-TEE and that the exact response is committed in a signed, Sui-anchored receipt. On its forwarding leg the gateway still terminates TLS and sees plaintext (zero data retention, retains nothing) — full end-to-end encryption where even t2000 never sees plaintext is the deferred next rung. We claim exactly what the verifier proves, no more.
-</Note>
-
-### Verify confidentiality
+`phala/*` models run in a **verified GPU-TEE** and return a **signed receipt** you can anchor on Sui and **check yourself** with `t2 verify` — the only Sui-native *verifiable* confidential inference. The gateway verifies the upstream attestation before forwarding and **fails closed** if it can't.
 
 ```bash
-# Is a model backed by a genuine, freshly-attested GPU-TEE?
-curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2"
-# → { verified: true, enforced: true, teeType: "tdx", workloadId, tlsSpkiSha256, signingKey, … }
-
-# Add ?nonce=<hex> to get the FULL attestation report bound to your nonce —
-# the raw TDX quote + keyset + endorsement + provenance, so you can DCAP-verify
-# it yourself and prove freshness (the quote's report_data commits your nonce):
-curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2&nonce=$(openssl rand -hex 32)"
-# → { …summary, nonce, report: { attestation: { evidence.quote, report_data, workload_keyset, keyset_endorsement, … } } }
-
-# Fetch the signed receipt for a specific confidential response:
-curl "https://api.t2000.ai/v1/aci/receipts/{x-receipt-id}"
-
-# Resolve the receipt's attested-session (verified upstream channel, typed TCB
-# claims, channel binding, evidence) — from upstream.verified.session_id:
-curl "https://api.t2000.ai/v1/aci/sessions/{session-id}"
-
-# Look up a receipt's on-chain Sui anchor (the tx digest):
-curl "https://api.t2000.ai/v1/aci/anchor/{x-receipt-id}"
+t2 chat --model phala/glm-5.2 "hello"     # → 🔒 confidential · attested · receipt rcpt-…
+t2 verify rcpt-…                          # → ✓ verified (Sui anchor + receipt signature, trustless)
 ```
 
-The receipt commits the request/response **hashes** (not bodies) to the attested workload and is signed by a `signingKey` from the attestation. `t2 chat --model phala/…` surfaces the receipt id inline (`🔒 confidential · attested · receipt …`).
+<CardGroup cols={2}>
+  <Card title="How it works" icon="microchip" href="/confidential-ai/how-it-works">
+    Attestation + signed receipts + the Sui anchor.
+  </Card>
+  <Card title="Verify a response" icon="circle-check" href="/confidential-ai/verify">
+    `t2 verify` — trustless anchor + signature checks.
+  </Card>
+</CardGroup>
 
-### Anchor + verify (Sui-native)
-
-A confidential receipt can be **anchored on Sui** — emitting a tamper-evident, publicly-timestamped `ReceiptAnchored` event committing the response `wire_hash` + attested `workload_id`. This is the wedge: the only Sui-native verifiable-inference anchor.
-
-```bash
-# Anchor a receipt on-chain (idempotent — returns the existing tx if already anchored):
-curl -X POST "https://api.t2000.ai/v1/aci/anchor/{x-receipt-id}"
-# → { anchored: true, txDigest, explorer }
-
-# Then verify it yourself — fails closed on any mismatch:
-t2 verify {x-receipt-id}
-```
-
-`t2 verify` does two **trustless** checks: it reads the on-chain `ReceiptAnchored` event **straight from a Sui fullnode** (t2000 can't forge it) and confirms the committed `wire_hash` + `workload_id` match the signed receipt; and it **recovers the receipt's secp256k1 signer** (recomputing the dstack ACI canonical bytes) and matches it to the **attested** receipt-signing key — so an altered or forged receipt fails. It also surfaces the upstream's **typed TCB claims** (`tee_attested`, `gpu_attested`, `tcb_up_to_date`, …, each with its source) and the attested-session id. It prints a per-check report and exits non-zero if anything doesn't line up. (Programmatic: `agent.verify(receiptId)` / `verifyReceipt(receiptId)` in `@t2000/sdk`; `t2000_verify` over MCP.)
-
-<Note>
-  The **Sui anchor** and **receipt signature** are verified trustlessly client-side today. The **TDX quote** is verified + enforced **server-side** (the receipt also embeds the per-request `upstream.verified` attestation evidence); local `dcap-qvl` quote re-verification is the one documented hardening step toward full no-trust. We state exactly what's proven — a wrong "verifiable" claim is worse than honest ZDR.
-</Note>
+The full **[Confidential AI](/confidential-ai/how-it-works)** section covers [attestation](/confidential-ai/attestation), [receipts](/confidential-ai/receipts), [attested sessions & claims](/confidential-ai/attested-sessions), and the honest [trust boundary](/confidential-ai/trust-boundary).
 
 ## Pricing
 

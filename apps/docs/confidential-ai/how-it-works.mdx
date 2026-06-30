@@ -1,0 +1,50 @@
+---
+title: "How Confidential AI works"
+description: "The t2000 Confidential tier serves inference from a verified GPU-TEE and proves each response with an attestation report, a signed receipt, and a Sui anchor you can check yourself."
+---
+
+The **Confidential** tier (`phala/*` models) runs inference behind an **Attested Confidential Inference (ACI)** gateway — a workload inside a Trusted Execution Environment (Intel TDX + NVIDIA confidential computing). It does two things a normal API can't, plus one thing no other API does:
+
+1. It **proves which code is running**, in a genuine TEE, with an [attestation report](/confidential-ai/attestation).
+2. It signs a **per-response [receipt](/confidential-ai/receipts)** that ties your exact request and response to that attested workload.
+3. t2000 **anchors that receipt on Sui** — a tamper-evident, publicly-timestamped on-chain commitment — so you can [verify a response](/confidential-ai/verify) trustlessly, with one command.
+
+You don't have to trust our word. You fetch these artifacts and check the signatures, hashes, and the on-chain anchor yourself.
+
+## The two proof layers
+
+<CardGroup cols={2}>
+  <Card title="Attestation report" icon="microchip" href="/confidential-ai/attestation">
+    Proves the gateway is a specific workload in a genuine TEE, and publishes the keys it signs with.
+  </Card>
+  <Card title="Signed receipt" icon="receipt" href="/confidential-ai/receipts">
+    Proves what the gateway received and returned for one request, signed by a key from the attested report.
+  </Card>
+</CardGroup>
+
+The report answers *"who served me?"*. The receipt answers *"what did they do with my request?"*. A receipt is only meaningful once you've verified the report — the report is what binds the receipt's signing key to a genuine TEE.
+
+## Confidential vs routed
+
+The API serves two postures through one endpoint. The difference is whether the **upstream** that runs the model is itself attested:
+
+| | Confidential (`phala/*`) | Routed (frontier `openai/*`, `anthropic/*`, …) |
+|---|---|---|
+| Upstream verified before forwarding | Yes (fail-closed) | No |
+| Receipt `upstream.verified.result` | `verified` | `failed` |
+| Who sees your prompt | Only the attested gateway + attested upstream enclave | The gateway, then the third-party provider |
+
+Confidentiality is a property of the **verified upstream**, confirmed per response from the receipt — not of the model id. See [Confidential vs routed in the trust boundary](/confidential-ai/trust-boundary).
+
+## What you can verify
+
+After one confidential request you hold enough to check, locally:
+
+- The gateway is a genuine TEE workload with a known identity ([attestation](/confidential-ai/attestation)).
+- The receipt was signed by a key that report endorses ([verify](/confidential-ai/verify)).
+- The response you received is exactly the response that was signed (hash match).
+- The same hashes are committed **on Sui** — tamper-evident, independent of t2000 ([verify](/confidential-ai/verify)).
+
+<Note>
+  This is the **honest** counterpart: read the [trust boundary](/confidential-ai/trust-boundary) for exactly what the Confidential tier proves versus what it still trusts (the gateway's plaintext leg, under zero data retention).
+</Note>

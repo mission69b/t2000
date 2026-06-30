@@ -17,45 +17,66 @@
     "groups": [
       {
         "group": "Get started",
-        "pages": ["index"]
+        "pages": ["index", "quickstart", "authentication", "models"]
       },
       {
-        "group": "Products",
+        "group": "Agent stack",
         "pages": [
           "agent-wallet",
           "agent-payments",
           "agent-id",
           "agent-commerce",
-          "agent-sdk",
+          "agent-sdk"
+        ]
+      },
+      {
+        "group": "Private & Confidential API",
+        "pages": [
           "private-api",
-          "platform",
-          "use-with-your-tools",
           {
-            "group": "Recipes",
+            "group": "Confidential AI",
             "pages": [
-              "recipes/morning-brief",
-              "recipes/concept-asset",
-              "recipes/mail-card",
-              "recipes/write-and-run",
-              "recipes/ai-music",
-              "recipes/storybook",
-              "recipes/stock-research",
-              "recipes/crypto-research",
-              "recipes/transcribe-summarize",
-              "recipes/research-citations",
-              "recipes/meeting-prep",
-              "recipes/ai-research-digest",
-              "recipes/trip-planner",
-              "recipes/localize-clip",
-              "recipes/competitor-teardown",
-              "recipes/link-inspector",
-              "recipes/model-bakeoff"
+              "confidential-ai/how-it-works",
+              "confidential-ai/attestation",
+              "confidential-ai/receipts",
+              "confidential-ai/attested-sessions",
+              "confidential-ai/verify",
+              "confidential-ai/trust-boundary"
             ]
           }
+        ]
+      },
+      {
+        "group": "Platform & tools",
+        "pages": ["platform", "use-with-your-tools"]
+      },
+      {
+        "group": "Recipes",
+        "pages": [
+          "recipes/morning-brief",
+          "recipes/concept-asset",
+          "recipes/mail-card",
+          "recipes/write-and-run",
+          "recipes/ai-music",
+          "recipes/storybook",
+          "recipes/stock-research",
+          "recipes/crypto-research",
+          "recipes/transcribe-summarize",
+          "recipes/research-citations",
+          "recipes/meeting-prep",
+          "recipes/ai-research-digest",
+          "recipes/trip-planner",
+          "recipes/localize-clip",
+          "recipes/competitor-teardown",
+          "recipes/link-inspector",
+          "recipes/model-bakeoff"
         ]
       }
     ]
   },
+  "redirects": [
+    { "source": "/agent-engine", "destination": "/agent-sdk" }
+  ],
   "navbar": {
     "links": [
       {

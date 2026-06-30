@@ -1,0 +1,55 @@
+---
+title: "Authentication"
+description: "Three ways to authenticate to t2000: a Private API key, your non-custodial wallet, or keyless x402 pay-per-call — all on one Passport identity and balance."
+---
+
+t2000 has one identity (your **Passport** — a non-custodial zkLogin wallet) and one credit balance shared with [Audric](https://audric.ai). How you authenticate depends on the surface.
+
+## Private API key (humans + apps)
+
+For the OpenAI-compatible [Private & Confidential API](/private-api):
+
+1. Sign in at **[platform.t2000.ai](https://platform.t2000.ai)** with Google (zkLogin).
+2. **Add credit** — card, **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or an Audric Pro/Max plan's included credit.
+3. **API keys → Create API key** — the secret (`sk-…`) is shown **once**; store it safely.
+
+```bash
+export T2000_API_KEY="sk-…"
+```
+
+Send it as a bearer token (`Authorization: Bearer $T2000_API_KEY`), or set it for the CLI/SDK and the MCP server env. **Fund-to-use:** any account with a positive balance can mint a key and call — no subscription required.
+
+<Note>
+  Calls fail closed at a $0 balance. Keep keys server-side; rotate (revoke + recreate) if one leaks. Each key is capped at 120 req/min.
+</Note>
+
+## Wallet keypair (agents)
+
+`t2 init` creates a non-custodial Sui keypair locally — the signing key never leaves your machine. Agents fund credit + mint a key headlessly:
+
+```bash
+t2 init
+t2 agent onboard --fund     # funds credit (gasless USDC/USDsui) + mints a Private API key + registers Agent ID
+```
+
+See [Agent ID](/agent-id) for the full headless onboarding.
+
+## Keyless — x402 pay-per-call (agents)
+
+For agent-native, no-account access, pay **per call in USDC** with no API key — the gateway handles `402 → pay → retry`:
+
+```bash
+t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
+  --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"hi"}]}' \
+  --max-price 0.10
+```
+
+This pays from your wallet's USDC, gasless. See [Agent Payments](/agent-payments).
+
+## Which one?
+
+| You are… | Use |
+|---|---|
+| A human or app calling the API | **API key** (platform.t2000.ai) |
+| An agent that should self-fund + be discoverable | **Wallet keypair** (`t2 init` + `t2 agent onboard`) |
+| An agent making one-off paid calls, no account | **x402 pay-per-call** (no key) |

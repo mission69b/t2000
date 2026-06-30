@@ -1,0 +1,55 @@
+---
+title: "Verify a response"
+description: "Check — don't trust — a confidential response by its receipt id. t2 verify reads the on-chain Sui anchor and recovers the receipt signature, both trustlessly, and fails closed on any mismatch."
+---
+
+The Confidential tier is **verifiable**, not just claimed. Given a receipt id, `t2 verify` checks the whole chain and **fails closed** on any forgery — and the Sui-anchor check needs zero trust in t2000.
+
+## Anchor + verify (Sui-native — the wedge)
+
+A confidential receipt can be **anchored on Sui**: a `ReceiptAnchored` event committing the response `wire_hash` + attested `workload_id` — tamper-evident and publicly timestamped. RedPill anchors on Ethereum/Automata; t2000 anchors on **Sui** — the only Sui-native verifiable-inference anchor.
+
+```bash
+# Anchor a receipt on-chain (idempotent — returns the existing tx if already anchored):
+curl -X POST "https://api.t2000.ai/v1/aci/anchor/{x-receipt-id}"
+# → { anchored: true, txDigest, explorer }
+
+# Then verify it yourself:
+t2 verify {x-receipt-id}
+```
+
+```text
+  ✓ Receipt              well-formed (9 log entries, workload sha256:3def…)
+  ✓ Confidential upstream chutes: verified
+        · tee_attested: asserted (hardware_proven)
+        · gpu_attested: asserted (verifier_derived)
+        · tcb_up_to_date: asserted (hardware_proven)
+        session: as_c5a0…
+  ✓ Sui anchor (trustless) on-chain ReceiptAnchored matches (wire_hash + workload_id), tx BrVp…
+  ✓ Receipt signature (trustless) signed by the attested receipt key (dstack-kms-receipt-v1)
+  RESULT: ✓ verified — TEE-signed receipt + tamper-evident Sui anchor.
+```
+
+## What it checks
+
+- **Sui anchor (trustless).** Reads the on-chain `ReceiptAnchored` event **straight from a Sui fullnode** and confirms the committed `wire_hash` + `workload_id` match the signed receipt. t2000 can't forge it; a wrong/missing anchor fails closed.
+- **Receipt signature (trustless).** Recovers the receipt's secp256k1 signer — recomputing the dstack ACI canonical bytes (JCS → `sha256` → 65-byte `r‖s‖v`) — and matches it to the **attested** receipt-signing key. An altered or forged receipt fails.
+- **Confidential upstream + typed claims.** Surfaces the upstream's [typed TCB claims](/confidential-ai/attested-sessions#typed-claims) (each with its source) and the attested-session id.
+
+It prints a per-check report and exits non-zero if anything doesn't line up.
+
+## Programmatic
+
+```typescript
+import { verifyReceipt } from "@t2000/sdk";
+const result = await verifyReceipt("rcpt-…");
+result.verified;        // false on any mismatch
+result.anchorVerified;  // the trustless Sui-anchor core
+result.upstream?.claims; // [{ name, status, source }]
+```
+
+Also: `agent.verify(receiptId)` on a `T2000` instance, or the `t2000_verify` MCP tool.
+
+<Note>
+  **Roadmap (honest):** the Sui anchor and receipt signature are verified trustlessly client-side today. The TDX quote is verified + enforced **server-side**; local `dcap-qvl` quote re-verification — using the full report from [`/v1/aci/attestation?nonce=`](/confidential-ai/attestation) — is the last step to fully client-trustless. See the [trust boundary](/confidential-ai/trust-boundary).
+</Note>
