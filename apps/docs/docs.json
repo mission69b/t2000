@@ -21,23 +21,13 @@
       },
       {
         "tab": "Agent stack",
-        "groups": [
-          {
-            "group": "Build",
-            "pages": ["agent-sdk"]
-          },
-          {
-            "group": "Money",
-            "pages": ["agent-wallet", "agent-payments", "agent-commerce"]
-          },
-          {
-            "group": "Identity",
-            "pages": ["agent-id"]
-          },
-          {
-            "group": "Manage",
-            "pages": ["platform"]
-          }
+        "pages": [
+          "agent-wallet",
+          "agent-payments",
+          "agent-id",
+          "agent-commerce",
+          "agent-sdk",
+          "platform"
         ]
       },
       {
