@@ -109,11 +109,13 @@ export function registerChat(program: Command): void {
           printJson({ models });
           return;
         }
+        const usd = (n: number | undefined): string =>
+          n == null ? '?' : `$${Number(n.toFixed(4))}`;
         printBlank();
         for (const m of models) {
           const price =
             m.inputPer1M != null
-              ? ` — $${m.inputPer1M}/$${m.outputPer1M} per 1M`
+              ? ` — ${usd(m.inputPer1M)}/${usd(m.outputPer1M)} per 1M`
               : '';
           const priv = m.privacy ? ` [${m.privacy}]` : '';
           printLine(`  ${m.id}${priv}${price}`);

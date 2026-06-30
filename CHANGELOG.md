@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.15.1] - 2026-06-30
+
+### Fixed
+
+- **`@t2000/cli`** — `t2 models` now formats per-1M prices cleanly (`$2.1/$6.3` instead of float noise like `$2.0999999999999996`).
+
 ## [5.15.0] - 2026-06-30
 
 ### Added — the Private API goes agent-native (key-based; x402 pay-per-call next)
