@@ -71,6 +71,17 @@ export function registerVerify(program: Command): void {
         for (const check of result.checks) {
           printLine(`  ${mark(check)} ${pc.bold(check.name)}${trustTag(check)}`);
           printLine(`      ${pc.dim(check.detail)}`);
+          // Under the upstream check, surface the typed TCB claims + the
+          // attested-session id (resolve at /v1/aci/sessions/{id}).
+          if (check.name === 'Confidential upstream' && result.upstream) {
+            for (const c of result.upstream.claims ?? []) {
+              const src = c.source ? pc.dim(` (${c.source})`) : '';
+              printLine(`        ${pc.dim('·')} ${c.name}: ${c.status}${src}`);
+            }
+            if (result.upstream.sessionId) {
+              printLine(pc.dim(`        session: ${result.upstream.sessionId}`));
+            }
+          }
         }
         printBlank();
         if (result.anchor) {

@@ -21,6 +21,8 @@ export type {
   VerifyResult,
   VerifyCheck,
   VerifyAnchor,
+  VerifyUpstream,
+  UpstreamClaim,
   VerifyOptions,
   CheckStatus,
   TrustMode,

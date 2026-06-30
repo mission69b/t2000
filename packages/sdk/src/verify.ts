@@ -40,6 +40,24 @@ export interface VerifyAnchor {
   explorer: string;
 }
 
+/** A typed TCB claim from the attested upstream (dstack ACI §tcb-and-claims). */
+export interface UpstreamClaim {
+  name: string;
+  status: string;
+  source?: string;
+}
+
+export interface VerifyUpstream {
+  provider?: string;
+  modelId?: string;
+  result?: string;
+  tcbStatus?: string;
+  /** The attested-session id (`as_…`) — resolve at GET /v1/aci/sessions/{id}. */
+  sessionId?: string;
+  /** Typed TCB claims (tee_attested, tcb_up_to_date, gpu_attested, …). */
+  claims?: UpstreamClaim[];
+}
+
 export interface VerifyResult {
   receiptId: string;
   /** True iff the receipt resolved AND its on-chain Sui anchor matches. */
@@ -49,7 +67,7 @@ export interface VerifyResult {
   checks: VerifyCheck[];
   wireHash?: string;
   workloadId?: string;
-  upstream?: { provider?: string; result?: string; tcbStatus?: string };
+  upstream?: VerifyUpstream;
   anchor?: VerifyAnchor;
 }
 
@@ -85,8 +103,39 @@ interface AciReceipt {
     result?: string;
     provider?: string;
     upstream_name?: string;
+    model_id?: string;
     tcb_status?: string;
+    session_id?: string;
+    claims?:
+      | Record<string, { status?: string; source?: string }>
+      | { name?: string; status?: string; source?: string }[];
   }[];
+}
+
+/** Normalize ACI claims (object-map or array) into a typed list. */
+function normalizeClaims(
+  claims:
+    | Record<string, { status?: string; source?: string }>
+    | { name?: string; status?: string; source?: string }[]
+    | undefined
+): UpstreamClaim[] {
+  if (!claims) {
+    return [];
+  }
+  if (Array.isArray(claims)) {
+    return claims
+      .filter((c) => c.name)
+      .map((c) => ({
+        name: c.name as string,
+        status: c.status ?? 'unknown',
+        source: c.source,
+      }));
+  }
+  return Object.entries(claims).map(([name, v]) => ({
+    name,
+    status: v?.status ?? 'unknown',
+    source: v?.source,
+  }));
 }
 
 function fullnodeUrl(network: 'mainnet' | 'testnet'): string {
@@ -220,6 +269,7 @@ export async function verifyReceipt(
   // === 2. Confidential upstream — attestation evidence in the signed receipt ===
   const upstreamEv = receipt.event_log.find((e) => e.type === 'upstream.verified');
   const upstreamOk = upstreamEv?.result === 'verified';
+  const claims = normalizeClaims(upstreamEv?.claims);
   checks.push({
     name: 'Confidential upstream',
     status: upstreamEv ? (upstreamOk ? 'pass' : 'fail') : 'skip',
@@ -341,8 +391,11 @@ export async function verifyReceipt(
     upstream: upstreamEv
       ? {
           provider: upstreamEv.provider ?? upstreamEv.upstream_name,
+          modelId: upstreamEv.model_id,
           result: upstreamEv.result,
           tcbStatus: upstreamEv.tcb_status,
+          sessionId: upstreamEv.session_id,
+          claims: claims.length > 0 ? claims : undefined,
         }
       : undefined,
     anchor,
