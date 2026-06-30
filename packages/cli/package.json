@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "5.14.0",
+  "version": "5.14.1",
   "description": "Agent Wallet for AI agents on Sui — gasless USDC + USDsui sends, Cetus swap, MPP paid API access, MCP integration, scriptable from any shell.",
   "type": "module",
   "bin": {
