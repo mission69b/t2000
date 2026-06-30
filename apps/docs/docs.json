@@ -28,33 +28,7 @@
           },
           {
             "group": "Money",
-            "pages": [
-              "agent-wallet",
-              "agent-payments",
-              {
-                "group": "Recipes",
-                "pages": [
-                  "recipes/morning-brief",
-                  "recipes/concept-asset",
-                  "recipes/mail-card",
-                  "recipes/write-and-run",
-                  "recipes/ai-music",
-                  "recipes/storybook",
-                  "recipes/stock-research",
-                  "recipes/crypto-research",
-                  "recipes/transcribe-summarize",
-                  "recipes/research-citations",
-                  "recipes/meeting-prep",
-                  "recipes/ai-research-digest",
-                  "recipes/trip-planner",
-                  "recipes/localize-clip",
-                  "recipes/competitor-teardown",
-                  "recipes/link-inspector",
-                  "recipes/model-bakeoff"
-                ]
-              },
-              "agent-commerce"
-            ]
+            "pages": ["agent-wallet", "agent-payments", "agent-commerce"]
           },
           {
             "group": "Identity",
@@ -102,6 +76,28 @@
           "api-reference/receipts",
           "api-reference/sessions",
           "api-reference/anchor"
+        ]
+      },
+      {
+        "tab": "Recipes",
+        "pages": [
+          "recipes/morning-brief",
+          "recipes/concept-asset",
+          "recipes/mail-card",
+          "recipes/write-and-run",
+          "recipes/ai-music",
+          "recipes/storybook",
+          "recipes/stock-research",
+          "recipes/crypto-research",
+          "recipes/transcribe-summarize",
+          "recipes/research-citations",
+          "recipes/meeting-prep",
+          "recipes/ai-research-digest",
+          "recipes/trip-planner",
+          "recipes/localize-clip",
+          "recipes/competitor-teardown",
+          "recipes/link-inspector",
+          "recipes/model-bakeoff"
         ]
       }
     ]

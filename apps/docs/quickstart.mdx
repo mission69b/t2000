@@ -3,16 +3,28 @@ title: "Quickstart"
 description: "From zero to your first private inference call and your first agent payment in five minutes — with the CLI, the API, or MCP."
 ---
 
-t2000 gives an agent (or a person) one identity, one balance, and one key that spans private inference, payments, and on-chain commerce. Here's the five-minute path.
+t2000 gives an agent (or a person) one identity, one balance, and one key that spans private inference, payments, and on-chain commerce. Here's the five-minute path. (New here? Start with the [Introduction](/).)
 
-## 1. Install the CLI + create a wallet
+## Prerequisites
+
+- A Sui address — the wallet creates one for you.
+- ~$1 of USDC to send + a little SUI (~0.05) for gas on swaps. USDC/USDsui sends and x402 API payments are **gasless**.
+- Node.js 18+. An MCP-compatible client (Claude Desktop / Cursor / Windsurf / Cline / Continue / Codex) if you want the agent to call the wallet directly.
+
+## 1. Install + create a wallet
 
 ```bash
 npm install -g @t2000/cli
-t2 init
+t2 init                              # create a wallet (local keypair, 0600 perms)
 ```
 
-`t2 init` creates a non-custodial Sui wallet (your keypair never leaves your machine), and — gas permitting — registers your [Agent ID](/agent-id) so you're discoverable out of the box. See [Authentication](/authentication) for keys + funding.
+Or paste the **one-prompt setup** into any AI client (Cursor, Claude Code, ChatGPT) — it fetches the read-only setup skill (config-only; never moves funds) and wires everything:
+
+```text
+Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my Agent Wallet.
+```
+
+`t2 init` registers your [Agent ID](/agent-id) too (gas permitting), so you're discoverable out of the box. See [Authentication](/authentication) for keys + funding.
 
 ## 2. Your first private inference call
 
@@ -48,6 +60,42 @@ t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
   --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"hi"}]}' \
   --max-price 0.10
 ```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="t2: command not found (after a successful install)">
+    The install wrote the binary, but npm's global `bin` directory isn't on your shell's `PATH`. Confirm:
+
+    ```bash
+    NPM_BIN="$(npm prefix -g)/bin"
+    ls -l "$NPM_BIN"/t2 "$NPM_BIN"/t2000      # do the symlinks exist?
+    "$NPM_BIN/t2" --version                    # runs via full path? (package is healthy)
+    case ":$PATH:" in *":$NPM_BIN:"*) echo "✓ on PATH";; *) echo "✗ NOT on PATH → $NPM_BIN";; esac
+    ```
+
+    If the full-path command prints the version but it's NOT on PATH, add the dir to your shell profile:
+
+    ```bash
+    # zsh
+    echo "export PATH=\"$(npm prefix -g)/bin:\$PATH\"" >> ~/.zshrc && source ~/.zshrc
+    ```
+
+    Then open a **fresh terminal** and re-run `t2 --version`. (`t2000` is a built-in alias for `t2`.)
+  </Accordion>
+  <Accordion title="EACCES / permission errors on install">
+    Don't `sudo npm install` — point npm's global prefix at your home dir instead:
+
+    ```bash
+    mkdir -p ~/.npm-global
+    npm config set prefix ~/.npm-global
+    echo "export PATH=\"$HOME/.npm-global/bin:\$PATH\"" >> ~/.zshrc && source ~/.zshrc
+    npm install -g @t2000/cli
+    ```
+
+    Or install Node via [nvm](https://github.com/nvm-sh/nvm) / Homebrew, which keep the global prefix user-writable.
+  </Accordion>
+</AccordionGroup>
 
 ## Where to go next
 
