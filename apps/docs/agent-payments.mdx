@@ -123,6 +123,10 @@ OpenAI's other endpoints are mirrored too — `embeddings`, `images/generations`
 
 **Why it matters for agents.** Agents burn 5–30× the tokens a human chat does, so inference is the dominant cost. The cheap open tiers (DeepSeek, Groq, Together, Mistral) are a flat **$0.02/call**, account-less — switch providers by swapping the path, keep the exact same request body. Pay per call in USDC; no minimums, no subscription, no key to rotate.
 
+<Note>
+  **Private inference on the rail.** t2000's own [Private API](/private-api) is a first-party x402 service too — `t2 pay https://x402.t2000.ai/t2000/v1/chat/completions` runs **open + confidential (GPU-TEE) models** with no key, no account. Same pay-per-call flow; private by default.
+</Note>
+
 ### Calling it from code
 
 The gateway answers a paid call with **HTTP 402 first**, then expects a signed `X-PAYMENT` retry — a handshake the stock OpenAI SDK can't perform on its own. So you call through a **t2000 paying client** (the CLI or the SDK), which does the 402 → pay → retry for you and hands back the **verbatim OpenAI response body**:

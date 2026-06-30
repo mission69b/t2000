@@ -105,7 +105,21 @@ const { content } = await agent.chat({
 
 </CodeGroup>
 
-Get the key at [platform.t2000.ai](https://platform.t2000.ai) and set it as `T2000_API_KEY` (CLI/SDK) or in the MCP server env. *(A no-key, agent-native **x402 pay-per-call** path — pay per token in USDC from your wallet, no key — is on the roadmap.)*
+Get the key at [platform.t2000.ai](https://platform.t2000.ai) and set it as `T2000_API_KEY` (CLI/SDK) or in the MCP server env.
+
+## Pay-per-call over x402 — no key, no account
+
+Agents can pay **per call in USDC** with **no API key** — the t2000 Private API is a first-party [x402](/agent-payments) service on the gateway. Call it with the existing `t2 pay` / `t2000_pay` (the gateway handles `402` → pay → retry):
+
+```bash
+t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
+  --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"Explain x402 in one sentence."}]}' \
+  --max-price 0.10
+```
+
+- **No key / no account** — pay from your wallet's USDC, gasless. The agent-native path (vs the key-based one above).
+- **Models:** the **open + confidential** set (`zai/glm-5.2`, `deepseek/deepseek-v3.2`, `openai/gpt-oss-120b`, and the `phala/*` confidential models) — browse the live list at `GET /t2000/v1/models` (free). Frontier + large contexts use a **key** (above).
+- **Capped** — flat per-call price with an output + context cap (what keeps no-key pricing predictable). For uncapped/per-token precision, use a key, or watch for the **max-hold settlement** tier (next).
 
 ## Streaming
 

@@ -52,6 +52,20 @@ export const services: Service[] = [
     ],
   },
   {
+    id: 't2000',
+    name: 't2000 Private API',
+    serviceUrl: `${BASE_URL}/t2000`,
+    description:
+      'Private inference, no key — pay per call in USDC. Open + confidential (GPU-TEE) models; OpenAI-compatible. Frontier + large contexts: use an API key at api.t2000.ai.',
+    chain: 'sui',
+    currency: 'USDC',
+    categories: ['ai'],
+    logo: '/logos/t2000.svg',
+    endpoints: [
+      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions — open + confidential models (no key, pay-per-call; capped). Browse models at GET /t2000/v1/models (free).', price: '0.05' },
+    ],
+  },
+  {
     id: 'fal',
     name: 'fal.ai',
     serviceUrl: `${BASE_URL}/fal`,

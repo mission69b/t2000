@@ -117,6 +117,10 @@ const serverSchema = z.object({
   TINIFY_API_KEY: optionalString,
   TOGETHER_API_KEY: optionalString,
   VIRUSTOTAL_API_KEY: optionalString,
+  // t2000 Private API service key (sk-…) — a funded t2000 account's key the
+  // gateway uses to call api.t2000.ai for the no-key x402 inference tier. When
+  // unset, the /t2000 chat route degrades to 503. Optional like other vendors.
+  T2000_PRIVATE_API_KEY: optionalString,
 
   // ---- Required infrastructure (the gateway literally cannot run
   // without these — INTERNAL_API_KEY is the audric ↔ gateway auth
@@ -225,6 +229,7 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     TINIFY_API_KEY: process.env.TINIFY_API_KEY,
     TOGETHER_API_KEY: process.env.TOGETHER_API_KEY,
     VIRUSTOTAL_API_KEY: process.env.VIRUSTOTAL_API_KEY,
+    T2000_PRIVATE_API_KEY: process.env.T2000_PRIVATE_API_KEY,
     // Server — required infra
     INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
     KV_REST_API_URL: process.env.KV_REST_API_URL,
@@ -300,6 +305,7 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'TINIFY_API_KEY',
   'TOGETHER_API_KEY',
   'VIRUSTOTAL_API_KEY',
+  'T2000_PRIVATE_API_KEY',
   // Required infra
   'INTERNAL_API_KEY',
   'KV_REST_API_URL',
