@@ -8,6 +8,7 @@ import {
   X402_VERSION,
 } from '@suimpp/mpp/x402';
 import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commerce';
+import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
 import { TREASURY_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
 import {
@@ -103,35 +104,6 @@ async function fetchSellerProfile(seller: string): Promise<SellerProfile> {
   }
 }
 
-// SSRF guard: only deliver to public https hosts (the seller's mcpEndpoint is
-// arbitrary on-chain data — never let it point the gateway at an internal host).
-function isSafeDeliveryUrl(raw: string): boolean {
-  let u: URL;
-  try {
-    u = new URL(raw);
-  } catch {
-    return false;
-  }
-  if (u.protocol !== 'https:') {
-    return false;
-  }
-  const host = u.hostname.toLowerCase();
-  if (
-    host === 'localhost' ||
-    host === '127.0.0.1' ||
-    host === '0.0.0.0' ||
-    host === '::1' ||
-    host.endsWith('.local') ||
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
-    /^169\.254\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
-  ) {
-    return false;
-  }
-  return true;
-}
-
 interface DeliveryResult {
   ok: boolean;
   status: number;
@@ -145,14 +117,22 @@ async function deliverToSeller(
   endpoint: string,
   body: string,
   buyer: string,
+  opts?: { method?: 'GET' | 'POST'; extraHeaders?: Record<string, string> },
 ): Promise<DeliveryResult> {
+  const method = opts?.method ?? 'POST';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
   try {
     const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-agent-buyer': buyer },
-      body: body || undefined,
+      method,
+      headers: {
+        'content-type': 'application/json',
+        // Seller-configured auth (Agent Deploy) — injected server-side, never
+        // exposed to the buyer. Buyer identity comes last (can't be overridden).
+        ...(opts?.extraHeaders ?? {}),
+        'x-agent-buyer': buyer,
+      },
+      body: method === 'POST' ? body || undefined : undefined,
       // Block SSRF-via-redirect (a public URL 30x-ing to an internal host).
       redirect: 'error',
       signal: controller.signal,
@@ -319,16 +299,25 @@ async function handle(
 
   const { settle, report } = settled;
   const buyer = report.sender ?? settle.payer;
-  const deliveryMode =
-    Boolean(profile.mcpEndpoint) && isSafeDeliveryUrl(profile.mcpEndpoint as string);
+
+  // Agent Deploy (Option A): a gateway-hosted config-proxy takes precedence
+  // over a self-hosted mcpEndpoint. Deliver to the seller's configured upstream
+  // (injecting their encrypted headers); the upstream/key never touch the
+  // directory or any response.
+  const deployed = await getDeployedService(seller);
+  const deliveryTarget = deployed?.upstreamUrl ?? profile.mcpEndpoint ?? null;
+  const deliveryMode = Boolean(deliveryTarget) && isSafeUpstreamUrl(deliveryTarget as string);
 
   // DELIVERY MODE — the treasury holds the gross while we attempt delivery
   // (the escrow window). The seller is released only on a 2xx.
   if (deliveryMode) {
     const delivered = await deliverToSeller(
-      profile.mcpEndpoint as string,
+      deliveryTarget as string,
       buyerBody,
       buyer,
+      deployed
+        ? { method: deployed.method, extraHeaders: deployed.headers }
+        : undefined,
     );
     if (!delivered.ok) {
       let refunded: string | null = null;

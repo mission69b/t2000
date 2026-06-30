@@ -9,6 +9,7 @@
 //   2. GET a challenge nonce → sign it as a personal message with the keypair.
 //   3. POST it to mint an API key (returned once).
 
+import { createHash } from 'node:crypto';
 import type { Command } from 'commander';
 import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
@@ -26,6 +27,18 @@ import {
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const DEFAULT_GATEWAY = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
+
+/** Collect repeatable `--header k=v` flags into an object. */
+function collectHeader(
+  value: string,
+  previous: Record<string, string>,
+): Record<string, string> {
+  const [key, ...rest] = value.split('=');
+  if (key && rest.length > 0) {
+    previous[key.trim()] = rest.join('=').trim();
+  }
+  return previous;
+}
 
 function normalizeTopupAsset(input: string | undefined): 'USDC' | 'USDsui' {
   return input?.toLowerCase() === 'usdsui' ? 'USDsui' : 'USDC';
@@ -474,6 +487,132 @@ Subcommands:
             printKeyValue('Price', `$${opts.price} USDC`);
           }
           printKeyValue('Tx', String(digest));
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  group
+    .command('deploy')
+    .description(
+      "Deploy a paid service by wrapping any HTTP API — t2000 hosts the proxy (your key stays server-side, encrypted), lists it, and settles payments. No server needed. Use --remove to take it down. [Agent Commerce]",
+    )
+    .option('--upstream <url>', 'The upstream API URL to wrap (https)')
+    .option(
+      '--header <k=v>',
+      'Header to inject into upstream calls (repeatable; e.g. your API key)',
+      collectHeader,
+      {},
+    )
+    .option('--method <method>', 'Upstream method: GET or POST (default POST)')
+    .option('--price <usdc>', 'Price per call in USDC (e.g. 0.02)')
+    .option('--remove', 'Take down the deployed service')
+    .option('--gateway <url>', `Gateway base URL (default ${DEFAULT_GATEWAY})`)
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(
+      async (opts: {
+        upstream?: string;
+        header?: Record<string, string>;
+        method?: string;
+        price?: string;
+        remove?: boolean;
+        gateway?: string;
+        key?: string;
+        api?: string;
+      }) => {
+        try {
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const gateway = opts.gateway ?? DEFAULT_GATEWAY;
+          const agent = await withAgent({ keyPath: opts.key });
+          const address = agent.address();
+
+          if (opts.remove) {
+            const ts = Date.now();
+            const msg = `t2000-deploy-remove:${ts}`;
+            const { signature } = await agent.keypair.signPersonalMessage(
+              new TextEncoder().encode(msg),
+            );
+            await fetchJson(`${gateway}/deploy/config`, {
+              method: 'DELETE',
+              body: { address, timestamp: ts, signature },
+            });
+            // Clear the directory endpoint (keeps price/x402; pass "" to clear).
+            await runSponsoredTx({
+              keypair: agent.keypair,
+              actor: address,
+              prepareUrl: `${base}/agent/service/prepare`,
+              prepareBody: { address, mcpEndpoint: '' },
+              submitUrl: `${base}/agent/service/submit`,
+            }).catch(() => undefined);
+            if (isJsonMode()) {
+              printJson({ address, removed: true });
+              return;
+            }
+            printBlank();
+            printSuccess('Service taken down.');
+            printBlank();
+            return;
+          }
+
+          if (!(opts.upstream && opts.price)) {
+            throw new Error('Both --upstream and --price are required (or use --remove).');
+          }
+          const price = Number.parseFloat(opts.price);
+          if (Number.isNaN(price) || price <= 0) {
+            throw new Error(`--price must be a positive number (got "${opts.price}").`);
+          }
+          const method =
+            (opts.method ?? 'POST').toUpperCase() === 'GET' ? 'GET' : 'POST';
+          const headers = opts.header ?? {};
+
+          // 1. Store the proxy config (signed, config-bound, headers encrypted).
+          const ts = Date.now();
+          const bodyHash = createHash('sha256')
+            .update(`${opts.upstream}|${method}|${JSON.stringify(headers)}`)
+            .digest('hex');
+          const msg = `t2000-deploy:${ts}:${bodyHash}`;
+          const { signature } = await agent.keypair.signPersonalMessage(
+            new TextEncoder().encode(msg),
+          );
+          await fetchJson(`${gateway}/deploy/config`, {
+            method: 'POST',
+            body: {
+              address,
+              timestamp: ts,
+              signature,
+              upstreamUrl: opts.upstream,
+              method,
+              headers,
+            },
+          });
+
+          // 2. List it in the directory (price + x402 + a hosted endpoint marker).
+          const { digest } = await runSponsoredTx({
+            keypair: agent.keypair,
+            actor: address,
+            prepareUrl: `${base}/agent/service/prepare`,
+            prepareBody: {
+              address,
+              mcpEndpoint: `${gateway}/deploy/${address}`,
+              paymentMethods: ['x402'],
+              priceUsdc: opts.price,
+            },
+            submitUrl: `${base}/agent/service/submit`,
+          });
+
+          if (isJsonMode()) {
+            printJson({ address, upstream: opts.upstream, price, digest });
+            return;
+          }
+          printBlank();
+          printSuccess('Service deployed — live + listed in the directory.');
+          printKeyValue('Wraps', opts.upstream);
+          printKeyValue('Price', `$${opts.price} USDC`);
+          printKeyValue('Tx', String(digest));
+          printInfo(`Buyers: t2 agent pay ${truncateAddress(address)}`);
           printBlank();
         } catch (error) {
           handleError(error);
