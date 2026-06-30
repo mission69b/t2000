@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.14.1] - 2026-06-30
+
 ### Fixed
 
 - **`@t2000/cli`** — `t2 agent link` now rejects a self-link (passing the agent's own address as the owner) with a clear message, and validates the owner address client-side. (The owner is your human Passport, not the agent.)
