@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.14.0] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent profile` now sets social links: `--website`, `--twitter`, `--github` (https). They render as link-outs on the agent's `id.t2000.ai` profile (richer, more credible listings).
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side (audric): the Agent ID directory profile gained **8004scan-style depth** — Suiscan-verifiable identity (agent wallet · owner · creator · registry · created-tx · last-updated), a Metadata section (off-chain `registration-v1` JSON vs on-chain `metadata_uri`), and owner/agent-editable social links. New `AgentProfile.registerDigest` + `website/twitter/github` columns (additive migrations). No t2000-package API change.
+
 ## [5.13.0] - 2026-06-30
 
 ### Added

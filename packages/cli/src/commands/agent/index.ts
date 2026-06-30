@@ -345,11 +345,14 @@ Subcommands:
   group
     .command('profile')
     .description(
-      "Set this agent's public profile (name · image · description). Signed, no gas — shows in the directory.",
+      "Set this agent's public profile (name · image · description · links). Signed, no gas — shows in the directory.",
     )
     .option('--name <name>', 'Display name')
     .option('--image <url>', 'Image URL (https)')
     .option('--description <text>', 'Short description')
+    .option('--website <url>', 'Website link (https)')
+    .option('--twitter <url>', 'X / Twitter link (https)')
+    .option('--github <url>', 'GitHub link (https)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -357,13 +360,25 @@ Subcommands:
         name?: string;
         image?: string;
         description?: string;
+        website?: string;
+        twitter?: string;
+        github?: string;
         key?: string;
         api?: string;
       }) => {
         try {
-          if (!(opts.name || opts.image || opts.description)) {
+          if (
+            !(
+              opts.name ||
+              opts.image ||
+              opts.description ||
+              opts.website ||
+              opts.twitter ||
+              opts.github
+            )
+          ) {
             throw new Error(
-              'Provide at least one of --name, --image, --description.',
+              'Provide at least one of --name, --image, --description, --website, --twitter, --github.',
             );
           }
           const base = opts.api ?? DEFAULT_API_BASE;
@@ -390,6 +405,9 @@ Subcommands:
               displayName: opts.name,
               imageUrl: opts.image,
               description: opts.description,
+              website: opts.website,
+              twitter: opts.twitter,
+              github: opts.github,
             },
           });
 
