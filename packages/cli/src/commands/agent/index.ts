@@ -10,6 +10,7 @@
 //   3. POST it to mint an API key (returned once).
 
 import { createHash } from 'node:crypto';
+import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { Command } from 'commander';
 import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
@@ -286,6 +287,18 @@ Subcommands:
         const base = opts.api ?? DEFAULT_API_BASE;
         const agent = await withAgent({ keyPath: opts.key });
         const address = agent.address();
+        // Guard: `owner` is the human Passport, not the agent's own address — a
+        // self-link is the common mistake (and a no-op you'd then have to undo).
+        if (!isValidSuiAddress(owner)) {
+          throw new Error(
+            'Provide a valid Sui address for the owner (your Passport, e.g. 0x…).',
+          );
+        }
+        if (normalizeSuiAddress(owner) === normalizeSuiAddress(address)) {
+          throw new Error(
+            "That's this agent's own address. Pass YOUR Passport address (the human owner) — e.g. the one shown in platform.t2000.ai.",
+          );
+        }
         const { digest } = await runSponsoredTx({
           keypair: agent.keypair,
           actor: address,
