@@ -1,0 +1,33 @@
+---
+title: "Get session"
+description: "GET /v1/aci/sessions/{id} — the attested-session record a confidential receipt references: verified channel, binding, typed claims, evidence."
+---
+
+<RequestExample>
+
+```bash curl
+curl "https://api.t2000.ai/v1/aci/sessions/as_…"
+```
+
+</RequestExample>
+
+**`GET /v1/aci/sessions/{id}`** · **Public**. Concepts: [Attested sessions & claims](/confidential-ai/attested-sessions).
+
+`{id}` is the `upstream.verified.session_id` (`as_…`) from a [receipt](/api-reference/receipts). The id is a content hash of the verified material — immutable and idempotent.
+
+## Response
+
+The verified upstream channel: its identity + endpoint, the enforced channel binding (`tls_spki_sha256` or `e2ee_public_key_sha256`), the [typed TCB claims](/confidential-ai/attested-sessions#typed-claims) (each with a `status` + an honest `source` — `hardware_proven` / `verifier_derived` / `provider_asserted` / `operator_asserted`), and the byte-preserving evidence the verifier checked.
+
+```json
+{
+  "session_id": "as_…",
+  "provider": "chutes",
+  "channel_bindings": [{ "type": "e2ee_public_key_sha256", "public_key_sha256": "…" }],
+  "claims": {
+    "tee_attested": { "status": "asserted", "source": "hardware_proven", "reason": "…" },
+    "gpu_attested": { "status": "asserted", "source": "verifier_derived", "reason": "…" },
+    "tcb_up_to_date": { "status": "asserted", "source": "hardware_proven", "reason": "…" }
+  }
+}
+```

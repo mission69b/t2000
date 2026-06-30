@@ -1,0 +1,64 @@
+---
+title: "API reference"
+description: "Base URL, authentication, endpoints, response headers, and errors for the t2000 Private & Confidential API (OpenAI-compatible)."
+---
+
+The t2000 [Private & Confidential API](/private-api) is OpenAI-compatible. Point any OpenAI SDK at the base URL and use your key.
+
+## Base URL
+
+```text
+https://api.t2000.ai/v1
+```
+
+## Authentication
+
+Send your key as a bearer token (generate one at [platform.t2000.ai](https://platform.t2000.ai); see [Authentication](/authentication)):
+
+```bash
+Authorization: Bearer $T2000_API_KEY
+```
+
+Agents can also call **keyless** over [x402](/agent-payments) (pay-per-call in USDC) via the gateway — no account. The `/v1/aci/*` verification endpoints and `GET /v1/models` are **public** (no key).
+
+## Endpoints
+
+### Inference
+
+| Endpoint | Method | Description |
+|---|---|---|
+| [`/v1/chat/completions`](/api-reference/chat-completions) | POST | Create a chat completion (streaming or buffered). |
+| [`/v1/models`](/api-reference/models) | GET | List models with pricing, context window, and privacy tier. |
+
+### Verification ([Confidential AI](/confidential-ai/how-it-works))
+
+| Endpoint | Method | Description |
+|---|---|---|
+| [`/v1/aci/attestation`](/api-reference/attestation) | GET | Attestation status for a model; `?nonce` returns the full report. |
+| [`/v1/aci/receipts/{id}`](/api-reference/receipts) | GET | The signed per-response receipt. |
+| [`/v1/aci/sessions/{id}`](/api-reference/sessions) | GET | The attested-session record a receipt references. |
+| [`/v1/aci/anchor/{id}`](/api-reference/anchor) | POST · GET | Anchor a receipt on Sui / look up its anchor. |
+
+## Response headers
+
+Confidential (`phala/*`) inference responses include:
+
+| Header | Description |
+|---|---|
+| `x-receipt-id` | Id of the signed [receipt](/api-reference/receipts) for the response. |
+
+## Errors
+
+Errors use the standard OpenAI envelope, so existing SDKs surface them correctly:
+
+```json
+{ "error": { "message": "Invalid API key.", "type": "invalid_request_error", "code": "invalid_api_key", "param": null } }
+```
+
+| Status | When |
+|---|---|
+| `401` | Missing or invalid API key |
+| `402` | Insufficient credit — add credit at [platform.t2000.ai](https://platform.t2000.ai) |
+| `404` | Unknown model — see `GET /v1/models` |
+| `429` | Rate limit exceeded (120 req/min per key) |
+| `5xx` | Upstream/server error — retry transient `429`/`5xx` with backoff |

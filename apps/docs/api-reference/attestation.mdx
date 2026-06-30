@@ -1,0 +1,46 @@
+---
+title: "Get attestation"
+description: "GET /v1/aci/attestation — the confidential-upstream attestation for a model; add a nonce for the full, client-verifiable report."
+---
+
+<RequestExample>
+
+```bash summary
+curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2"
+```
+
+```bash full report
+curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2&nonce=$(openssl rand -hex 32)"
+```
+
+</RequestExample>
+
+**`GET /v1/aci/attestation`** · **Public**. Concepts: [Attestation](/confidential-ai/attestation).
+
+## Query params
+
+| Param | Description |
+|---|---|
+| `model` | **Required.** A confidential (`phala/*`) model id. |
+| `nonce` | Optional. 16–64 bytes of hex. Returns the **full report** with the quote's `report_data` bound to your nonce (freshness). |
+| `full` | Optional. `true` to include the full report without supplying a nonce. |
+
+## Response
+
+```json
+{
+  "model": "phala/glm-5.2",
+  "verified": true,
+  "enforced": true,
+  "teeType": "tdx",
+  "workloadId": "sha256:…",
+  "tlsSpkiSha256": "…",
+  "signingKey": "04…",
+  "tcbStatus": "UpToDate",
+  "attestedAt": "2026-06-30T…Z",
+  "nonce": "…",
+  "report": { "attestation": { "evidence": { "quote": "…" }, "report_data": "…", "workload_keyset": { "…": "…" }, "keyset_endorsement": "…", "source_provenance": { "…": "…" }, "freshness": { "…": "…" } } }
+}
+```
+
+`verified` / `signingKey` / `workloadId` are the server-verified summary (fast, cached). `report` (only when `nonce`/`full`) is the raw ACI report for **client-side** DCAP verification + freshness. `enforced: true` means a verification miss fails closed.

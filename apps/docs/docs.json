@@ -14,7 +14,10 @@
     "dark": "#0a0a0a"
   },
   "navigation": {
-    "groups": [
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
       {
         "group": "Get started",
         "pages": ["index", "quickstart", "authentication", "models"]
@@ -70,6 +73,25 @@
           "recipes/competitor-teardown",
           "recipes/link-inspector",
           "recipes/model-bakeoff"
+        ]
+      }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/chat-completions",
+              "api-reference/models",
+              "api-reference/attestation",
+              "api-reference/receipts",
+              "api-reference/sessions",
+              "api-reference/anchor"
+            ]
+          }
         ]
       }
     ]
