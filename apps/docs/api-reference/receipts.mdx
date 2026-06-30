@@ -1,36 +1,6 @@
 ---
 title: "Get receipt"
-description: "GET /v1/aci/receipts/{id} — the signed per-response receipt binding your request and response hashes to the attested workload."
+openapi: "GET /aci/receipts/{id}"
 ---
 
-<RequestExample>
-
-```bash curl
-curl "https://api.t2000.ai/v1/aci/receipts/rcpt-…"
-```
-
-</RequestExample>
-
-**`GET /v1/aci/receipts/{id}`** · **Public**. Concepts: [Receipts](/confidential-ai/receipts).
-
-`{id}` is the `x-receipt-id` returned by a confidential completion.
-
-## Response
-
-```json
-{
-  "api_version": "aci/1",
-  "receipt_id": "rcpt-…", "chat_id": "…",
-  "workload_id": "sha256:…", "workload_keyset_digest": "sha256:…",
-  "endpoint": "/v1/chat/completions", "method": "POST", "served_at": 1782817781,
-  "event_log": [
-    { "seq": 0, "type": "request.received", "body_hash": "sha256:…" },
-    { "seq": 2, "type": "route.selected", "target_route_id": "chutes:…" },
-    { "seq": 5, "type": "upstream.verified", "provider": "chutes", "result": "verified", "required": true, "session_id": "as_…", "claims": { "…": "…" } },
-    { "seq": 8, "type": "response.returned", "wire_hash": "sha256:…" }
-  ],
-  "signature": { "algo": "ecdsa-secp256k1", "key_id": "dstack-kms-receipt-v1", "value": "…" }
-}
-```
-
-The receipt commits **hashes, not bodies**. `signature` covers the canonical receipt bytes, signed by a `receipt_signing_keys` entry from the [attestation](/api-reference/attestation). Verify it (signature + the on-chain anchor) with [`t2 verify`](/confidential-ai/verify).
+Concepts: [Receipts](/confidential-ai/receipts). The receipt commits hashes, not bodies; verify its signature + on-chain anchor with [`t2 verify`](/confidential-ai/verify).

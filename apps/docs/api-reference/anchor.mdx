@@ -1,33 +1,6 @@
 ---
 title: "Anchor receipt"
-description: "POST /v1/aci/anchor/{id} anchors a confidential receipt on Sui; GET looks up its on-chain anchor — the tamper-evident, Sui-native commitment t2 verify checks."
+openapi: "POST /aci/anchor/{id}"
 ---
 
-<RequestExample>
-
-```bash anchor
-curl -X POST "https://api.t2000.ai/v1/aci/anchor/rcpt-…"
-```
-
-```bash look up
-curl "https://api.t2000.ai/v1/aci/anchor/rcpt-…"
-```
-
-</RequestExample>
-
-**`POST /v1/aci/anchor/{id}`** · **`GET /v1/aci/anchor/{id}`** · **Public**. Concepts: [Verify a response](/confidential-ai/verify).
-
-`{id}` is the receipt id. **POST** anchors the receipt on Sui — emitting a `ReceiptAnchored` event committing the response `wire_hash` + attested `workload_id` (idempotent: re-anchoring returns the existing tx, no duplicate event). **GET** returns the stored anchor digest (404 if not yet anchored).
-
-## Response
-
-```json
-{
-  "anchored": true,
-  "receiptId": "rcpt-…",
-  "txDigest": "BrVp…",
-  "explorer": "https://suiscan.xyz/mainnet/tx/BrVp…"
-}
-```
-
-The anchor is the only Sui-native verifiable-inference commitment. A verifier reads the on-chain event straight from a fullnode and confirms the committed hashes match the signed receipt — t2000 can't forge it. Run it end-to-end with [`t2 verify {id}`](/confidential-ai/verify).
+Concepts: [Verify a response](/confidential-ai/verify). **POST** anchors the receipt on Sui (idempotent); **GET** on the same path looks up the stored anchor digest. Then run [`t2 verify {id}`](/confidential-ai/verify).

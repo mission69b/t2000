@@ -144,5 +144,9 @@
   },
   "seo": {
     "indexing": "all"
+  },
+  "api": {
+    "openapi": "openapi.json",
+    "playground": { "display": "interactive" }
   }
 }

@@ -1,0 +1,259 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "t2000 Private & Confidential API",
+    "description": "OpenAI-compatible inference, private by default (zero data retention), with a verifiable confidential (GPU-TEE + Sui-anchored receipts) tier.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://api.t2000.ai/v1" }],
+  "security": [{ "bearerAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Private API key (`sk-…`) from platform.t2000.ai. Agents can also call keyless over x402."
+      }
+    }
+  },
+  "paths": {
+    "/chat/completions": {
+      "post": {
+        "summary": "Chat completions",
+        "description": "Create a chat completion. Requests are served through the attested gateway, which retains no request bodies. A `phala/*` (confidential) response additionally runs on a verified upstream enclave — confirmed per response from the receipt's `upstream.verified` event — and returns an `x-receipt-id` header you can verify (see /confidential-ai/verify). OpenAI-compatible: tools, vision, and other chat parameters pass through for models that support them.",
+        "operationId": "createChatCompletion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["model", "messages"],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "Model id — see GET /v1/models.",
+                    "examples": ["zai/glm-5.2", "phala/glm-5.2"]
+                  },
+                  "messages": {
+                    "type": "array",
+                    "description": "OpenAI chat messages.",
+                    "items": {
+                      "type": "object",
+                      "required": ["role", "content"],
+                      "properties": {
+                        "role": { "type": "string", "enum": ["system", "user", "assistant"] },
+                        "content": { "type": "string" }
+                      }
+                    }
+                  },
+                  "stream": {
+                    "type": "boolean",
+                    "description": "Stream chat.completion.chunk SSE events, terminated by `data: [DONE]`.",
+                    "default": false
+                  },
+                  "max_tokens": { "type": "integer", "description": "Max output tokens." },
+                  "temperature": { "type": "number", "description": "Sampling temperature (0–2).", "default": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An OpenAI chat.completion object. Confidential responses also return an `x-receipt-id` header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "object": { "type": "string", "examples": ["chat.completion"] },
+                    "model": { "type": "string" },
+                    "choices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "index": { "type": "integer" },
+                          "message": {
+                            "type": "object",
+                            "properties": {
+                              "role": { "type": "string" },
+                              "content": { "type": "string" }
+                            }
+                          },
+                          "finish_reason": { "type": "string" }
+                        }
+                      }
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "prompt_tokens": { "type": "integer" },
+                        "completion_tokens": { "type": "integer" },
+                        "total_tokens": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid API key." },
+          "402": { "description": "Insufficient credit — add credit at platform.t2000.ai." }
+        }
+      }
+    },
+    "/models": {
+      "get": {
+        "summary": "List models",
+        "description": "List the live, public model catalog — per-model pricing, context window, and privacy tier (`private` or `confidential`). No key required.",
+        "operationId": "listModels",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The model catalog.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "context_window": { "type": "integer" },
+                          "privacy": { "type": "string", "enum": ["private", "confidential"] },
+                          "pricing": {
+                            "type": "object",
+                            "properties": {
+                              "input_per_1m": { "type": "number" },
+                              "output_per_1m": { "type": "number" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/aci/attestation": {
+      "get": {
+        "summary": "Get attestation",
+        "description": "Confidential-upstream attestation for a model. Returns the server-verified summary (cached); add `nonce` (or `full=true`) for the full ACI report — the raw TDX quote, keyset, endorsement, provenance, and freshness — bound to your nonce, so you can DCAP-verify the quote yourself and prove freshness. Public; no key required. See /confidential-ai/attestation.",
+        "operationId": "getAttestation",
+        "security": [],
+        "parameters": [
+          { "name": "model", "in": "query", "required": true, "schema": { "type": "string", "examples": ["phala/glm-5.2"] }, "description": "A confidential (phala/*) model id." },
+          { "name": "nonce", "in": "query", "required": false, "schema": { "type": "string" }, "description": "16–64 bytes of hex. Returns the full report bound to your nonce (freshness)." },
+          { "name": "full", "in": "query", "required": false, "schema": { "type": "boolean" }, "description": "Include the full report without supplying a nonce." }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attestation summary (+ full `report` when nonce/full is supplied).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "model": { "type": "string" },
+                    "verified": { "type": "boolean" },
+                    "enforced": { "type": "boolean" },
+                    "teeType": { "type": "string" },
+                    "workloadId": { "type": "string" },
+                    "tlsSpkiSha256": { "type": "string" },
+                    "signingKey": { "type": "string" },
+                    "tcbStatus": { "type": "string" },
+                    "nonce": { "type": "string" },
+                    "report": { "type": "object", "description": "The full ACI report (only when nonce/full)." }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing/invalid model or nonce." }
+        }
+      }
+    },
+    "/aci/receipts/{id}": {
+      "get": {
+        "summary": "Get receipt",
+        "description": "The signed per-response receipt, binding your request/response hashes (not bodies) to the attested workload. `{id}` is the `x-receipt-id` from a confidential completion. Public. See /confidential-ai/receipts.",
+        "operationId": "getReceipt",
+        "security": [],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "examples": ["rcpt-…"] }, "description": "The receipt id." }
+        ],
+        "responses": {
+          "200": { "description": "The signed ACI receipt." },
+          "404": { "description": "Unknown receipt id." }
+        }
+      }
+    },
+    "/aci/sessions/{id}": {
+      "get": {
+        "summary": "Get session",
+        "description": "The attested-session record a receipt references (`upstream.verified.session_id`): the verified upstream channel, its binding, typed TCB claims, and evidence. Public. See /confidential-ai/attested-sessions.",
+        "operationId": "getSession",
+        "security": [],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "examples": ["as_…"] }, "description": "The attested-session id." }
+        ],
+        "responses": {
+          "200": { "description": "The attested-session record." },
+          "404": { "description": "Unknown session id." }
+        }
+      }
+    },
+    "/aci/anchor/{id}": {
+      "post": {
+        "summary": "Anchor receipt",
+        "description": "Anchor a confidential receipt on Sui — emits a `ReceiptAnchored` event committing the response wire_hash + attested workload_id. Idempotent: re-anchoring returns the existing tx. Public. See /confidential-ai/verify.",
+        "operationId": "anchorReceipt",
+        "security": [],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "examples": ["rcpt-…"] }, "description": "The receipt id to anchor." }
+        ],
+        "responses": {
+          "200": {
+            "description": "The on-chain anchor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "anchored": { "type": "boolean" },
+                    "receiptId": { "type": "string" },
+                    "txDigest": { "type": "string" },
+                    "explorer": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Look up anchor",
+        "description": "Look up a receipt's on-chain Sui anchor (the tx digest). 404 if the receipt hasn't been anchored. Public.",
+        "operationId": "getAnchor",
+        "security": [],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "examples": ["rcpt-…"] }, "description": "The receipt id." }
+        ],
+        "responses": {
+          "200": { "description": "The stored anchor digest." },
+          "404": { "description": "Receipt not anchored." }
+        }
+      }
+    }
+  }
+}

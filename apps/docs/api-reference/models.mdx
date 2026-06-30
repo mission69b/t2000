@@ -1,46 +1,6 @@
 ---
 title: "List models"
-description: "GET /v1/models — the live, public model catalog with pricing, context window, and privacy tier."
+openapi: "GET /models"
 ---
 
-<RequestExample>
-
-```bash curl
-curl https://api.t2000.ai/v1/models
-```
-
-</RequestExample>
-
-**`GET /v1/models`** · **Public** (no key required).
-
-Returns the live catalog — it intersects the curated set with each backend's live availability. See [Models](/models) for the catalog overview.
-
-## Response
-
-```json
-{
-  "data": [
-    {
-      "id": "zai/glm-5.2",
-      "context_window": 131072,
-      "privacy": "private",
-      "pricing": { "input_per_1m": 0.6, "output_per_1m": 2.2 }
-    },
-    {
-      "id": "phala/glm-5.2",
-      "context_window": 131072,
-      "privacy": "confidential",
-      "pricing": { "input_per_1m": 0.9, "output_per_1m": 2.9 }
-    }
-  ]
-}
-```
-
-| Field | Description |
-|---|---|
-| `id` | Model id to pass as `model` in [chat completions](/api-reference/chat-completions). |
-| `context_window` | Max context length (tokens). |
-| `privacy` | `private` (ZDR, every model) or `confidential` (GPU-TEE; see [Confidential AI](/confidential-ai/how-it-works)). |
-| `pricing.input_per_1m` / `output_per_1m` | The **charged** rate per 1M tokens (USD). |
-
-From the CLI: `t2 models`.
+The public model catalog — see [Models](/models) for the overview, or run `t2 models` from the CLI.
