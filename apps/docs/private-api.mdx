@@ -1,13 +1,16 @@
 ---
-title: "Private API"
-description: "api.t2000.ai — an OpenAI-compatible inference API. Every frontier + open model behind one key, private by default (zero data retention), pay-as-you-go from one balance."
+title: "Private & Confidential API"
+description: "api.t2000.ai — an OpenAI-compatible inference API. Private by default (zero data retention); verifiably confidential (GPU-TEE + Sui-anchored signed receipts) when it matters. Every model behind one key, pay-as-you-go."
 ---
 
-The **Private API** is an OpenAI-compatible inference endpoint at `api.t2000.ai`. Point any OpenAI SDK at it and call frontier + open models through **one key** — private by default (zero data retention), metered per token from a single credit balance.
+The **Private & Confidential API** is an OpenAI-compatible inference endpoint at `api.t2000.ai`. Point any OpenAI SDK at it and call frontier + open models through **one key**, in two privacy tiers:
 
-Manage everything — keys, credit, usage, the model catalog — at the developer console: **[platform.t2000.ai](https://platform.t2000.ai)**. Sign in with Google (zkLogin); it's the same Passport identity + credit balance as [Audric](https://audric.ai), so one account spans the app and the API.
+- **Private** (default, every model) — **zero data retention**: providers are contractually bound not to store or train on your prompts.
+- **Confidential** (`phala/*` models) — inference runs in a **verified GPU-TEE** (hardware enclave), and every response carries a **signed receipt anchored on Sui** that you can **check yourself** with `t2 verify` — the only Sui-native *verifiable* confidential inference.
 
-Your edge over a raw provider: **privacy by default, every model (private + confidential) behind one key, and pay-as-you-go with no per-provider accounts.**
+Metered per token from a single credit balance. Manage everything — keys, credit, usage, the model catalog — at the developer console: **[platform.t2000.ai](https://platform.t2000.ai)**. Sign in with Google (zkLogin); it's the same Passport identity + credit balance as [Audric](https://audric.ai), so one account spans the app and the API.
+
+Your edge over a raw provider: **private by default, verifiably confidential when it matters, every model behind one key, and pay-as-you-go with no per-provider accounts.**
 
 ## Base URL
 
@@ -156,12 +159,16 @@ The live set is always whatever `GET /v1/models` returns (it intersects the cura
 
 Each model in `GET /v1/models` carries a `privacy` field (`private` or `confidential`) so you can choose your posture programmatically.
 
-## Privacy
+## Privacy tiers
 
-Two rungs, selectable per model:
+Two rungs, selectable per model (the `privacy` field in `GET /v1/models`):
 
 - **Private (default, every model)** — **zero data retention (ZDR)**: providers are contractually bound not to store or train on your prompts.
 - **Confidential (`phala/*` models)** — inference runs inside a **GPU-TEE (hardware enclave, Intel TDX + NVIDIA CC)**, so prompts are encrypted in use, not just contractually protected. The gateway **verifies the enclave's attestation before forwarding** your prompt and **fails closed** if it can't (genuine-attested-enclave-or-refuse). Each response returns an **`x-receipt-id`** (non-streaming: HTTP header; streaming: `x_receipt_id` on the final usage chunk) — a signed per-response receipt.
+
+<Note>
+  **What "Confidential" proves — stated honestly.** You can verify that the compute ran in a genuine GPU-TEE and that the exact response is committed in a signed, Sui-anchored receipt. On its forwarding leg the gateway still terminates TLS and sees plaintext (zero data retention, retains nothing) — full end-to-end encryption where even t2000 never sees plaintext is the deferred next rung. We claim exactly what the verifier proves, no more.
+</Note>
 
 ### Verify confidentiality
 
