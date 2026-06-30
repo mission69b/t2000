@@ -37,6 +37,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 swap <amount> <from> <to>` | Best-route swap via Cetus Aggregator V3 across 20+ Sui DEXs. `from`/`to` accept a symbol **or a full coin type** (`0x…::mod::TOK`) — unknown types resolve decimals on-chain. `--slippage <pct>` (default 1%, max 5%), `--quote` for a preview without signing. Requires SUI for gas. |
 | `t2 pay <url>` | Pay for an x402-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). `--estimate` previews the price **and the endpoint's input schema** without paying. |
 | `t2 chat <message>` · `t2 models` | Private inference on the [Private API](/private-api) (OpenAI-compatible; ZDR, a `phala/*` tier is GPU-TEE confidential). `t2 chat` streams; `--model` (default `zai/glm-5.2`), `--system`, `--no-stream`. Needs `T2000_API_KEY` (or `--api-key`) from platform.t2000.ai. `t2 models` lists the catalog. |
+| `t2 verify <receipt-id>` | Verify a confidential response — checks the signed receipt + its trustless on-chain Sui anchor. Fails closed (exit 1) on any mismatch. No key required. |
 | `t2 services search <query>` · `inspect <url>` | Discover x402 services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
 | `t2 limit set --per-tx <USD>` · `--daily <USD>` | Spending caps in `~/.t2000/config.json` — **on by default** ($25/tx · $100/day, daily = cumulative); enforced on CLI **and** MCP writes. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
@@ -127,6 +128,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_pay` | write | Pay an x402-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
 | `t2000_chat` | read | Private inference on the [Private API](/private-api) (OpenAI-compatible). Needs `T2000_API_KEY` in the server env. |
 | `t2000_models` | read | List the Private API model catalog (id · privacy tier · pricing). |
+| `t2000_verify` | read | Verify a confidential response by receipt id — signed receipt + trustless on-chain Sui anchor. No key required. |
 | `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
 Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 8 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-mcp`.

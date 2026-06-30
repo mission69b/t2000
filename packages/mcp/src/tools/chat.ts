@@ -1,6 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { type ChatMessage, chatCompletion, listModels } from '@t2000/sdk';
+import {
+  type ChatMessage,
+  chatCompletion,
+  listModels,
+  verifyReceipt,
+} from '@t2000/sdk';
 import { errorResult } from '../errors.js';
 
 // `t2000_chat` + `t2000_models` — private inference on the t2000 Private API
@@ -76,6 +81,24 @@ export function registerChatTools(server: McpServer): void {
       try {
         const models = await listModels();
         return { content: [{ type: 'text', text: JSON.stringify({ models }) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    't2000_verify',
+    "Verify a confidential response by its receipt id (the `receiptId` from a confidential t2000_chat). Checks the signed receipt + its trustless on-chain Sui anchor (reads the ReceiptAnchored event straight from a fullnode) and returns a per-check result that's `verified:false` on any forgery/mismatch. No key required.",
+    {
+      receiptId: z.string().describe('A confidential receipt id (rcpt-…)'),
+    },
+    async ({ receiptId }) => {
+      try {
+        const result = await verifyReceipt(receiptId);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
       } catch (err) {
         return errorResult(err);
       }

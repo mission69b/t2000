@@ -16,6 +16,15 @@ export type {
   ChatUsage,
   ApiModel,
 } from './inference.js';
+export { verifyReceipt } from './verify.js';
+export type {
+  VerifyResult,
+  VerifyCheck,
+  VerifyAnchor,
+  VerifyOptions,
+  CheckStatus,
+  TrustMode,
+} from './verify.js';
 export { executeTx } from './wallet/executeTx.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';

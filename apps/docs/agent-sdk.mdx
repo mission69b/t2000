@@ -74,6 +74,7 @@ These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending U
 | `agent.chat(params)` | `ChatResult` | Private inference on the [Private API](/private-api) (OpenAI-compatible). Key-based — `params.apiKey` or `T2000_API_KEY`. Returns `{ content, model, usage, raw }`. |
 | `agent.chatStream(params)` | `AsyncGenerator<string>` | Streaming inference — async-iterate the assistant text deltas. |
 | `agent.models(opts?)` | `ApiModel[]` | The Private API model catalog (id · context · per-1M pricing · privacy tier). |
+| `agent.verify(receiptId, opts?)` | `VerifyResult` | Verify a confidential response — signed receipt + trustless on-chain Sui anchor. `verified:false` on any mismatch. |
 | `agent.receive({ amount?, currency?, memo?, label? })` | `PaymentRequest` | Builds a Payment Kit `sui:pay?…` URI with a unique nonce. Scannable by any Sui wallet. |
 | `agent.exportKey()` | `string` | Print the Bech32 (`suiprivkey1…`) secret for the underlying keypair. |
 
@@ -123,6 +124,9 @@ import {
 
   // Private API inference (standalone — used by t2 chat + the MCP chat tool)
   chatCompletion, chatCompletionStream, listModels, DEFAULT_API_BASE,
+
+  // Confidential-receipt verifier (signed receipt + trustless Sui anchor)
+  verifyReceipt,
 
   // Swap overlay-fee receiver for consumer apps building on top of the SDK
   T2000_OVERLAY_FEE_WALLET,

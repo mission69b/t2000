@@ -16,6 +16,7 @@ import { registerSend } from './commands/send.js';
 import { registerSwap } from './commands/swap.js';
 import { registerPay } from './commands/pay.js';
 import { registerChat } from './commands/chat.js';
+import { registerVerify } from './commands/verify.js';
 import { registerServices } from './commands/services/index.js';
 import { registerLimit } from './commands/limit/index.js';
 import { registerMcp } from './commands/mcp/index.js';
@@ -62,6 +63,7 @@ Examples:
   registerSwap(program);
   registerPay(program);
   registerChat(program);
+  registerVerify(program);
   registerServices(program);
   registerLimit(program);
   registerMcp(program);

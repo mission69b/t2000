@@ -172,12 +172,30 @@ curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2"
 
 # Fetch the signed receipt for a specific confidential response:
 curl "https://api.t2000.ai/v1/aci/receipts/{x-receipt-id}"
+
+# Look up a receipt's on-chain Sui anchor (the tx digest):
+curl "https://api.t2000.ai/v1/aci/anchor/{x-receipt-id}"
 ```
 
 The receipt commits the request/response **hashes** (not bodies) to the attested workload and is signed by a `signingKey` from the attestation. `t2 chat --model phala/…` surfaces the receipt id inline (`🔒 confidential · attested · receipt …`).
 
+### Anchor + verify (Sui-native)
+
+A confidential receipt can be **anchored on Sui** — emitting a tamper-evident, publicly-timestamped `ReceiptAnchored` event committing the response `wire_hash` + attested `workload_id`. This is the wedge: the only Sui-native verifiable-inference anchor.
+
+```bash
+# Anchor a receipt on-chain (idempotent — returns the existing tx if already anchored):
+curl -X POST "https://api.t2000.ai/v1/aci/anchor/{x-receipt-id}"
+# → { anchored: true, txDigest, explorer }
+
+# Then verify it yourself — fails closed on any mismatch:
+t2 verify {x-receipt-id}
+```
+
+`t2 verify` reads the on-chain `ReceiptAnchored` event **straight from a Sui fullnode** (fully trustless — t2000 can't forge it) and confirms the committed `wire_hash` + `workload_id` match the signed receipt. It prints a per-check report and exits non-zero if anything doesn't line up. (Programmatic: `agent.verify(receiptId)` / `verifyReceipt(receiptId)` in `@t2000/sdk`; `t2000_verify` over MCP.)
+
 <Note>
-  The enclave attestation is **verified + enforced server-side** today. A full **client-side** verifier (`t2 verify` — check the DCAP quote + receipt signature + Sui anchor yourself, trustlessly) and **Sui-anchored** receipts are the next v3 phases. Until then, the `/v1/aci/*` endpoints are the transparency surface.
+  The **Sui-anchor check is trustless today** (reads the chain directly). The **DCAP quote** is verified + enforced **server-side** (the receipt also embeds the per-request `upstream.verified` attestation evidence); local `dcap-qvl` quote re-verification + receipt-signature recompute are the documented hardening (full no-trust). We state exactly what's proven — a wrong "verifiable" claim is worse than honest ZDR.
 </Note>
 
 ## Pricing

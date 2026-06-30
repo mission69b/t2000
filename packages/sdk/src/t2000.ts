@@ -51,6 +51,7 @@ import {
   type ChatParams,
   type ChatResult,
 } from './inference.js';
+import { verifyReceipt, type VerifyOptions, type VerifyResult } from './verify.js';
 import { SUPPORTED_ASSETS, assertAllowedAsset, type SendableAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
@@ -212,6 +213,12 @@ export class T2000 extends EventEmitter<T2000Events> {
   /** The Private API model catalog (`GET /v1/models`). */
   async models(opts?: { apiKey?: string; apiBase?: string }): Promise<ApiModel[]> {
     return listModels(opts);
+  }
+
+  /** Verify a confidential response by receipt id — checks the signed receipt
+   *  + its trustless on-chain Sui anchor. Fails closed on any mismatch. */
+  async verify(receiptId: string, opts?: VerifyOptions): Promise<VerifyResult> {
+    return verifyReceipt(receiptId, opts);
   }
 
   // -- Swap --
