@@ -45,26 +45,26 @@ const MAX_RESPONSE_BYTES = 512 * 1024;
 // is disabled (degrades to the prior random-id behaviour, never blocks).
 const CHALLENGE_SECRET = env.MPP_CHALLENGE_SECRET;
 
-function challengeSig(nonce: string, seller: string, grossMicros: number): string {
+// Bind the challenge to the SELLER only (stable). The AMOUNT is NOT bound here —
+// `settleX402Request` already enforces the signed tx pays the resolved price to
+// the treasury, so binding the amount was redundant AND fragile: a price edit
+// (or the 30s price cache) between probe and settle would break a valid payment.
+function challengeSig(nonce: string, seller: string): string {
   return createHmac('sha256', CHALLENGE_SECRET ?? '')
-    .update(`${nonce}:${seller}:${grossMicros}`)
+    .update(`${nonce}:${seller}`)
     .digest('base64url')
     .slice(0, 22);
 }
 
-function issueChallengeId(seller: string, grossMicros: number): string {
+function issueChallengeId(seller: string): string {
   const nonce = randomBytes(12).toString('base64url');
   if (!CHALLENGE_SECRET) {
     return nonce;
   }
-  return `${nonce}.${challengeSig(nonce, seller, grossMicros)}`;
+  return `${nonce}.${challengeSig(nonce, seller)}`;
 }
 
-function verifyChallengeId(
-  challengeId: string,
-  seller: string,
-  grossMicros: number,
-): boolean {
+function verifyChallengeId(challengeId: string, seller: string): boolean {
   if (!CHALLENGE_SECRET) {
     return true; // binding disabled — don't block
   }
@@ -72,7 +72,7 @@ function verifyChallengeId(
   if (!(nonce && sig)) {
     return false;
   }
-  const expected = challengeSig(nonce, seller, grossMicros);
+  const expected = challengeSig(nonce, seller);
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
@@ -245,7 +245,7 @@ async function handle(
   if (!hasX402Payment(req)) {
     const { chain, epoch } = await getChainInfo(NETWORK);
     const requirements = createX402Requirements({
-      challengeId: issueChallengeId(seller, split.grossMicros),
+      challengeId: issueChallengeId(seller),
       amount,
       currency: USDC,
       recipient: TREASURY_ADDRESS,
@@ -264,7 +264,7 @@ async function handle(
   // (HMAC-bound to seller + gross) — defense-in-depth before settling.
   try {
     const parsed = parseX402Header(req.headers.get(X402_PAYMENT_HEADER) ?? '');
-    if (!verifyChallengeId(parsed.payload.challengeId, seller, split.grossMicros)) {
+    if (!verifyChallengeId(parsed.payload.challengeId, seller)) {
       return Response.json(
         { error: 'Payment challenge invalid or mismatched.' },
         { status: 402 },
