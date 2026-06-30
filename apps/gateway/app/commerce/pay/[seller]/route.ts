@@ -7,7 +7,7 @@ import {
   X402_PAYMENT_HEADER,
   X402_VERSION,
 } from '@suimpp/mpp/x402';
-import { recordCommerceReceipt, splitAmount } from '@/lib/commerce';
+import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commerce';
 import { TREASURY_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
 import {
@@ -136,6 +136,9 @@ interface DeliveryResult {
   ok: boolean;
   status: number;
   data: unknown;
+  /** Seller-reported actual cost (atomic USDC) via X-402-Settle-Amount, for
+   *  usage-based (`sui-upto`) settlement. null = charge the full authorized max. */
+  settleAmount: number | null;
 }
 
 async function deliverToSeller(
@@ -159,7 +162,12 @@ async function deliverToSeller(
     // response through us. Over the cap → treat as a failed delivery (refund).
     const capped = await readCapped(res.body);
     if (capped === null) {
-      return { ok: false, status: res.status, data: 'response too large' };
+      return {
+        ok: false,
+        status: res.status,
+        data: 'response too large',
+        settleAmount: null,
+      };
     }
     const ct = res.headers.get('content-type') ?? '';
     let data: unknown = capped;
@@ -170,12 +178,18 @@ async function deliverToSeller(
         data = capped;
       }
     }
-    return { ok: res.ok, status: res.status, data };
+    const reported = res.headers.get('x-402-settle-amount');
+    const settleAmount =
+      reported != null && Number.isFinite(Number.parseInt(reported, 10))
+        ? Number.parseInt(reported, 10)
+        : null;
+    return { ok: res.ok, status: res.status, data, settleAmount };
   } catch (err) {
     return {
       ok: false,
       status: 0,
       data: err instanceof Error ? err.message : 'delivery failed',
+      settleAmount: null,
     };
   } finally {
     clearTimeout(timer);
@@ -349,28 +363,50 @@ async function handle(
       );
     }
 
-    // Delivered → release the net to the seller. If the forward itself fails
-    // (rare — treasury key/floor), the buyer keeps the delivered response; we
-    // log settlement_due for a manual payout rather than clawing back service.
+    // Usage-based (`sui-upto`): the buyer authorized `split.grossMicros` (the
+    // max, already collected); charge the seller-reported actual (≤ max),
+    // refund the excess, settle the fee/net on the actual.
+    const upto = uptoSettlement(split.grossMicros, delivered.settleAmount);
+
+    // Refund the buyer the unused authorization (only when above the dust floor).
+    let refundDigest: string | null = null;
+    if (upto.refundMicros > 0) {
+      try {
+        refundDigest = await treasurySendUsdc({
+          to: buyer,
+          amount: upto.refundDecimal,
+          network: NETWORK,
+        });
+      } catch (err) {
+        console.error(
+          `[commerce] upto_refund_due buyer=${buyer} refund=${upto.refundDecimal} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Release the net (of the actual) to the seller. If the forward itself
+    // fails (rare), the buyer keeps the delivered response; we log
+    // settlement_due for a manual payout rather than clawing back service.
     let forwardDigest: string | null = null;
     try {
       forwardDigest = await treasurySendUsdc({
         to: seller,
-        amount: split.netDecimal,
+        amount: upto.netDecimal,
         network: NETWORK,
       });
     } catch (err) {
       console.error(
-        `[commerce] settlement_due seller=${seller} net=${split.netDecimal} buyer=${buyer} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
+        `[commerce] settlement_due seller=${seller} net=${upto.netDecimal} buyer=${buyer} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
       );
     }
     await recordCommerceReceipt({
       buyer,
       seller,
       resource: profile.mcpEndpoint ?? undefined,
-      grossMicros: split.grossMicros,
-      feeMicros: split.feeMicros,
-      netMicros: split.netMicros,
+      // The effective sale = the actual charged (gross of fee).
+      grossMicros: upto.actualMicros,
+      feeMicros: upto.feeMicros,
+      netMicros: upto.netMicros,
       status: forwardDigest ? 'settled' : 'settlement_due',
       collectDigest: settle.transaction,
       forwardDigest,
@@ -381,12 +417,15 @@ async function handle(
         receipt: {
           buyer,
           seller,
-          grossMicros: split.grossMicros,
-          feeMicros: split.feeMicros,
-          netMicros: split.netMicros,
+          authorizedMicros: split.grossMicros,
+          chargedMicros: upto.actualMicros,
+          refundMicros: upto.refundMicros,
+          feeMicros: upto.feeMicros,
+          netMicros: upto.netMicros,
           feeBps: 250,
           collectDigest: settle.transaction,
           forwardDigest,
+          ...(refundDigest ? { refundDigest } : {}),
           delivered: true,
         },
         response: delivered.data,

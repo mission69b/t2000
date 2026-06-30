@@ -19,6 +19,11 @@ const BPS_DENOM = 10_000;
 const USDC_ATOMIC = 1_000_000;
 // Net must clear the $0.01 gasless-send floor (treasury → seller).
 const GASLESS_MIN_ATOMIC = 10_000;
+// Don't issue a refund tx below this (gasless floor + churn) — keep the excess.
+const REFUND_DUST_MICROS = 5_000;
+// Smallest billable charge so the seller's net still clears the gasless floor
+// (net = actual − fee ≥ $0.01). ceil(10000 / (1 − 0.025)) ≈ 10257.
+const MIN_BILLABLE_MICROS = 10_300;
 
 export interface CommerceSplit {
   grossMicros: number;
@@ -45,6 +50,53 @@ export function splitAmount(grossDecimal: string): CommerceSplit | null {
     feeMicros,
     netMicros,
     netDecimal: (netMicros / USDC_ATOMIC).toFixed(6),
+  };
+}
+
+export interface UptoSettlement {
+  /** What the buyer is actually charged (≤ authorized max). */
+  actualMicros: number;
+  /** Returned to the buyer (authorized − actual); 0 when below the dust floor. */
+  refundMicros: number;
+  /** Facilitator fee on the ACTUAL. */
+  feeMicros: number;
+  /** Forwarded to the seller (actual − fee). */
+  netMicros: number;
+  netDecimal: string;
+  refundDecimal: string;
+}
+
+/**
+ * Usage-based (`sui-upto`) settlement — Mechanism A (settle-then-refund). The
+ * buyer authorized `authorizedMicros` (the max, already collected to treasury);
+ * the seller reports the actual cost via X-402-Settle-Amount. We charge the
+ * actual (≤ max, ≥ MIN_BILLABLE so the seller's net clears the gasless floor),
+ * refund the excess to the buyer (unless it's dust), and keep the fee on the
+ * actual. A null/absent report = exact (charge the full authorized amount).
+ */
+export function uptoSettlement(
+  authorizedMicros: number,
+  reportedActualMicros: number | null,
+): UptoSettlement {
+  let actual =
+    reportedActualMicros == null ? authorizedMicros : reportedActualMicros;
+  // Clamp: never above the authorized max, never below the min billable.
+  actual = Math.min(Math.max(actual, MIN_BILLABLE_MICROS), authorizedMicros);
+  let refund = authorizedMicros - actual;
+  // Sub-dust savings aren't worth a refund tx → charge the full max (exact).
+  if (refund < REFUND_DUST_MICROS) {
+    actual = authorizedMicros;
+    refund = 0;
+  }
+  const feeMicros = Math.floor((actual * FACILITATOR_FEE_BPS) / BPS_DENOM);
+  const netMicros = actual - feeMicros;
+  return {
+    actualMicros: actual,
+    refundMicros: refund,
+    feeMicros,
+    netMicros,
+    netDecimal: (netMicros / USDC_ATOMIC).toFixed(6),
+    refundDecimal: (refund / USDC_ATOMIC).toFixed(6),
   };
 }
 

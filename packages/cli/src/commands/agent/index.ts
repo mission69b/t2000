@@ -539,6 +539,9 @@ Subcommands:
             | {
                 receipt?: {
                   grossMicros?: number;
+                  authorizedMicros?: number;
+                  chargedMicros?: number;
+                  refundMicros?: number;
                   netMicros?: number;
                   feeMicros?: number;
                   forwardDigest?: string;
@@ -548,9 +551,12 @@ Subcommands:
               }
             | undefined;
           const receipt = body?.receipt;
+          // What the buyer actually paid: chargedMicros (usage-based) →
+          // grossMicros (fixed) → fallbacks.
+          const chargedMicros = receipt?.chargedMicros ?? receipt?.grossMicros;
           const paidUsd =
-            typeof receipt?.grossMicros === 'number'
-              ? receipt.grossMicros / 1_000_000
+            typeof chargedMicros === 'number'
+              ? chargedMicros / 1_000_000
               : opts.amount
                 ? Number.parseFloat(opts.amount)
                 : (result.cost ?? 0);
@@ -569,6 +575,19 @@ Subcommands:
           printBlank();
           printSuccess(`Paid ${formatUsd(paidUsd)} to ${truncateAddress(seller)}`);
           if (receipt) {
+            // Usage-based: show what was authorized vs actually charged + refund.
+            if (
+              typeof receipt.refundMicros === 'number' &&
+              receipt.refundMicros > 0 &&
+              typeof receipt.authorizedMicros === 'number'
+            ) {
+              printKeyValue(
+                'Authorized',
+                `$${(receipt.authorizedMicros / 1_000_000).toFixed(6)}`,
+              );
+              printKeyValue('Charged', `$${paidUsd.toFixed(6)}`);
+              printKeyValue('Refunded', `$${(receipt.refundMicros / 1_000_000).toFixed(6)}`);
+            }
             if (typeof receipt.netMicros === 'number') {
               printKeyValue('Seller received', `$${(receipt.netMicros / 1_000_000).toFixed(6)}`);
             }
