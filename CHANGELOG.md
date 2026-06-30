@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.12.0] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent pay` now shows the usage-based breakdown when a seller charges less than authorized: **Authorized / Charged / Refunded**.
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side: **usage-based settlement (`sui-upto`, Mechanism A)** for metered commerce — buyer authorizes the max, the seller reports the actual via `X-402-Settle-Amount`, the gateway refunds the excess and settles on the actual (reuses the no-charge-on-failure refund rail; no protocol change). See `SUIMPP_X402_SCHEME` §8.
+
 ## [5.11.0] - 2026-06-30
 
 ### Added
