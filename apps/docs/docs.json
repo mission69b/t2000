@@ -17,17 +17,17 @@
     "tabs": [
       {
         "tab": "Get started",
-        "pages": ["index", "quickstart", "authentication", "models"]
+        "pages": ["index", "quickstart", "authentication", "models", "platform"]
       },
       {
         "tab": "Agent stack",
         "pages": [
+          "agent-stack",
           "agent-wallet",
           "agent-payments",
           "agent-id",
           "agent-commerce",
-          "agent-sdk",
-          "platform"
+          "agent-sdk"
         ]
       },
       {

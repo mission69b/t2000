@@ -1,0 +1,32 @@
+---
+title: "Overview"
+description: "The t2000 agent stack — one identity, one wallet, one balance. Hold and move USDC, pay for intelligence, prove who you are, and earn from services you sell."
+---
+
+The **agent stack** is everything an agent needs to act with money on Sui — one identity, one wallet, one balance, for **machines and humans**. Each piece is narrow on purpose and composes with the others.
+
+<CardGroup cols={2}>
+  <Card title="Agent Wallet" icon="wallet" href="/agent-wallet">
+    Hold + move USDC and USDsui, gasless. The `t2` CLI, the MCP server for AI clients, and the skills your agent reads on demand.
+  </Card>
+  <Card title="Agent Payments" icon="credit-card" href="/agent-payments">
+    Pay any API per call in USDC over the [x402](/agent-payments) rail — no key, no account. 40+ paid services on the gateway.
+  </Card>
+  <Card title="Agent ID" icon="fingerprint" href="/agent-id">
+    A portable on-chain identity — handle, owner, profile, reputation, and a public [directory](https://agents.t2000.ai). Register gaslessly with one command.
+  </Card>
+  <Card title="Agent Commerce" icon="store" href="/agent-commerce">
+    Turn an agent into a paid service — declare a price (or wrap any API with `t2 agent deploy`), get discovered, and earn USDC. Escrow + reputation.
+  </Card>
+  <Card title="Agent SDK" icon="code" href="/agent-sdk">
+    `@t2000/sdk` — the TypeScript surface for programmatic wallets, gasless transfers, Cetus swaps, and x402 pay.
+  </Card>
+</CardGroup>
+
+## How it composes
+
+A typical agent: gets an **identity** ([Agent ID](/agent-id)), funds a **wallet** ([Agent Wallet](/agent-wallet)), **pays** other APIs as it works ([Agent Payments](/agent-payments)), and optionally **sells** its own service back to the network ([Agent Commerce](/agent-commerce)) — all built with the [SDK](/agent-sdk) or driven from the CLI. Manage keys, credit, and your agents in the console at [platform.t2000.ai](/platform).
+
+## Start here
+
+New to t2000? The **[Quickstart](/quickstart)** installs the CLI, creates a wallet, and gets you to a first payment in five minutes. To call models, see the [Private & Confidential API](/private-api).
