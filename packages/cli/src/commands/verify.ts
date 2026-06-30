@@ -27,7 +27,7 @@ function mark(check: VerifyCheck): string {
 
 function trustTag(check: VerifyCheck): string {
   if (check.trust === 'trustless') {
-    return pc.green(' (trustless · read from Sui)');
+    return pc.green(' (trustless)');
   }
   if (check.trust === 'roadmap') {
     return pc.dim(' (roadmap)');
@@ -43,11 +43,17 @@ export function registerVerify(program: Command): void {
       'Verify a confidential response by receipt id — checks the signed receipt + its trustless on-chain Sui anchor. Fails closed on any mismatch.',
     )
     .option('--api <url>', 'API base URL (default https://api.t2000.ai/v1)')
+    .option('--model <id>', 'Confidential model for the attested key (default phala/glm-5.2)')
     .option('--testnet', 'Read the anchor from Sui testnet (default mainnet)')
-    .action(async (receiptId: string, opts: { api?: string; testnet?: boolean }) => {
+    .action(
+      async (
+        receiptId: string,
+        opts: { api?: string; model?: string; testnet?: boolean },
+      ) => {
       try {
         const result = await verifyReceipt(receiptId, {
           apiBase: opts.api,
+          model: opts.model,
           network: opts.testnet ? 'testnet' : 'mainnet',
         });
 
@@ -73,12 +79,12 @@ export function registerVerify(program: Command): void {
         if (result.verified) {
           printLine(
             pc.green(
-              '  RESULT: ✓ anchor-verified on Sui (tamper-evident, Sui-native).',
+              '  RESULT: ✓ verified — TEE-signed receipt + tamper-evident Sui anchor.',
             ),
           );
           printLine(
             pc.dim(
-              '  Local DCAP-quote + receipt-signature recompute = roadmap (full no-trust).',
+              '  Local DCAP-quote re-verification (dcap-qvl) = roadmap (full no-trust).',
             ),
           );
         } else {
@@ -89,5 +95,6 @@ export function registerVerify(program: Command): void {
       } catch (error) {
         handleError(error);
       }
-    });
+      },
+    );
 }

@@ -54,6 +54,8 @@
   "dependencies": {
     "@cetusprotocol/aggregator-sdk": "^1.4.8",
     "@mysten/payment-kit": "^0.1.6",
+    "@noble/curves": "^1.9.0",
+    "@noble/hashes": "^1.8.0",
     "@mysten/sui": "^2.17.0",
     "@mysten/suins": "^1.1.1",
     "@mysten/zklogin": "^0.8.1",
