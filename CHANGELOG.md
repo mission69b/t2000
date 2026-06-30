@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.15.0] - 2026-06-30
+
+### Added — the Private API goes agent-native (key-based; x402 pay-per-call next)
+
+- **`@t2000/cli`** — `t2 chat <message>` (streams private inference from the [Private API](https://developers.t2000.ai/private-api), OpenAI-compatible; `--model`, `--system`, `--no-stream`) + `t2 models` (the catalog). Needs `T2000_API_KEY` (or `--api-key`) from platform.t2000.ai.
+- **`@t2000/mcp`** — `t2000_chat` + `t2000_models` tools → every MCP client (Cursor, Claude Desktop) gets t2000 private inference, billed from the wallet's credit. Key via `T2000_API_KEY` in the server env. (MCP tools: 9 → 11.)
+- **`@t2000/sdk`** — `agent.chat()` / `agent.chatStream()` / `agent.models()` + standalone `chatCompletion` / `chatCompletionStream` / `listModels` — the inference client (OpenAI-compatible, ZDR; a `phala/*` tier is GPU-TEE confidential). Browser-safe (fetch/SSE only). New `INFERENCE_FAILED` error code.
+
+### Notes
+
+- Key-based today; the **x402 no-key pay-per-call** path (agent pays per-token USDC, no key) is the next increment. Defaults to `zai/glm-5.2`; `GET /v1/models` is the live catalog.
+
 ## [5.14.3] - 2026-06-30
 
 ### Fixed

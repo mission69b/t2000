@@ -73,6 +73,40 @@ console.log(resp.choices[0].message.content);
 
 </CodeGroup>
 
+## From the t2000 CLI, MCP, or SDK
+
+Beyond any OpenAI SDK, the t2000 toolchain wraps the API as first-class verbs — same key via `T2000_API_KEY`:
+
+<CodeGroup>
+
+```bash CLI
+export T2000_API_KEY=sk-...
+t2 chat "Explain x402 in one sentence." --model zai/glm-5.2   # streams
+t2 models                                                      # list the catalog
+```
+
+```typescript SDK
+import { T2000 } from "@t2000/sdk";
+
+const agent = await T2000.create();
+const { content } = await agent.chat({
+  model: "zai/glm-5.2",
+  messages: [{ role: "user", content: "Explain x402 in one sentence." }],
+  apiKey: process.env.T2000_API_KEY,
+});
+// or stream: for await (const d of agent.chatStream({ … })) process.stdout.write(d);
+```
+
+```json MCP
+// Any MCP client (Cursor, Claude Desktop) with T2000_API_KEY in the server env:
+{ "name": "t2000_chat",   "arguments": { "prompt": "Explain x402 in one sentence." } }
+{ "name": "t2000_models", "arguments": {} }
+```
+
+</CodeGroup>
+
+Get the key at [platform.t2000.ai](https://platform.t2000.ai) and set it as `T2000_API_KEY` (CLI/SDK) or in the MCP server env. *(A no-key, agent-native **x402 pay-per-call** path — pay per token in USDC from your wallet, no key — is on the roadmap.)*
+
 ## Streaming
 
 Set `"stream": true` for server-sent `chat.completion.chunk` events (OpenAI-compatible), terminated by `data: [DONE]`. Pass `"stream_options": { "include_usage": true }` to receive a final token-usage chunk.

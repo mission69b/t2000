@@ -71,6 +71,9 @@ These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending U
 | `agent.swap({ from, to, amount, slippage? })` | `SwapResult` | Cetus Aggregator V3 (20+ DEXs). User-friendly names (`'USDC'`, `'SUI'`, `'CETUS'`, …) or full coin types. Default slippage 1%, max 5%. **Requires SUI for gas.** |
 | `agent.swapQuote({ from, to, amount, slippage? })` | `SwapQuoteResult` | Preview route + output + price impact (no execution). |
 | `agent.pay(options)` | `PayResult` | x402-protected paid API. Handles 402 → quote → USDC payment → retry. USDC transfer is gasless. `options.maxPrice` caps spend (default 1 USDC). |
+| `agent.chat(params)` | `ChatResult` | Private inference on the [Private API](/private-api) (OpenAI-compatible). Key-based — `params.apiKey` or `T2000_API_KEY`. Returns `{ content, model, usage, raw }`. |
+| `agent.chatStream(params)` | `AsyncGenerator<string>` | Streaming inference — async-iterate the assistant text deltas. |
+| `agent.models(opts?)` | `ApiModel[]` | The Private API model catalog (id · context · per-1M pricing · privacy tier). |
 | `agent.receive({ amount?, currency?, memo?, label? })` | `PaymentRequest` | Builds a Payment Kit `sui:pay?…` URI with a unique nonce. Scannable by any Sui wallet. |
 | `agent.exportKey()` | `string` | Print the Bech32 (`suiprivkey1…`) secret for the underlying keypair. |
 
@@ -117,6 +120,9 @@ import {
 
   // Sui clients
   getSuiClient, getSuiGrpcClient, DEFAULT_GRPC_URL,
+
+  // Private API inference (standalone — used by t2 chat + the MCP chat tool)
+  chatCompletion, chatCompletionStream, listModels, DEFAULT_API_BASE,
 
   // Swap overlay-fee receiver for consumer apps building on top of the SDK
   T2000_OVERLAY_FEE_WALLET,

@@ -4,6 +4,7 @@ import { createAgent } from './agent.js';
 import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
 import { registerLimitTool } from './tools/limit.js';
+import { registerChatTools } from './tools/chat.js';
 import { registerSkillPrompts } from './skills-prompts.js';
 import { T2000_SERVER_INSTRUCTIONS } from './instructions.js';
 
@@ -41,6 +42,7 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
   registerReadTools(server, agent);
   registerWriteTools(server, agent);
   registerLimitTool(server);
+  registerChatTools(server);
 
   // SPEC v0.7a Phase 6 (6C) — auto-expose every t2000-skills SKILL.md
   // as an MCP prompt (`skill-<short-name>`). Baked into the bundle at

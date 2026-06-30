@@ -15,6 +15,7 @@ import { registerStatus } from './commands/status.js';
 import { registerSend } from './commands/send.js';
 import { registerSwap } from './commands/swap.js';
 import { registerPay } from './commands/pay.js';
+import { registerChat } from './commands/chat.js';
 import { registerServices } from './commands/services/index.js';
 import { registerLimit } from './commands/limit/index.js';
 import { registerMcp } from './commands/mcp/index.js';
@@ -42,6 +43,8 @@ Examples:
   $ t2 balance                         Show USDC / USDsui / SUI holdings
   $ t2 send 5 USDC alice.sui           Send 5 USDC (gasless; asset required)
   $ t2 swap 100 USDC SUI               Swap 100 USDC for SUI via Cetus
+  $ t2 chat "Summarize Sui in 3 lines" Private inference (OpenAI-compatible; needs T2000_API_KEY)
+  $ t2 models                          List the Private API model catalog
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
@@ -58,6 +61,7 @@ Examples:
   registerSend(program);
   registerSwap(program);
   registerPay(program);
+  registerChat(program);
   registerServices(program);
   registerLimit(program);
   registerMcp(program);

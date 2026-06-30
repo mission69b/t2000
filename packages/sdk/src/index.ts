@@ -3,6 +3,19 @@ export type { TransactionSigner } from './signer.js';
 export { KeypairSigner } from './wallet/keypairSigner.js';
 export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 export { payWithMpp, preflightPay } from './wallet/pay.js';
+export {
+  chatCompletion,
+  chatCompletionStream,
+  listModels,
+  DEFAULT_API_BASE,
+} from './inference.js';
+export type {
+  ChatMessage,
+  ChatParams,
+  ChatResult,
+  ChatUsage,
+  ApiModel,
+} from './inference.js';
 export { executeTx } from './wallet/executeTx.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';

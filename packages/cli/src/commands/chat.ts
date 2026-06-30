@@ -1,0 +1,126 @@
+import type { Command } from 'commander';
+import {
+  type ChatMessage,
+  chatCompletion,
+  chatCompletionStream,
+  listModels,
+} from '@t2000/sdk';
+import {
+  handleError,
+  isJsonMode,
+  printBlank,
+  printJson,
+  printLine,
+} from '../output.js';
+
+// `t2 chat` + `t2 models` — the agent-native distribution surface for the
+// t2000 Private API (SPEC_AUDRIC_API, S.575). Key-based today (`--api-key` or
+// T2000_API_KEY from platform.t2000.ai); the x402 no-key pay-per-call path is a
+// later add. The SDK owns the HTTP/SSE; this is the thin CLI wrapper.
+
+const DEFAULT_MODEL = 'zai/glm-5.2';
+
+function numOrUndef(v: string | undefined): number | undefined {
+  if (v === undefined) {
+    return;
+  }
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+export function registerChat(program: Command): void {
+  program
+    .command('chat')
+    .argument('<message...>', 'Your prompt')
+    .description(
+      "Chat with a model on the t2000 Private API (OpenAI-compatible, ZDR; a phala/* tier is GPU-TEE confidential). Needs an API key — generate one at platform.t2000.ai, then pass --api-key or set T2000_API_KEY.",
+    )
+    .option('--model <id>', `Model id (default ${DEFAULT_MODEL}; see \`t2 models\`)`, DEFAULT_MODEL)
+    .option('--system <text>', 'System prompt')
+    .option('--max-tokens <n>', 'Max output tokens')
+    .option('--temperature <t>', 'Sampling temperature (0–2)')
+    .option('--no-stream', 'Wait for the full response instead of streaming')
+    .option('--api-key <key>', 'Private API key (or set T2000_API_KEY)')
+    .option('--api <url>', 'API base URL (default https://api.t2000.ai/v1)')
+    .action(
+      async (
+        messageParts: string[],
+        opts: {
+          model: string;
+          system?: string;
+          maxTokens?: string;
+          temperature?: string;
+          stream?: boolean;
+          apiKey?: string;
+          api?: string;
+        },
+      ) => {
+        try {
+          const messages: ChatMessage[] = [];
+          if (opts.system) {
+            messages.push({ role: 'system', content: opts.system });
+          }
+          messages.push({ role: 'user', content: messageParts.join(' ') });
+
+          const params = {
+            model: opts.model,
+            messages,
+            apiKey: opts.apiKey,
+            apiBase: opts.api,
+            maxTokens: numOrUndef(opts.maxTokens),
+            temperature: numOrUndef(opts.temperature),
+          };
+
+          // JSON mode (and --no-stream) → one non-streaming completion.
+          if (isJsonMode() || opts.stream === false) {
+            const res = await chatCompletion(params);
+            if (isJsonMode()) {
+              printJson({ model: res.model, content: res.content, usage: res.usage });
+              return;
+            }
+            printBlank();
+            printLine(res.content);
+            printBlank();
+            return;
+          }
+
+          // Default: stream deltas straight to stdout.
+          let any = false;
+          for await (const delta of chatCompletionStream(params)) {
+            process.stdout.write(delta);
+            any = true;
+          }
+          process.stdout.write(any ? '\n' : '');
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  program
+    .command('models')
+    .description('List the t2000 Private API model catalog (id · privacy tier · per-1M pricing).')
+    .option('--api-key <key>', 'Private API key (or set T2000_API_KEY)')
+    .option('--api <url>', 'API base URL (default https://api.t2000.ai/v1)')
+    .action(async (opts: { apiKey?: string; api?: string }) => {
+      try {
+        const models = await listModels({ apiKey: opts.apiKey, apiBase: opts.api });
+        if (isJsonMode()) {
+          printJson({ models });
+          return;
+        }
+        printBlank();
+        for (const m of models) {
+          const price =
+            m.inputPer1M != null
+              ? ` — $${m.inputPer1M}/$${m.outputPer1M} per 1M`
+              : '';
+          const priv = m.privacy ? ` [${m.privacy}]` : '';
+          printLine(`  ${m.id}${priv}${price}`);
+        }
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+}

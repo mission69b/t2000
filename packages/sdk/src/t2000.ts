@@ -43,6 +43,14 @@ import type {
   SwapQuoteResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
+import {
+  chatCompletion,
+  chatCompletionStream,
+  listModels,
+  type ApiModel,
+  type ChatParams,
+  type ChatResult,
+} from './inference.js';
 import { SUPPORTED_ASSETS, assertAllowedAsset, type SendableAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
@@ -180,6 +188,28 @@ export class T2000 extends EventEmitter<T2000Events> {
   // but there is no longer any way to MINT or REDEEM vSUI through t2000.
   // History: see spec/archive/v07e/AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23.md
   // and the S.323 build-tracker entry.
+
+  // -- Private Inference API (SPEC_AUDRIC_API, S.575) --
+  //
+  // Inference as a wallet verb — the agent's brain + wallet in one package.
+  // Key-based today (`apiKey` / `T2000_API_KEY`); the x402 no-key pay-per-call
+  // path is a later add. The model runs on the t2000 Private API (ZDR; a
+  // `phala/*` confidential tier runs in a GPU-TEE).
+
+  /** Non-streaming chat completion against the Private API. */
+  async chat(params: ChatParams): Promise<ChatResult> {
+    return chatCompletion(params);
+  }
+
+  /** Streaming chat completion — async-iterate the assistant text deltas. */
+  chatStream(params: ChatParams): AsyncGenerator<string, void, unknown> {
+    return chatCompletionStream(params);
+  }
+
+  /** The Private API model catalog (`GET /v1/models`). */
+  async models(opts?: { apiKey?: string; apiBase?: string }): Promise<ApiModel[]> {
+    return listModels(opts);
+  }
 
   // -- Swap --
 
