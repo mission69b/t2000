@@ -31,7 +31,7 @@
     "url": "git+https://github.com/mission69b/t2000.git",
     "directory": "packages/id"
   },
-  "homepage": "https://id.t2000.ai",
+  "homepage": "https://agents.t2000.ai",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
 // GET /commerce/stats — global Agent Commerce totals + a leaderboard, from the
-// settlement ledger. Powers the id.t2000.ai headline stats + top-sellers board.
+// settlement ledger. Powers the agents.t2000.ai headline stats + top-sellers board.
 // (Per-seller stats live at /commerce/stats/{seller}.)
 export const dynamic = 'force-dynamic';
 

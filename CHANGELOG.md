@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.14.2] - 2026-06-30
+
+### Changed
+
+- **`@t2000/cli`** — `t2 agent deploy` now publishes the public service endpoint under `x402.t2000.ai/deploy/<address>` (the recognizable x402 rail domain, matching the SDK's pay URLs) instead of `mpp.t2000.ai/...`. Same gateway (aliased) — existing endpoints keep working; the CLI's gateway API calls still use `mpp.t2000.ai`.
+- The Agent ID directory moved to **`agents.t2000.ai`** (was `id.t2000.ai`); docs + `@t2000/id` homepage updated. The old domain 301-redirects.
+
 ## [5.14.1] - 2026-06-30
 
 ### Fixed

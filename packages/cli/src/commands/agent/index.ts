@@ -28,6 +28,10 @@ import {
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const DEFAULT_GATEWAY = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
+// The PUBLIC-facing rail domain shown on agent profiles (same gateway as
+// DEFAULT_GATEWAY, aliased). x402 is the recognizable protocol brand for a
+// payable endpoint; it matches the SDK's x402.t2000.ai pay URLs.
+const DEFAULT_RAIL = process.env.T2000_RAIL_URL ?? 'https://x402.t2000.ai';
 
 /** Collect repeatable `--header k=v` flags into an object. */
 function collectHeader(
@@ -627,7 +631,7 @@ Subcommands:
             prepareUrl: `${base}/agent/service/prepare`,
             prepareBody: {
               address,
-              mcpEndpoint: `${gateway}/deploy/${address}`,
+              mcpEndpoint: `${DEFAULT_RAIL}/deploy/${address}`,
               paymentMethods: ['x402'],
               priceUsdc: opts.price,
             },
