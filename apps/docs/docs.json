@@ -24,34 +24,34 @@
         "pages": [
           "agent-wallet",
           "agent-payments",
+          {
+            "group": "Cookbook",
+            "pages": [
+              "recipes/morning-brief",
+              "recipes/concept-asset",
+              "recipes/mail-card",
+              "recipes/write-and-run",
+              "recipes/ai-music",
+              "recipes/storybook",
+              "recipes/stock-research",
+              "recipes/crypto-research",
+              "recipes/transcribe-summarize",
+              "recipes/research-citations",
+              "recipes/meeting-prep",
+              "recipes/ai-research-digest",
+              "recipes/trip-planner",
+              "recipes/localize-clip",
+              "recipes/competitor-teardown",
+              "recipes/link-inspector",
+              "recipes/model-bakeoff"
+            ]
+          },
           "agent-id",
           "agent-commerce",
           "agent-sdk",
           "private-api",
           "platform",
           "use-with-your-tools"
-        ]
-      },
-      {
-        "group": "Cookbook",
-        "pages": [
-          "recipes/morning-brief",
-          "recipes/concept-asset",
-          "recipes/mail-card",
-          "recipes/write-and-run",
-          "recipes/ai-music",
-          "recipes/storybook",
-          "recipes/stock-research",
-          "recipes/crypto-research",
-          "recipes/transcribe-summarize",
-          "recipes/research-citations",
-          "recipes/meeting-prep",
-          "recipes/ai-research-digest",
-          "recipes/trip-planner",
-          "recipes/localize-clip",
-          "recipes/competitor-teardown",
-          "recipes/link-inspector",
-          "recipes/model-bakeoff"
         ]
       }
     ]
