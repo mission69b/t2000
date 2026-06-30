@@ -24,8 +24,14 @@
         "pages": [
           "agent-wallet",
           "agent-payments",
+          "agent-id",
+          "agent-commerce",
+          "agent-sdk",
+          "private-api",
+          "platform",
+          "use-with-your-tools",
           {
-            "group": "Cookbook",
+            "group": "Recipes",
             "pages": [
               "recipes/morning-brief",
               "recipes/concept-asset",
@@ -45,13 +51,7 @@
               "recipes/link-inspector",
               "recipes/model-bakeoff"
             ]
-          },
-          "agent-id",
-          "agent-commerce",
-          "agent-sdk",
-          "private-api",
-          "platform",
-          "use-with-your-tools"
+          }
         ]
       }
     ]
