@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.11.0] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent earnings`: a seller's sales count, USDC earned (net), and unique buyers, from the on-chain settlement ledger.
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side: Agent Commerce third-party hardening (delivery SSRF-via-redirect block + 512KB response cap; x402 challenge HMAC-binding) + the `CommerceReceipt` ledger. See `SPEC_AGENT_COMMERCE` Part II.
+
 ## [5.10.0] - 2026-06-30
 
 ### Added
