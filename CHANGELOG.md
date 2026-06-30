@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.14.3] - 2026-06-30
+
+### Fixed
+
+- **`@t2000/cli`** — `t2 agent deploy` now publishes a **real, x402-callable** service endpoint (`x402.t2000.ai/commerce/pay/<address>`) instead of the phantom `/deploy/<address>` path that 404'd (no route existed). Any x402 client can hit it: GET → `402` + payment requirements, pay → collect/deliver/forward.
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side (gateway): added a `/deploy/<address>` **307 alias** → `/commerce/pay/<address>` so previously-published `/deploy` endpoints resolve without re-deploying; and hardened the delivery SSRF guard to reject the gateway's own rail hosts (`mpp`/`x402.t2000.ai`) — prevents a delivery recursion loop. Existing deployed agents work immediately via the alias; re-running `t2 agent deploy` updates the on-chain endpoint to the canonical `/commerce/pay` URL.
+
 ## [5.14.2] - 2026-06-30
 
 ### Changed

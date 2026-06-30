@@ -631,7 +631,10 @@ Subcommands:
             prepareUrl: `${base}/agent/service/prepare`,
             prepareBody: {
               address,
-              mcpEndpoint: `${DEFAULT_RAIL}/deploy/${address}`,
+              // The real, x402-callable buy endpoint (GET → 402 + requirements,
+              // pay → collect/deliver/forward). `/deploy/<addr>` was a phantom
+              // (no route → 404). Any x402 client can hit this URL.
+              mcpEndpoint: `${DEFAULT_RAIL}/commerce/pay/${address}`,
               paymentMethods: ['x402'],
               priceUsdc: opts.price,
             },

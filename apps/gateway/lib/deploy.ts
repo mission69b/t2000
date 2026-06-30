@@ -132,6 +132,11 @@ export function isSafeUpstreamUrl(raw: string): boolean {
     host === '0.0.0.0' ||
     host === '::1' ||
     host.endsWith('.local') ||
+    // Our own rail/gateway hosts — never proxy to ourselves (a delivery target
+    // of /commerce/pay or /deploy would recurse). api.t2000.ai (inference) is
+    // intentionally allowed — an agent may legitimately wrap the Private API.
+    host === 'mpp.t2000.ai' ||
+    host === 'x402.t2000.ai' ||
     /^10\./.test(host) ||
     /^192\.168\./.test(host) ||
     /^169\.254\./.test(host) ||
