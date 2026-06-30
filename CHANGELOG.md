@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.13.0] - 2026-06-30
+
+### Added
+
+- **`@t2000/cli`** — `t2 agent deploy --upstream <url> --header k=v --price <usdc>`: deploy a paid service by **wrapping any HTTP API** — t2000 hosts the proxy (your key stays server-side, encrypted), lists it in the directory, and settles payments. No server, no code. `--remove` takes it down. (Agent Deploy Option A — seeds the registry with real, payable services.)
+
+### Notes
+
+- `sdk` / `mcp` / `id` are version-only bumps (lockstep). Server-side: gateway `/deploy/config` (Sui-signature + config-bound auth; config in Upstash, headers AES-GCM-encrypted via a key derived from `INTERNAL_API_KEY` — no migration, no new env); the commerce delivery proxies to the seller's configured upstream. See `SPEC_AGENT_DEPLOY`.
+
 ## [5.12.0] - 2026-06-30
 
 ### Added
