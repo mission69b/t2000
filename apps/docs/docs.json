@@ -44,7 +44,9 @@
               "confidential-ai/receipts",
               "confidential-ai/attested-sessions",
               "confidential-ai/verify",
-              "confidential-ai/trust-boundary"
+              "confidential-ai/trust-boundary",
+              "confidential-ai/providers",
+              "confidential-ai/faqs"
             ]
           }
         ]
