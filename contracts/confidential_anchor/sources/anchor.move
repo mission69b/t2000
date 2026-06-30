@@ -19,6 +19,7 @@
 module confidential_anchor::anchor;
 
 use std::string::String;
+use sui::clock::Clock;
 use sui::event;
 
 /// Emitted once per anchored confidential receipt.
@@ -31,8 +32,13 @@ public struct ReceiptAnchored has copy, drop {
     /// The attested ACI workload id (ties the anchor to the attestation report
     /// at `/v1/aci/attestation`).
     workload_id: String,
-    /// The receipt's `served_at` (epoch ms), as reported off-chain.
+    /// The receipt's `served_at` (epoch ms) — the off-chain CLAIM from the
+    /// signed receipt (cross-check, not the trust anchor).
     served_at_ms: u64,
+    /// On-chain time of THIS anchoring tx (`Clock`) — the trustless,
+    /// consensus-stamped record time. The verifier can assert
+    /// `anchored_at_ms >= served_at_ms` (can't anchor before it was served).
+    anchored_at_ms: u64,
     /// Who submitted the anchor (t2000's anchor signer, in normal operation).
     anchored_by: address,
 }
@@ -43,6 +49,7 @@ public fun anchor_receipt(
     wire_hash: String,
     workload_id: String,
     served_at_ms: u64,
+    clock: &Clock,
     ctx: &TxContext,
 ) {
     event::emit(ReceiptAnchored {
@@ -50,6 +57,7 @@ public fun anchor_receipt(
         wire_hash,
         workload_id,
         served_at_ms,
+        anchored_at_ms: clock.timestamp_ms(),
         anchored_by: ctx.sender(),
     });
 }
