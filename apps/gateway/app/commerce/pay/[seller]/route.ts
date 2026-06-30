@@ -1,8 +1,10 @@
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { USDC } from '@suimpp/mpp/server';
 import {
   createX402Requirements,
+  parseX402Header,
+  X402_PAYMENT_HEADER,
   X402_VERSION,
 } from '@suimpp/mpp/x402';
 import { recordCommerceReceipt, splitAmount } from '@/lib/commerce';
@@ -32,6 +34,48 @@ const NETWORK =
   (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
 const DIRECTORY_BASE = 'https://api.t2000.ai/v1';
 const DELIVERY_TIMEOUT_MS = 15_000;
+// Cap relayed seller responses — a malicious/buggy seller must not be able to
+// stream an unbounded body through the gateway (memory/DoS).
+const MAX_RESPONSE_BYTES = 512 * 1024;
+
+// Challenge HMAC-binding (B): bind the issued challengeId to (seller, gross) so
+// a payment can only settle against the exact terms we quoted, and a challengeId
+// can't be self-minted. Reuses the gateway's challenge secret; if unset, binding
+// is disabled (degrades to the prior random-id behaviour, never blocks).
+const CHALLENGE_SECRET = env.MPP_CHALLENGE_SECRET;
+
+function challengeSig(nonce: string, seller: string, grossMicros: number): string {
+  return createHmac('sha256', CHALLENGE_SECRET ?? '')
+    .update(`${nonce}:${seller}:${grossMicros}`)
+    .digest('base64url')
+    .slice(0, 22);
+}
+
+function issueChallengeId(seller: string, grossMicros: number): string {
+  const nonce = randomBytes(12).toString('base64url');
+  if (!CHALLENGE_SECRET) {
+    return nonce;
+  }
+  return `${nonce}.${challengeSig(nonce, seller, grossMicros)}`;
+}
+
+function verifyChallengeId(
+  challengeId: string,
+  seller: string,
+  grossMicros: number,
+): boolean {
+  if (!CHALLENGE_SECRET) {
+    return true; // binding disabled — don't block
+  }
+  const [nonce, sig] = challengeId.split('.');
+  if (!(nonce && sig)) {
+    return false;
+  }
+  const expected = challengeSig(nonce, seller, grossMicros);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 interface SellerProfile {
   priceUsdc: string | null;
@@ -106,12 +150,26 @@ async function deliverToSeller(
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-agent-buyer': buyer },
       body: body || undefined,
+      // Block SSRF-via-redirect (a public URL 30x-ing to an internal host).
+      redirect: 'error',
       signal: controller.signal,
     });
+
+    // Read the body with a hard byte cap so a seller can't stream an unbounded
+    // response through us. Over the cap → treat as a failed delivery (refund).
+    const capped = await readCapped(res.body);
+    if (capped === null) {
+      return { ok: false, status: res.status, data: 'response too large' };
+    }
     const ct = res.headers.get('content-type') ?? '';
-    const data = ct.includes('application/json')
-      ? await res.json().catch(() => null)
-      : await res.text().catch(() => null);
+    let data: unknown = capped;
+    if (ct.includes('application/json')) {
+      try {
+        data = capped ? JSON.parse(capped) : null;
+      } catch {
+        data = capped;
+      }
+    }
     return { ok: res.ok, status: res.status, data };
   } catch (err) {
     return {
@@ -122,6 +180,38 @@ async function deliverToSeller(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Read a response body as text, capped at MAX_RESPONSE_BYTES. Returns null if
+ *  the body exceeds the cap (caller treats as a failed delivery). */
+async function readCapped(
+  body: ReadableStream<Uint8Array> | null,
+): Promise<string | null> {
+  if (!body) {
+    return '';
+  }
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      if (value) {
+        received += value.length;
+        if (received > MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          return null;
+        }
+        chunks.push(value);
+      }
+    }
+  } catch {
+    return null;
+  }
+  return Buffer.concat(chunks.map((c) => Buffer.from(c))).toString('utf8');
 }
 
 async function handle(
@@ -161,7 +251,7 @@ async function handle(
   if (!hasX402Payment(req)) {
     const { chain, epoch } = await getChainInfo(NETWORK);
     const requirements = createX402Requirements({
-      challengeId: randomBytes(16).toString('hex'),
+      challengeId: issueChallengeId(seller, split.grossMicros),
       amount,
       currency: USDC,
       recipient: TREASURY_ADDRESS,
@@ -173,6 +263,23 @@ async function handle(
     return Response.json(
       { x402Version: X402_VERSION, error: 'Payment required', accepts: [requirements] },
       { status: 402 },
+    );
+  }
+
+  // Verify the payment's challengeId is one WE issued for these exact terms
+  // (HMAC-bound to seller + gross) — defense-in-depth before settling.
+  try {
+    const parsed = parseX402Header(req.headers.get(X402_PAYMENT_HEADER) ?? '');
+    if (!verifyChallengeId(parsed.payload.challengeId, seller, split.grossMicros)) {
+      return Response.json(
+        { error: 'Payment challenge invalid or mismatched.' },
+        { status: 402 },
+      );
+    }
+  } catch {
+    return Response.json(
+      { error: 'Malformed X-PAYMENT header.' },
+      { status: 400 },
     );
   }
 

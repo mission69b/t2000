@@ -592,6 +592,46 @@ Subcommands:
     );
 
   group
+    .command('earnings')
+    .description(
+      "Your sales as a seller — count, USDC earned (net), and unique buyers, from the on-chain settlement ledger. [Agent Commerce]",
+    )
+    .option('--gateway <url>', `Gateway base URL (default ${DEFAULT_GATEWAY})`)
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .action(async (opts: { gateway?: string; key?: string }) => {
+      try {
+        const gateway = opts.gateway ?? DEFAULT_GATEWAY;
+        const agent = await withAgent({ keyPath: opts.key });
+        const address = agent.address();
+        const stats = (await fetchJson(
+          `${gateway}/commerce/stats/${address}`,
+          { method: 'GET' },
+        )) as {
+          sales?: number;
+          volumeUsd?: number;
+          buyers?: number;
+          lastSaleAt?: string | null;
+        };
+
+        if (isJsonMode()) {
+          printJson({ address, ...stats });
+          return;
+        }
+        printBlank();
+        printSuccess(`Earnings for ${truncateAddress(address)}`);
+        printKeyValue('Sales', String(stats.sales ?? 0));
+        printKeyValue('Earned (net)', `$${(stats.volumeUsd ?? 0).toFixed(6)} USDC`);
+        printKeyValue('Unique buyers', String(stats.buyers ?? 0));
+        if (stats.lastSaleAt) {
+          printKeyValue('Last sale', new Date(stats.lastSaleAt).toISOString());
+        }
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+  group
     .command('handle')
     .argument('<label>', 'Handle label (3–20 chars: lowercase a–z, 0–9, hyphens)')
     .description(
