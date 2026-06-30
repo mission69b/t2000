@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import pc from 'picocolors';
 import {
   type ChatMessage,
   chatCompletion,
@@ -12,6 +13,14 @@ import {
   printJson,
   printLine,
 } from '../output.js';
+
+// A confidential (phala/*) response carries a TEE attestation receipt id —
+// surface it so the confidentiality is visible + verifiable (GET /v1/aci/receipts/{id}).
+function receiptLine(receiptId: string | undefined): void {
+  if (receiptId) {
+    printLine(pc.dim(`🔒 confidential · attested · receipt ${receiptId}`));
+  }
+}
 
 // `t2 chat` + `t2 models` — the agent-native distribution surface for the
 // t2000 Private API (SPEC_AUDRIC_API, S.575). Key-based today (`--api-key` or
@@ -75,22 +84,33 @@ export function registerChat(program: Command): void {
           if (isJsonMode() || opts.stream === false) {
             const res = await chatCompletion(params);
             if (isJsonMode()) {
-              printJson({ model: res.model, content: res.content, usage: res.usage });
+              printJson({
+                model: res.model,
+                content: res.content,
+                usage: res.usage,
+                receiptId: res.receiptId,
+              });
               return;
             }
             printBlank();
             printLine(res.content);
+            receiptLine(res.receiptId);
             printBlank();
             return;
           }
 
-          // Default: stream deltas straight to stdout.
+          // Default: stream deltas straight to stdout. Drive the generator
+          // manually so we can capture its return value (the receipt id).
+          const gen = chatCompletionStream(params);
           let any = false;
-          for await (const delta of chatCompletionStream(params)) {
-            process.stdout.write(delta);
+          let next = await gen.next();
+          while (!next.done) {
+            process.stdout.write(next.value);
             any = true;
+            next = await gen.next();
           }
           process.stdout.write(any ? '\n' : '');
+          receiptLine(next.value?.receiptId);
         } catch (error) {
           handleError(error);
         }

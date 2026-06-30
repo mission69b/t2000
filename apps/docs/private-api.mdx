@@ -161,10 +161,23 @@ Each model in `GET /v1/models` carries a `privacy` field (`private` or `confiden
 Two rungs, selectable per model:
 
 - **Private (default, every model)** — **zero data retention (ZDR)**: providers are contractually bound not to store or train on your prompts.
-- **Confidential (`phala/*` models)** — inference runs inside a **GPU-TEE (hardware enclave)**, so prompts are encrypted in use, not just contractually protected. Each response returns an **`x-receipt-id`** (non-streaming: HTTP header; streaming: `x_receipt_id` on the final usage chunk) — a hardware-attestation receipt for that run.
+- **Confidential (`phala/*` models)** — inference runs inside a **GPU-TEE (hardware enclave, Intel TDX + NVIDIA CC)**, so prompts are encrypted in use, not just contractually protected. The gateway **verifies the enclave's attestation before forwarding** your prompt and **fails closed** if it can't (genuine-attested-enclave-or-refuse). Each response returns an **`x-receipt-id`** (non-streaming: HTTP header; streaming: `x_receipt_id` on the final usage chunk) — a signed per-response receipt.
+
+### Verify confidentiality
+
+```bash
+# Is a model backed by a genuine, freshly-attested GPU-TEE?
+curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2"
+# → { verified: true, enforced: true, teeType: "tdx", workloadId, tlsSpkiSha256, signingKey, … }
+
+# Fetch the signed receipt for a specific confidential response:
+curl "https://api.t2000.ai/v1/aci/receipts/{x-receipt-id}"
+```
+
+The receipt commits the request/response **hashes** (not bodies) to the attested workload and is signed by a `signingKey` from the attestation. `t2 chat --model phala/…` surfaces the receipt id inline (`🔒 confidential · attested · receipt …`).
 
 <Note>
-  The confidential tier is real TEE isolation **consumed** today; a full self-serve **verifier** (check the attestation + signature yourself, anchored on Sui) is on the roadmap. Until then, treat `x-receipt-id` as an audit reference.
+  The enclave attestation is **verified + enforced server-side** today. A full **client-side** verifier (`t2 verify` — check the DCAP quote + receipt signature + Sui anchor yourself, trustlessly) and **Sui-anchored** receipts are the next v3 phases. Until then, the `/v1/aci/*` endpoints are the transparency surface.
 </Note>
 
 ## Pricing

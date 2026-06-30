@@ -55,6 +55,9 @@ export function registerChatTools(server: McpServer): void {
                 model: res.model,
                 content: res.content,
                 usage: res.usage,
+                // Confidential (phala/*) → a TEE attestation receipt id,
+                // verifiable at /v1/aci/receipts/{id}.
+                receiptId: res.receiptId,
               }),
             },
           ],

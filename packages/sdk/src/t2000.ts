@@ -201,8 +201,11 @@ export class T2000 extends EventEmitter<T2000Events> {
     return chatCompletion(params);
   }
 
-  /** Streaming chat completion — async-iterate the assistant text deltas. */
-  chatStream(params: ChatParams): AsyncGenerator<string, void, unknown> {
+  /** Streaming chat completion — async-iterate the assistant text deltas;
+   *  the generator returns `{ receiptId }` (confidential attestation) at the end. */
+  chatStream(
+    params: ChatParams
+  ): AsyncGenerator<string, { receiptId?: string }, unknown> {
     return chatCompletionStream(params);
   }
 

@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.16.0] - 2026-06-30
+
+### Added — confidential receipts surfaced (Confidential API v3.0, Phase B)
+
+- **`@t2000/cli`** — `t2 chat --model phala/…` now prints `🔒 confidential · attested · receipt <id>` after a confidential response — the TEE attestation receipt id, made visible + verifiable.
+- **`@t2000/sdk`** — `agent.chat()` / `agent.chatStream()` (and the standalone `chatCompletion`/`chatCompletionStream`) surface **`receiptId`** (from `x-receipt-id` on non-stream, `x_receipt_id` on the streaming usage chunk).
+- **`@t2000/mcp`** — `t2000_chat` returns `receiptId`.
+
+### Notes
+
+- `sdk`/`mcp`/`id` lockstep. Server-side (audric web-v3): **`GET /v1/aci/receipts/{id}`** — fetch the signed per-response receipt (passthrough to the Phala/RedPill ACI gateway; commits request/response hashes, not bodies, signed by the attested `receipt_signing_keys`). Pairs with the enforced Phase-A attestation (`GET /v1/aci/attestation`). Sui-anchored receipts + a trustless client verifier (`t2 verify`) = the next v3 phases. See `SPEC_CONFIDENTIAL_API`.
+
 ## [5.15.1] - 2026-06-30
 
 ### Fixed
