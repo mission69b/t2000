@@ -16,26 +16,63 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
-        "groups": [
-      {
-        "group": "Get started",
+        "tab": "Get started",
         "pages": ["index", "quickstart", "authentication", "models"]
       },
       {
-        "group": "Agent stack",
-        "pages": [
-          "agent-wallet",
-          "agent-payments",
-          "agent-id",
-          "agent-commerce",
-          "agent-sdk"
+        "tab": "Agent stack",
+        "groups": [
+          {
+            "group": "Build",
+            "pages": ["agent-sdk"]
+          },
+          {
+            "group": "Money",
+            "pages": [
+              "agent-wallet",
+              "agent-payments",
+              {
+                "group": "Recipes",
+                "pages": [
+                  "recipes/morning-brief",
+                  "recipes/concept-asset",
+                  "recipes/mail-card",
+                  "recipes/write-and-run",
+                  "recipes/ai-music",
+                  "recipes/storybook",
+                  "recipes/stock-research",
+                  "recipes/crypto-research",
+                  "recipes/transcribe-summarize",
+                  "recipes/research-citations",
+                  "recipes/meeting-prep",
+                  "recipes/ai-research-digest",
+                  "recipes/trip-planner",
+                  "recipes/localize-clip",
+                  "recipes/competitor-teardown",
+                  "recipes/link-inspector",
+                  "recipes/model-bakeoff"
+                ]
+              },
+              "agent-commerce"
+            ]
+          },
+          {
+            "group": "Identity",
+            "pages": ["agent-id"]
+          },
+          {
+            "group": "Manage",
+            "pages": ["platform"]
+          }
         ]
       },
       {
-        "group": "Private & Confidential API",
-        "pages": [
-          "private-api",
+        "tab": "Private & Confidential API",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["private-api"]
+          },
           {
             "group": "Confidential AI",
             "pages": [
@@ -48,52 +85,23 @@
               "confidential-ai/providers",
               "confidential-ai/faqs"
             ]
+          },
+          {
+            "group": "Integrations",
+            "pages": ["use-with-your-tools"]
           }
-        ]
-      },
-      {
-        "group": "Platform & tools",
-        "pages": ["platform", "use-with-your-tools"]
-      },
-      {
-        "group": "Recipes",
-        "pages": [
-          "recipes/morning-brief",
-          "recipes/concept-asset",
-          "recipes/mail-card",
-          "recipes/write-and-run",
-          "recipes/ai-music",
-          "recipes/storybook",
-          "recipes/stock-research",
-          "recipes/crypto-research",
-          "recipes/transcribe-summarize",
-          "recipes/research-citations",
-          "recipes/meeting-prep",
-          "recipes/ai-research-digest",
-          "recipes/trip-planner",
-          "recipes/localize-clip",
-          "recipes/competitor-teardown",
-          "recipes/link-inspector",
-          "recipes/model-bakeoff"
-        ]
-      }
         ]
       },
       {
         "tab": "API reference",
-        "groups": [
-          {
-            "group": "Reference",
-            "pages": [
-              "api-reference/overview",
-              "api-reference/chat-completions",
-              "api-reference/models",
-              "api-reference/attestation",
-              "api-reference/receipts",
-              "api-reference/sessions",
-              "api-reference/anchor"
-            ]
-          }
+        "pages": [
+          "api-reference/overview",
+          "api-reference/chat-completions",
+          "api-reference/models",
+          "api-reference/attestation",
+          "api-reference/receipts",
+          "api-reference/sessions",
+          "api-reference/anchor"
         ]
       }
     ]
