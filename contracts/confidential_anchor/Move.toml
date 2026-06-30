@@ -1,0 +1,12 @@
+[package]
+name = "confidential_anchor"
+edition = "2024.beta"
+
+[dependencies]
+
+[addresses]
+confidential_anchor = "0x0"
+
+[dev-dependencies]
+
+[dev-addresses]
