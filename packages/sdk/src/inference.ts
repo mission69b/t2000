@@ -48,6 +48,9 @@ export interface ApiModel {
   outputPer1M?: number;
   /** Privacy tier surfaced by the API (e.g. `zdr`, `confidential`). */
   privacy?: string;
+  /** True for reasoning models — deeper but slower (a hidden reasoning trace
+   *  before the answer). Surfaced so callers pick the speed/depth tradeoff. */
+  reasoning?: boolean;
 }
 
 function envApiKey(): string | undefined {
@@ -213,6 +216,7 @@ export async function listModels(opts?: {
       context_length?: number;
       privacy?: string;
       privacy_tier?: string;
+      reasoning?: boolean;
       pricing?: {
         input_per_1m?: number;
         output_per_1m?: number;
@@ -228,5 +232,6 @@ export async function listModels(opts?: {
     inputPer1M: m.pricing?.input_per_1m ?? m.pricing?.prompt,
     outputPer1M: m.pricing?.output_per_1m ?? m.pricing?.completion,
     privacy: m.privacy ?? m.privacy_tier,
+    reasoning: m.reasoning,
   }));
 }

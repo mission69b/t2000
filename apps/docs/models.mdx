@@ -21,6 +21,10 @@ The launch set is curated — the models developers actually run agents on, plus
 
 The live set is always whatever `GET /v1/models` returns — it intersects this curated list with each backend's live catalog. List from the CLI with `t2 models`.
 
+<Note>
+**Reasoning vs fast models.** `glm-5.2` and `kimi-k2.6` are **reasoning** models — they generate a hidden reasoning trace before answering, so they're deeper but noticeably slower (higher latency, more tokens). They carry `"reasoning": true` in `GET /v1/models` (and a `reasoning` tag in `t2 models`). For snappy responses, reach for a non-reasoning model like `gpt-oss-120b`, `deepseek-v4-flash`, or `qwen3.6-27b`. We never cap `max_tokens` by default — the choice of depth vs speed is yours (pass your own `max_tokens` to bound a call).
+</Note>
+
 ## Privacy tiers
 
 Each model carries a `privacy` field so you can choose your posture programmatically:

@@ -138,7 +138,8 @@ export function registerChat(program: Command): void {
               ? ` — ${usd(m.inputPer1M)}/${usd(m.outputPer1M)} per 1M`
               : '';
           const priv = m.privacy ? ` [${m.privacy}]` : '';
-          printLine(`  ${m.id}${priv}${price}`);
+          const think = m.reasoning ? pc.dim(' · reasoning (deeper, slower)') : '';
+          printLine(`  ${m.id}${priv}${price}${think}`);
         }
         printBlank();
       } catch (error) {
