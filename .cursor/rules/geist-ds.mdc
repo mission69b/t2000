@@ -1,73 +1,70 @@
 ---
-description: Geist Design System — @t2000/ui is the cross-brand single source of truth (primitives + tokens); apps own only their brand-semantic mapping
-globs: packages/ui/**,apps/web/**,apps/gateway/**
+description: t2000 design system — design-tokens/tokens.css is the copy-in SSOT for VALUES; shadcn primitives are owned per-app; house dark theme + per-app accent. @t2000/ui is being retired.
+globs: design-tokens/**,apps/**,packages/ui/**
 alwaysApply: false
 ---
 
-# Geist Design System (`@t2000/ui`)
+# t2000 Design System (copy-in tokens + per-app shadcn)
 
-`@t2000/ui` (`packages/ui`) is the **single source of truth** for the Geist Design System across the whole t2000 brand family — t2000 (`apps/web`, `apps/gateway`) and Audric (`audric/apps/web-v2`) all consume it. There is no second token system. Don't fork it, don't re-vendor Geist, don't hardcode hex.
+> **Updated 2026-07-01.** The old model — `@t2000/ui` as a runtime dependency that ships tokens **and** shadcn primitives — is being retired. It broke consuming apps: its "tokens" bundle a full marketing stylesheet (reset + element typography + `!important` responsive hacks), and packaged shadcn primitives can't be styled by a consumer's Tailwind (node_modules isn't scanned) → padding/hover/cards silently broke on platform.t2000.ai. shadcn is **copy-in by design**; so are our tokens now.
 
-## Two-layer model (the contract)
+## The model
 
-```
-@t2000/ui  ──────────────▶  LAYER 1: primitives (shared, brand-neutral)
-(packages/ui)               · raw Geist ramps + base tokens  → src/tokens/*.css
-                            ·   --ds-* ramps, --fg, --bg, --bg-elevated, etc.
-                            · shadcn/ui components             → src/primitives/*.tsx
-                            · Tailwind v3 preset               → src/tailwind-preset.ts
-                            · cn(), Sonner toaster
-        │
-        ▼
-  each app's globals.css ─▶  LAYER 2: brand-semantic mapping (per-app)
-                            · @import "@t2000/ui/tokens"
-                            · map primitives → shadcn semantic tokens for THIS brand
-                            ·   e.g. --background: var(--bg); --signal: var(--ds-teal-700)
-```
+**Two things, decoupled:**
 
-**Layer 1 (`@t2000/ui`) is shared. Layer 2 (the semantic mapping) is per-brand and lives in the app.** A brand changes its look by re-mapping the shared primitives in its own `globals.css` — never by editing primitive values in `@t2000/ui` (that would move every brand at once).
+1. **VALUES are shared by COPY-IN, not by dependency.** The single source of truth is
+   `design-tokens/tokens.css` — pure CSS custom properties only (Geist `--ds-*` palette,
+   semantic `--fg` / `--bg` / `--bg-elevated` / `--border`, radii, spacing, fonts). **No
+   element selectors, resets, utilities, `@media`, or `!important`** — so it's safe to drop
+   into any app. Each app copies it in and owns it (like `npx shadcn add`), then maps the
+   vars it uses into Tailwind via `@theme inline`. Update the canonical file → re-copy.
 
-## What `@t2000/ui` exports
+2. **COMPONENTS are shadcn primitives, owned per-app** in `components/ui/`. Use them where
+   interaction / a11y justifies (buttons, inputs, dialogs, tables, dropdowns, tooltips,
+   command palettes, sidebars). **Never consume a component package.** Bespoke marketing /
+   utility layout (heroes, section grids, a feed) can stay raw JSX + tokens — don't
+   shadcn-ify a landing page for its own sake (that's the over-complication we avoid).
 
-| Export | What |
+## House theme
+
+- **Dark is canonical.** The family look is a **seamless near-black**: `--bg #08090a`,
+  `--bg-elevated #0f1113` (cards/popovers), hairline `rgba(255,255,255,.08)` borders. This
+  is intentionally darker than raw Geist surfaces (its `gray-100 #1a1a1a` / `.14` read too
+  "app-chrome").
+- Apps read the **semantic** tokens (`--bg` / `--bg-elevated` / `--border`), NOT the raw
+  `--ds-gray-*` primitives (those are the palette source).
+- **Per-app accent** is the one knob: `:root { --t2k-accent: <brand> }` — emerald (verify),
+  teal (mpp), blue (t2000.ai), etc. shadcn apps map the house values into their token slots
+  (`--background`/`--card`/`--border`…) because shadcn's names collide with the canonical's
+  `--border`/`--font-*`/`--radius-*` (importing the file would cycle) — so copy the values in.
+
+## Current adoption
+
+| Surface | State |
 |---|---|
-| `@t2000/ui` | `cn` + shadcn primitives: `Button`, `Card`, `Badge`, `Table`, `Separator`, `Dialog`, `Sheet`, `DropdownMenu`, `Accordion`, `Command`, `ScrollArea`, `Skeleton`, `Tabs`, `Tooltip` |
-| `@t2000/ui/toaster` | Sonner toaster |
-| `@t2000/ui/tokens` | Geist primitives (`--ds-*` ramps, `--fg`, `--bg`) — the base layer every app imports |
-| `@t2000/ui/tokens/page` · `/responsive` · `/theme` | page-level vars, responsive scale, the Tailwind v4 `@theme` block |
-| `@t2000/ui/tailwind-preset` | Tailwind v3 preset mapping `--ds-*` → `bg-background` / `text-foreground` / `bg-card` / `ring-ring` … |
+| verify.t2000.ai | ✅ copies `tokens.css`, house theme, emerald accent |
+| platform.t2000.ai (`audric/apps/console`) | ✅ house theme mapped into shadcn slots |
+| agents.t2000.ai (`audric/apps/agent-id`) | ✅ house theme mapped into shadcn slots |
+| mpp.t2000.ai (`apps/gateway`), t2000.ai (`apps/web`), suimpp.dev | ⏳ still on `@t2000/ui` — migrate + drop it (Phase 3–4) |
+| audric.ai (`audric/apps/web-v3`) | ➖ consumer flagship — keeps its OWN theme, not the t2000 family look |
 
-## How apps wire it
+## `@t2000/ui` — RETIRING
 
-**Tailwind v4 apps** (`apps/web`, `apps/gateway`) — import the token CSS in `globals.css`:
-
-```css
-@import "tailwindcss";
-@import "@t2000/ui/tokens";
-@import "@t2000/ui/tokens/page";
-@import "@t2000/ui/tokens/responsive";
-@import "@t2000/ui/tokens/theme";
-```
-
-**Tailwind v3 apps** — extend the preset instead:
-
-```ts
-import t2000UiPreset from '@t2000/ui/tailwind-preset';
-export default { presets: [t2000UiPreset], content: [...] };
-```
-
-Then write shadcn-idiomatic classes (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border`, `ring-ring`) — they resolve to Geist values automatically.
+Do **not** add new consumers, do **not** expand it, do **not** import its React primitives.
+It survives only until `web` / `gateway` / `suimpp` migrate to copy-in tokens, then it's
+deleted. (History: it was the shared package that broke platform; the audit lives in the
+2026-07-01 chat + `audric-build-tracker.md`.)
 
 ## Rules
 
-1. **Never hardcode color.** No raw hex, no Tailwind default palette (`gray-500`, `bg-white`). Every value resolves through a Geist token.
-2. **Never edit primitive values to restyle one brand.** Re-map in that app's `globals.css` (Layer 2). Editing `@t2000/ui` tokens moves every brand.
-3. **Add a primitive once, in `@t2000/ui`.** If two apps need the same component/token, it belongs in the package, not copy-pasted. (See `engineering-principles.mdc` — single source of truth.)
-4. **Bumping `@t2000/ui` is a cross-brand change.** A token/primitive edit ripples to t2000 web, gateway, AND audric. Publish + bump all consumers; smoke each brand.
-5. **Brand-specific tokens stay in the app.** Audric's cyan `--signal`, AudricMark, etc. live in `audric/apps/web-v2/app/globals.css` + `audric/.cursor/rules/design-system.mdc` — not in `@t2000/ui`.
+1. **Share values by copy-in** (`design-tokens/tokens.css`) — never a component/token package dependency.
+2. **shadcn primitives, owned per-app**, where interaction justifies. Raw JSX + tokens for marketing/utility is fine.
+3. **Read semantic surface tokens** (`--bg`/`--bg-elevated`/`--border`); set `--t2k-accent` per app; never hardcode hex outside `tokens.css` / the app's semantic mapping.
+4. **`design-tokens/tokens.css` stays pure variables** — anything with an element selector, reset, or `!important` belongs in the app, never the token file.
+5. **New t2000 surface** = copy `tokens.css` + (if it needs real interaction) shadcn primitives. Don't reach for `@t2000/ui`.
 
 ## Cross-references
 
-- Audric's brand layer + its `check:ads` legacy-token guard → `audric/.cursor/rules/design-system.mdc`
+- Canonical tokens → `design-tokens/tokens.css`
 - Single source of truth principle → `engineering-principles.mdc`
-- Package → `packages/ui/README.md`
+- Simplicity / no needless abstraction → `coding-discipline.mdc`
