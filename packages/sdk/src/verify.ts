@@ -286,7 +286,19 @@ async function verifyTdxQuote(
   }
 
   try {
-    const { getCollateralAndVerify } = await import('@phala/dcap-qvl');
+    // `@phala/dcap-qvl` is CJS. When the SDK is bundled (e.g. into the CLI) and
+    // hit via dynamic import, its named exports land under `.default`; unbundled
+    // Node hoists them to the top level. Resolve both so it works either way.
+    const dcap = await import('@phala/dcap-qvl');
+    const getCollateralAndVerify =
+      dcap.getCollateralAndVerify ?? dcap.default?.getCollateralAndVerify;
+    if (typeof getCollateralAndVerify !== 'function') {
+      return {
+        status: 'fail',
+        forged: false,
+        detail: 'DCAP verifier unavailable in this build',
+      };
+    }
     const quoteBytes = hexToBytes(quoteHex.replace(/^0x/, ''));
     // Throws if the quote isn't a genuine TDX quote chaining to Intel's root.
     const vr = await getCollateralAndVerify(quoteBytes);
@@ -448,7 +460,6 @@ export async function verifyReceipt(
   // === 4. Receipt signature — recover the signer + match the attested key ===
   // The signing key (gateway receipt key) is workload-wide; fetch the attested
   // keyset and confirm its workload matches this receipt before trusting it.
-  let signatureForged = false;
   let sigStatus: CheckStatus = 'skip';
   let sigDetail = 'no signature on receipt';
   if (receipt.signature?.value) {
@@ -467,7 +478,6 @@ export async function verifyReceipt(
       } else {
         const ok = verifyReceiptSignature(receipt, att.signingKey);
         sigStatus = ok ? 'pass' : 'fail';
-        signatureForged = !ok;
         sigDetail = ok
           ? `signed by the attested receipt key (${receipt.signature.key_id ?? 'key'})`
           : 'signature does NOT recover the attested receipt key — forged/altered';
@@ -484,7 +494,6 @@ export async function verifyReceipt(
   });
 
   // === 5. TDX quote (DCAP) — verify the quote genuine + fresh, client-side ===
-  let quoteForged = false;
   if (opts.skipQuote) {
     checks.push({
       name: 'TDX quote (DCAP)',
@@ -498,7 +507,6 @@ export async function verifyReceipt(
       opts.model ?? 'phala/glm-5.2',
       workloadId ?? ''
     );
-    quoteForged = q.forged;
     checks.push({
       name: 'TDX quote (DCAP)',
       status: q.status,
@@ -507,13 +515,15 @@ export async function verifyReceipt(
     });
   }
 
+  // FAIL CLOSED: a sound receipt AND no trustless check left in `fail`. A DCAP
+  // (or anchor/signature) check that errored counts as fail — "couldn't prove"
+  // is "not verified"; we never report verified on an unchecked/failed quote.
+  const trustlessFailed = checks.some(
+    (c) => c.trust === 'trustless' && c.status === 'fail'
+  );
   return {
     receiptId,
-    verified:
-      Boolean(wireHash && workloadId) &&
-      anchorVerified &&
-      !signatureForged &&
-      !quoteForged,
+    verified: Boolean(wireHash && workloadId) && !trustlessFailed,
     anchorVerified,
     checks,
     wireHash,

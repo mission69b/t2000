@@ -90,9 +90,14 @@ export function registerVerify(program: Command): void {
           printLine(pc.dim(`  anchor: ${result.anchor.explorer}`));
         }
         if (result.verified) {
+          const quoteSkipped =
+            result.checks.find((c) => c.name === 'TDX quote (DCAP)')?.status ===
+            'skip';
           printLine(
             pc.green(
-              '  RESULT: ✓ verified — genuine TDX quote + TEE-signed receipt + Sui anchor, all checked client-side.',
+              quoteSkipped
+                ? '  RESULT: ✓ verified — TEE-signed receipt + trustless Sui anchor (DCAP quote check skipped).'
+                : '  RESULT: ✓ verified — genuine TDX quote + TEE-signed receipt + Sui anchor, all checked client-side.',
             ),
           );
         } else {
