@@ -27,7 +27,10 @@ function receiptLine(receiptId: string | undefined): void {
 // T2000_API_KEY from platform.t2000.ai); the x402 no-key pay-per-call path is a
 // later add. The SDK owns the HTTP/SSE; this is the thin CLI wrapper.
 
-const DEFAULT_MODEL = 'zai/glm-5.2';
+// Fast, sensible, general-purpose default (non-reasoning, ~5s) so out-of-the-box
+// `t2 chat` is snappy. Reasoning models (glm-5.2, kimi) + the confidential
+// `phala/*` tier are explicit opt-ins via --model (see `t2 models`).
+const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 function numOrUndef(v: string | undefined): number | undefined {
   if (v === undefined) {
