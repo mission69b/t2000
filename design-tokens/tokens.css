@@ -23,12 +23,13 @@
 
    KNOWN GAPS (tracked — do NOT guess-fix; pull real values from
    vercel.com/geist/colors when the first light-mode consumer lands):
+     • The HOUSE semantic surfaces (--bg / --bg-elevated / --bg-overlay /
+       --border) are fixed dark values (see below) — light mode needs its
+       own surface overrides.
      • Light-mode CHROMATIC ramps (red/amber/green/teal/purple/pink) are
-       NOT overridden below — they keep dark values in light mode.
-     • Light-mode `--ds-gray-alpha-400` (0.08) < `-300` (0.10), so
-       border/input hairlines are faint in light mode.
-   Both are inert today (every t2000 surface is dark-only). Values below
-   are a faithful port of Geist DS — quirks preserved intentionally.
+       NOT overridden — they keep dark values in light mode.
+   All inert today (every t2000 surface is dark-only). The --ds-* palette
+   primitives are a faithful port of Geist DS; quirks preserved.
    ===================================================================== */
 
 :root {
@@ -155,13 +156,19 @@
   --fg-faint: var(--ds-gray-600); /* disabled-ish */
   --fg-link: var(--ds-blue-900);
 
-  --bg: var(--ds-background-100); /* primary canvas */
-  --bg-elevated: var(--ds-gray-100); /* cards on top of canvas */
-  --bg-overlay: var(--ds-gray-200); /* hover / inputs */
+  /* HOUSE DARK THEME — intentionally darker + more seamless than raw
+     Geist surfaces (Geist's gray-100 #1a1a1a card / .14 border read too
+     "app-chrome"). This near-black, hairline-bordered treatment is the
+     canonical t2000 family look; every app inherits it via these
+     semantic tokens (apps read --bg / --bg-elevated / --border, NOT the
+     raw --ds-gray-* primitives, which stay as the palette source). */
+  --bg: rgb(8, 9, 10); /* #08090a — seamless near-black canvas */
+  --bg-elevated: rgb(15, 17, 19); /* #0f1113 — cards / surfaces */
+  --bg-overlay: rgb(22, 24, 27); /* #16181b — raised (menus / inputs) */
   --bg-inverted: var(--ds-gray-1000);
 
-  --border: var(--ds-gray-alpha-400);
-  --border-strong: var(--ds-gray-alpha-600);
+  --border: rgba(255, 255, 255, 0.08); /* hairline — default */
+  --border-strong: rgba(255, 255, 255, 0.16); /* emphasized */
 
   /* Typography families -------------------------------------------- */
   /* Apps loading Geist via next/font override --font-sans / --font-mono
