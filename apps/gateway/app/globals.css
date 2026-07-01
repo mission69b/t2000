@@ -1,10 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@import "@t2000/ui/tokens";
-@import "@t2000/ui/tokens/page";
-@import "@t2000/ui/tokens/responsive";
-@import "@t2000/ui/tokens/theme";
+/* Design tokens + marketing chrome — owned locally (copied from the former
+   @t2000/ui package; see design-tokens/tokens.css for the canonical values). */
+@import "./styles/geist-ds.css";
+@import "./styles/page.css";
+@import "./styles/responsive.css";
+@import "./styles/theme.css";
 
 :root {
   --t2k-accent: var(--ds-teal-700);

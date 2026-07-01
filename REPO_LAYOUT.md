@@ -20,8 +20,8 @@ t2000/
 ├── packages/                                ← npm packages (3 published: sdk, cli, mcp)
 │   ├── cli/                                 (@t2000/cli)
 │   ├── mcp/                                 (@t2000/mcp)
-│   ├── sdk/                                 (@t2000/sdk)
-│   └── ui/                                  (@t2000/ui — design system; shipped 2026-05-27)
+│   └── sdk/                                 (@t2000/sdk)
+│   # design tokens live in design-tokens/tokens.css (copy-in, no package)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source)
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml

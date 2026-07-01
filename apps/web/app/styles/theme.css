@@ -1,0 +1,89 @@
+/* =====================================================================
+   @t2000/ui — Tailwind v4 @theme block
+   ---------------------------------------------------------------------
+   Maps Geist Design System CSS variables (from `./geist-ds.css`) into
+   Tailwind v4 theme tokens, so consumers can write shadcn-idiomatic
+   utility classes (`bg-background`, `text-foreground`, `bg-card`,
+   `ring-ring`, etc.) and have them resolve to Geist values.
+
+   Consumers (Tailwind v4):
+
+     // app/globals.css
+     @import "tailwindcss";
+     @import "@t2000/ui/tokens";        / * --ds-* + --fg-* primitives * /
+     @import "@t2000/ui/tokens/page";   / * utility classes (optional) * /
+     @import "@t2000/ui/tokens/theme";  / * THIS file — @theme block * /
+
+     :root { --t2k-accent: var(--ds-blue-700); }  / * per-property accent * /
+
+   Consumers (Tailwind v3): use `@t2000/ui/tailwind-preset` instead of
+   this file. See packages/ui/README.md.
+   ===================================================================== */
+
+@theme {
+  --color-background: var(--ds-background-100);
+  --color-foreground: var(--fg);
+
+  --color-card: var(--bg-elevated);
+  --color-card-foreground: var(--fg);
+
+  --color-popover: var(--bg-elevated);
+  --color-popover-foreground: var(--fg);
+
+  --color-primary: var(--ds-gray-1000);
+  --color-primary-foreground: var(--ds-background-100);
+  --color-primary-hover: var(--ds-gray-900);
+
+  --color-secondary: var(--ds-gray-alpha-200);
+  --color-secondary-foreground: var(--fg);
+  --color-secondary-hover: var(--ds-gray-alpha-300);
+
+  --color-muted: var(--ds-gray-alpha-200);
+  --color-muted-foreground: var(--fg-muted);
+
+  --color-accent: var(--t2k-accent);
+  --color-accent-foreground: #ffffff;
+  /* Per CURSOR.md §9 "Tier-down" hover discipline: each consumer defines
+     --t2k-accent-hover alongside --t2k-accent (one ramp tier darker —
+     blue-800 for t2000.ai, teal-800 for mpp.t2000.ai). Falls back to
+     --t2k-accent so unmigrated consumers don't break visually; they just
+     lose the tier-down effect on accent buttons. */
+  --color-accent-hover: var(--t2k-accent-hover, var(--t2k-accent));
+
+  --color-destructive: var(--ds-red-800);
+  --color-destructive-foreground: #ffffff;
+  --color-destructive-hover: var(--ds-red-900);
+
+  --color-border: var(--ds-gray-alpha-400);
+  --color-input: var(--ds-gray-alpha-400);
+  --color-ring: var(--t2k-accent);
+
+  /* IMPORTANT: these reference `--ds-*` primitives (NOT the bare-name
+     aliases) to avoid CSS custom-property cycle detection. Referencing
+     `var(--font-sans)` here would create a cycle — both this `@theme`
+     block and `geist-ds.css` declare `--font-sans` at `:root`, so the
+     resolver sees `--font-sans: var(--font-sans)` and invalidates the
+     value. The `--ds-*` primitives are stable, unaliased sources. */
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+
+  --font-sans: var(--ds-font-sans);
+  --font-mono: var(--ds-font-mono);
+  --font-display: var(--ds-font-display);
+
+  --ease-out: var(--ds-ease-out);
+
+  --animate-accordion-down: accordion-down 0.2s var(--ds-ease-out);
+  --animate-accordion-up: accordion-up 0.2s var(--ds-ease-out);
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}

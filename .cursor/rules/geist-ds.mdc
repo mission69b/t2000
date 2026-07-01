@@ -1,6 +1,6 @@
 ---
-description: t2000 design system — design-tokens/tokens.css is the copy-in SSOT for VALUES; shadcn primitives are owned per-app; house dark theme + per-app accent. @t2000/ui is being retired.
-globs: design-tokens/**,apps/**,packages/ui/**
+description: t2000 design system — design-tokens/tokens.css is the copy-in SSOT for VALUES; shadcn primitives are owned per-app; house dark theme + per-app accent. @t2000/ui was removed from the monorepo.
+globs: design-tokens/**,apps/**
 alwaysApply: false
 ---
 
@@ -45,15 +45,18 @@ alwaysApply: false
 | verify.t2000.ai | ✅ copies `tokens.css`, house theme, emerald accent |
 | platform.t2000.ai (`audric/apps/console`) | ✅ house theme mapped into shadcn slots |
 | agents.t2000.ai (`audric/apps/agent-id`) | ✅ house theme mapped into shadcn slots |
-| mpp.t2000.ai (`apps/gateway`), t2000.ai (`apps/web`), suimpp.dev | ⏳ still on `@t2000/ui` — migrate + drop it (Phase 3–4) |
+| mpp.t2000.ai (`apps/gateway`), t2000.ai (`apps/web`) | ✅ own their token + marketing-chrome CSS locally (`app/styles/*.css`); house-theme surface override pending |
+| suimpp.dev (separate repo) | ⏳ still on published npm `@t2000/ui` — migrate to copy-in when convenient |
 | audric.ai (`audric/apps/web-v3`) | ➖ consumer flagship — keeps its OWN theme, not the t2000 family look |
 
-## `@t2000/ui` — RETIRING
+## `@t2000/ui` — REMOVED (2026-07-01)
 
-Do **not** add new consumers, do **not** expand it, do **not** import its React primitives.
-It survives only until `web` / `gateway` / `suimpp` migrate to copy-in tokens, then it's
-deleted. (History: it was the shared package that broke platform; the audit lives in the
-2026-07-01 chat + `audric-build-tracker.md`.)
+The package was **deleted from the monorepo**. `web` + `gateway` now own their token +
+marketing-chrome CSS locally (`app/styles/{geist-ds,page,responsive,theme}.css`, copied from
+the former package). `suimpp.dev` (separate repo) still consumes the published npm version
+until it migrates. **Do not reintroduce a shared UI/token package** — it was the thing that
+broke platform (it bundled a marketing global stylesheet + packaged shadcn primitives a
+consumer's Tailwind can't scan). The audit lives in the 2026-07-01 chat + `audric-build-tracker.md`.
 
 ## Rules
 

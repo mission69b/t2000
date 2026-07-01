@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@mysten/sui": "2.17.0",
-    "@t2000/ui": "workspace:*",
     "@vercel/analytics": "^1.6.1",
     "geist": "^1.7.0",
     "next": "16.2.1",

@@ -264,7 +264,7 @@ See `.cursor/rules/geist-ds.mdc` for the full model. In short:
 
 - **Shared VALUES via copy-in, not a dependency.** `design-tokens/tokens.css` (pure CSS vars — Geist palette + semantic `--bg`/`--fg`/`--border` + radii/spacing/fonts) is the SSOT; each app copies it in and owns it. House look is the **seamless near-black** dark theme; per-app accent via `--t2k-accent`.
 - **Components: shadcn primitives owned per-app** (`components/ui/`), used where interaction/a11y justifies. Marketing/utility pages (t2000.ai, mpp, verify, suimpp) are largely raw JSX + tokens — don't force shadcn onto them. Only **audric web-v3** is a full shadcn app (and keeps its own theme).
-- **`@t2000/ui` is being retired** — don't add consumers or import its React primitives; `web`/`gateway`/`suimpp` migrate off it (Phase 3–4), then it's deleted.
+- **`@t2000/ui` was removed from the monorepo** (2026-07-01) — `web` + `gateway` now own their token + marketing-chrome CSS locally (`app/styles/*.css`). `suimpp.dev` (separate repo) still consumes the published npm version until it migrates. Don't reintroduce a shared UI/token package.
 - Group utilities: layout → spacing → sizing → colors → effects; `cn()` for conditional classes; Geist font everywhere.
 
 ---
