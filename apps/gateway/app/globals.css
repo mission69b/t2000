@@ -33,6 +33,15 @@
   --color-info: var(--ds-teal-700);
 }
 
+/* House dark theme — seamless near-black surfaces + hairline borders,
+   consistent with verify / platform / agents (design-tokens/tokens.css). */
+:root {
+  --ds-background-100: #08090a; /* canvas */
+  --bg-elevated: #0f1113; /* cards / surfaces */
+  --surface: #0f1113;
+  --ds-gray-alpha-400: rgba(255, 255, 255, 0.08); /* hairline borders */
+}
+
 @theme inline {
   --color-surface: var(--surface);
   --color-dim: var(--dim);
