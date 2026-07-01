@@ -97,6 +97,14 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           >
             Developers
           </a>
+
+          <Link
+            href="/blog"
+            onMouseEnter={() => setOpen(false)}
+            className={linkBase}
+          >
+            Blog
+          </Link>
         </div>
 
         <span className="flex-1" />
