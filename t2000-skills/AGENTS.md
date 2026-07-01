@@ -4,7 +4,7 @@ Operational guidance for any AI agent driving the t2000 wallet — via the CLI (
 the MCP tools (`t2000_*`), or `@t2000/sdk`. Read this once per session: it's the
 cross-cutting "how to move money without shooting yourself in the foot" layer that
 every per-task skill (`setup`, `send`, `swap`, `pay`, `receive`, `services`,
-`check-balance`, `mcp`) assumes.
+`check-balance`, `mcp`, `verify`) assumes.
 
 ## The wallet in one line
 
@@ -67,5 +67,5 @@ that API."
 ## Deeper, per-task playbooks
 
 `https://t2000.ai/skills/<name>` — `setup`, `send`, `swap`, `pay`, `receive`,
-`services`, `check-balance`, `mcp`. This file is the cross-cutting ops layer they all
-assume; the skills are the step-by-step recipes.
+`services`, `check-balance`, `mcp`, `verify`. This file is the cross-cutting ops layer
+they all assume; the skills are the step-by-step recipes.
