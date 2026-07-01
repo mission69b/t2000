@@ -21,7 +21,7 @@ description: "Common questions about t2000's Confidential tier — attestation, 
   </Accordion>
 
   <Accordion title="What's the Sui anchor — and why Sui?" icon="link">
-    Each confidential receipt can be anchored on Sui as a `ReceiptAnchored` event committing the response hash + attested workload id — a tamper-evident, publicly-timestamped, independently-checkable record. RedPill anchors on Ethereum/Automata; t2000 anchors on **Sui** — the only Sui-native verifiable-inference anchor. It's read straight from a fullnode, so t2000 can't forge it.
+    Every confidential response **is automatically anchored on Sui** as a `ReceiptAnchored` event committing the response hash + attested workload id — a tamper-evident, publicly-timestamped, independently-checkable record (browse them all at [verify.t2000.ai](https://verify.t2000.ai)). RedPill anchors on Ethereum/Automata; t2000 anchors on **Sui** — the only Sui-native verifiable-inference anchor. It's read straight from a fullnode, so t2000 can't forge it.
   </Accordion>
 
   <Accordion title="Which models are confidential?" icon="server">

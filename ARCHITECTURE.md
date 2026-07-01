@@ -79,10 +79,11 @@
 
 | App            | Hosting         | Domain       | What it does                                                                                                                                                                             |
 | -------------- | --------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Audric         | Vercel          | audric.ai    | Consumer product — Passport (zkLogin), Intelligence (engine chat), Finance (NAVI save/borrow + Cetus swap + charts), Pay (USDC transfers + receive), Store (coming soon) (separate repo) |
+| Audric         | Vercel          | audric.ai    | Consumer product (v3) — multi-model AI agent + Passport (non-custodial zkLogin wallet: send/swap/pay USDC·USDsui), live web search + image gen + Recipes, and a verifiable **Confidential (GPU-TEE)** mode. (engine + NAVI/DeFi removed 2026-06-14; separate repo) |
 | `apps/web`     | Vercel          | t2000.ai             | Infrastructure landing page + skills routes                                                                                                                                              |
 | `apps/docs`    | Mintlify        | developers.t2000.ai  | Developer documentation                                                                                                                                                                  |
 | `apps/gateway` | Vercel          | mpp.t2000.ai         | MPP gateway — every major AI + data API, explorer, spec, docs                                                                                                                            |
+| `apps/verify`  | Vercel          | verify.t2000.ai      | Public confidential-receipt explorer — live feed of Sui-anchored `ReceiptAnchored` events (hashes only) + a paste-to-verify hub (`verifyReceipt`)                                          |
 
 
 ---

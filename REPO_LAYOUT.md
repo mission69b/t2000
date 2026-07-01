@@ -15,6 +15,7 @@ t2000/
 ├── apps/                                    ← deployable apps
 │   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
 │   ├── gateway/                             (MPP API gateway — mpp.t2000.ai)
+│   ├── verify/                              (verify.t2000.ai — public confidential-receipt explorer + paste-to-verify)
 │   └── web/                                 (t2000.ai marketing site)
 ├── packages/                                ← npm packages (3 published: sdk, cli, mcp)
 │   ├── cli/                                 (@t2000/cli)

@@ -35,9 +35,9 @@ Agents can also call **keyless** over [x402](/agent-payments) (pay-per-call in U
 | Endpoint | Method | Description |
 |---|---|---|
 | [`/v1/aci/attestation`](/api-reference/attestation) | GET | Attestation status for a model; `?nonce` returns the full report. |
-| [`/v1/aci/receipts/{id}`](/api-reference/receipts) | GET | The signed per-response receipt. |
+| [`/v1/aci/receipts/{id}`](/api-reference/receipts) | GET | The signed per-response receipt (durably stored → available after the gateway TTL). |
 | [`/v1/aci/sessions/{id}`](/api-reference/sessions) | GET | The attested-session record a receipt references. |
-| [`/v1/aci/anchor/{id}`](/api-reference/anchor) | POST · GET | Anchor a receipt on Sui / look up its anchor. |
+| [`/v1/aci/anchor/{id}`](/api-reference/anchor) | GET · POST | Look up a receipt's Sui anchor (GET). Every response is auto-anchored; POST is an idempotent backfill. |
 
 ## Response headers
 

@@ -21,6 +21,7 @@ t2000/
 ├── apps/gateway     ← MPP API gateway (mpp.t2000.ai, every major AI + data API)
 ├── apps/docs        ← Mintlify developer docs (developers.t2000.ai)
 ├── apps/web         ← t2000.ai marketing website
+├── apps/verify      ← verify.t2000.ai — public confidential-receipt explorer + verify hub (Sui anchor feed + paste-to-verify; added 2026-07-01)
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/mcp     ← @t2000/mcp (npm)   # (@t2000/engine RETIRED + deleted 2026-06-14)
@@ -308,6 +309,7 @@ emoji type(scope): subject
 | Audric (consumer) | `audric.ai` |
 | suimpp (protocol) | `suimpp.dev` |
 | MPP Gateway | `mpp.t2000.ai` |
+| Verify (confidential explorer) | `verify.t2000.ai` |
 | GitHub | `github.com/mission69b/t2000` |
 | npm CLI | `npmjs.com/package/@t2000/cli` |
 
