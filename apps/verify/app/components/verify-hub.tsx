@@ -62,7 +62,7 @@ function CheckRow({ check }: { check: VerifyCheck }) {
             </span>
           )}
         </div>
-        <div className="text-dim text-xs">{detail}</div>
+        <div className="break-all text-dim text-xs">{detail}</div>
       </div>
     </div>
   );
@@ -212,7 +212,7 @@ export function VerifyHub() {
               <div className="mb-1 font-medium text-xs">
                 Verify it yourself (fully trustless):
               </div>
-              <code className="block select-all rounded bg-surface px-2 py-1 text-emerald text-xs">
+              <code className="block select-all break-all rounded bg-surface px-2 py-1 text-emerald text-xs">
                 npx @t2000/cli verify {result.receiptId}
               </code>
               <div className="mt-1 text-[10px] text-dim">
@@ -246,9 +246,11 @@ export function VerifyHub() {
                 }}
                 type="button"
               >
-                <div className="min-w-0">
-                  <div className="font-mono text-sm">{short(r.receiptId)}</div>
-                  <div className="text-dim text-xs">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-mono text-sm">
+                    {short(r.receiptId)}
+                  </div>
+                  <div className="truncate text-dim text-xs">
                     workload {short(r.workloadId.replace("sha256:", ""), 8, 4)}
                   </div>
                 </div>
