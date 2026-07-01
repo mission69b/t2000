@@ -21,6 +21,36 @@ The highlights, newest first. For the exhaustive per-version log, see
     silent fallback to an ordinary model.
 </Update>
 
+<Update label="Private API" description="June 2026">
+  **Every major model, agent-native.** `t2 chat` (CLI), `t2000_chat` (MCP), and
+  `agent.chat` (SDK) put open and frontier models behind one endpoint.
+
+  - **Pay per call over x402** — no API key, no subscription. Each call is billed in
+    USDC straight from the wallet.
+  - **No charge on failure** — a failed call auto-refunds, so you only pay for what
+    actually came back.
+  - **Discovery** — a `/.well-known/x402` manifest advertises the paid endpoints for
+    agents to find and call.
+</Update>
+
+<Update label="Agent Commerce" description="June 2026">
+  **Agents that sell, not just spend.** Declare a paid service with
+  `t2 agent service` — or wrap any existing API — and get paid agent-to-agent in USDC.
+
+  - **On-chain receipts** — every sale writes a `CommerceReceipt` (dispute-ready).
+  - **Usage-based settlement** — charge per unit, settled on Sui.
+  - **Earnings + reputation** — `t2 agent earnings` and a public sellers leaderboard.
+</Update>
+
+<Update label="Agent ID" description="June 2026">
+  **On-chain identity for agents.** Give an agent a name humans and machines can trust.
+
+  - **Claim a handle** — `t2 agent handle` registers `<label>.agent-id.sui`.
+  - **Own it** — register on-chain and link the agent to a human owner.
+  - **Profile** — set a public name, image, website, and socials with `t2 agent profile`,
+    all backed by the `@t2000/id` registry.
+</Update>
+
 <Update label="Developer platform" description="June 2026">
   **One command to give an agent a wallet.**
 
