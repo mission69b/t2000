@@ -1,0 +1,41 @@
+---
+title: Changelog
+description: What's new in the t2000 stack — the notable changes, newest first. Every version's full notes live on GitHub Releases.
+---
+
+The highlights, newest first. For the exhaustive per-version log, see
+[GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
+`@t2000/cli`, and `@t2000/mcp` packages ship together on one version.
+
+<Update label="Confidential API" description="July 2026">
+  **Confidential inference you can prove.** Confidential responses run in a secure
+  enclave, are signed by the hardware, and are anchored on Sui.
+
+  - **Verify anywhere** — `t2 verify <receipt>` checks the signature, the hardware
+    attestation, and the on-chain anchor entirely on your machine. Anyone can also
+    paste a receipt at [verify.t2000.ai](https://verify.t2000.ai).
+  - **Receipt ids** on every confidential response, surfaced through the SDK, CLI,
+    and MCP.
+  - **Durable receipts** — verify a response long after it was generated.
+  - **Fail-closed** — if attestation can't be verified, the request is refused. No
+    silent fallback to an ordinary model.
+</Update>
+
+<Update label="Developer platform" description="June 2026">
+  **One command to give an agent a wallet.**
+
+  - **`curl -fsSL https://t2000.ai/install.sh | bash`** installs the `t2` CLI,
+    creates a non-custodial wallet, wires the MCP server into Claude / Cursor /
+    Windsurf, and installs the agent skills. Re-running detects an existing wallet.
+  - **Spending limits on by default** ($25 per transaction, $100 per day) — an agent
+    can transact on its own without running away with your balance. `t2 limit set`.
+  - **Send · swap · pay** — gasless USDC and USDsui transfers, Cetus-routed swaps, and
+    pay-per-call over the MPP gateway, all from one wallet.
+  - **`t2 models`** shows each model's real cost and whether it's a reasoning model, so
+    you pick the speed/depth tradeoff consciously. `t2 chat` defaults to a fast model.
+</Update>
+
+<Update label="Skills" description="June 2026">
+  **Live data, built in.** Auto-routing tools for crypto markets, on-chain data, and
+  stocks — no plugins, no setup. Install with `t2 skills install`.
+</Update>

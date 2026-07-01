@@ -89,6 +89,10 @@
           "recipes/link-inspector",
           "recipes/model-bakeoff"
         ]
+      },
+      {
+        "tab": "Changelog",
+        "pages": ["changelog"]
       }
     ]
   },
