@@ -30,7 +30,7 @@ The live set is always whatever `GET /v1/models` returns — it intersects this 
 Each model carries a `privacy` field so you can choose your posture programmatically:
 
 - **`private`** (default, every model) — **zero data retention**: providers are contractually bound not to store or train on your prompts.
-- **`confidential`** (`phala/*`) — inference runs in a **verified GPU-TEE**, with a signed, Sui-anchored receipt you can [verify yourself](/confidential-ai/verify). See [Confidential AI](/confidential-ai/how-it-works).
+- **`confidential`** (`phala/*`) — inference runs in a **verified GPU-TEE**, with a signed receipt **auto-anchored on Sui** + durably stored, so you can [verify it yourself](/confidential-ai/verify) any time (CLI or [verify.t2000.ai](https://verify.t2000.ai)). Carries a premium over `private` for the verifiable-privacy guarantee. See [Confidential AI](/confidential-ai/how-it-works).
 
 ## Pricing
 

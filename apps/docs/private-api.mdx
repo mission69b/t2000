@@ -151,7 +151,7 @@ See **[Models](/models)** for the full catalog and how pricing works.
 
 ## Confidential tier — verifiable, not just private
 
-`phala/*` models run in a **verified GPU-TEE** and return a **signed receipt** you can anchor on Sui and **check yourself** with `t2 verify` — the only Sui-native *verifiable* confidential inference. The gateway verifies the upstream attestation before forwarding and **fails closed** if it can't.
+`phala/*` models run in a **verified GPU-TEE** and return a **signed receipt** that's **automatically anchored on Sui** and durably stored — so you can **check yourself** with `t2 verify` (or at [verify.t2000.ai](https://verify.t2000.ai)) **any time** — the only Sui-native *verifiable* confidential inference. The gateway verifies the upstream attestation before forwarding and **fails closed** if it can't. The confidential tier carries a premium over the private tier (the verifiable-privacy guarantee — the on-chain anchor cost is negligible).
 
 ```bash
 t2 chat --model phala/glm-5.2 "hello"     # → 🔒 confidential · attested · receipt rcpt-…

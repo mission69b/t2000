@@ -5,18 +5,18 @@ description: "Check — don't trust — a confidential response by its receipt i
 
 The Confidential tier is **verifiable**, not just claimed. Given a receipt id, `t2 verify` checks the whole chain and **fails closed** on any forgery — and the Sui-anchor check needs zero trust in t2000.
 
-## Anchor + verify (Sui-native — the wedge)
+## Anchor-every + verify (Sui-native — the wedge)
 
-A confidential receipt can be **anchored on Sui**: a `ReceiptAnchored` event committing the response `wire_hash` + attested `workload_id` — tamper-evident and publicly timestamped. RedPill anchors on Ethereum/Automata; t2000 anchors on **Sui** — the only Sui-native verifiable-inference anchor.
+**Every confidential response is automatically anchored on Sui** — a `ReceiptAnchored` event committing the response `wire_hash` + attested `workload_id`, tamper-evident and publicly timestamped. No extra call: it's fired for you the moment the response returns (zero added latency). RedPill anchors on Ethereum/Automata; t2000 anchors on **Sui** — the only Sui-native verifiable-inference anchor.
+
+The signed receipt is also **durably stored**, so you can verify **any time** — not just inside the upstream gateway's short receipt-retention window. `GET /v1/aci/receipts/{id}` serves the durable copy once the gateway TTL lapses (still fully trustless — the receipt is signed and its hash is anchored on-chain, so it can't be forged wherever it's served).
 
 ```bash
-# Anchor a receipt on-chain (idempotent — returns the existing tx if already anchored):
-curl -X POST "https://api.t2000.ai/v1/aci/anchor/{x-receipt-id}"
-# → { anchored: true, txDigest, explorer }
-
-# Then verify it yourself:
+# Every confidential response is already anchored — just verify it:
 t2 verify {x-receipt-id}
 ```
+
+Prefer a browser? Paste any receipt id at **[verify.t2000.ai](https://verify.t2000.ai)** — the same trustless checks, plus a live public feed of every confidential response anchored on Sui (hashes only — no prompts, no identities).
 
 ```text
   ✓ Receipt              well-formed (9 log entries, workload sha256:3def…)

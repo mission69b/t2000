@@ -7,7 +7,7 @@ The **Confidential** tier (`phala/*` models) runs inference behind an **Attested
 
 1. It **proves which code is running**, in a genuine TEE, with an [attestation report](/confidential-ai/attestation).
 2. It signs a **per-response [receipt](/confidential-ai/receipts)** that ties your exact request and response to that attested workload.
-3. t2000 **anchors that receipt on Sui** — a tamper-evident, publicly-timestamped on-chain commitment — so you can [verify a response](/confidential-ai/verify) trustlessly, with one command.
+3. t2000 **automatically anchors every response on Sui** — a tamper-evident, publicly-timestamped on-chain commitment — and durably stores the signed receipt, so you can [verify a response](/confidential-ai/verify) trustlessly, **any time**, with one command (or in the browser at [verify.t2000.ai](https://verify.t2000.ai)).
 
 You don't have to trust our word. You fetch these artifacts and check the signatures, hashes, and the on-chain anchor yourself.
 
