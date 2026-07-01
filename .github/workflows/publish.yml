@@ -104,7 +104,16 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ steps.version.outputs.tag }}" --generate-notes --title "${{ steps.version.outputs.tag }}" || true
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          # We commit straight to main, so --generate-notes (PR-based) is empty.
+          # Build grouped notes from our emoji-conventional commit messages.
+          NOTES="$(bash scripts/release-notes.sh "$TAG" 2>/dev/null || true)"
+          if [ -n "$NOTES" ]; then
+            gh release create "$TAG" --title "$TAG" --notes "$NOTES" || true
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes || true
+          fi
 
   discord:
     name: Discord Release Notification
