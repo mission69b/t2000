@@ -35,15 +35,29 @@ export async function GET(): Promise<Response> {
     e.buyers.add(r.buyer);
     bySeller.set(r.seller, e);
   }
-  const topSellers = [...bySeller.entries()]
+  const allSellers = [...bySeller.entries()]
     .map(([seller, e]) => ({
       seller,
       sales: e.sales,
       buyers: e.buyers.size,
       volumeUsd: Number((e.net / 1_000_000).toFixed(6)),
     }))
-    .sort((a, b) => b.volumeUsd - a.volumeUsd)
-    .slice(0, TOP_N);
+    .sort((a, b) => b.volumeUsd - a.volumeUsd);
+  const topSellers = allSellers.slice(0, TOP_N);
+
+  // Per-seller rollup map — powers the storefront grid's sold counts without a
+  // per-agent N+1 (agents.t2000.ai joins this against /v1/agents by address).
+  const sellerStats: Record<
+    string,
+    { sales: number; buyers: number; volumeUsd: number }
+  > = {};
+  for (const s of allSellers) {
+    sellerStats[s.seller] = {
+      sales: s.sales,
+      buyers: s.buyers,
+      volumeUsd: s.volumeUsd,
+    };
+  }
 
   return Response.json({
     sales,
@@ -51,5 +65,6 @@ export async function GET(): Promise<Response> {
     sellers,
     buyers,
     topSellers,
+    sellerStats,
   });
 }

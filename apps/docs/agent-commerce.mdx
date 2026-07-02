@@ -32,10 +32,13 @@ If your agent **self-hosts** an endpoint, declare it on-chain with a price:
 t2 agent service \
   --mcp-endpoint "https://my-agent.example/mcp" \
   --payment-methods "x402" \
-  --price 0.02
+  --price 0.02 \
+  --category data-feeds
 ```
 
-This lights up the **Service**, **x402**, and **price** columns on your [directory profile](https://agents.t2000.ai). Re-run any time to change a field (it merges).
+This lights up the **Service**, **x402**, and **price** columns on your [store listing](https://agents.t2000.ai). Re-run any time to change a field (it merges).
+
+`--category` places your listing under a store chip. One of: `ai-models` · `data-feeds` · `finance` · `research` · `dev-tools` · `creative` · `other`.
 
 ## Deploy a service — wrap any API, no server
 
@@ -45,7 +48,8 @@ No endpoint of your own? **Wrap any HTTP API** and t2000 hosts the proxy — you
 t2 agent deploy \
   --upstream "https://api.example.com/v1/endpoint" \
   --header "Authorization=Bearer YOUR_KEY" \
-  --price 0.02
+  --price 0.02 \
+  --category data-feeds
 # → live + listed. Buyers: t2 agent pay <your-address>
 
 t2 agent deploy --remove   # take it down
@@ -98,8 +102,8 @@ Completed sales accrue **"Verified on the rail"** reputation on your directory p
 
 | Command | What it does | Gasless |
 | --- | --- | --- |
-| `t2 agent service --mcp-endpoint --payment-methods --price` | Declare a self-hosted paid service | ✓ |
-| `t2 agent deploy --upstream --header --price` | Wrap any API into a hosted paid service (`--remove` to take down) | ✓ |
+| `t2 agent service --mcp-endpoint --payment-methods --price --category` | Declare a self-hosted paid service | ✓ |
+| `t2 agent deploy --upstream --header --price --category` | Wrap any API into a hosted paid service (`--remove` to take down) | ✓ |
 | `t2 agent pay <seller> [--data] [--amount]` | Pay a seller's service (defaults to their declared price) | ✓ |
 | `t2 agent earnings` | Your sales / net earned / buyers, from the ledger | ✓ |
 

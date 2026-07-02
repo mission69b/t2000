@@ -33,6 +33,33 @@ const DEFAULT_GATEWAY = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
 // payable endpoint; it matches the SDK's x402.t2000.ai pay URLs.
 const DEFAULT_RAIL = process.env.T2000_RAIL_URL ?? 'https://x402.t2000.ai';
 
+// The curated storefront categories (agents.t2000.ai chips). Mirrors the
+// server-side allow-list — the API rejects anything else, this just fails fast
+// with a clear message before signing.
+const AGENT_CATEGORIES = [
+  'ai-models',
+  'data-feeds',
+  'finance',
+  'research',
+  'dev-tools',
+  'creative',
+  'other',
+] as const;
+
+/** Validate + lowercase a `--category` value (undefined passes through). */
+function normalizeCategory(input: string | undefined): string | undefined {
+  if (input === undefined) {
+    return;
+  }
+  const c = input.trim().toLowerCase();
+  if (!(AGENT_CATEGORIES as readonly string[]).includes(c)) {
+    throw new Error(
+      `--category must be one of: ${AGENT_CATEGORIES.join(', ')} (got "${input}").`,
+    );
+  }
+  return c;
+}
+
 /** Collect repeatable `--header k=v` flags into an object. */
 function collectHeader(
   value: string,
@@ -452,6 +479,10 @@ Subcommands:
       'Comma-separated methods you accept, e.g. "x402"',
     )
     .option('--price <usdc>', 'Price per call in USDC (e.g. 0.02) — buyers pay this')
+    .option(
+      '--category <category>',
+      `Storefront category: ${AGENT_CATEGORIES.join(' | ')}`,
+    )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -459,6 +490,7 @@ Subcommands:
         mcpEndpoint?: string;
         paymentMethods?: string;
         price?: string;
+        category?: string;
         key?: string;
         api?: string;
       }) => {
@@ -466,10 +498,11 @@ Subcommands:
           if (
             opts.mcpEndpoint === undefined &&
             opts.paymentMethods === undefined &&
-            opts.price === undefined
+            opts.price === undefined &&
+            opts.category === undefined
           ) {
             throw new Error(
-              'Provide at least one of --mcp-endpoint, --payment-methods, --price. (Pass --mcp-endpoint "" to clear your endpoint.)',
+              'Provide at least one of --mcp-endpoint, --payment-methods, --price, --category. (Pass --mcp-endpoint "" to clear your endpoint.)',
             );
           }
           if (opts.price !== undefined) {
@@ -478,6 +511,7 @@ Subcommands:
               throw new Error(`--price must be a positive number (got "${opts.price}").`);
             }
           }
+          const category = normalizeCategory(opts.category);
           const base = opts.api ?? DEFAULT_API_BASE;
           const agent = await withAgent({ keyPath: opts.key });
           const address = agent.address();
@@ -496,6 +530,9 @@ Subcommands:
           }
           if (opts.price !== undefined) {
             prepareBody.priceUsdc = opts.price;
+          }
+          if (category !== undefined) {
+            prepareBody.category = category;
           }
 
           const { digest } = await runSponsoredTx({
@@ -521,6 +558,9 @@ Subcommands:
           if (opts.price) {
             printKeyValue('Price', `$${opts.price} USDC`);
           }
+          if (category) {
+            printKeyValue('Category', category);
+          }
           printKeyValue('Tx', String(digest));
           printBlank();
         } catch (error) {
@@ -543,6 +583,10 @@ Subcommands:
     )
     .option('--method <method>', 'Upstream method: GET or POST (default POST)')
     .option('--price <usdc>', 'Price per call in USDC (e.g. 0.02)')
+    .option(
+      '--category <category>',
+      `Storefront category: ${AGENT_CATEGORIES.join(' | ')}`,
+    )
     .option('--remove', 'Take down the deployed service')
     .option('--gateway <url>', `Gateway base URL (default ${DEFAULT_GATEWAY})`)
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
@@ -553,6 +597,7 @@ Subcommands:
         header?: Record<string, string>;
         method?: string;
         price?: string;
+        category?: string;
         remove?: boolean;
         gateway?: string;
         key?: string;
@@ -561,6 +606,7 @@ Subcommands:
         try {
           const base = opts.api ?? DEFAULT_API_BASE;
           const gateway = opts.gateway ?? DEFAULT_GATEWAY;
+          const category = normalizeCategory(opts.category);
           const agent = await withAgent({ keyPath: opts.key });
           const address = agent.address();
 
@@ -637,6 +683,7 @@ Subcommands:
               mcpEndpoint: `${DEFAULT_RAIL}/commerce/pay/${address}`,
               paymentMethods: ['x402'],
               priceUsdc: opts.price,
+              ...(category ? { category } : {}),
             },
             submitUrl: `${base}/agent/service/submit`,
           });
@@ -649,6 +696,9 @@ Subcommands:
           printSuccess('Service deployed — live + listed in the directory.');
           printKeyValue('Wraps', opts.upstream);
           printKeyValue('Price', `$${opts.price} USDC`);
+          if (category) {
+            printKeyValue('Category', category);
+          }
           printKeyValue('Tx', String(digest));
           printInfo(`Buyers: t2 agent pay ${truncateAddress(address)}`);
           printBlank();
