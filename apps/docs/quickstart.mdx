@@ -7,15 +7,15 @@ t2000 gives an agent (or a person) one identity, one balance, and one key that s
 
 ## Prerequisites
 
-- A Sui address — the wallet creates one for you.
-- ~$1 of USDC to send + a little SUI (~0.05) for gas on swaps. USDC/USDsui sends and x402 API payments are **gasless**.
-- Node.js 18+. An MCP-compatible client (Claude Desktop / Cursor / Windsurf / Cline / Continue / Codex) if you want the agent to call the wallet directly.
+- **Node.js 18+.** An MCP-compatible client (Claude Desktop / Cursor / Windsurf / Cline / Continue / Codex) if you want the agent to call the wallet directly.
+- **A few dollars of USDC** to fund the wallet ($5 covers credit + hundreds of x402 calls). Everything on this page is **gasless** — no SUI needed.
 
 ## 1. Install + create a wallet
 
 ```bash
 npm install -g @t2000/cli
 t2 init                              # create a wallet (local keypair, 0600 perms)
+t2 fund                              # your address + a QR — send USDC here
 ```
 
 Or paste the **one-prompt setup** into any AI client (Cursor, Claude Code, ChatGPT) — it fetches the read-only setup skill (config-only; never moves funds) and wires everything:
@@ -24,14 +24,33 @@ Or paste the **one-prompt setup** into any AI client (Cursor, Claude Code, ChatG
 Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my Agent Wallet.
 ```
 
-`t2 init` registers your [Agent ID](/agent-id) too (gas permitting), so you're discoverable out of the box. See [Authentication](/authentication) for keys + funding.
+This wallet is what sends, x402 payments, and self-funded credit all spend from. `t2 init` also registers your [Agent ID](/agent-id) (gas permitting), so you're discoverable out of the box.
 
-## 2. Your first private inference call
+## 2. Get an API key — pick ONE path
+
+Inference calls are metered from a **credit balance** behind an API key. Two ways to get one:
+
+- **Agent path (no browser — same wallet as step 1):**
+
+  ```bash
+  t2 agent onboard --fund 5          # $5 USDC from this wallet → credit + an API key
+  export T2000_API_KEY=sk-…          # printed once
+  ```
+
+- **Human path (browser):** sign in at [platform.t2000.ai](https://platform.t2000.ai) with Google → add credit (card or stablecoin) → **API keys → Create**.
+
+<Note>
+  **One identity or two?** The console account is its own Passport wallet + balance (created from your Google sign-in) — **separate** from the CLI wallet in step 1. Agents should stay on the CLI wallet (`onboard`); humans and apps can use the console. Pick one path for credit so you don't fund two accounts by accident.
+</Note>
+
+(You can also skip the key entirely — step 4 calls the same API pay-per-call from the wallet.)
+
+## 3. Your first private inference call
 
 <CodeGroup>
 
 ```bash CLI
-t2 chat "Explain x402 in one sentence." --model zai/glm-5.2     # streams
+t2 chat "Explain x402 in one sentence."                          # streams (fast default model)
 t2 chat --model phala/glm-5.2 "Summarize this privately"        # 🔒 confidential (GPU-TEE)
 ```
 
@@ -49,11 +68,11 @@ curl https://api.t2000.ai/v1/chat/completions \
 
 </CodeGroup>
 
-Get a key (or fund a wallet) at [platform.t2000.ai](https://platform.t2000.ai) — see [Authentication](/authentication). Browse models with `t2 models` or [`GET /v1/models`](/models).
+Browse models with `t2 models` or [`GET /v1/models`](/models).
 
-## 3. Your first agent payment
+## 4. Your first agent payment
 
-Pay any [x402](/agent-payments) service per call in USDC — no key, gasless, straight from your wallet:
+Pay any [x402](/agent-payments) service per call in USDC — **no key**, gasless, straight from the step-1 wallet:
 
 ```bash
 t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
