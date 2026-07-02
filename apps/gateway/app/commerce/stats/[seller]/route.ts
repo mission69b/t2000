@@ -28,6 +28,7 @@ async function handle(
     netMicros: number;
     createdAt: Date;
     status: string;
+    collectDigest: string;
   }[] = [];
   try {
     allRows = await prisma.commerceReceipt.findMany({
@@ -40,6 +41,7 @@ async function handle(
         netMicros: true,
         createdAt: true,
         status: true,
+        collectDigest: true,
       },
     });
   } catch {
@@ -72,6 +74,7 @@ async function handle(
 
   // Recent activity for the listing page (§II.13.A) — last 5 paid attempts,
   // buyer short-address only (public page; full addresses stay in the ledger).
+  // The collect digest is a public Sui tx — the clickable receipt.
   const recent = [...allRows]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, 5)
@@ -80,6 +83,7 @@ async function handle(
       buyer: `${r.buyer.slice(0, 6)}…${r.buyer.slice(-4)}`,
       amountUsd: Number((r.grossMicros / 1_000_000).toFixed(6)),
       delivered: r.status !== 'refunded',
+      tx: r.collectDigest,
     }));
 
   return Response.json({
