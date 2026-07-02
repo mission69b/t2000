@@ -22,21 +22,36 @@ async function handle(
     return Response.json({ error: 'Invalid seller address' }, { status: 400 });
   }
 
-  let rows: { buyer: string; netMicros: number; createdAt: Date }[] = [];
+  let allRows: {
+    buyer: string;
+    netMicros: number;
+    createdAt: Date;
+    status: string;
+  }[] = [];
   try {
-    rows = await prisma.commerceReceipt.findMany({
-      // Completed sales only (a refunded purchase is not a sale).
-      where: { seller, status: { in: ['settled', 'settlement_due'] } },
-      select: { buyer: true, netMicros: true, createdAt: true },
+    allRows = await prisma.commerceReceipt.findMany({
+      // Refunded rows too — they power the delivered rate (§II.12.B). A
+      // refunded purchase is still NOT a sale (excluded from sales/volume).
+      where: { seller, status: { in: ['settled', 'settlement_due', 'refunded'] } },
+      select: { buyer: true, netMicros: true, createdAt: true, status: true },
     });
   } catch {
-    rows = [];
+    allRows = [];
   }
+
+  const rows = allRows.filter((r) => r.status !== 'refunded');
+  const refunds = allRows.length - rows.length;
 
   const sales = rows.length;
   // Settled volume = net to the seller (what they actually earned).
   const volumeUsd = rows.reduce((acc, r) => acc + r.netMicros / 1_000_000, 0);
-  const buyers = new Set(rows.map((r) => r.buyer)).size;
+  const buyerCounts = new Map<string, number>();
+  for (const r of rows) {
+    buyerCounts.set(r.buyer, (buyerCounts.get(r.buyer) ?? 0) + 1);
+  }
+  const buyers = buyerCounts.size;
+  // Repeat buyers — the strongest honest quality signal receipts can carry.
+  const repeatBuyers = [...buyerCounts.values()].filter((n) => n >= 2).length;
   const lastSaleAt =
     rows.length > 0
       ? rows.reduce(
@@ -44,12 +59,19 @@ async function handle(
           rows[0].createdAt,
         )
       : null;
+  // Delivered rate = delivered / paid attempts. null until there's data.
+  const attempts = sales + refunds;
+  const deliveredRate = attempts > 0 ? sales / attempts : null;
 
   return Response.json({
     seller,
     sales,
     volumeUsd: Number(volumeUsd.toFixed(6)),
     buyers,
+    repeatBuyers,
+    refunds,
+    deliveredRate:
+      deliveredRate === null ? null : Number(deliveredRate.toFixed(4)),
     lastSaleAt,
   });
 }
