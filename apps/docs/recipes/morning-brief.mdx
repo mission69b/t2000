@@ -15,7 +15,7 @@ Use t2 services. Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headline
 
 1. `POST /coingecko/v1/price` — coins by ID vs USD
 2. `POST /newsapi/v1/search` — keyword article search
-3. `POST /anthropic/v1/messages` — Claude 3.5 Sonnet stitches them into prose
+3. `POST /anthropic/v1/messages` — Claude Sonnet stitches them into prose
 
 Each call returns HTTP 402, your wallet signs a tiny USDC payment, the gateway proxies upstream and returns 200. Total ~$0.06, ~6s end to end.
 

@@ -23,7 +23,7 @@ export OPENAI_BASE_URL="https://api.t2000.ai/v1"
 export OPENAI_API_KEY="sk-..."
 ```
 
-Then pick a model from the catalog (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-4.6`, or a confidential `phala/glm-5.2`).
+Then pick a model from the catalog (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-5`, or a confidential `phala/glm-5.2`).
 
 ## OpenAI SDK
 
@@ -67,10 +67,10 @@ Cursor can route its chat models through any OpenAI-compatible endpoint:
 
 1. **Settings → Models → API Keys → OpenAI API Key.**
 2. Paste your `sk-…` key, expand **Override OpenAI Base URL**, and set it to `https://api.t2000.ai/v1`.
-3. Under **Models**, add the model IDs you want (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-4.6`), then **Verify**.
+3. Under **Models**, add the model IDs you want (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-5`), then **Verify**.
 
 <Note>
-  Cursor's agentic features are tuned for specific frontier models. For a drop-in private chat model, add a model like `zai/glm-5.2` or `anthropic/claude-sonnet-4.6` and select it in the chat model picker.
+  Cursor's agentic features are tuned for specific frontier models. For a drop-in private chat model, add a model like `zai/glm-5.2` or `anthropic/claude-sonnet-5` and select it in the chat model picker.
 </Note>
 
 ## OpenAI Codex CLI
@@ -84,7 +84,7 @@ base_url = "https://api.t2000.ai/v1"
 env_key = "T2000_API_KEY"
 
 [profiles.t2000]
-model = "anthropic/claude-sonnet-4.6"
+model = "anthropic/claude-sonnet-5"
 model_provider = "t2000"
 ```
 
