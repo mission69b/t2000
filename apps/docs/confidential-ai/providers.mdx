@@ -42,5 +42,5 @@ Claims are honest about their [source](/confidential-ai/attested-sessions#typed-
 Frontier models (`openai/*`, `anthropic/*`, …) have no confidential-inference verifier — the receipt records `upstream.verified.result = failed`, `required = false`. The request is still served through the gateway, but the upstream is **not** attested and sees your prompt. See the [trust boundary](/confidential-ai/trust-boundary).
 
 <Note>
-  t2000 **consumes** these providers' attestations through Phala's ACI gateway — it does not run its own TEE (v3.0). The gateway-in-TEE rung (our own workload attested, E2EE) is deferred — see the [trust boundary](/confidential-ai/trust-boundary).
+  t2000 **consumes** these providers' attestations through Phala's ACI gateway — it does not run its own TEE (v3.0). The gateway-in-TEE step (our own workload attested, E2EE) is planned for v3.1 — see the [trust boundary](/confidential-ai/trust-boundary).
 </Note>

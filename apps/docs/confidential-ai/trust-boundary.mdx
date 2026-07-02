@@ -18,12 +18,12 @@ Confidential computing is precise about what it proves. This page states the bou
 - **The receipt-signing key is a t2000 server key** (not yet sealed in a TEE KMS).
 - **Routed (frontier) responses are not confidential.** `openai/*`, `anthropic/*`, etc. forward to a third party that sees your prompt — `upstream.verified = failed`, by design. Confidentiality is a property of the verified upstream, confirmed per response from the receipt.
 
-## The deferred rung (v3.1)
+## What v3.1 adds (planned)
 
-Full no-trust closes the gap above: the gateway itself runs **in a TEE** (its own attestation), the receipt key lives in **dstack KMS**, and **end-to-end encryption** means even t2000 never sees plaintext. This is the heaviest, most security-critical rung — built when a "can't-trust-the-gateway" need pulls for it. (The TDX quote itself is *already* re-verified client-side with `dcap-qvl` via [`t2 verify`](/confidential-ai/verify) — that's shipped, not deferred.)
+Full no-trust closes the gap above: the gateway itself runs **in a TEE** (its own attestation), the receipt key lives in **dstack KMS**, and **end-to-end encryption** means even t2000 never sees plaintext. It's the heaviest, most security-critical step — we'll build it when a "can't-trust-the-gateway" need pulls for it. (The TDX quote itself is *already* re-verified client-side with `dcap-qvl` via [`t2 verify`](/confidential-ai/verify) — that's shipped, not deferred.)
 
 <Note>
-  This per-rung honesty is non-negotiable: the receipt + docs state *exactly* what each tier proves. Overclaiming "zero-trust" today would be the failure mode this whole design guards against — **a wrong "verifiable" claim is worse than honest ZDR.**
+  This tier-by-tier honesty is non-negotiable: the receipt + docs state *exactly* what each tier proves. Overclaiming "zero-trust" today would be the failure mode this whole design guards against — **a wrong "verifiable" claim is worse than honest ZDR.**
 </Note>
 
 ## Choosing a tier

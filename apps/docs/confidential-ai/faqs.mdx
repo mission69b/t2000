@@ -13,7 +13,7 @@ description: "Common questions about t2000's Confidential tier — attestation, 
   </Accordion>
 
   <Accordion title="Can t2000 read my prompts?" icon="eye">
-    On a confidential call, plaintext is visible to the **attested** gateway after TLS terminates, because it has to process the request — but the gateway is a reviewed workload in a TEE and **retains nothing** (zero data retention). It does not mean no software ever sees the request. For the exact boundary, read the [trust boundary](/confidential-ai/trust-boundary). Full end-to-end encryption where even t2000 never sees plaintext is the deferred v3.1 rung.
+    On a confidential call, plaintext is visible to the **attested** gateway after TLS terminates, because it has to process the request — but the gateway is a reviewed workload in a TEE and **retains nothing** (zero data retention). It does not mean no software ever sees the request. For the exact boundary, read the [trust boundary](/confidential-ai/trust-boundary). Full end-to-end encryption — where even t2000 never sees plaintext — is planned for v3.1.
   </Accordion>
 
   <Accordion title="How do I prove a response was genuinely confidential?" icon="circle-check">
