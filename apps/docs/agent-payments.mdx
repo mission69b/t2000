@@ -49,7 +49,7 @@ Or hit the catalog directly: [`/api/services`](https://mpp.t2000.ai/api/services
 npm install -g @t2000/cli
 t2 init
 
-# 2. Fund the wallet with USDC (any amount; $1 covers ~100 LLM calls)
+# 2. Fund the wallet with USDC (any amount; $1 covers ~50 LLM calls)
 t2 fund
 # (transfer USDC to the printed address from any Sui wallet)
 
@@ -111,15 +111,15 @@ That's it. The x402 challenge is handled automatically; payment broadcasts to Su
 
 Every chat provider on the rail speaks the **OpenAI Chat Completions shape** — same request body, same response JSON. One request format, many providers, all **$0.02/call**, no signup and no API keys:
 
-| Provider | Endpoint | Models |
-|---|---|---|
-| OpenAI | `/openai/v1/chat/completions` | GPT-4o, o1, GPT-4o-mini |
-| Groq | `/groq/v1/chat/completions` | Llama 3, Mixtral, Gemma (ultra-fast) |
-| DeepSeek | `/deepseek/v1/chat/completions` | DeepSeek-V3, R1 (reasoning) |
-| Together | `/together/v1/chat/completions` | Llama 4, Qwen, Mixtral |
-| Mistral | `/mistral/v1/chat/completions` | Mistral Large, Codestral |
+| Provider | Endpoint |
+|---|---|
+| OpenAI | `/openai/v1/chat/completions` |
+| Groq | `/groq/v1/chat/completions` |
+| DeepSeek | `/deepseek/v1/chat/completions` |
+| Together | `/together/v1/chat/completions` |
+| Mistral | `/mistral/v1/chat/completions` |
 
-OpenAI's other endpoints are mirrored too — `embeddings`, `images/generations`, `audio/speech`, `audio/transcriptions` — and more chat providers (Perplexity Sonar, Cohere, xAI) are one `t2 services search "chat"` away.
+Pass any model the provider serves — the request body is forwarded as-is. OpenAI's other endpoints are mirrored too — `embeddings`, `images/generations`, `audio/speech`, `audio/transcriptions` — and more chat providers (Perplexity, Cohere, Gemini) are one `t2 services search "chat"` away.
 
 **Why it matters for agents.** Agents burn 5–30× the tokens a human chat does, so inference is the dominant cost. The cheap open tiers (DeepSeek, Groq, Together, Mistral) are a flat **$0.02/call**, account-less — switch providers by swapping the path, keep the exact same request body. Pay per call in USDC; no minimums, no subscription, no key to rotate.
 
@@ -176,25 +176,21 @@ t2 services inspect https://mpp.t2000.ai/openai  # full service detail + endpoin
 | Agent-readable | `llms.txt` | [`mpp.t2000.ai/llms.txt`](https://mpp.t2000.ai/llms.txt) |
 | OpenAPI 3.1 spec | OpenAPI | [`GET https://mpp.t2000.ai/openapi.json`](https://mpp.t2000.ai/openapi.json) |
 | Web catalog | HTML | [`mpp.t2000.ai/services`](https://mpp.t2000.ai/services) |
-| Payment explorer | HTML | [`mpp.t2000.ai/explorer`](https://mpp.t2000.ai/explorer) |
+| Live activity | HTML | [`mpp.t2000.ai/activity`](https://mpp.t2000.ai/activity) |
 
 ### Categories
 
-| Category | Count | Examples |
-|---|---|---|
-| AI Chat | 9 | OpenAI, Anthropic, DeepSeek, Mistral, Together AI, Groq, Cohere, Perplexity, xAI |
-| Embeddings | 6 | OpenAI text-embedding-3, Cohere, Voyage, Mistral, Jina, Together |
-| Image Generation | 9 | DALL-E 3, gpt-image-1, FAL Flux, Stability, Replicate, Midjourney, Imagen, Recraft, Ideogram |
-| Audio + TTS | 7 | Whisper, AssemblyAI, ElevenLabs TTS, OpenAI TTS, Hume, Cartesia, Inworld |
-| Web Search | 10 | Brave, Tavily, Exa, You.com, Serper, Perplexity Sonar, Bing, Kagi, SerpAPI, Linkup |
-| Web Scraping | 8 | Firecrawl, Jina Reader, Browserbase, ScrapingBee, Apify, ZenRows, Spider, Crawlbase |
-| Translation | 3 | DeepL, Google Translate, Lilt |
-| Data | 9 | Maps, Weather, Crypto prices, Stock prices, Currency conversion, Flights, Sports, News, Sui RPC |
-| Email + Push | 3 | Resend, Loops, Pushcut |
-| Physical Mail | 3 | Lob postcards, Lob letters, PostGrid |
-| Commerce | 3 | Stripe, Square, NMI |
-| Intelligence | 4 | Wolfram, Perplexity Research, Riza code exec, BlockVision |
-| Tools | 3 | URL screenshot, PDF render, Cron job |
+41 services across 13 categories — the live truth is always [`/api/services`](https://mpp.t2000.ai/api/services):
+
+| Category | Services |
+|---|---|
+| AI | OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, Together AI, Cohere, Perplexity, fal.ai, Replicate, ElevenLabs, Exa, the t2000 Private API, and more |
+| Media (image · audio · TTS) | OpenAI (gpt-image-1, Whisper, TTS), fal.ai, Stability AI, Replicate, ElevenLabs, AssemblyAI, Together AI |
+| Search | Brave Search, Perplexity, Exa, Serper, SerpAPI, NewsAPI |
+| Data | OpenWeather, Google Maps, CoinGecko, Alpha Vantage, NewsAPI, Hunter.io, IPinfo, PDFShift, QR Code |
+| Web | Firecrawl, Jina Reader, ScreenshotOne, PDFShift |
+| Translation | DeepL, Google Translate |
+| Everything else | Judge0 (code exec), Lob (physical mail), Resend (email), Pushover (push), VirusTotal (security), ExchangeRate (forex), Short.io, TinyPNG |
 
 ## Pricing
 
@@ -272,7 +268,7 @@ Full SDK reference: [Agent SDK](/agent-sdk).
 - **Protocol** — the x402 rail (HTTP 402 payments on Sui), implemented via [`mppx`](https://www.npmjs.com/package/mppx) + [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp).
 - **Network** — Sui mainnet. USDC = `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`.
 - **Gasless** — USDC transfers via `0x2::balance::send_funds` (Sui foundation sponsor).
-- **Logging** — Prisma + NeonDB. Every payment is logged with its tx digest; browse at [`mpp.t2000.ai/explorer`](https://mpp.t2000.ai/explorer).
+- **Logging** — Prisma + NeonDB. Every payment is logged with its tx digest; browse at [`mpp.t2000.ai/activity`](https://mpp.t2000.ai/activity).
 
 ## Why x402
 

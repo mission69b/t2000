@@ -57,12 +57,12 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 ## What you can build
 
 - **A USDC-paying agent.** Drop `@t2000/cli` into any agent loop; it runs `t2 pay` against 40+ paid APIs without you holding SUI for gas.
-- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets 9 live wallet tools + 8 skill prompts.
+- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets 12 live wallet tools + 9 skills.
 - **A Sui-native fintech.** `@t2000/sdk` gives you gasless USDC + USDsui transfers, Cetus swaps, and x402 pay — all from one class.
 
 ## Why t2000
 
-**Agent Wallet, not general wallet.** Every t2000 surface is narrow on purpose. The CLI sends, swaps, and pays — the polished multi-model chat + agent experience lives in [Audric](https://audric.ai). The MCP server exposes 9 tools. The SDK is one class — `T2000`.
+**Agent Wallet, not general wallet.** Every t2000 surface is narrow on purpose. The CLI sends, swaps, and pays — the polished multi-model chat + agent experience lives in [Audric](https://audric.ai). The MCP server exposes 12 tools. The SDK is one class — `T2000`.
 
 **Gasless by default for the things that matter.** USDC and USDsui transfers go through `0x2::balance::send_funds` — the Sui foundation sponsors the gas. Your agent never needs SUI to pay another agent in USDC.
 
