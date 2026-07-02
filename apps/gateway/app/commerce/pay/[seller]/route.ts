@@ -9,6 +9,7 @@ import {
 } from '@suimpp/mpp/x402';
 import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commerce';
 import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
+import { DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
 import { TREASURY_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
 import {
@@ -131,6 +132,9 @@ async function deliverToSeller(
         // exposed to the buyer. Buyer identity comes last (can't be overridden).
         ...(opts?.extraHeaders ?? {}),
         'x-agent-buyer': buyer,
+        // Signed proof this call came through the paid delivery leg — the
+        // gateway-hosted seller routes (app/sellers/*) refuse without it.
+        [DELIVERY_AUTH_HEADER]: signDelivery(endpoint),
       },
       body: method === 'POST' ? body || undefined : undefined,
       // Block SSRF-via-redirect (a public URL 30x-ing to an internal host).

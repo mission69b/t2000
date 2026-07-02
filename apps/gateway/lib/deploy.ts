@@ -126,17 +126,20 @@ export function isSafeUpstreamUrl(raw: string): boolean {
     return false;
   }
   const host = u.hostname.toLowerCase();
+  // Our own rail/gateway hosts: allowed ONLY for the dedicated seller-endpoint
+  // namespace (gateway-hosted seeds, §II.13.B). The money/config surfaces
+  // (/commerce, /deploy) stay blocked — a delivery target there would recurse
+  // into settlement. api.t2000.ai (inference) is intentionally allowed — an
+  // agent may legitimately wrap the Private API.
+  if (host === 'mpp.t2000.ai' || host === 'x402.t2000.ai') {
+    return u.pathname.toLowerCase().startsWith('/sellers/');
+  }
   return !(
     host === 'localhost' ||
     host === '127.0.0.1' ||
     host === '0.0.0.0' ||
     host === '::1' ||
     host.endsWith('.local') ||
-    // Our own rail/gateway hosts — never proxy to ourselves (a delivery target
-    // of /commerce/pay or /deploy would recurse). api.t2000.ai (inference) is
-    // intentionally allowed — an agent may legitimately wrap the Private API.
-    host === 'mpp.t2000.ai' ||
-    host === 'x402.t2000.ai' ||
     /^10\./.test(host) ||
     /^192\.168\./.test(host) ||
     /^169\.254\./.test(host) ||
