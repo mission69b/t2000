@@ -107,13 +107,14 @@ Manual config — paste into your client's MCP config file:
   "mcpServers": {
     "t2000": {
       "command": "t2",
-      "args": ["mcp", "start"]
+      "args": ["mcp", "start"],
+      "env": { "T2000_API_KEY": "sk-…" }
     }
   }
 }
 ```
 
-The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there.
+The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there. The `env` block is only needed for the inference tools (`t2000_chat` / `t2000_models`) — every wallet tool works without it. Get a key per [Authentication](/authentication); after `t2 mcp install`, add the `env` block to the generated entry by hand.
 
 ### MCP Tools
 

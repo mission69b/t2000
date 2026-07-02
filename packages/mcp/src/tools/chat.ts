@@ -12,12 +12,14 @@ import { errorResult } from '../errors.js';
 // (SPEC_AUDRIC_API, S.575). Key-based: the server reads T2000_API_KEY from its
 // env (set it in the MCP client config). The x402 no-key path is a later add.
 
-const DEFAULT_MODEL = 'zai/glm-5.2';
+// Fast non-reasoning default — matches the CLI's `t2 chat` default (reasoning
+// models like glm-5.2 are deeper but noticeably slower; opt in via `model`).
+const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 export function registerChatTools(server: McpServer): void {
   server.tool(
     't2000_chat',
-    "Run private inference on the t2000 Private API (OpenAI-compatible; ZDR by default, a `phala/*` tier is GPU-TEE confidential), billed to the user's t2000 credit. Requires T2000_API_KEY in the server env (generate at platform.t2000.ai — Pro/Max). Pass a single `prompt`, or a full `messages` list. Discover model ids with t2000_models; defaults to GLM 5.2.",
+    "Run private inference on the t2000 Private API (OpenAI-compatible; ZDR by default, a `phala/*` tier is GPU-TEE confidential), billed to the user's t2000 credit. Requires T2000_API_KEY in the server env (any funded account can mint one — platform.t2000.ai or `t2 agent onboard`). Pass a single `prompt`, or a full `messages` list. Discover model ids with t2000_models; defaults to the fast gpt-oss-120b.",
     {
       prompt: z
         .string()
