@@ -24,6 +24,7 @@ async function handle(
 
   let allRows: {
     buyer: string;
+    grossMicros: number;
     netMicros: number;
     createdAt: Date;
     status: string;
@@ -33,7 +34,13 @@ async function handle(
       // Refunded rows too — they power the delivered rate (§II.12.B). A
       // refunded purchase is still NOT a sale (excluded from sales/volume).
       where: { seller, status: { in: ['settled', 'settlement_due', 'refunded'] } },
-      select: { buyer: true, netMicros: true, createdAt: true, status: true },
+      select: {
+        buyer: true,
+        grossMicros: true,
+        netMicros: true,
+        createdAt: true,
+        status: true,
+      },
     });
   } catch {
     allRows = [];
@@ -63,6 +70,18 @@ async function handle(
   const attempts = sales + refunds;
   const deliveredRate = attempts > 0 ? sales / attempts : null;
 
+  // Recent activity for the listing page (§II.13.A) — last 5 paid attempts,
+  // buyer short-address only (public page; full addresses stay in the ledger).
+  const recent = [...allRows]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 5)
+    .map((r) => ({
+      at: r.createdAt,
+      buyer: `${r.buyer.slice(0, 6)}…${r.buyer.slice(-4)}`,
+      amountUsd: Number((r.grossMicros / 1_000_000).toFixed(6)),
+      delivered: r.status !== 'refunded',
+    }));
+
   return Response.json({
     seller,
     sales,
@@ -73,6 +92,7 @@ async function handle(
     deliveredRate:
       deliveredRate === null ? null : Number(deliveredRate.toFixed(4)),
     lastSaleAt,
+    recent,
   });
 }
 
