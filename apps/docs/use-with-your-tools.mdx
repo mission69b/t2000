@@ -129,7 +129,7 @@ print(llm.invoke("Hello from t2000").content)
 
 ## Other OpenAI-compatible clients
 
-The same base URL + key works in any tool that targets OpenAI Chat Completions — **Continue**, **Cline**, **Aider** (`--openai-api-base`), **LiteLLM** (`openai/<model>`), **LlamaIndex**, and most "bring your own OpenAI key" apps. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`.
+The same base URL + key works in any tool that targets OpenAI Chat Completions — coding agents like **Kilo Code**, **Cline**, **Continue**, and **Aider** (`--openai-api-base`), frameworks like **LiteLLM** (`openai/<model>`) and **LlamaIndex**, and most "bring your own OpenAI key" apps and agents. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`, pick a model id from [`GET /v1/models`](/models), and every call is private by default — billed from your one balance.
 
 ## Anthropic-format tools (Claude Code)
 

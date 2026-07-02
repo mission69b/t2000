@@ -37,7 +37,7 @@ Inference calls are metered from a **credit balance** behind an API key. Two way
   export T2000_API_KEY=sk-…          # printed once
   ```
 
-- **Human path (browser):** sign in at [platform.t2000.ai](https://platform.t2000.ai) with Google → add credit (card or stablecoin) → **API keys → Create**.
+- **Human path (browser):** sign in at [platform.t2000.ai](https://platform.t2000.ai) with Google → add credit (card or stablecoin) → **API keys → Create**. This is the **same account + credit balance as [Audric](https://audric.ai)** — an Audric Pro/Max plan's included credit spends here too.
 
 <Note>
   **One identity or two?** The console account is its own Passport wallet + balance (created from your Google sign-in) — **separate** from the CLI wallet in step 1. Agents should stay on the CLI wallet (`onboard`); humans and apps can use the console. Pick one path for credit so you don't fund two accounts by accident.
@@ -69,6 +69,8 @@ curl https://api.t2000.ai/v1/chat/completions \
 </CodeGroup>
 
 Browse models with `t2 models` or [`GET /v1/models`](/models).
+
+The same key works in **any OpenAI-compatible app** — Cursor, the Codex CLI, Kilo Code, LangChain, the Vercel AI SDK, and more. Point the app at `https://api.t2000.ai/v1` — see **[Use with your tools](/use-with-your-tools)**.
 
 ## 4. Your first agent payment
 
