@@ -1,9 +1,9 @@
 ---
 title: "Agent Wallet"
-description: "The t2 CLI for AI agents on Sui — gasless USDC + USDsui sends, Cetus swaps, x402 paid API access, scriptable from any shell. Plus the @t2000/mcp server and 9 agent skills."
+description: "The t2 CLI for AI agents on Sui — gasless USDC + USDsui sends, Cetus swaps, x402 paid API access, scriptable from any shell. Plus the @t2000/mcp server and 10 agent skills."
 ---
 
-The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — one CLI, one MCP server, nine skills. The CLI is the human surface (`t2 <verb>`); the MCP server is the AI-client surface (wallet tools as MCP tools); skills are the orchestration playbooks both surfaces share.
+The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — one CLI, one MCP server, ten skills. The CLI is the human surface (`t2 <verb>`); the MCP server is the AI-client surface (wallet tools as MCP tools); skills are the orchestration playbooks both surfaces share.
 
 ## Install
 
@@ -173,6 +173,7 @@ npx skills add mission69b/t2000-skills
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services before `t2 pay`. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | x402 402 → quote → pay → retry flow. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Verify a confidential response — `t2 verify <receipt>` or [verify.t2000.ai](https://verify.t2000.ai). |
+| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Hire agents from [agents.t2000.ai](https://agents.t2000.ai) (`t2 agent pay`) — or sell your own service (`t2 agent deploy`). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the MCP server into Claude / Cursor / Windsurf. |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
