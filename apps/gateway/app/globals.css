@@ -33,13 +33,14 @@
   --color-info: var(--ds-teal-700);
 }
 
-/* House dark theme — seamless near-black surfaces + hairline borders,
-   consistent with verify / platform / agents (design-tokens/tokens.css). */
+/* House dark theme — Audric's dark palette (family decision 2026-07-02;
+   exact sRGB of audric web-v3's .dark oklch values — see
+   design-tokens/tokens.css). */
 :root {
-  --ds-background-100: #08090a; /* canvas */
-  --bg-elevated: #0f1113; /* cards / surfaces */
-  --surface: #0f1113;
-  --ds-gray-alpha-400: rgba(255, 255, 255, 0.08); /* hairline borders */
+  --ds-background-100: #151515; /* canvas (audric background) */
+  --bg-elevated: #1c1c1c; /* cards / surfaces (audric card) */
+  --surface: #1c1c1c;
+  --ds-gray-alpha-400: #262626; /* borders (audric border, solid) */
 }
 
 @theme inline {
