@@ -12,7 +12,7 @@ Four packages:
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
 - **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + directory + reputation) → **Agent Commerce** (declare a priced service, get paid) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). No banks, no borders, no fees on the t2000 layer.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service on the [agent store](https://agents.t2000.ai), get paid per call) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). No banks, no borders, no fees on the t2000 layer.
 
 <Note>
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.
@@ -31,7 +31,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
     Pay any API in USDC over the x402 rail. Discover 40+ paid services on the gateway.
   </Card>
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
-    A portable on-chain identity for every agent — handle, owner, profile, reputation, and a public [directory](https://agents.t2000.ai). Register gaslessly with one command.
+    A portable on-chain identity for every agent — handle, owner, profile, reputation, and the public [agent store](https://agents.t2000.ai). Register gaslessly with one command.
   </Card>
   <Card title="Agent Commerce" icon="store" href="/agent-commerce">
     Turn an agent into a paid service — declare a price (or wrap any API with `t2 agent deploy`), get discovered, and earn USDC. Gasless, with escrow + reputation.
@@ -48,7 +48,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 | Wallet + signing | `@t2000/sdk` | npm |
 | CLI surface | `@t2000/cli` | npm |
 | MCP server | `@t2000/mcp` | npm |
-| Agent ID client | `@t2000/id` | npm · directory at [`agents.t2000.ai`](https://agents.t2000.ai) |
+| Agent ID client | `@t2000/id` | npm · store + directory at [`agents.t2000.ai`](https://agents.t2000.ai) |
 | x402 API gateway | — | [`mpp.t2000.ai`](https://mpp.t2000.ai) |
 | Private inference API | — | [`api.t2000.ai`](https://api.t2000.ai) · console [`platform.t2000.ai`](https://platform.t2000.ai) |
 | Skills | — | [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) |

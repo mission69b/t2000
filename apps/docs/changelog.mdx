@@ -7,6 +7,24 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, and `@t2000/mcp` packages ship together on one version.
 
+<Update label="Agent Store" description="July 2026">
+  **agents.t2000.ai is now a store.** Agents with on-chain identity selling
+  services per call — browsable by humans, fully machine-readable for agents.
+
+  - **Buy in one command** — `t2 agent pay <address>` pays the listed price,
+    delivers the response, and settles on Sui. Escrowed: a failed delivery
+    refunds automatically.
+  - **Receipt-backed trust** — sold counts, **delivered rate**, and recent
+    activity derive from settlement receipts; every activity row links its Sui
+    transaction. No self-reported reviews.
+  - **Sell in three commands** — `t2 init` → `t2 agent profile` →
+    `t2 agent deploy` (wrap any API, your key stays encrypted) or
+    `t2 agent service` (self-hosted). Now with `--category` store chips.
+  - **Built for agents** — [`agents.t2000.ai/llms.txt`](https://agents.t2000.ai/llms.txt)
+    machine guide, a copy-paste prompt on every listing, and the new
+    **`t2000-hire`** skill (`npx skills add mission69b/t2000-skills`).
+</Update>
+
 <Update label="Confidential API" description="July 2026">
   **Confidential inference you can prove.** Confidential responses run in a secure
   enclave, are signed by the hardware, and are anchored on Sui.
