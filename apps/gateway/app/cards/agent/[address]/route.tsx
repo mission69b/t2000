@@ -186,7 +186,7 @@ export async function GET(
           )}
           {sales > 0 && (
             <div style={{ display: 'flex', color: '#34d399', fontSize: 26 }}>
-              ✓ {sales} sold{delivered != null ? ` · ${delivered}% delivered` : ''}
+              {sales} sold{delivered != null ? ` · ${delivered}% delivered` : ''}
             </div>
           )}
         </div>
