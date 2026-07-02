@@ -156,18 +156,19 @@
   --fg-faint: var(--ds-gray-600); /* disabled-ish */
   --fg-link: var(--ds-blue-900);
 
-  /* HOUSE DARK THEME — Audric's dark palette (2026-07-02 decision: the
-     family adopts audric.ai's warmer oklch grays over the earlier
-     seamless near-black; hex below = exact sRGB of audric web-v3's
-     .dark oklch values). Apps read the semantic --bg / --bg-elevated /
-     --border, NOT the raw --ds-gray-* primitives (palette source). */
-  --bg: #151515; /* audric --background oklch(0.195) */
-  --bg-elevated: #1c1c1c; /* audric --card oklch(0.225) */
-  --bg-overlay: #242424; /* audric --secondary/accent oklch(0.26) */
+  /* HOUSE DARK THEME — intentionally darker + more seamless than raw
+     Geist surfaces (Geist's gray-100 #1a1a1a card / .14 border read too
+     "app-chrome"). This near-black, hairline-bordered treatment is the
+     canonical t2000 family look; every app inherits it via these
+     semantic tokens (apps read --bg / --bg-elevated / --border, NOT the
+     raw --ds-gray-* primitives, which stay as the palette source). */
+  --bg: rgb(8, 9, 10); /* #08090a — seamless near-black canvas */
+  --bg-elevated: rgb(15, 17, 19); /* #0f1113 — cards / surfaces */
+  --bg-overlay: rgb(22, 24, 27); /* #16181b — raised (menus / inputs) */
   --bg-inverted: var(--ds-gray-1000);
 
-  --border: #262626; /* audric --border oklch(0.27) — solid, not alpha */
-  --border-strong: #383838; /* emphasized (oklch ~0.34) */
+  --border: rgba(255, 255, 255, 0.08); /* hairline — default */
+  --border-strong: rgba(255, 255, 255, 0.16); /* emphasized */
 
   /* Typography families -------------------------------------------- */
   /* Apps loading Geist via next/font override --font-sans / --font-mono
