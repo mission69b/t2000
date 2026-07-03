@@ -45,13 +45,25 @@ export type TaskDef = {
   kind: 'ledger' | 'claim';
 };
 
+// Founder-set scale (2026-07-03 evening): 1000+ payout capacity per task on a
+// $350 TOTAL envelope ($330 automated below + $20 manual verify-confidential)
+// → micro-rewards. Deliberate: when the reward ≈ the cost of the qualifying
+// action, farming is indistinguishable from participating (agent-card is
+// literal cashback), and "thousands of agents paid on-chain" is the stat.
 export const TASKS: TaskDef[] = [
-  { id: 'first-sale', rewardNetUsd: 5, budgetUsd: 40, kind: 'ledger' },
-  { id: 'agent-hire', rewardNetUsd: 1, budgetUsd: 15, kind: 'ledger' },
-  { id: 'agent-card', rewardNetUsd: 1, budgetUsd: 10, kind: 'ledger' },
-  { id: 'buy-manifest', rewardNetUsd: 1, budgetUsd: 10, kind: 'claim' },
-  { id: 'buy-sui', rewardNetUsd: 1, budgetUsd: 10, kind: 'claim' },
+  { id: 'first-sale', rewardNetUsd: 0.1, budgetUsd: 100, kind: 'ledger' },
+  { id: 'agent-hire', rewardNetUsd: 0.05, budgetUsd: 50, kind: 'ledger' },
+  { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 20, kind: 'ledger' },
+  { id: 'buy-manifest', rewardNetUsd: 0.08, budgetUsd: 80, kind: 'claim' },
+  { id: 'buy-sui', rewardNetUsd: 0.08, budgetUsd: 80, kind: 'claim' },
 ];
+
+// Velocity throttle — the farm-spike tripwire at 1000-capacity tasks: at most
+// this many payouts per task per hour; past it, payment attempts are skipped
+// (not reserved — they retry via /tasks/claim or the next settlement) and the
+// overflow is logged loudly. A full budget drain now takes >33 hours of
+// sustained visible activity instead of one scripted burst.
+const MAX_PAYOUTS_PER_TASK_PER_HOUR = 30;
 
 const taskById = new Map(TASKS.map((t) => [t.id, t]));
 
@@ -102,9 +114,10 @@ export function runnerAddress(): string | null {
 }
 
 /** Gross the net reward up so the worker nets the advertised amount after the
- *  rail's 2.5% fee. Ceil to the cent — never under-pay the stated reward. */
+ *  rail's 2.5% fee. Ceil at 4dp (the rail settles in USDC micros, so sub-cent
+ *  precision is exact) — never under-pay the stated reward. */
 export function grossRewardUsd(netUsd: number): number {
-  return Math.ceil((netUsd / (1 - FEE_RATE)) * 100) / 100;
+  return Math.ceil((netUsd / (1 - FEE_RATE)) * 10_000) / 10_000;
 }
 
 // ── Redis attribution store ─────────────────────────────────────────────────
@@ -215,6 +228,21 @@ async function payThroughRail(
   // Budget gate on the GROSS spend cap.
   const spent = await spentGrossMicros(task.id);
   if (spent + Math.round(grossUsd * 1e6) > Math.round(task.budgetUsd * 1e6)) {
+    return null;
+  }
+
+  // Velocity throttle (checked BEFORE reserving, so throttled wallets retry
+  // cleanly later). Counter self-expires with its hour bucket.
+  const hourBucket = Math.floor(Date.now() / 3_600_000);
+  const rateKey = `tasks:v1:rate:${task.id}:${hourBucket}`;
+  const inThisHour = await redis().incr(rateKey);
+  if (inThisHour === 1) {
+    await redis().expire(rateKey, 3900);
+  }
+  if (inThisHour > MAX_PAYOUTS_PER_TASK_PER_HOUR) {
+    console.error(
+      `[tasks] VELOCITY LIMIT ${task.id}: ${inThisHour} qualifying payouts this hour (cap ${MAX_PAYOUTS_PER_TASK_PER_HOUR}) — deferring ${wallet}. Possible farm spike; inspect /tasks/stats.`,
+    );
     return null;
   }
 
