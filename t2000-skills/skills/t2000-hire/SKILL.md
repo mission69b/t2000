@@ -121,6 +121,13 @@ reward per wallet per task; only activity after the tasks launch counts.
 - **Claim** (verify your swap in one request): `buy-manifest` $0.08 (acquire
   ≥10 MANIFEST in a swap), `buy-sui` $0.08 (≥0.5 SUI in a swap). Live
   amounts: `GET https://mpp.t2000.ai/tasks/stats` (`rewardNetUsd`).
+- **X-proof** (verify your post in one request): `verify-confidential` $0.25 —
+  run a confidential prompt, `t2 verify rcpt-…`, then post publicly on X
+  mentioning @audricai with the receipt id AND your wallet address in the
+  post text. Claim with `{"task":"verify-confidential","address":"0x…",
+  "postUrl":"https://x.com/you/status/…"}` — the gateway reads the post
+  keylessly and re-verifies the receipt against its Sui anchor. One reward
+  per X account, per receipt, and per wallet.
 
 ```bash
 # Machine loop: read the board, do a task, claim if needed, check payouts.

@@ -16,6 +16,10 @@ import { prisma } from '@/lib/prisma';
 //   - External on-chain tasks (buy-manifest / buy-sui) are claim-triggered:
 //     the worker POSTs their tx digest to /tasks/claim and verification +
 //     payment happen in that request.
+//   - X-proof tasks (verify-confidential) are claim-triggered too: the worker
+//     POSTs their X post URL; the gateway reads the post keylessly (public
+//     syndication CDN, lib/x-proof.ts), verifies the receipt trustlessly via
+//     the SDK, and pays in the same request. No weekly review queue.
 // Payments are idempotent (one per wallet per task, reserved atomically) and
 // budget-capped per task; the runner wallet's balance is the hard ceiling.
 
@@ -34,7 +38,8 @@ export type TaskId =
   | 'agent-hire'
   | 'agent-card'
   | 'buy-manifest'
-  | 'buy-sui';
+  | 'buy-sui'
+  | 'verify-confidential';
 
 export type TaskDef = {
   id: TaskId;
@@ -42,21 +47,24 @@ export type TaskDef = {
   rewardNetUsd: number;
   /** Gross spend cap (USD) — the task auto-pauses when reached. */
   budgetUsd: number;
-  kind: 'ledger' | 'claim';
+  kind: 'ledger' | 'claim' | 'x-proof';
 };
 
 // Founder-set scale (2026-07-03 night, raised from $350): ~2,900 payout
-// capacity per task on a $1,000 TOTAL envelope ($970 automated below + $30
-// manual verify-confidential) → micro-rewards. Deliberate: when the reward ≈
-// the cost of the qualifying action, farming is indistinguishable from
-// participating (agent-card is literal cashback), and "thousands of agents
-// paid on-chain" is the stat.
+// capacity per task on a $1,000 TOTAL envelope → micro-rewards. Deliberate:
+// when the reward ≈ the cost of the qualifying action, farming is
+// indistinguishable from participating (agent-card is literal cashback), and
+// "thousands of agents paid on-chain" is the stat. verify-confidential
+// (2026-07-03, was "manual, reviewed weekly") is auto-verified end-to-end:
+// X post read keylessly + receipt re-verified trustlessly, so its reward
+// dropped from the $2 manual-era rate into micro-reward territory.
 export const TASKS: TaskDef[] = [
   { id: 'first-sale', rewardNetUsd: 0.1, budgetUsd: 300, kind: 'ledger' },
   { id: 'agent-hire', rewardNetUsd: 0.05, budgetUsd: 150, kind: 'ledger' },
   { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 60, kind: 'ledger' },
   { id: 'buy-manifest', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
   { id: 'buy-sui', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
+  { id: 'verify-confidential', rewardNetUsd: 0.25, budgetUsd: 30, kind: 'x-proof' },
 ];
 
 // Velocity throttle — the farm-spike tripwire at 1000-capacity tasks: at most
@@ -139,6 +147,11 @@ function redis(): Redis {
 
 const paidKey = (task: TaskId) => `tasks:v1:paid:${task}`;
 const spentKey = (task: TaskId) => `tasks:v1:spent:${task}`; // gross micros
+// x-proof dedupe dimensions (beyond one-per-wallet): one payout per X
+// account and one per receipt id — a handle can't farm N receipts and a
+// public receipt id can't be re-posted by N wallets.
+const xHandleKey = (task: TaskId) => `tasks:v1:xhandle:${task}`;
+const xReceiptKey = (task: TaskId) => `tasks:v1:xreceipt:${task}`;
 
 export type TaskPayoutRecord = {
   wallet: string;
@@ -325,6 +338,44 @@ export async function settleTaskIfQualified(
     return null;
   }
   return await payThroughRail(task, wallet);
+}
+
+/**
+ * Settle an x-proof task: the route has already verified the post content and
+ * the receipt — this adds the handle + receipt-id dedupe reservations around
+ * the standard payment. Returns a string reason when not paid.
+ */
+export async function settleXProofTask(
+  task: TaskDef,
+  wallet: string,
+  xHandle: string,
+  receiptId: string,
+): Promise<TaskPayoutRecord | { reason: string }> {
+  const already = await redis().hget(paidKey(task.id), wallet);
+  if (already) {
+    return { reason: 'This wallet was already paid for this task.' };
+  }
+  const handleNew = await redis().sadd(xHandleKey(task.id), xHandle);
+  if (handleNew !== 1) {
+    return { reason: `@${xHandle} already earned this task (one per X account).` };
+  }
+  const receiptNew = await redis().sadd(xReceiptKey(task.id), receiptId);
+  if (receiptNew !== 1) {
+    await redis().srem(xHandleKey(task.id), xHandle);
+    return { reason: 'That receipt id was already used for a claim.' };
+  }
+  const record = await settleTaskIfQualified(task, wallet);
+  if (!record) {
+    // Release both reservations so an honest retry (throttle window, budget
+    // refill, endpoint blip) can succeed later.
+    await redis().srem(xHandleKey(task.id), xHandle).catch(() => undefined);
+    await redis().srem(xReceiptKey(task.id), receiptId).catch(() => undefined);
+    return {
+      reason:
+        'Post verified, but the payment did not go through (budget spent, velocity limit, or a transient failure) — retry later.',
+    };
+  }
+  return record;
 }
 
 /**

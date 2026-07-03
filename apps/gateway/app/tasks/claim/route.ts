@@ -4,16 +4,21 @@ import {
   getTask,
   isTasksConfigured,
   settleTaskIfQualified,
+  settleXProofTask,
   TASKS_LAUNCH_AT,
 } from '@/lib/tasks';
+import { fetchXPost, parseXPostUrl, X_MENTION } from '@/lib/x-proof';
 
 // POST /tasks/claim — the claim trigger for tasks whose qualifying event
-// happens OUTSIDE our ledger (buy-manifest / buy-sui: swaps on Sui the
-// gateway can't observe), and the RETRY path for ledger tasks (re-runs the
-// qualification — e.g. a reward buy that failed because the worker's
-// endpoint was down). Verification is on-chain in this request; payment goes
-// through the standard rail buy (lib/tasks.ts). Nothing here trusts the
-// caller: the digest is fetched from the chain and checked structurally.
+// happens OUTSIDE our ledger, and the RETRY path for ledger tasks (re-runs
+// the qualification — e.g. a reward buy that failed because the worker's
+// endpoint was down):
+//   - buy-manifest / buy-sui: swaps on Sui — digest verified on-chain here.
+//   - verify-confidential: an X post — read keylessly from X's public
+//     syndication CDN, and the posted receipt id re-verified trustlessly
+//     via the SDK (signed receipt + Sui anchor). No weekly review.
+// Payment goes through the standard rail buy (lib/tasks.ts). Nothing here
+// trusts the caller: every proof is fetched fresh and checked structurally.
 export const dynamic = 'force-dynamic';
 
 // Swap-shaped verification thresholds (token units — deterministic, no
@@ -95,7 +100,12 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  let body: { task?: string; address?: string; txDigest?: string };
+  let body: {
+    task?: string;
+    address?: string;
+    txDigest?: string;
+    postUrl?: string;
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -105,7 +115,9 @@ export async function POST(req: Request): Promise<Response> {
   const task = getTask(body.task ?? '');
   if (!task) {
     return Response.json(
-      { error: `Unknown task. Valid: first-sale, agent-hire, agent-card, buy-manifest, buy-sui.` },
+      {
+        error: `Unknown task. Valid: first-sale, agent-hire, agent-card, buy-manifest, buy-sui, verify-confidential.`,
+      },
       { status: 400 },
     );
   }
@@ -170,6 +182,83 @@ export async function POST(req: Request): Promise<Response> {
         { status: 400 },
       );
     }
+  }
+
+  // X-proof tasks: read the post keylessly, then verify the posted receipt
+  // trustlessly. The post must be public, post-launch, mention us, contain
+  // the claiming wallet (binds the post to the claimant — nobody can claim
+  // someone else's post), and carry a receipt id that verifies against its
+  // Sui anchor.
+  if (task.kind === 'x-proof') {
+    const postId = parseXPostUrl(body.postUrl ?? '');
+    if (!postId) {
+      return Response.json(
+        { error: 'Pass `postUrl` — the full https://x.com/…/status/… link to your post.' },
+        { status: 400 },
+      );
+    }
+    const post = await fetchXPost(postId);
+    if (!post) {
+      return Response.json(
+        { error: 'Could not read that post — it must be public (not deleted, not a protected account).' },
+        { status: 400 },
+      );
+    }
+    if (post.createdAt && post.createdAt.getTime() < TASKS_LAUNCH_AT.getTime()) {
+      return Response.json(
+        { error: 'Only posts after the tasks launch qualify.' },
+        { status: 400 },
+      );
+    }
+    const text = post.text.toLowerCase();
+    if (!text.includes(X_MENTION.toLowerCase())) {
+      return Response.json(
+        { error: `The post must mention ${X_MENTION}.` },
+        { status: 400 },
+      );
+    }
+    if (!text.includes(address.slice(0, 18).toLowerCase())) {
+      return Response.json(
+        {
+          error:
+            'The post must include the claiming wallet address — that binds the post to your claim.',
+        },
+        { status: 400 },
+      );
+    }
+    const receiptId = post.text.match(/rcpt-[a-f0-9]{16,64}/i)?.[0]?.toLowerCase();
+    if (!receiptId) {
+      return Response.json(
+        { error: 'The post must include your confidential receipt id (rcpt-…).' },
+        { status: 400 },
+      );
+    }
+    const { verifyReceipt } = await import('@t2000/sdk');
+    let verified = false;
+    try {
+      verified = (await verifyReceipt(receiptId, { skipQuote: true })).verified;
+    } catch {
+      verified = false;
+    }
+    if (!verified) {
+      return Response.json(
+        {
+          error: `${receiptId} did not verify (signed receipt + Sui anchor). Run \`t2 verify ${receiptId}\` to see why.`,
+        },
+        { status: 400 },
+      );
+    }
+    const result = await settleXProofTask(task, address, post.handle, receiptId);
+    if ('reason' in result) {
+      return Response.json({ paid: false, note: result.reason }, { status: 200 });
+    }
+    return Response.json({
+      paid: true,
+      task: task.id,
+      netUsd: result.netUsd,
+      receipt: result.digest,
+      suiscan: `https://suiscan.xyz/mainnet/tx/${result.digest}`,
+    });
   }
 
   const record = await settleTaskIfQualified(task, address);
