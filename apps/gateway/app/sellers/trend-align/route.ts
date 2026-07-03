@@ -11,7 +11,7 @@ import { paymentRequired, verifyDelivery } from '@/lib/sellers';
 // a guess.
 export const dynamic = 'force-dynamic';
 
-const BINANCE = 'https://api.binance.com/api/v3/klines';
+const BINANCE = 'https://data-api.binance.vision/api/v3/klines';
 const TIMEFRAMES = ['1h', '4h', '1d'] as const;
 
 type Kline = [number, string, string, string, string, string, ...unknown[]];

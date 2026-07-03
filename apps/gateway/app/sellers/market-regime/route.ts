@@ -11,7 +11,7 @@ import { paymentRequired, verifyDelivery } from '@/lib/sellers';
 // degrades to an explicit gap, never a synthesized number.
 export const dynamic = 'force-dynamic';
 
-const BINANCE = 'https://api.binance.com/api/v3/klines';
+const BINANCE = 'https://data-api.binance.vision/api/v3/klines';
 const CG_MARKETS =
   'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&price_change_percentage=24h,7d';
 const STABLE_IDS = new Set([

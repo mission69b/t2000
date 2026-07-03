@@ -10,7 +10,7 @@ import { paymentRequired, verifyDelivery } from '@/lib/sellers';
 // balanced_two_way). Input: { "symbol": "ETH" } (default BTC).
 export const dynamic = 'force-dynamic';
 
-const BINANCE = 'https://api.binance.com/api/v3/depth';
+const BINANCE = 'https://data-api.binance.vision/api/v3/depth';
 const BAND_PCT = 2;
 const SKEW_BID = 1.3;
 const SKEW_ASK = 1 / SKEW_BID;
