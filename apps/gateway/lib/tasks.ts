@@ -102,6 +102,13 @@ const EXCLUDED_WALLETS = new Set(
     '0x84ed0c5512e7cd60e884c137366b46e3b5dde04ae1f866b3558cb29553b95ce8', // market regime
     '0x8e5189d1c1a9e31192fd14d2048f9f8fbdd92713b8db17697998601963573153', // trend align
     '0x1479ed9f8e0b04f2fd935a39a22a285031ea9d24f73f3631c32a68b43863d96a', // sui pulse
+    // S.621 Shelf v3 seeds
+    '0x02d11a50c3d61300cce481de0d56685f4d0c3dc24e199c878e7371528ebf98ca', // perp pressure
+    '0xde9a239ca904f8d3a56d12847760f6c7b3b9c891242e63b4ff265768189f0537', // stable flows
+    '0xf6dacfdf02546db19d7b304eb5a95b4667582f7fff90b8c72884d33ecbca0eb1', // sector radar
+    '0xd0f40349893a551f02016432a8a791fa62b71e3958d8b6b4f819093c628bbead', // dex pulse
+    '0x95a32163a7ae0f53f8adaf711a94eabb4961eddcc536fef1d91a0bde50ac5ae6', // gas gauge
+    '0xce1682bda0adab069b0fe6f2d7e4f7217feb391fee8332fab6adaea2f49894af', // book depth
   ].map((a) => a.toLowerCase()),
 );
 
