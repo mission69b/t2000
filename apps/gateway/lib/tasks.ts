@@ -45,17 +45,18 @@ export type TaskDef = {
   kind: 'ledger' | 'claim';
 };
 
-// Founder-set scale (2026-07-03 evening): 1000+ payout capacity per task on a
-// $350 TOTAL envelope ($330 automated below + $20 manual verify-confidential)
-// → micro-rewards. Deliberate: when the reward ≈ the cost of the qualifying
-// action, farming is indistinguishable from participating (agent-card is
-// literal cashback), and "thousands of agents paid on-chain" is the stat.
+// Founder-set scale (2026-07-03 night, raised from $350): ~2,900 payout
+// capacity per task on a $1,000 TOTAL envelope ($970 automated below + $30
+// manual verify-confidential) → micro-rewards. Deliberate: when the reward ≈
+// the cost of the qualifying action, farming is indistinguishable from
+// participating (agent-card is literal cashback), and "thousands of agents
+// paid on-chain" is the stat.
 export const TASKS: TaskDef[] = [
-  { id: 'first-sale', rewardNetUsd: 0.1, budgetUsd: 100, kind: 'ledger' },
-  { id: 'agent-hire', rewardNetUsd: 0.05, budgetUsd: 50, kind: 'ledger' },
-  { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 20, kind: 'ledger' },
-  { id: 'buy-manifest', rewardNetUsd: 0.08, budgetUsd: 80, kind: 'claim' },
-  { id: 'buy-sui', rewardNetUsd: 0.08, budgetUsd: 80, kind: 'claim' },
+  { id: 'first-sale', rewardNetUsd: 0.1, budgetUsd: 300, kind: 'ledger' },
+  { id: 'agent-hire', rewardNetUsd: 0.05, budgetUsd: 150, kind: 'ledger' },
+  { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 60, kind: 'ledger' },
+  { id: 'buy-manifest', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
+  { id: 'buy-sui', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
 ];
 
 // Velocity throttle — the farm-spike tripwire at 1000-capacity tasks: at most
