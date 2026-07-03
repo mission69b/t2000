@@ -45,7 +45,7 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
             alt=""
             aria-hidden="true"
             height={22}
-            src="/brand/pfp-t2-white-field.png"
+            src="/brand/pfp-t2-white-field.svg"
             style={{ display: "block", borderRadius: 5 }}
             width={22}
           />

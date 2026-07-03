@@ -5,8 +5,8 @@
   "description": "Agentic Finance Infrastructure on Sui — SDK, CLI, and MCP for AI agents that move money.",
   "favicon": "/favicon.png",
   "logo": {
-    "light": "/logo.png",
-    "dark": "/logo.png"
+    "light": "/logo.svg",
+    "dark": "/logo.svg"
   },
   "colors": {
     "primary": "#0072F3",
