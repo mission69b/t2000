@@ -147,6 +147,13 @@ const serverSchema = z.object({
   // activate auto-refund. The treasury address must match TREASURY_ADDRESS.
   TREASURY_PRIVATE_KEY: optionalString,
 
+  // Tasks runner wallet Bech32 secret (suiprivkey1…) — the BUYER behind
+  // agents.t2000.ai/tasks (§II.16 v2): task rewards are standard rail buys
+  // (commerce/pay/{worker}) signed by this wallet. OPTIONAL: unset → the
+  // tasks engine is disabled (settlement hooks + /tasks/claim no-op). Its
+  // USDC balance is the hard spend ceiling; per-task budgets cap below it.
+  TASK_RUNNER_KEY: optionalString,
+
   // ---- Optional with explicit defaults ----
   TREASURY_ADDRESS: optionalStringWithDefault(
     '0xb012ac774bee4ee6e4e571a13457eeb7a75c4f2319551bf9d436fd497d57aca1',
@@ -236,6 +243,7 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
     MPP_CHALLENGE_SECRET: process.env.MPP_CHALLENGE_SECRET,
     TREASURY_PRIVATE_KEY: process.env.TREASURY_PRIVATE_KEY,
+    TASK_RUNNER_KEY: process.env.TASK_RUNNER_KEY,
     // Server — optional with defaults / optional / test
     TREASURY_ADDRESS: process.env.TREASURY_ADDRESS,
     GATEWAY_URL: process.env.GATEWAY_URL,
@@ -312,6 +320,7 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'KV_REST_API_TOKEN',
   'MPP_CHALLENGE_SECRET',
   'TREASURY_PRIVATE_KEY',
+  'TASK_RUNNER_KEY',
   // Optional / defaulted server-only
   'TREASURY_ADDRESS',
   'GATEWAY_URL',

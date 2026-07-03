@@ -15,6 +15,7 @@
   "dependencies": {
     "@prisma/client": "^6",
     "@suimpp/mpp": "^0.8.1",
+    "@t2000/sdk": "^5.23.0",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.3.3",

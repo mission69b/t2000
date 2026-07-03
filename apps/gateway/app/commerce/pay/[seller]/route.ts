@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
+import { after } from 'next/server';
 import { USDC } from '@suimpp/mpp/server';
 import {
   createX402Requirements,
@@ -9,6 +10,7 @@ import {
 } from '@suimpp/mpp/x402';
 import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commerce';
 import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
+import { runTaskChecksForWallets, runnerAddress } from '@/lib/tasks';
 import { DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
 import { TREASURY_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
@@ -404,6 +406,13 @@ async function handle(
       collectDigest: settle.transaction,
       forwardDigest,
     });
+    // Tasks hook (§II.16 v2): this settlement may be the qualifying event for
+    // a task (first sale / agent hire / agent card) — check buyer + seller
+    // AFTER the response streams (zero added latency). The runner's own
+    // reward buys are excluded inside; skipping here too avoids self-checks.
+    if (buyer.toLowerCase() !== runnerAddress()?.toLowerCase()) {
+      after(() => runTaskChecksForWallets([buyer, seller]));
+    }
     return withX402Receipt(
       Response.json({
         ok: true,
@@ -476,6 +485,11 @@ async function handle(
     collectDigest: settle.transaction,
     forwardDigest,
   });
+  // Tasks hook — payment-only settlements can complete a buyer-side task too
+  // (the runner's own reward buys are excluded inside).
+  if (buyer.toLowerCase() !== runnerAddress()?.toLowerCase()) {
+    after(() => runTaskChecksForWallets([buyer, seller]));
+  }
   return withX402Receipt(
     Response.json({
       ok: true,
