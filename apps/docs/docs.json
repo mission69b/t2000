@@ -3,10 +3,10 @@
   "theme": "mint",
   "name": "t2000",
   "description": "Agentic Finance Infrastructure on Sui — SDK, CLI, and MCP for AI agents that move money.",
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "logo": {
-    "light": "/logo-light.svg",
-    "dark": "/logo-dark.svg"
+    "light": "/logo.png",
+    "dark": "/logo.png"
   },
   "colors": {
     "primary": "#0072F3",

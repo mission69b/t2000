@@ -144,7 +144,8 @@ export function VerifyHub() {
         <p className="mx-auto mt-4 max-w-xl text-muted">
           Every confidential inference on Audric runs inside a GPU-TEE and is
           anchored on Sui — a tamper-evident, public, permanent record. Hashes
-          only: no prompts, no identities. Don't trust us — verify it yourself.
+          only: no prompts, no identities. Don&apos;t trust us — verify it
+          yourself.
         </p>
       </div>
 
@@ -277,7 +278,8 @@ export function VerifyHub() {
       </div>
 
       <footer className="mt-16 text-center text-dim text-xs">
-        Anchored by t2000's signer on Sui mainnet · only hashes are public ·{" "}
+        Anchored by t2000&apos;s signer on Sui mainnet · only hashes are public
+        ·{" "}
         <a
           className="underline underline-offset-2 hover:text-foreground"
           href="https://developers.t2000.ai/confidential-ai/how-it-works"

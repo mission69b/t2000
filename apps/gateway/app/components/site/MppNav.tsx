@@ -25,20 +25,15 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
           className="inline-flex items-center gap-2 text-foreground no-underline"
           aria-label="t2000 mpp — home"
         >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 100 100"
-            fill="currentColor"
+          <img
+            alt=""
             aria-hidden="true"
-            style={{ display: "block" }}
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M22 0H78C90.15 0 100 9.85 100 22V78C100 90.15 90.15 100 78 100H22C9.85 100 0 90.15 0 78V22C0 9.85 9.85 0 22 0ZM40.42 18.5L54.52 18.5L54.8 30.35L67.9 30.35L67.9 40.92L54.52 41.17L54.8 67.65L56.3 69.9L58.58 70.92L67.9 71.17L67.9 81.5L54.02 81.5L50.25 81L47.23 80L44.45 78.22L42.7 76.2L41.67 74.45L40.67 70.92L40.42 41.17L32.1 40.92L32.1 30.35L40.42 30.1L40.42 18.75Z"
-            />
-          </svg>
+            height={22}
+            src="/brand/pfp-t2-white-field.png"
+            style={{ display: "block", borderRadius: 5 }}
+            width={22}
+          />
+
           <span
             className="pl-2 font-mono text-[14px] font-medium tracking-[0.02em]"
             style={{ borderLeft: "1px solid var(--ds-gray-alpha-300)" }}
