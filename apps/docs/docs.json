@@ -17,7 +17,13 @@
     "tabs": [
       {
         "tab": "Get started",
-        "pages": ["index", "quickstart", "authentication", "models", "platform"]
+        "pages": [
+          "index",
+          "quickstart",
+          "authentication",
+          "models",
+          "platform"
+        ]
       },
       {
         "tab": "Agent stack",
@@ -35,7 +41,9 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": ["private-api"]
+            "pages": [
+              "private-api"
+            ]
           },
           {
             "group": "Confidential AI",
@@ -52,7 +60,9 @@
           },
           {
             "group": "Integrations",
-            "pages": ["use-with-your-tools"]
+            "pages": [
+              "use-with-your-tools"
+            ]
           }
         ]
       },
@@ -92,12 +102,17 @@
       },
       {
         "tab": "Changelog",
-        "pages": ["changelog"]
+        "pages": [
+          "changelog"
+        ]
       }
     ]
   },
   "redirects": [
-    { "source": "/agent-engine", "destination": "/agent-sdk" }
+    {
+      "source": "/agent-engine",
+      "destination": "/agent-sdk"
+    }
   ],
   "navbar": {
     "links": [
@@ -124,29 +139,64 @@
       {
         "header": "Packages",
         "items": [
-          { "label": "@t2000/cli", "href": "https://www.npmjs.com/package/@t2000/cli" },
-          { "label": "@t2000/sdk", "href": "https://www.npmjs.com/package/@t2000/sdk" },
-          { "label": "@t2000/mcp", "href": "https://www.npmjs.com/package/@t2000/mcp" },
-          { "label": "@t2000/id", "href": "https://www.npmjs.com/package/@t2000/id" }
+          {
+            "label": "@t2000/cli",
+            "href": "https://www.npmjs.com/package/@t2000/cli"
+          },
+          {
+            "label": "@t2000/sdk",
+            "href": "https://www.npmjs.com/package/@t2000/sdk"
+          },
+          {
+            "label": "@t2000/mcp",
+            "href": "https://www.npmjs.com/package/@t2000/mcp"
+          },
+          {
+            "label": "@t2000/id",
+            "href": "https://www.npmjs.com/package/@t2000/id"
+          }
         ]
       },
       {
         "header": "Resources",
         "items": [
-          { "label": "GitHub", "href": "https://github.com/mission69b/t2000" },
-          { "label": "Skills", "href": "https://t2000.ai/.well-known/agent-skills/index.json" },
-          { "label": "MPP Gateway", "href": "https://mpp.t2000.ai" },
-          { "label": "OpenAPI", "href": "https://mpp.t2000.ai/openapi.json" },
-          { "label": "Audric (consumer)", "href": "https://audric.ai" }
+          {
+            "label": "GitHub",
+            "href": "https://github.com/mission69b/t2000"
+          },
+          {
+            "label": "Skills",
+            "href": "https://t2000.ai/.well-known/agent-skills/index.json"
+          },
+          {
+            "label": "MPP Gateway",
+            "href": "https://mpp.t2000.ai"
+          },
+          {
+            "label": "OpenAPI",
+            "href": "https://mpp.t2000.ai/openapi.json"
+          },
+          {
+            "label": "Audric (consumer)",
+            "href": "https://audric.ai"
+          }
         ]
       }
     ]
   },
   "seo": {
-    "indexing": "all"
+    "indexing": "all",
+    "metatags": {
+      "og:image": "https://t2000.ai/opengraph-image",
+      "og:site_name": "developers.t2000.ai",
+      "twitter:card": "summary_large_image",
+      "twitter:image": "https://t2000.ai/opengraph-image"
+    }
   },
   "api": {
     "openapi": "openapi.json",
-    "playground": { "display": "interactive" }
+    "playground": {
+      "display": "interactive"
+    }
   }
 }
