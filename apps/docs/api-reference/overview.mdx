@@ -13,7 +13,7 @@ https://api.t2000.ai/v1
 
 ## Authentication
 
-Send your key as a bearer token (generate one at [platform.t2000.ai](https://platform.t2000.ai); see [Authentication](/authentication)):
+Send your key as a bearer token (generate one at [agents.t2000.ai/manage](https://agents.t2000.ai/manage); see [Authentication](/authentication)):
 
 ```bash
 Authorization: Bearer $T2000_API_KEY
@@ -58,7 +58,7 @@ Errors use the standard OpenAI envelope, so existing SDKs surface them correctly
 | Status | When |
 |---|---|
 | `401` | Missing or invalid API key |
-| `402` | Insufficient credit — add credit at [platform.t2000.ai](https://platform.t2000.ai) |
+| `402` | Insufficient credit — add credit at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) |
 | `404` | Unknown model — see `GET /v1/models` |
 | `429` | Rate limit exceeded (120 req/min per key) |
 | `5xx` | Upstream/server error — retry transient `429`/`5xx` with backoff |

@@ -62,7 +62,7 @@ function resolveApiKey(apiKey?: string): string {
   if (!key) {
     throw new T2000Error(
       'INVALID_KEY',
-      'No Private API key. Pass `apiKey` or set T2000_API_KEY. Generate one at platform.t2000.ai (Pro/Max).',
+      'No Private API key. Pass `apiKey` or set T2000_API_KEY. Generate one at agents.t2000.ai/manage (Pro/Max).',
     );
   }
   return key;

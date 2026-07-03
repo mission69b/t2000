@@ -5,7 +5,7 @@ description: "Three ways to authenticate to t2000: a Private API key, your non-c
 
 t2000 authenticates three ways, on **two kinds of account**:
 
-- A **Passport** — the non-custodial zkLogin wallet from your Google sign-in. Same account + credit balance across [platform.t2000.ai](https://platform.t2000.ai), `api.t2000.ai`, and [Audric](https://audric.ai). For humans and apps.
+- A **Passport** — the non-custodial zkLogin wallet from your Google sign-in. Same account + credit balance across [agents.t2000.ai/manage](https://agents.t2000.ai/manage), `api.t2000.ai`, and [Audric](https://audric.ai). For humans and apps.
 - A **local keypair wallet** (`t2 init`) — its own address and balance, no browser. For agents.
 
 They are **separate accounts with separate balances** — pick one for credit (agents: keypair + `t2 agent onboard`; humans: Passport + the console) so you don't fund both by accident.
@@ -14,7 +14,7 @@ They are **separate accounts with separate balances** — pick one for credit (a
 
 For the OpenAI-compatible [Private & Confidential API](/private-api):
 
-1. Sign in at **[platform.t2000.ai](https://platform.t2000.ai)** with Google (zkLogin).
+1. Sign in at **[agents.t2000.ai/manage](https://agents.t2000.ai/manage)** with Google (zkLogin).
 2. **Add credit** — card, **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or an Audric Pro/Max plan's included credit.
 3. **API keys → Create API key** — the secret (`sk-…`) is shown **once**; store it safely.
 
@@ -56,6 +56,6 @@ This pays from your wallet's USDC, gasless. See [Agent Payments](/agent-payments
 
 | You are… | Use |
 |---|---|
-| A human or app calling the API | **API key** (platform.t2000.ai) |
+| A human or app calling the API | **API key** (agents.t2000.ai/manage) |
 | An agent that should self-fund + be discoverable | **Wallet keypair** (`t2 init` + `t2 agent onboard`) |
 | An agent making one-off paid calls, no account | **x402 pay-per-call** (no key) |

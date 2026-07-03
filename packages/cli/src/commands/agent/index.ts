@@ -327,7 +327,7 @@ Subcommands:
         }
         if (normalizeSuiAddress(owner) === normalizeSuiAddress(address)) {
           throw new Error(
-            "That's this agent's own address. Pass YOUR Passport address (the human owner) — e.g. the one shown in platform.t2000.ai.",
+            "That's this agent's own address. Pass YOUR Passport address (the human owner) — e.g. the one shown in agents.t2000.ai/manage.",
           );
         }
         const { digest } = await runSponsoredTx({

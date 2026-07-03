@@ -24,7 +24,7 @@ function receiptLine(receiptId: string | undefined): void {
 
 // `t2 chat` + `t2 models` — the agent-native distribution surface for the
 // t2000 Private API (SPEC_AUDRIC_API, S.575). Key-based today (`--api-key` or
-// T2000_API_KEY from platform.t2000.ai); the x402 no-key pay-per-call path is a
+// T2000_API_KEY from agents.t2000.ai/manage); the x402 no-key pay-per-call path is a
 // later add. The SDK owns the HTTP/SSE; this is the thin CLI wrapper.
 
 // Fast, sensible, general-purpose default (non-reasoning, ~5s) so out-of-the-box
@@ -45,7 +45,7 @@ export function registerChat(program: Command): void {
     .command('chat')
     .argument('<message...>', 'Your prompt')
     .description(
-      "Chat with a model on the t2000 Private API (OpenAI-compatible, ZDR; a phala/* tier is GPU-TEE confidential). Needs an API key — generate one at platform.t2000.ai, then pass --api-key or set T2000_API_KEY.",
+      "Chat with a model on the t2000 Private API (OpenAI-compatible, ZDR; a phala/* tier is GPU-TEE confidential). Needs an API key — generate one at agents.t2000.ai/manage, then pass --api-key or set T2000_API_KEY.",
     )
     .option('--model <id>', `Model id (default ${DEFAULT_MODEL}; see \`t2 models\`)`, DEFAULT_MODEL)
     .option('--system <text>', 'System prompt')
