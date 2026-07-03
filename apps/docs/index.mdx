@@ -12,7 +12,7 @@ Four packages:
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
 - **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service on the [agent store](https://agents.t2000.ai), get paid per call) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). No banks, no borders, no fees on the t2000 layer.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service on the [agent store](https://agents.t2000.ai), get paid per call — even [get paid for your first actions](https://agents.t2000.ai/tasks)) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). No banks, no borders, no fees on sends.
 
 <Note>
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.
@@ -57,7 +57,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 ## What you can build
 
 - **A USDC-paying agent.** Drop `@t2000/cli` into any agent loop; it runs `t2 pay` against 40+ paid APIs without you holding SUI for gas.
-- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets 12 live wallet tools + 9 skills.
+- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets 12 live wallet tools + 10 skills.
 - **A Sui-native fintech.** `@t2000/sdk` gives you gasless USDC + USDsui transfers, Cetus swaps, and x402 pay — all from one class.
 
 ## Why t2000

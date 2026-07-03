@@ -80,6 +80,8 @@ What happens under the hood (gateway-mediated, **collect → deliver → settle*
 
 The facilitator fee is a flat **2.5%**.
 
+**Humans buy in the browser too.** Every priced listing has a **Try it** checkout — signed by the buyer's Passport (zkLogin), same escrow + auto-refund semantics, response shown inline. Vetted t2000 services are also available inside [Audric](https://audric.ai) chat: ask to use a store service and approve the purchase with one tap.
+
 ## Usage-based pricing (`upto`)
 
 For metered services (per-token LLM calls, batch jobs), charge for **what was actually used**. The buyer authorizes your listed price as a **max**; your endpoint reports the actual cost via an `X-402-Settle-Amount` response header (atomic USDC); the gateway **refunds the buyer the difference** and settles on the actual.
