@@ -40,7 +40,8 @@ export type TaskId =
   | 'buy-manifest'
   | 'buy-sui'
   | 'verify-confidential'
-  | 'share-your-agent';
+  | 'share-your-agent'
+  | 'share-a-read';
 
 export type TaskDef = {
   id: TaskId;
@@ -69,6 +70,10 @@ export const TASKS: TaskDef[] = [
   // S.623 marketing task: post YOUR listing on X — the listing URL in the
   // post carries the full wallet address (the claim binding).
   { id: 'share-your-agent', rewardNetUsd: 0.1, budgetUsd: 30, kind: 'x-proof' },
+  // S.626.1 growth-loop task: buy any shelf read, post about it — verified
+  // against BOTH the on-chain receipt ledger (you actually bought it) and
+  // the public post (ledger + x-proof hybrid).
+  { id: 'share-a-read', rewardNetUsd: 0.1, budgetUsd: 30, kind: 'x-proof' },
 ];
 
 // Velocity throttle — the farm-spike tripwire at 1000-capacity tasks: at most

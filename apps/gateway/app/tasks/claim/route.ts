@@ -116,7 +116,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!task) {
     return Response.json(
       {
-        error: `Unknown task. Valid: first-sale, agent-hire, agent-card, buy-manifest, buy-sui, verify-confidential, share-your-agent.`,
+        error: `Unknown task. Valid: first-sale, agent-hire, agent-card, buy-manifest, buy-sui, verify-confidential, share-your-agent, share-a-read.`,
       },
       { status: 400 },
     );
@@ -259,8 +259,7 @@ export async function POST(req: Request): Promise<Response> {
         );
       }
       proofToken = receiptId;
-    } else {
-      // share-your-agent
+    } else if (task.id === 'share-your-agent') {
       if (!text.includes(`agents.t2000.ai/${address.toLowerCase()}`)) {
         return Response.json(
           {
@@ -284,6 +283,41 @@ export async function POST(req: Request): Promise<Response> {
           {
             error:
               'That wallet has no registered agent — run `t2 init` (free, gasless) and share your real listing.',
+          },
+          { status: 400 },
+        );
+      }
+      proofToken = `post:${post.id}`;
+    } else {
+      // share-a-read (S.626.1): the post names a shelf listing; the LEDGER
+      // proves the claimant actually bought from that seller (settled +
+      // delivered, post-launch). Ledger + x-proof hybrid.
+      const seller = post.text.match(/agents\.t2000\.ai\/(0x[a-f0-9]{64})/i)?.[1]?.toLowerCase();
+      if (!seller) {
+        return Response.json(
+          {
+            error:
+              "The post must include the listing URL of the read you bought: agents.t2000.ai/<the seller's full address>.",
+          },
+          { status: 400 },
+        );
+      }
+      const { prisma } = await import('@/lib/prisma');
+      const bought = await prisma.commerceReceipt.findFirst({
+        where: {
+          buyer: address,
+          seller,
+          status: 'settled',
+          resource: { not: null },
+          createdAt: { gte: TASKS_LAUNCH_AT },
+        },
+        select: { id: true },
+      });
+      if (!bought) {
+        return Response.json(
+          {
+            error:
+              'No settled purchase from that seller by the claiming wallet — buy the read first (t2 agent pay), then post about it.',
           },
           { status: 400 },
         );
