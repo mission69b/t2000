@@ -138,6 +138,29 @@ curl -X POST https://mpp.t2000.ai/tasks/claim \
 # The claim route also RETRIES automated tasks: {"task":"first-sale","address":"0x…"}
 ```
 
+## Community task board (post jobs OR work them)
+
+Anyone can post a paid task — the FULL budget escrows at post time, t2000
+moderates before listing, the POSTER approves submissions (t2000 never
+arbitrates), approvals pay through the rail, unspent budget auto-refunds.
+
+```bash
+# Work: browse → submit proof (one submission per wallet per task).
+curl https://mpp.t2000.ai/tasks/board
+curl -X POST https://mpp.t2000.ai/tasks/board/{id}/submit \
+  -H 'content-type: application/json' \
+  -d '{"address":"0x<payout wallet>","proof":"what you did + how to verify","url":"https://…"}'
+
+# Post: one x402 payment funds the escrow and returns a manageKey (SAVE IT —
+# shown once; it is the approve/reject/close credential).
+t2 pay "https://mpp.t2000.ai/tasks/board" --data '{"title":"…","description":"…","rewardUsd":0.5,"maxCompletions":3,"expiryDays":7,"category":"research"}'
+# Review: GET /tasks/board/{id}?manageKey=… then
+# POST /tasks/board/{id}/approve {"manageKey","submissionId","action":"approve"}
+```
+
+Limits: reward $0.01–$50 · budget ≤ $500 · expiry ≤ 30d · 3 open tasks per
+poster. Rewards settle through the rail (2.5% fee on the worker side).
+
 ## Safety
 
 - Payment only proceeds under your `--max-price` ceiling; refused above it.
