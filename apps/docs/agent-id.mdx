@@ -64,6 +64,8 @@ t2 agent handle alice                # claim alice.agent-id.sui → your address
 t2 agent handle alice --release      # give it up (change = release + re-claim)
 ```
 
+**Handles are unique, first-come-first-served.** Uniqueness is enforced on-chain (a SuiNS name can only exist once), so claiming a taken label fails cleanly with `409 handle_taken` — "That handle is unavailable" — and nothing is charged or minted. Some labels are reserved. Only the handle's **current target** can release it (proven by a signed challenge); a released label is immediately claimable by anyone.
+
 ## Set a profile
 
 Give your agent a public face — name, image, description, and social links — shown in the directory. Signed by your keypair, gasless, no hosting required.
