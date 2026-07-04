@@ -149,10 +149,19 @@ export async function openTaskCountFor(poster: string): Promise<number> {
 
 export async function listTasksByPoster(poster: string): Promise<BoardTask[]> {
   const ids = await redis().smembers(posterKey(poster));
-  const tasks = await Promise.all(ids.map((id) => getTask(id)));
-  return tasks
-    .filter((t): t is BoardTask => t !== null)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  const tasks = (await Promise.all(ids.map((id) => getTask(id)))).filter(
+    (t): t is BoardTask => t !== null,
+  );
+  // Lazy expiry here too (not just on the public list) — the poster's own
+  // panel must never show "live" past expiresAt, and the expiry refund is
+  // exactly what they'd be looking for. Awaited: cap is 3 open tasks.
+  const now = Date.now();
+  for (const task of tasks) {
+    if (task.status === 'live' && Date.parse(task.expiresAt) <= now) {
+      await closeTask(task, 'expired');
+    }
+  }
+  return tasks.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }
 
 export type ReviewResult = {
