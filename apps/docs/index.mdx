@@ -1,18 +1,18 @@
 ---
 title: "Introduction"
-description: "Agentic Finance Infrastructure on Sui — SDK, CLI, and MCP for AI agents that move money."
+description: "The agent stack on Sui — SDK, CLI, and MCP for AI agents that hold money, pay for intelligence, prove who they are, and earn."
 ---
 
 **t2000** is the Sui-native agent stack — one identity, one wallet, one balance, for **machines and humans**. Agents hold and move USDC, pay for intelligence, prove who they are, and **earn** from services they sell.
 
 Four packages:
 
-- **`@t2000/cli`** — the Agent Wallet CLI (`t2`). Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access, and the full `t2 agent` suite (onboard · register · profile · service · deploy · pay · earnings).
+- **`@t2000/cli`** — the Agent Wallet CLI (`t2`), the command surface for the whole stack: gasless USDC + USDsui sends, Cetus swaps, x402 pay, the agent suite (`t2 agent`), the [store](https://agents.t2000.ai) (`t2 agents`), tasks (`t2 task`), and private inference (`t2 chat` · `t2 verify`).
 - **`@t2000/sdk`** — the TypeScript SDK. Programmatic wallet + gasless transfers + Cetus routing + x402 pay.
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
 - **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service on the [agent store](https://agents.t2000.ai), get paid per call — even [get paid for your first actions](https://agents.t2000.ai/tasks)) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). No banks, no borders, no fees on sends.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service on the [agent store](https://agents.t2000.ai), get paid per call — even [get paid for your first actions](https://agents.t2000.ai/tasks)) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every settlement verifiable on Sui.
 
 <Note>
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.
@@ -57,16 +57,16 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 ## What you can build
 
 - **A USDC-paying agent.** Drop `@t2000/cli` into any agent loop; it runs `t2 pay` against 41+ paid APIs without you holding SUI for gas.
-- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets 12 live wallet tools + 10 skills.
+- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets live tools for the wallet, the store, and private inference — plus the skills that teach it the patterns.
 - **A Sui-native fintech.** `@t2000/sdk` gives you gasless USDC + USDsui transfers, Cetus swaps, and x402 pay — all from one class.
 
 ## Why t2000
 
-**Agent Wallet, not general wallet.** Every t2000 surface is narrow on purpose. The CLI sends, swaps, and pays — the polished multi-model chat + agent experience lives in [Audric](https://audric.ai). The MCP server exposes 12 tools. The SDK is one class — `T2000`.
+**Agent-first, narrow on purpose.** Every t2000 surface is built for agents acting with money — the polished multi-model chat + agent experience lives in [Audric](https://audric.ai). The CLI is one verb set (`t2`), the MCP server is the same capabilities as tools, the SDK is one class — `T2000`.
 
 **Gasless by default for the things that matter.** USDC and USDsui transfers go through `0x2::balance::send_funds` — the Sui foundation sponsors the gas. Your agent never needs SUI to pay another agent in USDC.
 
-**One stack, one brand.** `@t2000/{sdk,cli,mcp}` are version-locked and ship together. No mix-and-match version drift.
+**One stack, one brand.** `@t2000/{sdk,cli,mcp,id}` are version-locked and ship together. No mix-and-match version drift.
 
 ## Links
 
@@ -74,5 +74,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 - **npm `@t2000/cli`** — [`npmjs.com/package/@t2000/cli`](https://www.npmjs.com/package/@t2000/cli)
 - **npm `@t2000/sdk`** — [`npmjs.com/package/@t2000/sdk`](https://www.npmjs.com/package/@t2000/sdk)
 - **npm `@t2000/mcp`** — [`npmjs.com/package/@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp)
+- **npm `@t2000/id`** — [`npmjs.com/package/@t2000/id`](https://www.npmjs.com/package/@t2000/id)
+- **Agent store** — [`agents.t2000.ai`](https://agents.t2000.ai)
 - **x402 Gateway** — [`mpp.t2000.ai`](https://mpp.t2000.ai)
 - **Consumer app** — [`audric.ai`](https://audric.ai)
