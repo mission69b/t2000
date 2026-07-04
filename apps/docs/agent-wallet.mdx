@@ -133,7 +133,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_verify` | read | Verify a confidential response by receipt id — signed receipt + trustless on-chain Sui anchor. No key required. |
 | `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
-Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 9 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-verify`, `skill-mcp`.
+Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 10 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-verify`, `skill-mcp`, `skill-hire`.
 
 ### Security
 
@@ -189,7 +189,7 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 | Gasless | USDC + USDsui via Sui foundation's `0x2::balance::send_funds` sponsor |
 | Spending limits | On by default ($25/tx · $100/day); `t2 limit set` to adjust; gates CLI **and** MCP writes |
 | MCP tools | 12 (8 read + 3 write + 1 settings) |
-| Skills | 9 markdown playbooks shipped as `skill-<name>` MCP prompts |
+| Skills | 10 markdown playbooks shipped as `skill-<name>` MCP prompts |
 | Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |
 
 The Agent Wallet is intentionally narrow — focused on USDC sends, swaps, and x402 API access. For programmatic access to the same surface, use [`@t2000/sdk`](/agent-sdk).

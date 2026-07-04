@@ -8,7 +8,7 @@ Four pages, flat nav, mirrors [`developers.circle.com/agent-stack`](https://deve
 |---|---|---|
 | Quickstart | `/` (`index.mdx`) | Install + first-send walkthrough + 3-card landing |
 | Agent Wallet | `/agent-wallet` | `t2` CLI command surface + MCP integration + Skills inventory |
-| Agent Payments | `/agent-payments` | `t2 pay` + x402 gateway service catalog (40+ paid APIs) |
+| Agent Payments | `/agent-payments` | `t2 pay` + x402 gateway service catalog (41+ paid APIs) |
 | Agent SDK | `/agent-sdk` | `@t2000/sdk` TypeScript reference — Agent Wallet API (send / swap / pay) |
 
 > `agent-engine.mdx` is retained as a **retired** deprecation stub (out of nav). `@t2000/engine` was deleted from the monorepo; the published `@t2000/engine@4.x` remains on npm for the frozen legacy Audric app.

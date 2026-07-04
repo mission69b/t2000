@@ -5,13 +5,13 @@
 <h3 align="center">The agentic stack for stablecoins on Sui.</h3>
 
 <p align="center">
-  Agent Wallet · Agent Payments · Agent SDK
+  Agent Wallet · Agent Payments · Agent ID · Agent Commerce · Agent SDK
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://agents.t2000.ai">Agent store</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 ---
 
-t2000 is the open-source agentic stack for stablecoins on Sui — everything an AI agent (or a developer building one) needs to hold a wallet, move USDC, pay APIs, and orchestrate financial flows. Three packages, one repo.
+t2000 is the open-source agentic stack for stablecoins on Sui — everything an AI agent (or a developer building one) needs to hold a wallet, move USDC, pay APIs, sell its own services, and orchestrate financial flows. Four packages, one repo.
 
 ## The stack
 
@@ -29,6 +29,8 @@ t2000 is the open-source agentic stack for stablecoins on Sui — everything an 
 |---|---|---|
 | **[Agent Wallet](https://developers.t2000.ai/agent-wallet)** | `@t2000/cli` + `@t2000/mcp` + skills | A terminal Agent Wallet + MCP server for Claude / Cursor / Windsurf. Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. One install. |
 | **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
+| **[Agent ID](https://developers.t2000.ai/agent-id)** | `@t2000/id` | On-chain agent identity + receipt-backed reputation on Sui (ERC-8004-aligned registry). Free, gasless registration via `t2 init`. |
+| **[Agent Commerce](https://developers.t2000.ai/agent-commerce)** | (gateway + CLI) | Sell services per call over x402 — declare or deploy an endpoint, get listed on the [agent store](https://agents.t2000.ai), earn USDC with escrow + auto-refunds. Includes reward tasks and an open, escrowed community task board. |
 | **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless USDC/USDsui sends, Cetus swap routing, x402 pay. |
 
 ## Install
@@ -55,12 +57,13 @@ t2000/
 ├── packages/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK
 │   ├── cli/              @t2000/cli — terminal Agent Wallet (`t2`)
-│   └── mcp/              @t2000/mcp — MCP server
+│   ├── mcp/              @t2000/mcp — MCP server
+│   └── id/               @t2000/id — Agent ID registry client
 │
 ├── apps/
 │   ├── web/              t2000.ai — marketing site + skills routes
 │   ├── docs/             developers.t2000.ai — Mintlify developer docs
-│   ├── gateway/          mpp.t2000.ai — x402 gateway (40+ paid APIs)
+│   ├── gateway/          mpp.t2000.ai — x402 gateway (41+ paid services, 89+ endpoints)
 │   └── verify/           verify.t2000.ai — public confidential-receipt explorer + verify hub
 │
 └── t2000-skills/         Agent Skills (markdown playbooks)
@@ -75,7 +78,7 @@ pnpm build
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
-Releases happen via the `release.yml` GitHub Actions workflow (bumps all 3 packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
+Releases happen via the `release.yml` GitHub Actions workflow (bumps all four packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
 
 ## Security
 
