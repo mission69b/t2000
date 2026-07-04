@@ -64,6 +64,24 @@ function t2(args: string[]): string {
   return execFileSync('t2', args, { encoding: 'utf8', timeout: 120_000 });
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** The API rate-limits bursts — retry once after a cool-off. */
+async function t2Paced(args: string[]): Promise<string> {
+  try {
+    return t2(args);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes('Too many requests') && !msg.toLowerCase().includes('rate')) {
+      throw err;
+    }
+    await sleep(20_000);
+    return t2(args);
+  }
+}
+
 const mode = process.argv[2];
 const { seeds, raw } = loadManifest();
 
@@ -72,23 +90,39 @@ if (mode === 'keys') {
   for (const seed of seeds) {
     const kp = keypairFor(seed, mnemonic);
     const address = kp.getPublicKey().toSuiAddress();
-    writeFileSync(keyPath(seed), `${kp.getSecretKey()}\n`, { mode: 0o600 });
+    // t2 CLI wallet-file format: JSON envelope, not raw Bech32.
+    writeFileSync(
+      keyPath(seed),
+      `${JSON.stringify({ version: 2, secret: kp.getSecretKey() })}\n`,
+      { mode: 0o600 },
+    );
     seed.address = address;
     console.log(`${seed.slug.padEnd(20)} ${address}`);
   }
   saveManifest(raw);
   console.log(`\n${seeds.length} keys written; addresses saved to seeds.json.`);
 } else if (mode === 'register') {
+  // Optionally start from a slug (resume after rate-limit): register <slug>
+  const startAt = process.argv[3];
+  let started = !startAt;
   for (const seed of seeds) {
+    if (!started) {
+      started = seed.slug === startAt;
+      if (!started) {
+        continue;
+      }
+    }
     const key = keyPath(seed);
     try {
-      t2(['agent', 'register', '--key', key]);
-      t2([
+      await t2Paced(['agent', 'register', '--key', key]);
+      await sleep(2_000);
+      await t2Paced([
         'agent', 'profile', '--key', key,
         '--name', seed.name,
         '--description', seed.description,
       ]);
-      t2([
+      await sleep(2_000);
+      await t2Paced([
         'agent', 'service', '--key', key,
         '--mcp-endpoint', `${GATEWAY_BASE}/sellers/${seed.slug}`,
         '--payment-methods', 'x402',
@@ -96,6 +130,7 @@ if (mode === 'keys') {
         '--category', seed.category,
       ]);
       console.log(`OK   ${seed.slug} (${seed.address.slice(0, 10)}…) $${seed.price} ${seed.category}`);
+      await sleep(3_000);
     } catch (err) {
       console.error(`FAIL ${seed.slug}: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`);
     }
