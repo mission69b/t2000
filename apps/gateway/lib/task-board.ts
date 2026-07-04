@@ -221,27 +221,39 @@ export async function updateSubmission(
 
 // ── Money legs ───────────────────────────────────────────────────────────────
 
-function treasurySigner(): Ed25519Keypair {
-  // refund.ts validated key↔address at boot of the refund path; here we just
-  // decode (boardConfigured() gates on refundsEnabled()).
-  return Ed25519Keypair.fromSecretKey(env.TREASURY_PRIVATE_KEY as string);
-}
-
 /**
  * Pay an approved worker THROUGH the rail from the treasury escrow — a
- * standard commerce buy (escrowed, receipted on Sui, builds the worker's
- * seller record; the rail's 2.5% comes out of the reward, disclosed on the
- * board). Same mechanics as the t2000-tasks engine's payThroughRail.
+ * standard commerce buy (receipted on Sui, builds the worker's record; the
+ * rail's 2.5% comes out of the reward, disclosed on the board).
+ *
+ * Two legs (S.625 finding): the rail collects to the TREASURY, so the
+ * treasury cannot be the x402 payer itself (a self-transfer nets zero and
+ * the settle validation rightly refuses it). Instead the escrow FLOATS the
+ * exact reward to the task-runner wallet, and the runner makes the rail buy
+ * — the same payThroughRail mechanics as the t2000-tasks engine. A stranded
+ * float (leg 1 ok, leg 2 fails) is logged loudly and retried on the next
+ * approve attempt.
  */
 export async function payWorker(
   worker: string,
   rewardUsd: number,
 ): Promise<string> {
+  if (!env.TASK_RUNNER_KEY) {
+    throw new Error('payouts unavailable (no runner key configured)');
+  }
+  const runner = Ed25519Keypair.fromSecretKey(env.TASK_RUNNER_KEY);
+  const runnerAddress = runner.getPublicKey().toSuiAddress();
+  const amount = rewardUsd.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+
+  // Leg 1 — float the reward from the treasury escrow to the runner.
+  await treasurySendUsdc({ to: runnerAddress, amount, network: NETWORK });
+
+  // Leg 2 — the runner pays the worker through the rail.
   const [{ payWithMpp, KeypairSigner }, { SuiGrpcClient }] = await Promise.all([
     import('@t2000/sdk'),
     import('@mysten/sui/grpc'),
   ]);
-  const signer = new KeypairSigner(treasurySigner());
+  const signer = new KeypairSigner(runner);
   const client = new SuiGrpcClient({
     baseUrl: 'https://fullnode.mainnet.sui.io',
     network: 'mainnet',
@@ -250,7 +262,7 @@ export async function payWorker(
     signer,
     client,
     options: {
-      url: `${RAIL_BASE}/commerce/pay/${worker}?amount=${rewardUsd}`,
+      url: `${RAIL_BASE}/commerce/pay/${worker}?amount=${amount}`,
       method: 'POST',
       maxPrice: rewardUsd,
     },
@@ -260,6 +272,9 @@ export async function payWorker(
     | undefined;
   const digest = body?.receipt?.collectDigest;
   if (!(result.paid && digest)) {
+    console.error(
+      `[board] payout_float_stranded runner=${runnerAddress} amount=${amount} worker=${worker} — leg 2 failed (paid=${result.paid}, status=${result.status}); float stays at the runner and the retry re-floats.`,
+    );
     throw new Error(`payout did not settle (paid=${result.paid}, status=${result.status})`);
   }
   return digest;
