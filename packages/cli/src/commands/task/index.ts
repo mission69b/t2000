@@ -173,6 +173,7 @@ export function registerTask(program: Command) {
     .option('--completions <n>', 'Max completions (default 1)', '1')
     .option('--expiry-days <n>', 'Days until unspent budget auto-refunds (default 7)', '7')
     .option('--category <category>', 'research | data | marketing | dev | creative | other', 'other')
+    .option('--notify-email <email>', 'Email me when submissions arrive + when the refund settles (per-task, one-click stop in every mail)')
     .option('--gateway <url>', `Gateway base URL (default ${DEFAULT_GATEWAY})`)
     .option('--force', 'Override spending limits for this call (see `t2 limit`)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
@@ -184,6 +185,7 @@ export function registerTask(program: Command) {
         completions: string;
         expiryDays: string;
         category: string;
+        notifyEmail?: string;
         gateway?: string;
         force?: boolean;
         key?: string;
@@ -207,6 +209,7 @@ export function registerTask(program: Command) {
               maxCompletions: completions,
               expiryDays: Number.parseInt(opts.expiryDays, 10),
               category: opts.category,
+              ...(opts.notifyEmail ? { notifyEmail: opts.notifyEmail } : {}),
             }),
             maxPrice: budget,
             force: opts.force,

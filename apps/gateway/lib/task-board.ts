@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Redis } from '@upstash/redis';
+import { after } from 'next/server';
 import { env } from '@/lib/env';
+import { notifyClosed } from '@/lib/notify';
 import { refundsEnabled, treasurySendUsdc } from '@/lib/refund';
 
 // Task Marketplace v1 (SPEC_AGENT_COMMERCE §II.19, S.625 — founder-greenlit
@@ -475,6 +477,18 @@ export async function closeTask(
     }
   }
   await saveTask(task);
+  // Poster email (S.630) — post-response, best-effort. closeTask always runs
+  // inside a request (routes + lazy expiry within GETs), where after() is
+  // available; the guard covers any future non-request caller.
+  try {
+    after(() =>
+      notifyClosed(task).catch((err) =>
+        console.error(`[notify] close email failed ${task.id}: ${err instanceof Error ? err.message : String(err)}`),
+      ),
+    );
+  } catch {
+    /* outside a request scope — skip the email, never the close */
+  }
   return task;
 }
 

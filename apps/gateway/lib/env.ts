@@ -111,6 +111,10 @@ const serverSchema = z.object({
   RAPIDAPI_KEY: optionalString,
   REPLICATE_API_KEY: optionalString,
   RESEND_API_KEY: optionalString,
+  // [S.630] Notifications v1 sender identity ("t2000 <notifications@t2000.ai>").
+  // BOTH this and RESEND_API_KEY must be set (and the domain verified in
+  // Resend) for poster emails to send; unset → notify module no-ops.
+  NOTIFY_FROM_EMAIL: optionalString,
   SCREENSHOTONE_API_KEY: optionalString,
   SERPAPI_API_KEY: optionalString,
   SERPER_API_KEY: optionalString,
@@ -232,6 +236,7 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     RAPIDAPI_KEY: process.env.RAPIDAPI_KEY,
     REPLICATE_API_KEY: process.env.REPLICATE_API_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    NOTIFY_FROM_EMAIL: process.env.NOTIFY_FROM_EMAIL,
     SCREENSHOTONE_API_KEY: process.env.SCREENSHOTONE_API_KEY,
     SERPAPI_API_KEY: process.env.SERPAPI_API_KEY,
     SERPER_API_KEY: process.env.SERPER_API_KEY,
@@ -309,6 +314,7 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'RAPIDAPI_KEY',
   'REPLICATE_API_KEY',
   'RESEND_API_KEY',
+  'NOTIFY_FROM_EMAIL',
   'SCREENSHOTONE_API_KEY',
   'SERPAPI_API_KEY',
   'SERPER_API_KEY',

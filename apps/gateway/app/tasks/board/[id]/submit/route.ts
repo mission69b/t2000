@@ -1,4 +1,6 @@
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
+import { after } from 'next/server';
+import { notifySubmission } from '@/lib/notify';
 import {
   addSubmission,
   BOARD_LIMITS,
@@ -90,6 +92,12 @@ export async function POST(
       { status: 409 },
     );
   }
+  // Poster email (S.630) — post-response, coalesced to ≤1/task/hour.
+  after(() =>
+    notifySubmission(task).catch((err) =>
+      console.error(`[notify] submission email failed ${id}: ${err instanceof Error ? err.message : String(err)}`),
+    ),
+  );
   return Response.json({
     ok: true,
     submissionId: sub.id,

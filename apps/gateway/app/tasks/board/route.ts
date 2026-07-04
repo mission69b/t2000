@@ -9,6 +9,7 @@ import {
 } from '@suimpp/mpp/x402';
 import { env } from '@/lib/env';
 import { TREASURY_ADDRESS } from '@/lib/constants';
+import { isValidNotifyEmail, setTaskNotifyEmail } from '@/lib/notify';
 import {
   BOARD_CATEGORIES,
   BOARD_LIMITS,
@@ -76,6 +77,10 @@ type PostBody = {
   rewardUsd?: number;
   maxCompletions?: number;
   expiryDays?: number;
+  // [S.630] Optional, consent-first: email me when submissions arrive + when
+  // the unspent budget refunds. Stored against THIS task only; every email
+  // carries a signed one-click stop link.
+  notifyEmail?: string;
 };
 
 function validate(body: PostBody):
@@ -255,6 +260,14 @@ export async function POST(req: Request): Promise<Response> {
 
   await createTask(task);
 
+  // [S.630] Consent-first notification capture — store the email against
+  // THIS task only, before moderation (a reject cleans it up via closeTask).
+  const notifyEmail = (body.notifyEmail ?? '').trim();
+  const notifyOn = isValidNotifyEmail(notifyEmail);
+  if (notifyOn) {
+    await setTaskNotifyEmail(task.id, notifyEmail);
+  }
+
   // Auto-moderation (S.626): screen at post time — PASS lists instantly,
   // FAIL auto-refunds with the reason, engine-down leaves the manual queue.
   const screened = await moderateTaskWithLLM(task);
@@ -286,6 +299,9 @@ export async function POST(req: Request): Promise<Response> {
         task.status === 'live'
           ? 'Your task passed the automatic moderation screen and is LIVE now.'
           : 'The moderation screen is briefly unavailable — your task is queued for review and will list shortly.',
+      ...(notifyOn
+        ? { notifications: `Email notifications on (${notifyEmail}): new submissions + the expiry/close refund. Every email has a one-click stop link.` }
+        : {}),
       escrow: {
         collectDigest: settle.transaction,
         budgetUsd: v.budgetUsd,
