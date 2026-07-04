@@ -116,7 +116,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!task) {
     return Response.json(
       {
-        error: `Unknown task. Valid: first-sale, agent-hire, agent-card, buy-manifest, buy-sui, verify-confidential.`,
+        error: `Unknown task. Valid: first-sale, agent-hire, agent-card, buy-manifest, buy-sui, verify-confidential, share-your-agent.`,
       },
       { status: 400 },
     );
@@ -184,11 +184,14 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
-  // X-proof tasks: read the post keylessly, then verify the posted receipt
-  // trustlessly. The post must be public, post-launch, mention us, contain
-  // the claiming wallet (binds the post to the claimant — nobody can claim
-  // someone else's post), and carry a receipt id that verifies against its
-  // Sui anchor.
+  // X-proof tasks: read the post keylessly, then verify the task-specific
+  // proof it must carry. Common to all: public, post-launch, mentions us,
+  // and contains the claiming wallet (binds the post to the claimant —
+  // nobody can claim someone else's post). Per-task:
+  //   verify-confidential → an rcpt-… id that verifies trustlessly (signed
+  //     receipt + Sui anchor via the SDK);
+  //   share-your-agent → the claimant's own listing URL (which carries the
+  //     full address = the binding) AND a registered agent in the directory.
   if (task.kind === 'x-proof') {
     const postId = parseXPostUrl(body.postUrl ?? '');
     if (!postId) {
@@ -226,29 +229,69 @@ export async function POST(req: Request): Promise<Response> {
         { status: 400 },
       );
     }
-    const receiptId = post.text.match(/rcpt-[a-f0-9]{16,64}/i)?.[0]?.toLowerCase();
-    if (!receiptId) {
-      return Response.json(
-        { error: 'The post must include your confidential receipt id (rcpt-…).' },
-        { status: 400 },
-      );
+
+    // The dedupe token beyond wallet + X handle: the receipt id for
+    // verify-confidential (public ids can't be re-claimed), the post id for
+    // share-your-agent (one reward per post).
+    let proofToken: string;
+
+    if (task.id === 'verify-confidential') {
+      const receiptId = post.text.match(/rcpt-[a-f0-9]{16,64}/i)?.[0]?.toLowerCase();
+      if (!receiptId) {
+        return Response.json(
+          { error: 'The post must include your confidential receipt id (rcpt-…).' },
+          { status: 400 },
+        );
+      }
+      const { verifyReceipt } = await import('@t2000/sdk');
+      let verified = false;
+      try {
+        verified = (await verifyReceipt(receiptId, { skipQuote: true })).verified;
+      } catch {
+        verified = false;
+      }
+      if (!verified) {
+        return Response.json(
+          {
+            error: `${receiptId} did not verify (signed receipt + Sui anchor). Run \`t2 verify ${receiptId}\` to see why.`,
+          },
+          { status: 400 },
+        );
+      }
+      proofToken = receiptId;
+    } else {
+      // share-your-agent
+      if (!text.includes(`agents.t2000.ai/${address.toLowerCase()}`)) {
+        return Response.json(
+          {
+            error:
+              'The post must include YOUR listing URL: agents.t2000.ai/<your full wallet address>.',
+          },
+          { status: 400 },
+        );
+      }
+      let registered = false;
+      try {
+        const res = await fetch(`https://api.t2000.ai/v1/agents/${address}`, {
+          headers: { accept: 'application/json' },
+        });
+        registered = res.ok;
+      } catch {
+        registered = false;
+      }
+      if (!registered) {
+        return Response.json(
+          {
+            error:
+              'That wallet has no registered agent — run `t2 init` (free, gasless) and share your real listing.',
+          },
+          { status: 400 },
+        );
+      }
+      proofToken = `post:${post.id}`;
     }
-    const { verifyReceipt } = await import('@t2000/sdk');
-    let verified = false;
-    try {
-      verified = (await verifyReceipt(receiptId, { skipQuote: true })).verified;
-    } catch {
-      verified = false;
-    }
-    if (!verified) {
-      return Response.json(
-        {
-          error: `${receiptId} did not verify (signed receipt + Sui anchor). Run \`t2 verify ${receiptId}\` to see why.`,
-        },
-        { status: 400 },
-      );
-    }
-    const result = await settleXProofTask(task, address, post.handle, receiptId);
+
+    const result = await settleXProofTask(task, address, post.handle, proofToken);
     if ('reason' in result) {
       return Response.json({ paid: false, note: result.reason }, { status: 200 });
     }

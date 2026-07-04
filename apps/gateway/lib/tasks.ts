@@ -39,7 +39,8 @@ export type TaskId =
   | 'agent-card'
   | 'buy-manifest'
   | 'buy-sui'
-  | 'verify-confidential';
+  | 'verify-confidential'
+  | 'share-your-agent';
 
 export type TaskDef = {
   id: TaskId;
@@ -65,6 +66,9 @@ export const TASKS: TaskDef[] = [
   { id: 'buy-manifest', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
   { id: 'buy-sui', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
   { id: 'verify-confidential', rewardNetUsd: 0.25, budgetUsd: 30, kind: 'x-proof' },
+  // S.623 marketing task: post YOUR listing on X — the listing URL in the
+  // post carries the full wallet address (the claim binding).
+  { id: 'share-your-agent', rewardNetUsd: 0.1, budgetUsd: 30, kind: 'x-proof' },
 ];
 
 // Velocity throttle — the farm-spike tripwire at 1000-capacity tasks: at most

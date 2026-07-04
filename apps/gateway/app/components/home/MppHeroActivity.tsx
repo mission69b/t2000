@@ -53,7 +53,7 @@ export function MppHeroActivity() {
           if (isNew) seenIdsRef.current.add(p.id);
           return {
             key: `${p.id}`,
-            service: p.service,
+            service: p.service === "commerce" ? "agent store" : p.service,
             amount: formatUsd(p.amount),
             ts: relativeTs(p.createdAt),
             isNew: isNew && idx === 0,

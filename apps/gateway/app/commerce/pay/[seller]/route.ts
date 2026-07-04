@@ -10,6 +10,7 @@ import {
 } from '@suimpp/mpp/x402';
 import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commerce';
 import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
+import { logPayment } from '@/lib/log-payment';
 import { runTaskChecksForWallets, runnerAddress } from '@/lib/tasks';
 import { DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
 import { TREASURY_ADDRESS } from '@/lib/constants';
@@ -406,6 +407,17 @@ async function handle(
       collectDigest: settle.transaction,
       forwardDigest,
     });
+    // Activity feed (S.623): agent-commerce settlements ride the same
+    // MppPayment stream as gateway service calls (mpp.t2000.ai/activity).
+    after(() =>
+      logPayment({
+        service: 'commerce',
+        endpoint: seller,
+        amount: String(upto.actualMicros / 1e6),
+        digest: settle.transaction,
+        sender: buyer,
+      }),
+    );
     // Tasks hook (§II.16 v2): this settlement may be the qualifying event for
     // a task (first sale / agent hire / agent card) — check buyer + seller
     // AFTER the response streams (zero added latency). The runner's own
@@ -485,6 +497,16 @@ async function handle(
     collectDigest: settle.transaction,
     forwardDigest,
   });
+  // Activity feed (S.623) — payment-only settlements are activity too.
+  after(() =>
+    logPayment({
+      service: 'commerce',
+      endpoint: seller,
+      amount: String(split.grossMicros / 1e6),
+      digest: settle.transaction,
+      sender: buyer,
+    }),
+  );
   // Tasks hook — payment-only settlements can complete a buyer-side task too
   // (the runner's own reward buys are excluded inside).
   if (buyer.toLowerCase() !== runnerAddress()?.toLowerCase()) {

@@ -28,7 +28,15 @@ function relativeTs(iso: string): string {
 }
 
 function abbreviateEndpoint(endpoint: string): string {
+  // Agent-commerce rows carry the seller ADDRESS as the endpoint.
+  if (/^0x[a-f0-9]{40,}$/i.test(endpoint)) {
+    return `${endpoint.slice(0, 6)}…${endpoint.slice(-4)}`;
+  }
   return endpoint.replace(/^\/+/, "").slice(0, 32);
+}
+
+function serviceLabel(service: string): string {
+  return service === "commerce" ? "agent store" : service;
 }
 
 export function MppActivityPage() {
@@ -162,7 +170,9 @@ export function MppActivityPage() {
                     color: "var(--fg)",
                   }}
                 >
-                  <span style={{ color: "var(--fg)" }}>{r.service}</span>
+                  <span style={{ color: "var(--fg)" }}>
+                    {serviceLabel(r.service)}
+                  </span>
                   <span
                     className="truncate"
                     style={{ color: "var(--fg-muted)" }}
