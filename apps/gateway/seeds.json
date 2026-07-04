@@ -1,0 +1,305 @@
+{
+  "$comment": "Shelf v4 seed manifest (S.624) — slug → listing metadata. Keys derive from ONE master mnemonic (~/.t2000/seed-master.mnemonic, path m/44'/784'/<index>'/0'/0') via scripts/seed-agents.mts. Descriptions are the storefront cards (hook / what you get / try it / source, ≤480 chars). Addresses fill in after registration.",
+  "seeds": [
+    {
+      "index": 100,
+      "slug": "top-movers",
+      "name": "Top Movers",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0x6328a44e353baba891c25e3c08985331340a785082e1a8cebb537968c456f21b",
+      "description": "What actually moved today — and was it real volume?\n\nWhat you get: top gainers and losers over 24h/7d among ranked coins, each with volume confirmation (24h volume vs market cap) so thin pumps are flagged, plus a one-line breadth read.\n\nTry it: the fastest 'what happened today' scan. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 101,
+      "slug": "new-listings",
+      "name": "New Listings Radar",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0x6f07d7f0c195e95d95ba387142d23c02be914051bc2fa3d93f94a1da30621311",
+      "description": "What just listed — and what's showing early traction?\n\nWhat you get: recently listed coins with age, price, market cap, and 24h volume, screened into watch / thin / avoid buckets by liquidity — new-listing risk stated plainly, never hyped.\n\nTry it: a discovery pass before any deep dive. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 102,
+      "slug": "trending-now",
+      "name": "Trending Now",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0xd52d12295301805d74edf2c2f6771f1d5831902a8e653fddf9299dda56d1d59d",
+      "description": "What is the market looking at right now?\n\nWhat you get: CMC's trending list with price context for each name (24h/7d change, market cap, volume) and a read on whether attention is chasing strength or knife-catching.\n\nTry it: attention flow before it shows up in price. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 103,
+      "slug": "token-profile",
+      "name": "Token Profile",
+      "price": "0.05",
+      "category": "research",
+      "input": "symbol",
+      "address": "0x39eb2d705ef9e870e03058d47dd5115becc3014ce78415bfe68fc97753d1fca0",
+      "description": "One token, the full identity card.\n\nWhat you get: metadata (what it is, links, launch date), live market snapshot (price, rank, 24h/7d/30d), and supply structure (circulating vs total vs max) with a dilution note — gaps stay explicit, nothing guessed.\n\nTry it: before researching any altcoin. Input: {\"symbol\":\"SUI\"}.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 104,
+      "slug": "supply-overhang",
+      "name": "Supply Overhang",
+      "price": "0.03",
+      "category": "research",
+      "input": "symbol",
+      "address": "0xa3c7d5df535fe2ab1f4a32e28e28e2afd0f61f953b2f263d4b6d22e7fefa6a1f",
+      "description": "How much of this token is still waiting to hit the market?\n\nWhat you get: circulating vs total vs max supply, the unissued share as a % overhang, fully-diluted vs market cap gap, and a low / moderate / heavy dilution classification with disclosed thresholds.\n\nTry it: before sizing anything long-horizon. Input: {\"symbol\":\"SUI\"}.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 105,
+      "slug": "dominance-shifts",
+      "name": "Dominance Shifts",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0xb3d6ba3b270ea5ea65484b97894e858880d13da88a570522f53ccc7c4cb0da5c",
+      "description": "Is money rotating into BTC or out into alts?\n\nWhat you get: BTC and ETH dominance now vs 30/90 days ago, the altcoin share trend, and a btc_accumulation / alt_rotation / balanced read with disclosed thresholds.\n\nTry it: the one-number regime check before picking alts. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 106,
+      "slug": "stable-share",
+      "name": "Stable Share",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0xcb8fab93aa60813c0dd39a9de53e72fd118c298edeb29c8e782af427618649c6",
+      "description": "How much of crypto is sitting in cash?\n\nWhat you get: stablecoin market cap as a share of total crypto, the 30d trend of that share, and a risk_on / neutral / risk_off read — rising stable share = de-risking, falling = deployment.\n\nTry it: pairs with Stable Flows for the full liquidity picture. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 107,
+      "slug": "kline-patterns",
+      "name": "Kline Patterns",
+      "price": "0.05",
+      "category": "finance",
+      "input": "symbol",
+      "address": "0xf3b61519de862d1806194082d6aa575ac1c6214f5723469629e0ff8df925713a",
+      "description": "What is the chart structure actually saying?\n\nWhat you get: candlestick and structure reads on daily OHLCV (engulfing, doji clusters, higher-low/lower-high sequences, range compression), each with freshness and an invalidation level — sparse data returns an explicit insufficient-data result, never a forced pattern.\n\nTry it: structure before story. Input: {\"symbol\":\"ETH\"}.\n\nSource: OKX public market data."
+    },
+    {
+      "index": 108,
+      "slug": "momentum-screen",
+      "name": "Momentum Screen",
+      "price": "0.05",
+      "category": "finance",
+      "input": null,
+      "address": "0xf9c49726213d8763b01a6184d9df4c3069dcc17420eb04de8bb3196ed92b66a7",
+      "description": "Which large caps have real momentum right now?\n\nWhat you get: the top-100 ranked by blended 7d/30d/90d momentum with volume confirmation, split into leaders / building / fading buckets — right-side momentum only, no bottom-fishing calls.\n\nTry it: a continuation-scan before single-name work. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 109,
+      "slug": "drawdown-board",
+      "name": "Drawdown Board",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0x549e453e78476612600c7de6d8e49a8fdf3b025fbe55dd94a2b81251be24da66",
+      "description": "How far below their highs are the majors trading?\n\nWhat you get: the top-100 ranked by distance from all-time high, bucketed (near-high / corrected / deep-drawdown / capitulated), with 30d direction per name — a value-scan lens, explicitly not a buy list.\n\nTry it: where the pain is concentrated, at a glance. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 110,
+      "slug": "volume-anomalies",
+      "name": "Volume Anomalies",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0x6251a99c1cfb176f563b3005139fb26b68414210c9cf372124b522730ad11dc0",
+      "description": "Whose volume is way off its baseline today?\n\nWhat you get: ranked coins whose 24h volume is a multiple of their volume/market-cap norm — unusual activity surfaced with price context so you see accumulation-shaped vs distribution-shaped anomalies.\n\nTry it: attention often shows in volume before price. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 111,
+      "slug": "market-breadth",
+      "name": "Market Breadth",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0x99949bb4c37345d5659b6af53b8da9bd11b417623711912844575721721802b0",
+      "description": "Is the move broad or carried by three names?\n\nWhat you get: % of the top-100 positive over 24h/7d/30d, advancers vs decliners, where the gains concentrate (top-10 vs the rest), and a broad_advance / narrow_leadership / broad_decline read.\n\nTry it: breadth separates real trends from index illusions. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 112,
+      "slug": "correlation-matrix",
+      "name": "Correlation Matrix",
+      "price": "0.05",
+      "category": "research",
+      "input": null,
+      "address": "0x150349a071e20d683060a8d1a637b1b4a81652f97ab126243bb6669d296b9b50",
+      "description": "Which majors actually move together right now?\n\nWhat you get: a 30d daily-return correlation matrix across the top-10, each pair classified (tight / loose / decoupled), plus the read on whether alts are one BTC trade or genuinely dispersed.\n\nTry it: diversification math, not vibes. No input needed.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 113,
+      "slug": "relative-strength",
+      "name": "Relative Strength",
+      "price": "0.03",
+      "category": "finance",
+      "input": "symbol",
+      "address": "0xa8a1902b0540a2fe124fb3b7140ce732f7a3b576a254d52577e850637b444cff",
+      "description": "Is this token beating BTC — or just riding it?\n\nWhat you get: the token's 7/30/90d returns vs BTC's, the relative-strength ratio trend, and an outperforming / tracking / lagging classification — the test most alt theses quietly fail.\n\nTry it: before any 'this alt looks strong' take. Input: {\"symbol\":\"SOL\"}.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 114,
+      "slug": "perp-scanner",
+      "name": "Perp Scanner",
+      "price": "0.05",
+      "category": "finance",
+      "input": null,
+      "address": "0x7bf9ebf8fcc822ce043589897fd823ea799cf13ef48aada2cfe081373e89fac9",
+      "description": "Which perp markets deserve a look right now?\n\nWhat you get: the OKX USDT-swap universe ranked by positioning pressure (funding extremes, 24h price×volume, OI weight), bucketed immediate / secondary / watchlist — a triage layer, not an execution plan.\n\nTry it: run before Perp Pressure on a single name. No input needed.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 115,
+      "slug": "funding-regime",
+      "name": "Funding Regime",
+      "price": "0.03",
+      "category": "finance",
+      "input": "symbol",
+      "address": "0x302711735ac4b3ffea50082f058553e865fc2022ac32308eaa0f89bfef0e93c5",
+      "description": "Has the funding regime flipped for this perp?\n\nWhat you get: current funding vs the trailing 3-day and 7-day funding history, flip detection (positive→negative and back), persistence, and a carry-context read (who pays whom, annualized).\n\nTry it: regime flips precede narrative flips. Input: {\"symbol\":\"ETH\"}.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 116,
+      "slug": "liquidation-pulse",
+      "name": "Liquidation Pulse",
+      "price": "0.03",
+      "category": "finance",
+      "input": "symbol",
+      "address": "0x600a39a03068cc5b55c9b8263586975738ed38df7da4783952674df4d3986b95",
+      "description": "Who just got liquidated — longs or shorts?\n\nWhat you get: recent liquidation prints for one perp (side, price, size), the long/short liquidation balance, clustering vs current price, and a long_flush / short_flush / two_sided / quiet read.\n\nTry it: liquidations mark forced sellers — context for any sharp move. Input: {\"symbol\":\"BTC\"}.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 117,
+      "slug": "oi-divergence",
+      "name": "OI Divergence",
+      "price": "0.03",
+      "category": "finance",
+      "input": "symbol",
+      "address": "0x93d8ebe973790a70175fb7e9ad5d654b861303f0f589da5e29117c9d340b81ce",
+      "description": "Is open interest moving faster than price?\n\nWhat you get: 48h OI vs price paths for one perp, classified: new_longs_pressing / new_shorts_pressing / long_unwind / short_unwind / aligned — positioning building against price is the setup most worth knowing about.\n\nTry it: the dark-flow check. Input: {\"symbol\":\"SOL\"}.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 118,
+      "slug": "capitulation-scan",
+      "name": "Capitulation Scan",
+      "price": "0.05",
+      "category": "finance",
+      "input": null,
+      "address": "0x32a241f675adadcc3bb5354716054db82ae9874fad803b35e55dc0155bdb719f",
+      "description": "Which perps are getting washed out right now?\n\nWhat you get: the OKX universe screened for sharp near-term drops WITH open-interest collapse and volume climax — ranked washout candidates with each lane's numbers, explicitly a re-run-every-few-hours snapshot, never a buy signal.\n\nTry it: forced-seller hunting, honestly framed. No input needed.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 119,
+      "slug": "basis-monitor",
+      "name": "Basis Monitor",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0x2f49ba439b197abfc50097503b7f1184a82e25cdf0ec82f4ebab8590167f95eb",
+      "description": "What is perp basis saying about leverage appetite?\n\nWhat you get: mark-vs-index basis across the major USDT swaps, ranked by richness/discount, with a leverage_bid / balanced / discount_stress read — basis is the cleanest single gauge of speculative demand.\n\nTry it: one call, the whole leverage picture. No input needed.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 120,
+      "slug": "positioning-extremes",
+      "name": "Positioning Extremes",
+      "price": "0.03",
+      "category": "finance",
+      "input": null,
+      "address": "0xcf1caf022854aaead591ca44c624f8f5154a9afcea39fc22c793e251e3574103",
+      "description": "Where is the crowd most one-sided?\n\nWhat you get: long/short account ratios across major perps ranked by extremity, each with funding confirmation, and a crowded-list worth fading-or-riding context — extremes resolve violently; knowing where they are is the edge.\n\nTry it: the contrarian's screen. No input needed.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 121,
+      "slug": "squeeze-watch",
+      "name": "Squeeze Watch",
+      "price": "0.05",
+      "category": "finance",
+      "input": null,
+      "address": "0x5fe42df3814ee2fb570fb470dfd74577d959771d33c94184983395224a618b44",
+      "description": "Which shorts are paying to press a rising market?\n\nWhat you get: perps ranked by squeeze fuel — negative funding while price rises and OI builds — each with the three lanes shown, bucketed primed / building / watch. A screening aid, never leverage advice.\n\nTry it: squeeze fuel is measurable; timing isn't. No input needed.\n\nSource: OKX public futures data."
+    },
+    {
+      "index": 122,
+      "slug": "daily-brief",
+      "name": "Daily Brief",
+      "price": "0.10",
+      "category": "research",
+      "input": null,
+      "address": "0x561945df8d1cc598631a0aaba9ca9ff4e48be1de294e7de31c72cf3fe4d39a6f",
+      "description": "The whole market backdrop in one call.\n\nWhat you get: sentiment (Fear & Greed + trend), regime (trend/chop/stress), dollar liquidity (Fed/TGA/RRP), sector rotation, and top movers — five lanes, one composite morning read with every lane's own classification shown and gaps explicit.\n\nTry it: the opening read of any market day. No input needed.\n\nSources: CoinMarketCap · NY Fed · Treasury FiscalData · Binance/OKX public data · DefiLlama."
+    },
+    {
+      "index": 123,
+      "slug": "macro-overview",
+      "name": "Macro Overview",
+      "price": "0.10",
+      "category": "research",
+      "input": null,
+      "address": "0xd45067da5ff3f793acc6a3ea3d283fca7555e35e5eb6cdf73ce48c51cda7d38d",
+      "description": "Is the macro backdrop with you or against you?\n\nWhat you get: dollar liquidity (Fed balance sheet − TGA − RRP), stablecoin flows, BTC dominance trend, and sentiment — synthesized into a supportive / mixed / hostile crypto-macro read with each lane's numbers disclosed.\n\nTry it: macro context before market context. No input needed.\n\nSources: NY Fed · Treasury FiscalData · DefiLlama · CoinMarketCap."
+    },
+    {
+      "index": 124,
+      "slug": "portfolio-read",
+      "name": "Portfolio Read",
+      "price": "0.05",
+      "category": "research",
+      "input": "holdings",
+      "address": "0xcceeb4f7bce0b0180e617b6b537183d84248b51c9bebd1ed83be423c0296153e",
+      "description": "What is my portfolio actually exposed to?\n\nWhat you get: concentration (top-position and top-3 weight), stable vs volatile split, BTC-correlation tilt, and current-regime exposure — a structured risk read on holdings YOU supply; nothing is fetched about you, nothing stored.\n\nTry it: {\"holdings\":[{\"symbol\":\"BTC\",\"weightPct\":50},{\"symbol\":\"SUI\",\"weightPct\":30},{\"symbol\":\"USDC\",\"weightPct\":20}]}.\n\nSource: market data provided by CoinMarketCap."
+    },
+    {
+      "index": 125,
+      "slug": "post-pulse",
+      "name": "Post Pulse",
+      "price": "0.03",
+      "category": "data-feeds",
+      "input": "postUrl",
+      "address": "0x9a1375976193b442853969038f4ef2c8a579ec9fb9cd37cafb7e795f7d35254b",
+      "description": "How is this X post actually performing?\n\nWhat you get: likes and replies for any public X post, engagement-per-hour velocity since posting, language and age, and a quiet / steady / viral classification — read keylessly from X's public CDN, no login touched.\n\nTry it: {\"postUrl\":\"https://x.com/user/status/…\"}.\n\nSource: X public syndication data."
+    },
+    {
+      "index": 126,
+      "slug": "listing-copywriter",
+      "name": "Listing Copywriter",
+      "price": "0.05",
+      "category": "creative",
+      "input": "about",
+      "address": "0x86a0c73439e02b56fcf6be107a307e43a3563be659ef35b16cc0eb4455f75417",
+      "description": "Turn what your agent does into copy that sells it.\n\nWhat you get: a store-ready listing — name options, a hook line, a 'what you get' paragraph, and a try-it example — written in the house style buyers already respond to, from one plain-English description of your service.\n\nTry it: {\"about\":\"I sell hourly weather forecasts for any city\"}.\n\nEngine: t2000 Private API (ZDR — your input isn't stored or trained on)."
+    },
+    {
+      "index": 127,
+      "slug": "thread-writer",
+      "name": "Thread Writer",
+      "price": "0.05",
+      "category": "creative",
+      "input": "content",
+      "address": "0x933925baf752bda3b1729a1a8bfa14f03195d65e3a1c58bdd9eb88a6e655bb06",
+      "description": "Turn any report into a post-ready X thread.\n\nWhat you get: a 4-6 post thread draft — hook first, one idea per post, numbers kept exact, no invented claims — from any report JSON or text you paste in (works great on reads bought from this store).\n\nTry it: {\"content\":\"<paste any report JSON or text>\"}.\n\nEngine: t2000 Private API (ZDR — your input isn't stored or trained on)."
+    },
+    {
+      "index": 128,
+      "slug": "wallet-health",
+      "name": "Wallet Health",
+      "price": "0.03",
+      "category": "dev-tools",
+      "input": "address",
+      "address": "0x214abeb9aaec6a72a20bf19d74ab477a1049b4ee8af1aaee1b65017c7e2cdcfa",
+      "description": "A quick structural read on any Sui wallet.\n\nWhat you get: balances with USD context, transaction count and recent activity cadence, inbound/outbound mix, and an active / dormant / fresh classification — public on-chain data only, honestly framed (no identity claims).\n\nTry it: {\"address\":\"0x…\"}.\n\nSource: Sui mainnet RPC."
+    },
+    {
+      "index": 129,
+      "slug": "sui-epoch",
+      "name": "Sui Epoch Report",
+      "price": "0.02",
+      "category": "data-feeds",
+      "input": null,
+      "address": "0x09a143fddde2bc44457513917e1311ce3d4f350e9a4731242609c9f6979c0632",
+      "description": "Where is the Sui network right now?\n\nWhat you get: current epoch and time remaining, reference gas price (+ next-epoch direction when visible), validator count and stake concentration of the top-10, and total stake — the network's vitals in one call.\n\nTry it: the ops check for anything you run on Sui. No input needed.\n\nSource: Sui mainnet RPC."
+    }
+  ]
+}
