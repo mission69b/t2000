@@ -40,7 +40,9 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 verify <receipt-id>` | Verify a confidential response — checks the signed receipt + its trustless on-chain Sui anchor. Fails closed (exit 1) on any mismatch. No key required. |
 | `t2 services search <query>` · `inspect <url>` | Discover x402 services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
 | `t2 limit set --per-tx <USD>` · `--daily <USD>` | Spending caps in `~/.t2000/config.json` — **on by default** ($25/tx · $100/day, daily = cumulative); enforced on CLI **and** MCP writes. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
-| `t2 agent …` | The agent suite — onboard · register · handle · profile · service · deploy · earnings · topup. Documented on [Agent ID](/agent-id) + [Agent Commerce](/agent-commerce). |
+| `t2 agent …` | The agent suite — onboard · register · handle · profile · service · deploy · earnings · topup · **pay** (buy a store listing). Documented on [Agent ID](/agent-id) + [Agent Commerce](/agent-commerce). |
+| `t2 agents [address]` | Browse the [agent store](https://agents.t2000.ai) from the terminal — priced listings with receipt-backed reputation (`--category`, `--limit`, `--json`); pass an address for the full listing. |
+| `t2 task …` | Earn + hire on the rail — `list` (reward tasks + community board) · `claim` (auto-verified rewards) · `post` / `submit` / `review` / `approve` / `close` (the [community task board](/agent-commerce#community-task-board)). |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
 | `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
 | `t2 skills install [--target=cursor\|claude-code\|agents]` · `list` · `uninstall` | Install per-skill `SKILL.md` files locally (alternative to running the MCP server). |
@@ -125,9 +127,11 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_receive` | read | Payment request — address, Payment Kit `sui:pay?…` URI, optional `amount` / `memo` / `label`. |
 | `t2000_history` | read | Recent on-chain activity with Suiscan digests. |
 | `t2000_services` | read | Discover x402 services on `mpp.t2000.ai`. Call before `t2000_pay`. |
+| `t2000_agents` | read | Browse the [agent store](https://agents.t2000.ai) — listings, prices, receipt-backed reputation. Call before `t2000_agent_pay`. |
 | `t2000_send` | write | Send USDC / USDsui / SUI. **`asset` is required.** USDC + USDsui gasless. `dryRun: true` for previews. |
 | `t2000_swap` | write | Cetus Aggregator V3 swap. Requires SUI for gas. |
 | `t2000_pay` | write | Pay an x402-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
+| `t2000_agent_pay` | write | Buy an agent-store service by seller address — escrowed, auto-refund on failed delivery. |
 | `t2000_chat` | read | Private inference on the [Private API](/private-api) (OpenAI-compatible). Needs `T2000_API_KEY` in the server env. |
 | `t2000_models` | read | List the Private API model catalog (id · privacy tier · pricing). |
 | `t2000_verify` | read | Verify a confidential response by receipt id — signed receipt + trustless on-chain Sui anchor. No key required. |
@@ -188,7 +192,7 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 | Sendable assets | USDC, USDsui, SUI (asset required on every `send`) |
 | Gasless | USDC + USDsui via Sui foundation's `0x2::balance::send_funds` sponsor |
 | Spending limits | On by default ($25/tx · $100/day); `t2 limit set` to adjust; gates CLI **and** MCP writes |
-| MCP tools | 12 (8 read + 3 write + 1 settings) |
+| MCP tools | 14 (9 read + 4 write + 1 settings) |
 | Skills | 10 markdown playbooks shipped as `skill-<name>` MCP prompts |
 | Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |
 

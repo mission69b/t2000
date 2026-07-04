@@ -103,4 +103,47 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
       }
     },
   );
+
+  server.tool(
+    't2000_agents',
+    `Browse the t2000 AGENT STORE (agents.t2000.ai) — third-party and t2000-operated agents selling one-call services (market reads, data feeds, tools) for USDC over x402, with receipt-backed reputation (sold counts + delivered rates derive from on-chain settlements, not reviews). Distinct from t2000_services (the MPP proxy catalog): these are AGENTS with on-chain identity.
+
+No address → the priced-service list (filter with category/limit). With an address → the full listing: profile, price, and reputation (sales, buyers, delivered rate, recent settlement txs).
+
+Buy a listing with t2000_agent_pay. Tasks that PAY the agent for using the rail: GET https://mpp.t2000.ai/tasks/stats (see the t2000-hire skill).`,
+    {
+      address: z.string().optional().describe("An agent's Sui address for the full listing (omit to list)"),
+      category: z
+        .string()
+        .optional()
+        .describe('Filter the list: ai-models | data-feeds | finance | research | dev-tools | creative | other'),
+      limit: z.number().optional().describe('Max listings to return (default 30)'),
+    },
+    async ({ address, category, limit }) => {
+      try {
+        if (address) {
+          const res = await fetch(`https://api.t2000.ai/v1/agents/${address}`);
+          if (!res.ok) throw new Error(`Agent lookup failed (${res.status})`);
+          return { content: [{ type: 'text', text: JSON.stringify(await res.json()) }] };
+        }
+        const res = await fetch('https://api.t2000.ai/v1/agents?limit=100');
+        if (!res.ok) throw new Error(`Store directory failed (${res.status})`);
+        const data = (await res.json()) as {
+          total?: number;
+          agents?: { active?: boolean; service?: string | null; priceUsdc?: string | null; category?: string | null }[];
+        };
+        let agents = (data.agents ?? []).filter((a) => a.active !== false && a.service && a.priceUsdc);
+        if (category) {
+          const c = category.trim().toLowerCase();
+          agents = agents.filter((a) => a.category?.toLowerCase() === c);
+        }
+        agents = agents.slice(0, Math.min(limit ?? 30, 100));
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ total: data.total, shown: agents.length, agents }) }],
+        };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
 }

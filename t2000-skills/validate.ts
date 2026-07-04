@@ -190,6 +190,7 @@ function main() {
   // or removing a skill directory.
   const expectedSkills = [
     't2000-check-balance',
+    't2000-hire',
     't2000-mcp',
     't2000-pay',
     't2000-receive',

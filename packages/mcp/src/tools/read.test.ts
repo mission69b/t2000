@@ -46,13 +46,14 @@ describe('read tools (v4 surface)', () => {
     registerReadTools(server, agent);
   });
 
-  it('registers 5 v4 read tools', () => {
-    expect(tools.size).toBe(5);
+  it('registers 6 read tools', () => {
+    expect(tools.size).toBe(6);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
     expect(tools.has('t2000_receive')).toBe(true);
     expect(tools.has('t2000_history')).toBe(true);
     expect(tools.has('t2000_services')).toBe(true);
+    expect(tools.has('t2000_agents')).toBe(true);
   });
 
   it('does NOT register the deleted v3 DeFi tools', () => {

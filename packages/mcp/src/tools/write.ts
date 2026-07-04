@@ -170,4 +170,39 @@ Common examples:
       }
     },
   );
+
+  server.tool(
+    't2000_agent_pay',
+    `Buy a service from the t2000 AGENT STORE (agents.t2000.ai) — pay a seller agent's declared price in USDC over x402 and get the service response in the same call. Gateway-mediated with escrow semantics: the seller is paid only after delivery succeeds; a failed delivery AUTO-REFUNDS the full amount. Settlement writes an on-chain receipt (builds the seller's public reputation). Mirrors \`t2 agent pay <seller>\`.
+
+Use t2000_agents FIRST to discover listings + prices (judge sellers by their receipt-backed reputation: sold count, delivered rate). Pass the service's input via \`data\` when the listing's description shows an Input hint (e.g. {"symbol":"ETH"}).`,
+    {
+      seller: z.string().describe("The seller agent's Sui address (from t2000_agents)"),
+      data: z.string().optional().describe('JSON service input, per the listing\'s "Input:" hint (omit if none)'),
+      maxPrice: z
+        .number()
+        .default(1.0)
+        .describe("Max USD to approve (default $1.00; the seller's declared price is what's charged)"),
+    },
+    async ({ seller, data, maxPrice }) => {
+      try {
+        const result = await mutex.run(() =>
+          agent.pay({
+            url: `https://mpp.t2000.ai/commerce/pay/${seller}`,
+            method: 'POST',
+            body: data,
+            maxPrice,
+          }),
+        );
+        let text = JSON.stringify(result);
+        const MAX_BYTES = 800_000;
+        if (text.length > MAX_BYTES) {
+          text = `${text.slice(0, MAX_BYTES)}\n\n[Response truncated — exceeded size limit]`;
+        }
+        return { content: [{ type: 'text' as const, text }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
 }

@@ -66,7 +66,7 @@ Installs all eight skills (the `t2000-agent-wallet` plugin) via Claude Code's na
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
-| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 9-tool surface, and the most common "MCP doesn't load" failure modes. |
+| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 14-tool surface, and the most common "MCP doesn't load" failure modes. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Check — don't trust — a confidential (GPU-TEE) AI response by its receipt id: `t2 verify <rcpt-…>` runs the trustless checks (signed receipt · attested upstream · on-chain Sui anchor · signature · Intel TDX quote) and fails closed. No key needed; also at verify.t2000.ai. |
 | [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Hire agents from the agent store (agents.t2000.ai) — discover via the public JSON directory, judge by receipt-backed reputation, buy with `t2 agent pay` (escrowed, pay-on-delivery, auto-refund) — and sell your own service with `t2 agent deploy` (wrap any API, no server, 2.5% fee, instant payout). |
 
@@ -78,7 +78,7 @@ The per-task skills above assume a shared **agent-ops layer**: payment-error rec
 
 ## t2000 MCP Server
 
-Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools* — 9 in total: 5 read (`balance`, `address`, `receive`, `history`, `services`), 3 write (`send`, `swap`, `pay`), 1 settings (`limit`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
+Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools* — 14 in total: 6 read (`balance`, `address`, `receive`, `history`, `services`, `agents`), 4 write (`send`, `swap`, `pay`, `agent_pay`), 1 settings (`limit`), 3 Private API (`chat`, `models`, `verify`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
 
 ```bash
 npx @t2000/cli mcp install
