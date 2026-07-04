@@ -13,7 +13,7 @@ import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
 import { logPayment } from '@/lib/log-payment';
 import { runTaskChecksForWallets, runnerAddress } from '@/lib/tasks';
 import { DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
-import { TREASURY_ADDRESS } from '@/lib/constants';
+import { COLLECT_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
 import {
   getChainInfo,
@@ -255,7 +255,7 @@ async function handle(
       challengeId: issueChallengeId(seller),
       amount,
       currency: USDC,
-      recipient: TREASURY_ADDRESS,
+      recipient: COLLECT_ADDRESS,
       resource: req.url,
       network: NETWORK,
       chain,
@@ -294,7 +294,7 @@ async function handle(
     settled = await settleX402Request(req, {
       amount,
       currency: USDC,
-      recipient: TREASURY_ADDRESS,
+      recipient: COLLECT_ADDRESS,
       network: NETWORK,
     });
   } catch (err) {
@@ -393,6 +393,24 @@ async function handle(
     } catch (err) {
       console.error(
         `[commerce] settlement_due seller=${seller} net=${upto.netDecimal} buyer=${buyer} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    // [S.627] Fee → REVENUE at settle (escrow holds customer funds only).
+    // Inert until REVENUE_ADDRESS is set; fees < $0.01 can't go gasless —
+    // they accrue in escrow and are swept manually. Post-response, best-effort
+    // (a missed sweep reconciles from the receipt ledger).
+    if (env.REVENUE_ADDRESS && upto.feeMicros >= 10_000) {
+      const feeDecimal = (upto.feeMicros / 1e6).toFixed(6);
+      after(() =>
+        treasurySendUsdc({
+          to: env.REVENUE_ADDRESS as string,
+          amount: feeDecimal,
+          network: NETWORK,
+        }).catch((err) =>
+          console.error(
+            `[commerce] fee_sweep_due fee=${feeDecimal} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
+          ),
+        ),
       );
     }
     await recordCommerceReceipt({
@@ -497,6 +515,22 @@ async function handle(
     collectDigest: settle.transaction,
     forwardDigest,
   });
+  // [S.627] Fee → REVENUE at settle (payment-only leg) — same rules as the
+  // delivery leg: inert until REVENUE_ADDRESS set, $0.01 gasless floor.
+  if (env.REVENUE_ADDRESS && split.feeMicros >= 10_000) {
+    const feeDecimal = (split.feeMicros / 1e6).toFixed(6);
+    after(() =>
+      treasurySendUsdc({
+        to: env.REVENUE_ADDRESS as string,
+        amount: feeDecimal,
+        network: NETWORK,
+      }).catch((err) =>
+        console.error(
+          `[commerce] fee_sweep_due fee=${feeDecimal} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
+        ),
+      ),
+    );
+  }
   // Activity feed (S.623) — payment-only settlements are activity too.
   after(() =>
     logPayment({

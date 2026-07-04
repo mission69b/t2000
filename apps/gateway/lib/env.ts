@@ -160,6 +160,19 @@ const serverSchema = z.object({
   // USDC balance is the hard spend ceiling; per-task budgets cap below it.
   TASK_RUNNER_KEY: optionalString,
 
+  // [S.627] Treasury separation (RUNBOOK_S627). ALL optional — unset means
+  // the legacy single treasury keeps doing everything (zero-downtime flip,
+  // rollback = unset). When set:
+  //   ESCROW  = customer funds in flight (commerce collects + board budgets);
+  //             the hot key the gateway spends from (refunds/forwards/floats).
+  //   REVENUE = ours (service payments direct per D1a + the 2.5% commerce fee
+  //             forwarded at settle). No hot key on the gateway.
+  // Credits deposits are NOT a gateway concern — audric web-v3's
+  // T2000_TREASURY env owns that address (ceremony step 4).
+  ESCROW_ADDRESS: optionalString,
+  ESCROW_PRIVATE_KEY: optionalString,
+  REVENUE_ADDRESS: optionalString,
+
   // ---- Optional with explicit defaults ----
   TREASURY_ADDRESS: optionalStringWithDefault(
     '0xb012ac774bee4ee6e4e571a13457eeb7a75c4f2319551bf9d436fd497d57aca1',
@@ -253,6 +266,9 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     MPP_CHALLENGE_SECRET: process.env.MPP_CHALLENGE_SECRET,
     TREASURY_PRIVATE_KEY: process.env.TREASURY_PRIVATE_KEY,
     TASK_RUNNER_KEY: process.env.TASK_RUNNER_KEY,
+    ESCROW_ADDRESS: process.env.ESCROW_ADDRESS,
+    ESCROW_PRIVATE_KEY: process.env.ESCROW_PRIVATE_KEY,
+    REVENUE_ADDRESS: process.env.REVENUE_ADDRESS,
     // Server — optional with defaults / optional / test
     TREASURY_ADDRESS: process.env.TREASURY_ADDRESS,
     GATEWAY_URL: process.env.GATEWAY_URL,
@@ -331,6 +347,9 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'MPP_CHALLENGE_SECRET',
   'TREASURY_PRIVATE_KEY',
   'TASK_RUNNER_KEY',
+  'ESCROW_ADDRESS',
+  'ESCROW_PRIVATE_KEY',
+  'REVENUE_ADDRESS',
   // Optional / defaulted server-only
   'TREASURY_ADDRESS',
   'GATEWAY_URL',

@@ -8,7 +8,7 @@ import {
   X402_VERSION,
 } from '@suimpp/mpp/x402';
 import { env } from '@/lib/env';
-import { TREASURY_ADDRESS } from '@/lib/constants';
+import { COLLECT_ADDRESS } from '@/lib/constants';
 import { isValidNotifyEmail, setTaskNotifyEmail } from '@/lib/notify';
 import {
   BOARD_CATEGORIES,
@@ -166,7 +166,7 @@ export async function POST(req: Request): Promise<Response> {
       challengeId: issueChallengeId(),
       amount,
       currency: USDC,
-      recipient: TREASURY_ADDRESS,
+      recipient: COLLECT_ADDRESS,
       resource: req.url,
       network: NETWORK,
       chain,
@@ -197,7 +197,7 @@ export async function POST(req: Request): Promise<Response> {
     settled = await settleX402Request(req, {
       amount,
       currency: USDC,
-      recipient: TREASURY_ADDRESS,
+      recipient: COLLECT_ADDRESS,
       network: NETWORK,
     });
   } catch (err) {

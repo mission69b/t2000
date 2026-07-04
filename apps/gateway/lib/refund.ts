@@ -18,7 +18,7 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
-import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
+import { COLLECT_ADDRESS, SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { env } from './env';
 
 const FULLNODE_URLS: Record<string, string> = {
@@ -38,23 +38,35 @@ let _treasury: Ed25519Keypair | null | undefined;
 
 function getTreasury(): Ed25519Keypair | null {
   if (_treasury !== undefined) return _treasury;
-  const secret = env.TREASURY_PRIVATE_KEY;
+  // [S.627] The hot spender is the ESCROW key when the separated wallets are
+  // configured, else the legacy treasury key — matching how COLLECT_ADDRESS
+  // resolves, so the spender always controls the address the rail collects to.
+  const usingEscrow = Boolean(env.ESCROW_PRIVATE_KEY);
+  const keyName = usingEscrow ? 'ESCROW_PRIVATE_KEY' : 'TREASURY_PRIVATE_KEY';
+  const secret = env.ESCROW_PRIVATE_KEY ?? env.TREASURY_PRIVATE_KEY;
   if (!secret) {
+    _treasury = null;
+    return null;
+  }
+  if (usingEscrow && !env.ESCROW_ADDRESS) {
+    console.error(
+      '[refund] ESCROW_PRIVATE_KEY is set but ESCROW_ADDRESS is not — auto-refund disabled (set both or neither).',
+    );
     _treasury = null;
     return null;
   }
   try {
     const { secretKey } = decodeSuiPrivateKey(secret);
     const keypair = Ed25519Keypair.fromSecretKey(secretKey);
-    // The key MUST control the address the rail collects to (payTo =
-    // TREASURY_ADDRESS). A mismatch means we'd advertise one wallet but
-    // refund from another (likely empty) — fail loud, disable auto-refund,
-    // fall back to the manual `refund_due` log rather than refund wrong.
+    // The key MUST control the address the rail collects to. A mismatch means
+    // we'd advertise one wallet but refund from another (likely empty) — fail
+    // loud, disable auto-refund, fall back to the manual `refund_due` log
+    // rather than refund wrong.
     const derived = normalizeSuiAddress(keypair.toSuiAddress());
-    const expected = normalizeSuiAddress(TREASURY_ADDRESS);
+    const expected = normalizeSuiAddress(usingEscrow ? COLLECT_ADDRESS : TREASURY_ADDRESS);
     if (derived !== expected) {
       console.error(
-        `[refund] TREASURY_PRIVATE_KEY controls ${derived} but TREASURY_ADDRESS is ${expected} — ` +
+        `[refund] ${keyName} controls ${derived} but the collecting wallet is ${expected} — ` +
           `auto-refund disabled (key/address mismatch). Set the key for the collecting wallet.`,
       );
       _treasury = null;
@@ -63,7 +75,7 @@ function getTreasury(): Ed25519Keypair | null {
     _treasury = keypair;
   } catch (err) {
     console.error(
-      '[refund] TREASURY_PRIVATE_KEY is set but could not be decoded — auto-refund disabled:',
+      `[refund] ${keyName} is set but could not be decoded — auto-refund disabled:`,
       err instanceof Error ? err.message : err,
     );
     _treasury = null;

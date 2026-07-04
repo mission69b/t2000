@@ -2,7 +2,7 @@ import { after } from 'next/server';
 import { Mppx } from 'mppx/nextjs';
 import { sui, USDC } from '@suimpp/mpp/server';
 import type { PaymentReport } from '@suimpp/mpp/server';
-import { TREASURY_ADDRESS } from './constants';
+import { SERVICE_PAY_ADDRESS } from './constants';
 import { normalizeResponse } from './artifact-store';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
@@ -43,7 +43,7 @@ function createMppx() {
     secretKey: env.MPP_CHALLENGE_SECRET,
     methods: [sui({
       currency: USDC,
-      recipient: TREASURY_ADDRESS,
+      recipient: SERVICE_PAY_ADDRESS,
       network: NETWORK,
       store: getDigestStore(),
       onPayment: (report) => {
@@ -103,7 +103,7 @@ async function runX402Path(
     settled = await settleX402Request(req, {
       amount: params.amount,
       currency: USDC,
-      recipient: TREASURY_ADDRESS,
+      recipient: SERVICE_PAY_ADDRESS,
       network: NETWORK,
     });
   } catch (err) {
@@ -329,7 +329,7 @@ export function chargeProxy(
       return withX402Accepts(response, {
         amount,
         currency: USDC,
-        recipient: TREASURY_ADDRESS,
+        recipient: SERVICE_PAY_ADDRESS,
         network: NETWORK,
         resource: req.url,
       });
@@ -428,7 +428,7 @@ export function chargeCustom(
       return withX402Accepts(response, {
         amount: resolvedAmount,
         currency: USDC,
-        recipient: TREASURY_ADDRESS,
+        recipient: SERVICE_PAY_ADDRESS,
         network: NETWORK,
         resource: req.url,
       });

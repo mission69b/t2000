@@ -1,6 +1,6 @@
 import { USDC } from '@suimpp/mpp/server';
 import { x402Network } from '@suimpp/mpp/x402';
-import { TREASURY_ADDRESS } from './constants';
+import { SERVICE_PAY_ADDRESS } from './constants';
 import { services } from './services';
 import { env } from '@/lib/env';
 
@@ -84,7 +84,7 @@ export function generateX402Manifest(): X402Manifest {
             amount: atomic,
             maxAmountRequired: atomic,
             asset: USDC.type,
-            payTo: TREASURY_ADDRESS,
+            payTo: SERVICE_PAY_ADDRESS,
           },
         ],
         lastUpdated: LAST_UPDATED,

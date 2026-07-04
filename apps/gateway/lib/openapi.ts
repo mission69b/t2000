@@ -2,7 +2,7 @@ import { USDC } from '@suimpp/mpp/server';
 import { x402Network } from '@suimpp/mpp/x402';
 import { services } from './services';
 import { getEndpointSchema } from './schemas';
-import { TREASURY_ADDRESS } from './constants';
+import { SERVICE_PAY_ADDRESS } from './constants';
 import { env } from '@/lib/env';
 
 const X402_NETWORK = x402Network(
@@ -60,7 +60,7 @@ export function generateOpenApiDocument(): OpenApiDocument {
             scheme: 'exact',
             network: X402_NETWORK,
             asset: USDC.type,
-            payTo: TREASURY_ADDRESS,
+            payTo: SERVICE_PAY_ADDRESS,
           },
         },
         responses: {
@@ -107,7 +107,7 @@ export function generateOpenApiDocument(): OpenApiDocument {
         'On first request, the gateway returns a 402 with a WWW-Authenticate header containing payment instructions.',
         'Pay the requested amount in USDC on Sui, then retry with the payment receipt.',
         'Use the @t2000/sdk or mppx SDK to handle the 402 challenge automatically.',
-        `Recipient address: ${TREASURY_ADDRESS}`,
+        `Recipient address: ${SERVICE_PAY_ADDRESS}`,
         'See /llms.txt for natural-language usage examples.',
         'See /api/services for the full service catalog as JSON.',
       ].join(' '),
