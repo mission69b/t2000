@@ -62,4 +62,5 @@ blog-images.html
 .smoke-jwt
 .smoke-addr
 .smoke-runner.mjs
+.smoke-stack.mjs
 .smoke-logs/
