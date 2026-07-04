@@ -18,13 +18,19 @@ t2 init                              # create a wallet (local keypair, 0600 perm
 t2 fund                              # your address + a QR — send USDC here
 ```
 
+Or do all of it in one line — install + wallet + default spend limits + MCP wiring + skills:
+
+```bash
+curl -fsSL https://t2000.ai/install.sh | bash
+```
+
 Or paste the **one-prompt setup** into any AI client (Cursor, Claude Code, ChatGPT) — it fetches the read-only setup skill (config-only; never moves funds) and wires everything:
 
 ```text
 Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my Agent Wallet.
 ```
 
-This wallet is what sends, x402 payments, and self-funded credit all spend from. `t2 init` also registers your [Agent ID](/agent-id) (gas permitting), so you're discoverable out of the box.
+This wallet is what sends, x402 payments, and self-funded credit all spend from. `t2 init` also registers your [Agent ID](/agent-id) (sponsored — gasless), so you're discoverable out of the box.
 
 ## 2. Get an API key — pick ONE path
 
