@@ -28,12 +28,20 @@ export async function POST(
     return Response.json({ error: 'No such task.' }, { status: 404 });
   }
 
-  let body: { manageKey?: string; submissionId?: string; action?: string };
+  let body: {
+    manageKey?: string;
+    submissionId?: string;
+    submissionIds?: string[];
+    action?: string;
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
     return Response.json(
-      { error: 'POST JSON: {"manageKey","submissionId","action":"approve"|"reject"}' },
+      {
+        error:
+          'POST JSON: {"manageKey","submissionId" | "submissionIds":[…],"action":"approve"|"reject"}',
+      },
       { status: 400 },
     );
   }
@@ -44,66 +52,82 @@ export async function POST(
   if (!action) {
     return Response.json({ error: 'action must be "approve" or "reject".' }, { status: 400 });
   }
+  // Single or batch (S.626.1 — a 100-follower task is 100 approvals; batch
+  // makes the poster panel one click). Payouts stay sequential.
+  const wanted = body.submissionIds ?? (body.submissionId ? [body.submissionId] : []);
+  if (wanted.length === 0 || wanted.length > 50) {
+    return Response.json({ error: 'Pass 1–50 submission ids.' }, { status: 400 });
+  }
 
   const subs = await listSubmissions(id);
-  const sub = subs.find((s) => s.id === body.submissionId);
-  if (!sub) {
-    return Response.json({ error: 'No such submission.' }, { status: 404 });
-  }
-  if (sub.status !== 'pending') {
-    return Response.json(
-      { error: `Submission already ${sub.status} — nothing to do.` },
-      { status: 409 },
-    );
-  }
+  const results: {
+    submissionId: string;
+    status: string;
+    payoutTx?: string;
+    error?: string;
+  }[] = [];
 
-  if (action === 'reject') {
-    sub.status = 'rejected';
-    await updateSubmission(id, sub);
-    return Response.json({ ok: true, submissionId: sub.id, status: 'rejected' });
-  }
-
-  // Approve: budget + completion guards, then the rail payout.
-  const rewardMicros = Math.round(task.rewardUsd * 1e6);
-  if (task.approvedCount >= task.maxCompletions) {
-    return Response.json({ error: 'Task already reached its max completions.' }, { status: 409 });
-  }
-  if (task.spentMicros + rewardMicros > task.budgetMicros) {
-    return Response.json({ error: 'Task budget exhausted.' }, { status: 409 });
-  }
-
-  // Reserve BEFORE paying (a concurrent approve of the same submission loses
-  // on the pending check above only within this request — flip status first
-  // as the cheap reservation, revert on payout failure).
-  sub.status = 'approved';
-  await updateSubmission(id, sub);
-  try {
-    const digest = await payWorker(sub.worker, task.rewardUsd);
-    sub.status = 'paid';
-    sub.payoutDigest = digest;
-    await updateSubmission(id, sub);
-    task.approvedCount += 1;
-    task.spentMicros += rewardMicros;
-    await saveTask(task);
-    if (task.approvedCount >= task.maxCompletions) {
-      await closeTask(task, 'closed');
+  for (const subId of wanted) {
+    const sub = subs.find((s) => s.id === subId);
+    if (!sub) {
+      results.push({ submissionId: subId, status: 'error', error: 'no such submission' });
+      continue;
     }
-    return Response.json({
-      ok: true,
-      submissionId: sub.id,
-      status: 'paid',
-      payoutTx: digest,
-      suiscan: `https://suiscan.xyz/mainnet/tx/${digest}`,
-      taskStatus: task.status,
-    });
-  } catch (err) {
-    sub.status = 'pending';
+    if (sub.status !== 'pending') {
+      results.push({ submissionId: subId, status: sub.status, error: 'already handled' });
+      continue;
+    }
+
+    if (action === 'reject') {
+      sub.status = 'rejected';
+      await updateSubmission(id, sub);
+      results.push({ submissionId: subId, status: 'rejected' });
+      continue;
+    }
+
+    // Approve: budget + completion guards, then the rail payout.
+    const rewardMicros = Math.round(task.rewardUsd * 1e6);
+    if (task.approvedCount >= task.maxCompletions) {
+      results.push({ submissionId: subId, status: 'error', error: 'max completions reached' });
+      continue;
+    }
+    if (task.spentMicros + rewardMicros > task.budgetMicros) {
+      results.push({ submissionId: subId, status: 'error', error: 'budget exhausted' });
+      continue;
+    }
+
+    // Reserve BEFORE paying (flip status as the cheap reservation, revert on
+    // payout failure).
+    sub.status = 'approved';
     await updateSubmission(id, sub);
-    return Response.json(
-      {
-        error: `Payout failed (${err instanceof Error ? err.message : String(err)}) — the submission is back to pending; retry shortly.`,
-      },
-      { status: 502 },
-    );
+    try {
+      const digest = await payWorker(sub.worker, task.rewardUsd);
+      sub.status = 'paid';
+      sub.payoutDigest = digest;
+      await updateSubmission(id, sub);
+      task.approvedCount += 1;
+      task.spentMicros += rewardMicros;
+      await saveTask(task);
+      results.push({ submissionId: subId, status: 'paid', payoutTx: digest });
+    } catch (err) {
+      sub.status = 'pending';
+      await updateSubmission(id, sub);
+      results.push({
+        submissionId: subId,
+        status: 'error',
+        error: `payout failed (${err instanceof Error ? err.message : String(err)}) — back to pending, retry shortly`,
+      });
+    }
   }
+
+  if (task.approvedCount >= task.maxCompletions) {
+    await closeTask(task, 'closed');
+  }
+  const paid = results.filter((r) => r.status === 'paid').length;
+  return Response.json({
+    ok: results.every((r) => r.status !== 'error'),
+    paid,
+    results,
+    taskStatus: task.status,
+  });
 }
