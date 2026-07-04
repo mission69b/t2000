@@ -147,6 +147,85 @@ export async function openTaskCountFor(poster: string): Promise<number> {
   ).length;
 }
 
+export async function listTasksByPoster(poster: string): Promise<BoardTask[]> {
+  const ids = await redis().smembers(posterKey(poster));
+  const tasks = await Promise.all(ids.map((id) => getTask(id)));
+  return tasks
+    .filter((t): t is BoardTask => t !== null)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+export type ReviewResult = {
+  submissionId: string;
+  status: string;
+  payoutTx?: string;
+  error?: string;
+};
+
+/** The poster's review action (shared by the manageKey route and the
+ *  session-native poster proxy): approve pays through the rail, reject
+ *  marks. Sequential payouts; budget/completion guards per submission. */
+export async function reviewSubmissions(
+  task: BoardTask,
+  submissionIds: string[],
+  action: 'approve' | 'reject',
+): Promise<{ results: ReviewResult[]; paid: number }> {
+  const subs = await listSubmissions(task.id);
+  const results: ReviewResult[] = [];
+
+  for (const subId of submissionIds) {
+    const sub = subs.find((s) => s.id === subId);
+    if (!sub) {
+      results.push({ submissionId: subId, status: 'error', error: 'no such submission' });
+      continue;
+    }
+    if (sub.status !== 'pending') {
+      results.push({ submissionId: subId, status: sub.status, error: 'already handled' });
+      continue;
+    }
+    if (action === 'reject') {
+      sub.status = 'rejected';
+      await updateSubmission(task.id, sub);
+      results.push({ submissionId: subId, status: 'rejected' });
+      continue;
+    }
+    const rewardMicros = Math.round(task.rewardUsd * 1e6);
+    if (task.approvedCount >= task.maxCompletions) {
+      results.push({ submissionId: subId, status: 'error', error: 'max completions reached' });
+      continue;
+    }
+    if (task.spentMicros + rewardMicros > task.budgetMicros) {
+      results.push({ submissionId: subId, status: 'error', error: 'budget exhausted' });
+      continue;
+    }
+    sub.status = 'approved';
+    await updateSubmission(task.id, sub);
+    try {
+      const digest = await payWorker(sub.worker, task.rewardUsd);
+      sub.status = 'paid';
+      sub.payoutDigest = digest;
+      await updateSubmission(task.id, sub);
+      task.approvedCount += 1;
+      task.spentMicros += rewardMicros;
+      await saveTask(task);
+      results.push({ submissionId: subId, status: 'paid', payoutTx: digest });
+    } catch (err) {
+      sub.status = 'pending';
+      await updateSubmission(task.id, sub);
+      results.push({
+        submissionId: subId,
+        status: 'error',
+        error: `payout failed (${err instanceof Error ? err.message : String(err)}) — back to pending, retry shortly`,
+      });
+    }
+  }
+
+  if (task.approvedCount >= task.maxCompletions) {
+    await closeTask(task, 'closed');
+  }
+  return { results, paid: results.filter((r) => r.status === 'paid').length };
+}
+
 export async function setModeration(
   task: BoardTask,
   approve: boolean,

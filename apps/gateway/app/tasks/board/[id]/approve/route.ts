@@ -1,12 +1,8 @@
 import {
   boardConfigured,
-  closeTask,
   getTask,
   hashManageKey,
-  listSubmissions,
-  payWorker,
-  saveTask,
-  updateSubmission,
+  reviewSubmissions,
 } from '@/lib/task-board';
 
 // POST /tasks/board/{id}/approve — the POSTER's review action (manageKey
@@ -59,71 +55,7 @@ export async function POST(
     return Response.json({ error: 'Pass 1–50 submission ids.' }, { status: 400 });
   }
 
-  const subs = await listSubmissions(id);
-  const results: {
-    submissionId: string;
-    status: string;
-    payoutTx?: string;
-    error?: string;
-  }[] = [];
-
-  for (const subId of wanted) {
-    const sub = subs.find((s) => s.id === subId);
-    if (!sub) {
-      results.push({ submissionId: subId, status: 'error', error: 'no such submission' });
-      continue;
-    }
-    if (sub.status !== 'pending') {
-      results.push({ submissionId: subId, status: sub.status, error: 'already handled' });
-      continue;
-    }
-
-    if (action === 'reject') {
-      sub.status = 'rejected';
-      await updateSubmission(id, sub);
-      results.push({ submissionId: subId, status: 'rejected' });
-      continue;
-    }
-
-    // Approve: budget + completion guards, then the rail payout.
-    const rewardMicros = Math.round(task.rewardUsd * 1e6);
-    if (task.approvedCount >= task.maxCompletions) {
-      results.push({ submissionId: subId, status: 'error', error: 'max completions reached' });
-      continue;
-    }
-    if (task.spentMicros + rewardMicros > task.budgetMicros) {
-      results.push({ submissionId: subId, status: 'error', error: 'budget exhausted' });
-      continue;
-    }
-
-    // Reserve BEFORE paying (flip status as the cheap reservation, revert on
-    // payout failure).
-    sub.status = 'approved';
-    await updateSubmission(id, sub);
-    try {
-      const digest = await payWorker(sub.worker, task.rewardUsd);
-      sub.status = 'paid';
-      sub.payoutDigest = digest;
-      await updateSubmission(id, sub);
-      task.approvedCount += 1;
-      task.spentMicros += rewardMicros;
-      await saveTask(task);
-      results.push({ submissionId: subId, status: 'paid', payoutTx: digest });
-    } catch (err) {
-      sub.status = 'pending';
-      await updateSubmission(id, sub);
-      results.push({
-        submissionId: subId,
-        status: 'error',
-        error: `payout failed (${err instanceof Error ? err.message : String(err)}) — back to pending, retry shortly`,
-      });
-    }
-  }
-
-  if (task.approvedCount >= task.maxCompletions) {
-    await closeTask(task, 'closed');
-  }
-  const paid = results.filter((r) => r.status === 'paid').length;
+  const { results, paid } = await reviewSubmissions(task, wanted, action);
   return Response.json({
     ok: results.every((r) => r.status !== 'error'),
     paid,
