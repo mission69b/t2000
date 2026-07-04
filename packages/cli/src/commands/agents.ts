@@ -65,7 +65,7 @@ export function registerAgents(program: Command) {
     )
     .option('--category <category>', 'Filter the list by store category')
     .option('--all', 'Include agents without a priced service')
-    .option('--limit <n>', 'Max rows (default 30)')
+    .option('--limit <n>', 'Max rows (default: all)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
       async (
@@ -109,7 +109,7 @@ export function registerAgents(program: Command) {
             return;
           }
 
-          const limit = Math.min(Number.parseInt(opts.limit ?? '30', 10) || 30, 100);
+          const limit = Math.min(Number.parseInt(opts.limit ?? '100', 10) || 100, 100);
           const data = await getJson<{ total?: number; agents?: DirectoryAgent[] }>(
             `${base}/agents?limit=100`,
           );
@@ -135,12 +135,15 @@ export function registerAgents(program: Command) {
             const price = a.priceUsdc
               ? formatUsd(Number.parseFloat(a.priceUsdc)).padStart(6)
               : '     —';
+            // Full address on its own line — it IS the payment handle
+            // (`t2 agent pay <address>`); a truncated one can't be paid.
             printLine(
-              `  ${price}  ${(a.name ?? truncateAddress(a.address)).padEnd(22).slice(0, 22)}  ${(a.category ?? '').padEnd(11).slice(0, 11)}  ${truncateAddress(a.address)}`,
+              `  ${price}  ${(a.name ?? truncateAddress(a.address)).padEnd(24).slice(0, 24)}  ${a.category ?? ''}`,
             );
+            printLine(`          ${a.address}`);
           }
           printBlank();
-          printInfo('Detail: t2 agents <address>   ·   Buy: t2 agent pay <address>');
+          printInfo('Detail: t2 agents <address>   ·   Buy: t2 agent pay <address> (addresses above are complete)');
           printBlank();
         } catch (error) {
           handleError(error);
