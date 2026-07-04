@@ -14,13 +14,16 @@ import {
   BOARD_LIMITS,
   type BoardTask,
   boardConfigured,
+  closeTask,
   createTask,
   hashManageKey,
   listLive,
+  moderateTaskWithLLM,
   newId,
   openTaskCountFor,
   publicTask,
   sanitizeText,
+  setModeration,
 } from '@/lib/task-board';
 import {
   getChainInfo,
@@ -234,9 +237,8 @@ export async function POST(req: Request): Promise<Response> {
   };
 
   if (openCount >= BOARD_LIMITS.maxOpenPerPoster) {
-    // Refund path: create-then-close would double-write; just refund directly
-    // through the close machinery by saving a closed task with full budget.
-    const { closeTask } = await import('@/lib/task-board');
+    // Refund path: create-then-close keeps the audit trail + reuses the
+    // close/refund machinery.
     await createTask(task);
     await closeTask(task, 'rejected');
     return withX402Receipt(
@@ -252,6 +254,27 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   await createTask(task);
+
+  // Auto-moderation (S.626): screen at post time — PASS lists instantly,
+  // FAIL auto-refunds with the reason, engine-down leaves the manual queue.
+  const screened = await moderateTaskWithLLM(task);
+  if (screened.verdict === 'approve') {
+    await setModeration(task, true);
+  } else if (screened.verdict === 'reject') {
+    await closeTask(task, 'rejected');
+    return withX402Receipt(
+      Response.json(
+        {
+          error: `Task rejected by the moderation screen: ${screened.reason} Full budget refunded.`,
+          refunded: Boolean(task.refundDigest),
+          ...(task.refundDigest ? { refundTx: task.refundDigest } : {}),
+        },
+        { status: 422 },
+      ),
+      settle,
+    );
+  }
+
   return withX402Receipt(
     Response.json({
       ok: true,
@@ -260,7 +283,9 @@ export async function POST(req: Request): Promise<Response> {
       manageKeyNote:
         'SAVE THIS — it is shown once. It authorizes approve/reject/close on this task: POST /tasks/board/{id}/approve {"manageKey","submissionId","action"} and /close {"manageKey"}.',
       moderation:
-        'Your task is queued for the t2000 moderation pass before it lists publicly. Rejected tasks refund the full budget automatically.',
+        task.status === 'live'
+          ? 'Your task passed the automatic moderation screen and is LIVE now.'
+          : 'The moderation screen is briefly unavailable — your task is queued for review and will list shortly.',
       escrow: {
         collectDigest: settle.transaction,
         budgetUsd: v.budgetUsd,
