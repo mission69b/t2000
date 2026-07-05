@@ -63,6 +63,56 @@ export function verifyDelivery(req: Request): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Buyer input → query params for GET upstreams (S.638). POST upstreams get
+// the buyer's `--data` as the body; GET upstreams historically dropped it,
+// which made every wrapped GET API static. Flatten the top-level primitive
+// fields of the buyer's JSON into query params — bounded, and NEVER
+// overriding a param the seller saved in the upstream URL (fixed filters or
+// query-string keys stay seller-controlled). The delivery signature is
+// unaffected by design: `signedTarget` excludes the query string.
+const MAX_BUYER_PARAMS = 8;
+const MAX_PARAM_KEY_LEN = 64;
+const MAX_PARAM_VALUE_LEN = 512;
+
+/** Merge buyer JSON input into a GET upstream's query string. Returns the
+ *  URL unchanged when input is absent, invalid JSON, or not an object. */
+export function appendBuyerParams(upstreamUrl: string, body: string): string {
+  if (!body) {
+    return upstreamUrl;
+  }
+  let input: unknown;
+  try {
+    input = JSON.parse(body);
+  } catch {
+    return upstreamUrl;
+  }
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    return upstreamUrl;
+  }
+  const url = new URL(upstreamUrl);
+  let added = 0;
+  for (const [key, value] of Object.entries(input)) {
+    if (added >= MAX_BUYER_PARAMS) {
+      break;
+    }
+    const primitive =
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean';
+    if (
+      !primitive ||
+      key.length > MAX_PARAM_KEY_LEN ||
+      String(value).length > MAX_PARAM_VALUE_LEN ||
+      url.searchParams.has(key)
+    ) {
+      continue;
+    }
+    url.searchParams.append(key, String(value));
+    added += 1;
+  }
+  return url.toString();
+}
+
 /** 402-flavored refusal for direct (unpaid) calls to a seller route. */
 export function paymentRequired(sellerAddress?: string): Response {
   return Response.json(

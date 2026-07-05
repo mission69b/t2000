@@ -12,7 +12,7 @@ import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commer
 import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
 import { logPayment } from '@/lib/log-payment';
 import { runTaskChecksForWallets, runnerAddress } from '@/lib/tasks';
-import { DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
+import { appendBuyerParams, DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
 import { COLLECT_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
 import {
@@ -124,10 +124,13 @@ async function deliverToSeller(
   opts?: { method?: 'GET' | 'POST'; extraHeaders?: Record<string, string> },
 ): Promise<DeliveryResult> {
   const method = opts?.method ?? 'POST';
+  // [S.638] GET upstreams receive buyer input as query params (bounded,
+  // seller-saved params always win); POST upstreams get it as the body.
+  const target = method === 'GET' ? appendBuyerParams(endpoint, body) : endpoint;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch(target, {
       method,
       headers: {
         'content-type': 'application/json',
@@ -137,7 +140,8 @@ async function deliverToSeller(
         'x-agent-buyer': buyer,
         // Signed proof this call came through the paid delivery leg — the
         // gateway-hosted seller routes (app/sellers/*) refuse without it.
-        [DELIVERY_AUTH_HEADER]: signDelivery(endpoint),
+        // Signed over origin+path only — buyer query params don't break it.
+        [DELIVERY_AUTH_HEADER]: signDelivery(target),
       },
       body: method === 'POST' ? body || undefined : undefined,
       // Block SSRF-via-redirect (a public URL 30x-ing to an internal host).
