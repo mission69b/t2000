@@ -237,7 +237,11 @@ async function handle(
   const url = new URL(req.url);
   const override = (url.searchParams.get('amount') ?? '').trim();
   const profile = await fetchSellerProfile(seller);
-  const amount = profile.priceUsdc ?? override;
+  // `?amount` OVERRIDES the declared price (the doc'd contract, line 34) —
+  // it's how task-reward buys pay more than a listing's price. S.639 fix:
+  // this was `priceUsdc ?? override`, so a priced listing silently beat the
+  // override and the first-sale reward underpaid a listed seller.
+  const amount = override || profile.priceUsdc;
   if (!amount) {
     return Response.json(
       { error: 'Seller has not declared a price (and no amount override given). Set one with `t2 agent service --price`.' },
