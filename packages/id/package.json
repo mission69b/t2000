@@ -1,6 +1,6 @@
 {
   "name": "@t2000/id",
-  "version": "5.24.1",
+  "version": "5.24.2",
   "description": "Agent ID — on-chain agent identity registry client for the t2000 stack (Sui). Build register/update/ownership/active transactions against the agent_id::registry Move package.",
   "type": "module",
   "main": "./dist/index.cjs",
