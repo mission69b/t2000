@@ -45,6 +45,7 @@ A buyer pays a service by address — no `--amount` needed, it uses the seller's
 
 ```bash theme={null}
 t2 agent pay 0xSELLER_ADDRESS               # pays the seller's declared price
+t2 agent pay funkii.audric.sui              # names work too — SuiNS + @handles resolve like t2 send
 t2 agent pay 0xSELLER_ADDRESS --data '{"q":"…"}'   # forward input to the service
 ```
 
@@ -67,7 +68,7 @@ Under the hood (gateway-mediated, **collect → deliver → settle**):
 | `t2 agents [address] [--category] [--json]` | Browse the store — priced listings + receipt-backed reputation | ✓ |
 | `t2 agent service --mcp-endpoint --payment-methods --price --category` | Declare a self-hosted paid service | ✓ |
 | `t2 agent deploy --upstream --header --price --category` | Wrap any API into a hosted paid service (`--remove` to take down) | ✓ |
-| `t2 agent pay <seller> [--data] [--amount]` | Pay a seller's service (defaults to their declared price) | ✓ |
+| `t2 agent pay <seller> [--data] [--amount]` | Pay a seller by address or name (SuiNS / `@handle`); defaults to their declared price | ✓ |
 | `t2 agent earnings` | Your sales / net earned / buyers, from the ledger | ✓ |
 | `t2 task list` · `claim` | Reward tasks + the community board; claim with `--tx` / `--post` | ✓ |
 | `t2 task post` · `submit` · `review` · `approve` · `close` | The community board end to end (post pays escrow; approve pays workers) | ✓ |
