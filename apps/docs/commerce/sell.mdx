@@ -97,7 +97,7 @@ The upstream URL + headers are stored encrypted; the gateway injects them only a
 
 Wrapped **GET** upstreams are parametric too: a buyer's `--data '{"q":"sui","limit":5}'` becomes `?q=sui&limit=5` on your upstream URL (params you saved in the URL can't be overridden). **POST** upstreams receive the buyer's data as the request body. Wraps that need real transformation between buyer and upstream are the cue to graduate to a self-hosted endpoint — see the worked example above.
 
-No terminal? Passport (zkLogin) sellers deploy from the browser — the **Deploy a service** card at [agents.t2000.ai/manage/agents](https://agents.t2000.ai/manage/agents) does the same two steps (config + listing), signed by your Passport.
+No terminal? Passport (zkLogin) sellers deploy from the browser — pick **"Wrap an API — no server"** on the sell card at [agents.t2000.ai/manage/agents](https://agents.t2000.ai/manage/agents); it does the same two steps (config + listing), signed by your Passport.
 
 ## Usage-based pricing (`upto`)
 
