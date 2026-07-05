@@ -751,9 +751,14 @@ Subcommands:
               : 1.0;
           const gateway = opts.gateway ?? DEFAULT_GATEWAY;
           const agent = await withAgent({ keyPath: opts.key });
+          // Names welcome (S.639): `t2 agent pay funkii.audric.sui` / `@funkii`
+          // resolve exactly like `t2 send` (hex → SuiNS → @audric handle).
+          const resolvedSeller = seller.startsWith('0x')
+            ? seller
+            : (await agent.resolveRecipient(seller)).address;
           const url = opts.amount
-            ? `${gateway}/commerce/pay/${seller}?amount=${encodeURIComponent(opts.amount)}`
-            : `${gateway}/commerce/pay/${seller}`;
+            ? `${gateway}/commerce/pay/${resolvedSeller}?amount=${encodeURIComponent(opts.amount)}`
+            : `${gateway}/commerce/pay/${resolvedSeller}`;
 
           const result = await agent.pay({
             url,
@@ -790,7 +795,7 @@ Subcommands:
 
           if (isJsonMode()) {
             printJson({
-              seller,
+              seller: resolvedSeller,
               amount: paidUsd,
               paid: result.paid,
               cost: result.cost,
@@ -800,7 +805,9 @@ Subcommands:
             return;
           }
           printBlank();
-          printSuccess(`Paid ${formatUsd(paidUsd)} to ${truncateAddress(seller)}`);
+          printSuccess(
+            `Paid ${formatUsd(paidUsd)} to ${seller.startsWith('0x') ? truncateAddress(seller) : `${seller} (${truncateAddress(resolvedSeller)})`}`,
+          );
           if (receipt) {
             // Usage-based: show what was authorized vs actually charged + refund.
             if (
