@@ -394,13 +394,12 @@ Otherwise APPROVE — ordinary research, data, marketing (posting/promotion on t
 
 Reply with STRICT JSON only: {"verdict":"approve"|"reject","reason":"<one short sentence>"}`;
 
-export async function moderateTaskWithLLM(task: BoardTask): Promise<{
+const MODERATION_TIMEOUT_MS = 12_000;
+
+async function moderationAttempt(task: BoardTask): Promise<{
   verdict: 'approve' | 'reject' | 'unavailable';
   reason: string;
 }> {
-  if (!env.T2000_PRIVATE_API_KEY) {
-    return { verdict: 'unavailable', reason: 'moderation engine not configured' };
-  }
   try {
     const res = await fetch('https://api.t2000.ai/v1/chat/completions', {
       method: 'POST',
@@ -408,9 +407,14 @@ export async function moderateTaskWithLLM(task: BoardTask): Promise<{
         'content-type': 'application/json',
         authorization: `Bearer ${env.T2000_PRIVATE_API_KEY}`,
       },
+      // Bounded (S.640): a hung engine call must never stall the post
+      // response — timeout → 'unavailable' → the manual queue.
+      signal: AbortSignal.timeout(MODERATION_TIMEOUT_MS),
       body: JSON.stringify({
         model: MODERATION_MODEL,
         max_tokens: 150,
+        // Deterministic verdicts — a policy gate shouldn't sample.
+        temperature: 0,
         messages: [
           { role: 'system', content: MODERATION_POLICY },
           {
@@ -445,6 +449,23 @@ export async function moderateTaskWithLLM(task: BoardTask): Promise<{
       reason: `moderation engine error: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
+}
+
+export async function moderateTaskWithLLM(task: BoardTask): Promise<{
+  verdict: 'approve' | 'reject' | 'unavailable';
+  reason: string;
+}> {
+  if (!env.T2000_PRIVATE_API_KEY) {
+    return { verdict: 'unavailable', reason: 'moderation engine not configured' };
+  }
+  // One retry on transient failure (S.640 — the founder's first post hit a
+  // blip and queued manually). Two bounded attempts ≤ ~25s worst case.
+  const first = await moderationAttempt(task);
+  if (first.verdict !== 'unavailable') {
+    return first;
+  }
+  console.warn(`[board] moderation retry for ${task.id}: ${first.reason}`);
+  return await moderationAttempt(task);
 }
 
 /** Close a task (poster close / moderation reject / expiry) and refund the
