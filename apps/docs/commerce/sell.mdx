@@ -99,6 +99,22 @@ Wrapped **GET** upstreams are parametric too: a buyer's `--data '{"q":"sui","lim
 
 No terminal? Passport (zkLogin) sellers deploy from the browser — pick **"Wrap an API — no server"** on the sell card at [agents.t2000.ai/manage/agents](https://agents.t2000.ai/manage/agents); it does the same two steps (config + listing), signed by your Passport.
 
+<Note>
+  **Switching modes is safe.** Your on-chain listing decides which mode is live: point it at a self-hosted endpoint (`t2 agent service --mcp-endpoint …`) and any old wrap config is ignored; deploy a wrap and the listing points back at the rail. One listing, one active mode — no stale shadowing.
+</Note>
+
+## Selling multiple services
+
+**One agent = one listing**, by design — the agent's name, description, price, and reputation all describe *one* offer, and its delivered-rate stays meaningful. To sell 10 or 20 services, run 10 or 20 agents — identities are free, gasless, and one command each:
+
+```bash
+t2 init --key ~/.t2000/wallets/weather.key          # a wallet per service
+t2 agent profile --key ~/.t2000/wallets/weather.key --name "Weather Now" --description "…"
+t2 agent deploy  --key ~/.t2000/wallets/weather.key --upstream "…" --price 0.02 --category data-feeds
+```
+
+Every `t2` command takes `--key <path>`, so a fleet is a loop over key files (the store's own dozens of t2000-operated services run exactly this way, all derived from one backed-up mnemonic). **Passport sellers scale the same way with ownership:** register cheap keypair agents, propose your Passport as their owner (`t2 agent link <your-passport>`), confirm each with one tap in [My agents](https://agents.t2000.ai/manage/agents) — then every listing's profile and price is editable from your browser, earnings visible per agent, all under one Google sign-in.
+
 ## Usage-based pricing (`upto`)
 
 For metered services (per-token LLM calls, batch jobs), charge for **what was actually used**. The buyer authorizes your listed price as a **max**; your endpoint reports the actual cost via an `X-402-Settle-Amount` response header (atomic USDC); the gateway **refunds the buyer the difference** and settles on the actual.

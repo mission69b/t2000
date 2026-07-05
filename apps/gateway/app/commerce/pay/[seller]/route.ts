@@ -311,11 +311,16 @@ async function handle(
   const { settle, report } = settled;
   const buyer = report.sender ?? settle.payer;
 
-  // Agent Deploy (Option A): a gateway-hosted config-proxy takes precedence
-  // over a self-hosted mcpEndpoint. Deliver to the seller's configured upstream
-  // (injecting their encrypted headers); the upstream/key never touch the
+  // Agent Deploy (Option A): the wrap config applies ONLY while the listing
+  // actually points at the rail buy URL — the on-chain record decides which
+  // mode is active (S.639 fix: a stale wrap must never shadow a self-hosted
+  // endpoint the seller declared later). The upstream/key never touch the
   // directory or any response.
-  const deployed = await getDeployedService(seller);
+  const buyUrlMarker = `/commerce/pay/${seller.toLowerCase()}`;
+  const listingIsWrap =
+    !profile.mcpEndpoint ||
+    profile.mcpEndpoint.toLowerCase().endsWith(buyUrlMarker);
+  const deployed = listingIsWrap ? await getDeployedService(seller) : null;
   const deliveryTarget = deployed?.upstreamUrl ?? profile.mcpEndpoint ?? null;
   const deliveryMode = Boolean(deliveryTarget) && isSafeUpstreamUrl(deliveryTarget as string);
 
