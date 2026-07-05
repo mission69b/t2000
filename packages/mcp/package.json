@@ -1,6 +1,6 @@
 {
   "name": "@t2000/mcp",
-  "version": "5.24.2",
+  "version": "5.24.3",
   "description": "MCP server for Agent Wallets on Sui — 9 tools (balance, send, swap, pay, …) + 8 auto-registered skill prompts, stdio transport. Drop-in for Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client.",
   "mcpName": "io.github.mission69b/t2000",
   "type": "module",
