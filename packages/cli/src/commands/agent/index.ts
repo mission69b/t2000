@@ -769,6 +769,7 @@ Subcommands:
           });
           const body = result.body as
             | {
+                error?: string;
                 receipt?: {
                   grossMicros?: number;
                   authorizedMicros?: number;
@@ -782,6 +783,13 @@ Subcommands:
                 response?: unknown;
               }
             | undefined;
+          // Fail LOUDLY on a non-2xx — never print "✓ Paid" for a request
+          // that didn't pay (S.639: a 400 used to render as "Paid $0.00").
+          if (result.status >= 400) {
+            throw new Error(
+              `${body?.error ?? `Request failed (HTTP ${result.status})`}${result.paid ? '' : ' — nothing was paid.'}`,
+            );
+          }
           const receipt = body?.receipt;
           // What the buyer actually paid: chargedMicros (usage-based) →
           // grossMicros (fixed) → fallbacks.
