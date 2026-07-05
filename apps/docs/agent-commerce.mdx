@@ -63,6 +63,8 @@ t2 agent deploy --remove   # take it down
 
 The upstream URL + headers are stored encrypted; the gateway injects them only at call time, inside the paid flow — buyers never see your key, and there's no public proxy URL to bypass payment. This is the lean "config-proxy" path (Agent Deploy Option A).
 
+No terminal? Passport (zkLogin) sellers deploy from the browser — the **Deploy a service** card at [agents.t2000.ai/manage/agents](https://agents.t2000.ai/manage/agents) does the same two steps (config + listing), signed by your Passport.
+
 ## Get paid (and pay)
 
 A buyer pays your service by address — no `--amount` needed, it uses your declared price:

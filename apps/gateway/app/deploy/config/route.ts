@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import {
@@ -7,6 +7,7 @@ import {
   removeDeployedService,
   storeDeployedService,
 } from '@/lib/deploy';
+import { env } from '@/lib/env';
 
 // POST /deploy/config — Agent Deploy (Option A) config store. The agent signs a
 // fresh, config-bound message with its keypair; the gateway verifies + stores
@@ -15,8 +16,26 @@ import {
 // (±5 min) + the body hash bind the signature to this exact config, so a
 // captured signature can't write a different one. No public proxy URL is
 // exposed; the upstream is only ever called from within the paid commerce flow.
+//
+// SECOND auth path (S.637 — browser deploys for Passport agents): the gateway
+// can't verify zkLogin signatures, but the CONSOLE's server can (it holds the
+// Passport session) — same trust model as /tasks/board/poster (S.626.2). The
+// console attests the signed-in wallet over the shared secret; the config is
+// stored for exactly that address. Header: `x-console-proxy` = the console
+// attestation secret (BOARD_POSTER_PROXY_KEY — one console↔gateway channel).
 
 export const dynamic = 'force-dynamic';
+
+function consoleAttested(req: Request): boolean {
+  const expected = env.BOARD_POSTER_PROXY_KEY ?? '';
+  const got = req.headers.get('x-console-proxy') ?? '';
+  if (!(expected && got)) {
+    return false;
+  }
+  const a = Buffer.from(got);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 const MAX_SKEW_MS = 5 * 60 * 1000;
 const MAX_HEADERS = 12;
@@ -74,9 +93,6 @@ export async function POST(request: Request): Promise<Response> {
   if (!isValidSuiAddress(address)) {
     return err(400, 'A valid agent Sui address is required.');
   }
-  if (!freshTimestamp(body.timestamp)) {
-    return err(401, 'Stale or missing timestamp.');
-  }
   if (!isSafeUpstreamUrl(upstreamUrl)) {
     return err(400, 'upstreamUrl must be a valid public https URL.');
   }
@@ -90,13 +106,19 @@ export async function POST(request: Request): Promise<Response> {
     return err(400, 'Invalid headers.');
   }
 
-  // The signed message binds to the exact config (body hash).
-  const bodyHash = createHash('sha256')
-    .update(`${upstreamUrl}|${method}|${JSON.stringify(headers)}`)
-    .digest('hex');
-  const message = `t2000-deploy:${body.timestamp}:${bodyHash}`;
-  if (!(await verifySig(address, message, String(body.signature ?? '')))) {
-    return err(401, 'Invalid signature.');
+  // Auth — console attestation (Passport agents) OR keypair signature.
+  if (!consoleAttested(request)) {
+    if (!freshTimestamp(body.timestamp)) {
+      return err(401, 'Stale or missing timestamp.');
+    }
+    // The signed message binds to the exact config (body hash).
+    const bodyHash = createHash('sha256')
+      .update(`${upstreamUrl}|${method}|${JSON.stringify(headers)}`)
+      .digest('hex');
+    const message = `t2000-deploy:${body.timestamp}:${bodyHash}`;
+    if (!(await verifySig(address, message, String(body.signature ?? '')))) {
+      return err(401, 'Invalid signature.');
+    }
   }
 
   await storeDeployedService(address, { upstreamUrl, method, headers });
@@ -117,12 +139,14 @@ export async function DELETE(request: Request): Promise<Response> {
   if (!isValidSuiAddress(address)) {
     return err(400, 'A valid agent Sui address is required.');
   }
-  if (!freshTimestamp(body.timestamp)) {
-    return err(401, 'Stale or missing timestamp.');
-  }
-  const message = `t2000-deploy-remove:${body.timestamp}`;
-  if (!(await verifySig(address, message, String(body.signature ?? '')))) {
-    return err(401, 'Invalid signature.');
+  if (!consoleAttested(request)) {
+    if (!freshTimestamp(body.timestamp)) {
+      return err(401, 'Stale or missing timestamp.');
+    }
+    const message = `t2000-deploy-remove:${body.timestamp}`;
+    if (!(await verifySig(address, message, String(body.signature ?? '')))) {
+      return err(401, 'Invalid signature.');
+    }
   }
   await removeDeployedService(address);
   return Response.json({ ok: true, address });
