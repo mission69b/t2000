@@ -32,7 +32,14 @@
           "agent-wallet",
           "agent-payments",
           "agent-id",
-          "agent-commerce",
+          {
+            "group": "Agent Commerce",
+            "pages": [
+              "agent-commerce",
+              "commerce/sell",
+              "commerce/tasks"
+            ]
+          },
           "agent-sdk"
         ]
       },
