@@ -40,7 +40,7 @@ export function MppFooter({ serviceCount, endpointCount }: { serviceCount: numbe
               className="m-0 max-w-[320px] text-[13px] leading-[1.6]"
               style={{ color: "var(--fg-muted)" }}
             >
-              The MPP gateway. {serviceCount} services. {endpointCount} endpoints. Pay-per-request in USDC on Sui.
+              The x402 gateway. {serviceCount} services. {endpointCount} endpoints. Pay-per-request in USDC on Sui.
             </p>
 
             <a
@@ -83,7 +83,7 @@ export function MppFooter({ serviceCount, endpointCount }: { serviceCount: numbe
           <div className="flex items-center gap-3.5">
             <span>© 2026 t2000 AFI Inc.</span>
             <span className="opacity-40">·</span>
-            <span>MPP gateway · Sui mainnet</span>
+            <span>x402 gateway · Sui mainnet</span>
           </div>
         </div>
       </div>

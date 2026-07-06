@@ -24,12 +24,14 @@ export const metadata: Metadata = {
     description: SOCIAL_DESC,
     siteName: "mpp.t2000.ai",
     type: "website",
+    images: ["/og/og-mpp.png"],
   },
   twitter: {
     card: "summary_large_image",
     site: "@t2000ai",
     title: "mpp.t2000.ai — pay-per-request APIs on Sui",
     description: SOCIAL_DESC,
+    images: ["/og/og-mpp.png"],
   },
 };
 
