@@ -506,7 +506,8 @@ function VerifyLedger({
                 type="button"
                 key={r.txDigest}
                 onClick={() => onPick(r.receiptId)}
-                className={`grid ${gridCols} w-full cursor-pointer items-center border-0 text-left font-mono transition-colors hover:bg-[color:var(--ds-gray-alpha-100)]`}
+                title={`Verify ${r.receiptId}`}
+                className={`group grid ${gridCols} w-full cursor-pointer items-center border-0 text-left font-mono transition-colors hover:bg-[color:var(--ds-gray-alpha-200)]`}
                 style={{
                   gap: 16,
                   padding: "11px 18px",
@@ -515,7 +516,10 @@ function VerifyLedger({
                   fontSize: 12,
                 }}
               >
-                <span className="truncate" style={{ color: "var(--fg)" }}>
+                <span
+                  className="truncate transition-colors group-hover:text-[color:var(--t2k-accent)]"
+                  style={{ color: "var(--fg)" }}
+                >
                   {short(r.receiptId, 10, 6)}
                 </span>
                 <span className="hidden truncate sm:block" style={{ color: "var(--fg-muted)" }}>
