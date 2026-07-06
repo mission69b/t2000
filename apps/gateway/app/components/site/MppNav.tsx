@@ -25,15 +25,13 @@ export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {
           className="inline-flex items-center gap-2 text-foreground no-underline"
           aria-label="t2000 mpp — home"
         >
-          <img
-            alt=""
+          <span
             aria-hidden="true"
-            height={22}
-            src="/brand/pfp-t2-white-field.svg"
-            style={{ display: "block", borderRadius: 5 }}
-            width={22}
-          />
-
+            className="inline-block text-[20px] font-bold leading-none"
+            style={{ letterSpacing: "-0.05em" }}
+          >
+            t2
+          </span>
           <span
             className="pl-2 font-mono text-[14px] font-medium tracking-[0.02em]"
             style={{ borderLeft: "1px solid var(--ds-gray-alpha-300)" }}

@@ -48,9 +48,6 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           >
             t2
           </span>
-          <span className="text-[16px] font-semibold tracking-[-0.022em]">
-            t2000
-          </span>
         </Link>
 
         <div className="ml-2 flex items-center gap-[18px]">

@@ -23,7 +23,7 @@ const PRODUCT_LINKS: FooterLink[] = [
   { label: "Agent SDK", href: "/agent-sdk" },
   { label: "Agent ID", href: "/agent-id" },
   { label: "Agent Commerce", href: "/agent-commerce" },
-  { label: "Private API", href: "/api" },
+  { label: "Private API", href: "/private-api" },
 ];
 
 const FAMILY_LINKS: FooterLink[] = [
@@ -60,9 +60,6 @@ export function SiteFooter() {
                 style={{ letterSpacing: "-0.05em" }}
               >
                 t2
-              </span>
-              <span className="text-[15px] font-semibold tracking-[-0.022em] text-foreground">
-                t2000
               </span>
             </div>
             <p className="m-0 max-w-[300px] text-[13px] leading-[1.6] text-muted-foreground">

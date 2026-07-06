@@ -26,8 +26,12 @@ export function MppFooter({ serviceCount, endpointCount }: { serviceCount: numbe
         <div className="mb-9 grid gap-10 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <div className="mb-3.5 inline-flex items-center gap-2">
-              <span className="text-[14px] font-semibold tracking-[-0.022em]">
-                t2000
+              <span
+                aria-hidden="true"
+                className="inline-block text-[15px] font-bold leading-none"
+                style={{ letterSpacing: "-0.05em" }}
+              >
+                t2
               </span>
               <span
                 className="pl-1.5 font-mono text-[13.5px] font-medium tracking-[0.02em]"
