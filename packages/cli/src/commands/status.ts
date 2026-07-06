@@ -18,11 +18,18 @@ import {
   printLine,
 } from '../output.js';
 
-// NOTE: resolved relative to the BUNDLED output (tsup flattens to dist/), not
-// the source dir — so this is `../package.json` (matching program.ts), not
-// `../../`. dist/<chunk>.js → ../package.json = packages/cli/package.json.
+// NOTE: from the BUNDLED output (tsup flattens to dist/) this file sits one
+// level below packages/cli, so `../package.json` resolves. From SOURCE
+// (vitest importing src/commands/status.ts) it's two levels down — hence the
+// fallback, which keeps the module importable in both contexts.
 const require = createRequire(import.meta.url);
-const { version: CLI_VERSION } = require('../package.json') as { version: string };
+const { version: CLI_VERSION } = (() => {
+  try {
+    return require('../package.json') as { version: string };
+  } catch {
+    return require('../../package.json') as { version: string };
+  }
+})();
 
 const GATEWAY_URL = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
 const GATEWAY_TIMEOUT_MS = 3000;
