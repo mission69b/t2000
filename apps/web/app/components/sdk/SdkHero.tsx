@@ -40,12 +40,12 @@ export function SdkHero() {
                 color: "var(--fg)",
               }}
             >
-              Build agentic
+              The whole agent stack,
               <br />
-              <span style={{ color: "var(--t2k-accent)" }}>finance.</span>
+              <span style={{ color: "var(--t2k-accent)" }}>in one class.</span>
             </h1>
             <p className="t2k-section-sub" style={{ marginTop: 26 }}>
-              Wallet, Payments, Engine. One npm install. One class.
+              Wallet, Payments, Private API. One npm install. One class.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

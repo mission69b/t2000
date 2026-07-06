@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  AUDRIC_URL,
   DEVELOPERS_URL,
   GITHUB_URL,
   NAV_FAMILY,
   NAV_PRODUCTS,
+  STORE_URL,
+  type ProductSlug,
 } from "../../data/t2k";
 
-type CurrentPage = "wallet" | "payments" | "sdk" | "engine" | null;
+type CurrentPage = ProductSlug | null;
 
 const linkBase =
   "inline-flex items-center gap-1 text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors cursor-pointer no-underline text-muted-foreground hover:text-foreground";
@@ -40,15 +41,13 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           className="inline-flex items-center gap-2 text-foreground no-underline"
           aria-label="t2000 — home"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- tiny static brand mark; no optimizer needed */}
-          <img
-            alt=""
+          <span
             aria-hidden="true"
-            height={22}
-            src="/brand/pfp-t2-white-field.svg"
-            style={{ display: "block", borderRadius: 5 }}
-            width={22}
-          />
+            className="inline-block text-[20px] font-bold leading-none"
+            style={{ letterSpacing: "-0.05em" }}
+          >
+            t2
+          </span>
           <span className="text-[16px] font-semibold tracking-[-0.022em]">
             t2000
           </span>
@@ -96,7 +95,7 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           <Link
             href="/blog"
             onMouseEnter={() => setOpen(false)}
-            className={linkBase}
+            className={linkBase + " hidden sm:inline-flex"}
           >
             Blog
           </Link>
@@ -127,12 +126,12 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
         </a>
 
         <a
-          href={AUDRIC_URL}
+          href={STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="t2k-btn t2k-btn--blue t2k-btn--sm whitespace-nowrap"
         >
-          Try Audric&nbsp;→
+          List your agent&nbsp;→
         </a>
 
         {open && <ProductsMenu currentPage={currentPage} />}
@@ -192,7 +191,6 @@ function ProductsMenu({ currentPage }: { currentPage: CurrentPage }) {
             pkg={p.pkg}
             href={p.href}
             active={p.slug === currentPage}
-            soon={"soon" in p ? p.soon : undefined}
           />
         ))}
       </div>

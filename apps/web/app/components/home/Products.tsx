@@ -1,116 +1,132 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { T2K } from "../../data/t2k";
 
+// "The climb" — four capabilities an agent gains, bottom to top. A numbered
+// vertical ladder with a connecting spine, each rung linking to its product
+// page(s). Classes live in styles/page.css (t2k-climb / t2k-rung-*).
 export function Products() {
   return (
-    <section className="t2k-section">
+    <section className="t2k-section" id="stack">
       <div className="t2k-container">
         <header className="mb-12 flex flex-wrap items-end justify-between gap-6">
           <div>
             <span className="t2k-eyebrow">{"// THE STACK"}</span>
-            <h2 className="t2k-section-title mt-[22px]">One agent stack.</h2>
+            <h2 className="t2k-section-title mt-3">Everything an agent needs.</h2>
           </div>
           <p
-            className="m-0 max-w-[380px] text-[16px] leading-[1.55]"
-            style={{
-              color: "var(--fg-muted)",
-              letterSpacing: "-0.011em",
-            }}
+            className="m-0 max-w-[340px] text-[16px] leading-[1.55]"
+            style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            Hold, send, swap, and pay. Everything an agent needs to move
-            money on Sui.
+            From its first dollar to its own storefront. Free and MIT.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {T2K.products.map((p, i) => (
-            <ProductCard key={p.slug} p={p} i={i} />
+        <div className="t2k-climb">
+          {T2K.climb.map((r, i) => (
+            <ClimbRung key={r.n} r={r} last={i === T2K.climb.length - 1} />
           ))}
+        </div>
+
+        {/* Substrate + platform footer */}
+        <div className="t2k-climb-base">
+          <Link href="/agent-sdk" className="t2k-climb-base-card">
+            <span className="t2k-mono-tag">@t2000/sdk</span>
+            <div>
+              <div className="t2k-climb-base-name">Agent SDK</div>
+              <div className="t2k-climb-base-sub">
+                One TypeScript class under all of it. Wallet, payments, swaps —
+                the substrate that powers Audric.
+              </div>
+            </div>
+            <span className="t2k-climb-base-arrow">→</span>
+          </Link>
+          <a
+            href="https://agents.t2000.ai/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t2k-climb-base-card"
+          >
+            <span className="t2k-mono-tag t2k-mono-tag--blue">agents.t2000.ai</span>
+            <div>
+              <div className="t2k-climb-base-name">Agent Store</div>
+              <div className="t2k-climb-base-sub">
+                The marketplace + console. Browse and sell agents, post tasks,
+                and manage one Passport, keys, billing and every receipt.
+              </div>
+            </div>
+            <span className="t2k-climb-base-arrow">→</span>
+          </a>
         </div>
       </div>
     </section>
   );
 }
 
-function ProductCard({
-  p,
-  i,
-}: {
-  p: (typeof T2K.products)[number];
-  i: number;
-}) {
+type Rung = (typeof T2K.climb)[number];
+
+function ClimbRung({ r, last }: { r: Rung; last: boolean }) {
+  const [hover, setHover] = useState(false);
   return (
-    <Link
-      href={p.href}
-      className="t2k-card t2k-card-hover group flex flex-col gap-4 no-underline"
-      style={{ padding: 28, color: "var(--fg)" }}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span
-            className="font-mono text-[11px]"
-            style={{ color: "var(--fg-subtle)", letterSpacing: "0.06em" }}
-          >
-            0{i + 1}
-          </span>
-          <span
-            className="block"
-            style={{
-              width: 1,
-              height: 14,
-              background: "var(--ds-gray-alpha-400)",
-            }}
-          />
-          <h3
-            className="m-0 text-[22px] font-semibold leading-[1.1]"
-            style={{ letterSpacing: "-0.022em" }}
-          >
-            {p.name}
-          </h3>
-        </div>
-        <span className="t2k-mono-tag t2k-mono-tag--blue">{p.pkg}</span>
+    <div className="t2k-rung">
+      <div className="t2k-rung-spine">
+        <span
+          className="t2k-rung-node"
+          style={hover ? { borderColor: "var(--t2k-accent)", color: "var(--t2k-accent)" } : undefined}
+        >
+          {r.n}
+        </span>
+        {!last && <span className="t2k-rung-line" />}
       </div>
 
       <div
-        className="text-[15px] font-medium leading-[1.5]"
-        style={{ letterSpacing: "-0.011em", color: "var(--fg)" }}
+        className="t2k-rung-body"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={hover ? { borderColor: "var(--ds-gray-alpha-500)" } : undefined}
       >
-        {p.one}
-      </div>
-
-      <p
-        className="m-0 text-[14px] leading-[1.55]"
-        style={{ color: "var(--fg-muted)" }}
-      >
-        {p.desc}
-      </p>
-
-      <div
-        className="mt-auto flex flex-col gap-0.5 rounded-md border font-mono text-[12px] leading-[1.7]"
-        style={{
-          padding: "12px 14px",
-          background: "var(--ds-background-200)",
-          borderColor: "var(--ds-gray-alpha-300)",
-          color: "var(--fg-muted)",
-        }}
-      >
-        {p.verbs.map((v, idx) => (
-          <div key={idx}>
-            <span style={{ color: "var(--fg-subtle)", marginRight: 6 }}>$</span>
-            {v}
+        <div className="t2k-rung-head">
+          <div>
+            <span className="t2k-rung-layer">{r.layer}</span>
+            <h3 className="t2k-rung-name">{r.name}</h3>
           </div>
-        ))}
-      </div>
+          <div className="t2k-rung-one">{r.one}</div>
+        </div>
 
-      <div
-        className="pt-1 text-[13px] font-medium"
-        style={{
-          letterSpacing: "-0.011em",
-          color: "var(--t2k-accent)",
-        }}
-      >
-        Learn more →
+        <p className="t2k-rung-desc">{r.desc}</p>
+
+        <div className="t2k-rung-foot">
+          <div className="t2k-rung-verbs">
+            {r.verbs.map((v) => (
+              <div key={v}>
+                <span className="t2k-rung-dollar">$</span>
+                {v}
+              </div>
+            ))}
+          </div>
+          <div className="t2k-rung-links">
+            {r.links.map((l) =>
+              l.href.startsWith("/") ? (
+                <Link key={l.href} href={l.href} className="t2k-rung-link">
+                  {l.label} →
+                </Link>
+              ) : (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="t2k-rung-link"
+                >
+                  {l.label} →
+                </a>
+              ),
+            )}
+          </div>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }

@@ -17,7 +17,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/agent-wallet`,    lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/agent-payments`,  lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/agent-sdk`,       lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${base}/agent-engine`,    lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/agent-id`,        lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/agent-commerce`,  lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/api`,             lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/verify`,          lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/blog`,            lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
     ...posts,
   ];

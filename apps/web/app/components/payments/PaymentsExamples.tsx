@@ -3,7 +3,7 @@ import { RecipesCta } from "../site/RecipesCta";
 import { StoryCard } from "../home/StoryCard";
 
 export function PaymentsExamples() {
-  const mpp = T2K_STORIES.filter((s) => s.tag.startsWith("MPP"));
+  const stories = T2K_STORIES.filter((s) => s.tag.startsWith("x402"));
 
   return (
     <section className="t2k-section">
@@ -19,7 +19,7 @@ export function PaymentsExamples() {
         </header>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {mpp.map((s) => (
+          {stories.map((s) => (
             <StoryCard key={s.n} s={s} />
           ))}
         </div>

@@ -1,21 +1,13 @@
 import Link from "next/link";
+import { NAV_PRODUCTS, type ProductSlug } from "../../data/t2k";
 
-const PRODUCTS = [
-  { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", href: "/agent-wallet" },
-  { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", href: "/agent-payments" },
-  { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", href: "/agent-sdk" },
-  { slug: "engine", name: "Agent Engine", pkg: "@t2000/engine", href: "/agent-engine" },
-] as const;
-
-type Slug = (typeof PRODUCTS)[number]["slug"];
-
-export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
+export function ProductStrip({ currentPage }: { currentPage?: ProductSlug }) {
   return (
     <section
       className="border-t"
       style={{
         padding: "72px 24px",
-        borderTopColor: "var(--ds-gray-alpha-300)",
+        borderTopColor: "var(--border)",
       }}
     >
       <div className="t2k-container">
@@ -36,8 +28,8 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
           </h2>
         </header>
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-          {PRODUCTS.map((p) => {
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {NAV_PRODUCTS.map((p) => {
             const active = p.slug === currentPage;
             const className =
               "group flex flex-col rounded-lg border p-[20px_18px] no-underline transition-colors";
@@ -87,6 +79,12 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
                 >
                   {p.name}
                 </span>
+                <span
+                  className="mt-1 text-[12.5px] leading-snug"
+                  style={{ color: "var(--fg-muted)" }}
+                >
+                  {p.desc}
+                </span>
               </>
             );
 
@@ -108,7 +106,7 @@ export function ProductStrip({ currentPage }: { currentPage?: Slug }) {
                 href={p.href}
                 className={
                   className +
-                  " border-[color:var(--ds-gray-alpha-400)] hover:border-accent hover:bg-accent/[0.08]"
+                  " border-[color:var(--border)] hover:border-accent hover:bg-accent/[0.08]"
                 }
                 style={{ color: "var(--fg)" }}
               >

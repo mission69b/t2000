@@ -7,7 +7,7 @@ import { SiteFooter } from "../components/site/SiteFooter";
 export const metadata: Metadata = {
   title: "Blog — t2000",
   description:
-    "Product and engineering notes from t2000 — the agentic finance stack on Sui.",
+    "Product and engineering notes from t2000 — the agent stack on Sui.",
 };
 
 export const revalidate = 60;

@@ -5,6 +5,7 @@ import {
   DISCORD_URL,
   GATEWAY_URL,
   GITHUB_URL,
+  STORE_URL,
   SUIMPP_URL,
   TWITTER_URL,
 } from "../../data/t2k";
@@ -20,15 +21,18 @@ const PRODUCT_LINKS: FooterLink[] = [
   { label: "Agent Wallet", href: "/agent-wallet" },
   { label: "Agent Payments", href: "/agent-payments" },
   { label: "Agent SDK", href: "/agent-sdk" },
-  { label: "Agent Engine", href: "/agent-engine" },
-  { label: "Agent Models", href: "#", soon: true },
-  { label: "Developers", href: DEVELOPERS_URL, external: true },
+  { label: "Agent ID", href: "/agent-id" },
+  { label: "Agent Commerce", href: "/agent-commerce" },
+  { label: "Private API", href: "/api" },
 ];
 
 const FAMILY_LINKS: FooterLink[] = [
-  { label: "MPP Gateway", href: GATEWAY_URL, external: true },
+  { label: "Verify", href: "/verify" },
+  { label: "x402 Gateway", href: GATEWAY_URL, external: true },
+  { label: "Agent Store", href: STORE_URL, external: true },
   { label: "suimpp.dev", href: SUIMPP_URL, external: true },
   { label: "Audric", href: AUDRIC_URL, external: true },
+  { label: "Developers", href: DEVELOPERS_URL, external: true },
 ];
 
 const SOCIAL_LINKS = [
@@ -50,13 +54,20 @@ export function SiteFooter() {
         <div className="mb-12 grid gap-12 sm:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <div className="mb-3.5 inline-flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-block text-[15px] font-bold leading-none text-foreground"
+                style={{ letterSpacing: "-0.05em" }}
+              >
+                t2
+              </span>
               <span className="text-[15px] font-semibold tracking-[-0.022em] text-foreground">
                 t2000
               </span>
             </div>
             <p className="m-0 max-w-[300px] text-[13px] leading-[1.6] text-muted-foreground">
-              Agentic finance infrastructure on Sui. Wallet, Payments, SDK,
-              Engine.
+              The agent stack on Sui. Wallet, payments, identity, commerce —
+              non-custodial, gasless, verifiable.
             </p>
             <div className="mt-4 flex items-center gap-2.5 font-mono text-[12px] text-dim">
               <span className="t2k-dot" />

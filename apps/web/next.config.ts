@@ -28,6 +28,13 @@ const nextConfig: NextConfig = {
         destination: "https://developers.t2000.ai",
         permanent: true,
       },
+      // The engine product was retired (S.442); the page died in the 2026-07
+      // redesign. Send old links to the SDK (its closest living successor).
+      {
+        source: "/agent-engine",
+        destination: "/agent-sdk",
+        permanent: true,
+      },
     ];
   },
   async headers() {

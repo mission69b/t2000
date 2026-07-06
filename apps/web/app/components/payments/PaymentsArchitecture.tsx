@@ -24,7 +24,7 @@ const PROPERTIES: Property[] = [
     href: SUIMPP_URL,
     role: "STANDARD",
     title: "The open standard.",
-    desc: "MPP is an open spec. Anyone can implement a gateway.",
+    desc: "The Sui x402 scheme is an open spec. Anyone can implement a gateway.",
     cta: "Read the spec",
     standard: true,
   },

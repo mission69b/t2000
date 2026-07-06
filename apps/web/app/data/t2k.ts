@@ -1,47 +1,64 @@
+// t2000.ai copy SSOT — the 2026-07 redesign ("The agent stack on Sui").
+// Numbers policy: anything that can drift (calls, settled, agents, service
+// counts) renders LIVE from the gateway/directory APIs with these values as
+// build-time fallbacks only. See SITE_REPOSITIONING_BRIEF.md.
+
 export const T2K = {
-  tagline: "Agentic finance infrastructure on Sui.",
+  tagline: "The agent stack on Sui.",
   subline:
-    "Four packages. One stack. Everything an AI agent needs to hold a wallet, move USDC, pay APIs, and ship.",
+    "Hold money, pay any API, prove who you are, and get paid — one stack an agent climbs. Non-custodial, gasless, verifiable.",
 
-  products: [
+  // The climb: four capabilities an agent gains, bottom to top.
+  climb: [
     {
-      slug: "wallet",
-      name: "Agent Wallet",
-      pkg: "@t2000/cli",
-      one: "The terminal Agent Wallet.",
-      desc: "Gasless USDC + USDsui sends, Cetus swaps, MPP paid API access. MCP server for Claude Desktop · Cursor · Windsurf.",
-      verbs: ["t2 init", "t2 send 5 USDC alice.sui", "t2 mcp install"],
-      href: "/agent-wallet",
+      n: "01",
+      layer: "HOLD & MOVE MONEY",
+      name: "Agent Wallet + Payments",
+      one: "Hold USDC. Pay any API.",
+      desc: "Gasless USDC + USDsui sends, Cetus swaps, and every major AI + data API — straight from the terminal or Claude Desktop. No keys, no signup.",
+      verbs: ["t2 send 5 USDC alice.sui", "t2 pay mpp.t2000.ai/openai/…"],
+      links: [
+        { label: "Agent Wallet", href: "/agent-wallet" },
+        { label: "Agent Payments", href: "/agent-payments" },
+      ],
     },
     {
-      slug: "payments",
-      name: "Agent Payments",
-      pkg: "@suimpp/mpp · mppx",
-      one: "Pay any API in USDC.",
-      desc: "Every major AI + data API. Gasless on Sui. No signup, no API keys. Live gateway at mpp.t2000.ai.",
-      verbs: ["t2 pay mpp.t2000.ai/openai/...", "t2 services search"],
-      href: "/agent-payments",
+      n: "02",
+      layer: "BE SOMEONE",
+      name: "Agent ID",
+      one: "A portable on-chain identity.",
+      desc: "One gasless command gives your agent an address, an @handle, an owner and a public profile — the identity every buyer and seller resolves against.",
+      verbs: ["t2 agent register", "t2 agent handle aria"],
+      links: [{ label: "Agent ID", href: "/agent-id" }],
     },
     {
-      slug: "sdk",
-      name: "Agent SDK",
-      pkg: "@t2000/sdk",
-      one: "TypeScript SDK underneath everything.",
-      desc: "One class. Wallet signing, gasless transfers, Cetus routing, MPP, NAVI lending builders. Powers Audric.",
-      verbs: ["import { T2000 }", "await t.send({ to, amount })", "await t.pay({ url })"],
-      href: "/agent-sdk",
+      n: "03",
+      layer: "SELL & EARN",
+      name: "Agent Commerce",
+      one: "Turn your agent into a paid service.",
+      desc: "List a service, take escrowed USDC buys, and build receipt-backed reputation — agents selling to agents, settled on-chain in ~400ms.",
+      verbs: ["t2 agent service --price 0.02", "t2 agent pay <address>"],
+      links: [
+        { label: "Agent Commerce", href: "/agent-commerce" },
+        { label: "Sell & earn", href: "https://agents.t2000.ai/" },
+      ],
     },
     {
-      slug: "engine",
-      name: "Agent Engine",
-      pkg: "@t2000/engine",
-      one: "The engine behind Audric.",
-      desc: "AISDKEngine. 26 financial tools. 12 safety guards. Silent intelligence. Powers conversational finance.",
-      verbs: ["AISDKEngine", "26 tools · 12 guards", "powers audric.ai"],
-      href: "/agent-engine",
+      n: "04",
+      layer: "THINK PRIVATELY",
+      name: "Private & Confidential API",
+      one: "Every model, one key, private by default.",
+      desc: "Frontier + open models behind a single endpoint. Zero data retention by default, plus a confidential tier with a signed receipt you can verify.",
+      verbs: ['t2 chat "…"', "t2 verify <receipt>"],
+      links: [
+        { label: "Confidential API", href: "/api" },
+        { label: "Verify", href: "/verify" },
+      ],
     },
-  ] as const,
+  ],
 
+  // Live-catalog fallback for the homepage services teaser (names are
+  // curated; prices resolve live from mpp.t2000.ai/api/services).
   servicesFallback: [
     { name: "OpenAI", cat: "ai · media", from: "$0.02" },
     { name: "Anthropic", cat: "ai", from: "$0.02" },
@@ -53,10 +70,12 @@ export const T2K = {
     { name: "AlphaVantage", cat: "data", from: "$0.02" },
   ] as const,
 
-  metrics: [
-    ["Packages", "4"],
-    ["Endpoints", "88"],
-    ["Services", "40"],
+  // Fallback baseline for the metrics band — the live values come from
+  // mpp.t2000.ai/api/mpp/stats + api.t2000.ai/v1/agents at render time.
+  metricsFallback: [
+    ["Registered agents", "60"],
+    ["Paid calls", "1,100"],
+    ["Settled", "$96"],
     ["Settle", "~400ms"],
     ["Network fee", "$0"],
   ] as const,
@@ -72,29 +91,12 @@ export interface StoryItem {
   total: string;
 }
 
+// Chained-prompt stories (payments page). x402-only — the NAVI/DeFi era
+// stories were retired with the product (S.444).
 export const T2K_STORIES: StoryItem[] = [
   {
     n: "01",
-    tag: "AUDRIC · CHAIN",
-    title: "Park yield and pay the team",
-    prompt: "Swap 10% of my SUI to USDsui, save it to NAVI, then send $10 USDC to alice.sui.",
-    steps: ["swap → save → send · bundled in one Payment Intent"],
-    done: "Earning ~5.2% APY · $10 sent.",
-    total: "~$0.30 fees · 1 tap · ~10s",
-  },
-  {
-    n: "02",
-    tag: "AUDRIC · COMPOUND",
-    title: "Compound my rewards",
-    prompt:
-      "Claim my NAVI rewards, swap each non-USDC reward to USDC, deposit the merged USDC back into savings.",
-    steps: ["harvest → swap × N → save · one Payment Intent"],
-    done: "Rewards compounded back into savings.",
-    total: "~10bps × swaps · 1 tap · ~12s",
-  },
-  {
-    n: "03",
-    tag: "MPP · RESEARCH",
+    tag: "x402 · RESEARCH",
     title: "Morning market brief",
     prompt:
       "Use t2 services. Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, write me a 200-word brief.",
@@ -103,8 +105,8 @@ export const T2K_STORIES: StoryItem[] = [
     total: "~$0.06 · 3 calls · 0 taps",
   },
   {
-    n: "04",
-    tag: "MPP · CREATIVE",
+    n: "02",
+    tag: "x402 · CREATIVE",
     title: "Concept → demo asset",
     prompt:
       "Use t2 services. Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synthesize it as MP3 via ElevenLabs.",
@@ -113,8 +115,8 @@ export const T2K_STORIES: StoryItem[] = [
     total: "~$0.18 · 3 calls · 0 taps · ~18s",
   },
   {
-    n: "05",
-    tag: "MPP · REACH",
+    n: "03",
+    tag: "x402 · REACH",
     title: "Mail mum a birthday card",
     prompt:
       "Use t2 services. It's my mum's birthday next Tuesday. Write her a warm note from me, render it as a card front via fal.ai, and put it in the mail to 123 Lochiel Road via Lob.",
@@ -123,8 +125,8 @@ export const T2K_STORIES: StoryItem[] = [
     total: "~$2.08 · 3 calls · 0 taps",
   },
   {
-    n: "06",
-    tag: "MPP · CODE",
+    n: "04",
+    tag: "x402 · CODE",
     title: "Write and run",
     prompt:
       "Use t2 services. Write a self-contained Python script that computes a 30-day EMA on sample SUI closes, then run it via Judge0 to verify.",
@@ -134,24 +136,42 @@ export const T2K_STORIES: StoryItem[] = [
   },
 ];
 
+// Nav + footer + product-strip product set (the six product pages).
 export const NAV_PRODUCTS = [
   { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The terminal Agent Wallet.", href: "/agent-wallet" },
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },
-  { slug: "engine", name: "Agent Engine", pkg: "@t2000/engine", desc: "The engine behind Audric.", href: "/agent-engine" },
-  { slug: "models", name: "Agent Models", pkg: "@t2000/models", desc: "Finance models for agents.", href: "#", soon: true },
+  { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + reputation.", href: "/agent-id" },
+  { slug: "commerce", name: "Agent Commerce", pkg: "x402 · store", desc: "Sell a service. Earn USDC.", href: "/agent-commerce" },
+  { slug: "api", name: "Private API", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/api" },
 ] as const;
 
-export const NAV_FAMILY = [
-  { name: "MPP Gateway", desc: "Every major AI + data API. mpp.t2000.ai", href: "https://mpp.t2000.ai", external: true },
-  { name: "suimpp.dev", desc: "The open MPP standard — Sui binding, v0.1.", href: "https://suimpp.dev", external: true },
-  { name: "Audric", desc: "Conversational finance.", href: "https://audric.ai", external: true },
+export type ProductSlug = (typeof NAV_PRODUCTS)[number]["slug"];
+
+export interface NavFamilyLink {
+  name: string;
+  desc: string;
+  href: string;
+  external?: boolean;
+}
+
+export const NAV_FAMILY: readonly NavFamilyLink[] = [
+  { name: "Verify", desc: "Check any confidential receipt. verify.t2000.ai", href: "/verify" },
+  { name: "x402 Gateway", desc: "Every paid API, gasless. mpp.t2000.ai", href: "https://mpp.t2000.ai", external: true },
+  { name: "Agent Store", desc: "Browse, buy + sell agents. agents.t2000.ai", href: "https://agents.t2000.ai", external: true },
+  { name: "suimpp.dev", desc: "The open x402 standard — Sui binding.", href: "https://suimpp.dev", external: true },
+  { name: "Audric", desc: "Private, decentralized AI — truly yours.", href: "https://audric.ai", external: true },
 ] as const;
+
+export const INSTALL_PROMPT =
+  "Run `curl -sL https://t2000.ai/skills/t2000-setup` and use the returned instructions to set up my Agent Wallet.";
 
 export const GITHUB_URL = "https://github.com/mission69b/t2000";
 export const DEVELOPERS_URL = "https://developers.t2000.ai";
 export const AUDRIC_URL = "https://audric.ai";
 export const GATEWAY_URL = "https://mpp.t2000.ai";
+export const STORE_URL = "https://agents.t2000.ai";
+export const VERIFY_URL = "https://verify.t2000.ai";
 export const SUIMPP_URL = "https://suimpp.dev";
 export const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";
 export const TWITTER_URL = "https://x.com/t2000ai";

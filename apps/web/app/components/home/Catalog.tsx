@@ -32,7 +32,11 @@ const FEATURED_IDS = [
   "alphavantage",
 ] as const;
 
-async function fetchTeasers(): Promise<ServiceTeaser[]> {
+async function fetchCatalog(): Promise<{
+  teasers: ServiceTeaser[];
+  services: number | null;
+  endpoints: number | null;
+}> {
   try {
     const res = await fetch(`${GATEWAY_URL}/api/services`, {
       next: { revalidate: 60 },
@@ -45,7 +49,7 @@ async function fetchTeasers(): Promise<ServiceTeaser[]> {
       (s): s is Service => Boolean(s),
     );
 
-    return picks.map((s) => {
+    const teasers = picks.map((s) => {
       const prices = s.endpoints
         .map((e) => parseFloat(e.price))
         .filter((n) => Number.isFinite(n) && n > 0)
@@ -57,8 +61,17 @@ async function fetchTeasers(): Promise<ServiceTeaser[]> {
         from: min !== undefined ? formatPrice(min) : "—",
       };
     });
+    return {
+      teasers,
+      services: services.length,
+      endpoints: services.reduce((n, s) => n + s.endpoints.length, 0),
+    };
   } catch {
-    return T2K.servicesFallback.map((s) => ({ ...s }));
+    return {
+      teasers: T2K.servicesFallback.map((s) => ({ ...s })),
+      services: null,
+      endpoints: null,
+    };
   }
 }
 
@@ -73,7 +86,7 @@ function formatPrice(n: number): string {
 }
 
 export async function Catalog() {
-  const services = await fetchTeasers();
+  const { teasers, services, endpoints } = await fetchCatalog();
 
   return (
     <section className="t2k-section">
@@ -81,10 +94,10 @@ export async function Catalog() {
         <div className="mb-12 grid items-end gap-10 lg:grid-cols-2 lg:gap-12">
           <div>
             <span className="t2k-eyebrow">{"// AGENT PAYMENTS · LIVE"}</span>
-            <h2 className="t2k-section-title mt-[22px]" style={{ lineHeight: 1 }}>
-              Pay-per-request APIs
+            <h2 className="t2k-section-title mt-3.5" style={{ lineHeight: 1.05 }}>
+              Pay any API.
               <br />
-              <span style={{ color: "var(--t2k-accent)" }}>on Sui. Gasless.</span>
+              <span style={{ color: "var(--t2k-accent)" }}>Gasless.</span>
             </h2>
           </div>
           <div>
@@ -95,14 +108,22 @@ export async function Catalog() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Pay-per-request to every major AI provider. Live on{" "}
-              <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
+              Every major AI provider
+              {services && endpoints ? (
+                <>
+                  {" — "}
+                  <span style={{ color: "var(--fg)" }}>
+                    {services} services, {endpoints} endpoints
+                  </span>
+                </>
+              ) : null}
+              , live on <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-          {services.map((s) => (
+          {teasers.map((s) => (
             <ServiceCard key={s.name} s={s} />
           ))}
         </div>

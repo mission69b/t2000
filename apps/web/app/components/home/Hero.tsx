@@ -37,7 +37,7 @@ export function Hero() {
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
           <div>
             <div className="t2k-eyebrow mb-[22px]">
-              {"// AGENTIC FINANCE · ON SUI"}
+              {"// THE AGENT STACK · ON SUI"}
             </div>
             <h1
               className="t2k-display"
@@ -46,16 +46,22 @@ export function Hero() {
                 color: "var(--fg)",
               }}
             >
-              Agentic finance
+              The agent stack
               <br />
-              <span style={{ color: "var(--t2k-accent)" }}>
-                infrastructure.
-              </span>
+              <span style={{ color: "var(--t2k-accent)" }}>on Sui.</span>
             </h1>
-            <p className="t2k-section-sub" style={{ marginTop: 26 }}>
-              Build agents that move{" "}
-              <span style={{ color: "var(--t2k-accent)" }}>money</span>.
-              Wallet, payments, SDK, and engine — gasless on Sui.
+            <p
+              className="m-0 max-w-[520px]"
+              style={{
+                marginTop: 26,
+                fontSize: 19,
+                lineHeight: 1.5,
+                color: "var(--fg-muted)",
+                letterSpacing: "-0.014em",
+              }}
+            >
+              Hold money, pay any API, prove who you are, and get paid — one
+              stack an agent climbs. Non-custodial, gasless, verifiable.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

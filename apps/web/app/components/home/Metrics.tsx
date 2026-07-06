@@ -1,45 +1,48 @@
-import { T2K } from "../../data/t2k";
+import { GATEWAY_URL, T2K } from "../../data/t2k";
 import { CountUp } from "./CountUp";
 
-// Endpoints + Services counts are owned by the MPP gateway catalog — fetch
-// them live (hourly ISR) so the homepage never drifts when a service is
-// added/removed. Falls back to the static T2K.metrics baseline if the
-// gateway is unreachable at build/revalidate time.
-async function getLiveCatalogCounts(): Promise<{
-  services: number;
-  endpoints: number;
-} | null> {
-  try {
-    const res = await fetch("https://mpp.t2000.ai/api/services", {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const data: unknown = await res.json();
-    if (!Array.isArray(data)) return null;
-    const endpoints = data.reduce<number>((n, s) => {
-      const eps = (s as { endpoints?: unknown[] })?.endpoints;
-      return n + (Array.isArray(eps) ? eps.length : 0);
-    }, 0);
-    return { services: data.length, endpoints };
-  } catch {
-    return null;
-  }
+// The metrics band renders LIVE numbers (repositioning rule: numbers render
+// live or not at all): paid calls / settled volume from the gateway stats
+// API, registered agents from the directory. Falls back to the static
+// baseline in t2k.ts when an API is unreachable at revalidate time.
+async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]>> {
+  const [stats, agents] = await Promise.all([
+    fetch(`${GATEWAY_URL}/api/mpp/stats`, { next: { revalidate: 300 } })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null) as Promise<{
+      totalPayments?: number;
+      totalVolume?: string;
+    } | null>,
+    fetch("https://api.t2000.ai/v1/agents?limit=1", {
+      next: { revalidate: 300 },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null) as Promise<{ total?: number } | null>,
+  ]);
+
+  return T2K.metricsFallback.map(([label, fallback]) => {
+    if (label === "Registered agents" && agents?.total) {
+      return [label, String(agents.total)] as const;
+    }
+    if (label === "Paid calls" && stats?.totalPayments) {
+      return [label, stats.totalPayments.toLocaleString("en-US")] as const;
+    }
+    if (label === "Settled" && stats?.totalVolume) {
+      return [label, `$${Math.round(parseFloat(stats.totalVolume))}`] as const;
+    }
+    return [label, fallback] as const;
+  });
 }
 
 export async function Metrics() {
-  const live = await getLiveCatalogCounts();
-  const metrics = T2K.metrics.map(([label, value]) => {
-    if (live && label === "Services") return [label, String(live.services)] as const;
-    if (live && label === "Endpoints") return [label, String(live.endpoints)] as const;
-    return [label, value] as const;
-  });
+  const metrics = await getLiveMetrics();
 
   return (
     <section
       className="border-y px-6 py-16"
       style={{
         background: "var(--ds-background-200)",
-        borderColor: "var(--ds-gray-alpha-300)",
+        borderColor: "var(--border)",
       }}
     >
       <div
@@ -52,9 +55,7 @@ export async function Metrics() {
             className="px-6 py-4 md:py-0"
             style={{
               borderRight:
-                i < metrics.length - 1
-                  ? "1px solid var(--ds-gray-alpha-300)"
-                  : "none",
+                i < metrics.length - 1 ? "1px solid var(--border)" : "none",
             }}
           >
             <div className="t2k-eyebrow" style={{ fontSize: 11 }}>
@@ -65,7 +66,7 @@ export async function Metrics() {
               style={{
                 fontFamily: "var(--font-display)",
                 fontWeight: 600,
-                fontSize: 48,
+                fontSize: 44,
                 lineHeight: 1.05,
                 letterSpacing: "-0.04em",
                 color: "var(--fg)",

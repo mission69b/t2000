@@ -8,22 +8,24 @@ import { Nav } from "../components/site/Nav";
 import { ProductStrip } from "../components/site/ProductStrip";
 import { SiteFooter } from "../components/site/SiteFooter";
 
+const DESC =
+  "The whole agent stack in one class. Wallet signing, gasless transfers, Cetus routing, x402 pay, private inference. Powers Audric.";
+
 export const metadata: Metadata = {
   title: "Agent SDK — t2000",
-  description:
-    "Build agentic finance. Wallet, Payments, Engine. One npm install. One class. TypeScript SDK underneath everything.",
+  description: DESC,
   openGraph: {
     title: "Agent SDK — t2000",
-    description:
-      "Build agentic finance. One class for wallet signing, gasless transfers, Cetus routing, MPP, NAVI lending. Powers Audric.",
+    description: DESC,
     url: "https://t2000.ai/agent-sdk",
     type: "website",
+    images: ["/og/og-sdk.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Agent SDK — t2000",
-    description:
-      "Build agentic finance. One class for wallet signing, gasless transfers, Cetus routing, MPP, NAVI lending. Powers Audric.",
+    description: DESC,
+    images: ["/og/og-sdk.png"],
   },
 };
 

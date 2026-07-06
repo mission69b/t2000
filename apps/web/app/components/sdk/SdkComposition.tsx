@@ -6,27 +6,23 @@ interface CompositionStep {
   terminal?: boolean;
 }
 
+// The design's composed flow: send · swap · pay are plain sequential calls —
+// top up, pay for intelligence, forward the payout. No batcher, no DeFi.
 const STEPS: CompositionStep[] = [
   {
     num: "01",
-    chain: "NAVI",
-    title: "Claim rewards",
-    desc: "All pending rewards, harvested.",
+    chain: "CETUS",
+    title: "Swap to USDC",
+    desc: "Top up stablecoins from SUI.",
   },
   {
     num: "02",
-    chain: "CETUS",
-    title: "Swap to USDC",
-    desc: "Best price across pools.",
+    chain: "PAYMENTS",
+    title: "Pay an API",
+    desc: "Per-call USDC over x402. No key.",
   },
   {
     num: "03",
-    chain: "NAVI",
-    title: "Save",
-    desc: "Merged USDC back into savings.",
-  },
-  {
-    num: "04",
     chain: "WALLET",
     title: "Send",
     desc: "$20 to sam.sui. Gasless.",
@@ -39,14 +35,14 @@ export function SdkComposition() {
     <section className="t2k-section">
       <div className="t2k-container">
         <header className="mb-12 max-w-[720px]">
-          <span className="t2k-eyebrow">{"// PAYMENT INTENTS"}</span>
+          <span className="t2k-eyebrow">{"// COMPOSE"}</span>
           <h2 className="t2k-section-title mt-[22px]">
-            Many steps.
+            Primitives compose.
             <br />
-            <span style={{ color: "var(--fg-muted)" }}>One transaction.</span>
+            <span style={{ color: "var(--fg-muted)" }}>Into anything.</span>
           </h2>
           <p className="t2k-section-sub">
-            Claim, swap, save, send. Bundled. Atomic. All in, all out.
+            Swap, pay, send — chained in plain code. Each one a real call.
           </p>
         </header>
 
@@ -55,25 +51,22 @@ export function SdkComposition() {
             <header
               className="flex items-center gap-2 border-b px-4 py-3"
               style={{
-                borderBottomColor: "var(--ds-gray-alpha-300)",
-                background: "var(--ds-gray-100)",
+                borderBottomColor: "var(--border)",
+                background: "var(--bg-elevated)",
               }}
             >
               <span
                 className="font-mono text-[11.5px]"
-                style={{
-                  color: "var(--fg)",
-                  letterSpacing: "0.01em",
-                }}
+                style={{ color: "var(--fg)", letterSpacing: "0.01em" }}
               >
-                compound.ts
+                agent-loop.ts
               </span>
               <span className="flex-1" />
               <span
                 className="t2k-mono-tag"
                 style={{ fontSize: 9.5, padding: "2px 7px" }}
               >
-                1 INTENT · 1 SIGNATURE
+                SWAP → PAY → SEND
               </span>
             </header>
             <pre
@@ -84,69 +77,47 @@ export function SdkComposition() {
                 background: "var(--ds-background-200)",
               }}
             >
-              <span style={{ color: "var(--ds-blue-700)" }}>const</span>
-              {" intent = "}
+              <span style={{ color: "var(--fg-subtle)", fontStyle: "italic" }}>
+                {"// 1 · top up USDC from SUI\n"}
+              </span>
               <span style={{ color: "var(--ds-blue-700)" }}>await</span>
               {" t."}
-              <span style={{ color: "var(--ds-teal-700)" }}>intent</span>
-              {"({\n  steps: [\n    { "}
-              <span style={{ color: "var(--fg-muted)" }}>type</span>
-              {": "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'claim'"}</span>
-              {",  protocol: "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'navi'"}</span>
-              {" },\n    { "}
-              <span style={{ color: "var(--fg-muted)" }}>type</span>
-              {": "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'swap'"}</span>
-              {",   from: "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'*'"}</span>
+              <span style={{ color: "var(--ds-teal-700)" }}>swap</span>
+              {"({ from: "}
+              <span style={{ color: "var(--t2k-success)" }}>{"'SUI'"}</span>
               {", to: "}
               <span style={{ color: "var(--t2k-success)" }}>{"'USDC'"}</span>
-              {" },\n    { "}
-              <span style={{ color: "var(--fg-muted)" }}>type</span>
-              {": "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'save'"}</span>
-              {",   protocol: "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'navi'"}</span>
-              {", asset: "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'USDC'"}</span>
-              {" },\n    { "}
-              <span style={{ color: "var(--fg-muted)" }}>type</span>
-              {": "}
-              <span style={{ color: "var(--t2k-success)" }}>{"'send'"}</span>
-              {",   to: "}
+              {", amount: "}
+              <span style={{ color: "var(--ds-amber-700)" }}>5</span>
+              {" });\n\n"}
+              <span style={{ color: "var(--fg-subtle)", fontStyle: "italic" }}>
+                {"// 2 · pay any API, gasless\n"}
+              </span>
+              <span style={{ color: "var(--ds-blue-700)" }}>const</span>
+              {" r = "}
+              <span style={{ color: "var(--ds-blue-700)" }}>await</span>
+              {" t."}
+              <span style={{ color: "var(--ds-teal-700)" }}>pay</span>
+              {"({\n  url: "}
+              <span style={{ color: "var(--t2k-success)" }}>
+                {"'mpp.t2000.ai/openai/…'"}
+              </span>
+              {",\n  body,\n  maxPrice: "}
+              <span style={{ color: "var(--ds-amber-700)" }}>0.10</span>
+              {",\n});\n\n"}
+              <span style={{ color: "var(--fg-subtle)", fontStyle: "italic" }}>
+                {"// 3 · forward the payout\n"}
+              </span>
+              <span style={{ color: "var(--ds-blue-700)" }}>await</span>
+              {" t."}
+              <span style={{ color: "var(--ds-teal-700)" }}>send</span>
+              {"({ to: "}
               <span style={{ color: "var(--t2k-success)" }}>{"'sam.sui'"}</span>
               {", amount: "}
               <span style={{ color: "var(--ds-amber-700)" }}>20</span>
               {", asset: "}
               <span style={{ color: "var(--t2k-success)" }}>{"'USDC'"}</span>
-              {" },\n  ],\n});\n\n"}
-              <span
-                style={{
-                  color: "var(--fg-subtle)",
-                  fontStyle: "italic",
-                }}
-              >
-                {"// preview the bundled tx before signing\n"}
-              </span>
-              {"console."}
-              <span style={{ color: "var(--ds-teal-700)" }}>log</span>
-              {"(intent.preview);\n\n"}
-              <span style={{ color: "var(--ds-blue-700)" }}>const</span>
-              {" tx = "}
-              <span style={{ color: "var(--ds-blue-700)" }}>await</span>
-              {" intent."}
-              <span style={{ color: "var(--ds-teal-700)" }}>execute</span>
-              {"();\n"}
-              <span
-                style={{
-                  color: "var(--fg-subtle)",
-                  fontStyle: "italic",
-                }}
-              >
-                {"// tx.fee = ~$0.05 · ~500ms"}
-              </span>
+              {" });"}
             </pre>
           </div>
 
@@ -159,12 +130,12 @@ export function SdkComposition() {
               className="mt-auto flex items-center justify-between border-t border-dashed font-mono text-[12px]"
               style={{
                 padding: "14px 16px",
-                borderTopColor: "var(--ds-gray-alpha-300)",
+                borderTopColor: "var(--border)",
                 color: "var(--fg-muted)",
               }}
             >
-              <span>1 tap · 1 fee · ~500ms</span>
-              <span style={{ color: "var(--t2k-success)" }}>✓ atomic</span>
+              <span>3 calls · gasless where it counts</span>
+              <span style={{ color: "var(--t2k-success)" }}>✓ composed</span>
             </div>
           </div>
         </div>
@@ -179,7 +150,7 @@ function StepCard({ step }: { step: CompositionStep }) {
       className="relative flex items-start gap-3.5 rounded-lg border"
       style={{
         padding: "14px 16px",
-        borderColor: "var(--ds-gray-alpha-300)",
+        borderColor: "var(--border)",
         background: "var(--bg-elevated)",
       }}
     >
@@ -198,20 +169,18 @@ function StepCard({ step }: { step: CompositionStep }) {
         <div className="mb-0.5 flex items-center gap-2">
           <span
             className="text-[14px] font-semibold"
-            style={{
-              letterSpacing: "-0.014em",
-              color: "var(--fg)",
-            }}
+            style={{ letterSpacing: "-0.014em", color: "var(--fg)" }}
           >
             {step.title}
           </span>
           <span
-            className="rounded font-mono text-[9.5px]"
+            className="rounded-[3px] border font-mono"
             style={{
+              fontSize: 9.5,
               color: "var(--fg-subtle)",
               letterSpacing: "0.10em",
               padding: "2px 6px",
-              border: "1px solid var(--ds-gray-alpha-300)",
+              borderColor: "var(--border)",
             }}
           >
             {step.chain}

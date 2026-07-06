@@ -72,7 +72,7 @@ const STEPS: Step[] = [
 ];
 
 const SPEC = [
-  { label: "PROTOCOL", value: "MPP", sub: "Machine Payments" },
+  { label: "PROTOCOL", value: "x402", sub: "on Sui" },
   { label: "TOKEN", value: "USDC", sub: "Sui mainnet" },
   { label: "MOVE CALL", value: "0x2::balance::send_funds", sub: "Gasless sponsor" },
   { label: "SETTLE", value: "~400ms", sub: "Sui finality" },

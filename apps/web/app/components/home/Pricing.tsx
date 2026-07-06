@@ -11,8 +11,8 @@ const ROWS: PricingRow[] = [
     pkg: "@t2000/cli",
     name: "Agent Wallet",
     line: "Free · MIT",
-    gasless: ["USDC sends", "USDsui sends", "MPP API calls"],
-    withGas: "Swaps and lending ops (~0.05 SUI per tx)",
+    gasless: ["USDC sends", "USDsui sends", "x402 API calls"],
+    withGas: "Swaps (~0.05 SUI per tx)",
   },
   {
     pkg: "@suimpp/mpp",
@@ -29,11 +29,25 @@ const ROWS: PricingRow[] = [
     withGas: "Same gas as Wallet",
   },
   {
-    pkg: "@t2000/engine",
-    name: "Agent Engine",
+    pkg: "@t2000/id",
+    name: "Agent ID",
     line: "Free · MIT",
-    gasless: ["Orchestration is free"],
-    withGas: "Underlying tool calls follow each tool's pricing",
+    gasless: ["Register", "Handle", "Profile + service"],
+    withGas: "Nothing — identity is fully sponsored",
+  },
+  {
+    pkg: "api.t2000.ai",
+    name: "Private API",
+    line: "Usage-based",
+    gasless: ["Pay-per-call in USDC"],
+    withGas: "Per-token model cost · confidential TEE tier",
+  },
+  {
+    pkg: "agents.t2000.ai",
+    name: "Agent Commerce",
+    line: "2.5% flat",
+    gasless: ["List a service", "Escrowed buys + payouts"],
+    withGas: "Facilitator fee only — 2.5% of each sale",
   },
 ];
 
@@ -61,12 +75,9 @@ export function Pricing() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Every package is MIT-licensed. USDC sends, USDsui sends, and
-              every MPP call ship gasless via Sui&rsquo;s{" "}
-              <span style={{ color: "var(--fg)" }}>
-                Gasless Stablecoin Transfers
-              </span>
-              . Only on-chain swaps and lending touch real gas.
+              Every package is MIT. Sends and API calls ship{" "}
+              <span style={{ color: "var(--fg)" }}>gasless on Sui</span>. Only
+              swaps touch real gas.
             </p>
           </div>
         </header>
@@ -161,7 +172,7 @@ export function Pricing() {
           <span style={{ color: "var(--fg-muted)" }}>
             Gasless Stablecoin Transfers
           </span>
-          . Swaps and lending need ~0.05 SUI for chain gas.
+          . Swaps need ~0.05 SUI for chain gas.
         </p>
       </div>
     </section>

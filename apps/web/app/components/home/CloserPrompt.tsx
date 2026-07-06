@@ -1,10 +1,9 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { DEVELOPERS_URL, GITHUB_URL } from "../../data/t2k";
+import { DEVELOPERS_URL, GITHUB_URL, INSTALL_PROMPT } from "../../data/t2k";
 
-const PROMPT =
-  "Run `curl -sL https://t2000.ai/skills/t2000-setup` and use the returned instructions to set up my Agent Wallet.";
+const PROMPT = INSTALL_PROMPT;
 
 export function CloserPrompt() {
   const [copied, setCopied] = useState(false);

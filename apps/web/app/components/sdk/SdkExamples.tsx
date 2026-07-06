@@ -31,7 +31,7 @@ const EXAMPLES: ExampleCardProps[] = [
     num: "02",
     tag: "PAYMENTS",
     title: "Pay any API",
-    desc: "Hit any MPP endpoint. No API key.",
+    desc: "Hit any x402 endpoint. No API key.",
     code: [
       { p: "const", c: " r = " },
       { p: "await", c: " t.pay({\n" },
@@ -41,7 +41,7 @@ const EXAMPLES: ExampleCardProps[] = [
       { s: "v1/chat/completions'" },
       { c: ",\n  body,\n});" },
     ],
-    note: "✓ Paid $0.01 · gasless · 200 OK",
+    note: "✓ Paid $0.02 · gasless · 200 OK",
   },
   {
     num: "03",
@@ -62,20 +62,19 @@ const EXAMPLES: ExampleCardProps[] = [
   },
   {
     num: "04",
-    tag: "NAVI",
-    title: "Save on NAVI",
-    desc: "Earn yield on idle USDC.",
+    tag: "WALLET",
+    title: "Get paid",
+    desc: "A scannable USDC payment request.",
     code: [
-      { p: "await", c: " t.save({\n" },
-      { c: "  protocol: " },
-      { s: "'navi'" },
+      { p: "const", c: " req = " },
+      { p: "await", c: " t.receive({\n" },
+      { c: "  amount: " },
+      { n: "25" },
       { c: ",\n  asset: " },
       { s: "'USDC'" },
-      { c: ",\n  amount: " },
-      { n: "100" },
       { c: ",\n});" },
     ],
-    note: "✓ Deposited · earning ~5.2% APY",
+    note: "✓ sui:pay?… · scannable URI",
   },
 ];
 
