@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import {
+  getDeployedService,
   isDeployConfigured,
   isSafeUpstreamUrl,
   removeDeployedService,
@@ -66,6 +67,37 @@ function freshTimestamp(ts: unknown): boolean {
   return Number.isFinite(n) && Math.abs(Date.now() - n) <= MAX_SKEW_MS;
 }
 
+// GET /deploy/config?address=0x… — read back the NON-SECRET wrap config so
+// the console's edit page can show what's live (S.657). Console-attested
+// only; header VALUES never leave the gateway (names only — enough for the
+// seller to recognize their own config).
+export async function GET(request: Request): Promise<Response> {
+  if (!isDeployConfigured()) {
+    return err(503, 'Agent Deploy is temporarily unavailable.');
+  }
+  if (!consoleAttested(request)) {
+    return err(401, 'Console attestation required.');
+  }
+  const address = normalizeSuiAddress(
+    String(new URL(request.url).searchParams.get('address') ?? '').trim(),
+  );
+  if (!isValidSuiAddress(address)) {
+    return err(400, 'A valid agent Sui address is required.');
+  }
+  const svc = await getDeployedService(address);
+  if (!svc) {
+    return Response.json({ ok: true, config: null });
+  }
+  return Response.json({
+    ok: true,
+    config: {
+      upstreamUrl: svc.upstreamUrl,
+      method: svc.method,
+      headerNames: Object.keys(svc.headers ?? {}),
+    },
+  });
+}
+
 export async function POST(request: Request): Promise<Response> {
   if (!isDeployConfigured()) {
     return err(503, 'Agent Deploy is temporarily unavailable.');
@@ -121,7 +153,19 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  await storeDeployedService(address, { upstreamUrl, method, headers });
+  // Keep-existing semantics (S.657): header values are write-only, so an
+  // UPDATE that doesn't re-enter a secret sends the name with an empty
+  // value — merge the stored value instead of silently dropping the header.
+  const existing = await getDeployedService(address);
+  const merged: Record<string, string> = {};
+  for (const [k, v] of headerEntries) {
+    const value = v === '' ? (existing?.headers?.[k] ?? '') : v;
+    if (value !== '') {
+      merged[k] = value;
+    }
+  }
+
+  await storeDeployedService(address, { upstreamUrl, method, headers: merged });
   return Response.json({ ok: true, address });
 }
 
