@@ -5,11 +5,15 @@ import { Fragment, useEffect, useRef, useState } from "react";
 type OutLine = { t: string; ok?: boolean; muted?: boolean };
 type Step = { cmd: string; out: OutLine[] };
 
-// Keep this short — four beats: hold, send, pay, wire into an AI client.
+// Keep this short — four beats: hold, identity, send, pay.
 const SEQUENCE: Step[] = [
   {
     cmd: "t2 balance",
     out: [{ t: "  USDC      547.20" }, { t: "  USDsui     50.00" }],
+  },
+  {
+    cmd: "t2 agent handle alice",
+    out: [{ t: "✓ alice.agent-id.sui · registered · gasless", ok: true }],
   },
   {
     cmd: "t2 send 5 USDC bob.sui",
@@ -21,10 +25,6 @@ const SEQUENCE: Step[] = [
       { t: "✓ Paid $0.01 · gasless · 200 OK", ok: true },
       { t: "  { sui: { usd: 4.21 } }", muted: true },
     ],
-  },
-  {
-    cmd: "t2 mcp install",
-    out: [{ t: "✓ Claude Desktop · Cursor · Windsurf · ready", ok: true }],
   },
 ];
 
