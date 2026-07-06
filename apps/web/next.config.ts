@@ -18,6 +18,18 @@ const nextConfig: NextConfig = {
     "/.well-known/agent-skills/index.json": ["../../t2000-skills/skills/**/SKILL.md"],
     "/AGENTS.md": ["../../t2000-skills/AGENTS.md"],
   },
+  // The hand-rolled /docs hub drifted badly (retired engine card, wrong tool
+  // names/counts) — deleted 2026-07-06. developers.t2000.ai is the docs SSOT
+  // (auto-deployed, always current); never rebuild a duplicate here.
+  async redirects() {
+    return [
+      {
+        source: "/docs",
+        destination: "https://developers.t2000.ai",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

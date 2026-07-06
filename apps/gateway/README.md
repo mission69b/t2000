@@ -8,19 +8,19 @@ MPP gateway — **every major AI + data API, payable with Sui USDC**.
 
 Proxies requests to upstream APIs (OpenAI, Anthropic, Brave, Firecrawl, etc.) behind MPP (Machine Payments Protocol) 402 challenges. Agents pay per-request with USDC on Sui — no API keys, no accounts, no subscriptions.
 
-Pay $0.02 – $0.10 per call. Pay $2.00 – $3.00 per physical postcard/letter. Top up your wallet with `t2000 fund`.
+Pay $0.02 – $0.10 per call. Pay $2.00 – $3.00 per physical postcard/letter. Fund the wallet via `t2 fund` (prints your deposit address + QR).
 
 ## Get started in 30 seconds
 
 ```bash
 # 1. Install + initialize wallet
-npx @t2000/cli init
+npm i -g @t2000/cli && t2 init
 
-# 2. Fund the wallet with $1 USDC (covers ~100 LLM calls)
-t2000 fund 1
+# 2. Fund the wallet with $1 USDC (covers ~100 LLM calls) — t2 fund prints the address
+t2 fund
 
 # 3. Make your first paid request
-t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \
+t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
   --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello, world!"}]}'
 ```
 
@@ -31,7 +31,7 @@ That's it. No signup. No API keys. The MPP 402 challenge is handled automaticall
 ### 🖼️ Generate an image ($0.06)
 
 ```bash
-t2000 pay https://mpp.t2000.ai/openai/v1/images/generations \
+t2 pay https://mpp.t2000.ai/openai/v1/images/generations \
   --data '{
     "prompt": "a serene mountain lake at dawn, photorealistic",
     "size": "1024x1024"
@@ -40,12 +40,10 @@ t2000 pay https://mpp.t2000.ai/openai/v1/images/generations \
 
 Returns `{ data: [{ url: "https://...vercel-storage.com/..." }] }`. The gateway uploads each gpt-image-1 result to Vercel Blob and rewrites the response to dall-e shape — you get a permanent CDN URL.
 
-📘 Full recipe: [`mpp-image-gen`](https://t2000.ai/skills/mpp-image-gen)
-
 ### 💬 Ask GPT-4o ($0.02)
 
 ```bash
-t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \
+t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
   --data '{
     "model": "gpt-4o",
     "messages": [{"role":"user","content":"Summarize the Sui consensus algorithm in 3 sentences."}],
@@ -53,29 +51,25 @@ t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \
   }'
 ```
 
-Standard OpenAI Chat Completions response shape. Pass vision via `image_url` content blocks. For cheaper alternatives (Together AI, Mistral, DeepSeek, Groq) see `mpp-index`.
-
-📘 Full recipe: [`mpp-gpt4o`](https://t2000.ai/skills/mpp-gpt4o)
+Standard OpenAI Chat Completions response shape. Pass vision via `image_url` content blocks. For cheaper alternatives (Together AI, Mistral, DeepSeek, Groq) browse the catalog (`t2 services search "chat"`).
 
 ### 🎙️ Transcribe audio ($0.02)
 
 ```bash
-t2000 pay https://mpp.t2000.ai/openai/v1/audio/transcriptions \
+t2 pay https://mpp.t2000.ai/openai/v1/audio/transcriptions \
   --data '{
     "file": "https://example.com/podcast.mp3",
     "language": "en"
   }'
 ```
 
-Whisper transcription. Up to 25 MB / 30 min. Pass `response_format: "verbose_json"` for timestamps. For speaker diarization use AssemblyAI (see `mpp-index`).
-
-📘 Full recipe: [`mpp-transcription`](https://t2000.ai/skills/mpp-transcription)
+Whisper transcription. Up to 25 MB / 30 min. Pass `response_format: "verbose_json"` for timestamps. For speaker diarization use AssemblyAI (same catalog).
 
 ## Discover the catalog
 
 | What you want | Where to look |
 |---|---|
-| Browse by intent (image, chat, search, mail, …) | [`mpp-index`](https://t2000.ai/skills/mpp-index) |
+| Search by intent (image, chat, search, mail, …) | `t2 services search "<query>"` · [`t2000-services` skill](https://t2000.ai/skills/t2000-services) |
 | Live service catalog (JSON) | `GET https://mpp.t2000.ai/api/services` |
 | Agent-readable catalog | `GET https://mpp.t2000.ai/llms.txt` |
 | OpenAPI 3.1 spec | `GET https://mpp.t2000.ai/openapi.json` |
@@ -132,7 +126,7 @@ pnpm --filter @t2000/gateway test
 
 ## Related
 
-- **`@t2000/cli`** — the CLI that pays the 402 challenges (`t2000 pay`, `t2000 fund`, `t2000 services`).
-- **`@t2000/mcp`** — MCP server exposing `t2000_pay` + `t2000_services` (and 25 more) as JSON-RPC tools.
-- **`t2000-skills`** — Markdown recipes including the 4 MPP-specific recipes referenced above.
+- **`@t2000/cli`** — the CLI that pays the 402 challenges (`t2 pay`, `t2 fund`, `t2 services`, `t2 task`).
+- **`@t2000/mcp`** — MCP server exposing `t2000_pay` + `t2000_services` (and 16 more, incl. the task-economy earn tools) as JSON-RPC tools.
+- **`t2000-skills`** — Markdown playbooks (`t2000-services`, `t2000-pay`, `t2000-earn`, …) served at `t2000.ai/skills/<slug>`.
 - **`@suimpp/mpp`** — the underlying MPP protocol SDK.
