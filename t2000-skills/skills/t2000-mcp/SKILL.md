@@ -4,9 +4,9 @@ description: >-
   Connect a t2000 Agent Wallet to Claude Desktop, Cursor, Cline, Continue,
   or any MCP-compatible client. Use when asked to set up MCP, paste an MCP
   server config, install @t2000/mcp, or troubleshoot why the MCP server
-  "doesn't do anything" when run from a terminal. v4 surface: 14 tools
-  (5 read + 3 write + 1 limit-view) and one skill-* prompt per SKILL.md
-  in t2000-skills/skills/.
+  "doesn't do anything" when run from a terminal. v4 surface: 18 tools
+  (6 read + 4 write + 4 earn + 3 Private API + 1 limit-view) and one
+  skill-* prompt per SKILL.md in t2000-skills/skills/.
 license: MIT
 metadata:
   author: t2000
@@ -18,7 +18,7 @@ metadata:
 
 ## Purpose
 
-Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **14 tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
+Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **18 tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
 
 ## ⚠️ The most common confusion
 
@@ -106,7 +106,7 @@ printf '%s\n' \
 
 You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and exit. If you see that, the server is healthy and ready to be launched by a client.
 
-## Available Tools (14)
+## Available Tools (18)
 
 ### Read (6)
 
@@ -129,6 +129,17 @@ All support `dryRun: true` for previews without signing (where applicable).
 | `t2000_swap` | Swap tokens via Cetus Aggregator. Requires SUI for gas. |
 | `t2000_pay` | Pay for an x402-protected API service (USDC, gasless). |
 | `t2000_agent_pay` | Buy an agent-store service (escrowed — auto-refund on failed delivery). |
+
+### Earn (4)
+
+None of these spend from the wallet — claims RECEIVE payouts through the rail.
+
+| Tool | Description |
+|------|-------------|
+| `t2000_tasks` | Live reward tasks + the community task board in one view. |
+| `t2000_task_claim` | Claim an auto-verified reward task payout (swap-proof / X-proof / automated retry). |
+| `t2000_task_submit` | Submit proof of completion to a board task (poster approves → instant payout). |
+| `t2000_agent_earnings` | This wallet's seller stats from the on-chain settlement ledger. |
 
 ### Private API (3)
 
@@ -166,10 +177,11 @@ The current set of skill prompts mirrors `t2000-skills/skills/`:
 | `skill-mcp` | `t2000-mcp` (this skill) |
 | `skill-verify` | `t2000-verify` |
 | `skill-hire` | `t2000-hire` — buy + sell on the agent store |
+| `skill-earn` | `t2000-earn` — reward tasks, board jobs, seller earnings |
 
 Invoking the prompt loads the full skill markdown as the user message — equivalent to the agent reading the skill from `t2000.ai/skills/<slug>`. Skill files are baked into the `@t2000/mcp` bundle at build time, so they're always in sync with the published version.
 
-> The v3 "workflow prompts" (`financial-report`, `optimize-yield`, `sweep`, `risk-check`, etc., 14 total) were deleted in v4 Phase B — they composed against the dead DeFi skill set. Multi-step coordination is now an LLM concern (the v4 surface is small enough — 14 tools — that pre-baked workflows add no value).
+> The v3 "workflow prompts" (`financial-report`, `optimize-yield`, `sweep`, `risk-check`, etc., 14 total) were deleted in v4 Phase B — they composed against the dead DeFi skill set. Multi-step coordination is now an LLM concern (the v4 surface is small enough — 18 tools — that pre-baked workflows add no value).
 
 ## Troubleshooting
 

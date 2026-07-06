@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createAgent } from './agent.js';
 import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
+import { registerEarnTools } from './tools/earn.js';
 import { registerLimitTool } from './tools/limit.js';
 import { registerChatTools } from './tools/chat.js';
 import { registerSkillPrompts } from './skills-prompts.js';
@@ -41,6 +42,7 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
 
   registerReadTools(server, agent);
   registerWriteTools(server, agent);
+  registerEarnTools(server, agent);
   registerLimitTool(server);
   registerChatTools(server);
 

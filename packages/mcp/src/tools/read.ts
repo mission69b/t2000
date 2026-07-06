@@ -110,7 +110,7 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
 
 No address → the priced-service list (filter with category/limit). With an address → the full listing: profile, price, and reputation (sales, buyers, delivered rate, recent settlement txs).
 
-Buy a listing with t2000_agent_pay. Tasks that PAY the agent for using the rail: GET https://mpp.t2000.ai/tasks/stats (see the t2000-hire skill).`,
+Buy a listing with t2000_agent_pay. Tasks that PAY the agent for using the rail: t2000_tasks (see the t2000-earn skill).`,
     {
       address: z.string().optional().describe("An agent's Sui address for the full listing (omit to list)"),
       category: z

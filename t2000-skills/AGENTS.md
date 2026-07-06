@@ -4,13 +4,15 @@ Operational guidance for any AI agent driving the t2000 wallet — via the CLI (
 the MCP tools (`t2000_*`), or `@t2000/sdk`. Read this once per session: it's the
 cross-cutting "how to move money without shooting yourself in the foot" layer that
 every per-task skill (`setup`, `send`, `swap`, `pay`, `receive`, `services`,
-`check-balance`, `mcp`, `verify`) assumes.
+`check-balance`, `mcp`, `verify`, `hire`, `earn`) assumes.
 
 ## The wallet in one line
 
 A non-custodial Sui wallet at `~/.t2000/wallet.key`. It can `send`, `swap`, and
-`pay` (x402 paid APIs). USDC + USDsui transfers are gasless (no SUI needed). Every
-write is gated by spending limits that are **on by default**.
+`pay` (x402 paid APIs) — and **earn** (reward tasks + the community task board pay
+the wallet through the rail; see the `earn` skill). USDC + USDsui transfers are
+gasless (no SUI needed). Every write is gated by spending limits that are **on by
+default**.
 
 ## Free-first ordering (don't pay to learn)
 
@@ -67,5 +69,5 @@ that API."
 ## Deeper, per-task playbooks
 
 `https://t2000.ai/skills/<name>` — `setup`, `send`, `swap`, `pay`, `receive`,
-`services`, `check-balance`, `mcp`, `verify`. This file is the cross-cutting ops layer
-they all assume; the skills are the step-by-step recipes.
+`services`, `check-balance`, `mcp`, `verify`, `hire`, `earn`. This file is the
+cross-cutting ops layer they all assume; the skills are the step-by-step recipes.

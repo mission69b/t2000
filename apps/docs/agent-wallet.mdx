@@ -11,7 +11,7 @@ The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — one CLI
 - **Earn + hire** — reward tasks and the community task board (`t2 task …`)
 - **Inference** — the [Private & Confidential API](/private-api), including trustless receipt verification (`t2 chat · models · verify`)
 
-The CLI is the human surface (`t2 <verb>`, everything `--json`-scriptable); the MCP server is the AI-client surface (the same capabilities as tools); skills are the orchestration playbooks both share.
+The CLI is the human surface (`t2 <verb>`, everything `--json`-scriptable); the MCP server is the AI-client surface — the same money, store, earn, and inference capabilities as tools (a few credential flows stay CLI-only by design: seller registration/deploy, task posting, and raising spending limits); skills are the orchestration playbooks both share.
 
 ## Install
 
@@ -140,17 +140,22 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_swap` | write | Cetus Aggregator V3 swap. Requires SUI for gas. |
 | `t2000_pay` | write | Pay an x402-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
 | `t2000_agent_pay` | write | Buy an agent-store service by seller address — escrowed, auto-refund on failed delivery. |
+| `t2000_tasks` | read | Live [reward tasks + the community task board](/commerce/tasks) in one view. Call before claiming or submitting. |
+| `t2000_task_claim` | earn | Claim a reward-task payout to the wallet (swap-proof / X-proof / automated retry). Receives USDC — never spends. |
+| `t2000_task_submit` | earn | Submit proof of completion to a board task; poster approval pays through the rail. Nothing is spent. |
+| `t2000_agent_earnings` | read | The wallet's seller stats — sales, net USDC earned, unique buyers — from the on-chain settlement ledger. |
 | `t2000_chat` | read | Private inference on the [Private API](/private-api) (OpenAI-compatible). Needs `T2000_API_KEY` in the server env. |
 | `t2000_models` | read | List the Private API model catalog (id · privacy tier · pricing). |
 | `t2000_verify` | read | Verify a confidential response by receipt id — signed receipt + trustless on-chain Sui anchor. No key required. |
 | `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
-Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 10 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-verify`, `skill-mcp`, `skill-hire`.
+Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 11 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-verify`, `skill-mcp`, `skill-hire`, `skill-earn`.
 
 ### Security
 
 - Wallet file is `0o600` — owner read/write only. stdio transport, keys never leave the machine.
 - Every write tool has a `dryRun: true` preview path.
+- The earn tools never spend: `t2000_task_claim` / `t2000_task_submit` receive payouts through the rail. Posting a board task (which escrows USDC and returns a one-time manage credential) stays on the CLI (`t2 task post`).
 - Setting / clearing spending caps requires CLI terminal access (the `t2000_limit` tool is read-only).
 
 ## Skills
@@ -185,7 +190,8 @@ npx skills add mission69b/t2000-skills
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services before `t2 pay`. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | x402 402 → quote → pay → retry flow. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Verify a confidential response — `t2 verify <receipt>` or [verify.t2000.ai](https://verify.t2000.ai). |
-| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Hire agents from [agents.t2000.ai](https://agents.t2000.ai) (`t2 agent pay`) — or sell your own service (`t2 agent deploy`). |
+| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Hire agents from [agents.t2000.ai](https://agents.t2000.ai) (`t2 agent pay`), post community-board tasks, or sell your own service (`t2 agent deploy`). |
+| [`t2000-earn`](https://t2000.ai/skills/t2000-earn) | Earn with the wallet — claim reward tasks, work board jobs, track seller earnings (`t2 task …` · `t2 agent earnings`). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the MCP server into Claude / Cursor / Windsurf. |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
@@ -200,8 +206,8 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 | Sendable assets | USDC, USDsui, SUI (asset required on every `send`) |
 | Gasless | USDC + USDsui via Sui foundation's `0x2::balance::send_funds` sponsor |
 | Spending limits | On by default ($25/tx · $100/day); `t2 limit set` to adjust; gates CLI **and** MCP writes |
-| MCP tools | 14 (9 read + 4 write + 1 settings) |
-| Skills | 10 markdown playbooks shipped as `skill-<name>` MCP prompts |
+| MCP tools | 18 (11 read + 4 write + 2 earn actions + 1 settings) |
+| Skills | 11 markdown playbooks shipped as `skill-<name>` MCP prompts |
 | Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |
 
 The Agent Wallet is intentionally narrow — focused on USDC sends, swaps, and x402 API access. For programmatic access to the same surface, use [`@t2000/sdk`](/agent-sdk).

@@ -4,17 +4,20 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
+import { registerEarnTools } from './tools/earn.js';
 import { registerLimitTool } from './tools/limit.js';
 import { registerSkillPrompts } from './skills-prompts.js';
 import { loadSkillsFromDisk } from './test-load-skills.js';
 import { T2000_SERVER_INSTRUCTIONS } from './instructions.js';
 
-// [v4.0 Phase B — 2026-05-26, counts updated S.629 2026-07-04]
+// [v4.0 Phase B — 2026-05-26, counts updated S.629 2026-07-04, earn surface
+// added 2026-07-06]
 // Integration test surface mirrors the core CLI: 6 read tools (balance /
 // address / receive / history / services / agents), 4 write tools (send /
-// swap / pay / agent_pay), 1 settings tool (limit) = 11 here. Production
+// swap / pay / agent_pay), 4 earn tools (tasks / task_claim / task_submit /
+// agent_earnings), 1 settings tool (limit) = 15 here. Production
 // additionally registers the 3 Private API chat tools (chat / models /
-// verify) via registerChatTools = 14 total. Pre-v4 the count was 27
+// verify) via registerChatTools = 18 total. Pre-v4 the count was 27
 // (DeFi + safeguards; deletions tracked in S.336).
 //
 // Prompts: the hand-rolled `registerPrompts` workflow prompts were
@@ -75,6 +78,7 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
 
     registerReadTools(server, agent);
     registerWriteTools(server, agent);
+    registerEarnTools(server, agent);
     registerLimitTool(server);
     // Inject loaded skills since vitest doesn't run tsup (no
     // `__BAKED_SKILLS__` define) — same data as production.
@@ -92,13 +96,14 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     await server.close();
   });
 
-  it('lists the 11 core tools (+3 chat tools registered separately in production)', async () => {
+  it('lists the 15 core tools (+3 chat tools registered separately in production)', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(11);
+    expect(tools).toHaveLength(15);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
       't2000_address',
+      't2000_agent_earnings',
       't2000_agent_pay',
       't2000_agents',
       't2000_balance',
@@ -109,6 +114,9 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
       't2000_send',
       't2000_services',
       't2000_swap',
+      't2000_task_claim',
+      't2000_task_submit',
+      't2000_tasks',
     ]);
   });
 
@@ -136,6 +144,9 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
   it('does NOT expose any of the deleted v3 DeFi / safeguards tools', async () => {
     const { tools } = await client.listTools();
     const names = new Set(tools.map((t) => t.name));
+    // NB: banned `t2000_earnings` was the v3 DeFi YIELD read. The commerce
+    // seller-stats read added 2026-07-06 is `t2000_agent_earnings` — distinct
+    // name precisely so this regression keeps guarding the old surface.
     const banned = [
       't2000_save', 't2000_withdraw', 't2000_borrow', 't2000_repay',
       't2000_claim_rewards', 't2000_overview', 't2000_positions',

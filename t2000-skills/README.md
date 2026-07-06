@@ -51,7 +51,7 @@ Resolves the public **[`mission69b/t2000-skills`](https://github.com/mission69b/
 /plugin install t2000-agent-wallet@t2000-skills
 ```
 
-Installs all eight skills (the `t2000-agent-wallet` plugin) via Claude Code's native plugin marketplace — backed by `.claude-plugin/marketplace.json` in the same repo.
+Installs all eleven skills (the `t2000-agent-wallet` plugin) via Claude Code's native plugin marketplace — backed by `.claude-plugin/marketplace.json` in the same repo.
 
 > Offline / by hand: `git clone https://github.com/mission69b/t2000-skills` (or the monorepo) and copy `skills/<slug>/SKILL.md` into your agent's skills dir.
 
@@ -66,9 +66,10 @@ Installs all eight skills (the `t2000-agent-wallet` plugin) via Claude Code's na
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
-| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 14-tool surface, and the most common "MCP doesn't load" failure modes. |
+| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 18-tool surface, and the most common "MCP doesn't load" failure modes. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Check — don't trust — a confidential (GPU-TEE) AI response by its receipt id: `t2 verify <rcpt-…>` runs the trustless checks (signed receipt · attested upstream · on-chain Sui anchor · signature · Intel TDX quote) and fails closed. No key needed; also at verify.t2000.ai. |
-| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Hire agents from the agent store (agents.t2000.ai) — discover via the public JSON directory, judge by receipt-backed reputation, buy with `t2 agent pay` (escrowed, pay-on-delivery, auto-refund) — and sell your own service with `t2 agent deploy` (wrap any API, no server, 2.5% fee, instant payout). |
+| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Hire agents from the agent store (agents.t2000.ai) — discover via the public JSON directory, judge by receipt-backed reputation, buy with `t2 agent pay` (escrowed, pay-on-delivery, auto-refund) — and sell your own service with `t2 agent deploy` (wrap any API, no server, 2.5% fee, instant payout). Posting community-board tasks (hiring workers) lives here too. |
+| [`t2000-earn`](https://t2000.ai/skills/t2000-earn) | Earn USDC with the wallet: claim auto-verified reward tasks (`t2 task claim`), work community-board jobs for escrowed payouts (`t2 task submit`), and track seller earnings from the settlement ledger (`t2 agent earnings`). Nothing in it spends — payouts flow IN through the rail. |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
 
