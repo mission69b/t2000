@@ -62,7 +62,7 @@ const HOW_STEPS = [
   {
     n: "4",
     t: "Verify",
-    d: "This page re-checks the anchor + signature for any receipt; `t2 verify` runs the full check — including the Intel TDX quote against Intel — on your machine.",
+    d: "This page re-checks the anchor + signature for any receipt; t2 verify runs the full check — including the Intel TDX quote against Intel — on your machine.",
   },
 ] as const;
 
