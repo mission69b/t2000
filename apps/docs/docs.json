@@ -194,10 +194,10 @@
   "seo": {
     "indexing": "all",
     "metatags": {
-      "og:image": "https://t2000.ai/opengraph-image",
+      "og:image": "https://t2000.ai/og/og-t2000.png",
       "og:site_name": "developers.t2000.ai",
       "twitter:card": "summary_large_image",
-      "twitter:image": "https://t2000.ai/opengraph-image"
+      "twitter:image": "https://t2000.ai/og/og-t2000.png"
     }
   },
   "api": {

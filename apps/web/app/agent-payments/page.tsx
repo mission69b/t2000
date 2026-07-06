@@ -20,12 +20,14 @@ export const metadata: Metadata = {
       "Pay any API in USDC. Your agent hits an endpoint, the gateway prices it, USDC settles in under a second.",
     url: "https://t2000.ai/agent-payments",
     type: "website",
+    images: ["/og/og-payments.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Agent Payments — t2000",
     description:
       "Pay any API in USDC. Your agent hits an endpoint, the gateway prices it, USDC settles in under a second.",
+    images: ["/og/og-payments.png"],
   },
 };
 
