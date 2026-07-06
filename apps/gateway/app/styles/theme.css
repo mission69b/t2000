@@ -21,7 +21,7 @@
    ===================================================================== */
 
 @theme {
-  --color-background: var(--ds-background-100);
+  --color-background: var(--bg);
   --color-foreground: var(--fg);
 
   --color-card: var(--bg-elevated);
@@ -54,8 +54,8 @@
   --color-destructive-foreground: #ffffff;
   --color-destructive-hover: var(--ds-red-900);
 
-  --color-border: var(--ds-gray-alpha-400);
-  --color-input: var(--ds-gray-alpha-400);
+  --color-border: var(--border);
+  --color-input: var(--border);
   --color-ring: var(--t2k-accent);
 
   /* IMPORTANT: these reference `--ds-*` primitives (NOT the bare-name

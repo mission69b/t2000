@@ -43,11 +43,10 @@ alwaysApply: false
 | Surface | State |
 |---|---|
 | verify.t2000.ai | ✅ copies `tokens.css`, house theme, emerald accent |
-| platform.t2000.ai (`audric/apps/console`) | ➖ **Audric's oklch dark palette** (founder decision 2026-07-02: product-app shells wear audric colors, NOT the infra house theme) |
-| agents.t2000.ai (`audric/apps/agent-id`) | ➖ **Audric's oklch dark palette** (same decision) |
-| mpp.t2000.ai (`apps/gateway`), t2000.ai (`apps/web`) | ✅ own their token + marketing-chrome CSS locally (`app/styles/*.css`); house-theme surface override pending |
-| suimpp.dev (separate repo) | ⏳ still on published npm `@t2000/ui` — migrate to copy-in when convenient |
-| audric.ai (`audric/apps/web-v3`) | ➖ consumer flagship — keeps its OWN theme, not the t2000 family look |
+| t2000.ai (`apps/web`), mpp.t2000.ai (`apps/gateway`) | ✅ copy-in `tokens.css` + the 2026-07 designer chrome (`app/styles/{tokens,type,page,responsive,theme}.css`); legacy `geist-ds.css` deleted; a temporary raw-primitive shim in each `globals.css` covers pre-redesign components until their port (family design rollout Phases 1–2) |
+| agents.t2000.ai (`audric/apps/console`) | ⏳ **flips to the near-black house theme** (founder decision 2026-07-06, reversing the 2026-07-02 product-shell exception) — lands in rollout Phase 4a by setting the console's shadcn slots (`--background`/`--card`/`--border`) to house values; Tailwind + shadcn architecture unchanged |
+| suimpp.dev (separate repo) | ⏳ still on published npm `@t2000/ui` — migrates to copy-in in rollout Phase 5 |
+| audric.ai (`audric/apps/web-v3`) | ➖ consumer flagship — keeps its OWN theme, the ONE surface outside the family look |
 
 ## `@t2000/ui` — REMOVED (2026-07-01)
 

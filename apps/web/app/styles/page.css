@@ -1,38 +1,36 @@
 /* ============================================================
-   @t2000/ui — Page-level utility classes
+   t2000 family — marketing page chrome (2026-07 redesign)
    ============================================================
-   Layout primitives, card chrome, button base, eyebrow, status dot,
-   keyframes. Composes the Geist tokens from `./geist-ds.css`.
+   Composes the copy-in tokens (./tokens.css). Source of truth for
+   the class shapes: t2000-design/<site>/assets/page.css (designer
+   deliverable), adapted per geist-ds.mdc:
+   - hairline borders read the SEMANTIC tokens (--border /
+     --border-strong), never raw --ds-gray-alpha-* ramp values
+   - card/section surfaces read --bg / --bg-elevated
+   - @font-face dropped (fonts come from the `geist` npm package)
 
-   Brand-level accent (--t2k-accent, --t2k-accent-bg, --t2k-accent-hi)
-   is NOT declared here. Each consumer (apps/web, apps/gateway,
-   suimpp, etc.) defines them in their own globals.css per the
-   packages/ui/README.md per-property accent table.
-
-   Generic semantic alias --t2k-success IS declared (green check-mark
-   color is brand-shared).
+   Brand accent (--t2k-accent + friends) defaults to t2000 blue here;
+   each app overrides in its globals.css (teal for mpp, emerald for
+   verify) AFTER importing this file.
    ============================================================ */
 
 :root {
-  /* Generic semantic — shared across all brands */
+  /* Brand-level accent alias — single point of override per family brand */
+  --t2k-accent:     var(--ds-blue-700);     /* #0072F3 */
+  --t2k-accent-bg:  rgba(0,114,245,0.08);
+  --t2k-accent-hi:  var(--ds-blue-900);     /* hover/highlight */
   --t2k-success:    var(--ds-green-700);    /* check marks, OKs */
 
-  /* Page chrome — shared layout opinions */
+  /* Page chrome */
   --t2k-page-max:    1200px;
   --t2k-section-pad: 96px;
   --t2k-card-gap:    16px;
 }
 
 html {
-  /* Dark mode is canonical per Geist DS + CURSOR.md §9. Form controls,
-     scrollbars, and date-pickers inherit dark UA chrome. Consumers that
-     opt into light mode via [data-theme="light"] should override locally. */
+  /* Dark mode is canonical. Form controls, scrollbars, and date-pickers
+     inherit dark UA chrome. */
   color-scheme: dark;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  /* Geist's typographic discipline. Improves kerning + ligatures on
-     display headlines + body. Per CURSOR.md §9 Anti-aliasing & rendering. */
-  text-rendering: optimizeLegibility;
 }
 
 html, body {
@@ -42,18 +40,13 @@ html, body {
 }
 
 body {
-  /* Geist's `ss01` stylistic set keeps the wordmark crisp; `cv11` is the
-     single-story `a`. Always on, per CURSOR.md §9. `tabular-nums` is the
-     data-dense default — flowing prose opts OUT via .t2k-prose below.
-     This is the inverse of most type systems but correct for a finance
-     product family. */
-  font-feature-settings: "ss01", "cv11";
+  /* tabular-nums is the data-dense default — flowing prose opts OUT via
+     .t2k-prose below. */
   font-variant-numeric: tabular-nums;
 }
 
 /* Prose opt-out — restore proportional figure widths on body copy that
-   reads as paragraphs (blog posts, long-form, FAQ answers). Apply to
-   the wrapper that contains flowing prose. */
+   reads as paragraphs (blog posts, long-form, FAQ answers). */
 .t2k-prose,
 article p,
 article li,
@@ -62,8 +55,7 @@ article li,
   font-variant-numeric: normal;
 }
 
-/* Selection color — t2000 blue, not Geist's vercel-blue (same hex, but
-   keep it via the brand alias so we can change in one place) */
+/* Selection color — via the brand alias so each app changes it in one place */
 ::selection { background: var(--t2k-accent); color: white; }
 
 /* Container --------------------------------------------------------- */
@@ -76,11 +68,11 @@ article li,
 /* Section spacing rhythm ------------------------------------------- */
 .t2k-section {
   padding: var(--t2k-section-pad) 0;
-  border-top: 1px solid var(--ds-gray-alpha-300);
+  border-top: 1px solid var(--border);
 }
 .t2k-section--tight { padding: 56px 0; }
 
-/* Eyebrow caps label (Mono, uppercase, .06em tracking) */
+/* Eyebrow caps label (Mono, uppercase) */
 .t2k-eyebrow {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -138,14 +130,14 @@ article li,
 }
 .t2k-btn--primary {
   background: var(--ds-gray-1000);
-  color: var(--ds-background-100);
+  color: var(--bg);
   border-color: var(--ds-gray-1000);
 }
-.t2k-btn--primary:hover { background: var(--ds-gray-900); border-color: var(--ds-gray-900); color: var(--ds-background-100); }
+.t2k-btn--primary:hover { background: var(--ds-gray-900); border-color: var(--ds-gray-900); color: var(--bg); }
 .t2k-btn--ghost {
   background: transparent;
   color: var(--fg);
-  border-color: var(--ds-gray-alpha-400);
+  border-color: var(--border);
 }
 .t2k-btn--ghost:hover { background: var(--ds-gray-alpha-100); border-color: var(--ds-gray-alpha-500); color: var(--fg); }
 .t2k-btn--blue {
@@ -186,15 +178,15 @@ article li,
 .t2k-install-btn.is-copied { background: var(--t2k-success); border-color: var(--t2k-success); }
 .t2k-install-btn.is-copied .copy-icon { background: rgba(255,255,255,0.20); }
 
-/* Card primitive — Geist canonical: hairline border, no shadow */
+/* Card primitive — hairline border, no shadow */
 .t2k-card {
   background: var(--bg-elevated);
-  border: 1px solid var(--ds-gray-alpha-400);
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
 }
 
-/* Status dot (Geist pattern — 2px dot + label) */
+/* Status dot (2px dot + label) */
 .t2k-dot {
   width: 6px; height: 6px; border-radius: 50%;
   display: inline-block;
@@ -213,12 +205,16 @@ article li,
   50.01%, 100% { opacity: 0; }
 }
 
+@keyframes t2k-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
 @keyframes t2k-fade-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* MPP activity row entry — new row scrolls down from top */
+/* Activity row entry — new row scrolls down from top */
 @keyframes mpp-row-in {
   from { opacity: 0; transform: translateY(-6px); background: rgba(10,199,180,0.08); }
   to   { opacity: 1; transform: translateY(0);    background: transparent; }
@@ -231,7 +227,7 @@ article li,
   letter-spacing: 0.02em;
   color: var(--fg-subtle);
   background: var(--ds-gray-alpha-100);
-  border: 1px solid var(--ds-gray-alpha-300);
+  border: 1px solid var(--border);
   padding: 3px 8px;
   border-radius: 4px;
   display: inline-flex;
@@ -247,60 +243,196 @@ article li,
 /* Hairline divider */
 .t2k-rule {
   height: 1px;
-  background: var(--ds-gray-alpha-300);
+  background: var(--border);
   border: 0;
   margin: 0;
 }
 
-/* Global 4px focus ring — non-themed (stays Geist blue with 36% alpha
-   on every property, including teal MPP and monochrome suimpp) per
-   CURSOR.md §9. Uses `:where()` for zero specificity so component-level
-   styles can override; in practice @t2000/ui primitives ship their own
-   `focus-visible:shadow-[var(--shadow-focus)]` utility (same intent,
-   higher specificity) so this rule serves raw <a> / <button> / form
-   controls that consumers drop in directly. */
+/* Focus ring — zero specificity so component-level styles can override */
 :where(button, a, input, textarea, select, [tabindex]):focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);
 }
 
-/* Tabular numerics — for metrics + counts. NOTE: tabular-nums is the
-   global default (set on `body`). This class exists as a re-assertion
-   helper inside elements that opted out via .t2k-prose. */
+/* Tabular numerics — re-assertion helper inside .t2k-prose opt-outs */
 .t2k-tabular { font-variant-numeric: tabular-nums; }
 
-/* Code block line-height — Geist Mono needs 1.7-1.85 to feel right.
-   Tailwind's `leading-normal` (1.5) is too tight, `leading-relaxed`
-   (1.625) is still under-leaded. Per CURSOR.md §9. */
-.t2k-code {
-  font-family: var(--font-mono);
-  line-height: 1.75;
+/* ============================================================
+   The climb — numbered vertical ladder (Products)
+   ============================================================ */
+.t2k-climb { display: flex; flex-direction: column; }
+
+.t2k-rung { display: grid; grid-template-columns: 48px 1fr; gap: 20px; }
+
+.t2k-rung-spine {
+  display: flex; flex-direction: column; align-items: center;
+}
+.t2k-rung-node {
+  flex: 0 0 auto;
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--fg-muted); letter-spacing: 0.02em;
+  background: var(--bg);
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.t2k-rung-line {
+  flex: 1 1 auto;
+  width: 1px; min-height: 24px;
+  background: var(--border);
+  margin: 6px 0;
 }
 
-/* Hover utility classes — implement the 5 patterns from CURSOR.md §9
-   "Hover state hierarchy". Opt-in via class name; not every Card / Row
-   / Link should hover (static descriptive cards stay flat, contextual
-   links don't shift color). Consumers apply the right class per surface. */
+.t2k-rung-body {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 26px;
+  margin-bottom: 20px;
+  background: var(--bg);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.t2k-rung-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 20px; flex-wrap: wrap;
+}
+.t2k-rung-layer {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.08em; color: var(--fg-subtle);
+}
+.t2k-rung-name {
+  font-family: var(--font-sans); font-weight: 600;
+  font-size: 23px; line-height: 1.1; letter-spacing: -0.022em;
+  margin: 6px 0 0;
+}
+.t2k-rung-one {
+  font-size: 15px; font-weight: 500; letter-spacing: -0.011em;
+  color: var(--fg); text-align: right; max-width: 280px;
+}
+.t2k-rung-desc {
+  font-size: 14px; line-height: 1.6; color: var(--fg-muted);
+  margin: 14px 0 0; max-width: 640px;
+}
+.t2k-rung-foot {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 24px; flex-wrap: wrap; margin-top: 20px;
+}
+.t2k-rung-verbs {
+  padding: 12px 14px;
+  background: var(--ds-background-200);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+  color: var(--fg-muted);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.t2k-rung-dollar { color: var(--fg-subtle); margin-right: 6px; }
+.t2k-rung-links { display: flex; gap: 18px; flex-wrap: wrap; }
+.t2k-rung-link {
+  font-size: 13px; font-weight: 500; letter-spacing: -0.011em;
+  color: var(--t2k-accent); text-decoration: none; white-space: nowrap;
+}
+.t2k-rung-link:hover { text-decoration: underline; }
 
-/* Border-strengthen — interactive cards. Resting hairline → +tier alpha. */
+/* Substrate + platform base cards */
+.t2k-climb-base {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+  margin-top: 12px;
+}
+.t2k-climb-base-card {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none; color: var(--fg);
+  background: var(--bg);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.t2k-climb-base-card:hover { border-color: var(--ds-gray-alpha-500); }
+.t2k-climb-base-name {
+  font-family: var(--font-sans); font-weight: 600; font-size: 17px;
+  letter-spacing: -0.017em; margin-bottom: 4px;
+}
+.t2k-climb-base-sub { font-size: 13.5px; line-height: 1.55; color: var(--fg-muted); }
+.t2k-climb-base-arrow { margin-left: auto; color: var(--t2k-accent); font-size: 15px; }
+
+@media (max-width: 720px) {
+  .t2k-rung-one { text-align: left; }
+  .t2k-climb-base { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   Getting started — 5-step stepper
+   ============================================================ */
+.t2k-gs-grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+  background: var(--bg);
+}
+.t2k-gs-step {
+  padding: 24px 22px;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.t2k-gs-step:last-child { border-right: 0; }
+.t2k-gs-head { display: flex; align-items: center; gap: 10px; }
+.t2k-gs-num {
+  width: 24px; height: 24px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--t2k-accent); color: #fff;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+}
+.t2k-gs-title {
+  font-family: var(--font-sans); font-weight: 600; font-size: 15px;
+  letter-spacing: -0.014em;
+}
+.t2k-gs-cmd {
+  display: block;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--fg-muted); word-break: break-all;
+  background: var(--ds-background-200);
+  border: 1px solid var(--border);
+  border-radius: 6px; padding: 9px 10px;
+}
+.t2k-gs-dollar { color: var(--fg-subtle); margin-right: 6px; }
+.t2k-gs-note { font-size: 13px; line-height: 1.5; color: var(--fg-muted); margin: 0; }
+
+@media (max-width: 900px) {
+  .t2k-gs-grid { grid-template-columns: 1fr 1fr; }
+  .t2k-gs-step:nth-child(2n) { border-right: 0; }
+  .t2k-gs-step { border-bottom: 1px solid var(--border); }
+  .t2k-gs-step:nth-last-child(-n+1) { border-bottom: 0; }
+}
+@media (max-width: 560px) {
+  .t2k-gs-grid { grid-template-columns: 1fr; }
+  .t2k-gs-step { border-right: 0; border-bottom: 1px solid var(--border); }
+  .t2k-gs-step:last-child { border-bottom: 0; }
+}
+
+/* ============================================================
+   LEGACY SHIMS — classes used by pre-redesign components.
+   Remove each once its consumers are ported (Phase 1: apps/web,
+   Phase 2: apps/gateway of the family design rollout).
+   ============================================================ */
+
+/* Border-strengthen — interactive cards. */
 .t2k-card-hover {
   transition: border-color var(--dur-fast) var(--ease-out);
   cursor: pointer;
 }
 .t2k-card-hover:hover { border-color: var(--ds-gray-alpha-500); }
 
-/* Surface-lift — rows in lists (accordion triggers, sidebar items).
-   Resting transparent → hover --ds-gray-alpha-100. */
+/* Surface-lift — rows in lists. */
 .t2k-list-row {
   transition: background-color var(--dur-fast) var(--ease-out);
   cursor: pointer;
 }
 .t2k-list-row:hover { background-color: var(--ds-gray-alpha-100); }
 
-/* Color-shift — inline links in body copy. Resting --fg with subtle
-   underline → hover --t2k-accent with accent underline. Opt-in via class
-   so plain <a> stays neutral (e.g. in nav, footer); apply to <a> tags
-   inside long-form body copy where the accent shift reads as intentional. */
+/* Color-shift — inline links in body copy. */
 .t2k-link {
   color: var(--fg);
   text-decoration: underline;
@@ -314,9 +446,13 @@ article li,
   text-decoration-color: var(--t2k-accent);
 }
 
-/* GPU compositing for text-over-glow. Hero headlines sitting on top of
-   radial-gradient ambient glows can show fringing without this. Apply
-   to any text element that overlays a glow div. Per CURSOR.md §9. */
+/* Code block line-height — Geist Mono wants 1.7–1.85. */
+.t2k-code {
+  font-family: var(--font-mono);
+  line-height: 1.75;
+}
+
+/* GPU compositing for text-over-glow hero headlines. */
 .t2k-hero-headline {
   transform: translateZ(0);
   backface-visibility: hidden;

@@ -1,9 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Design tokens + marketing chrome — owned locally (copied from the former
-   @t2000/ui package; see design-tokens/tokens.css for the canonical values). */
-@import "./styles/geist-ds.css";
+/* Copy-in design tokens (from design-tokens/tokens.css — the canonical
+   VALUES source, geist-ds.mdc) + the family marketing chrome. */
+@import "./styles/tokens.css";
+@import "./styles/type.css";
 @import "./styles/page.css";
 @import "./styles/responsive.css";
 @import "./styles/theme.css";
@@ -18,8 +19,9 @@
   --ds-font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --ds-font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace;
 
-  --background: var(--ds-background-100);
-  --surface: var(--ds-gray-100);
+  /* Legacy aliases read the SEMANTIC house tokens (tokens.css). */
+  --background: var(--bg);
+  --surface: var(--bg-elevated);
   --foreground: var(--fg);
   --muted: var(--fg-muted);
   --dim: var(--fg-subtle);
@@ -34,13 +36,13 @@
   --color-info: var(--ds-blue-700);
 }
 
-/* House dark theme — seamless near-black surfaces + hairline borders,
-   consistent with verify / platform / agents (design-tokens/tokens.css). */
+/* TEMPORARY SHIM (remove with the Phase-1 component port): pre-redesign
+   components still read these raw primitives directly for surfaces and
+   hairlines; pin them to the house values so nothing shifts until every
+   component reads the semantic tokens. */
 :root {
-  --ds-background-100: #08090a; /* canvas */
-  --bg-elevated: #0f1113; /* cards / surfaces */
-  --surface: #0f1113;
-  --ds-gray-alpha-400: rgba(255, 255, 255, 0.08); /* hairline borders */
+  --ds-background-100: #08090a;
+  --ds-gray-alpha-400: rgba(255, 255, 255, 0.08);
 }
 
 @theme inline {
