@@ -1,58 +1,19 @@
-// Slim verify-branded chrome + the designed marketing sections (How /
-// Closer) around the live hub. Deliberately NOT the full t2000.ai nav —
-// this subdomain's job is paste-to-verify; one link out is enough.
+import { DEVELOPERS_URL, T2000_URL } from "../data/site";
 
-export function VerifyNav() {
-  return (
-    <nav className="sticky top-0 z-30 border-border border-b bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-5">
-        <a
-          className="flex items-baseline gap-2 no-underline"
-          href="https://verify.t2000.ai"
-        >
-          <span className="font-bold text-[18px] text-foreground leading-none tracking-[-0.05em]">
-            t2
-          </span>
-          <span className="font-semibold text-[14px] text-foreground tracking-tight">
-            verify
-          </span>
-        </a>
-        <span className="flex-1" />
-        <a
-          className="text-dim text-xs no-underline transition-colors hover:text-foreground"
-          href="https://t2000.ai/api"
-        >
-          Private API
-        </a>
-        <a
-          className="text-dim text-xs no-underline transition-colors hover:text-foreground"
-          href="https://developers.t2000.ai/confidential-ai/how-it-works"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Docs ↗
-        </a>
-        <a
-          className="text-dim text-xs no-underline transition-colors hover:text-foreground"
-          href="https://t2000.ai"
-        >
-          t2000.ai ↗
-        </a>
-      </div>
-    </nav>
-  );
-}
+// Static sections from the designer's VerifyPage.jsx — How it works + the
+// trust-loop closer. Copy per design; step 1 says "upstream" (the TEE host)
+// rather than "gateway" for accuracy.
 
-const HOW_STEPS = [
+const STEPS = [
   {
     n: "1",
     t: "Attest",
-    d: "The upstream proves it's a genuine GPU-TEE with a hardware attestation report — checked before any prompt is forwarded, fail-closed.",
+    d: "The upstream proves it's a genuine GPU-TEE with a hardware attestation report — and publishes the keys it signs with.",
   },
   {
     n: "2",
     t: "Sign",
-    d: "Each response gets a receipt binding your request + response hashes to that attested upstream. Hashes, never bodies.",
+    d: "Each response gets a receipt binding your request + response hashes to that attested workload. Hashes, never bodies.",
   },
   {
     n: "3",
@@ -62,34 +23,63 @@ const HOW_STEPS = [
   {
     n: "4",
     t: "Verify",
-    d: "This page re-checks the anchor + signature for any receipt; t2 verify runs the full check — including the Intel TDX quote against Intel — on your machine.",
+    d: "t2 verify recovers the signature and re-checks the Sui anchor + Intel TDX quote — all client-side. No trust in t2000.",
   },
 ] as const;
 
 export function VerifyHow() {
   return (
-    <section className="mx-auto mt-16 max-w-3xl px-5">
-      <div className="mb-6">
-        <div className="font-mono text-[11px] text-dim uppercase tracking-[0.1em]">
-          {"// HOW IT WORKS"}
+    <section
+      className="t2k-section"
+      style={{
+        background: "var(--ds-background-200)",
+        borderTop: "1px solid var(--ds-gray-alpha-300)",
+      }}
+    >
+      <div className="t2k-container">
+        <header style={{ marginBottom: 44 }}>
+          <span className="t2k-eyebrow">{"// HOW IT WORKS"}</span>
+          <h2 className="t2k-section-title" style={{ marginTop: 12 }}>
+            Four steps, zero trust.
+          </h2>
+        </header>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {STEPS.map((s) => (
+            <div
+              key={s.n}
+              className="t2k-card flex flex-col"
+              style={{ padding: 24, background: "var(--ds-background-100)", gap: 12 }}
+            >
+              <span
+                className="inline-flex items-center justify-center font-mono"
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  background: "var(--t2k-accent)",
+                  color: "#fff",
+                  fontSize: 12,
+                }}
+              >
+                {s.n}
+              </span>
+              <h3
+                style={{
+                  fontWeight: 600,
+                  fontSize: 17,
+                  letterSpacing: "-0.014em",
+                  margin: 0,
+                  color: "var(--fg)",
+                }}
+              >
+                {s.t}
+              </h3>
+              <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--fg-muted)", margin: 0 }}>
+                {s.d}
+              </p>
+            </div>
+          ))}
         </div>
-        <h2 className="mt-2 font-semibold text-2xl tracking-tight">
-          Four steps. Check every one.
-        </h2>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {HOW_STEPS.map((s) => (
-          <div
-            className="flex flex-col gap-2.5 rounded-2xl border border-border bg-surface p-5"
-            key={s.n}
-          >
-            <span className="inline-flex size-6 items-center justify-center rounded-full bg-emerald font-mono text-black text-xs">
-              {s.n}
-            </span>
-            <h3 className="font-semibold text-[15px] tracking-tight">{s.t}</h3>
-            <p className="m-0 text-[13px] text-muted leading-relaxed">{s.d}</p>
-          </div>
-        ))}
       </div>
     </section>
   );
@@ -97,34 +87,47 @@ export function VerifyHow() {
 
 export function VerifyCloser() {
   return (
-    <section className="mx-auto mt-16 max-w-3xl px-5 text-center">
-      <div className="font-mono text-[11px] text-dim uppercase tracking-[0.1em]">
-        {"// THE TRUST LOOP"}
-      </div>
-      <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">
-        Private is a claim.
-        <br />
-        <span className="text-emerald">Verifiable is a proof.</span>
-      </h2>
-      <p className="mx-auto mt-4 max-w-md text-muted text-sm leading-relaxed">
-        Every confidential response is one paste away from proof. Build on
-        data you can check.
-      </p>
-      <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-        <a
-          className="rounded-lg bg-emerald px-4 py-2 font-medium text-black text-sm no-underline"
-          href="https://t2000.ai/api"
+    <section
+      className="t2k-section"
+      style={{ borderTop: "1px solid var(--ds-gray-alpha-300)" }}
+    >
+      <div className="t2k-container text-center" style={{ maxWidth: 700 }}>
+        <span className="t2k-eyebrow">{"// THE TRUST LOOP"}</span>
+        <h2
+          className="t2k-display mx-auto"
+          style={{ fontSize: "clamp(36px, 4.8vw, 58px)", color: "var(--fg)", marginTop: 14 }}
         >
-          Private &amp; Confidential API →
-        </a>
-        <a
-          className="rounded-lg border border-border px-4 py-2 font-medium text-foreground text-sm no-underline transition-colors hover:bg-surface"
-          href="https://developers.t2000.ai/confidential-ai"
-          rel="noreferrer"
-          target="_blank"
+          Private is a claim.
+          <br />
+          <span style={{ color: "var(--t2k-success)" }}>Verifiable is a proof.</span>
+        </h2>
+        <p
+          className="mx-auto"
+          style={{
+            fontSize: 17,
+            lineHeight: 1.55,
+            color: "var(--fg-muted)",
+            margin: "20px auto 0",
+            maxWidth: 500,
+            letterSpacing: "-0.011em",
+          }}
         >
-          How it works ↗
-        </a>
+          Every confidential response is one paste away from proof. Build on
+          data you can check.
+        </p>
+        <div className="flex flex-wrap justify-center" style={{ gap: 10, marginTop: 28 }}>
+          <a href={`${T2000_URL}/private-api`} className="t2k-btn t2k-btn--blue t2k-btn--lg">
+            Private API&nbsp;→
+          </a>
+          <a
+            href={`${DEVELOPERS_URL}/confidential-ai/how-it-works`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t2k-btn t2k-btn--ghost t2k-btn--lg"
+          >
+            How it works&nbsp;↗
+          </a>
+        </div>
       </div>
     </section>
   );

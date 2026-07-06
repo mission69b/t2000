@@ -1,11 +1,25 @@
 @import "tailwindcss";
-@import "./tokens.css";
 
-/* Per-app accent — emerald (confidential / TEE), app-owned per the
-   t2000 token model. Everything else comes from ./tokens.css. */
+/* Copy-in design tokens (design-tokens/tokens.css, the canonical VALUES
+   source — geist-ds.mdc) + the family marketing chrome, same trio as
+   t2000.ai / mpp.t2000.ai. */
+@import "./styles/tokens.css";
+@import "./styles/type.css";
+@import "./styles/page.css";
+@import "./styles/responsive.css";
+
 :root {
-  --emerald: #10b981;
-  --t2k-accent: var(--emerald);
+  /* Family accent — verify uses the house blue (per the designer's verify
+     page.css); green is reserved for check marks via --t2k-success. */
+  --t2k-accent: var(--ds-blue-700);
+  --t2k-accent-hover: var(--ds-blue-800);
+  --t2k-accent-bg: rgba(0, 114, 245, 0.08);
+  --t2k-accent-hi: rgba(0, 114, 245, 0.2);
+
+  --ds-font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ds-font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    Monaco, "Liberation Mono", monospace;
 }
 
 @theme inline {
@@ -13,16 +27,27 @@
   --color-surface: var(--bg-elevated);
   --color-foreground: var(--fg);
   --color-muted: var(--fg-muted);
+  --color-muted-foreground: var(--fg-muted);
   --color-dim: var(--fg-subtle);
   --color-border: var(--border);
-  --color-emerald: var(--emerald);
-  --font-sans: var(--font-geist-sans), var(--ds-font-sans);
-  --font-mono: var(--font-geist-mono), var(--ds-font-mono);
+}
+
+html {
+  overflow-x: hidden;
 }
 
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

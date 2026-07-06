@@ -1,0 +1,465 @@
+/* ============================================================
+   t2000 family — marketing page chrome (2026-07 redesign)
+   ============================================================
+   Composes the copy-in tokens (./tokens.css). Source of truth for
+   the class shapes: t2000-design/<site>/assets/page.css (designer
+   deliverable), adapted per geist-ds.mdc:
+   - hairline borders read the SEMANTIC tokens (--border /
+     --border-strong), never raw --ds-gray-alpha-* ramp values
+   - card/section surfaces read --bg / --bg-elevated
+   - @font-face dropped (fonts come from the `geist` npm package)
+
+   Brand accent (--t2k-accent + friends) defaults to t2000 blue here;
+   each app overrides in its globals.css (teal for mpp, emerald for
+   verify) AFTER importing this file.
+   ============================================================ */
+
+/* Component classes live in @layer components so Tailwind utilities
+   (utilities layer, later in the order) can override them per-instance
+   (e.g. `mx-auto` on a .t2k-display heading). Unlayered class rules
+   would beat every utility. */
+@layer components {
+  :root {
+    /* Brand-level accent alias — single point of override per family brand */
+    --t2k-accent:     var(--ds-blue-700);     /* #0072F3 */
+    --t2k-accent-bg:  rgba(0,114,245,0.08);
+    --t2k-accent-hi:  var(--ds-blue-900);     /* hover/highlight */
+    --t2k-success:    var(--ds-green-700);    /* check marks, OKs */
+
+    /* Page chrome */
+    --t2k-page-max:    1200px;
+    --t2k-section-pad: 96px;
+    --t2k-card-gap:    16px;
+  }
+
+  html {
+    /* Dark mode is canonical. Form controls, scrollbars, and date-pickers
+       inherit dark UA chrome. */
+    color-scheme: dark;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+  }
+
+  body {
+    /* tabular-nums is the data-dense default — flowing prose opts OUT via
+       .t2k-prose below. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Prose opt-out — restore proportional figure widths on body copy that
+     reads as paragraphs (blog posts, long-form, FAQ answers). */
+  .t2k-prose,
+  article p,
+  article li,
+  .t2k-prose p,
+  .t2k-prose li {
+    font-variant-numeric: normal;
+  }
+
+  /* Selection color — via the brand alias so each app changes it in one place */
+  ::selection { background: var(--t2k-accent); color: white; }
+
+  /* Container --------------------------------------------------------- */
+  .t2k-container {
+    max-width: var(--t2k-page-max);
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Section spacing rhythm ------------------------------------------- */
+  .t2k-section {
+    padding: var(--t2k-section-pad) 0;
+    border-top: 1px solid var(--border);
+  }
+  .t2k-section--tight { padding: 56px 0; }
+
+  /* Eyebrow caps label (Mono, uppercase) */
+  .t2k-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: var(--fg-subtle);
+  }
+
+  /* Display headlines -------------------------------------------------- */
+  .t2k-display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(48px, 8vw, 96px);
+    line-height: 1.0;
+    letter-spacing: -0.045em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .t2k-section-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.06;
+    letter-spacing: -0.035em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .t2k-section-sub {
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--fg-muted);
+    max-width: 560px;
+    margin: 16px 0 0;
+    letter-spacing: -0.011em;
+  }
+  .t2k-section-sub--center { margin: 16px auto 0; text-align: center; }
+
+  /* Buttons ----------------------------------------------------------- */
+  .t2k-btn {
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 6px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.011em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+    text-decoration: none;
+  }
+  .t2k-btn--primary {
+    background: var(--ds-gray-1000);
+    color: var(--bg);
+    border-color: var(--ds-gray-1000);
+  }
+  .t2k-btn--primary:hover { background: var(--ds-gray-900); border-color: var(--ds-gray-900); color: var(--bg); }
+  .t2k-btn--ghost {
+    background: transparent;
+    color: var(--fg);
+    border-color: var(--border);
+  }
+  .t2k-btn--ghost:hover { background: var(--ds-gray-alpha-100); border-color: var(--ds-gray-alpha-500); color: var(--fg); }
+  .t2k-btn--blue {
+    background: var(--t2k-accent);
+    color: white;
+    border-color: var(--t2k-accent);
+  }
+  .t2k-btn--blue:hover { background: var(--ds-blue-800); border-color: var(--ds-blue-800); color: white; }
+  .t2k-btn--sm { height: 32px; padding: 0 12px; font-size: 13px; }
+  .t2k-btn--lg { height: 48px; padding: 0 22px; font-size: 15px; }
+
+  /* Install button — primary CTA with mono interior, terminal-flavored
+     "$ install with one prompt" + copy icon. Click copies the real prompt. */
+  .t2k-install-btn {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0;
+    padding: 0 14px 0 18px;
+    gap: 14px;
+  }
+  .t2k-install-btn .prompt {
+    color: rgba(255,255,255,0.55);
+    font-weight: 400;
+  }
+  .t2k-install-btn .copy-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.85);
+    margin-left: 2px;
+    transition: background var(--dur-fast) var(--ease-out);
+  }
+  .t2k-install-btn:hover .copy-icon { background: rgba(255,255,255,0.22); }
+  .t2k-install-btn.is-copied { background: var(--t2k-success); border-color: var(--t2k-success); }
+  .t2k-install-btn.is-copied .copy-icon { background: rgba(255,255,255,0.20); }
+
+  /* Card primitive — hairline border, no shadow */
+  .t2k-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* Status dot (2px dot + label) */
+  .t2k-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block;
+    background: var(--t2k-success);
+    box-shadow: 0 0 0 4px rgba(69,165,87,0.18);
+    animation: t2k-pulse 2.4s var(--ease-out) infinite;
+  }
+  @keyframes t2k-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(69,165,87,0.18); }
+    50%      { box-shadow: 0 0 0 4px rgba(69,165,87,0.05); }
+  }
+
+  /* Terminal cursor blink */
+  @keyframes t2k-cursor {
+    0%, 50%   { opacity: 1; }
+    50.01%, 100% { opacity: 0; }
+  }
+
+  @keyframes t2k-blink {
+    0%, 50% { opacity: 1; }
+    50.01%, 100% { opacity: 0; }
+  }
+  @keyframes t2k-fade-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Activity row entry — new row scrolls down from top */
+  @keyframes mpp-row-in {
+    from { opacity: 0; transform: translateY(-6px); background: rgba(10,199,180,0.08); }
+    to   { opacity: 1; transform: translateY(0);    background: transparent; }
+  }
+
+  /* Mono tag (package name pill in a card header) */
+  .t2k-mono-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: var(--fg-subtle);
+    background: var(--ds-gray-alpha-100);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .t2k-mono-tag--blue {
+    color: var(--t2k-accent);
+    background: var(--t2k-accent-bg);
+    border-color: rgba(0,114,245,0.20);
+  }
+
+  /* Hairline divider */
+  .t2k-rule {
+    height: 1px;
+    background: var(--border);
+    border: 0;
+    margin: 0;
+  }
+
+  /* Focus ring — zero specificity so component-level styles can override */
+  :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  /* Tabular numerics — re-assertion helper inside .t2k-prose opt-outs */
+  .t2k-tabular { font-variant-numeric: tabular-nums; }
+
+  /* ============================================================
+     The climb — numbered vertical ladder (Products)
+     ============================================================ */
+  .t2k-climb { display: flex; flex-direction: column; }
+
+  .t2k-rung { display: grid; grid-template-columns: 48px 1fr; gap: 20px; }
+
+  .t2k-rung-spine {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .t2k-rung-node {
+    flex: 0 0 auto;
+    width: 40px; height: 40px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--fg-muted); letter-spacing: 0.02em;
+    background: var(--bg);
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  .t2k-rung-line {
+    flex: 1 1 auto;
+    width: 1px; min-height: 24px;
+    background: var(--border);
+    margin: 6px 0;
+  }
+
+  .t2k-rung-body {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 26px;
+    margin-bottom: 20px;
+    background: var(--bg);
+    transition: border-color var(--dur-fast) var(--ease-out);
+  }
+  .t2k-rung-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 20px; flex-wrap: wrap;
+  }
+  .t2k-rung-layer {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.08em; color: var(--fg-subtle);
+  }
+  .t2k-rung-name {
+    font-family: var(--font-sans); font-weight: 600;
+    font-size: 23px; line-height: 1.1; letter-spacing: -0.022em;
+    margin: 6px 0 0;
+  }
+  .t2k-rung-one {
+    font-size: 15px; font-weight: 500; letter-spacing: -0.011em;
+    color: var(--fg); text-align: right; max-width: 280px;
+  }
+  .t2k-rung-desc {
+    font-size: 14px; line-height: 1.6; color: var(--fg-muted);
+    margin: 14px 0 0; max-width: 640px;
+  }
+  .t2k-rung-foot {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 24px; flex-wrap: wrap; margin-top: 20px;
+  }
+  .t2k-rung-verbs {
+    padding: 12px 14px;
+    background: var(--ds-background-200);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+    color: var(--fg-muted);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .t2k-rung-dollar { color: var(--fg-subtle); margin-right: 6px; }
+  .t2k-rung-links { display: flex; gap: 18px; flex-wrap: wrap; }
+  .t2k-rung-link {
+    font-size: 13px; font-weight: 500; letter-spacing: -0.011em;
+    color: var(--t2k-accent); text-decoration: none; white-space: nowrap;
+  }
+  .t2k-rung-link:hover { text-decoration: underline; }
+
+  /* Substrate + platform base cards */
+  .t2k-climb-base {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+    margin-top: 12px;
+  }
+  .t2k-climb-base-card {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 22px 24px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-decoration: none; color: var(--fg);
+    background: var(--bg);
+    transition: border-color var(--dur-fast) var(--ease-out);
+  }
+  .t2k-climb-base-card:hover { border-color: var(--ds-gray-alpha-500); }
+  .t2k-climb-base-name {
+    font-family: var(--font-sans); font-weight: 600; font-size: 17px;
+    letter-spacing: -0.017em; margin-bottom: 4px;
+  }
+  .t2k-climb-base-sub { font-size: 13.5px; line-height: 1.55; color: var(--fg-muted); }
+  .t2k-climb-base-arrow { margin-left: auto; color: var(--t2k-accent); font-size: 15px; }
+
+  @media (max-width: 720px) {
+    .t2k-rung-one { text-align: left; }
+    .t2k-climb-base { grid-template-columns: 1fr; }
+  }
+
+  /* ============================================================
+     Getting started — 5-step stepper
+     ============================================================ */
+  .t2k-gs-grid {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    background: var(--bg);
+  }
+  .t2k-gs-step {
+    padding: 24px 22px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .t2k-gs-step:last-child { border-right: 0; }
+  .t2k-gs-head { display: flex; align-items: center; gap: 10px; }
+  .t2k-gs-num {
+    width: 24px; height: 24px; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--t2k-accent); color: #fff;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  }
+  .t2k-gs-title {
+    font-family: var(--font-sans); font-weight: 600; font-size: 15px;
+    letter-spacing: -0.014em;
+  }
+  .t2k-gs-cmd {
+    display: block;
+    font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+    color: var(--fg-muted); word-break: break-all;
+    background: var(--ds-background-200);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 9px 10px;
+  }
+  .t2k-gs-dollar { color: var(--fg-subtle); margin-right: 6px; }
+  .t2k-gs-note { font-size: 13px; line-height: 1.5; color: var(--fg-muted); margin: 0; }
+
+  @media (max-width: 900px) {
+    .t2k-gs-grid { grid-template-columns: 1fr 1fr; }
+    .t2k-gs-step:nth-child(2n) { border-right: 0; }
+    .t2k-gs-step { border-bottom: 1px solid var(--border); }
+    .t2k-gs-step:nth-last-child(-n+1) { border-bottom: 0; }
+  }
+  @media (max-width: 560px) {
+    .t2k-gs-grid { grid-template-columns: 1fr; }
+    .t2k-gs-step { border-right: 0; border-bottom: 1px solid var(--border); }
+    .t2k-gs-step:last-child { border-bottom: 0; }
+  }
+
+  /* ============================================================
+     LEGACY SHIMS — classes used by pre-redesign components.
+     Remove each once its consumers are ported (Phase 1: apps/web,
+     Phase 2: apps/gateway of the family design rollout).
+     ============================================================ */
+
+  /* Border-strengthen — interactive cards. */
+  .t2k-card-hover {
+    transition: border-color var(--dur-fast) var(--ease-out);
+    cursor: pointer;
+  }
+  .t2k-card-hover:hover { border-color: var(--ds-gray-alpha-500); }
+
+  /* Surface-lift — rows in lists. */
+  .t2k-list-row {
+    transition: background-color var(--dur-fast) var(--ease-out);
+    cursor: pointer;
+  }
+  .t2k-list-row:hover { background-color: var(--ds-gray-alpha-100); }
+
+  /* Color-shift — inline links in body copy. */
+  .t2k-link {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--ds-gray-alpha-500);
+    text-underline-offset: 3px;
+    transition: color var(--dur-fast) var(--ease-out),
+                text-decoration-color var(--dur-fast) var(--ease-out);
+  }
+  .t2k-link:hover {
+    color: var(--t2k-accent);
+    text-decoration-color: var(--t2k-accent);
+  }
+
+  /* Code block line-height — Geist Mono wants 1.7–1.85. */
+  .t2k-code {
+    font-family: var(--font-mono);
+    line-height: 1.75;
+  }
+
+  /* GPU compositing for text-over-glow hero headlines. */
+  .t2k-hero-headline {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+}
