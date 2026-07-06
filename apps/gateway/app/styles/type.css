@@ -8,136 +8,142 @@
    next/font variables in its globals.css.
    ============================================================ */
 
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body {
-  font-family: var(--font-sans);
-  font-size: var(--fs-14);
-  line-height: var(--lh-14);
-  letter-spacing: var(--tracking-body);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  font-feature-settings: "ss03", "ss06", "cv11";
-}
+/* Everything here is ELEMENT-level base styling, so it lives in
+   @layer base — Tailwind utility classes (utilities layer, later in
+   the order) must be able to override these (nav/footer links etc.).
+   Unlayered element selectors would beat every utility. */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--fs-14);
+    line-height: var(--lh-14);
+    letter-spacing: var(--tracking-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss03", "ss06", "cv11";
+  }
 
-/* Semantic type classes ---------------------------------------------- */
-.h1, h1 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--fs-48);
-  line-height: 1.1;
-  letter-spacing: var(--tracking-display);
-  margin: 0;
-}
-.h2, h2 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--fs-32);
-  line-height: var(--lh-32);
-  letter-spacing: var(--tracking-display);
-  margin: 0;
-}
-.h3, h3 {
-  font-weight: 600;
-  font-size: var(--fs-24);
-  line-height: var(--lh-24);
-  letter-spacing: var(--tracking-heading);
-  margin: 0;
-}
-.h4, h4 {
-  font-weight: 600;
-  font-size: var(--fs-20);
-  line-height: var(--lh-20);
-  letter-spacing: var(--tracking-heading);
-  margin: 0;
-}
-.h5, h5 {
-  font-weight: 500;
-  font-size: var(--fs-16);
-  line-height: var(--lh-16);
-  margin: 0;
-}
-.eyebrow {
-  font-size: var(--fs-12);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--fg-muted);
-  font-weight: 500;
-}
-.p, p {
-  font-size: var(--fs-14);
-  line-height: 1.6;
-  color: var(--fg);
-  margin: 0;
-}
-.lead {
-  font-size: var(--fs-18);
-  line-height: var(--lh-18);
-  color: var(--fg-muted);
-  letter-spacing: var(--tracking-body);
-}
-.caption, small {
-  font-size: var(--fs-13);
-  line-height: var(--lh-13);
-  color: var(--fg-muted);
-}
-.label {
-  font-size: var(--fs-13);
-  line-height: var(--lh-13);
-  color: var(--fg-muted);
-  font-weight: 500;
-}
-.mono, code, kbd, pre, samp {
-  font-family: var(--font-mono);
-  font-size: 0.92em;
-  font-feature-settings: "ss05" 1;
-}
-code {
-  background: var(--ds-gray-200);
-  padding: 1px 5px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  color: var(--fg);
-}
-a {
-  color: var(--fg-link);
-  text-decoration: none;
-  transition: color var(--dur-base) var(--ease-out);
-}
-a:hover { color: var(--ds-blue-700); }
-kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  font-size: 11px;
-  background: var(--ds-gray-alpha-200);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--fg-muted);
-}
+  /* Semantic type classes ---------------------------------------------- */
+  .h1, h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--fs-48);
+    line-height: 1.1;
+    letter-spacing: var(--tracking-display);
+    margin: 0;
+  }
+  .h2, h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--fs-32);
+    line-height: var(--lh-32);
+    letter-spacing: var(--tracking-display);
+    margin: 0;
+  }
+  .h3, h3 {
+    font-weight: 600;
+    font-size: var(--fs-24);
+    line-height: var(--lh-24);
+    letter-spacing: var(--tracking-heading);
+    margin: 0;
+  }
+  .h4, h4 {
+    font-weight: 600;
+    font-size: var(--fs-20);
+    line-height: var(--lh-20);
+    letter-spacing: var(--tracking-heading);
+    margin: 0;
+  }
+  .h5, h5 {
+    font-weight: 500;
+    font-size: var(--fs-16);
+    line-height: var(--lh-16);
+    margin: 0;
+  }
+  .eyebrow {
+    font-size: var(--fs-12);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-caps);
+    color: var(--fg-muted);
+    font-weight: 500;
+  }
+  .p, p {
+    font-size: var(--fs-14);
+    line-height: 1.6;
+    color: var(--fg);
+    margin: 0;
+  }
+  .lead {
+    font-size: var(--fs-18);
+    line-height: var(--lh-18);
+    color: var(--fg-muted);
+    letter-spacing: var(--tracking-body);
+  }
+  .caption, small {
+    font-size: var(--fs-13);
+    line-height: var(--lh-13);
+    color: var(--fg-muted);
+  }
+  .label {
+    font-size: var(--fs-13);
+    line-height: var(--lh-13);
+    color: var(--fg-muted);
+    font-weight: 500;
+  }
+  .mono, code, kbd, pre, samp {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    font-feature-settings: "ss05" 1;
+  }
+  code {
+    background: var(--ds-gray-200);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--fg);
+  }
+  a {
+    color: var(--fg-link);
+    text-decoration: none;
+    transition: color var(--dur-base) var(--ease-out);
+  }
+  a:hover { color: var(--ds-blue-700); }
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    font-size: 11px;
+    background: var(--ds-gray-alpha-200);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--fg-muted);
+  }
 
-/* Display sizes for marketing/hero */
-.display-1 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(48px, 8vw, 96px);
-  line-height: 1.02;
-  letter-spacing: var(--tracking-display);
-}
-.display-2 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(32px, 5vw, 64px);
-  line-height: 1.05;
-  letter-spacing: var(--tracking-display);
-}
+  /* Display sizes for marketing/hero */
+  .display-1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(48px, 8vw, 96px);
+    line-height: 1.02;
+    letter-spacing: var(--tracking-display);
+  }
+  .display-2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(32px, 5vw, 64px);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+  }
 
-/* Utility focus ring */
-.focus-ring:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus);
+  /* Utility focus ring */
+  .focus-ring:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
 }
