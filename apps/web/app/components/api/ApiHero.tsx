@@ -49,7 +49,9 @@ export function ApiHero() {
           <span className="opacity-60">←</span> t2000.ai
         </Link>
 
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] lg:gap-14">
+        {/* Stacked (<lg): copy → terminal → CTAs, so the hero CLI stays in
+            view. Desktop (lg+): copy+CTAs left, terminal right — per design. */}
+        <div className="grid gap-y-9 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] lg:items-center lg:gap-x-14">
           <div>
             <div className="t2k-eyebrow mb-[22px]">
               {"// PRIVATE & CONFIDENTIAL API · api.t2000.ai"}
@@ -79,7 +81,14 @@ export function ApiHero() {
               verifiably <span style={{ color: "var(--fg)" }}>confidential</span>{" "}
               when it matters. Paid per token in USDC.
             </p>
-            <div className="mt-8 flex flex-wrap gap-2.5">
+          </div>
+
+          <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+            <ApiHeroTerminal />
+          </div>
+
+          <div className="lg:col-start-1">
+            <div className="flex flex-wrap gap-2.5">
               <a
                 href={`${DEVELOPERS_URL}/private-api`}
                 target="_blank"
@@ -114,7 +123,6 @@ export function ApiHero() {
               ))}
             </div>
           </div>
-          <ApiHeroTerminal />
         </div>
       </div>
     </section>

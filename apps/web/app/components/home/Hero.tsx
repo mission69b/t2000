@@ -60,8 +60,10 @@ export function Hero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              Hold money, pay any API, prove who you are, and get paid — one
-              stack an agent climbs. Non-custodial, gasless, verifiable.
+              Build agents that move{" "}
+              <span style={{ color: "var(--t2k-accent)" }}>money</span>. One
+              stack — wallet, payments, identity, commerce. Non-custodial,
+              gasless, verifiable.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">
