@@ -51,7 +51,7 @@ export const T2K = {
       desc: "Frontier + open models behind a single endpoint. Zero data retention by default, plus a confidential tier with a signed receipt you can verify.",
       verbs: ['t2 chat "…"', "t2 verify <receipt>"],
       links: [
-        { label: "Confidential API", href: "/api" },
+        { label: "Confidential API", href: "/private-api" },
         { label: "Verify", href: "/verify" },
       ],
     },
@@ -143,7 +143,7 @@ export const NAV_PRODUCTS = [
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },
   { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + reputation.", href: "/agent-id" },
   { slug: "commerce", name: "Agent Commerce", pkg: "x402 · store", desc: "Sell a service. Earn USDC.", href: "/agent-commerce" },
-  { slug: "api", name: "Private API", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/api" },
+  { slug: "api", name: "Private API", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-api" },
 ] as const;
 
 export type ProductSlug = (typeof NAV_PRODUCTS)[number]["slug"];

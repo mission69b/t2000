@@ -35,6 +35,13 @@ const nextConfig: NextConfig = {
         destination: "/agent-sdk",
         permanent: true,
       },
+      // Product page moved 2026-07-06 — /api reads like an API root and the
+      // app/api segment is conventionally route handlers, not a page.
+      {
+        source: "/api",
+        destination: "/private-api",
+        permanent: true,
+      },
     ];
   },
   async headers() {
