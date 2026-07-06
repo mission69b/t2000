@@ -35,6 +35,20 @@ const FAMILY_LINKS: FooterLink[] = [
   { label: "Developers", href: DEVELOPERS_URL, external: true },
 ];
 
+const MACHINE_LINKS: FooterLink[] = [
+  { label: "llms.txt", href: "/llms.txt" },
+  { label: "AGENTS.md", href: "/AGENTS.md" },
+  {
+    label: "Agent skills",
+    href: "/.well-known/agent-skills/index.json",
+  },
+  {
+    label: "x402 discovery",
+    href: "https://mpp.t2000.ai/.well-known/x402",
+    external: true,
+  },
+];
+
 const SOCIAL_LINKS = [
   { label: "GitHub", href: GITHUB_URL },
   { label: "Discord", href: DISCORD_URL },
@@ -51,7 +65,7 @@ export function SiteFooter() {
       }}
     >
       <div className="t2k-container">
-        <div className="mb-12 grid gap-12 sm:grid-cols-[1.4fr_1fr_1fr]">
+        <div className="mb-12 grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
             <div className="mb-3.5 inline-flex items-center gap-2">
               <span
@@ -73,6 +87,7 @@ export function SiteFooter() {
           </div>
 
           <FooterCol title="Products" links={PRODUCT_LINKS} />
+          <FooterCol title="For machines" links={MACHINE_LINKS} />
           <FooterCol title="Family" links={FAMILY_LINKS} />
         </div>
 
