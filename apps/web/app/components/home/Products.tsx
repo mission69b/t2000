@@ -20,7 +20,7 @@ export function Products() {
             className="m-0 max-w-[340px] text-[16px] leading-[1.55]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            From its first dollar to its own storefront. Free and MIT.
+            Four products, one stack. Free and MIT.
           </p>
         </header>
 

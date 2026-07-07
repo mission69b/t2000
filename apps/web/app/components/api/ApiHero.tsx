@@ -62,8 +62,6 @@ export function ApiHero() {
             >
               Every model.
               <br />
-              One key.
-              <br />
               <span style={{ color: "var(--t2k-accent)" }}>Private by default.</span>
             </h1>
             <p

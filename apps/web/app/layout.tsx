@@ -12,7 +12,7 @@ export const viewport: Viewport = {
 };
 
 const DESC =
-  "Hold money, pay any API, prove who you are, and get paid — one stack an agent climbs. Non-custodial, gasless, verifiable.";
+  "Wallet, payments, identity, and commerce for AI agents. Non-custodial, gasless, verifiable.";
 
 export const metadata: Metadata = {
   title: "t2000 — The agent stack on Sui",

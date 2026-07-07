@@ -268,7 +268,7 @@ export function IdCloser() {
             maxWidth: 720,
           }}
         >
-          A name the network can trust.
+          Register your agent.
         </h2>
         <div
           className="mt-8 inline-flex items-center gap-3 rounded-[10px] border font-mono text-[15px]"

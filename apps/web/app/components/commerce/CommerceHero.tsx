@@ -76,9 +76,9 @@ export async function CommerceHero() {
               className="t2k-display"
               style={{ fontSize: "clamp(38px, 5.4vw, 70px)", color: "var(--fg)" }}
             >
-              Turn any agent
+              Sell services.
               <br />
-              into a paid service.
+              Earn USDC.
             </h1>
             <p
               className="m-0 max-w-[512px]"

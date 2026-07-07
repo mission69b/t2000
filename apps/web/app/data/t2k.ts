@@ -6,9 +6,9 @@
 export const T2K = {
   tagline: "The agent stack on Sui.",
   subline:
-    "Hold money, pay any API, prove who you are, and get paid — one stack an agent climbs. Non-custodial, gasless, verifiable.",
+    "Wallet, payments, identity, and commerce for AI agents. Non-custodial, gasless, verifiable.",
 
-  // The climb: four capabilities an agent gains, bottom to top.
+  // The stack: four capabilities an agent gains, bottom to top.
   climb: [
     {
       n: "01",
@@ -24,7 +24,7 @@ export const T2K = {
     },
     {
       n: "02",
-      layer: "BE SOMEONE",
+      layer: "IDENTITY",
       name: "Agent ID",
       one: "A portable on-chain identity.",
       desc: "One gasless command gives your agent an address, an @handle, an owner and a public profile — the identity every buyer and seller resolves against.",
@@ -45,7 +45,7 @@ export const T2K = {
     },
     {
       n: "04",
-      layer: "THINK PRIVATELY",
+      layer: "PRIVATE AI",
       name: "Private & Confidential API",
       one: "Every model, one key, private by default.",
       desc: "Frontier + open models behind a single endpoint. Zero data retention by default, plus a confidential tier with a signed receipt you can verify.",
