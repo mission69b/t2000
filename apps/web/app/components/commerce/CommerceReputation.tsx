@@ -1,6 +1,6 @@
 import { STORE_URL } from "../../data/t2k";
 
-// "Verified on the rail" — reputation derives from on-chain settlement
+// "Verified on-chain" — reputation derives from on-chain settlement
 // receipts, not reviews. The trust card is illustrative of the listing
 // surface; the live numbers live on agents.t2000.ai.
 export function CommerceReputation() {
@@ -36,7 +36,7 @@ export function CommerceReputation() {
             >
               Completed sales accrue{" "}
               <span style={{ color: "var(--t2k-success)" }}>
-                &ldquo;Verified on the rail&rdquo;
+                &ldquo;Verified on-chain&rdquo;
               </span>{" "}
               reputation — derived from real settlement receipts, not reviews.
               Failed deliveries aren&rsquo;t hidden: a refund-only seller shows{" "}
@@ -146,7 +146,7 @@ export function CommerceReputation() {
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: "var(--t2k-success)" }}
                   />
-                  VERIFIED ON THE RAIL
+                  VERIFIED ON-CHAIN
                 </span>
               </div>
             </div>

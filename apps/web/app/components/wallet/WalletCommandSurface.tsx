@@ -33,7 +33,7 @@ const LANES: Lane[] = [
     n: "04",
     title: "Earn + hire",
     verbs: ["t2 task"],
-    desc: "Claim reward tasks the rail pays out, or post your own jobs to the community board.",
+    desc: "Claim reward tasks t2000 pays out, or post your own jobs to the community board.",
   },
   {
     n: "05",

@@ -50,7 +50,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 limit set --per-tx <USD>` · `--daily <USD>` | Spending caps in `~/.t2000/config.json` — **on by default** ($25/tx · $100/day, daily = cumulative); enforced on CLI **and** MCP writes. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
 | `t2 agent …` | The agent suite — onboard · register · handle · profile · service · deploy · earnings · topup · **pay** (buy a store listing). Documented on [Agent ID](/agent-id) + [Agent Commerce](/agent-commerce). |
 | `t2 agents [address]` | Browse the [agent store](https://agents.t2000.ai) from the terminal — priced listings with receipt-backed reputation (`--category`, `--limit`, `--json`); pass an address for the full listing. |
-| `t2 task …` | Earn + hire on the rail — `list` (reward tasks + community board) · `claim` (auto-verified rewards) · `post` / `submit` / `review` / `approve` / `close` (the [community task board](/commerce/tasks)). |
+| `t2 task …` | Earn + hire — `list` (reward tasks + community board) · `claim` (auto-verified rewards) · `post` / `submit` / `review` / `approve` / `close` (the [community task board](/commerce/tasks)). |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
 | `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
 | `t2 skills install [--target=cursor\|claude-code\|agents]` · `list` · `uninstall` | Install per-skill `SKILL.md` files locally (alternative to running the MCP server). |
@@ -142,7 +142,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_agent_pay` | write | Buy an agent-store service by seller address — escrowed, auto-refund on failed delivery. |
 | `t2000_tasks` | read | Live [reward tasks + the community task board](/commerce/tasks) in one view. Call before claiming or submitting. |
 | `t2000_task_claim` | earn | Claim a reward-task payout to the wallet (swap-proof / X-proof / automated retry). Receives USDC — never spends. |
-| `t2000_task_submit` | earn | Submit proof of completion to a board task; poster approval pays through the rail. Nothing is spent. |
+| `t2000_task_submit` | earn | Submit proof of completion to a board task; poster approval pays you from escrow. Nothing is spent. |
 | `t2000_agent_earnings` | read | The wallet's seller stats — sales, net USDC earned, unique buyers — from the on-chain settlement ledger. |
 | `t2000_chat` | read | Private inference on the [Private API](/private-api) (OpenAI-compatible). Needs `T2000_API_KEY` in the server env. |
 | `t2000_models` | read | List the Private API model catalog (id · privacy tier · pricing). |
@@ -155,7 +155,7 @@ Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 1
 
 - Wallet file is `0o600` — owner read/write only. stdio transport, keys never leave the machine.
 - Every write tool has a `dryRun: true` preview path.
-- The earn tools never spend: `t2000_task_claim` / `t2000_task_submit` receive payouts through the rail. Posting a board task (which escrows USDC and returns a one-time manage credential) stays on the CLI (`t2 task post`).
+- The earn tools never spend: `t2000_task_claim` / `t2000_task_submit` only receive payouts. Posting a board task (which escrows USDC and returns a one-time manage credential) stays on the CLI (`t2 task post`).
 - Setting / clearing spending caps requires CLI terminal access (the `t2000_limit` tool is read-only).
 
 ## Skills

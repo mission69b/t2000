@@ -1,9 +1,9 @@
 ---
 title: "Agent Payments"
-description: "Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless USDC over Sui."
+description: "Pay any API in USDC over x402. Every major AI + data API, no signup, no API keys — gasless USDC on Sui."
 ---
 
-**Agent Payments** is the x402 rail — the gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) serves paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.02 – $0.10` per LLM call. Pay `$2.00 – $3.00` per physical postcard.
+**Agent Payments** is x402 on Sui — the gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) serves paid HTTP APIs that AI agents can pay for autonomously with USDC on Sui. No signup, no API keys, no accounts. Pay `$0.02 – $0.10` per LLM call. Pay `$2.00 – $3.00` per physical postcard.
 
 Two surfaces use it:
 
@@ -32,7 +32,7 @@ USDC transfers go through `0x2::balance::send_funds` — **gasless** via the Sui
 
 ## Try it free — no wallet, no signup
 
-Explore the whole rail before funding anything. Discovery + live metrics are open endpoints — no wallet, no payment, no account:
+Explore the whole catalog before funding anything. Discovery + live metrics are open endpoints — no wallet, no payment, no account:
 
 ```bash
 npm install -g @t2000/cli
@@ -109,7 +109,7 @@ That's it. The x402 challenge is handled automatically; payment broadcasts to Su
 
 ## OpenAI-compatible inference
 
-Every chat provider on the rail speaks the **OpenAI Chat Completions shape** — same request body, same response JSON. One request format, many providers, all **$0.02/call**, no signup and no API keys:
+Every chat provider on the gateway speaks the **OpenAI Chat Completions shape** — same request body, same response JSON. One request format, many providers, all **$0.02/call**, no signup and no API keys:
 
 | Provider | Endpoint |
 |---|---|
@@ -124,7 +124,7 @@ Pass any model the provider serves — the request body is forwarded as-is. Open
 **Why it matters for agents.** Agents burn 5–30× the tokens a human chat does, so inference is the dominant cost. The cheap open tiers (DeepSeek, Groq, Together, Mistral) are a flat **$0.02/call**, account-less — switch providers by swapping the path, keep the exact same request body. Pay per call in USDC; no minimums, no subscription, no key to rotate.
 
 <Note>
-  **Private inference on the rail.** t2000's own [Private API](/private-api) is a first-party x402 service too — `t2 pay https://x402.t2000.ai/t2000/v1/chat/completions` runs **open + confidential (GPU-TEE) models** with no key, no account. Same pay-per-call flow; private by default.
+  **Private inference, no key.** t2000's own [Private API](/private-api) is a first-party x402 service too — `t2 pay https://x402.t2000.ai/t2000/v1/chat/completions` runs **open + confidential (GPU-TEE) models** with no key, no account. Same pay-per-call flow; private by default.
 </Note>
 
 ### Calling it from code
@@ -265,7 +265,7 @@ Full SDK reference: [Agent SDK](/agent-sdk).
 ## Architecture
 
 - **Gateway** — Next.js 16 on Vercel at [`mpp.t2000.ai`](https://mpp.t2000.ai). Proxies upstream APIs behind x402 (HTTP 402) payment challenges.
-- **Protocol** — the x402 rail (HTTP 402 payments on Sui), implemented via [`mppx`](https://www.npmjs.com/package/mppx) + [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp).
+- **Protocol** — x402 (HTTP 402 payments on Sui), implemented via [`mppx`](https://www.npmjs.com/package/mppx) + [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp).
 - **Network** — Sui mainnet. USDC = `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`.
 - **Gasless** — USDC transfers via `0x2::balance::send_funds` (Sui foundation sponsor).
 - **Logging** — Prisma + NeonDB. Every payment is logged with its tx digest; browse at [`mpp.t2000.ai/activity`](https://mpp.t2000.ai/activity). Agent-store purchases (Agent Commerce settlements) stream on the same feed as **"agent store"** rows.

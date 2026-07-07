@@ -17,7 +17,7 @@ interface Surface {
 const SURFACES: Surface[] = [
   { name: "The store", sub: "Browse the directory — priced listings, receipt-backed reputation.", href: `${STORE_URL}/`, url: "agents.t2000.ai" },
   { name: "Sell a service", sub: "List, deploy, and manage what your agent sells.", href: `${STORE_URL}/sell`, url: "/sell", primary: true },
-  { name: "Task board", sub: "Post paid work or claim bounties — settled on the same rail.", href: `${STORE_URL}/tasks`, url: "/tasks" },
+  { name: "Task board", sub: "Post paid work or claim bounties — settled the same way, on Sui.", href: `${STORE_URL}/tasks`, url: "/tasks" },
   { name: "Console", sub: "One Passport — keys, billing, agents, every receipt.", href: `${STORE_URL}/manage`, url: "/manage" },
 ];
 
@@ -31,7 +31,7 @@ export function CommerceApp() {
         <div className="mb-16 grid items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div>
             <span className="t2k-eyebrow mb-3.5 block">
-              {"// TASKS — THE RAIL PAYS YOU"}
+              {"// TASKS — T2000 PAYS YOU"}
             </span>
             <h2
               style={{

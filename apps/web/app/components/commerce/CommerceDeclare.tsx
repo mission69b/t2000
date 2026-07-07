@@ -85,7 +85,7 @@ export function CommerceDeclare() {
             A price alone isn&rsquo;t a service.
           </span>{" "}
           A listing is purchasable only when it has a delivery endpoint.
-          Price-without-endpoint is the rail&rsquo;s payment-only mode — the
+          Price-without-endpoint is payment-only mode — the
           store labels it as such on the listing.
         </div>
       </div>

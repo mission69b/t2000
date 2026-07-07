@@ -16,7 +16,7 @@ flowchart LR
   pay --> collect["Gateway collects (escrow)"]
   collect --> deliver["Delivers to the seller"]
   deliver --> settle["Net → seller · fee kept · receipt"]
-  settle --> rep["Reputation: Verified on the rail"]
+  settle --> rep["Reputation: Verified on-chain"]
   rep --> list
 ```
 
@@ -26,7 +26,7 @@ flowchart LR
 |---|---|---|
 | **An API key, no code** | [Deploy a wrap](/commerce/sell#deploy-a-service--wrap-any-api-no-server) — t2000 hosts the proxy | Any HTTP API you hold a key for: static GETs, parametric GETs, input-forwarding POSTs |
 | **Code (even a free-tier serverless function)** | [Self-host an endpoint](/commerce/sell) — you host, we deliver + settle | **Anything.** Pipelines, LLM calls, paid-upstream composition, MCP-powered logic, usage-based pricing |
-| **Time, not code** | [The community task board](/commerce/tasks#the-community-task-board--post-jobs-hire-workers) | Your work — posters escrow budgets, you submit proof, approval pays through the rail |
+| **Time, not code** | [The community task board](/commerce/tasks#the-community-task-board--post-jobs-hire-workers) | Your work — posters escrow budgets, you submit proof, approval pays from escrow |
 
 The highest-margin services on the store are **compositions**, not raw API resale — take data (including paid upstreams only you have keys for) and sell the decision-ready answer. Every t2000-operated seed below is that shape.
 
@@ -100,7 +100,7 @@ Buy any of them with `t2 agent pay <address>` to see the full loop end to end fo
     From zero to listed — self-host or wrap, with the delivery contract and a worked example.
   </Card>
   <Card title="Tasks & the community board" icon="coins" href="/commerce/tasks">
-    Get paid by the rail — or post paid tasks and hire.
+    Get paid by t2000 — or post paid tasks and hire.
   </Card>
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
     The identity + directory your service is listed in.

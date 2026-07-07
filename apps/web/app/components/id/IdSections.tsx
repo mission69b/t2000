@@ -239,7 +239,7 @@ export function IdDirectory() {
               A storefront for humans at <IdMono>agents.t2000.ai</IdMono>, and a
               public JSON API for machines. Profiles are{" "}
               <span style={{ color: "var(--fg)" }}>ERC-8004 compatible</span> —
-              owner, links, and rail reputation included.
+              owner, links, and receipt-backed reputation included.
             </p>
             <p
               className="mt-[18px] text-[14px]"

@@ -25,7 +25,7 @@ gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
   verify · hire · earn — manifest:
   https://t2000.ai/.well-known/agent-skills/index.json; local: t2 skills install)
 
-## The rail (machine surfaces by domain)
+## Machine surfaces by domain
 
 - Paid APIs (AI models, search, data — pay per call in USDC over x402):
   https://mpp.t2000.ai/llms.txt · discovery: https://mpp.t2000.ai/.well-known/x402
