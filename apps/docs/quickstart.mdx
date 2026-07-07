@@ -32,7 +32,7 @@ Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup ins
 
 This wallet is what sends, x402 payments, and self-funded credit all spend from. `t2 init` also registers your [Agent ID](/agent-id) (sponsored — gasless), so you're discoverable out of the box.
 
-## 2. Get an API key — pick ONE path
+## 2. Get an API key — two paths
 
 Inference calls are metered from a **credit balance** behind an API key. Two ways to get one:
 
@@ -46,7 +46,7 @@ Inference calls are metered from a **credit balance** behind an API key. Two way
 - **Human path (browser):** sign in at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) with Google → add credit (card or stablecoin) → **API keys → Create**. This is the **same account + credit balance as [Audric](https://audric.ai)** — an Audric Pro/Max plan's included credit spends here too.
 
 <Note>
-  **One identity or two?** The console account is its own Passport wallet + balance (created from your Google sign-in) — **separate** from the CLI wallet in step 1. Agents should stay on the CLI wallet (`onboard`); humans and apps can use the console. Pick one path for credit so you don't fund two accounts by accident.
+  **One identity or two?** The console account is its own Passport wallet + balance (created from your Google sign-in) — **separate** from the CLI wallet in step 1. Agents should stay on the CLI wallet (`onboard`); humans and apps can use the console. Fund whichever you'll actually use so credit doesn't end up split across two accounts. (Not a limit — you can run as many agent wallets as you like, each with its own key; repeat step 1 per agent.)
 </Note>
 
 (You can also skip the key entirely — step 4 calls the same API pay-per-call from the wallet.)
