@@ -105,8 +105,8 @@ function WalletCardCLI() {
         alice.sui{"\n"}
         <span style={{ color: "var(--t2k-success)" }}>✓</span> Sent · gasless ·
         0.41s{"\n\n"}
-        <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 swap 50 SUI{" "}
-        <span style={{ color: "var(--fg-subtle)" }}>→</span> USDC{"\n"}
+        <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 swap 50 SUI
+        USDC{"\n"}
         <span style={{ color: "var(--t2k-success)" }}>✓</span> Swapped on Cetus
         · 200ms{"\n\n"}
         <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 pay

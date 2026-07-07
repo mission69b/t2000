@@ -144,6 +144,7 @@ export const NAV_PRODUCTS = [
   { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + reputation.", href: "/agent-id" },
   { slug: "commerce", name: "Agent Commerce", pkg: "x402 · store", desc: "Sell a service. Earn USDC.", href: "/agent-commerce" },
   { slug: "api", name: "Private API", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-api" },
+  { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "/verify" },
 ] as const;
 
 export type ProductSlug = (typeof NAV_PRODUCTS)[number]["slug"];

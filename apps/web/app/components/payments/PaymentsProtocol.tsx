@@ -46,7 +46,7 @@ const STEPS: Step[] = [
     accent: "blue",
     body: (
       <>
-        <span>balance::send_funds</span>
+        <span>splitCoins → transfer</span>
         {"\n"}
         <span style={{ color: "var(--fg-subtle)" }}>↳ </span>
         <span>Payment: 0x7a3b…</span>
@@ -74,7 +74,7 @@ const STEPS: Step[] = [
 const SPEC = [
   { label: "PROTOCOL", value: "x402", sub: "on Sui" },
   { label: "TOKEN", value: "USDC", sub: "Sui mainnet" },
-  { label: "MOVE CALL", value: "0x2::balance::send_funds", sub: "Gasless sponsor" },
+  { label: "SPONSORED PTB", value: "splitCoins → transferObjects", sub: "gas paid by the sponsor" },
   { label: "SETTLE", value: "~400ms", sub: "Sui finality" },
 ];
 

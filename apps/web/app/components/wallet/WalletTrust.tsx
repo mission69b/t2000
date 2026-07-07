@@ -7,8 +7,8 @@ interface Pillar {
 const PILLARS: Pillar[] = [
   {
     title: "Gasless USDC.",
-    desc: "USDC and USDsui transfers cost nothing to send. SUI and Cetus swaps still need ~0.05 SUI for gas.",
-    artifact: { tag: "MOVE CALL", value: "0x2::balance::send_funds" },
+    desc: "USDC and USDsui transfers cost nothing to send — a sponsor pays the gas. SUI and Cetus swaps still need ~0.05 SUI.",
+    artifact: { tag: "SPONSORED PTB", value: "splitCoins → transferObjects · gas: sponsor" },
   },
   {
     title: "Non-custodial.",
@@ -16,8 +16,8 @@ const PILLARS: Pillar[] = [
     artifact: { tag: "FILE", value: "~/.t2000/wallet.key · 0o600" },
   },
   {
-    title: "Opt-in limits.",
-    desc: "Spending caps are off by default. Set per-tx and daily USD caps with a single command.",
+    title: "Limits on by default.",
+    desc: "Fresh wallets ship capped — $25 per transaction, $100 per day. Raise, lower, or clear them with one command.",
     artifact: { tag: "CLI", value: "t2 limit set --per-tx 50 --daily 200" },
   },
 ];

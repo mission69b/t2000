@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nav } from "../components/site/Nav";
+import { VerifierCard } from "../components/verify/VerifierCard";
 import { SiteFooter } from "../components/site/SiteFooter";
 import { ProductStrip } from "../components/site/ProductStrip";
 import { DEVELOPERS_URL, VERIFY_URL } from "../data/t2k";
@@ -54,7 +55,7 @@ const CHECKS = [
 export default function VerifyExplainerPage() {
   return (
     <>
-      <Nav />
+      <Nav currentPage="verify" />
       <main>
         <section
           className="relative overflow-hidden border-b"
@@ -74,64 +75,63 @@ export default function VerifyExplainerPage() {
             }}
           />
           <div className="t2k-container relative">
-            <div className="t2k-eyebrow mb-[22px]">
-              {"// VERIFY · verify.t2000.ai"}
-            </div>
-            <h1
-              className="t2k-display max-w-[820px]"
-              style={{ fontSize: "clamp(40px, 5.6vw, 74px)", color: "var(--fg)" }}
-            >
-              Don&rsquo;t trust it.
-              <br />
-              <span style={{ color: "var(--t2k-success)" }}>Check it.</span>
-            </h1>
-            <p
-              className="m-0 max-w-[560px]"
-              style={{
-                marginTop: 26,
-                fontSize: 18,
-                lineHeight: 1.55,
-                color: "var(--fg-muted)",
-                letterSpacing: "-0.014em",
-              }}
-            >
-              Every confidential response from the{" "}
-              <span style={{ color: "var(--fg)" }}>Private &amp; Confidential API</span>{" "}
-              carries a signed receipt anchored on Sui. Paste a receipt id into
-              the public explorer — or run the full check, including the Intel
-              TDX quote, on your own machine.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-2.5">
-              <a
-                href={VERIFY_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="t2k-btn t2k-btn--blue t2k-btn--lg"
-              >
-                Open verify.t2000.ai&nbsp;↗
-              </a>
-              <a
-                href={`${DEVELOPERS_URL}/confidential-ai/verify`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="t2k-btn t2k-btn--ghost t2k-btn--lg"
-              >
-                How verification works&nbsp;↗
-              </a>
-            </div>
-            <div
-              className="mt-7 inline-flex items-center gap-3 rounded-[10px] border font-mono text-[14px]"
-              style={{
-                padding: "12px 18px",
-                background: "var(--ds-background-200)",
-                borderColor: "var(--border)",
-              }}
-            >
-              <span style={{ color: "var(--fg-subtle)" }}>$</span>
-              <span style={{ color: "var(--fg)" }}>t2 verify rcpt-…</span>
-              <span className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>
-                no key required · fails closed
-              </span>
+            <div className="grid items-center gap-y-9 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] lg:gap-x-14">
+              <div>
+                <div className="t2k-eyebrow mb-[22px]">
+                  {"// VERIFY · verify.t2000.ai"}
+                </div>
+                <h1
+                  className="t2k-display"
+                  style={{ fontSize: "clamp(40px, 5.6vw, 74px)", color: "var(--fg)" }}
+                >
+                  Don&rsquo;t trust it.
+                  <br />
+                  <span style={{ color: "var(--t2k-success)" }}>Check it.</span>
+                </h1>
+                <p
+                  className="m-0 max-w-[560px]"
+                  style={{
+                    marginTop: 26,
+                    fontSize: 18,
+                    lineHeight: 1.55,
+                    color: "var(--fg-muted)",
+                    letterSpacing: "-0.014em",
+                  }}
+                >
+                  Every confidential response from the{" "}
+                  <span style={{ color: "var(--fg)" }}>
+                    Private &amp; Confidential API
+                  </span>{" "}
+                  carries a signed receipt anchored on Sui. Paste a receipt id
+                  — or run the full check, including the Intel TDX quote, on
+                  your own machine.
+                </p>
+              </div>
+
+              <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+                <VerifierCard />
+              </div>
+
+              <div className="lg:col-start-1">
+                <div className="flex flex-wrap gap-2.5">
+                  <a
+                    href={VERIFY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="t2k-btn t2k-btn--blue t2k-btn--lg"
+                  >
+                    Open verify.t2000.ai&nbsp;↗
+                  </a>
+                  <a
+                    href={`${DEVELOPERS_URL}/confidential-ai/verify`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="t2k-btn t2k-btn--ghost t2k-btn--lg"
+                  >
+                    How verification works&nbsp;↗
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -181,7 +181,7 @@ export default function VerifyExplainerPage() {
           </div>
         </section>
 
-        <ProductStrip />
+        <ProductStrip currentPage="verify" />
       </main>
       <SiteFooter />
     </>

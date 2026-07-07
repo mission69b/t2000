@@ -63,18 +63,15 @@ const EXAMPLES: ExampleCardProps[] = [
   {
     num: "04",
     tag: "WALLET",
-    title: "Get paid",
-    desc: "A scannable USDC payment request.",
+    title: "Check the balance",
+    desc: "Every holding — stables first, USD-denominated.",
     code: [
-      { p: "const", c: " req = " },
-      { p: "await", c: " t.receive({\n" },
-      { c: "  amount: " },
-      { n: "25" },
-      { c: ",\n  asset: " },
-      { s: "'USDC'" },
-      { c: ",\n});" },
+      { p: "const", c: " b = " },
+      { p: "await", c: " t.balance();\n" },
+      { c: "b.stables.USDC;  " },
+      { co: "// 547.2" },
     ],
-    note: "✓ sui:pay?… · scannable URI",
+    note: "✓ USDC 547.20 · USDsui 50.00",
   },
 ];
 
