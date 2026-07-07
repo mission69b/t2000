@@ -145,7 +145,9 @@ Subcommands:
 
   group
     .command('onboard')
-    .description('Fund credit (gasless USDC/USDsui) + mint an API key for this wallet.')
+    .description(
+      'Buy-side setup: fund credit (gasless USDC/USDsui) + mint a Private API key. Registering an Agent ID is free and separate — `t2 init` / `t2 agent register`.',
+    )
     .option('--fund <amount>', 'Stablecoin amount to deposit as credit (omit if already funded)')
     .option('--asset <asset>', 'USDC (default) or USDsui', 'USDC')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
