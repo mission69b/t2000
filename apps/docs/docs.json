@@ -9,8 +9,8 @@
     "dark": "/logo.png"
   },
   "colors": {
-    "primary": "#0072F3",
-    "light": "#52A8FF",
+    "primary": "#0072F5",
+    "light": "#0072F5",
     "dark": "#0062D1"
   },
   "background": {

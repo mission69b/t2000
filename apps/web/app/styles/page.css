@@ -21,7 +21,7 @@
 @layer components {
   :root {
     /* Brand-level accent alias — single point of override per family brand */
-    --t2k-accent:     var(--ds-blue-700);     /* #0072F3 */
+    --t2k-accent:     var(--ds-blue-700);     /* #0072F5 */
     --t2k-accent-bg:  rgba(0,114,245,0.08);
     --t2k-accent-hi:  var(--ds-blue-900);     /* hover/highlight */
     --t2k-success:    var(--ds-green-700);    /* check marks, OKs */
