@@ -67,7 +67,7 @@ export type TaskDef = {
 export const TASKS: TaskDef[] = [
   { id: 'first-sale', rewardNetUsd: 0.1, budgetUsd: 300, kind: 'ledger' },
   { id: 'agent-hire', rewardNetUsd: 0.05, budgetUsd: 150, kind: 'ledger' },
-  { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 60, kind: 'ledger', paused: true },
+  { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 60, kind: 'ledger' },
   { id: 'buy-manifest', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
   { id: 'buy-sui', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
   { id: 'verify-confidential', rewardNetUsd: 0.25, budgetUsd: 30, kind: 'x-proof' },
@@ -77,7 +77,7 @@ export const TASKS: TaskDef[] = [
   // S.626.1 growth-loop task: buy any shelf read, post about it — verified
   // against BOTH the on-chain receipt ledger (you actually bought it) and
   // the public post (ledger + x-proof hybrid).
-  { id: 'share-a-read', rewardNetUsd: 0.1, budgetUsd: 30, kind: 'x-proof', paused: true },
+  { id: 'share-a-read', rewardNetUsd: 0.1, budgetUsd: 30, kind: 'x-proof' },
 ];
 
 // Velocity throttle — the farm-spike tripwire at 1000-capacity tasks: at most
@@ -95,9 +95,13 @@ export function getTask(id: string): TaskDef | undefined {
   return task?.paused ? undefined : task;
 }
 
-// Card Forge — the seller whose receipts qualify `agent-card`.
+// Card Forge — retired seed address (kept in exclusions; receipts history).
 export const CARD_FORGE_ADDRESS =
   '0x7ab3d60d17f0eb9084142ca9a516b6ee5483d0cda5608f85df93c3343abe23d6';
+// Funkii AI (#2) — the consolidated provider agent (Store v2 Phase 2). The
+// `agent-card` task now qualifies on its `agent-card` catalog SKU.
+export const FUNKII_AI_ADDRESS =
+  '0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf';
 
 // Wallets that can never EARN a task reward: the runner itself, the treasury,
 // and the t2000-operated seed agents (we don't pay ourselves for growth).
@@ -269,12 +273,21 @@ async function qualifiesLedger(task: TaskId, wallet: string): Promise<boolean> {
     return Boolean(row);
   }
   if (task === 'agent-card') {
+    // Phase 2 (S.666): Card Forge became Funkii AI's `agent-card` SKU — the
+    // receipt records the slug buy URL in `resource`. Legacy Card Forge
+    // receipts (pre-consolidation) still qualify.
     const row = await prisma.commerceReceipt.findFirst({
       where: {
         buyer: wallet,
-        seller: CARD_FORGE_ADDRESS,
         status: 'settled',
         createdAt: { gte: TASKS_LAUNCH_AT },
+        OR: [
+          {
+            seller: FUNKII_AI_ADDRESS,
+            resource: { endsWith: '/agent-card' },
+          },
+          { seller: CARD_FORGE_ADDRESS },
+        ],
       },
       select: { id: true },
     });
