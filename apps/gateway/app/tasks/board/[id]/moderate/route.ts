@@ -72,7 +72,7 @@ export async function POST(
   if (!task) {
     return Response.json({ error: 'No such task.' }, { status: 404 });
   }
-  // approve: pending_review only. reject: pending_review OR open — the
+  // approve: pending_review only. reject: pending_review OR live — the
   // S.677 takedown path for spam that slips the LLM gate (founder-keyed,
   // refunds the poster's remaining escrow through the close machinery).
   if (body.action === 'approve') {
@@ -83,7 +83,7 @@ export async function POST(
     return Response.json({ ok: true, status: updated.status });
   }
   if (body.action === 'reject') {
-    if (task.status !== 'pending_review' && task.status !== 'open') {
+    if (task.status !== 'pending_review' && task.status !== 'live') {
       return Response.json({ error: `Task is ${task.status} — nothing to take down.` }, { status: 409 });
     }
     const updated = await closeTask(task, 'rejected');
