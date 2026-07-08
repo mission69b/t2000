@@ -4,21 +4,23 @@
   {
    "slug": "sui-price",
    "title": "SUI spot price",
-   "description": "Live SUI-USD spot price from Coinbase \u2014 one call, one JSON. The first service ever sold on the t2000 rail. What you get: { amount, base, currency }. Try it: no input needed.",
+   "description": "The live SUI-USD spot price \u2014 one call, one clean JSON ({ amount, base, currency }). The first service ever sold on the t2000 rail. Ideal for a quick price check mid-task. No input needed. Source: Coinbase.",
    "priceUsdc": "0.02",
    "active": true
   },
   {
    "slug": "hn-front-page",
    "title": "HN Front Page",
-   "description": "The current Hacker News front page \u2014 12 stories with titles, links, points, and comment counts, as compact JSON. The fastest tech-signal read an agent can buy. Try it: no input needed. Source: Hacker News (official Algolia API).",
+   "description": "The Hacker News front page as 12 clean stories \u2014 title, url, points, comments \u2014 no scraping, no noise. The fastest tech-signal read an agent can buy. Ideal for daily briefs and tech monitoring. No input needed. Source: Hacker News (official Algolia API).",
    "priceUsdc": "0.02",
-   "active": true
+   "active": true,
+   "endpoint": "https://mpp.t2000.ai/sellers/hn-front-page",
+   "method": "POST"
   },
   {
    "slug": "market-regime",
    "title": "Market Regime",
-   "description": "Is crypto trending, chopping, or under stress? One call, one classified regime read.\n\nWhat you get: a deterministic regime label (trend_expansion / range_chop / stress / transition) from BTC+ETH trend structure, realized-volatility state, drawdown vs the 90d high, and top-50 breadth \u2014 every threshold disclosed, every missing lane an explicit gap.\n\nTry it: before shifting portfolio risk. No input needed.\n\nSource: Binance public data \u00b7 breadth by CoinGecko.",
+   "description": "Is crypto trending, chopping, or under stress? One classified regime read \u2014 BTC/ETH trend + volatility + breadth tallied into a single labeled state with the thresholds shown. Ideal before sizing any position. No input needed. Source: Binance public market data.",
    "priceUsdc": "0.05",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/market-regime",
@@ -28,9 +30,9 @@
   {
    "slug": "funding-regime",
    "title": "Funding Regime",
-   "description": "Has the funding regime flipped for this perp?\n\nWhat you get: current funding vs the trailing 3-day and 7-day funding history, flip detection (positive\u2192negative and back), persistence, and a carry-context read (who pays whom, annualized).\n\nTry it: regime flips precede narrative flips. Input: {\"symbol\":\"ETH\"}.\n\nSource: OKX public futures data.",
+   "description": "Has the funding regime flipped for a perp? Current + trailing funding classified into a regime (crowded-long, crowded-short, neutral) with flip detection. Designed for perp traders timing entries. Provide: 1. symbol (e.g. BTC \u2014 defaults to BTC). Source: OKX public swaps data.",
    "priceUsdc": "0.03",
-   "input": "symbol",
+   "input": "Provide: {\"symbol\":\"BTC\"} \u2014 any major perp symbol; defaults to BTC.",
    "endpoint": "https://mpp.t2000.ai/sellers/funding-regime",
    "method": "POST",
    "active": true
@@ -38,7 +40,7 @@
   {
    "slug": "macro-liquidity",
    "title": "Macro Liquidity",
-   "description": "Is dollar liquidity helping or hurting crypto right now? One call, one classified read.\n\nWhat you get: net-liquidity direction over the last 4 weeks (Fed balance sheet \u2212 Treasury General Account \u2212 reverse repo, all from FRED), each lane's level + 28-day delta, a supportive / neutral / restrictive classification with disclosed thresholds, and explicit data gaps when a series is unavailable \u2014 never a synthesized number.\n\nTry it: a morning macro check before sizing risk, or con\u2026",
+   "description": "Is dollar liquidity helping or hurting crypto right now? Net liquidity (Fed securities holdings \u2212 RRP \u2212 TGA) computed from primary sources, classified supportive/neutral/restrictive with the 4-week trend. Ideal for the macro backdrop behind any trade. No input needed. Sources: NY Fed + Treasury FiscalData (official APIs).",
    "priceUsdc": "0.05",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/macro-liquidity",
@@ -48,9 +50,9 @@
   {
    "slug": "trend-align",
    "title": "Trend Align",
-   "description": "Is a token bullish, bearish, or conflicted across timeframes? One call per symbol.\n\nWhat you get: per-timeframe trend state for 1h / 4h / 1d (close vs EMA20 vs EMA50), an overall alignment verdict (aligned / majority / mixed), and the 20-day swing high/low framing the read. Unsupported symbols return an honest error (auto-refund), never a guess.\n\nTry it: sanity-check a setup before deeper research, or compare alignment across your watchlist one call at a time. Input: { \"symb\u2026",
+   "description": "Is a token bullish, bearish, or conflicted across timeframes? 1h/4h/1d trend alignment for any major symbol, classified with the disagreements shown. Designed for agents that need one answer, not three charts. Provide: 1. symbol (defaults to BTC). Source: Binance public klines.",
    "priceUsdc": "0.03",
-   "input": null,
+   "input": "Provide: {\"symbol\":\"SUI\"} \u2014 any major spot symbol; defaults to BTC.",
    "endpoint": "https://mpp.t2000.ai/sellers/trend-align",
    "method": "POST",
    "active": true
@@ -58,9 +60,9 @@
   {
    "slug": "perp-pressure",
    "title": "Perp Pressure",
-   "description": "Is this perp market crowded \u2014 and which side gets squeezed?\n\nWhat you get: a deterministic pressure read (crowded_long / crowded_short / squeeze_risk_long / squeeze_risk_short / balanced) from funding, 48h open-interest trend, taker-flow bias, and top-trader positioning \u2014 every threshold disclosed, every missing lane an explicit gap.\n\nTry it: before entering or fading a move. Input: {\"symbol\":\"ETH\"} (default BTC).\n\nSource: Binance futures public data.",
+   "description": "Is this perp market crowded \u2014 and which side gets squeezed? Open interest, funding, and long/short positioning tallied into a crowding read with the squeeze direction. Designed for perp traders sizing risk. Provide: 1. symbol (defaults to BTC). Source: OKX public swaps data.",
    "priceUsdc": "0.05",
-   "input": null,
+   "input": "Provide: {\"symbol\":\"ETH\"} \u2014 any major perp symbol; defaults to BTC.",
    "endpoint": "https://mpp.t2000.ai/sellers/perp-pressure",
    "method": "POST",
    "active": true
@@ -68,7 +70,7 @@
   {
    "slug": "stable-flows",
    "title": "Stable Flows",
-   "description": "Is money entering crypto or leaving it?\n\nWhat you get: stablecoin supply flows \u2014 aggregate 7d/30d deltas, the top-5 stables with per-asset flows, peg deviations with a stress flag, and an expanding / flat / contracting read. Supply growth \u2248 cash on the sidelines.\n\nTry it: as the liquidity lane of a market briefing. No input needed.\n\nSource: DefiLlama open stablecoins dataset.",
+   "description": "Is money entering crypto or leaving it? Aggregate USD-stablecoin supply expansion/contraction over 7 and 30 days, classified inflow/outflow/flat. The cleanest capital-flows signal on the shelf. No input needed. Source: DefiLlama open dataset.",
    "priceUsdc": "0.05",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/stable-flows",
@@ -78,7 +80,7 @@
   {
    "slug": "market-mood",
    "title": "Market Mood",
-   "description": "Is the crowd fearful or greedy \u2014 and does the tape agree?\n\nWhat you get: CMC Fear & Greed (now + 7d/30d trend), total market cap direction, BTC dominance, and altcoin share \u2192 one mood classification (fearful_capitulation / fearful_stabilizing / neutral_chop / greedy_expansion / euphoria_risk) with disclosed thresholds and explicit data gaps.\n\nTry it: as the sentiment lane of a market briefing. No input needed.\n\nSource: market data provided by CoinMarketCap.",
+   "description": "Is the crowd fearful or greedy \u2014 and does the tape agree? The Fear & Greed index with 7d/30d deltas cross-checked against market cap and BTC dominance, classified with divergences flagged. Ideal for sentiment context before acting. No input needed. Source: CoinMarketCap (attributed).",
    "priceUsdc": "0.03",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/market-mood",
@@ -88,7 +90,7 @@
   {
    "slug": "top-movers",
    "title": "Top Movers",
-   "description": "What actually moved today \u2014 and was it real volume?\n\nWhat you get: top gainers and losers over 24h/7d among ranked coins, each with volume confirmation (24h volume vs market cap) so thin pumps are flagged, plus a one-line breadth read.\n\nTry it: the fastest 'what happened today' scan. No input needed.\n\nSource: market data provided by CoinMarketCap.",
+   "description": "What actually moved today \u2014 and was it real volume? Top gainers and losers among ranked coins with volume confirmation (24h volume vs market cap) so thin pumps are flagged, plus a one-line breadth read. The fastest 'what happened' scan. No input needed. Source: CoinMarketCap (attributed).",
    "priceUsdc": "0.03",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/top-movers",
@@ -98,7 +100,7 @@
   {
    "slug": "sector-radar",
    "title": "Sector Radar",
-   "description": "Which crypto sectors are leading \u2014 and is it rotation or noise?\n\nWhat you get: $1B+ sectors ranked by 24h change (leaders + laggards), breadth across qualifying sectors, BTC dominance context, and a rotation read (risk_on_rotation / btc_led / defensive / mixed) with disclosed thresholds.\n\nTry it: before picking single names \u2014 sector context first. No input needed.\n\nSource: sector data provided by CoinGecko.",
+   "description": "Which crypto sectors are leading \u2014 and is it rotation or noise? $1B+ sectors ranked by 24h move with leaders/laggards named and a rotation read. Designed for allocators watching where money rotates. No input needed. Source: CoinGecko categories (attributed).",
    "priceUsdc": "0.05",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/sector-radar",
@@ -108,9 +110,9 @@
   {
    "slug": "book-depth",
    "title": "Book Depth",
-   "description": "Where does the resting liquidity actually sit?\n\nWhat you get: bid vs ask depth in USD within \u00b12% of mid, the largest walls on each side with their prices, spread in bps, and a pressure read (bid_support / ask_overhang / balanced_two_way) from a live orderbook snapshot \u2014 snapshot semantics disclosed.\n\nTry it: before sizing an entry or exit. Input: {\"symbol\":\"SUI\"} (default BTC).\n\nSource: Binance public market data.",
+   "description": "Where does the resting liquidity actually sit? Bid/ask depth bands around mid for any major spot pair, with imbalance classified. Designed for execution decisions \u2014 where a market order actually lands. Provide: 1. symbol (defaults to BTC). Source: Binance public order book.",
    "priceUsdc": "0.03",
-   "input": null,
+   "input": "Provide: {\"symbol\":\"SOL\"} \u2014 any major spot symbol; defaults to BTC.",
    "endpoint": "https://mpp.t2000.ai/sellers/book-depth",
    "method": "POST",
    "active": true
@@ -118,9 +120,9 @@
   {
    "slug": "liquidation-pulse",
    "title": "Liquidation Pulse",
-   "description": "Who just got liquidated \u2014 longs or shorts?\n\nWhat you get: recent liquidation prints for one perp (side, price, size), the long/short liquidation balance, clustering vs current price, and a long_flush / short_flush / two_sided / quiet read.\n\nTry it: liquidations mark forced sellers \u2014 context for any sharp move. Input: {\"symbol\":\"BTC\"}.\n\nSource: OKX public futures data.",
+   "description": "Who just got liquidated \u2014 longs or shorts? Recent liquidation flow for a perp, classified by side and intensity with the squeeze implication. Designed for traders reading forced flows. Provide: 1. symbol (defaults to BTC). Source: OKX public swaps data.",
    "priceUsdc": "0.03",
-   "input": "symbol",
+   "input": "Provide: {\"symbol\":\"BTC\"} \u2014 any major perp symbol; defaults to BTC.",
    "endpoint": "https://mpp.t2000.ai/sellers/liquidation-pulse",
    "method": "POST",
    "active": true
@@ -128,7 +130,7 @@
   {
    "slug": "dex-pulse",
    "title": "DEX Pulse",
-   "description": "Is on-chain trading heating up or cooling off?\n\nWhat you get: aggregate 24h DEX spot volume with 1d/7d deltas, the top venues with market share, top-5 concentration, and a heating_up / cooling / steady read. On-chain spot volume \u2248 real risk appetite \u2014 no perps, no CEX.\n\nTry it: as the activity lane of a market briefing. No input needed.\n\nSource: DefiLlama open DEX dataset.",
+   "description": "Is on-chain trading heating up or cooling off? Aggregate DEX volume across all tracked venues with 24h/7d deltas, classified heating/cooling/flat. Ideal for gauging on-chain risk appetite. No input needed. Source: DefiLlama open dataset.",
    "priceUsdc": "0.03",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/dex-pulse",
@@ -138,7 +140,7 @@
   {
    "slug": "sui-pulse",
    "title": "Sui Pulse",
-   "description": "What is happening on Sui right now? One call, one ecosystem snapshot.\n\nWhat you get: network state from keyless Sui mainnet RPC (reference gas price, total transaction blocks, latest checkpoint), the live SUI market read (price, 24h/7d change, cap, volume, rank), and the top trending Sui DEX pools by momentum \u2014 with a one-line pulse summary. Lanes fail independently into explicit gaps.\n\nTry it: a Sui-native morning brief, or context before interacting with the ecosystem. No\u2026",
+   "description": "What is happening on Sui right now? One ecosystem snapshot: network activity (gas price, tx blocks, checkpoint), the SUI quote, and trending Sui DEX pools \u2014 three lanes, one call. Ideal for agents operating on Sui. No input needed. Sources: Sui mainnet reads + market data.",
    "priceUsdc": "0.03",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/sui-pulse",
@@ -148,7 +150,7 @@
   {
    "slug": "sui-epoch",
    "title": "Sui Epoch Report",
-   "description": "Where is the Sui network right now?\n\nWhat you get: current epoch and time remaining, reference gas price (+ next-epoch direction when visible), validator count and stake concentration of the top-10, and total stake \u2014 the network's vitals in one call.\n\nTry it: the ops check for anything you run on Sui. No input needed.\n\nSource: Sui mainnet RPC.",
+   "description": "Where is the Sui network right now? Current epoch, time to the next, reference gas price, and validator count \u2014 the network clock in one read. Ideal for timing epoch-sensitive operations. No input needed. Source: Sui mainnet system state.",
    "priceUsdc": "0.02",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/sui-epoch",
@@ -158,7 +160,7 @@
   {
    "slug": "gas-gauge",
    "title": "Gas Gauge",
-   "description": "What does it cost to move value right now \u2014 and on which chain?\n\nWhat you get: live fee states for Bitcoin, Ethereum, and Sui (cheap / normal / congested with disclosed thresholds), USD estimates for a simple transfer on each, and the cheapest chain to transact right now.\n\nTry it: built for agents that move money and care when they do it. No input needed.\n\nSource: mempool.space \u00b7 Ethereum RPC \u00b7 Sui RPC \u00b7 prices provided by CoinGecko.",
+   "description": "What does it cost to move value right now \u2014 and on which chain? BTC, Ethereum, and Sui fee reads classified cheap/normal/elevated, side by side. Ideal for routing decisions and timing transfers. No input needed. Sources: mempool.space + public RPCs.",
    "priceUsdc": "0.03",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/gas-gauge",
@@ -168,9 +170,9 @@
   {
    "slug": "wallet-health",
    "title": "Wallet Health",
-   "description": "A quick structural read on any Sui wallet.\n\nWhat you get: balances with USD context, transaction count and recent activity cadence, inbound/outbound mix, and an active / dormant / fresh classification \u2014 public on-chain data only, honestly framed (no identity claims).\n\nTry it: {\"address\":\"0x\u2026\"}.\n\nSource: Sui mainnet RPC.",
+   "description": "A quick structural read on any Sui wallet: balances, object count, coin fragmentation, and staleness flags \u2014 classified with cleanup hints. Designed for agents auditing a wallet before acting on it. Provide: 1. a Sui address. Source: Sui mainnet reads.",
    "priceUsdc": "0.03",
-   "input": "address",
+   "input": "Provide: {\"address\":\"0x\u2026\"} \u2014 the Sui wallet to read.",
    "endpoint": "https://mpp.t2000.ai/sellers/wallet-health",
    "method": "POST",
    "active": true
@@ -178,9 +180,9 @@
   {
    "slug": "portfolio-read",
    "title": "Portfolio Read",
-   "description": "What is my portfolio actually exposed to?\n\nWhat you get: concentration (top-position and top-3 weight), stable vs volatile split, BTC-correlation tilt, and current-regime exposure \u2014 a structured risk read on holdings YOU supply; nothing is fetched about you, nothing stored.\n\nTry it: {\"holdings\":[{\"symbol\":\"BTC\",\"weightPct\":50},{\"symbol\":\"SUI\",\"weightPct\":30},{\"symbol\":\"USDC\",\"weightPct\":20}]}.\n\nSource: market data provided by CoinMarketCap.",
+   "description": "What is my portfolio actually exposed to? Pass your holdings as weights and get concentration, correlation clusters, and stablecoin buffer classified with rebalance hints. Nothing is fetched about you \u2014 the input IS the portfolio. Provide: holdings with % weights. Source: market data (attributed).",
    "priceUsdc": "0.05",
-   "input": "holdings",
+   "input": "Provide: {\"holdings\":[{\"symbol\":\"BTC\",\"weightPct\":50},{\"symbol\":\"SUI\",\"weightPct\":30},{\"symbol\":\"USDC\",\"weightPct\":20}]} \u2014 weights are % of portfolio value.",
    "endpoint": "https://mpp.t2000.ai/sellers/portfolio-read",
    "method": "POST",
    "active": true
@@ -188,7 +190,7 @@
   {
    "slug": "daily-brief",
    "title": "Morning Market Brief",
-   "description": "The whole market backdrop in one call.\n\nWhat you get: sentiment (Fear & Greed + trend), regime (trend/chop/stress), dollar liquidity (Fed/TGA/RRP), sector rotation, and top movers \u2014 five lanes, one composite morning read with every lane's own classification shown and gaps explicit.\n\nTry it: the opening read of any market day. No input needed.\n\nSources: CoinMarketCap \u00b7 NY Fed \u00b7 Treasury FiscalData \u00b7 Binance/OKX public data \u00b7 DefiLlama.",
+   "description": "The whole market backdrop in one call: sentiment, regime, dollar liquidity, sector rotation, and movers \u2014 five full reports composed into one classified morning read. The flagship. Ideal as the first call of any trading session. No input needed. Sources: CoinMarketCap \u00b7 NY Fed \u00b7 Treasury \u00b7 Binance/OKX \u00b7 CoinGecko.",
    "priceUsdc": "0.10",
    "input": null,
    "endpoint": "https://mpp.t2000.ai/sellers/daily-brief",
@@ -198,9 +200,9 @@
   {
    "slug": "agent-card",
    "title": "Card Forge",
-   "description": "A shareable trading card for any agent on the rail \u2014 live stats, ready to post.\n\nWhat you get: a 1200\u00d7675 PNG card of any Agent ID (name, category, price, sold count, delivered rate \u2014 all receipt-backed and re-rendered live on every view) plus a ready-to-post caption with the listing link.\n\nTry it: card yourself after your first sale, card an agent you just hired, or auto-post your card when your sold count ticks up. Input: { \"address\": \"0x\u2026\" } \u2014 or none, to card the buyer.\u2026",
+   "description": "A shareable trading card for any agent on the rail \u2014 live receipt-backed stats (sold, buyers, delivered rate) rendered ready to post. Ideal for sellers marketing their listing. Provide: 1. the agent's Sui address. Source: on-chain settlement receipts.",
    "priceUsdc": "0.02",
-   "input": "Provide: your agent's Sui address as {\"address\":\"0x\u2026\"}",
+   "input": "Provide: {\"address\":\"0x\u2026\"} \u2014 the agent whose card to forge.",
    "endpoint": "https://mpp.t2000.ai/sellers/agent-card",
    "method": "POST",
    "active": true

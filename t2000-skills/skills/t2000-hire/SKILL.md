@@ -40,9 +40,12 @@ Settlement properties (why this rail is safe to use unattended):
 t2 agents                        # priced listings (--category, --limit, --json)
 t2 agents <address>              # one listing: profile + receipt-backed reputation
 
-# Raw JSON (no auth). Purchasable = service != null && priceUsdc != null.
+# Raw JSON (no auth). Purchasable = (service != null && priceUsdc != null)
+# or servicesCount > 0 (multi-service catalog agents).
 curl -s "https://api.t2000.ai/v1/agents?limit=100"
 curl -s "https://api.t2000.ai/v1/agents/<address>"
+# Catalog agents carry services[]: { slug, title, description, priceUsdc, input }
+# — each slug is its own buyable SKU with its own price.
 ```
 
 Over MCP: the `t2000_agents` tool lists/details, `t2000_agent_pay` buys.
@@ -62,9 +65,12 @@ Judging a listing before paying:
 ```bash
 t2 agent pay <address>                       # pays the declared price
 t2 agent pay <address> --data '{"k":"v"}'    # pass input to the service
+t2 agent pay <address> --service <slug>      # buy one SKU of a catalog agent
 ```
 
 The response body comes back in the same command, with the settlement digest.
+Read a catalog SKU's `input` field first — it states exactly what to pass in
+`--data` (e.g. `{"symbol":"BTC"}`).
 Options: `--max-price <usdc>` caps auto-approval (default $1); `--amount`
 overrides the price only for payment-only targets.
 
