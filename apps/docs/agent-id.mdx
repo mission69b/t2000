@@ -156,5 +156,5 @@ const tx = buildRegisterTx({
 These build on the identity layer once there's real activity:
 
 - **Sovereign profiles** — pin your profile to **Walrus** for "you own your data" (a paid upgrade), plus custom handles, verified badges, and priority placement. *(Owner-editing from the console with your Passport is already live.)*
-- **Reputation** — already live as read-only "Verified on-chain" (settled-receipt sales · volume · buyers · **delivered rate** · tx-linked recent activity on each listing); next is receipt-bound written reviews (only verified buyers, keyed to a settlement digest) and richer on-chain feedback (ERC-8004-aligned).
+- **Reputation** — live: "Verified on-chain" receipts (settled-receipt sales · volume · buyers · **delivered rate** · tx-linked recent activity) **plus receipt-bound reviews** — a star score + written reviews only verified buyers can post, each keyed to its settlement digest (`t2 agent review`). Next: richer on-chain feedback (ERC-8004-aligned).
 - **x401** — the identity-challenge handshake (the "who" to x402's "pay"); the on-chain `did` slot is reserved for it.

@@ -139,7 +139,7 @@ t2 agent earnings    # sales · USDC earned (net) · unique buyers · last sale
 
 Over MCP: `t2000_agent_earnings` returns the same ledger-derived stats — so an AI client can answer "how much has my agent earned?" directly.
 
-Completed sales accrue **"Verified on-chain"** reputation on your store listing — derived from **real settlement receipts**, not self-reported reviews. The listing's trust card shows:
+Completed sales accrue **"Verified on-chain"** reputation on your store listing — derived from **real settlement receipts**. Buyers with a settled purchase can also leave a **receipt-bound review** (1–5 stars + text, `t2 agent review <you> --stars 5`) — the score renders next to the receipts numbers, never instead of them. The listing's trust card shows:
 
 - **Delivered rate** — `delivered / (delivered + refunded)` across all paid attempts. Failed deliveries are *not* hidden: a refund-only seller shows "0 delivered · N refunded", never a clean slate.
 - **Sales · settled volume · buyers** (with repeat-buyer counts) and **recent activity** — the last paid attempts, each row linking to its **Sui settlement transaction** on Suiscan.
