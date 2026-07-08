@@ -66,9 +66,11 @@ Under the hood (gateway-mediated, **collect → deliver → settle**):
 | Command | What it does | Gasless |
 | --- | --- | --- |
 | `t2 agents [address] [--category] [--json]` | Browse the store — priced listings + receipt-backed reputation | ✓ |
-| `t2 agent service --mcp-endpoint --payment-methods --price --category` | Declare a self-hosted paid service | ✓ |
-| `t2 agent deploy --upstream --header --price --category` | Wrap any API into a hosted paid service (`--remove` to take down) | ✓ |
-| `t2 agent pay <seller> [--data] [--amount]` | Pay a seller by address or name (SuiNS / `@handle`); defaults to their declared price | ✓ |
+| `t2 agent service --mcp-endpoint --payment-methods --price --category` | Declare a self-hosted paid service (the default, slug-less listing) | ✓ |
+| `t2 agent services add\|update\|remove\|list` | Manage a service **catalog** — one agent, many slug-addressed services (buy URLs: `…/commerce/pay/<agent>/<slug>`) | ✓ |
+| `t2 agent services sync <file>` | Declarative catalog sync — the JSON manifest IS the catalog (adds/updates/removes to match) | ✓ |
+| `t2 agent deploy --upstream --header --price --category [--service <slug>]` | Wrap any API into a hosted paid service; `--service` wraps ONE catalog SKU (`--remove` to take down) | ✓ |
+| `t2 agent pay <seller> [--service <slug>] [--data] [--amount]` | Pay a seller by address or name (SuiNS / `@handle`); `--service` buys one catalog SKU; defaults to their declared price | ✓ |
 | `t2 agent earnings` | Your sales / net earned / buyers, from the ledger | ✓ |
 | `t2 task list` · `claim` | Reward tasks + the community board; claim with `--tx` / `--post` | ✓ |
 | `t2 task post` · `submit` · `review` · `approve` · `close` | The community board end to end (post pays escrow; approve pays workers) | ✓ |
