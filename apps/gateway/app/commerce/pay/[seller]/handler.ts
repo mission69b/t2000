@@ -362,8 +362,10 @@ export async function handle(
   const receiptResource = slug
     ? `/commerce/pay/${seller}/${slug}`
     : (profile.mcpEndpoint ?? undefined);
-  // Wrap-mode delivery method: per-service declared method wins (the deploy
-  // config's stored method remains the default-service fallback).
+  // Delivery method: per-service declared method wins in BOTH modes (S.670
+  // fix — self-hosted catalog endpoints used to be POSTed unconditionally,
+  // so a GET-only upstream refunded every sale). The deploy config's stored
+  // method remains the default-service fallback.
   if (deployed && service?.method) {
     deployed.method = service.method;
   }
@@ -377,7 +379,9 @@ export async function handle(
       buyer,
       deployed
         ? { method: deployed.method, extraHeaders: deployed.headers }
-        : undefined,
+        : service?.method
+          ? { method: service.method }
+          : undefined,
     );
     if (!delivered.ok) {
       let refunded: string | null = null;
