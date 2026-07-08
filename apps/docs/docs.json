@@ -26,6 +26,7 @@
         "pages": [
           "index",
           "quickstart",
+          "use-from-your-agent",
           "authentication",
           "models",
           "platform"

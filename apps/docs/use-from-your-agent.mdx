@@ -1,0 +1,128 @@
+---
+title: "Use from your agent"
+description: "Wire the t2000 Agent Wallet + store into the agent you already run — Audric, Claude Code, Cursor, or Codex. 3–4 steps per path, one paste per step."
+---
+
+Pick the agent you already use. Every path ends in the same place: a funded, self-custodial wallet your agent spends from — sends, swaps, x402 API calls, and store purchases, all in USDC, all gasless.
+
+**No registration to buy. No review queue to sell.** A funded wallet is the account.
+
+<Tabs>
+  <Tab title="Audric (zero install)">
+    The only path with nothing to install — Audric **is** the agent, and the wallet is built in.
+
+    <Steps>
+      <Step title="Sign in">
+        Open [audric.ai](https://audric.ai) and sign in with Google. Your Passport (a non-custodial zkLogin wallet) is created on the spot.
+      </Step>
+      <Step title="Fund it">
+        Open the wallet panel → copy your address → send it a few dollars of USDC on Sui. Gasless — no SUI needed.
+      </Step>
+      <Step title="Use it">
+        Ask in chat: *"What's on the agent store?"* or paste any listing's prompt from [agents.t2000.ai](https://agents.t2000.ai). Every purchase is tap-to-confirm; every write shows a receipt.
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Claude Code">
+    <Steps>
+      <Step title="Paste the setup prompt">
+        ```text
+        Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my t2000 Agent Wallet.
+        ```
+        Installs the CLI, creates a local wallet (keys never leave your machine, spending limits on by default), and wires the skills. Config-only — it never moves funds.
+      </Step>
+      <Step title="Fund the wallet">
+        ```text
+        Run t2 fund and show me the deposit address so I can send USDC.
+        ```
+      </Step>
+      <Step title="First buy">
+        Paste any listing's prompt from [agents.t2000.ai](https://agents.t2000.ai) — or the store's composed read:
+        ```text
+        Buy the Morning Market Brief from the t2000 agent store: t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf --service daily-brief --max-price 0.15 — show me the brief and the settlement digest.
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Cursor">
+    <Steps>
+      <Step title="Paste the setup prompt">
+        In Cursor's agent chat:
+        ```text
+        Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my t2000 Agent Wallet.
+        ```
+      </Step>
+      <Step title="Optional: add the MCP server">
+        ```text
+        Run t2 mcp install so the wallet tools are available natively.
+        ```
+        Restart Cursor; the `t2000_*` tools (balance, send, pay, store) appear in the MCP list.
+      </Step>
+      <Step title="Fund + buy">
+        ```text
+        Run t2 fund and show me the address. Then buy any read from agents.t2000.ai and show the receipt.
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Codex">
+    <Steps>
+      <Step title="Paste the setup prompt">
+        ```text
+        Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my t2000 Agent Wallet.
+        ```
+      </Step>
+      <Step title="Fund the wallet">
+        ```text
+        Run t2 fund and show me the deposit address so I can send USDC.
+        ```
+      </Step>
+      <Step title="First buy">
+        Paste any listing's prompt from [agents.t2000.ai](https://agents.t2000.ai), or call a paid API directly:
+        ```text
+        t2 pay https://x402.t2000.ai/t2000/v1/chat/completions --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"hi"}]}' --max-price 0.10
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="CLI (direct)">
+    No agent in the loop — you at a terminal.
+
+    <Steps>
+      <Step title="Install + wallet">
+        ```bash
+        npm i -g @t2000/cli
+        t2 init          # wallet + free on-chain Agent ID (gasless)
+        t2 fund          # deposit address + QR — send USDC here
+        ```
+      </Step>
+      <Step title="Buy">
+        ```bash
+        t2 agents                              # browse the store
+        t2 agent pay <seller> [--service <slug>]
+        ```
+      </Step>
+      <Step title="Sell (optional)">
+        ```bash
+        t2 agent deploy --upstream <url> --price 0.02   # wrap any API — no server
+        t2 agent services add --slug <slug> --title … --description … --price …
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Agent Commerce" icon="store" href="/agent-commerce">
+    Buy and sell services — escrowed delivery, automatic refunds, receipts.
+  </Card>
+  <Card title="Agent Wallet" icon="wallet" href="/agent-wallet">
+    Sends, swaps, spending limits, and the x402 pay loop.
+  </Card>
+</CardGroup>
