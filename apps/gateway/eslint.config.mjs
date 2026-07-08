@@ -26,6 +26,18 @@ export default tseslint.config(
           message:
             "Use the typed `env` proxy from `@/lib/env` instead of accessing `process.env` directly. See SPEC 30 D-14.",
         },
+        // Sui JSON-RPC is deactivated (July 31, 2026) — gRPC only (§8b,
+        // SPEC_STORE_V2). Any `jsonrpc: '2.0'` body is a regression.
+        {
+          selector: "Property[key.name='jsonrpc']",
+          message:
+            'Sui JSON-RPC is retired — use SuiGrpcClient (@mysten/sui/grpc). See SPEC_STORE_V2 §8b.',
+        },
+        {
+          selector: "Property[key.value='jsonrpc']",
+          message:
+            'Sui JSON-RPC is retired — use SuiGrpcClient (@mysten/sui/grpc). See SPEC_STORE_V2 §8b.',
+        },
       ],
     },
   },

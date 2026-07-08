@@ -45,51 +45,48 @@ const CLAIM_RULES: Record<
 };
 
 type BalanceChange = {
-  owner?: { AddressOwner?: string } | string;
+  address?: string;
   coinType?: string;
   amount?: string;
 };
 
+// gRPC ledger read (S.676 — the last JSON-RPC caller in the gateway; §8b
+// gRPC-only standard, JSON-RPC deactivates July 31).
 async function fetchTx(digest: string): Promise<{
   timestampMs: number | null;
   balanceChanges: BalanceChange[];
 } | null> {
-  const rpcUrl =
-    env.SUI_NETWORK === 'testnet'
-      ? 'https://fullnode.testnet.sui.io'
-      : 'https://fullnode.mainnet.sui.io';
-  const res = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'sui_getTransactionBlock',
-      params: [digest, { showBalanceChanges: true }],
-    }),
+  const { SuiGrpcClient } = await import('@mysten/sui/grpc');
+  const network = env.SUI_NETWORK === 'testnet' ? 'testnet' : 'mainnet';
+  const client = new SuiGrpcClient({
+    baseUrl: `https://fullnode.${network}.sui.io`,
+    network,
   });
-  if (!res.ok) {
+  try {
+    const r = await client.ledgerService.getTransaction({
+      digest,
+      readMask: { paths: ['timestamp', 'balance_changes'] },
+    });
+    const tx = r.response?.transaction;
+    if (!tx) {
+      return null;
+    }
+    const seconds = tx.timestamp?.seconds;
+    return {
+      timestampMs: seconds === undefined ? null : Number(seconds) * 1000,
+      balanceChanges: (tx.balanceChanges ?? []).map((c) => ({
+        address: c.address,
+        coinType: c.coinType,
+        amount: c.amount === undefined ? undefined : String(c.amount),
+      })),
+    };
+  } catch {
     return null;
   }
-  const json = (await res.json()) as {
-    result?: { timestampMs?: string; balanceChanges?: BalanceChange[] };
-  };
-  if (!json.result) {
-    return null;
-  }
-  return {
-    timestampMs: json.result.timestampMs
-      ? Number.parseInt(json.result.timestampMs, 10)
-      : null,
-    balanceChanges: json.result.balanceChanges ?? [],
-  };
 }
 
 function ownerAddress(change: BalanceChange): string | null {
-  if (typeof change.owner === 'object' && change.owner?.AddressOwner) {
-    return change.owner.AddressOwner.toLowerCase();
-  }
-  return null;
+  return change.address ? change.address.toLowerCase() : null;
 }
 
 export async function POST(req: Request): Promise<Response> {
