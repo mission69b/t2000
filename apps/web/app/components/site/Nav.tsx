@@ -89,13 +89,6 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
             Developers
           </a>
 
-          <Link
-            href="/blog"
-            onMouseEnter={() => setOpen(false)}
-            className={linkBase + " hidden sm:inline-flex"}
-          >
-            Blog
-          </Link>
         </div>
 
         <span className="flex-1" />

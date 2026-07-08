@@ -141,6 +141,7 @@ cd /Users/funkii/dev/t2000
 npm --prefix packages/sdk version X.Y.Z --no-git-tag-version
 npm --prefix packages/cli version X.Y.Z --no-git-tag-version
 npm --prefix packages/mcp version X.Y.Z --no-git-tag-version
+npm --prefix packages/id version X.Y.Z --no-git-tag-version
 git add packages/*/package.json
 git commit -m "📦 build: vX.Y.Z"
 git push origin main
@@ -150,7 +151,7 @@ git push origin vX.Y.Z
 ```
 
 This runs `.github/workflows/release.yml`, which:
-1. Bumps all 3 package versions together (`sdk`, `cli`, `mcp`) to the same version
+1. Bumps all 4 package versions together (`sdk`, `cli`, `mcp`, `id`) to the same version
 2. Commits `📦 build: vX.Y.Z` to main
 3. Creates and pushes the `vX.Y.Z` annotated tag
 4. Explicitly triggers `.github/workflows/publish.yml` via `workflow_dispatch`
@@ -198,26 +199,32 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 
 ## Engine (`@t2000/engine`) — RETIRED (2026-06-14, S.442)
 
-> **The `@t2000/engine` package was retired and DELETED from the monorepo.** Nothing in the monorepo imported it; it was a harness library whose only runtime consumer was Audric. Audric v3 composes the AI SDK (`Experimental_Agent`) directly over `@t2000/sdk` — the transaction-safety guards are agent-loop guards that live in the v3 host, not the SDK (the published `@t2000/engine@4.x` on npm still carries the old guard logic for the frozen legacy audric/web-v2). **The package stack is now 3: `@t2000/{sdk,cli,mcp}`.** Removed from the release/CI workflows. Do not add a new engine package — host apps compose the AI SDK over the SDK directly. (Historical engine API + tool/guard catalogue: `git log` + `@t2000/engine@4.x` on npm.)
+> **The `@t2000/engine` package was retired and DELETED from the monorepo.** Nothing in the monorepo imported it; it was a harness library whose only runtime consumer was Audric. Audric v3 composes the AI SDK (`Experimental_Agent`) directly over `@t2000/sdk` — the transaction-safety guards are agent-loop guards that live in the v3 host, not the SDK (the published `@t2000/engine@4.x` on npm still carries the old guard logic for the frozen legacy audric/web-v2). **The package stack is now 4: `@t2000/{sdk,cli,mcp,id}`** (id added 2026-06-29). Engine removed from the release/CI workflows. Do not add a new engine package — host apps compose the AI SDK over the SDK directly. (Historical engine API + tool/guard catalogue: `git log` + `@t2000/engine@4.x` on npm.)
 
 ---
 
 ## Sui Integration
 
-### Package imports (`@mysten/sui@2.x`)
+### Package imports (`@mysten/sui@2.x`) — gRPC ONLY
+
+> **Sui JSON-RPC deactivates July 31, 2026 — never write new JSON-RPC.** All reads/writes
+> go through `SuiGrpcClient` (SPEC_STORE_V2 §8b is the standing constraint; the gateway's
+> eslint bans `jsonrpc` bodies). `SuiJsonRpcClient` / `@mysten/sui/jsonRpc` are legacy —
+> do not import them.
 
 ```ts
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
 import { MIST_PER_SUI, SUI_DECIMALS, isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
+
+const client = new SuiGrpcClient({ baseUrl: 'https://fullnode.mainnet.sui.io', network: 'mainnet' });
+// High-level reads: client.core.getTransaction / getObject / getChainIdentifier …
+// Field-masked reads: client.ledgerService.getTransaction({ digest, readMask: { paths: [...] } })
 ```
 
-### v2 migration notes
+### Notes
 
-- `SuiClient` → `SuiJsonRpcClient` (from `@mysten/sui/jsonRpc`)
-- `getFullnodeUrl` → `getJsonRpcFullnodeUrl`
-- Constructor: `new SuiJsonRpcClient({ url, network: 'mainnet' })`
 - `pnpm.overrides` in root `package.json` forces `@mysten/sui@^2.6.0`
 
 ### Transaction patterns

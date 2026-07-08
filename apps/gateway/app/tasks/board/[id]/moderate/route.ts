@@ -72,15 +72,20 @@ export async function POST(
   if (!task) {
     return Response.json({ error: 'No such task.' }, { status: 404 });
   }
-  if (task.status !== 'pending_review') {
-    return Response.json({ error: `Task is ${task.status}, not pending review.` }, { status: 409 });
-  }
+  // approve: pending_review only. reject: pending_review OR open — the
+  // S.677 takedown path for spam that slips the LLM gate (founder-keyed,
+  // refunds the poster's remaining escrow through the close machinery).
   if (body.action === 'approve') {
+    if (task.status !== 'pending_review') {
+      return Response.json({ error: `Task is ${task.status}, not pending review.` }, { status: 409 });
+    }
     const updated = await setModeration(task, true);
     return Response.json({ ok: true, status: updated.status });
   }
   if (body.action === 'reject') {
-    // Reject = full refund through the close machinery.
+    if (task.status !== 'pending_review' && task.status !== 'open') {
+      return Response.json({ error: `Task is ${task.status} — nothing to take down.` }, { status: 409 });
+    }
     const updated = await closeTask(task, 'rejected');
     return Response.json({
       ok: true,

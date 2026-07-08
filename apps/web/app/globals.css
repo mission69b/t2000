@@ -8,7 +8,6 @@
 @import "./styles/page.css";
 @import "./styles/responsive.css";
 @import "./styles/theme.css";
-@import "./styles/blog.css";
 
 :root {
   --t2k-accent: var(--ds-blue-700);

@@ -1,16 +1,8 @@
 import type { MetadataRoute } from 'next';
-import { getAllPosts } from '@/lib/blog';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://t2000.ai';
   const now = new Date();
-
-  const posts: MetadataRoute.Sitemap = getAllPosts().map((p) => ({
-    url: `${base}/blog/${p.slug}`,
-    lastModified: p.date ? new Date(p.date) : now,
-    changeFrequency: 'monthly',
-    priority: 0.6,
-  }));
 
   return [
     { url: `${base}/`,                lastModified: now, changeFrequency: 'weekly', priority: 1.0 },
@@ -21,7 +13,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/agent-commerce`,  lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/private-api`,             lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/verify`,          lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${base}/blog`,            lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
-    ...posts,
   ];
 }
