@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(): Promise<Response> {
   const active = isTasksConfigured();
   const tasks = await Promise.all(
-    TASKS.map(async (t) => {
+    // Paused tasks (Phase 0, S.664) are hidden from the public board.
+    TASKS.filter((t) => !t.paused).map(async (t) => {
       const [spentMicros, payouts] = active
         ? await Promise.all([spentGrossMicros(t.id), listPayouts(t.id)])
         : [0, []];

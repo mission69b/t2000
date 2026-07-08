@@ -50,6 +50,10 @@ export type TaskDef = {
   /** Gross spend cap (USD) — the task auto-pauses when reached. */
   budgetUsd: number;
   kind: 'ledger' | 'claim' | 'x-proof';
+  /** Phase 0 (S.664): task target delisted with the seed shelf — hidden from
+   *  stats + never qualifies/pays. Un-pause at Store v2 Phase 2 (re-pointed
+   *  at Funkii AI slugs — SPEC_STORE_V2 §5-pre item 7). */
+  paused?: boolean;
 };
 
 // Founder-set scale (2026-07-03 night, raised from $350): ~2,900 payout
@@ -63,7 +67,7 @@ export type TaskDef = {
 export const TASKS: TaskDef[] = [
   { id: 'first-sale', rewardNetUsd: 0.1, budgetUsd: 300, kind: 'ledger' },
   { id: 'agent-hire', rewardNetUsd: 0.05, budgetUsd: 150, kind: 'ledger' },
-  { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 60, kind: 'ledger' },
+  { id: 'agent-card', rewardNetUsd: 0.02, budgetUsd: 60, kind: 'ledger', paused: true },
   { id: 'buy-manifest', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
   { id: 'buy-sui', rewardNetUsd: 0.08, budgetUsd: 230, kind: 'claim' },
   { id: 'verify-confidential', rewardNetUsd: 0.25, budgetUsd: 30, kind: 'x-proof' },
@@ -73,7 +77,7 @@ export const TASKS: TaskDef[] = [
   // S.626.1 growth-loop task: buy any shelf read, post about it — verified
   // against BOTH the on-chain receipt ledger (you actually bought it) and
   // the public post (ledger + x-proof hybrid).
-  { id: 'share-a-read', rewardNetUsd: 0.1, budgetUsd: 30, kind: 'x-proof' },
+  { id: 'share-a-read', rewardNetUsd: 0.1, budgetUsd: 30, kind: 'x-proof', paused: true },
 ];
 
 // Velocity throttle — the farm-spike tripwire at 1000-capacity tasks: at most
@@ -85,8 +89,10 @@ const MAX_PAYOUTS_PER_TASK_PER_HOUR = 30;
 
 const taskById = new Map(TASKS.map((t) => [t.id, t]));
 
+/** Paused tasks are invisible to claims + qualification (Phase 0, S.664). */
 export function getTask(id: string): TaskDef | undefined {
-  return taskById.get(id as TaskId);
+  const task = taskById.get(id as TaskId);
+  return task?.paused ? undefined : task;
 }
 
 // Card Forge — the seller whose receipts qualify `agent-card`.
@@ -439,7 +445,7 @@ export async function runTaskChecksForWallets(wallets: string[]): Promise<void> 
     (w) => w && w !== runner && !EXCLUDED_WALLETS.has(w),
   );
   for (const wallet of unique) {
-    for (const task of TASKS.filter((t) => t.kind === 'ledger')) {
+    for (const task of TASKS.filter((t) => t.kind === 'ledger' && !t.paused)) {
       try {
         await settleTaskIfQualified(task, wallet);
       } catch (err) {

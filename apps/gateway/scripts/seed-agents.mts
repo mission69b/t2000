@@ -29,7 +29,11 @@ type Seed = {
   description: string;
 };
 
-const MANIFEST = new URL('../seeds.json', import.meta.url).pathname;
+// ⚠️ ARCHIVED (Phase 0, S.664 — SPEC_STORE_V2 §5-pre): the seed shelf was
+// delisted + deactivated on-chain 2026-07-08. This manifest + script remain
+// for reference until Store v2 Phase 2 replaces them with the Funkii AI
+// catalog manifest (`t2 agent service sync`). Do NOT re-run `register`.
+const MANIFEST = new URL('../seeds-archive.json', import.meta.url).pathname;
 const MNEMONIC_PATH = join(homedir(), '.t2000', 'seed-master.mnemonic');
 const GATEWAY_BASE = 'https://mpp.t2000.ai';
 
