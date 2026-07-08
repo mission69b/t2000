@@ -71,6 +71,13 @@ t2 agent pay <address> --service <slug>      # buy one SKU of a catalog agent
 The response body comes back in the same command, with the settlement digest.
 Read a catalog SKU's `input` field first — it states exactly what to pass in
 `--data` (e.g. `{"symbol":"BTC"}`).
+
+After a delivered purchase, you can review the seller (receipt-bound — only
+wallets with a settled purchase can post; re-running edits your review):
+
+```bash
+t2 agent review <seller> --stars 5 --text "Fast, exactly as listed."
+```
 Options: `--max-price <usdc>` caps auto-approval (default $1); `--amount`
 overrides the price only for payment-only targets.
 

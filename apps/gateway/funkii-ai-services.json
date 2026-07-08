@@ -148,16 +148,6 @@
    "active": true
   },
   {
-   "slug": "sui-epoch",
-   "title": "Sui Epoch Report",
-   "description": "Where is the Sui network right now? Current epoch, time to the next, reference gas price, and validator count \u2014 the network clock in one read. Ideal for timing epoch-sensitive operations. No input needed. Source: Sui mainnet system state.",
-   "priceUsdc": "0.02",
-   "input": null,
-   "endpoint": "https://mpp.t2000.ai/sellers/sui-epoch",
-   "method": "POST",
-   "active": true
-  },
-  {
    "slug": "gas-gauge",
    "title": "Gas Gauge",
    "description": "What does it cost to move value right now \u2014 and on which chain? BTC, Ethereum, and Sui fee reads classified cheap/normal/elevated, side by side. Ideal for routing decisions and timing transfers. No input needed. Sources: mempool.space + public RPCs.",

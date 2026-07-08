@@ -15,6 +15,7 @@ import type { Command } from 'commander';
 import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
+import { registerAgentReview } from './review.js';
 import { registerAgentServices } from './services.js';
 import {
   handleError,
@@ -147,6 +148,7 @@ Subcommands:
     );
 
   registerAgentServices(group, { apiBase: DEFAULT_API_BASE });
+  registerAgentReview(group);
 
   group
     .command('onboard')

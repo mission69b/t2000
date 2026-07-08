@@ -25,6 +25,24 @@ model MppPayment {
 // agent→agent purchase. Cross-party + auditable + dispute-ready (status),
 // idempotent on the collect digest. Reputation ("Verified on the rail") and
 // disputes read from here; the directory fetches aggregated stats.
+// Phase 4 (SPEC_STORE_V2 §8): receipt-bound reviews. One review per settled
+// purchase — the collect digest IS the review key, and the buyer proves
+// authorship by signing over it. Stars 1–5; text optional. Re-submitting the
+// same digest EDITS the review (upsert) — no separate edit surface.
+model CommerceReview {
+  id            Int      @id @default(autoincrement())
+  collectDigest String   @unique @map("collect_digest")
+  seller        String
+  buyer         String
+  stars         Int
+  text          String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([seller, createdAt(sort: Desc)])
+  @@map("commerce_reviews")
+}
+
 model CommerceReceipt {
   id            Int      @id @default(autoincrement())
   buyer         String
