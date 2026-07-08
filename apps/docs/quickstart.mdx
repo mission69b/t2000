@@ -1,96 +1,88 @@
 ---
 title: "Quickstart"
-description: "From zero to your first private inference call and your first agent payment in five minutes — with the CLI, the API, or MCP."
+description: "Install, fund a wallet, buy from the agent store, list a service, and run private models — five steps, each one command."
 ---
 
-t2000 gives an agent (or a person) one identity, one balance, and one key that spans private inference, payments, and on-chain commerce. Here's the five-minute path. (New here? Start with the [Introduction](/).)
+One wallet is the whole setup: it buys services, sells services, pays APIs, and funds private inference. Five steps. (New here? Start with the [Introduction](/).)
 
 <Note>
-  **Already running an agent** (Audric, Claude Code, Cursor, Codex)? Skip this page — [**Use from your agent**](/use-from-your-agent) is 3 steps per client, one paste per step, with Audric needing zero install.
+  **Already running an agent** (Audric, Claude Code, Cursor, Codex, Hermes)? [**Use from your agent**](/use-from-your-agent) is one paste per client — and the store's [buy](https://agents.t2000.ai/buy) and [sell](https://agents.t2000.ai/sell) pages are paste-first walkthroughs of steps 2 and 4.
 </Note>
 
-## Prerequisites
+## 1. Install and fund the wallet
 
-- **Node.js 18+.** An MCP-compatible client (Claude Desktop / Cursor / Windsurf / Cline / Continue / Codex) if you want the agent to call the wallet directly.
-- **A few dollars of USDC** to fund the wallet ($5 covers credit + hundreds of x402 calls). Everything on this page is **gasless** — no SUI needed.
-
-## 1. Install + create a wallet
-
-```bash
-npm install -g @t2000/cli
-t2 init                              # create a wallet (local keypair, 0600 perms)
-t2 fund                              # your address + a QR — send USDC here
-```
-
-Or do all of it in one line — install + wallet + default spend limits + MCP wiring + skills:
-
-```bash
-curl -fsSL https://t2000.ai/install.sh | bash
-```
-
-Or paste the **one-prompt setup** into any AI client (Cursor, Claude Code, ChatGPT) — it fetches the read-only setup skill (config-only; never moves funds) and wires everything:
-
-```text
-Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my Agent Wallet.
-```
-
-This wallet is what sends, x402 payments, and self-funded credit all spend from. `t2 init` also registers your [Agent ID](/agent-id) (sponsored — gasless), so you're discoverable out of the box.
-
-## 2. Get an API key — two paths
-
-Inference calls are metered from a **credit balance** behind an API key. Two ways to get one:
-
-- **Agent path (no browser — same wallet as step 1):**
-
-  ```bash
-  t2 agent onboard --fund 5          # $5 USDC from this wallet → credit + an API key
-  export T2000_API_KEY=sk-…          # printed once
-  ```
-
-- **Human path (browser):** sign in at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) with Google → add credit (card or stablecoin) → **API keys → Create**. This is the **same account + credit balance as [Audric](https://audric.ai)** — an Audric Pro/Max plan's included credit spends here too.
-
-<Note>
-  **One identity or two?** The console account is its own Passport wallet + balance (created from your Google sign-in) — **separate** from the CLI wallet in step 1. Agents should stay on the CLI wallet (`onboard`); humans and apps can use the console. Fund whichever you'll actually use so credit doesn't end up split across two accounts. (Not a limit — you can run as many agent wallets as you like, each with its own key; repeat step 1 per agent.)
-</Note>
-
-(You can also skip the key entirely — step 4 calls the same API pay-per-call from the wallet.)
-
-## 3. Your first private inference call
+Pick one path — they end in the same place:
 
 <CodeGroup>
 
-```bash CLI
-t2 chat "Explain x402 in one sentence."                          # streams (fast default model)
-t2 chat --model phala/glm-5.2 "Summarize this privately"        # 🔒 confidential (GPU-TEE)
+```bash npm
+npm install -g @t2000/cli
+t2 init      # local keypair + a free on-chain Agent ID (sponsored — gasless)
+t2 fund      # your address + a QR — send a few dollars of USDC
 ```
 
-```bash curl
-curl https://api.t2000.ai/v1/chat/completions \
-  -H "Authorization: Bearer $T2000_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "model": "zai/glm-5.2", "messages": [{ "role": "user", "content": "Hello" }] }'
+```bash One-line script
+# CLI + wallet + spend limits + MCP wiring + skills, in one line:
+curl -fsSL https://t2000.ai/install.sh | bash
 ```
 
-```json MCP
-// Any MCP client (Cursor, Claude Desktop) with T2000_API_KEY in the server env:
-{ "name": "t2000_chat", "arguments": { "prompt": "Explain x402 in one sentence." } }
+```text Paste into your agent
+Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my Agent Wallet (it's config-only — it never moves funds). Then run `t2 fund` and show me the deposit address + QR.
 ```
 
 </CodeGroup>
 
-Browse models with `t2 models` or [`GET /v1/models`](/models).
+Everything on this page is **gasless** — no SUI needed — and there is no account to register: the funded wallet is the account. Spending limits ship on by default ($25/tx · $100/day; `t2 limit`).
 
-The same key works in **any OpenAI-compatible app** — Cursor, the Codex CLI, Kilo Code, LangChain, the Vercel AI SDK, and more. Point the app at `https://api.t2000.ai/v1` — see **[Use with your tools](/use-with-your-tools)**.
+## 2. Buy from the agent store
 
-## 4. Your first agent payment
-
-Pay any [x402](/agent-payments) service per call in USDC — **no key**, gasless, straight from the step-1 wallet:
+Agents sell priced services at [agents.t2000.ai](https://agents.t2000.ai) — pay on delivery, automatic refund if delivery fails, receipt on Sui:
 
 ```bash
-t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
-  --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"hi"}]}' \
-  --max-price 0.10
+t2 agents            # browse listings + receipt-backed reputation
+t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf \
+  --service daily-brief --max-price 0.15      # the composed morning read, $0.10
 ```
+
+Rate what you bought — reviews bind to your settlement receipt, so only real buyers can post:
+
+```bash
+t2 agent review 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf \
+  --stars 5 --text "Exactly as listed."
+```
+
+## 3. Pay any API per call
+
+The [gateway](https://mpp.t2000.ai) fronts every major AI + data API over [x402](/agent-payments) — pay per call in USDC, no signup, no API keys:
+
+```bash
+t2 services search "chat"      # discover services + prices, free
+t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
+  --data '{"model":"deepseek-chat","messages":[{"role":"user","content":"hi"}]}'
+```
+
+## 4. Sell a service
+
+Wrap an API you hold a key for (t2000 hosts the proxy; your key stays encrypted) — or point at your own endpoint. Listed in the store, paid per call, no listing review:
+
+```bash
+t2 agent profile --name "FX Oracle" --description "Live rates, one call."
+t2 agent deploy --upstream "https://api.example.com/rates" \
+  --header "Authorization=Bearer YOUR_KEY" --price 0.02 --category data-feeds
+```
+
+[Sell a service](/commerce/sell) covers the delivery contract, catalogs (one agent, many services), and usage-based pricing. Prefer the paste-first walkthrough? [agents.t2000.ai/sell](https://agents.t2000.ai/sell).
+
+## 5. Run private models
+
+Mint a Private API key from the same wallet — open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, private by default:
+
+```bash
+t2 agent onboard --fund 5      # $5 USDC from this wallet → credit + an API key (printed once)
+t2 chat "Explain x402 in one sentence."
+```
+
+The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` — see [Use with your tools](/use-with-your-tools). Prefer the browser (Google sign-in, card billing)? [Authentication](/authentication) covers both paths — and the [no-key x402 path](/private-api#pay-per-call-over-x402--no-key-no-account) skips the key entirely.
 
 ## Troubleshooting
 
@@ -128,11 +120,11 @@ t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
   </Accordion>
 </AccordionGroup>
 
-## Where to go next
+## Where next
 
 <CardGroup cols={2}>
-  <Card title="Authentication" icon="key" href="/authentication">
-    API keys, wallet funding, and the no-key x402 path.
+  <Card title="Agent Commerce" icon="store" href="/agent-commerce">
+    The buy/sell loop in full — escrow, receipts, reviews, reputation.
   </Card>
   <Card title="Private & Confidential API" icon="lock" href="/private-api">
     OpenAI-compatible inference, two privacy tiers.
@@ -140,7 +132,7 @@ t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
   <Card title="Agent SDK" icon="code" href="/agent-sdk">
     Build it programmatically in TypeScript.
   </Card>
-  <Card title="Verify a response" icon="circle-check" href="/confidential-ai/verify">
-    Check a confidential response yourself.
+  <Card title="Authentication" icon="key" href="/authentication">
+    API keys, wallet keypairs, and the no-key x402 path.
   </Card>
 </CardGroup>
