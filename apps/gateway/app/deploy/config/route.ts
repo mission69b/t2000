@@ -46,6 +46,16 @@ function err(status: number, error: string): Response {
   return Response.json({ error }, { status });
 }
 
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
+/** undefined = no slug (default service) · false = invalid · string = slug. */
+function readSlug(raw: unknown): string | undefined | false {
+  const v = String(raw ?? '').trim().toLowerCase();
+  if (!v) {
+    return undefined;
+  }
+  return SLUG_RE.test(v) ? v : false;
+}
+
 async function verifySig(
   address: string,
   message: string,
@@ -84,7 +94,12 @@ export async function GET(request: Request): Promise<Response> {
   if (!isValidSuiAddress(address)) {
     return err(400, 'A valid agent Sui address is required.');
   }
-  const svc = await getDeployedService(address);
+  // Phase 1 (SPEC_STORE_V2 §5): per-slug wrap configs — no slug = default.
+  const slug = readSlug(new URL(request.url).searchParams.get('slug'));
+  if (slug === false) {
+    return err(400, 'Invalid service slug.');
+  }
+  const svc = await getDeployedService(address, slug);
   if (!svc) {
     return Response.json({ ok: true, config: null });
   }
@@ -110,6 +125,8 @@ export async function POST(request: Request): Promise<Response> {
     upstreamUrl?: string;
     method?: string;
     headers?: Record<string, string>;
+    /** Phase 1: per-service wrap config (omit = the default service). */
+    slug?: string;
   };
   try {
     body = await request.json();
@@ -121,6 +138,10 @@ export async function POST(request: Request): Promise<Response> {
   const upstreamUrl = String(body.upstreamUrl ?? '').trim();
   const method = String(body.method ?? 'POST').toUpperCase() === 'GET' ? 'GET' : 'POST';
   const headers = body.headers ?? {};
+  const slug = readSlug(body.slug);
+  if (slug === false) {
+    return err(400, 'Invalid service slug.');
+  }
 
   if (!isValidSuiAddress(address)) {
     return err(400, 'A valid agent Sui address is required.');
@@ -144,8 +165,12 @@ export async function POST(request: Request): Promise<Response> {
       return err(401, 'Stale or missing timestamp.');
     }
     // The signed message binds to the exact config (body hash).
+    // Slug (when present) is part of the signed material — a captured
+    // signature can't write the same upstream under a different SKU.
     const bodyHash = createHash('sha256')
-      .update(`${upstreamUrl}|${method}|${JSON.stringify(headers)}`)
+      .update(
+        `${upstreamUrl}|${method}|${JSON.stringify(headers)}${slug ? `|${slug}` : ''}`,
+      )
       .digest('hex');
     const message = `t2000-deploy:${body.timestamp}:${bodyHash}`;
     if (!(await verifySig(address, message, String(body.signature ?? '')))) {
@@ -156,7 +181,7 @@ export async function POST(request: Request): Promise<Response> {
   // Keep-existing semantics (S.657): header values are write-only, so an
   // UPDATE that doesn't re-enter a secret sends the name with an empty
   // value — merge the stored value instead of silently dropping the header.
-  const existing = await getDeployedService(address);
+  const existing = await getDeployedService(address, slug);
   const merged: Record<string, string> = {};
   for (const [k, v] of headerEntries) {
     const value = v === '' ? (existing?.headers?.[k] ?? '') : v;
@@ -165,15 +190,20 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  await storeDeployedService(address, { upstreamUrl, method, headers: merged });
-  return Response.json({ ok: true, address });
+  await storeDeployedService(address, { upstreamUrl, method, headers: merged }, slug);
+  return Response.json({ ok: true, address, ...(slug ? { slug } : {}) });
 }
 
 export async function DELETE(request: Request): Promise<Response> {
   if (!isDeployConfigured()) {
     return err(503, 'Agent Deploy is temporarily unavailable.');
   }
-  let body: { address?: string; timestamp?: number; signature?: string };
+  let body: {
+    address?: string;
+    timestamp?: number;
+    signature?: string;
+    slug?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -183,15 +213,19 @@ export async function DELETE(request: Request): Promise<Response> {
   if (!isValidSuiAddress(address)) {
     return err(400, 'A valid agent Sui address is required.');
   }
+  const slug = readSlug(body.slug);
+  if (slug === false) {
+    return err(400, 'Invalid service slug.');
+  }
   if (!consoleAttested(request)) {
     if (!freshTimestamp(body.timestamp)) {
       return err(401, 'Stale or missing timestamp.');
     }
-    const message = `t2000-deploy-remove:${body.timestamp}`;
+    const message = `t2000-deploy-remove:${body.timestamp}${slug ? `:${slug}` : ''}`;
     if (!(await verifySig(address, message, String(body.signature ?? '')))) {
       return err(401, 'Invalid signature.');
     }
   }
-  await removeDeployedService(address);
-  return Response.json({ ok: true, address });
+  await removeDeployedService(address, slug);
+  return Response.json({ ok: true, address, ...(slug ? { slug } : {}) });
 }

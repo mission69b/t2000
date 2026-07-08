@@ -74,23 +74,34 @@ function decrypt(blob: string): string {
   return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
 }
 
+// Store v2 Phase 1 (SPEC_STORE_V2 §5): wrap configs are keyed per SERVICE —
+// `(agent, slug)`. The bare key (no slug) is the DEFAULT service (legacy
+// single-service agents keep working unchanged).
+function configKey(agent: string, slug?: string): string {
+  return slug ? `${PREFIX}${agent}:${slug}` : `${PREFIX}${agent}`;
+}
+
 export async function storeDeployedService(
   agent: string,
   svc: DeployedService,
+  slug?: string,
 ): Promise<void> {
   const stored: StoredService = {
     upstreamUrl: svc.upstreamUrl,
     method: svc.method,
     headersEnc: encrypt(JSON.stringify(svc.headers ?? {})),
   };
-  await getRedis().set(`${PREFIX}${agent}`, JSON.stringify(stored));
+  await getRedis().set(configKey(agent, slug), JSON.stringify(stored));
 }
 
 export async function getDeployedService(
   agent: string,
+  slug?: string,
 ): Promise<DeployedService | null> {
   try {
-    const raw = await getRedis().get<string | StoredService>(`${PREFIX}${agent}`);
+    const raw = await getRedis().get<string | StoredService>(
+      configKey(agent, slug),
+    );
     if (!raw) {
       return null;
     }
@@ -108,8 +119,11 @@ export async function getDeployedService(
   }
 }
 
-export async function removeDeployedService(agent: string): Promise<void> {
-  await getRedis().del(`${PREFIX}${agent}`);
+export async function removeDeployedService(
+  agent: string,
+  slug?: string,
+): Promise<void> {
+  await getRedis().del(configKey(agent, slug));
 }
 
 // SSRF guard — only proxy to public https hosts (the upstream is seller-supplied
