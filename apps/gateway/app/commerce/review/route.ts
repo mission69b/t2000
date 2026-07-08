@@ -94,6 +94,11 @@ export async function POST(req: Request): Promise<Response> {
   if (normalizeSuiAddress(receipt.buyer) !== signer) {
     return err(403, 'Only the buyer on the receipt can review it.');
   }
+  // Self-purchases settle fine (they pay the fee like anyone) but their
+  // REVIEWS are pure self-promotion — blocked outright.
+  if (normalizeSuiAddress(receipt.seller) === signer) {
+    return err(403, 'Self-purchases cannot be reviewed.');
+  }
   if (receipt.status === 'refunded') {
     return err(409, 'Refunded purchases cannot be reviewed — the delivered rate already tells that story.');
   }
