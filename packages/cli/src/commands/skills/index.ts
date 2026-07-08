@@ -4,6 +4,7 @@
 // the rest of the v4 surface.
 
 import type { Command } from 'commander';
+import { registerSkillsCheck } from './check.js';
 import { registerSkillsList } from './list.js';
 import { registerSkillsInstall } from './install.js';
 import { registerSkillsUninstall } from './uninstall.js';
@@ -20,6 +21,7 @@ Subcommands:
   $ t2 skills install                Install all skills (default target: agents)
   $ t2 skills install <slug>         Install one skill by name
   $ t2 skills install --target cursor   Install as Cursor .mdc rules
+  $ t2 skills check                  Are installed skills current? (agents: run at session start)
   $ t2 skills uninstall              Remove installed skills
 
 For MCP-aware clients (Claude Desktop, Cursor, Windsurf), prefer
@@ -29,5 +31,6 @@ For MCP-aware clients (Claude Desktop, Cursor, Windsurf), prefer
 
   registerSkillsList(group);
   registerSkillsInstall(group);
+  registerSkillsCheck(group);
   registerSkillsUninstall(group);
 }

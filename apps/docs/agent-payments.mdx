@@ -129,7 +129,7 @@ Pass any model the provider serves — the request body is forwarded as-is. Open
 
 ### Calling it from code
 
-The gateway answers a paid call with **HTTP 402 first**, then expects a signed `X-PAYMENT` retry — a handshake the stock OpenAI SDK can't perform on its own. So you call through a **t2000 paying client** (the CLI or the SDK), which does the 402 → pay → retry for you and hands back the **verbatim OpenAI response body**:
+The gateway answers a paid call with **HTTP 402 first**, then expects a signed `X-PAYMENT` retry — a handshake the stock OpenAI SDK can't perform (it has no hook to sign a Sui transaction on a 402). Route the call through a t2000 paying client and you get back the **verbatim OpenAI response body**, so any OpenAI parser works unchanged:
 
 ```bash
 # CLI — the same body works on any provider; just change the path
@@ -137,25 +137,7 @@ t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
   --data '{"model":"deepseek-chat","messages":[{"role":"user","content":"hi"}]}'
 ```
 
-```ts
-// SDK — result.body is the exact OpenAI Chat Completions JSON
-import { T2000 } from '@t2000/sdk';
-
-const agent = await T2000.create();
-const { body } = await agent.pay({
-  url: 'https://mpp.t2000.ai/groq/v1/chat/completions',
-  method: 'POST',
-  body: JSON.stringify({
-    model: 'llama-3.3-70b-versatile',
-    messages: [{ role: 'user', content: 'hi' }],
-  }),
-  maxPrice: 0.05,
-});
-```
-
-<Note>
-**Response shape = OpenAI; payment = the t2000 client.** The body you get back is byte-for-byte the OpenAI schema, so any OpenAI response parser works unchanged. The one thing the stock OpenAI SDK *can't* do is the x402 payment handshake (it has no hook to sign a Sui transaction on a 402) — route the call through `t2 pay` or `@t2000/sdk` `pay()` and you get the same JSON, paid per-call in USDC, no API key.
-</Note>
+Programmatic version: [`agent.pay()` in the Agent SDK](/agent-sdk).
 
 ## Services
 

@@ -53,7 +53,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 task …` | Earn + hire — `list` (reward tasks + community board) · `claim` (auto-verified rewards) · `post` / `submit` / `review` / `approve` / `close` (the [community task board](/commerce/tasks)). |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
 | `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
-| `t2 skills install [--target=cursor\|claude-code\|agents]` · `list` · `uninstall` | Install per-skill `SKILL.md` files locally (alternative to running the MCP server). |
+| `t2 skills install [--target=cursor\|claude-code\|agents]` · `check` · `list` · `uninstall` | Install per-skill `SKILL.md` files locally (alternative to running the MCP server). `check` compares installed skills against what t2000.ai serves — `{ upToDate, action }` with `--json`; agents run it at session start. |
 
 ## Gasless
 

@@ -75,3 +75,9 @@ Slugs: `t2000-setup`, `t2000-send`, `t2000-swap`, `t2000-pay`, `t2000-receive`,
 `https://t2000.ai/.well-known/agent-skills/index.json`; local install:
 `t2 skills install`). This file is the cross-cutting ops layer they all
 assume; the skills are the step-by-step recipes.
+
+**Copied skills drift.** If skills were installed to disk (`.agents/skills/`,
+`.cursor/rules/`, `.claude/skills/`), run `t2 skills check` at session start —
+it compares every installed skill against what t2000.ai serves and answers
+`{ upToDate, action }` (`--json`). Stale → `t2 skills install` refreshes.
+(MCP clients skip this: `t2 mcp install` serves skills live, no files.)
