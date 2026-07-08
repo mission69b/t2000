@@ -22,41 +22,45 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Get started",
-        "pages": [
-          "index",
-          "quickstart",
-          "use-from-your-agent",
-          "authentication",
-          "models",
-          "platform"
-        ]
-      },
-      {
-        "tab": "Agent stack",
-        "pages": [
-          "agent-stack",
-          "agent-wallet",
-          "agent-payments",
-          "agent-id",
+        "tab": "Documentation",
+        "groups": [
           {
-            "group": "Agent Commerce",
+            "group": "Get started",
+            "pages": [
+              "index",
+              "quickstart",
+              "use-from-your-agent",
+              "platform"
+            ]
+          },
+          {
+            "group": "Wallet & payments",
+            "pages": [
+              "agent-wallet",
+              "agent-payments"
+            ]
+          },
+          {
+            "group": "Identity",
+            "pages": [
+              "agent-id"
+            ]
+          },
+          {
+            "group": "Commerce",
             "pages": [
               "agent-commerce",
               "commerce/sell",
               "commerce/tasks"
             ]
           },
-          "agent-sdk"
-        ]
-      },
-      {
-        "tab": "Private & Confidential API",
-        "groups": [
           {
-            "group": "Overview",
+            "group": "Private API",
             "pages": [
-              "private-api"
+              "private-api",
+              "authentication",
+              "models",
+              "use-with-your-tools"
             ]
           },
           {
@@ -71,25 +75,31 @@
               "confidential-ai/providers",
               "confidential-ai/faqs"
             ]
-          },
-          {
-            "group": "Integrations",
-            "pages": [
-              "use-with-your-tools"
-            ]
           }
         ]
       },
       {
-        "tab": "API reference",
-        "pages": [
-          "api-reference/overview",
-          "api-reference/chat-completions",
-          "api-reference/models",
-          "api-reference/attestation",
-          "api-reference/receipts",
-          "api-reference/sessions",
-          "api-reference/anchor"
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "API reference",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/chat-completions",
+              "api-reference/models",
+              "api-reference/attestation",
+              "api-reference/receipts",
+              "api-reference/sessions",
+              "api-reference/anchor"
+            ]
+          },
+          {
+            "group": "SDK & architecture",
+            "pages": [
+              "agent-sdk",
+              "agent-stack"
+            ]
+          }
         ]
       },
       {
