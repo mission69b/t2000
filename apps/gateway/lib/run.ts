@@ -1,4 +1,11 @@
-import { createHmac } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  randomBytes,
+} from 'node:crypto';
+import { Redis } from '@upstash/redis';
 import { env } from '@/lib/env';
 
 // R1 hosted handlers (SPEC_AGENT_RUNTIME §2, S.694) — the gateway side of
@@ -148,4 +155,109 @@ export async function deleteRunScript(
   );
   // 404 = already gone — idempotent.
   return { ok: res.ok || res.status === 404 };
+}
+
+// ── The per-agent secrets vault (S.695) ─────────────────────────────────────
+// What makes hosted handlers able to call KEYED upstreams — the deploy-wrap
+// encryption pattern generalized. Secrets are stored AES-256-GCM-encrypted in
+// Redis (never in Cloudflare, never in the script) and injected into the
+// delivery payload as `ctx.secrets` per request — so a handler reads
+// `ctx.secrets.MY_KEY` and the value only ever transits gateway→dispatcher
+// →worker over TLS for the duration of one paid delivery. Vault is
+// AGENT-scoped (one vault, all the agent's handlers).
+
+const SECRETS_PREFIX = 'run:sec:';
+const MAX_SECRETS = 16;
+const MAX_SECRET_LEN = 2048;
+const SECRET_NAME_RE = /^[A-Z][A-Z0-9_]{0,63}$/;
+
+let _redis: Redis | undefined;
+function getRedis(): Redis {
+  if (!_redis) {
+    _redis = new Redis({
+      url: env.KV_REST_API_URL as string,
+      token: env.KV_REST_API_TOKEN as string,
+    });
+  }
+  return _redis;
+}
+
+// Domain-separated from the deploy-wrap key (`:deploy-enc-v1`).
+function secretsKey(): Buffer {
+  return createHash('sha256')
+    .update(`${env.INTERNAL_API_KEY}:run-secrets-v1`)
+    .digest();
+}
+
+function encryptSecrets(plain: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', secretsKey(), iv);
+  const ct = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, ct]).toString('base64');
+}
+
+function decryptSecrets(blob: string): string {
+  const raw = Buffer.from(blob, 'base64');
+  const iv = raw.subarray(0, 12);
+  const tag = raw.subarray(12, 28);
+  const ct = raw.subarray(28);
+  const decipher = createDecipheriv('aes-256-gcm', secretsKey(), iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(ct), decipher.final()]).toString(
+    'utf8',
+  );
+}
+
+export function validSecretName(name: string): boolean {
+  return SECRET_NAME_RE.test(name);
+}
+
+export async function getRunSecrets(
+  agent: string,
+): Promise<Record<string, string>> {
+  try {
+    const raw = await getRedis().get<string>(
+      `${SECRETS_PREFIX}${agent.toLowerCase()}`,
+    );
+    if (!raw) {
+      return {};
+    }
+    return JSON.parse(decryptSecrets(String(raw))) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+/** Merge-set semantics: provided keys overwrite; empty-string value deletes
+ *  the key. Returns the resulting secret NAMES (values never leave). */
+export async function setRunSecrets(
+  agent: string,
+  updates: Record<string, string>,
+): Promise<{ names: string[] } | { error: string }> {
+  const current = await getRunSecrets(agent);
+  for (const [k, v] of Object.entries(updates)) {
+    if (!validSecretName(k)) {
+      return { error: `Invalid secret name "${k}" — A-Z, 0-9, _ (start with a letter).` };
+    }
+    if (v.length > MAX_SECRET_LEN) {
+      return { error: `Secret "${k}" too long (max ${MAX_SECRET_LEN} chars).` };
+    }
+    if (v === '') {
+      delete current[k];
+    } else {
+      current[k] = v;
+    }
+  }
+  const names = Object.keys(current).sort();
+  if (names.length > MAX_SECRETS) {
+    return { error: `Too many secrets (max ${MAX_SECRETS}).` };
+  }
+  const redisKey = `${SECRETS_PREFIX}${agent.toLowerCase()}`;
+  if (names.length === 0) {
+    await getRedis().del(redisKey);
+  } else {
+    await getRedis().set(redisKey, encryptSecrets(JSON.stringify(current)));
+  }
+  return { names };
 }

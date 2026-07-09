@@ -10,7 +10,12 @@ import {
 } from '@suimpp/mpp/x402';
 import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commerce';
 import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
-import { isRunConfigured, runEndpointFor, signRunDelivery } from '@/lib/run';
+import {
+  getRunSecrets,
+  isRunConfigured,
+  runEndpointFor,
+  signRunDelivery,
+} from '@/lib/run';
 import { logPayment } from '@/lib/log-payment';
 import { runTaskChecksForWallets, runnerAddress } from '@/lib/tasks';
 import { appendBuyerParams, DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
@@ -219,6 +224,9 @@ async function deliverToHosted(
       input = body;
     }
   }
+  // The agent's vault secrets ride the delivery payload (TLS, per-request) —
+  // never stored in Cloudflare, never in the script (S.695).
+  const secrets = await getRunSecrets(seller);
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
@@ -230,7 +238,15 @@ async function deliverToHosted(
         'content-type': 'application/json',
         'x-t2000-run': signRunDelivery(seller, slug),
       },
-      body: JSON.stringify({ input, ctx: { agent: seller, slug, buyer } }),
+      body: JSON.stringify({
+        input,
+        ctx: {
+          agent: seller,
+          slug,
+          buyer,
+          ...(Object.keys(secrets).length > 0 ? { secrets } : {}),
+        },
+      }),
       redirect: 'error',
       signal: controller.signal,
     });

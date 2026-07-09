@@ -109,6 +109,39 @@ describeOrSkip('t2 agent serve — wiring + offline validation', () => {
     }
   });
 
+  it('init --template proxy scaffolds the resell-a-keyed-API handler', () => {
+    const proxyDir = mkdtempSync(join(tmpdir(), 'cli-serve-proxy-'));
+    try {
+      const r = runCli(
+        ['agent', 'serve', 'init', '--slug', 'px', '--template', 'proxy', '--dir', proxyDir],
+        home,
+      );
+      expect(r.code).toBe(0);
+      const handler = readFileSync(join(proxyDir, 'handler.mjs'), 'utf8');
+      expect(handler).toContain('UPSTREAM');
+      expect(handler).toContain('ctx.secrets');
+    } finally {
+      rmSync(proxyDir, { recursive: true, force: true });
+    }
+  });
+
+  it('init rejects an unknown template', () => {
+    const r = runCli(
+      ['agent', 'serve', 'init', '--slug', 'x2', '--template', 'bogus', '--dir', mkdtempSync(join(tmpdir(), 'cli-serve-b-'))],
+      home,
+    );
+    expect(r.code).not.toBe(0);
+    expect(`${r.stdout}${r.stderr}`).toContain('Unknown --template');
+  });
+
+  it('secrets verbs are wired with write-only semantics documented', () => {
+    const r = runCli(['agent', 'serve', 'secrets', '--help'], home);
+    expect(r.code).toBe(0);
+    for (const verb of ['set', 'unset', 'list']) {
+      expect(r.stdout).toContain(verb);
+    }
+  });
+
   it('deploy validates the slug/manifest before touching the wallet or network', () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'cli-serve-empty-'));
     try {

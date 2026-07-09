@@ -54,7 +54,8 @@ const HANDLER_TEMPLATE = `// t2000 hosted handler (R1). Deploys with: t2 agent s
 // auto-refunded. Keep it fast (15s delivery timeout, 5s CPU cap).
 //
 //   input — the buyer's request body (parsed JSON, or a raw string)
-//   ctx   — { agent, slug, buyer }
+//   ctx   — { agent, slug, buyer, secrets }
+//           secrets = your vault (t2 agent serve secrets set KEY=value)
 export default async function handle(input, ctx) {
   // Example: compose public data and return a result.
   // const res = await fetch('https://api.example.com/data');
@@ -66,6 +67,39 @@ export default async function handle(input, ctx) {
   };
 }
 `;
+
+const PROXY_TEMPLATE = `// t2000 hosted handler — "Proxy an API" template. You hold a key to an
+// API; this resells calls to it per-call, with your key never leaving the
+// t2000 vault. Setup:
+//   1. Edit UPSTREAM below.
+//   2. t2 agent serve secrets set UPSTREAM_KEY=<your api key>
+//   3. t2 agent serve deploy
+const UPSTREAM = 'https://api.example.com/v1/endpoint';
+
+export default async function handle(input, ctx) {
+  const res = await fetch(UPSTREAM, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      // Adjust the auth scheme to your upstream (x-api-key, basic, …).
+      ...(ctx.secrets?.UPSTREAM_KEY
+        ? { authorization: \`Bearer \${ctx.secrets.UPSTREAM_KEY}\` }
+        : {}),
+    },
+    body: JSON.stringify(input ?? {}),
+  });
+  if (!res.ok) {
+    // Throwing fails the delivery → the buyer is auto-refunded.
+    throw new Error(\`Upstream error \${res.status}\`);
+  }
+  return await res.json();
+}
+`;
+
+const TEMPLATES: Record<string, string> = {
+  default: HANDLER_TEMPLATE,
+  proxy: PROXY_TEMPLATE,
+};
 
 function readManifest(dir: string): ServeManifest {
   const p = join(dir, MANIFEST);
@@ -138,14 +172,25 @@ export function registerAgentServe(agentGroup: Command) {
     .command('init')
     .description(`Scaffold ${HANDLER} + ${MANIFEST} in the current directory.`)
     .option('--slug <slug>', 'Service slug (in the buy URL)', 'my-service')
+    .option(
+      '--template <name>',
+      `Handler template: ${Object.keys(TEMPLATES).join(' | ')} (proxy = resell a keyed API)`,
+      'default',
+    )
     .option('--dir <path>', 'Target directory (default: cwd)')
-    .action((opts: { slug: string; dir?: string }) => {
+    .action((opts: { slug: string; template: string; dir?: string }) => {
       try {
         const dir = resolve(opts.dir ?? '.');
         mkdirSync(dir, { recursive: true });
         const slug = opts.slug.trim().toLowerCase();
         if (!SLUG_RE.test(slug)) {
           throw new Error('--slug must match [a-z0-9-], 2-40 chars.');
+        }
+        const template = TEMPLATES[opts.template];
+        if (!template) {
+          throw new Error(
+            `Unknown --template "${opts.template}" — use: ${Object.keys(TEMPLATES).join(', ')}.`,
+          );
         }
         const manifestPath = join(dir, MANIFEST);
         const handlerPath = join(dir, HANDLER);
@@ -167,7 +212,7 @@ export function registerAgentServe(agentGroup: Command) {
             2,
           )}\n`,
         );
-        writeFileSync(handlerPath, HANDLER_TEMPLATE);
+        writeFileSync(handlerPath, template);
         if (isJsonMode()) {
           printJson({ dir, files: [MANIFEST, HANDLER] });
           return;
@@ -357,6 +402,137 @@ export function registerAgentServe(agentGroup: Command) {
         }
       },
     );
+
+  const secrets = group
+    .command('secrets')
+    .description(
+      "This agent's handler secrets vault — encrypted at t2000, injected as ctx.secrets on paid deliveries only. Values are write-only.",
+    );
+
+  secrets
+    .command('set')
+    .argument('<pairs...>', 'NAME=value pairs (e.g. UPSTREAM_KEY=sk-…)')
+    .description('Set (or overwrite) vault secrets. NAME: A-Z, 0-9, _.')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--gateway <url>', `Gateway URL (default ${DEFAULT_GATEWAY})`)
+    .action(
+      async (pairs: string[], opts: { key?: string; gateway?: string }) => {
+        try {
+          const updates: Record<string, string> = {};
+          for (const pair of pairs) {
+            const eq = pair.indexOf('=');
+            if (eq <= 0) {
+              throw new Error(`"${pair}" is not NAME=value.`);
+            }
+            updates[pair.slice(0, eq).trim()] = pair.slice(eq + 1);
+          }
+          const res = await postSecrets(opts, 'set', updates);
+          if (isJsonMode()) {
+            printJson({ names: res.names });
+            return;
+          }
+          printBlank();
+          printSuccess('Vault updated');
+          printKeyValue('Secrets', (res.names as string[]).join(', ') || '(none)');
+          printInfo('Handlers read them as ctx.secrets.NAME on paid deliveries.');
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  secrets
+    .command('unset')
+    .argument('<names...>', 'Secret names to delete')
+    .description('Delete vault secrets.')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--gateway <url>', `Gateway URL (default ${DEFAULT_GATEWAY})`)
+    .action(
+      async (names: string[], opts: { key?: string; gateway?: string }) => {
+        try {
+          const updates: Record<string, string> = {};
+          for (const n of names) {
+            updates[n.trim()] = '';
+          }
+          const res = await postSecrets(opts, 'set', updates);
+          if (isJsonMode()) {
+            printJson({ names: res.names });
+            return;
+          }
+          printBlank();
+          printSuccess('Vault updated');
+          printKeyValue('Secrets', (res.names as string[]).join(', ') || '(none)');
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  secrets
+    .command('list')
+    .description('List vault secret NAMES (values never leave the gateway).')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--gateway <url>', `Gateway URL (default ${DEFAULT_GATEWAY})`)
+    .action(async (opts: { key?: string; gateway?: string }) => {
+      try {
+        const res = await postSecrets(opts, 'list');
+        if (isJsonMode()) {
+          printJson({ names: res.names });
+          return;
+        }
+        const names = res.names as string[];
+        printBlank();
+        if (names.length === 0) {
+          printLine('Vault is empty. Set one: t2 agent serve secrets set NAME=value');
+        } else {
+          for (const n of names) {
+            printLine(`  ${n}`);
+          }
+        }
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+  /** Shared signed POST to /serve/secrets (set or list). */
+  async function postSecrets(
+    opts: { key?: string; gateway?: string },
+    op: 'set' | 'list',
+    updates?: Record<string, string>,
+  ): Promise<Record<string, unknown>> {
+    const gateway = opts.gateway ?? DEFAULT_GATEWAY;
+    const agent = await withAgent({ keyPath: opts.key });
+    const address = agent.address();
+    const ts = Date.now();
+    const payload =
+      op === 'list'
+        ? 'list'
+        : JSON.stringify(
+            Object.fromEntries(
+              Object.entries(updates ?? {}).sort(([a], [b]) =>
+                a.localeCompare(b),
+              ),
+            ),
+          );
+    const bodyHash = createHash('sha256').update(payload).digest('hex');
+    const message = new TextEncoder().encode(
+      `t2000-serve-secrets:${ts}:${bodyHash}`,
+    );
+    const { signature } = await agent.keypair.signPersonalMessage(message);
+    return await fetchJson(`${gateway}/serve/secrets`, {
+      method: 'POST',
+      body: {
+        address,
+        op,
+        ...(op === 'set' ? { updates } : {}),
+        timestamp: ts,
+        signature,
+      },
+    });
+  }
 
   group
     .command('status')
