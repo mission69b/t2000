@@ -130,6 +130,117 @@ fun wrong_confirmer_aborts() {
 }
 
 #[test]
+fun renounce_then_relink() {
+    let mut sc = ts::begin(AGENT);
+    registry::init_for_testing(ts::ctx(&mut sc));
+
+    // Agent registers + proposes OWNER.
+    ts::next_tx(&mut sc, AGENT);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::register(
+            &mut reg, option::none(), vector[], option::none(), option::none(), &clk, ts::ctx(&mut sc),
+        );
+        registry::set_pending_owner(&mut reg, OWNER, &clk, ts::ctx(&mut sc));
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+
+    // OWNER confirms, then renounces → record returns to autonomous.
+    ts::next_tx(&mut sc, OWNER);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::confirm_ownership(&mut reg, AGENT, &clk, ts::ctx(&mut sc));
+        registry::renounce_ownership(&mut reg, AGENT, &clk, ts::ctx(&mut sc));
+        assert!(registry::owner(registry::borrow_record(&reg, AGENT)).is_none(), 0);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+
+    // Re-link works: the agent proposes again, OWNER confirms again.
+    ts::next_tx(&mut sc, AGENT);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::set_pending_owner(&mut reg, OWNER, &clk, ts::ctx(&mut sc));
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+    ts::next_tx(&mut sc, OWNER);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::confirm_ownership(&mut reg, AGENT, &clk, ts::ctx(&mut sc));
+        assert!(registry::owner(registry::borrow_record(&reg, AGENT)) == option::some(OWNER), 1);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+    ts::end(sc);
+}
+
+#[test]
+#[expected_failure(abort_code = 2, location = agent_id::registry)]
+fun stranger_renounce_aborts() {
+    let mut sc = ts::begin(AGENT);
+    registry::init_for_testing(ts::ctx(&mut sc));
+
+    ts::next_tx(&mut sc, AGENT);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::register(
+            &mut reg, option::none(), vector[], option::none(), option::none(), &clk, ts::ctx(&mut sc),
+        );
+        registry::set_pending_owner(&mut reg, OWNER, &clk, ts::ctx(&mut sc));
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+    ts::next_tx(&mut sc, OWNER);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::confirm_ownership(&mut reg, AGENT, &clk, ts::ctx(&mut sc));
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+
+    // The AGENT (not the owner) tries to renounce → ENotAuthorized (2).
+    // Only the owner can walk away from the link.
+    ts::next_tx(&mut sc, STRANGER);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::renounce_ownership(&mut reg, AGENT, &clk, ts::ctx(&mut sc));
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+    ts::end(sc);
+}
+
+#[test]
+#[expected_failure(abort_code = 2, location = agent_id::registry)]
+fun renounce_without_owner_aborts() {
+    let mut sc = ts::begin(AGENT);
+    registry::init_for_testing(ts::ctx(&mut sc));
+
+    ts::next_tx(&mut sc, AGENT);
+    {
+        let mut reg = ts::take_shared<Registry>(&sc);
+        let clk = clock::create_for_testing(ts::ctx(&mut sc));
+        registry::register(
+            &mut reg, option::none(), vector[], option::none(), option::none(), &clk, ts::ctx(&mut sc),
+        );
+        // No owner is set — any renounce attempt fails closed.
+        registry::renounce_ownership(&mut reg, AGENT, &clk, ts::ctx(&mut sc));
+        clock::destroy_for_testing(clk);
+        ts::return_shared(reg);
+    };
+    ts::end(sc);
+}
+
+#[test]
 fun set_active_is_reversible() {
     let mut sc = ts::begin(AGENT);
     registry::init_for_testing(ts::ctx(&mut sc));

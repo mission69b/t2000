@@ -10,10 +10,13 @@ import { Transaction } from '@mysten/sui/transactions';
  * Deployed on Sui mainnet 2026-06-29. Override via env for testnet/dev.
  */
 
-/** The published `agent_id` package id. */
+/** The published `agent_id` package id — the LATEST version (v2, the
+ *  2026-07-09 additive upgrade that added `renounce_ownership`; the shared
+ *  Registry object is unchanged). The original v1 package
+ *  (`0x7669be20…be9a45e9`) remains callable for its own functions. */
 export const AGENT_ID_PACKAGE_ID =
   process.env.AGENT_ID_PACKAGE_ID ??
-  '0x7669be207f9ac28a34d2cbd45dcfdade11e6fd503ad24e687c180931be9a45e9';
+  '0x78d365066fb0e6468a9dcb49595e559434a53d7a12d845f776bcda76b4d15451';
 
 /** The shared `Registry` object id. */
 export const AGENT_ID_REGISTRY_ID =
@@ -82,6 +85,22 @@ export function buildConfirmOwnershipTx(agent: string): Transaction {
   const tx = new Transaction();
   tx.moveCall({
     target: `${AGENT_ID_PACKAGE_ID}::${MODULE}::confirm_ownership`,
+    arguments: [
+      tx.object(AGENT_ID_REGISTRY_ID),
+      tx.pure.address(agent),
+      tx.object(CLOCK_ID),
+    ],
+  });
+  return tx;
+}
+
+/** The confirmed owner (signer) renounces ownership of `agent` — the record
+ *  returns to autonomous (`owner = none`). Re-linking is the normal two-sided
+ *  flow (the agent proposes, the owner confirms). Requires package v2+. */
+export function buildRenounceOwnershipTx(agent: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${AGENT_ID_PACKAGE_ID}::${MODULE}::renounce_ownership`,
     arguments: [
       tx.object(AGENT_ID_REGISTRY_ID),
       tx.pure.address(agent),

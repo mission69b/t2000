@@ -3,6 +3,7 @@ import {
   AGENT_ID_PACKAGE_ID,
   buildConfirmOwnershipTx,
   buildRegisterTx,
+  buildRenounceOwnershipTx,
   buildSetActiveTx,
   buildSetPendingOwnerTx,
   buildUpdateTx,
@@ -34,6 +35,12 @@ describe('@t2000/id builders', () => {
 
   it('set_active targets set_active', () => {
     expect(cmds(buildSetActiveTx('0x3', false))).toContain('set_active');
+  });
+
+  it('renounce_ownership targets renounce_ownership (package v2)', () => {
+    const j = cmds(buildRenounceOwnershipTx('0x4'));
+    expect(j).toContain('renounce_ownership');
+    expect(j).toContain(AGENT_ID_PACKAGE_ID);
   });
 
   it('register accepts empty registration (all-none)', () => {

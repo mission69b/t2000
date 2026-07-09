@@ -90,6 +90,11 @@ public struct AgentActiveSet has copy, drop {
     active: bool,
     timestamp_ms: u64,
 }
+public struct OwnershipRenounced has copy, drop {
+    agent: address,
+    owner: address,
+    timestamp_ms: u64,
+}
 
 // === Init (runs once on publish) ===
 fun init(ctx: &mut TxContext) {
@@ -204,6 +209,29 @@ public fun confirm_ownership(
     record.pending_owner = option::none();
     record.updated_at_ms = now;
     event::emit(OwnerLinked { agent, owner: pending, timestamp_ms: now });
+}
+
+/// The confirmed owner walks away — clears `owner`, returning the record to
+/// autonomous. Owner-signed: the reverse of the two-sided link (added in the
+/// v1 additive upgrade, 2026-07-09 — before it, ownership was permanent
+/// unless the AGENT's key proposed a replacement). Does NOT touch
+/// `pending_owner`: an in-flight proposal to someone else survives, and the
+/// agent can re-propose this same owner later (re-link = propose + confirm).
+public fun renounce_ownership(
+    registry: &mut Registry,
+    agent: address,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert_version(registry);
+    assert!(registry.agents.contains(agent), ENotRegistered);
+    let sender = ctx.sender();
+    let now = clock.timestamp_ms();
+    let record = registry.agents.borrow_mut(agent);
+    assert!(record.owner.contains(&sender), ENotAuthorized);
+    record.owner = option::none();
+    record.updated_at_ms = now;
+    event::emit(OwnershipRenounced { agent, owner: sender, timestamp_ms: now });
 }
 
 // === Active toggle (the agent itself, or its confirmed owner) ===
