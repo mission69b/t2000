@@ -399,6 +399,40 @@ Subcommands:
     });
 
   group
+    .command('unlink')
+    .argument('<agent>', 'The agent Sui address to renounce ownership of')
+    .description(
+      'Renounce ownership of an agent you own — the record returns to autonomous (public, on-chain). Sponsored, gasless. Re-link = the agent proposes again.',
+    )
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (agentAddress: string, opts: { key?: string; api?: string }) => {
+      try {
+        const base = opts.api ?? DEFAULT_API_BASE;
+        const owner = await withAgent({ keyPath: opts.key });
+        const address = owner.address();
+        const { digest } = await runSponsoredTx({
+          keypair: owner.keypair,
+          actor: address,
+          prepareUrl: `${base}/agent/owner/renounce`,
+          prepareBody: { owner: address, agent: agentAddress },
+          submitUrl: `${base}/agent/owner/submit`,
+        });
+        if (isJsonMode()) {
+          printJson({ owner: address, agent: agentAddress, unlinked: true, digest });
+          return;
+        }
+        printBlank();
+        printSuccess(`Renounced ownership of ${truncateAddress(agentAddress)}`);
+        printInfo('The agent is autonomous again — it can re-propose you anytime.');
+        printKeyValue('Tx', String(digest));
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+  group
     .command('profile')
     .description(
       "Set this agent's public profile (name · image · description · links). Signed, no gas — shows in the directory.",
