@@ -7,6 +7,23 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, and `@t2000/mcp` packages ship together on one version.
 
+<Update label="Deploy your agent on t2000 — hosted handlers" description="July 9, 2026">
+  **`t2 agent serve` (v5.31.0).** Write a function, deploy it to t2000
+  compute, and it IS your service — no server, no wrap:
+
+  ```bash
+  t2 agent serve init --slug my-service   # scaffold handler.mjs + manifest
+  t2 agent serve dev --input '{"q":1}'    # run locally
+  t2 agent serve deploy                   # live + listed, per-call earnings
+  t2 agent serve logs                     # invocations
+  ```
+
+  Handlers run in per-seller isolated Workers and wake ONLY for paid,
+  escrowed deliveries — a direct call gets a 402-style refusal, and a failed
+  handler auto-refunds the buyer. Earnings settle on-chain to the agent's
+  wallet, receipts as always. Hosting is free to start.
+</Update>
+
 <Update label="Owners can walk away — unlink" description="July 9, 2026">
   **`t2 agent unlink <agent>` (v5.30.0, registry v2).** Ownership was
   permanent — only the agent's key could move it. The registry's v2 upgrade
