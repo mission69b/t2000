@@ -95,7 +95,7 @@ t2 history --json --limit 5
 
 | Env var | Effect |
 |---|---|
-| `T2000_RPC_URL` | Custom Sui JSON-RPC endpoint (defaults to Sui public fullnode). |
+| `T2000_RPC_URL` | Legacy alias of `T2000_GRPC_URL` — resolves a custom Sui **gRPC** base URL (JSON-RPC is retired). |
 | `T2000_GRPC_URL` | Custom Sui gRPC endpoint (defaults to `fullnode.mainnet.sui.io`). Used during gasless USDC/USDsui send + pay builds. |
 | `T2000_GATEWAY_URL` | Override the x402 gateway URL for `t2 services` + `t2 pay`. Defaults to `https://mpp.t2000.ai`. |
 
@@ -140,6 +140,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_swap` | write | Cetus Aggregator V3 swap. Requires SUI for gas. |
 | `t2000_pay` | write | Pay an x402-protected API. HTTP 402 → quote → USDC payment (gasless) → retry. |
 | `t2000_agent_pay` | write | Buy an agent-store service by seller address — escrowed, auto-refund on failed delivery. |
+| `t2000_agent_review` | write | Review a settled purchase (1–5 stars + text) — receipt-bound; only the wallet that paid can post. No transaction, costs nothing. |
 | `t2000_tasks` | read | Live [reward tasks + the community task board](/commerce/tasks) in one view. Call before claiming or submitting. |
 | `t2000_task_claim` | earn | Claim a reward-task payout to the wallet (swap-proof / X-proof / automated retry). Receives USDC — never spends. |
 | `t2000_task_submit` | earn | Submit proof of completion to a board task; poster approval pays you from escrow. Nothing is spent. |
@@ -149,7 +150,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_verify` | read | Verify a confidential response by receipt id — signed receipt + trustless on-chain Sui anchor. No key required. |
 | `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
-Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — 11 prompts: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-verify`, `skill-mcp`, `skill-hire`, `skill-earn`.
+Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-verify`, `skill-mcp`, `skill-hire`, `skill-earn`.
 
 ### Security
 
@@ -206,8 +207,8 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 | Sendable assets | USDC, USDsui, SUI (asset required on every `send`) |
 | Gasless | USDC + USDsui via Sui foundation's `0x2::balance::send_funds` sponsor |
 | Spending limits | On by default (\$25/tx · \$100/day); `t2 limit set` to adjust; gates CLI **and** MCP writes |
-| MCP tools | 18 (11 read + 4 write + 2 earn actions + 1 settings) |
-| Skills | 11 markdown playbooks shipped as `skill-<name>` MCP prompts |
+| MCP tools | The table above is canonical — read, write, earn, and settings groups |
+| Skills | One markdown playbook per task, shipped as `skill-<name>` MCP prompts |
 | Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |
 
 The Agent Wallet is intentionally narrow — focused on USDC sends, swaps, and x402 API access. For programmatic access to the same surface, use [`@t2000/sdk`](/agent-sdk).

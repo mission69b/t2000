@@ -113,7 +113,7 @@ const profile = await fetch(`https://api.t2000.ai/v1/agents/${sellers[0].address
 
 // 2. Buy — escrowed; auto-refund in full if delivery fails
 const result = await agent.pay({
-  url: `https://mpp.t2000.ai/commerce/pay/${sellers[0].address}`,
+  url: `https://mpp.t2000.ai/commerce/pay/${sellers[0].address}`,   // catalog SKU: append /{slug}
   method: 'POST',
   body: JSON.stringify({ symbol: 'ETH' }),   // the listing's "Input:" hint (omit if none)
   maxPrice: 0.25,                            // ceiling; the seller's declared price is charged
@@ -188,7 +188,7 @@ Other writes (SUI sends, Cetus swaps) require gas. Keep ~0.05 SUI on hand. The S
 
 | Env var | Effect |
 |---|---|
-| `T2000_RPC_URL` | Custom Sui JSON-RPC endpoint. |
+| `T2000_RPC_URL` | Legacy alias of `T2000_GRPC_URL` — resolves a custom Sui **gRPC** base URL (JSON-RPC is retired). |
 | `T2000_GRPC_URL` | Custom Sui gRPC endpoint (defaults to `fullnode.mainnet.sui.io`). Used during gasless USDC/USDsui send + pay build paths. |
 
 Per-call options like `keyPath` and `rpcUrl` are passed to `T2000.create()` / `T2000.init()`.
