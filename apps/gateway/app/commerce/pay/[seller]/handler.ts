@@ -8,7 +8,12 @@ import {
   X402_PAYMENT_HEADER,
   X402_VERSION,
 } from '@suimpp/mpp/x402';
-import { recordCommerceReceipt, splitAmount, uptoSettlement } from '@/lib/commerce';
+import {
+  computeFeeMicros,
+  recordCommerceReceipt,
+  splitAmount,
+  uptoSettlement,
+} from '@/lib/commerce';
 import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
 import {
   getRunSecrets,
@@ -374,6 +379,24 @@ export async function handle(
   // override and the first-sale reward underpaid a listed seller.
   const amount = override || (service ? service.priceUsdc : profile.priceUsdc);
   if (!amount) {
+    // [S.697 UX] The common case behind a bare-URL 400 is a catalog seller
+    // (SKUs priced, no default) — point the buyer at the slugs instead of a
+    // dead end (founder hit exactly this after a console deploy).
+    const activeSlugs = profile.services
+      .filter((s) => s.active !== false && s.priceUsdc)
+      .map((s) => s.slug);
+    if (!slug && activeSlugs.length > 0) {
+      return Response.json(
+        {
+          error: `This seller sells named services — buy one by slug: ${activeSlugs
+            .slice(0, 10)
+            .map((s) => `/commerce/pay/${seller}/${s}`)
+            .join(' · ')}`,
+          services: activeSlugs,
+        },
+        { status: 400 },
+      );
+    }
     return Response.json(
       { error: 'Seller has not declared a price (and no amount override given). Set one with `t2 agent service --price`.' },
       { status: 400 },
@@ -543,6 +566,18 @@ export async function handle(
     // refund the excess, settle the fee/net on the actual.
     const upto = uptoSettlement(split.grossMicros, delivered.settleAmount);
 
+    // [S.697] Hosted-compute fee: t2000 ran this delivery (handler or wrap)
+    // → +2.5% of the charged amount off the seller's net, floor-guarded.
+    // Self-hosted endpoints pay the facilitator fee only.
+    const computeFee = computeFeeMicros(
+      upto.actualMicros,
+      upto.netMicros,
+      Boolean(hosted || deployed),
+    );
+    const totalFeeMicros = upto.feeMicros + computeFee;
+    const sellerNetMicros = upto.netMicros - computeFee;
+    const sellerNetDecimal = (sellerNetMicros / 1e6).toFixed(6);
+
     // Refund the buyer the unused authorization (only when above the dust floor).
     let refundDigest: string | null = null;
     if (upto.refundMicros > 0) {
@@ -566,20 +601,20 @@ export async function handle(
     try {
       forwardDigest = await treasurySendUsdc({
         to: seller,
-        amount: upto.netDecimal,
+        amount: sellerNetDecimal,
         network: NETWORK,
       });
     } catch (err) {
       console.error(
-        `[commerce] settlement_due seller=${seller} net=${upto.netDecimal} buyer=${buyer} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
+        `[commerce] settlement_due seller=${seller} net=${sellerNetDecimal} buyer=${buyer} collect=${settle.transaction} reason=${err instanceof Error ? err.message : String(err)}`,
       );
     }
     // [S.627] Fee → REVENUE at settle (escrow holds customer funds only).
     // Inert until REVENUE_ADDRESS is set; fees < $0.01 can't go gasless —
     // they accrue in escrow and are swept manually. Post-response, best-effort
     // (a missed sweep reconciles from the receipt ledger).
-    if (env.REVENUE_ADDRESS && upto.feeMicros >= 10_000) {
-      const feeDecimal = (upto.feeMicros / 1e6).toFixed(6);
+    if (env.REVENUE_ADDRESS && totalFeeMicros >= 10_000) {
+      const feeDecimal = (totalFeeMicros / 1e6).toFixed(6);
       after(() =>
         treasurySendUsdc({
           to: env.REVENUE_ADDRESS as string,
@@ -598,8 +633,8 @@ export async function handle(
       resource: receiptResource,
       // The effective sale = the actual charged (gross of fee).
       grossMicros: upto.actualMicros,
-      feeMicros: upto.feeMicros,
-      netMicros: upto.netMicros,
+      feeMicros: totalFeeMicros,
+      netMicros: sellerNetMicros,
       status: forwardDigest ? 'settled' : 'settlement_due',
       collectDigest: settle.transaction,
       forwardDigest,
@@ -631,9 +666,14 @@ export async function handle(
           authorizedMicros: split.grossMicros,
           chargedMicros: upto.actualMicros,
           refundMicros: upto.refundMicros,
-          feeMicros: upto.feeMicros,
-          netMicros: upto.netMicros,
+          feeMicros: totalFeeMicros,
+          netMicros: sellerNetMicros,
           feeBps: 250,
+          // Hosted deliveries (handler or wrap): t2000 ran the compute —
+          // the extra 2.5% shows as its own line (S.697).
+          ...(computeFee > 0
+            ? { computeFeeMicros: computeFee, computeFeeBps: 250 }
+            : {}),
           collectDigest: settle.transaction,
           forwardDigest,
           ...(refundDigest ? { refundDigest } : {}),

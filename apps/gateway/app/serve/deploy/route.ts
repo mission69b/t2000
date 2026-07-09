@@ -118,6 +118,24 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // [S.697] Handler cap: 20 live handlers per agent (script-count is the one
+  // real fixed cost; founder-sized to fit catalog-scale sellers). Redeploys
+  // of an existing slug always pass.
+  const existing = await prisma.runDeployment.findUnique({
+    where: { agent_slug: { agent: address, slug } },
+  });
+  if (!existing) {
+    const liveCount = await prisma.runDeployment.count({
+      where: { agent: address, active: true },
+    });
+    if (liveCount >= 20) {
+      return err(
+        400,
+        'Handler limit reached (20 per agent). Undeploy one first — or ask us to raise it.',
+      );
+    }
+  }
+
   const upload = await uploadRunScript(address, slug, script);
   if (!upload.ok) {
     return err(502, upload.error ?? 'Upload failed.');

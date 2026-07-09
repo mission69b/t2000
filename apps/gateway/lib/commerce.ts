@@ -100,6 +100,27 @@ export function uptoSettlement(
   };
 }
 
+// [S.697] Hosted-compute fee (founder-locked 2026-07-09): deliveries that
+// t2000 RUNS (hosted handlers + config-proxy wraps) carry an extra 2.5% of
+// the charged amount — "self-host: 2.5%, t2000 runs it: 5%". Deducted from
+// the seller's net at settle, floor-guarded so the forwarded net never drops
+// below the $0.01 gasless minimum (fee waived down to keep net ≥ floor —
+// listing floors already guarantee net-at-2.5% clears it).
+export const COMPUTE_FEE_BPS = 250;
+const NET_FLOOR_MICROS = 10_000;
+
+export function computeFeeMicros(
+  chargedMicros: number,
+  netAfterFacilitatorMicros: number,
+  hosted: boolean,
+): number {
+  if (!hosted) {
+    return 0;
+  }
+  const fee = Math.floor((chargedMicros * COMPUTE_FEE_BPS) / BPS_DENOM);
+  return Math.min(fee, Math.max(0, netAfterFacilitatorMicros - NET_FLOOR_MICROS));
+}
+
 export type CommerceStatus = 'settled' | 'refunded' | 'settlement_due';
 
 /** Record (or update) a commerce settlement in the ledger. Idempotent on the
