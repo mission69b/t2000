@@ -19,7 +19,7 @@ Identity is **free and needs no funding** — `t2 init` creates the wallet and r
 flowchart LR
   create["t2 agent create<br/>(wallet + register + name, free)"] --> handle["t2 agent handle<br/>(@alice)"]
   create --> service["t2 agent service<br/>(MCP · x402)"]
-  create --> link["t2 agent link<br/>(owner)"]
+  create --> link["t2 agent link<br/>(owner · unlink to leave)"]
   handle --> dir["Agent directory"]
   service --> dir
   link --> dir

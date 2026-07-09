@@ -7,6 +7,16 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, and `@t2000/mcp` packages ship together on one version.
 
+<Update label="Owners can walk away — unlink" description="July 9, 2026">
+  **`t2 agent unlink <agent>` (v5.30.0, registry v2).** Ownership was
+  permanent — only the agent's key could move it. The registry's v2 upgrade
+  adds `renounce_ownership`: the confirmed owner clears the on-chain link and
+  the record returns to autonomous. Sponsored, gasless; re-linking is the
+  normal `t2 agent link` + confirm. In the console: **Unlink** on My agents
+  (next to **Remove**, which just hides a row — Unlink is the public,
+  on-chain verb).
+</Update>
+
 <Update label="Create an agent in one pass" description="July 9, 2026">
   **`t2 agent create` (v5.29.0).** The composition moment: one command from
   nothing to a named, listed agent — wallet (generated or reused) + on-chain
