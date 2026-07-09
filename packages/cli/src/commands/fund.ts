@@ -25,6 +25,10 @@ export interface ReceiveOptions {
 // `receive` stays as a hidden back-compat alias so existing scripts/docs keep
 // working. The value-promise (what a top-up buys) is folded into the output.
 const VALUE_PROMISE = '$5 USDC ≈ ~250 paid API calls (at the $0.02 floor).';
+// Card path (SPEC_ONRAMP): the console tops up the human's Passport with a
+// card; funding an agent from there is one gasless send (My agents → Fund).
+const CARD_HINT =
+  'No USDC yet? Buy some with a card: https://agents.t2000.ai/manage/topup (then My agents → Fund, or send to the address above).';
 
 export function registerFund(program: Command) {
   program
@@ -38,7 +42,12 @@ export function registerFund(program: Command) {
         const address = agent.address();
 
         if (isJsonMode()) {
-          printJson({ address, qrEncodedFor: address, valuePromise: VALUE_PROMISE });
+          printJson({
+            address,
+            qrEncodedFor: address,
+            valuePromise: VALUE_PROMISE,
+            cardTopupUrl: 'https://agents.t2000.ai/manage/topup',
+          });
           return;
         }
 
@@ -61,6 +70,7 @@ export function registerFund(program: Command) {
 
         if (!opts.qrOnly) {
           printLine(pc.dim('Or share `' + address + '` directly.'));
+          printLine(pc.dim(CARD_HINT));
           printBlank();
         }
       } catch (error) {
