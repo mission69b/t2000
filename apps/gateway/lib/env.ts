@@ -182,6 +182,15 @@ const serverSchema = z.object({
   SHORTIO_DOMAIN: optionalString,
   BLOB_READ_WRITE_TOKEN: optionalString, // Vercel Blob — hosts ALL binary upstream responses (audio/image/pdf) as artifact URLs; when unset, binary endpoints degrade to a 503 JSON error rather than corrupting bytes
 
+  // [S.694] R1 hosted handlers (SPEC_AGENT_RUNTIME §2) — Cloudflare Workers
+  // for Platforms control plane + the run-dispatcher trust boundary. ALL
+  // optional: unset → /serve/* routes 503 and delivery falls back to the
+  // wrap/self-hosted lanes (hosted handlers simply unavailable).
+  CF_ACCOUNT_ID: optionalString,
+  CF_API_TOKEN: optionalString,
+  RUN_DELIVERY_SECRET: optionalString,
+  RUN_DISPATCH_URL: optionalString,
+
   // ---- Test-only ----
   E2E_TEST_PRIVATE_KEY: optionalString,
   DIGEST: optionalString,
@@ -269,6 +278,10 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     ESCROW_ADDRESS: process.env.ESCROW_ADDRESS,
     ESCROW_PRIVATE_KEY: process.env.ESCROW_PRIVATE_KEY,
     REVENUE_ADDRESS: process.env.REVENUE_ADDRESS,
+    CF_ACCOUNT_ID: process.env.CF_ACCOUNT_ID,
+    CF_API_TOKEN: process.env.CF_API_TOKEN,
+    RUN_DELIVERY_SECRET: process.env.RUN_DELIVERY_SECRET,
+    RUN_DISPATCH_URL: process.env.RUN_DISPATCH_URL,
     // Server — optional with defaults / optional / test
     TREASURY_ADDRESS: process.env.TREASURY_ADDRESS,
     GATEWAY_URL: process.env.GATEWAY_URL,
@@ -350,6 +363,10 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'ESCROW_ADDRESS',
   'ESCROW_PRIVATE_KEY',
   'REVENUE_ADDRESS',
+  'CF_ACCOUNT_ID',
+  'CF_API_TOKEN',
+  'RUN_DELIVERY_SECRET',
+  'RUN_DISPATCH_URL',
   // Optional / defaulted server-only
   'TREASURY_ADDRESS',
   'GATEWAY_URL',

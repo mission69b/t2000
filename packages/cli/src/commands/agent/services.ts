@@ -68,7 +68,7 @@ function canonicalServicesJson(services: AgentServiceEntry[]): string {
   );
 }
 
-async function getCatalog(
+export async function getCatalog(
   base: string,
   address: string,
 ): Promise<AgentServiceEntry[]> {
@@ -81,7 +81,7 @@ async function getCatalog(
 }
 
 /** Sign + submit the full catalog (replace semantics). */
-async function putCatalog(opts: {
+export async function putCatalog(opts: {
   base: string;
   keyPath?: string;
   services: AgentServiceEntry[];

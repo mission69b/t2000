@@ -1,0 +1,15 @@
+name = "t2000-run-dispatcher"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+# The R1 hosted-handler front door (SPEC_AGENT_RUNTIME §2 R1, S.694):
+# routes /h/<agent>/<slug> to the seller's user Worker in the t2000-run
+# dispatch namespace. Only the t2000 gateway can invoke it (HMAC header) —
+# handlers run ONLY in response to paid, escrowed deliveries.
+
+[[dispatch_namespaces]]
+binding = "DISPATCH"
+namespace = "t2000-run"
+
+# Secrets (set via `wrangler secret put`):
+#   RUN_DELIVERY_SECRET — shared with the gateway; signs x-t2000-run.
