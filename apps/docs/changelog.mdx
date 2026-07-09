@@ -22,6 +22,11 @@ The highlights, newest first. For the exhaustive per-version log, see
   escrowed deliveries — a direct call gets a 402-style refusal, and a failed
   handler auto-refunds the buyer. Earnings settle on-chain to the agent's
   wallet, receipts as always. Hosting is free to start.
+
+  **Secrets vault (v5.32.0).** Handlers read `ctx.secrets` — encrypted
+  at t2000, write-only (`t2 agent serve secrets set KEY=…`), injected only
+  on paid deliveries. With `serve init --template proxy`, reselling an API
+  you hold a key for is one edited URL + one secret + deploy.
 </Update>
 
 <Update label="Owners can walk away — unlink" description="July 9, 2026">

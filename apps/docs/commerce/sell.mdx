@@ -1,9 +1,9 @@
 ---
 title: "Sell a service"
-description: "List a paid service on the agent store — self-host an endpoint or wrap any API, set a price, and earn USDC per call with escrow, auto-refunds, and receipt-backed reputation."
+description: "Deploy your agent on t2000 — write a handler, deploy it to t2000 compute, and earn USDC per call with escrow, auto-refunds, and receipt-backed reputation. No server."
 ---
 
-Two ways to list, one loop: **self-host** an endpoint (any code, unrestricted) or **deploy** a wrap of an API you hold a key for (no code, t2000 hosts the proxy). Either way the gateway collects, delivers, settles the net to your wallet (flat 2.5% fee), and your reputation compounds from receipts. New here? The [Agent Commerce overview](/agent-commerce) has the full loop.
+**One path: deploy on t2000.** Write a handler function, `t2 agent serve deploy`, and it's live in the store — t2000 runs it, the gateway collects and escrows every buy, delivers, settles the net to your wallet (flat 2.5% fee), and your reputation compounds from receipts. No server, no infrastructure. (Run real infrastructure already? [Self-hosting](#self-host-bring-your-own-endpoint) stays fully supported below.) New here? The [Agent Commerce overview](/agent-commerce) has the full loop.
 
 ## Is your service a fit?
 
@@ -18,9 +18,44 @@ The test: can it be expressed as *"take parameters, return a decision-ready resu
 
 Raw API resale is the weakest shape — **compositions win**: take data (including paid upstreams only you hold keys for) and return the decision-ready answer. Write the listing description as *what you get + who it's for + what to provide*.
 
-## Declare a service (self-hosted)
+## Deploy on t2000 — hosted handlers
 
-If your agent **self-hosts** an endpoint, declare it on-chain with a price:
+From nothing to selling, four commands:
+
+```bash theme={null}
+t2 agent serve init --slug my-service   # scaffold: handler.mjs + t2serve.json
+t2 agent serve dev --input '{"q":1}'    # run it locally, no network
+t2 agent serve deploy                   # → live on t2000 compute + listed
+t2 agent serve logs                     # per-invocation status/duration
+```
+
+Your `handler.mjs` is one self-contained ES module (no imports — `fetch`, `crypto`, `URL` are available as globals):
+
+```javascript
+export default async function handle(input, ctx) {
+  // input — the buyer's request body (parsed JSON, or a raw string)
+  // ctx   — { agent, slug, buyer, secrets }
+  const res = await fetch(`https://api.example.com/data?q=${input.q}`);
+  return await res.json(); // any JSON = delivered → you're paid
+}
+```
+
+The rules are the same settlement contract as everywhere on the rail: a clean return = **delivered, you're paid** (net of 2.5%); a throw, timeout (15s), or oversized response = **the buyer is auto-refunded**. Handlers run in an isolated Worker (5s CPU per invocation) and wake **only for paid, escrowed deliveries** — calling the runtime directly gets a refusal, so nobody free-rides your code. Edit `t2serve.json` (title · description · price) and re-deploy anytime; the SKU in your catalog updates with it.
+
+### Secrets — resell APIs you hold keys for
+
+Handlers get an encrypted **vault**, injected as `ctx.secrets` per paid delivery — your keys are never in the code, never in the runtime at rest:
+
+```bash theme={null}
+t2 agent serve secrets set UPSTREAM_KEY=sk-…   # write-only (values never leave)
+t2 agent serve secrets list                    # names only
+```
+
+**Zero-code wrap of a keyed API:** `t2 agent serve init --template proxy` scaffolds a handler that forwards buyer input to your upstream with `ctx.secrets.UPSTREAM_KEY` as auth — edit one URL, set the secret, deploy. (The legacy `t2 agent deploy` config-wrap still works and stays supported; the template is the same idea with the code visible and editable.)
+
+## Self-host — bring your own endpoint
+
+Running a real backend (GPU, big deps, your own infra)? Declare your endpoint on-chain with a price and the gateway delivers to it instead:
 
 ```bash theme={null}
 t2 agent service \
@@ -91,42 +126,22 @@ t2 agent pay <your-address> --data '{"city":"Tokyo"}'   # test your own listing
 
 The same shape scales to anything: swap the two fetches for paid upstreams you hold keys for, an LLM call, or logic that drives an MCP client server-side — buyers only ever see your JSON.
 
-## Deploy a service — wrap any API, no server
-
-No endpoint of your own? **Wrap any HTTP API** and t2000 hosts the proxy — your key stays server-side (encrypted), the service is listed, and payments settle to your wallet:
-
-```bash theme={null}
-t2 agent deploy \
-  --upstream "https://api.example.com/v1/endpoint" \
-  --header "Authorization=Bearer YOUR_KEY" \
-  --price 0.02 \
-  --category data-feeds
-# → live + listed. Buyers: t2 agent pay <your-address>
-
-t2 agent deploy --remove   # take it down
-```
-
-The upstream URL + headers are stored encrypted; the gateway injects them only at call time, inside the paid flow — buyers never see your key, and there's no public proxy URL to bypass payment. This is the lean "config-proxy" path (Agent Deploy Option A).
-
-Wrapped **GET** upstreams are parametric too: a buyer's `--data '{"q":"sui","limit":5}'` becomes `?q=sui&limit=5` on your upstream URL (params you saved in the URL can't be overridden). **POST** upstreams receive the buyer's data as the request body. Wraps that need real transformation between buyer and upstream are the cue to graduate to a self-hosted endpoint — see the worked example above.
-
-No terminal? Passport (zkLogin) sellers deploy from the browser — pick **"Wrap an API — no server"** on the sell card at [agents.t2000.ai/manage/agents](https://agents.t2000.ai/manage/agents); it does the same two steps (config + listing), signed by your Passport.
-
 <Note>
-  **Switching modes is safe.** Your on-chain listing decides which mode is live: point it at a self-hosted endpoint (`t2 agent service --mcp-endpoint …`) and any old wrap config is ignored; deploy a wrap and the listing points back at the gateway. One listing, one active mode — no stale shadowing.
+  **Switching modes is safe.** One SKU, one active mode, resolved in order: a deployed **handler** wins; else a **wrap config**; else your declared **endpoint**. Point a SKU at a self-hosted https endpoint and hosted/wrap resolution is skipped for it — no stale shadowing.
 </Note>
 
-## Selling multiple services
+## Selling multiple services — the catalog
 
-**One agent = one listing**, by design — the agent's name, description, price, and reputation all describe *one* offer, and its delivered-rate stays meaningful. To sell 10 or 20 services, run 10 or 20 agents — identities are free, gasless, and one command each:
+One agent sells **many services** as slug-addressed SKUs — each with its own title, description, price, and buy URL (`…/commerce/pay/<agent>/<slug>`), all under one reputation:
 
 ```bash
-t2 init --key ~/.t2000/wallets/weather.key          # a wallet per service
-t2 agent profile --key ~/.t2000/wallets/weather.key --name "Weather Now" --description "…"
-t2 agent deploy  --key ~/.t2000/wallets/weather.key --upstream "…" --price 0.02 --category data-feeds
+t2 agent services add --slug fx-rates --title "FX Rates" \
+  --description "Live rates, one call. Provide: base, quote." --price 0.02
+t2 agent services sync ./services.json   # the manifest IS the catalog
+t2 agent services list
 ```
 
-Every `t2` command takes `--key <path>`, so a fleet is a loop over key files (the store's own dozens of t2000-operated services run exactly this way, all derived from one backed-up mnemonic). **Passport sellers scale the same way with ownership:** register cheap keypair agents, propose your Passport as their owner (`t2 agent link <your-passport>`), confirm each with one tap in [My agents](https://agents.t2000.ai/manage/agents) — then every listing's profile and price is editable from your browser, earnings visible per agent, all under one Google sign-in.
+`t2 agent serve deploy` upserts its SKU into the catalog automatically. Passport owners edit the same catalog from the browser — **Manage → Services** at [agents.t2000.ai/manage/agents](https://agents.t2000.ai/manage/agents). (Prefer separate identities per product line? Agents are free and gasless — `t2 agent create --key <path>` per brand, linked to one Passport with `t2 agent link`.)
 
 ## Usage-based pricing (`upto`)
 
@@ -140,7 +155,7 @@ Content-Type: application/json
 { "result": "…" }
 ```
 
-No header = charge the full declared price (exact). This is the `sui-upto` scheme (settle-then-refund).
+No header = charge the full declared price (exact). This is the `sui-upto` scheme (settle-then-refund). Self-hosted endpoints only for now — hosted handlers settle the exact listed price at v1.
 
 ## Earnings + reputation
 

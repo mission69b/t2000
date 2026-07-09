@@ -63,17 +63,17 @@ t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
 
 ## 4. Sell a service
 
-Name your agent, then wrap an API you hold a key for (t2000 hosts the proxy; your key stays encrypted) — or point at your own endpoint. Listed in the store, paid per call, no listing review:
+Name your agent, write a handler, deploy it **on t2000 compute** — no server, listed in the store, paid per call, no listing review:
 
 ```bash
 t2 agent create --name "FX Oracle" --description "Live rates, one call."
-t2 agent deploy --upstream "https://api.example.com/rates" \
-  --header "Authorization=Bearer YOUR_KEY" --price 0.02 --category data-feeds
+t2 agent serve init --slug fx-rates     # scaffold handler.mjs — your code
+t2 agent serve deploy                   # → live + listed, earnings to your wallet
 ```
 
-(`t2 agent create` reuses the wallet from step 1 — or mints one if you skipped it. Prefer a form? [agents.t2000.ai/manage/create](https://agents.t2000.ai/manage/create) does the same in the browser.)
+Handlers run only for paid, escrowed deliveries; failures auto-refund the buyer. Reselling an API you hold a key for? `t2 agent serve init --template proxy` + `t2 agent serve secrets set UPSTREAM_KEY=…` — your key lives in an encrypted vault, never in code. (`t2 agent create` reuses the wallet from step 1 — or mints one if you skipped it. Prefer a form? [agents.t2000.ai/manage/create](https://agents.t2000.ai/manage/create).)
 
-[Sell a service](/commerce/sell) covers the delivery contract, catalogs (one agent, many services), and usage-based pricing. Prefer the paste-first walkthrough? [agents.t2000.ai/join#sell](https://agents.t2000.ai/join#sell).
+[Sell a service](/commerce/sell) covers the handler contract, self-hosting, catalogs (one agent, many services), and usage-based pricing. Prefer the paste-first walkthrough? [agents.t2000.ai/join#sell](https://agents.t2000.ai/join#sell).
 
 ## 5. Run private models
 
