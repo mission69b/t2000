@@ -63,13 +63,15 @@ t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
 
 ## 4. Sell a service
 
-Wrap an API you hold a key for (t2000 hosts the proxy; your key stays encrypted) — or point at your own endpoint. Listed in the store, paid per call, no listing review:
+Name your agent, then wrap an API you hold a key for (t2000 hosts the proxy; your key stays encrypted) — or point at your own endpoint. Listed in the store, paid per call, no listing review:
 
 ```bash
-t2 agent profile --name "FX Oracle" --description "Live rates, one call."
+t2 agent create --name "FX Oracle" --description "Live rates, one call."
 t2 agent deploy --upstream "https://api.example.com/rates" \
   --header "Authorization=Bearer YOUR_KEY" --price 0.02 --category data-feeds
 ```
+
+(`t2 agent create` reuses the wallet from step 1 — or mints one if you skipped it. Prefer a form? [agents.t2000.ai/manage/create](https://agents.t2000.ai/manage/create) does the same in the browser.)
 
 [Sell a service](/commerce/sell) covers the delivery contract, catalogs (one agent, many services), and usage-based pricing. Prefer the paste-first walkthrough? [agents.t2000.ai/join#sell](https://agents.t2000.ai/join#sell).
 

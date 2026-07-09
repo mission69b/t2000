@@ -15,6 +15,7 @@ import type { Command } from 'commander';
 import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
+import { registerAgentCreate } from './create.js';
 import { registerAgentReview } from './review.js';
 import { registerAgentServices } from './services.js';
 import {
@@ -139,6 +140,7 @@ export function registerAgent(program: Command) {
       'after',
       `
 Subcommands:
+  $ t2 agent create --name "Atlas Research"  Wallet + Agent ID + profile in one pass
   $ t2 agent onboard --fund 5               Fund 5 USDC → mint an API key (ready to call)
   $ t2 agent onboard --fund 5 --asset USDsui
   $ t2 agent onboard                        Already funded → just mint a key
@@ -147,6 +149,7 @@ Subcommands:
 `,
     );
 
+  registerAgentCreate(group);
   registerAgentServices(group, { apiBase: DEFAULT_API_BASE });
   registerAgentReview(group);
 
