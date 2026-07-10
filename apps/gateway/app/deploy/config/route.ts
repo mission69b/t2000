@@ -20,10 +20,10 @@ import { env } from '@/lib/env';
 //
 // SECOND auth path (S.637 — browser deploys for Passport agents): the gateway
 // can't verify zkLogin signatures, but the CONSOLE's server can (it holds the
-// Passport session) — same trust model as /tasks/board/poster (S.626.2). The
-// console attests the signed-in wallet over the shared secret; the config is
-// stored for exactly that address. Header: `x-console-proxy` = the console
-// attestation secret (BOARD_POSTER_PROXY_KEY — one console↔gateway channel).
+// Passport session). The console attests the signed-in wallet over the shared
+// secret; the config is stored for exactly that address. Header:
+// `x-console-proxy` = the console attestation secret (BOARD_POSTER_PROXY_KEY —
+// one console↔gateway channel).
 
 export const dynamic = 'force-dynamic';
 

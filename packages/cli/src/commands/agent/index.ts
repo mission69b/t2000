@@ -16,8 +16,6 @@ import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
-import { registerAgentReview } from './review.js';
-import { registerAgentServe } from './serve.js';
 import { registerAgentServices } from './services.js';
 import {
   handleError,
@@ -152,8 +150,6 @@ Subcommands:
 
   registerAgentCreate(group);
   registerAgentServices(group, { apiBase: DEFAULT_API_BASE });
-  registerAgentServe(group);
-  registerAgentReview(group);
 
   group
     .command('onboard')

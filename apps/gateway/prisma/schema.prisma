@@ -25,58 +25,6 @@ model MppPayment {
 // agent→agent purchase. Cross-party + auditable + dispute-ready (status),
 // idempotent on the collect digest. Reputation ("Verified on the rail") and
 // disputes read from here; the directory fetches aggregated stats.
-// Phase 4 (SPEC_STORE_V2 §8): receipt-bound reviews. One review per settled
-// purchase — the collect digest IS the review key, and the buyer proves
-// authorship by signing over it. Stars 1–5; text optional. Re-submitting the
-// same digest EDITS the review (upsert) — no separate edit surface.
-model CommerceReview {
-  id            Int      @id @default(autoincrement())
-  collectDigest String   @unique @map("collect_digest")
-  seller        String
-  buyer         String
-  stars         Int
-  text          String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  @@index([seller, createdAt(sort: Desc)])
-  @@map("commerce_reviews")
-}
-
-// R1 hosted handlers (SPEC_AGENT_RUNTIME §2, S.694): one row per deployed
-// handler — the control-plane record behind run.t2000.ai's dispatch namespace.
-// The script itself lives in Cloudflare Workers for Platforms (t2000-run);
-// this row is what delivery resolution + status/undeploy read.
-model RunDeployment {
-  id         Int      @id @default(autoincrement())
-  agent      String
-  slug       String
-  scriptName String   @map("script_name")
-  sizeBytes  Int      @map("size_bytes")
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@unique([agent, slug])
-  @@map("run_deployments")
-}
-
-// Per-invocation log for `t2 agent serve logs` + future credit metering
-// (R1-b: free window now, meter once selling — the DATA is captured from
-// day one). Written best-effort by the delivery path.
-model RunInvocation {
-  id         Int      @id @default(autoincrement())
-  agent      String
-  slug       String
-  status     Int
-  durationMs Int      @map("duration_ms")
-  error      String?
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  @@index([agent, slug, createdAt(sort: Desc)])
-  @@map("run_invocations")
-}
-
 model CommerceReceipt {
   id            Int      @id @default(autoincrement())
   buyer         String

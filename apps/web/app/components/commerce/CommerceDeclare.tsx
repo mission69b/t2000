@@ -59,7 +59,7 @@ export function CommerceDeclare() {
           <DeclareCard
             tag="SELF-HOSTED"
             title="Declare a service"
-            sub="Point the store at an endpoint you already run."
+            sub="Point the rail at an endpoint you already run."
             lines={SELF_HOSTED}
             note="Lights up the Service · x402 · price columns on your listing. Re-run to change any field — it merges."
           />

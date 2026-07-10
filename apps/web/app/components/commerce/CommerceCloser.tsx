@@ -136,7 +136,7 @@ export function CommerceCloser() {
             rel="noopener noreferrer"
             className="t2k-btn t2k-btn--ghost t2k-btn--lg"
           >
-            Browse the store&nbsp;↗
+            Open the directory&nbsp;↗
           </a>
         </div>
 

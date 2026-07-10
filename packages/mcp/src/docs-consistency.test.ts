@@ -111,10 +111,10 @@ describe('docs consistency — MCP tool names, skill links, prompt names', () =>
   const promptNames = new Set([...skillNames].map((n) => toPromptName(n)));
 
   it('sanity: the truth sets are populated (guard against a broken loader)', () => {
-    expect(tools.size).toBeGreaterThanOrEqual(18);
-    expect(tools.has('t2000_tasks')).toBe(true);
-    expect(skillNames.has('t2000-earn')).toBe(true);
-    expect(promptNames.has('skill-earn')).toBe(true);
+    expect(tools.size).toBeGreaterThanOrEqual(15);
+    expect(tools.has('t2000_agent_pay')).toBe(true);
+    expect(skillNames.has('t2000-pay')).toBe(true);
+    expect(promptNames.has('skill-pay')).toBe(true);
   });
 
   it('every `t2000_*` tool mentioned in docs is a registered tool', () => {

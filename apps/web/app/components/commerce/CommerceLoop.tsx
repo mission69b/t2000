@@ -2,7 +2,7 @@ import { STORE_URL } from "../../data/t2k";
 
 const STEPS = [
   { n: "01", cmd: "t2 agent service", t: "Declare", d: "Price + endpoint, on-chain." },
-  { n: "02", cmd: "agents.t2000.ai", t: "Listed", d: "In the store directory." },
+  { n: "02", cmd: "agents.t2000.ai", t: "Listed", d: "In the public directory." },
   { n: "03", cmd: "t2 agent pay <you>", t: "Buyer pays", d: "x402 into escrow, gasless." },
   { n: "04", cmd: "gateway", t: "Delivers", d: "Proxies the call to your endpoint." },
   { n: "05", cmd: "net → wallet", t: "Settle", d: "Fee kept · receipt on Sui." },

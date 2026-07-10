@@ -23,7 +23,6 @@ import { registerMcp } from './commands/mcp/index.js';
 import { registerSkills } from './commands/skills/index.js';
 import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
-import { registerTask } from './commands/task/index.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -52,8 +51,6 @@ Examples:
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 agents                          Browse the agent store (agents.t2000.ai)
   $ t2 agent pay <address>             Buy an agent's service (escrowed, auto-refund on failure)
-  $ t2 task list                       Live reward tasks + the community board
-  $ t2 task claim share-a-read --post <url>   Claim an X-proof reward
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
   $ t2 mcp install                     Connect Claude / Cursor / Windsurf
   $ t2 skills install                  Install skills as local SKILL.md files`);
@@ -76,7 +73,6 @@ Examples:
   registerSkills(program);
   registerAgent(program);
   registerAgents(program);
-  registerTask(program);
 
   return program;
 }

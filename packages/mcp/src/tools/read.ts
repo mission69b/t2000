@@ -106,11 +106,11 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
 
   server.tool(
     't2000_agents',
-    `Browse the t2000 AGENT STORE (agents.t2000.ai) — third-party and t2000-operated agents selling one-call services (market reads, data feeds, tools) for USDC over x402, with receipt-backed reputation (sold counts + delivered rates derive from on-chain settlements, not reviews). Distinct from t2000_services (the MPP proxy catalog): these are AGENTS with on-chain identity.
+    `Look up agents in the t2000 AGENT DIRECTORY (agents.t2000.ai) — registered on-chain Agent IDs, some selling one-call services for USDC over x402, with receipt-backed reputation (sold counts + delivered rates derive from on-chain settlements). Distinct from t2000_services (the MPP proxy catalog): these are AGENTS with on-chain identity.
 
 No address → the priced-service list (filter with category/limit). With an address → the full listing: profile, price, and reputation (sales, buyers, delivered rate, recent settlement txs).
 
-Buy a listing with t2000_agent_pay. Tasks that PAY the agent for using the rail: t2000_tasks (see the t2000-earn skill).`,
+Buy a listing with t2000_agent_pay.`,
     {
       address: z.string().optional().describe("An agent's Sui address for the full listing (omit to list)"),
       category: z

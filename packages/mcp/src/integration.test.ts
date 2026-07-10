@@ -10,15 +10,14 @@ import { registerSkillPrompts } from './skills-prompts.js';
 import { loadSkillsFromDisk } from './test-load-skills.js';
 import { T2000_SERVER_INSTRUCTIONS } from './instructions.js';
 
-// [v4.0 Phase B — 2026-05-26, counts updated S.629 2026-07-04, earn surface
-// added 2026-07-06]
+// [v4.0 Phase B — 2026-05-26, counts updated S.629 2026-07-04; tasks board +
+// reviews deleted 2026-07-10 (SPEC_HUB_V1 clean slate)]
 // Integration test surface mirrors the core CLI: 6 read tools (balance /
 // address / receive / history / services / agents), 4 write tools (send /
-// swap / pay / agent_pay), 4 earn tools (tasks / task_claim / task_submit /
-// agent_earnings), 1 settings tool (limit) = 15 here. Production
-// additionally registers the 3 Private API chat tools (chat / models /
-// verify) via registerChatTools = 18 total. Pre-v4 the count was 27
-// (DeFi + safeguards; deletions tracked in S.336).
+// swap / pay / agent_pay), 1 earnings tool (agent_earnings), 1 settings
+// tool (limit) = 12 here. Production additionally registers the 3 Private
+// API chat tools (chat / models / verify) via registerChatTools = 15 total.
+// Pre-v4 the count was 27 (DeFi + safeguards; deletions tracked in S.336).
 //
 // Prompts: the hand-rolled `registerPrompts` workflow prompts were
 // also deleted in S.336. The surviving prompt surface is the
@@ -96,16 +95,15 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     await server.close();
   });
 
-  it('lists the 16 core tools (+3 chat tools registered separately in production)', async () => {
+  it('lists the 12 core tools (+3 chat tools registered separately in production)', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(16);
+    expect(tools).toHaveLength(12);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
       't2000_address',
       't2000_agent_earnings',
       't2000_agent_pay',
-      't2000_agent_review',
       't2000_agents',
       't2000_balance',
       't2000_history',
@@ -115,9 +113,6 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
       't2000_send',
       't2000_services',
       't2000_swap',
-      't2000_task_claim',
-      't2000_task_submit',
-      't2000_tasks',
     ]);
   });
 

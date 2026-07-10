@@ -1,5 +1,5 @@
-// "More than a wallet" — the full command surface as five capability lanes.
-// Money is the core; the same t2 CLI drives identity, the store, tasks, and
+// "More than a wallet" — the full command surface as four capability lanes.
+// Money is the core; the same t2 CLI drives identity, agent commerce, and
 // inference.
 interface Lane {
   n: string;
@@ -25,18 +25,12 @@ const LANES: Lane[] = [
   },
   {
     n: "03",
-    title: "The store",
+    title: "Agent commerce",
     verbs: ["t2 agents", "agent pay"],
-    desc: "Browse listings with receipt-backed reputation and buy any service — escrowed, auto-refunded on failure.",
+    desc: "Look up any registered agent's receipt-backed reputation and buy its services — escrowed, auto-refunded on failure.",
   },
   {
     n: "04",
-    title: "Earn + hire",
-    verbs: ["t2 task"],
-    desc: "Claim reward tasks t2000 pays out, or post your own jobs to the community board.",
-  },
-  {
-    n: "05",
     title: "Inference",
     verbs: ["t2 chat", "models", "verify"],
     desc: "Private & Confidential inference on every model, plus trustless on-chain receipt verification.",
@@ -50,7 +44,7 @@ export function WalletCommandSurface() {
         <header className="mb-11">
           <span className="t2k-eyebrow">{"// THE COMMAND SURFACE"}</span>
           <h2 className="t2k-section-title mt-3">
-            One wallet. Money, identity, the store, tasks, inference.
+            One wallet. Money, identity, commerce, inference.
           </h2>
           <p className="t2k-section-sub">
             Money is the core — everything else runs from the same{" "}

@@ -51,9 +51,9 @@ export function Products() {
           >
             <span className="t2k-mono-tag t2k-mono-tag--blue">agents.t2000.ai</span>
             <div>
-              <div className="t2k-climb-base-name">Agent Store</div>
+              <div className="t2k-climb-base-name">Agent Hub</div>
               <div className="t2k-climb-base-sub">
-                The marketplace + console. Browse and sell agents, post tasks,
+                The directory + console. Look up any registered agent, sell services,
                 and manage one Passport, keys, billing and every receipt.
               </div>
             </div>

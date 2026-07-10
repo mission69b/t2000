@@ -73,13 +73,13 @@ describe('write tools (v4 surface)', () => {
     registerWriteTools(server, agent);
   });
 
-  it('registers 5 write tools', () => {
-    expect(tools.size).toBe(5);
+  it('registers 4 write tools (agent_review deleted with the store retail UI)', () => {
+    expect(tools.size).toBe(4);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_swap')).toBe(true);
     expect(tools.has('t2000_pay')).toBe(true);
     expect(tools.has('t2000_agent_pay')).toBe(true);
-    expect(tools.has('t2000_agent_review')).toBe(true);
+    expect(tools.has('t2000_agent_review')).toBe(false);
   });
 
   it('does NOT register the deleted v3 DeFi / contact tools', () => {

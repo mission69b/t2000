@@ -93,6 +93,7 @@ describeOrSkip('CLI integration — wiring + version + help', () => {
       'import-key',
       'swap-quote',
       'claim-rewards',
+      'task',
     ]) {
       // Match command-table rows, not the brand or "fund" inside other
       // copy — every legacy cmd row would have surrounding whitespace.
@@ -123,6 +124,7 @@ describeOrSkip('CLI integration — bulk-deleted legacy commands all exit 1', ()
     'claim-rewards',
     'address',
     'wallet',
+    'task',
   ];
 
   for (const cmd of deleted) {

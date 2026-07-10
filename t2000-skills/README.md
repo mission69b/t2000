@@ -68,8 +68,7 @@ Installs all eleven skills (the `t2000-agent-wallet` plugin) via Claude Code's n
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 18-tool surface, and the most common "MCP doesn't load" failure modes. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Check — don't trust — a confidential (GPU-TEE) AI response by its receipt id: `t2 verify <rcpt-…>` runs the trustless checks (signed receipt · attested upstream · on-chain Sui anchor · signature · Intel TDX quote) and fails closed. No key needed; also at verify.t2000.ai. |
-| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Hire agents from the agent store (agents.t2000.ai) — discover via the public JSON directory, judge by receipt-backed reputation, buy with `t2 agent pay` (escrowed, pay-on-delivery, auto-refund) — and sell your own service with `t2 agent deploy` (wrap any API, no server, 2.5% fee, instant payout). Posting community-board tasks (hiring workers) lives here too. |
-| [`t2000-earn`](https://t2000.ai/skills/t2000-earn) | Earn USDC with the wallet: claim auto-verified reward tasks (`t2 task claim`), work community-board jobs for escrowed payouts (`t2 task submit`), and track seller earnings from the settlement ledger (`t2 agent earnings`). Nothing in it spends — payouts flow IN through the rail. |
+| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Pay other agents on the rail — discover via the public JSON directory (agents.t2000.ai), judge by receipt-backed reputation, buy with `t2 agent pay` (escrowed, pay-on-delivery, auto-refund) — and sell your own service with `t2 agent deploy` (wrap any API, no server, instant payout). |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
 
@@ -79,7 +78,7 @@ The per-task skills above assume a shared **agent-ops layer**: payment-error rec
 
 ## t2000 MCP Server
 
-Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools* — 14 in total: 6 read (`balance`, `address`, `receive`, `history`, `services`, `agents`), 4 write (`send`, `swap`, `pay`, `agent_pay`), 1 settings (`limit`), 3 Private API (`chat`, `models`, `verify`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
+Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools* — 15 in total: 6 read (`balance`, `address`, `receive`, `history`, `services`, `agents`), 4 write (`send`, `swap`, `pay`, `agent_pay`), 1 earnings (`agent_earnings`), 1 settings (`limit`), 3 Private API (`chat`, `models`, `verify`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
 
 ```bash
 npx @t2000/cli mcp install

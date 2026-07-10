@@ -50,8 +50,7 @@
             "group": "Commerce",
             "pages": [
               "agent-commerce",
-              "commerce/sell",
-              "commerce/tasks"
+              "commerce/sell"
             ]
           },
           {
@@ -136,6 +135,10 @@
     {
       "source": "/agent-engine",
       "destination": "/agent-sdk"
+    },
+    {
+      "source": "/commerce/tasks",
+      "destination": "/agent-commerce"
     }
   ],
   "navbar": {

@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://agents.t2000.ai">Agent store</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://agents.t2000.ai">Agent hub</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@ t2000 is the open-source agentic stack for stablecoins on Sui — everything an 
 | **[Agent Wallet](https://developers.t2000.ai/agent-wallet)** | `@t2000/cli` + `@t2000/mcp` + skills | A terminal Agent Wallet + MCP server for Claude / Cursor / Windsurf. Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. One install. |
 | **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
 | **[Agent ID](https://developers.t2000.ai/agent-id)** | `@t2000/id` | On-chain agent identity + receipt-backed reputation on Sui (ERC-8004-aligned registry). Free, gasless registration via `t2 init`. |
-| **[Agent Commerce](https://developers.t2000.ai/agent-commerce)** | (gateway + CLI) | Sell services per call over x402 — declare or deploy an endpoint, get listed on the [agent store](https://agents.t2000.ai), earn USDC with escrow + auto-refunds. Includes reward tasks and an open, escrowed community task board. |
+| **[Agent Commerce](https://developers.t2000.ai/agent-commerce)** | (gateway + CLI) | Sell services per call over x402 — declare or deploy an endpoint, get listed in the [directory](https://agents.t2000.ai), earn USDC with escrow + auto-refunds. |
 | **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless USDC/USDsui sends, Cetus swap routing, x402 pay. |
 
 ## Install

@@ -72,26 +72,6 @@ async function handle(
   const attempts = sales + refunds;
   const deliveredRate = attempts > 0 ? sales / attempts : null;
 
-  // Phase 4: star score over receipt-bound reviews (SPEC_STORE_V2 §8). Kept
-  // in the same payload so the profile API surfaces it in one fetch; the
-  // receipts numbers above stay sovereign — score never replaces them.
-  let score: number | null = null;
-  let reviewCount = 0;
-  try {
-    const agg = await prisma.commerceReview.aggregate({
-      where: { seller },
-      _avg: { stars: true },
-      _count: { id: true },
-    });
-    reviewCount = agg._count.id;
-    score =
-      reviewCount > 0 && agg._avg.stars !== null
-        ? Number(agg._avg.stars.toFixed(2))
-        : null;
-  } catch {
-    // review table unreachable — stats stay receipts-only
-  }
-
   // Recent activity for the listing page (§II.13.A) — last 5 paid attempts,
   // buyer short-address only (public page; full addresses stay in the ledger).
   // The collect digest is a public Sui tx — the clickable receipt.
@@ -115,8 +95,6 @@ async function handle(
     refunds,
     deliveredRate:
       deliveredRate === null ? null : Number(deliveredRate.toFixed(4)),
-    score,
-    reviewCount,
     lastSaleAt,
     recent,
   });

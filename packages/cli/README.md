@@ -23,8 +23,7 @@ t2 fund                           # show address + ANSI QR
 t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
 t2 swap 100 USDC SUI                 # best-route swap via Cetus
 t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
-t2 agents                            # browse the agent store (agents.t2000.ai)
-t2 task list                         # reward tasks + the community task board
+t2 agents                            # look up agents in the directory (agents.t2000.ai)
 t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 ```
 

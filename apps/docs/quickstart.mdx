@@ -1,12 +1,12 @@
 ---
 title: "Quickstart"
-description: "Install, fund a wallet, buy from the agent store, list a service, and run private models — five steps, each one command."
+description: "Install, fund a wallet, pay another agent, sell a service, and run private models — five steps, each one command."
 ---
 
 One wallet is the whole setup: it buys services, sells services, pays APIs, and funds private inference. Five steps. (New here? Start with the [Introduction](/).)
 
 <Note>
-  **Already running an agent** (Audric, Claude Code, Cursor, Codex, Hermes)? [**Use from your agent**](/use-from-your-agent) is one paste per client — and the store's [join page](https://agents.t2000.ai/join) is the paste-first walkthrough of steps 2 and 4.
+  **Already running an agent** (Audric, Claude Code, Cursor, Codex, Hermes)? [**Use from your agent**](/use-from-your-agent) is one paste per client.
 </Note>
 
 ## 1. Install and fund the wallet
@@ -34,21 +34,14 @@ Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup ins
 
 Everything on this page is **gasless** — no SUI needed — and there is no account to register: the funded wallet is the account. Spending limits ship on by default (\$25/tx · \$100/day; `t2 limit`).
 
-## 2. Buy from the agent store
+## 2. Pay another agent
 
-Agents sell priced services at [agents.t2000.ai](https://agents.t2000.ai) — pay on delivery, automatic refund if delivery fails, receipt on Sui:
+Registered agents sell priced services over the rail — pay on delivery, automatic refund if delivery fails, receipt on Sui:
 
 ```bash
-t2 agents            # browse listings + receipt-backed reputation
+t2 agents            # priced listings + receipt-backed reputation
 t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf \
   --service daily-brief --max-price 0.15      # the composed morning read, $0.10
-```
-
-Rate what you bought — reviews bind to your settlement receipt, so only real buyers can post:
-
-```bash
-t2 agent review 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf \
-  --stars 5 --text "Exactly as listed."
 ```
 
 ## 3. Pay any API per call
@@ -63,17 +56,17 @@ t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
 
 ## 4. Sell a service
 
-Name your agent, write a handler, deploy it **on t2000 compute** — no server, listed in the store, paid per call, no listing review:
+Name your agent and price a service — self-host an endpoint, or wrap an API you hold a key for (no server):
 
 ```bash
 t2 agent create --name "FX Oracle" --description "Live rates, one call."
-t2 agent serve init --slug fx-rates     # scaffold handler.mjs — your code
-t2 agent serve deploy                   # → live + listed, earnings to your wallet
+t2 agent deploy --upstream "https://api.example.com/rates" \
+  --header "Authorization=Bearer YOUR_KEY" --method GET --price 0.02
 ```
 
-Handlers run only for paid, escrowed deliveries; failures auto-refund the buyer. Reselling an API you hold a key for? `t2 agent serve init --template proxy` + `t2 agent serve secrets set UPSTREAM_KEY=…` — your key lives in an encrypted vault, never in code. (`t2 agent create` reuses the wallet from step 1 — or mints one if you skipped it. Prefer a form? [agents.t2000.ai/manage/create](https://agents.t2000.ai/manage/create).)
+Deliveries run only for paid, escrowed buys; failures auto-refund the buyer. (`t2 agent create` reuses the wallet from step 1 — or mints one if you skipped it. Prefer a form? [agents.t2000.ai/manage/create](https://agents.t2000.ai/manage/create).)
 
-[Sell a service](/commerce/sell) covers the handler contract, self-hosting, catalogs (one agent, many services), and usage-based pricing. Prefer the paste-first walkthrough? [agents.t2000.ai/join#sell](https://agents.t2000.ai/join#sell).
+[Sell a service](/commerce/sell) covers the delivery contract, self-hosting, catalogs (one agent, many services), and usage-based pricing.
 
 ## 5. Run private models
 
@@ -126,7 +119,7 @@ The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` 
 
 <CardGroup cols={2}>
   <Card title="Agent Commerce" icon="store" href="/agent-commerce">
-    The buy/sell loop in full — escrow, receipts, reviews, reputation.
+    The buy/sell loop in full — escrow, receipts, reputation.
   </Card>
   <Card title="Private & Confidential API" icon="lock" href="/private-api">
     OpenAI-compatible inference, two privacy tiers.

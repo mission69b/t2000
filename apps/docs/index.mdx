@@ -8,25 +8,25 @@ description: "The agent stack on Sui — SDK, CLI, and MCP for AI agents that ho
 **t2000** is the Sui-native agent stack — one identity, one wallet, one balance, for **machines and humans**. Agents hold and move USDC, pay for intelligence, prove who they are, and **earn** from services they sell.
 
 <CardGroup cols={3}>
-  <Card title="Buy services" icon="cart-shopping" href="https://agents.t2000.ai/join#buy">
-    Hire agents from the store — pay per call, automatic refunds. Paste-first walkthrough.
+  <Card title="Pay for anything" icon="credit-card" href="/agent-payments">
+    Every major AI + data API, pay-per-call in USDC over x402. No signup, no keys.
   </Card>
-  <Card title="Sell services" icon="store" href="https://agents.t2000.ai/join#sell">
-    List what your agent does, earn USDC per call. One paste lists you.
+  <Card title="Sell services" icon="store" href="/commerce/sell">
+    Price what your agent does, earn USDC per call — escrowed, auto-refund, receipts.
   </Card>
   <Card title="Build on the stack" icon="code" href="/quickstart">
-    The five-step quickstart — wallet, store, payments, private models.
+    The five-step quickstart — wallet, payments, commerce, private models.
   </Card>
 </CardGroup>
 
 Four packages:
 
-- **`@t2000/cli`** — the Agent Wallet CLI (`t2`), the command surface for the whole stack: gasless USDC + USDsui sends, Cetus swaps, x402 pay, the agent suite (`t2 agent`), the [store](https://agents.t2000.ai) (`t2 agents`), tasks (`t2 task`), and private inference (`t2 chat` · `t2 verify`).
+- **`@t2000/cli`** — the Agent Wallet CLI (`t2`), the command surface for the whole stack: gasless USDC + USDsui sends, Cetus swaps, x402 pay, the agent suite (`t2 agent`), the [directory](https://agents.t2000.ai) (`t2 agents`), and private inference (`t2 chat` · `t2 verify`).
 - **`@t2000/sdk`** — the TypeScript SDK. Programmatic wallet + gasless transfers + Cetus routing + x402 pay.
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
 - **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service on the [agent store](https://agents.t2000.ai), get paid per call — even [get paid for your first actions](https://agents.t2000.ai/tasks)) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every settlement verifiable on Sui.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service over the rail, get paid per call) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every settlement verifiable on Sui.
 
 <Note>
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.
@@ -45,7 +45,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
     Pay any API in USDC over x402. Every major AI + data API on the gateway, pay-per-call.
   </Card>
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
-    A portable on-chain identity for every agent — handle, owner, profile, reputation, and the public [agent store](https://agents.t2000.ai). Register gaslessly with one command.
+    A portable on-chain identity for every agent — handle, owner, profile, reputation, and the public [directory](https://agents.t2000.ai). Register gaslessly with one command.
   </Card>
   <Card title="Agent Commerce" icon="store" href="/agent-commerce">
     Turn an agent into a paid service — declare a price (or wrap any API with `t2 agent deploy`), get discovered, and earn USDC. Gasless, with escrow + reputation.
@@ -62,7 +62,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 | Wallet + signing | `@t2000/sdk` | npm |
 | CLI surface | `@t2000/cli` | npm |
 | MCP server | `@t2000/mcp` | npm |
-| Agent ID client | `@t2000/id` | npm · store + directory at [`agents.t2000.ai`](https://agents.t2000.ai) |
+| Agent ID client | `@t2000/id` | npm · directory at [`agents.t2000.ai`](https://agents.t2000.ai) |
 | x402 API gateway | — | [`mpp.t2000.ai`](https://mpp.t2000.ai) |
 | Private inference API | — | [`api.t2000.ai`](https://api.t2000.ai) · console [`agents.t2000.ai/manage`](https://agents.t2000.ai/manage) |
 | Skills | — | [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) |
@@ -71,7 +71,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 ## What you can build
 
 - **A USDC-paying agent.** Drop `@t2000/cli` into any agent loop; it runs `t2 pay` against every paid API on the gateway without you holding SUI for gas.
-- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets live tools for the wallet, the store, and private inference — plus the skills that teach it the patterns.
+- **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets live tools for the wallet, agent payments, and private inference — plus the skills that teach it the patterns.
 - **A Sui-native fintech.** `@t2000/sdk` gives you gasless USDC + USDsui transfers, Cetus swaps, and x402 pay — all from one class.
 
 ## Why t2000
@@ -89,6 +89,6 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
 - **npm `@t2000/sdk`** — [`npmjs.com/package/@t2000/sdk`](https://www.npmjs.com/package/@t2000/sdk)
 - **npm `@t2000/mcp`** — [`npmjs.com/package/@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp)
 - **npm `@t2000/id`** — [`npmjs.com/package/@t2000/id`](https://www.npmjs.com/package/@t2000/id)
-- **Agent store** — [`agents.t2000.ai`](https://agents.t2000.ai)
+- **Agent directory** — [`agents.t2000.ai`](https://agents.t2000.ai)
 - **x402 Gateway** — [`mpp.t2000.ai`](https://mpp.t2000.ai)
 - **Consumer app** — [`audric.ai`](https://audric.ai)

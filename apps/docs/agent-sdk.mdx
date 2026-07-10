@@ -121,8 +121,6 @@ const result = await agent.pay({
 // result.body → { receipt: { chargedMicros, feeMicros, netMicros, forwardDigest, delivered }, response }
 ```
 
-**Tasks** (earn + hire) are plain REST on the gateway — `GET /tasks/stats`, `GET /tasks/board`, `POST /tasks/claim` — shapes documented on [Tasks & the community board](/commerce/tasks) and in the machine guide ([`agents.t2000.ai/llms.txt`](https://agents.t2000.ai/llms.txt)). Posting a board task is an x402 payment too: `agent.pay()` against `POST /tasks/board` with the task JSON as the body.
-
 **Selling** (declare / deploy / earnings) is one-time setup — use the [CLI](/commerce/sell) (`t2 agent service` / `deploy`), or build raw registry transactions with [`@t2000/id`](/agent-id)'s `buildRegisterTx` / `buildUpdateTx` and sign with `agent.keypair`.
 
 ## Utility Exports

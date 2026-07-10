@@ -15,14 +15,7 @@ import {
   uptoSettlement,
 } from '@/lib/commerce';
 import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
-import {
-  getRunSecrets,
-  isRunConfigured,
-  runEndpointFor,
-  signRunDelivery,
-} from '@/lib/run';
 import { logPayment } from '@/lib/log-payment';
-import { runTaskChecksForWallets, runnerAddress } from '@/lib/tasks';
 import { appendBuyerParams, DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
 import { COLLECT_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
@@ -208,106 +201,6 @@ async function deliverToSeller(
   }
 }
 
-/** R1 hosted handlers (S.694): deliver a paid request to the seller's
- *  Workers-for-Platforms handler via the run dispatcher. Payload contract:
- *  `{ input, ctx: { agent, slug, buyer } }` — the CLI shim unwraps it and
- *  calls the seller's `handle(input, ctx)`. Auth: the `x-t2000-run` HMAC
- *  header (only the gateway can invoke — handlers run exclusively for paid
- *  deliveries). Each invocation is logged for `t2 agent serve logs` +
- *  future credit metering. */
-async function deliverToHosted(
-  seller: string,
-  slug: string,
-  body: string,
-  buyer: string,
-): Promise<DeliveryResult> {
-  let input: unknown = null;
-  if (body) {
-    try {
-      input = JSON.parse(body);
-    } catch {
-      input = body;
-    }
-  }
-  // The agent's vault secrets ride the delivery payload (TLS, per-request) —
-  // never stored in Cloudflare, never in the script (S.695).
-  const secrets = await getRunSecrets(seller);
-  const started = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
-  let result: DeliveryResult;
-  try {
-    const res = await fetch(runEndpointFor(seller, slug), {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-t2000-run': signRunDelivery(seller, slug),
-      },
-      body: JSON.stringify({
-        input,
-        ctx: {
-          agent: seller,
-          slug,
-          buyer,
-          ...(Object.keys(secrets).length > 0 ? { secrets } : {}),
-        },
-      }),
-      redirect: 'error',
-      signal: controller.signal,
-    });
-    const capped = await readCapped(res.body);
-    if (capped === null) {
-      result = {
-        ok: false,
-        status: res.status,
-        data: 'response too large',
-        settleAmount: null,
-      };
-    } else {
-      let data: unknown = capped;
-      try {
-        data = capped ? JSON.parse(capped) : null;
-      } catch {
-        data = capped;
-      }
-      result = { ok: res.ok, status: res.status, data, settleAmount: null };
-    }
-  } catch (err) {
-    result = {
-      ok: false,
-      status: 0,
-      data: err instanceof Error ? err.message : 'handler invocation failed',
-      settleAmount: null,
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-  // Best-effort invocation log (never blocks or fails the delivery).
-  after(async () => {
-    try {
-      const { prisma } = await import('@/lib/prisma');
-      await prisma.runInvocation.create({
-        data: {
-          agent: seller,
-          slug,
-          status: result.status,
-          durationMs: Date.now() - started,
-          error: result.ok
-            ? null
-            : String(
-                typeof result.data === 'string'
-                  ? result.data
-                  : JSON.stringify(result.data),
-              ).slice(0, 400),
-        },
-      });
-    } catch {
-      // logging is best-effort
-    }
-  });
-  return result;
-}
-
 /** Read a response body as text, capped at MAX_RESPONSE_BYTES. Returns null if
  *  the body exceeds the cap (caller treats as a failed delivery). */
 async function readCapped(
@@ -374,9 +267,8 @@ export async function handle(
   }
 
   // `?amount` OVERRIDES the declared price (the doc'd contract, line 34) —
-  // it's how task-reward buys pay more than a listing's price. S.639 fix:
-  // this was `priceUsdc ?? override`, so a priced listing silently beat the
-  // override and the first-sale reward underpaid a listed seller.
+  // lets a buyer pay more than a listing's price. S.639 fix: this was
+  // `priceUsdc ?? override`, so a priced listing silently beat the override.
   const amount = override || (service ? service.priceUsdc : profile.priceUsdc);
   if (!amount) {
     // [S.697 UX] The common case behind a bare-URL 400 is a catalog seller
@@ -484,23 +376,10 @@ export async function handle(
     : (profile.mcpEndpoint ?? null);
   const listingIsWrap =
     !declaredEndpoint || declaredEndpoint.toLowerCase().endsWith(buyUrlMarker);
-  // R1 hosted handlers (S.694): an ACTIVE deployment for this SKU outranks
-  // wrap + self-hosted — the seller explicitly deployed code for it. Hosted
-  // handlers are slug-scoped (R1-c) and only apply when no self-hosted
-  // endpoint is declared (same no-shadowing rule as wraps).
-  let hosted: { agent: string; slug: string } | null = null;
-  if (slug && listingIsWrap && isRunConfigured()) {
-    const { prisma } = await import('@/lib/prisma');
-    const row = await prisma.runDeployment
-      .findUnique({ where: { agent_slug: { agent: seller, slug } } })
-      .catch(() => null);
-    hosted = row?.active ? { agent: seller, slug } : null;
-  }
-  const deployed = listingIsWrap && !hosted ? await getDeployedService(seller, slug) : null;
+  const deployed = listingIsWrap ? await getDeployedService(seller, slug) : null;
   const deliveryTarget = deployed?.upstreamUrl ?? declaredEndpoint ?? null;
   const deliveryMode =
-    Boolean(hosted) ||
-    (Boolean(deliveryTarget) && isSafeUpstreamUrl(deliveryTarget as string));
+    Boolean(deliveryTarget) && isSafeUpstreamUrl(deliveryTarget as string);
   // Receipts record WHICH SKU sold (per-service sold counts derive later).
   const receiptResource = slug
     ? `/commerce/pay/${seller}/${slug}`
@@ -516,18 +395,16 @@ export async function handle(
   // DELIVERY MODE — the treasury holds the gross while we attempt delivery
   // (the escrow window). The seller is released only on a 2xx.
   if (deliveryMode) {
-    const delivered = hosted
-      ? await deliverToHosted(seller, hosted.slug, buyerBody, buyer)
-      : await deliverToSeller(
-          deliveryTarget as string,
-          buyerBody,
-          buyer,
-          deployed
-            ? { method: deployed.method, extraHeaders: deployed.headers }
-            : service?.method
-              ? { method: service.method }
-              : undefined,
-        );
+    const delivered = await deliverToSeller(
+      deliveryTarget as string,
+      buyerBody,
+      buyer,
+      deployed
+        ? { method: deployed.method, extraHeaders: deployed.headers }
+        : service?.method
+          ? { method: service.method }
+          : undefined,
+    );
     if (!delivered.ok) {
       let refunded: string | null = null;
       try {
@@ -566,13 +443,13 @@ export async function handle(
     // refund the excess, settle the fee/net on the actual.
     const upto = uptoSettlement(split.grossMicros, delivered.settleAmount);
 
-    // [S.697] Hosted-compute fee: t2000 ran this delivery (handler or wrap)
-    // → +2.5% of the charged amount off the seller's net, floor-guarded.
-    // Self-hosted endpoints pay the facilitator fee only.
+    // [S.697] Hosted-compute fee: t2000 ran this delivery (wrap) → +2.5% of
+    // the charged amount off the seller's net, floor-guarded. Self-hosted
+    // endpoints pay the facilitator fee only.
     const computeFee = computeFeeMicros(
       upto.actualMicros,
       upto.netMicros,
-      Boolean(hosted || deployed),
+      Boolean(deployed),
     );
     const totalFeeMicros = upto.feeMicros + computeFee;
     const sellerNetMicros = upto.netMicros - computeFee;
@@ -650,13 +527,6 @@ export async function handle(
         sender: buyer,
       }),
     );
-    // Tasks hook (§II.16 v2): this settlement may be the qualifying event for
-    // a task (first sale / agent hire / agent card) — check buyer + seller
-    // AFTER the response streams (zero added latency). The runner's own
-    // reward buys are excluded inside; skipping here too avoids self-checks.
-    if (buyer.toLowerCase() !== runnerAddress()?.toLowerCase()) {
-      after(() => runTaskChecksForWallets([buyer, seller]));
-    }
     return withX402Receipt(
       Response.json({
         ok: true,
@@ -669,8 +539,8 @@ export async function handle(
           feeMicros: totalFeeMicros,
           netMicros: sellerNetMicros,
           feeBps: 250,
-          // Hosted deliveries (handler or wrap): t2000 ran the compute —
-          // the extra 2.5% shows as its own line (S.697).
+          // Wrap deliveries: t2000 ran the compute — the extra 2.5% shows
+          // as its own line (S.697).
           ...(computeFee > 0
             ? { computeFeeMicros: computeFee, computeFeeBps: 250 }
             : {}),
@@ -760,11 +630,6 @@ export async function handle(
       sender: buyer,
     }),
   );
-  // Tasks hook — payment-only settlements can complete a buyer-side task too
-  // (the runner's own reward buys are excluded inside).
-  if (buyer.toLowerCase() !== runnerAddress()?.toLowerCase()) {
-    after(() => runTaskChecksForWallets([buyer, seller]));
-  }
   return withX402Receipt(
     Response.json({
       ok: true,

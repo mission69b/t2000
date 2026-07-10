@@ -134,10 +134,9 @@ describe('docs consistency — CLI command mentions', () => {
 
   it('sanity: the surface includes the core verbs (guard against a broken walker)', () => {
     const { verbs } = buildSurface();
-    for (const v of ['init', 'send', 'swap', 'pay', 'task', 'agent', 'agents', 'services', 'verify']) {
+    for (const v of ['init', 'send', 'swap', 'pay', 'agent', 'agents', 'services', 'verify']) {
       expect(verbs.has(v), `missing core verb '${v}'`).toBe(true);
     }
-    expect(verbs.get('task')!.has('claim')).toBe(true);
     expect(verbs.get('services')!.has('search')).toBe(true);
   });
 });

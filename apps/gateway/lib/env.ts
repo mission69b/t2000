@@ -111,10 +111,6 @@ const serverSchema = z.object({
   RAPIDAPI_KEY: optionalString,
   REPLICATE_API_KEY: optionalString,
   RESEND_API_KEY: optionalString,
-  // [S.630] Notifications v1 sender identity ("t2000 <notifications@t2000.ai>").
-  // BOTH this and RESEND_API_KEY must be set (and the domain verified in
-  // Resend) for poster emails to send; unset → notify module no-ops.
-  NOTIFY_FROM_EMAIL: optionalString,
   SCREENSHOTONE_API_KEY: optionalString,
   SERPAPI_API_KEY: optionalString,
   SERPER_API_KEY: optionalString,
@@ -153,13 +149,6 @@ const serverSchema = z.object({
   // activate auto-refund. The treasury address must match TREASURY_ADDRESS.
   TREASURY_PRIVATE_KEY: optionalString,
 
-  // Tasks runner wallet Bech32 secret (suiprivkey1…) — the BUYER behind
-  // agents.t2000.ai/tasks (§II.16 v2): task rewards are standard rail buys
-  // (commerce/pay/{worker}) signed by this wallet. OPTIONAL: unset → the
-  // tasks engine is disabled (settlement hooks + /tasks/claim no-op). Its
-  // USDC balance is the hard spend ceiling; per-task budgets cap below it.
-  TASK_RUNNER_KEY: optionalString,
-
   // [S.627] Treasury separation (RUNBOOK_S627). ALL optional — unset means
   // the legacy single treasury keeps doing everything (zero-downtime flip,
   // rollback = unset). When set:
@@ -181,15 +170,6 @@ const serverSchema = z.object({
   SUI_NETWORK: optionalStringWithDefault('mainnet'),
   SHORTIO_DOMAIN: optionalString,
   BLOB_READ_WRITE_TOKEN: optionalString, // Vercel Blob — hosts ALL binary upstream responses (audio/image/pdf) as artifact URLs; when unset, binary endpoints degrade to a 503 JSON error rather than corrupting bytes
-
-  // [S.694] R1 hosted handlers (SPEC_AGENT_RUNTIME §2) — Cloudflare Workers
-  // for Platforms control plane + the run-dispatcher trust boundary. ALL
-  // optional: unset → /serve/* routes 503 and delivery falls back to the
-  // wrap/self-hosted lanes (hosted handlers simply unavailable).
-  CF_ACCOUNT_ID: optionalString,
-  CF_API_TOKEN: optionalString,
-  RUN_DELIVERY_SECRET: optionalString,
-  RUN_DISPATCH_URL: optionalString,
 
   // ---- Test-only ----
   E2E_TEST_PRIVATE_KEY: optionalString,
@@ -258,7 +238,6 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     RAPIDAPI_KEY: process.env.RAPIDAPI_KEY,
     REPLICATE_API_KEY: process.env.REPLICATE_API_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
-    NOTIFY_FROM_EMAIL: process.env.NOTIFY_FROM_EMAIL,
     SCREENSHOTONE_API_KEY: process.env.SCREENSHOTONE_API_KEY,
     SERPAPI_API_KEY: process.env.SERPAPI_API_KEY,
     SERPER_API_KEY: process.env.SERPER_API_KEY,
@@ -274,14 +253,9 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
     MPP_CHALLENGE_SECRET: process.env.MPP_CHALLENGE_SECRET,
     TREASURY_PRIVATE_KEY: process.env.TREASURY_PRIVATE_KEY,
-    TASK_RUNNER_KEY: process.env.TASK_RUNNER_KEY,
     ESCROW_ADDRESS: process.env.ESCROW_ADDRESS,
     ESCROW_PRIVATE_KEY: process.env.ESCROW_PRIVATE_KEY,
     REVENUE_ADDRESS: process.env.REVENUE_ADDRESS,
-    CF_ACCOUNT_ID: process.env.CF_ACCOUNT_ID,
-    CF_API_TOKEN: process.env.CF_API_TOKEN,
-    RUN_DELIVERY_SECRET: process.env.RUN_DELIVERY_SECRET,
-    RUN_DISPATCH_URL: process.env.RUN_DISPATCH_URL,
     // Server — optional with defaults / optional / test
     TREASURY_ADDRESS: process.env.TREASURY_ADDRESS,
     GATEWAY_URL: process.env.GATEWAY_URL,
@@ -343,7 +317,6 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'RAPIDAPI_KEY',
   'REPLICATE_API_KEY',
   'RESEND_API_KEY',
-  'NOTIFY_FROM_EMAIL',
   'SCREENSHOTONE_API_KEY',
   'SERPAPI_API_KEY',
   'SERPER_API_KEY',
@@ -359,14 +332,9 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'KV_REST_API_TOKEN',
   'MPP_CHALLENGE_SECRET',
   'TREASURY_PRIVATE_KEY',
-  'TASK_RUNNER_KEY',
   'ESCROW_ADDRESS',
   'ESCROW_PRIVATE_KEY',
   'REVENUE_ADDRESS',
-  'CF_ACCOUNT_ID',
-  'CF_API_TOKEN',
-  'RUN_DELIVERY_SECRET',
-  'RUN_DISPATCH_URL',
   // Optional / defaulted server-only
   'TREASURY_ADDRESS',
   'GATEWAY_URL',
