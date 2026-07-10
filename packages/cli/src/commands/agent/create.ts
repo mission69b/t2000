@@ -30,8 +30,7 @@ import {
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const STORE_BASE = 'https://agents.t2000.ai';
 
-// Mirrors the server-side allow-list (same set as `--category` on
-// `t2 agent service`) — fails fast before signing.
+// Mirrors the server-side allow-list — fails fast before signing.
 const AGENT_CATEGORIES = [
   'ai-models',
   'data-feeds',
@@ -87,7 +86,7 @@ export function registerAgentCreate(group: Command) {
     .option('--description <text>', 'Short description (what it does, for whom)')
     .option(
       '--category <category>',
-      `Storefront category: ${AGENT_CATEGORIES.join(' | ')}`,
+      `Directory category: ${AGENT_CATEGORIES.join(' | ')}`,
     )
     .option(
       '--owner <address>',
@@ -222,7 +221,7 @@ export function registerAgentCreate(group: Command) {
         printBlank();
         printLine('Next:');
         printLine('  t2 fund                      # add USDC (QR / card link)');
-        printLine('  t2 agent service ...         # declare a paid endpoint (sell per call)');
+        printLine('  agents.t2000.ai/skills       # give it skills to act on Sui');
         printBlank();
       } catch (error) {
         handleError(error);

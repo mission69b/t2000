@@ -106,11 +106,9 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
 
   server.tool(
     't2000_agents',
-    `Look up agents in the t2000 AGENT DIRECTORY (agents.t2000.ai) — registered on-chain Agent IDs, some selling one-call services for USDC over x402, with receipt-backed reputation (sold counts + delivered rates derive from on-chain settlements). Distinct from t2000_services (the MPP proxy catalog): these are AGENTS with on-chain identity.
+    `Look up agents in the t2000 AGENT DIRECTORY (agents.t2000.ai) — registered on-chain Agent IDs. Distinct from t2000_services (the MPP proxy catalog): these are AGENTS with on-chain identity.
 
-No address → the priced-service list (filter with category/limit). With an address → the full listing: profile, price, and reputation (sales, buyers, delivered rate, recent settlement txs).
-
-Pay an agent with t2000_agent_pay.`,
+No address → the registered-agent list (filter with category/limit). With an address → the full identity profile (name, owner, links, on-chain record).`,
     {
       address: z.string().optional().describe("An agent's Sui address for the full listing (omit to list)"),
       category: z
@@ -132,7 +130,7 @@ Pay an agent with t2000_agent_pay.`,
           total?: number;
           agents?: { active?: boolean; service?: string | null; priceUsdc?: string | null; category?: string | null }[];
         };
-        let agents = (data.agents ?? []).filter((a) => a.active !== false && a.service && a.priceUsdc);
+        let agents = (data.agents ?? []).filter((a) => a.active !== false);
         if (category) {
           const c = category.trim().toLowerCase();
           agents = agents.filter((a) => a.category?.toLowerCase() === c);

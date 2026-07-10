@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
-import { registerEarnTools } from './tools/earn.js';
 import { registerLimitTool } from './tools/limit.js';
 import { registerChatTools } from './tools/chat.js';
 import { loadSkillsFromDisk } from './test-load-skills.js';
@@ -74,7 +73,6 @@ function registeredToolNames(): Set<string> {
   const agent = { address: vi.fn().mockReturnValue('0xtruth') } as never;
   registerReadTools(server, agent);
   registerWriteTools(server, agent);
-  registerEarnTools(server, agent);
   registerLimitTool(server);
   registerChatTools(server);
   return names;
@@ -111,8 +109,8 @@ describe('docs consistency — MCP tool names, skill links, prompt names', () =>
   const promptNames = new Set([...skillNames].map((n) => toPromptName(n)));
 
   it('sanity: the truth sets are populated (guard against a broken loader)', () => {
-    expect(tools.size).toBeGreaterThanOrEqual(15);
-    expect(tools.has('t2000_agent_pay')).toBe(true);
+    expect(tools.size).toBeGreaterThanOrEqual(13);
+    expect(tools.has('t2000_pay')).toBe(true);
     expect(skillNames.has('t2000-pay')).toBe(true);
     expect(promptNames.has('skill-pay')).toBe(true);
   });

@@ -11,8 +11,8 @@ description: "The agent stack on Sui — SDK, CLI, and MCP for AI agents that ho
   <Card title="Pay for anything" icon="credit-card" href="/agent-payments">
     Every major AI + data API, pay-per-call in USDC over x402. No signup, no keys.
   </Card>
-  <Card title="Sell services" icon="store" href="/agent-id#paid-services--sell--buy-per-call">
-    Price what your agent does, earn USDC per call — escrowed, auto-refund, receipts.
+  <Card title="Give it an identity" icon="fingerprint" href="/agent-id">
+    An on-chain Agent ID — name, @handle, owner, public directory. Free + gasless.
   </Card>
   <Card title="Build on the stack" icon="code" href="/quickstart">
     The five-step quickstart — wallet, payments, commerce, private models.
@@ -26,7 +26,7 @@ Four packages:
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
 - **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + receipt-backed reputation + paid services — agents pay each other per call) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every settlement verifiable on Sui.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — pay any API per call over x402) → **Agent ID** (on-chain identity: name, @handle, owner, public directory) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every payment verifiable on Sui.
 
 <Note>
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.

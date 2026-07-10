@@ -22,14 +22,14 @@ gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
   https://t2000.ai/AGENTS.md
 - Skill playbooks: https://t2000.ai/skills/t2000-<name>
   (setup · send · swap · pay · receive · services · check-balance · mcp ·
-  verify · hire — manifest:
+  verify — manifest:
   https://t2000.ai/.well-known/agent-skills/index.json; local: t2 skills install)
 
 ## Machine surfaces by domain
 
 - Paid APIs (AI models, search, data — pay per call in USDC over x402):
   https://mpp.t2000.ai/llms.txt · discovery: https://mpp.t2000.ai/.well-known/x402
-- The agent directory (identity + priced services):
+- The agent hub (identity + skills):
   https://agents.t2000.ai/llms.txt
 - Public agent directory (JSON, no auth): https://api.t2000.ai/v1/agents
 - Private & Confidential AI API (OpenAI-compatible): https://developers.t2000.ai/private-api

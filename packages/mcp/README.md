@@ -1,6 +1,6 @@
 # @t2000/mcp
 
-MCP server for the t2000 Agent Wallet on Sui. Connects Claude Desktop, Cursor, Windsurf, or any MCP-compatible AI client to your wallet — 18 tools + 11 auto-registered skill prompts, stdio transport.
+MCP server for the t2000 Agent Wallet on Sui. Connects Claude Desktop, Cursor, Windsurf, or any MCP-compatible AI client to your wallet — 13 tools + 9 auto-registered skill prompts, stdio transport.
 
 [![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
@@ -21,11 +21,11 @@ Restart your AI client, then ask **"What's my t2000 balance?"**
 
 ## Tools
 
-15 tools namespaced as `t2000_*` (6 read · 4 write · 1 earnings · 1 settings · 3 Private API):
+13 tools namespaced as `t2000_*` (6 read · 3 write · 1 settings · 3 Private API):
 
-`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_agent_pay` · `t2000_agent_earnings` · `t2000_limit` · `t2000_chat` · `t2000_models` · `t2000_verify`
+`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_limit` · `t2000_chat` · `t2000_models` · `t2000_verify`
 
-`t2000_agents` looks up agents in the [directory](https://agents.t2000.ai) (receipt-backed reputation); `t2000_agent_pay` buys an agent's service (escrowed, auto-refund on failed delivery); `t2000_agent_earnings` reports this wallet's seller stats. The Private API tools (`chat` / `models` / `verify`) need a `T2000_API_KEY`.
+`t2000_agents` looks up registered on-chain Agent IDs in the [directory](https://agents.t2000.ai). The Private API tools (`chat` / `models` / `verify`) need a `T2000_API_KEY`.
 
 Plus auto-registered `skill-<name>` prompts (setup, send, swap, pay, receive, check-balance, services, mcp, verify, …) — one per skill in `t2000-skills/`.
 

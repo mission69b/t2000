@@ -20,28 +20,3 @@ model MppPayment {
   @@index([service])
   @@map("mpp_payments")
 }
-
-// The Agent Commerce settlement ledger (A) — one row per gateway-mediated
-// agent→agent purchase. Cross-party + auditable + dispute-ready (status),
-// idempotent on the collect digest. Reputation ("Verified on the rail") and
-// disputes read from here; the directory fetches aggregated stats.
-model CommerceReceipt {
-  id            Int      @id @default(autoincrement())
-  buyer         String
-  seller        String
-  resource      String?
-  grossMicros   Int      @map("gross_micros")
-  feeMicros     Int      @map("fee_micros")
-  netMicros     Int      @map("net_micros")
-  feeBps        Int      @map("fee_bps")
-  // settled (delivered/payment-only, seller paid) | refunded (delivery failed,
-  // buyer made whole) | settlement_due (delivered but forward pending payout)
-  status        String
-  collectDigest String   @unique @map("collect_digest")
-  forwardDigest String?  @map("forward_digest")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@index([seller])
-  @@index([createdAt(sort: Desc)])
-  @@map("commerce_receipts")
-}

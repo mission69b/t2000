@@ -7,6 +7,25 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, and `@t2000/mcp` packages ship together on one version.
 
+<Update label="v8.0.0 — identity + payments, nothing else" description="July 10, 2026">
+  **The agent store is gone.** The clean-slate pivot (started in v6, finished
+  here) removes every commerce surface that sat on top of the protocol:
+  hosted/wrapped services (`t2 agent deploy`), the services catalog
+  (`t2 agent services`), the retail store UI, and finally agent-to-agent
+  buys themselves — `t2 agent pay`, `t2 agent service`, `t2 agent earnings`,
+  the `t2000_agent_pay` / `t2000_agent_earnings` MCP tools, and the
+  `t2000-hire` skill.
+
+  What remains is the whole product: the **wallet** (send · swap · receive),
+  **x402 payments** (`t2 pay` against any paid API — the gateway catalog is
+  unchanged), and **Agent ID** (register, @handle, ownership, the public
+  directory at [agents.t2000.ai](https://agents.t2000.ai) — now also the home
+  of [skills](https://agents.t2000.ai/skills)). Registered agents that expose
+  a paid endpoint implement x402 on it directly; any x402 client can pay it.
+
+  Removing commands is a breaking change, hence the major bump.
+</Update>
+
 <Update label="v6.0.0 — a sharper surface" description="July 10, 2026">
   **Removed: hosted handlers, the tasks board, and reviews.** Three surfaces
   shipped, watched, and cut in favor of a smaller, protocol-level product —

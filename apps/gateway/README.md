@@ -127,6 +127,6 @@ pnpm --filter @t2000/gateway test
 ## Related
 
 - **`@t2000/cli`** — the CLI that pays the 402 challenges (`t2 pay`, `t2 fund`, `t2 services`).
-- **`@t2000/mcp`** — MCP server exposing `t2000_pay` + `t2000_services` (and the rest of the wallet/commerce toolset) as JSON-RPC tools.
+- **`@t2000/mcp`** — MCP server exposing `t2000_pay` + `t2000_services` (and the rest of the wallet toolset) as JSON-RPC tools.
 - **`t2000-skills`** — Markdown playbooks (`t2000-services`, `t2000-pay`, …) served at `t2000.ai/skills/<slug>`.
 - **`@suimpp/mpp`** — the underlying MPP protocol SDK.

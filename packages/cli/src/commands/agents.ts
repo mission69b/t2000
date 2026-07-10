@@ -1,10 +1,9 @@
 // `t2 agents [address]` — look up the agent directory (agents.t2000.ai)
-// from the terminal. No address = list priced services (filterable); an
-// address = the full listing (profile + receipt-backed reputation). Read-only
-// — no wallet needed. Buy with `t2 agent pay <address>`. [Agent Commerce]
+// from the terminal. No address = list registered agents; an address = one
+// agent's identity profile. Read-only — no wallet needed. [Agent ID]
 
 import type { Command } from 'commander';
-import { formatUsd, truncateAddress } from '@t2000/sdk';
+import { truncateAddress } from '@t2000/sdk';
 import {
   handleError,
   isJsonMode,
@@ -23,24 +22,14 @@ type DirectoryAgent = {
   numericId?: number | null;
   name?: string | null;
   active?: boolean;
-  service?: string | null;
-  priceUsdc?: string | null;
   category?: string | null;
   description?: string | null;
 };
 
 type AgentProfile = DirectoryAgent & {
-  mcpEndpoint?: string | null;
   owner?: string | null;
   createdAt?: string;
-  reputation?: {
-    sales?: number;
-    volumeUsd?: number;
-    buyers?: number;
-    refunds?: number;
-    deliveredRate?: number | null;
-    recent?: { at: string; buyer: string; amountUsd: number; delivered: boolean; tx: string }[];
-  };
+  links?: { website?: string; twitter?: string; github?: string };
 };
 
 async function getJson<T>(url: string): Promise<T> {
@@ -59,18 +48,17 @@ function firstLine(text: string | null | undefined, max = 76): string {
 export function registerAgents(program: Command) {
   program
     .command('agents')
-    .argument('[address]', 'Show one agent’s full listing (profile + reputation)')
+    .argument('[address]', 'Show one agent’s identity profile')
     .description(
-      'Look up the agent directory (agents.t2000.ai): priced services from the live registry, or one agent’s full listing. Buy with `t2 agent pay <address>`. [Agent Commerce]',
+      'Look up the agent directory (agents.t2000.ai): registered on-chain Agent IDs. Read-only. [Agent ID]',
     )
     .option('--category <category>', 'Filter the list by category')
-    .option('--all', 'Include agents without a priced service')
     .option('--limit <n>', 'Max rows (default: all)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
       async (
         address: string | undefined,
-        opts: { category?: string; all?: boolean; limit?: string; api?: string },
+        opts: { category?: string; limit?: string; api?: string },
       ) => {
         try {
           const base = opts.api ?? DEFAULT_API_BASE;
@@ -81,30 +69,20 @@ export function registerAgents(program: Command) {
               printJson(profile);
               return;
             }
-            const rep = profile.reputation;
             printBlank();
             printHeader(profile.name ?? truncateAddress(profile.address));
             printKeyValue('Address', profile.address);
-            if (profile.priceUsdc) {
-              printKeyValue(
-                'Price',
-                `${formatUsd(Number.parseFloat(profile.priceUsdc))} / call${profile.category ? `  ·  ${profile.category}` : ''}`,
-              );
+            if (profile.numericId != null) {
+              printKeyValue('Agent ID', `#${profile.numericId}`);
             }
             if (profile.description) {
               printKeyValue('About', firstLine(profile.description, 90));
             }
-            if (rep) {
-              printKeyValue(
-                'Verified on the rail',
-                `${rep.sales ?? 0} sold · ${rep.buyers ?? 0} buyer${(rep.buyers ?? 0) === 1 ? '' : 's'} · ${formatUsd(rep.volumeUsd ?? 0)} settled${typeof rep.deliveredRate === 'number' ? ` · ${Math.round(rep.deliveredRate * 100)}% delivered` : ''}`,
-              );
+            if (profile.owner) {
+              printKeyValue('Owner', truncateAddress(profile.owner));
             }
             printBlank();
-            if (profile.priceUsdc) {
-              printInfo(`Buy it: t2 agent pay ${profile.address}`);
-            }
-            printInfo(`Listing: https://agents.t2000.ai/${profile.address}`);
+            printInfo(`Profile: https://agents.t2000.ai/${profile.numericId ?? profile.address}`);
             printBlank();
             return;
           }
@@ -114,9 +92,6 @@ export function registerAgents(program: Command) {
             `${base}/agents?limit=100`,
           );
           let agents = (data.agents ?? []).filter((a) => a.active !== false);
-          if (!opts.all) {
-            agents = agents.filter((a) => a.service && a.priceUsdc);
-          }
           if (opts.category) {
             const cat = opts.category.trim().toLowerCase();
             agents = agents.filter((a) => a.category?.toLowerCase() === cat);
@@ -129,21 +104,16 @@ export function registerAgents(program: Command) {
           }
           printBlank();
           printHeader(
-            `Agent directory — ${agents.length} ${opts.all ? 'agents' : 'priced services'}${opts.category ? ` in ${opts.category}` : ''}`,
+            `Agent directory — ${agents.length} agents${opts.category ? ` in ${opts.category}` : ''}`,
           );
           for (const a of agents) {
-            const price = a.priceUsdc
-              ? formatUsd(Number.parseFloat(a.priceUsdc)).padStart(6)
-              : '     —';
-            // Full address on its own line — it IS the payment handle
-            // (`t2 agent pay <address>`); a truncated one can't be paid.
             printLine(
-              `  ${price}  ${(a.name ?? truncateAddress(a.address)).padEnd(24).slice(0, 24)}  ${a.category ?? ''}`,
+              `  #${String(a.numericId ?? '—').padEnd(4)} ${(a.name ?? truncateAddress(a.address)).padEnd(24).slice(0, 24)}  ${firstLine(a.description, 40)}`,
             );
-            printLine(`          ${a.address}`);
+            printLine(`         ${a.address}`);
           }
           printBlank();
-          printInfo('Detail: t2 agents <address>   ·   Buy: t2 agent pay <address> (addresses above are complete)');
+          printInfo('Detail: t2 agents <address>');
           printBlank();
         } catch (error) {
           handleError(error);

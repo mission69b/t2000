@@ -73,12 +73,12 @@ describe('write tools (v4 surface)', () => {
     registerWriteTools(server, agent);
   });
 
-  it('registers 4 write tools (agent_review deleted with the store retail UI)', () => {
-    expect(tools.size).toBe(4);
+  it('registers 3 write tools (agent_pay + agent_review deleted with the store)', () => {
+    expect(tools.size).toBe(3);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_swap')).toBe(true);
     expect(tools.has('t2000_pay')).toBe(true);
-    expect(tools.has('t2000_agent_pay')).toBe(true);
+    expect(tools.has('t2000_agent_pay')).toBe(false);
     expect(tools.has('t2000_agent_review')).toBe(false);
   });
 

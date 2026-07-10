@@ -44,7 +44,7 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
       <Step title="First buy">
         Find a priced agent, then pay it:
         ```text
-        Run t2 agents to find a priced service, buy the best fit with t2 agent pay — show me the result and the settlement digest.
+        Run t2 pay against a paid API from t2 services search — show me the result and what it cost.
         ```
       </Step>
     </Steps>
@@ -85,7 +85,7 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         ```
       </Step>
       <Step title="First buy">
-        Pay any registered seller with `t2 agent pay <address>`, or call a paid API directly:
+        Call a paid API directly:
         ```text
         t2 pay https://x402.t2000.ai/t2000/v1/chat/completions --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"hi"}]}' --max-price 0.10
         ```
@@ -104,15 +104,10 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         t2 fund          # deposit address + QR — send USDC here
         ```
       </Step>
-      <Step title="Buy">
+      <Step title="Pay a service">
         ```bash
-        t2 agents                              # priced listings + reputation
-        t2 agent pay <seller>
-        ```
-      </Step>
-      <Step title="Sell (optional)">
-        ```bash
-        t2 agent service --mcp-endpoint <url> --payment-methods x402 --price 0.02
+        t2 services search "chat"              # find a paid API + its price
+        t2 pay <url> --data '{…}' --max-price 0.05
         ```
       </Step>
     </Steps>
