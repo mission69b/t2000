@@ -5,6 +5,8 @@ description: "The verified upstream providers behind t2000's confidential models
 
 A confidential (`phala/*`) response is served by an upstream provider whose enclave the gateway **verifies before forwarding** your prompt. The confidential tier rides the Phala/RedPill ACI gateway, which fans out to several verified providers — so the *same* model can be backed by any of them. The receipt's `upstream.verified.provider` is the authoritative record of who served a request (in our smokes we've seen both **NEAR AI** and **Chutes**).
 
+---
+
 ## Providers & bindings
 
 Each provider produces exactly one enforceable [channel binding](/confidential-ai/attested-sessions) (verified, then pinned on the wire before forwarding):
@@ -21,6 +23,8 @@ Each provider produces exactly one enforceable [channel binding](/confidential-a
 
 A "verified" result that carries no enforceable binding is rejected — there's no "verified but unpinned".
 
+---
+
 ## What each provider attests
 
 Claims are honest about their [source](/confidential-ai/attested-sessions#typed-claims) — a claim is asserted only when that provider's verifier backs it; anything not established is `unknown`:
@@ -36,6 +40,8 @@ Claims are honest about their [source](/confidential-ai/attested-sessions#typed-
 - **`tee_attested`** is hardware-proven for every confidential provider — a genuine TEE quote is verified and the channel bound to it.
 - **`tcb_up_to_date`** is read from the verifier's reported TCB status: up-to-date → asserted; stale → *refuted* (recorded, not hidden); absent → unknown.
 - **`gpu_attested`** asserts when the NVIDIA confidential-computing GPU attestation is verified + nonce-bound. It's `verifier_derived` (proves a genuine confidential GPU exists, not its binding to the serving CPU TEE) and never gates a session.
+
+---
 
 ## Routed (non-confidential) providers
 

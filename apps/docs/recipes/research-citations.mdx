@@ -5,6 +5,8 @@ description: "A question in, a sourced answer out. Exa finds the primary sources
 
 Ask a real question and get back an answer you can trust, with sources. Exa surfaces the most relevant primary pages by meaning, Perplexity returns a web-grounded answer with live citations, and Claude (optionally) fuses them into a tight, cited brief. Self-contained — just a question. ~$0.06.
 
+---
+
 ## The prompt
 
 ```
@@ -13,11 +15,15 @@ do they differ? Use Exa to find primary sources and Perplexity for a grounded
 answer — cite everything.
 ```
 
+---
+
 ## What runs
 
 1. `POST /exa/v1/search` — semantic search for the best primary sources (~$0.02)
 2. `POST /perplexity/v1/chat/completions` — web-grounded answer with citations (~$0.02)
 3. `POST /anthropic/v1/messages` — Claude fuses into a cited brief (optional) (~$0.02)
+
+---
 
 ## Run it
 
@@ -72,12 +78,16 @@ const brief = await agent.pay({
 console.log((brief.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 2–3 calls · ~$0.06 · ~7s · 0 taps
 Cited brief + source URLs
 ```
+
+---
 
 ## Extend it
 

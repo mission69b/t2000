@@ -9,6 +9,8 @@ Drop in a link to a recording — a podcast clip, a voice memo, a meeting export
 **Self-contained by design:** transcription takes an `audio_url`, and fal fetches it for you — no file upload, which means it runs cleanly in chat clients too. Point it at any public audio URL.
 </Note>
 
+---
+
 ## The prompt
 
 ```
@@ -16,10 +18,14 @@ Use t2 services. Transcribe this recording with fal Whisper and give me the 5 ke
 https://example.com/standup.mp3
 ```
 
+---
+
 ## What runs
 
 1. `POST /fal/fal-ai/whisper` — Whisper transcribes the audio URL (~$0.02)
 2. `POST /anthropic/v1/messages` — Claude pulls the key points (~$0.02)
+
+---
 
 ## Run it
 
@@ -65,12 +71,16 @@ const summary = await agent.pay({
 console.log((summary.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 2 calls · ~$0.04 · ~5s · 0 taps
 5 key points + full transcript
 ```
+
+---
 
 ## Extend it
 

@@ -5,6 +5,8 @@ description: "What the Confidential tier proves, what it still trusts, and where
 
 Confidential computing is precise about what it proves. This page states the boundary plainly so you can decide what to send through which tier. It's the honest counterpart to [how it works](/confidential-ai/how-it-works).
 
+---
+
 ## What's proven + verifiable
 
 - **The compute ran in a genuine GPU-TEE.** The hardware TDX quote is verified and the channel to the upstream is bound (`tls_spki_sha256` pinned) and fail-closed.
@@ -12,11 +14,15 @@ Confidential computing is precise about what it proves. This page states the bou
 - **Public, tamper-evident record.** The receipt is [anchored on Sui](/confidential-ai/verify) — a third party can independently check the commitment on-chain.
 - **No body retention.** The gateway stores hashes, not request/response bodies (zero data retention).
 
+---
+
 ## What's still trusted (disclosed)
 
 - **The gateway's plaintext leg.** Our gateway terminates TLS and **sees plaintext** before forwarding to the verified upstream. The protection is that the leg is ZDR (retains nothing), not that the gateway never sees the request.
 - **The receipt-signing key is a t2000 server key** (not yet sealed in a TEE KMS).
 - **Routed (frontier) responses are not confidential.** `openai/*`, `anthropic/*`, etc. forward to a third party that sees your prompt — `upstream.verified = failed`, by design. Confidentiality is a property of the verified upstream, confirmed per response from the receipt.
+
+---
 
 ## What v3.1 adds (planned)
 
@@ -25,6 +31,8 @@ Full no-trust closes the gap above: the gateway itself runs **in a TEE** (its ow
 <Note>
   This tier-by-tier honesty is non-negotiable: the receipt + docs state *exactly* what each tier proves. Overclaiming "zero-trust" today would be the failure mode this whole design guards against — **a wrong "verifiable" claim is worse than honest ZDR.**
 </Note>
+
+---
 
 ## Choosing a tier
 

@@ -10,6 +10,8 @@ t2000 authenticates three ways, on **two kinds of account**:
 
 They are **separate accounts with separate balances** — pick one for credit (agents: keypair + `t2 agent onboard`; humans: Passport + the console) so you don't fund both by accident.
 
+---
+
 ## Private API key (humans + apps)
 
 For the OpenAI-compatible [Private & Confidential API](/private-api):
@@ -28,6 +30,8 @@ Send it as a bearer token (`Authorization: Bearer $T2000_API_KEY`), or set it fo
   Calls fail closed at a $0 balance. Keep keys server-side; rotate (revoke + recreate) if one leaks. Each key is capped at 120 req/min.
 </Note>
 
+---
+
 ## Wallet keypair (agents)
 
 `t2 init` creates a non-custodial Sui keypair locally — the signing key never leaves your machine. Agents fund credit + mint a key headlessly, all on this one wallet:
@@ -40,6 +44,8 @@ t2 agent topup 5            # refill later (the "never runs dry" primitive)
 
 See [Agent ID](/agent-id) for the full headless onboarding.
 
+---
+
 ## Keyless — x402 pay-per-call (agents)
 
 For agent-native, no-account access, pay **per call in USDC** with no API key — the gateway handles `402 → pay → retry`:
@@ -51,6 +57,8 @@ t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
 ```
 
 This pays from your wallet's USDC, gasless. See [Agent Payments](/agent-payments).
+
+---
 
 ## Which one?
 

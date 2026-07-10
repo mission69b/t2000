@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "t2000",
-  "description": "Agentic Finance Infrastructure on Sui — SDK, CLI, and MCP for AI agents that move money.",
+  "description": "The agent stack on Sui — wallet, payments, identity, and private AI for agents. CLI, SDK, and MCP.",
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo.png",
@@ -67,12 +67,15 @@
               "confidential-ai/providers",
               "confidential-ai/faqs"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "Reference",
-        "groups": [
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "cli-reference",
+              "agent-sdk",
+              "agent-stack"
+            ]
+          },
           {
             "group": "API reference",
             "pages": [
@@ -83,13 +86,6 @@
               "api-reference/receipts",
               "api-reference/sessions",
               "api-reference/anchor"
-            ]
-          },
-          {
-            "group": "SDK & architecture",
-            "pages": [
-              "agent-sdk",
-              "agent-stack"
             ]
           }
         ]

@@ -12,11 +12,15 @@ Metered per token from a single credit balance. Manage everything — keys, cred
 
 Your edge over a raw provider: **private by default, verifiably confidential when it matters, every model behind one key, and pay-as-you-go with no per-provider accounts.**
 
+---
+
 ## Base URL
 
 ```text
 https://api.t2000.ai/v1
 ```
+
+---
 
 ## Get a key
 
@@ -31,6 +35,8 @@ Calls are metered per token from your credit balance. **Fund-to-use:** any accou
 <Note>
   Calls fail closed at a $0 balance — add credit at agents.t2000.ai/manage. Keep keys server-side; rotate (revoke + recreate) if one leaks.
 </Note>
+
+---
 
 ## Quick start
 
@@ -78,6 +84,8 @@ console.log(resp.choices[0].message.content);
 
 </CodeGroup>
 
+---
+
 ## From the t2000 CLI, MCP, or SDK
 
 Beyond any OpenAI SDK, the t2000 toolchain wraps the API as first-class verbs — same key via `T2000_API_KEY`:
@@ -112,6 +120,8 @@ const { content } = await agent.chat({
 
 Get the key at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) and set it as `T2000_API_KEY` (CLI/SDK) or in the MCP server env.
 
+---
+
 ## Pay-per-call over x402 — no key, no account
 
 Agents can pay **per call in USDC** with **no API key** — the t2000 Private API is a first-party [x402](/agent-payments) service on the gateway. Call it with the existing `t2 pay` / `t2000_pay` (the gateway handles `402` → pay → retry):
@@ -125,6 +135,8 @@ t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
 - **No key / no account** — pay from your wallet's USDC, gasless. The agent-native path (vs the key-based one above).
 - **Models:** the **open + confidential** set (`zai/glm-5.2`, `deepseek/deepseek-v3.2`, `openai/gpt-oss-120b`, and the `phala/*` confidential models) — browse the live list at `GET /t2000/v1/models` (free). Frontier + large contexts use a **key** (above).
 - **Capped** — flat per-call price with an output + context cap (what keeps no-key pricing predictable). For uncapped/per-token precision, use a key, or watch for the **max-hold settlement** tier (next).
+
+---
 
 ## Streaming
 
@@ -141,6 +153,8 @@ for await (const chunk of stream) {
 }
 ```
 
+---
+
 ## Models
 
 `GET /v1/models` returns the live, **public** catalog — per-model pricing (the charged rate), context window, and a `privacy` field (`private` or `confidential`) so you can choose your posture programmatically. The set is curated (open · frontier · confidential), not a 250-model dump.
@@ -150,6 +164,8 @@ curl https://api.t2000.ai/v1/models
 ```
 
 See **[Models](/models)** for the full catalog and how pricing works.
+
+---
 
 ## Confidential tier — verifiable, not just private
 
@@ -171,13 +187,19 @@ t2 verify rcpt-…                          # → ✓ verified (Sui anchor + rec
 
 The full **[Confidential AI](/confidential-ai/how-it-works)** section covers [attestation](/confidential-ai/attestation), [receipts](/confidential-ai/receipts), [attested sessions & claims](/confidential-ai/attested-sessions), and the honest [trust boundary](/confidential-ai/trust-boundary).
 
+---
+
 ## Pricing
 
 One price per model, billed per token from your credit balance — the same rate shown in `GET /v1/models`. There's no separate price book and no per-provider account: one key, one balance, every model.
 
+---
+
 ## Rate limits
 
 Each key is capped at **120 requests/minute** (an abuse guard). Exceeding it returns `429`. Spending is bounded by your balance plus, if enabled, your auto-recharge threshold/amount (Billing → Auto-recharge).
+
+---
 
 ## Errors
 

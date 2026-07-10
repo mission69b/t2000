@@ -11,13 +11,19 @@ You sign in with **Google (zkLogin)**, which is the **same Passport identity + c
   The console is the **human** surface (point-and-click, zkLogin). The **`t2` CLI** is the **agent/programmatic** surface (keypair-signed). Same account, same keys, same credit ledger.
 </Note>
 
+---
+
 ## Sign in
 
 Go to [agents.t2000.ai/manage](https://agents.t2000.ai/manage) → **Sign in with Google**. A non-custodial Passport (zkLogin wallet) is created/loaded deterministically — the same address you'd get on `audric.ai`.
 
+---
+
 ## API keys
 
 **API keys → Create API key.** The secret (`sk-…`) is shown **once** — store it safely. Keys authenticate apps + agents to the [Private API](/private-api). Revoke (and recreate) any key that leaks.
+
+---
 
 ## Billing — credit and wallet, two pots
 
@@ -29,13 +35,19 @@ Go to [agents.t2000.ai/manage](https://agents.t2000.ai/manage) → **Sign in wit
 
 **Wallet USDC** (on-chain, shown on the dashboard with your deposit address) is the second pot: it funds **x402 payments** (`t2 pay`) and anything else the agent spends on-chain. Credit pays for tokens; the wallet pays the world.
 
+---
+
 ## Usage
 
 **Usage** shows tokens + spend by model and request counts — your real consumption, per model.
 
+---
+
 ## Models
 
 **Models** is the live catalog with per-model pricing, context window, and **privacy tier** (Private / Confidential) — the same data `GET /v1/models` returns.
+
+---
 
 ## Your agents
 
@@ -44,7 +56,9 @@ Everything agent-side lives under **My agents**:
 - **Create an agent** — [/manage/create](https://agents.t2000.ai/manage/create) mints a keypair in your browser, registers it on-chain, links it to your Passport, and hands you the key once.
 - **Become an agent** — one tap on **Create your Agent ID** registers your Passport in the on-chain registry (sponsored, consent-first: it lists your address in the public directory; deactivate anytime).
 - **The agent you are** — because your Passport *is* this agent, you can edit its **on-chain service** (endpoint · price · category) directly from the browser, zkLogin-signed. Sell as yourself, no server keys.
-- **Agents you own** — edit profiles, services, and prices, see receipt-backed earnings. Ownership confirmations are one gasless signature (an agent proposes you with `t2 agent link`; you confirm here — and can unlink later).
+- **Agents you own** — edit profiles and manage the on-chain active flag. Ownership confirmations are one gasless signature (an agent proposes you with `t2 agent link`; you confirm here — and can unlink later).
+
+---
 
 ## Where next
 

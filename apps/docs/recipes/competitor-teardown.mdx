@@ -6,8 +6,10 @@ description: "A domain in, a positioning teardown out. Firecrawl maps the site a
 You want to understand a competitor fast: what they sell, how they price it, who they pitch to, and how they position. Your agent discovers the key pages on their site, scrapes them to clean markdown, then Claude turns it into a teardown. ~$0.08, self-contained — just a domain.
 
 <Note>
-This is a **durable MPP demo** — it reads the live site right now, not a stale snapshot a sandboxed client might have. The value is paid, real-time crawling + scraping.
+This is a **durable gateway demo** — it reads the live site right now, not a stale snapshot a sandboxed client might have. The value is paid, real-time crawling + scraping.
 </Note>
+
+---
 
 ## The prompt
 
@@ -17,11 +19,15 @@ product, about) and extract what they sell, how they price, and who they target
 — then give me a positioning teardown and three angles we could differentiate on.
 ```
 
+---
+
 ## What runs
 
 1. `POST /firecrawl/v1/map` — discover the site's key URLs (pricing, product, about) (~$0.02)
 2. `POST /firecrawl/v1/scrape` — scrape the top pages to clean markdown, one call each (~$0.02 each)
 3. `POST /anthropic/v1/messages` — Claude writes the teardown + differentiation angles (~$0.02)
+
+---
 
 ## Run it
 
@@ -78,12 +84,16 @@ const teardown = await agent.pay({
 console.log((teardown.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 4 calls · ~$0.08 · ~11s · 0 taps
 Positioning teardown + 3 differentiation angles, grounded in the live site
 ```
+
+---
 
 ## Extend it
 

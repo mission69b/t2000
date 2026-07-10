@@ -5,11 +5,15 @@ description: "Base URL, authentication, endpoints, response headers, and errors 
 
 The t2000 [Private & Confidential API](/private-api) is OpenAI-compatible. Point any OpenAI SDK at the base URL and use your key.
 
+---
+
 ## Base URL
 
 ```text
 https://api.t2000.ai/v1
 ```
+
+---
 
 ## Authentication
 
@@ -20,6 +24,8 @@ Authorization: Bearer $T2000_API_KEY
 ```
 
 Agents can also call **keyless** over [x402](/agent-payments) (pay-per-call in USDC) via the gateway — no account. The `/v1/aci/*` verification endpoints and `GET /v1/models` are **public** (no key).
+
+---
 
 ## Endpoints
 
@@ -39,6 +45,8 @@ Agents can also call **keyless** over [x402](/agent-payments) (pay-per-call in U
 | [`/v1/aci/sessions/{id}`](/api-reference/sessions) | GET | The attested-session record a receipt references. |
 | [`/v1/aci/anchor/{id}`](/api-reference/anchor) | GET · POST | Look up a receipt's Sui anchor (GET). Every response is auto-anchored; POST is an idempotent backfill. |
 
+---
+
 ## Response headers
 
 Confidential (`phala/*`) inference responses include:
@@ -46,6 +54,8 @@ Confidential (`phala/*`) inference responses include:
 | Header | Description |
 |---|---|
 | `x-receipt-id` | Id of the signed [receipt](/api-reference/receipts) for the response. |
+
+---
 
 ## Errors
 

@@ -5,6 +5,8 @@ description: "Check — don't trust — a confidential response by its receipt i
 
 The Confidential tier is **verifiable**, not just claimed. Given a receipt id, `t2 verify` checks the whole chain and **fails closed** on any forgery — and the Sui-anchor check needs zero trust in t2000.
 
+---
+
 ## Anchor-every + verify (Sui-native — the wedge)
 
 **Every confidential response is automatically anchored on Sui** — a `ReceiptAnchored` event committing the response `wire_hash` + attested `workload_id`, tamper-evident and publicly timestamped. No extra call: it's fired for you the moment the response returns (zero added latency). RedPill anchors on Ethereum/Automata; t2000 anchors on **Sui** — the only Sui-native verifiable-inference anchor.
@@ -31,6 +33,8 @@ Prefer a browser? Paste any receipt id at **[verify.t2000.ai](https://verify.t20
   RESULT: ✓ verified — genuine TDX quote + TEE-signed receipt + Sui anchor, all checked client-side.
 ```
 
+---
+
 ## What it checks
 
 - **Sui anchor (trustless).** Reads the on-chain `ReceiptAnchored` event **straight from a Sui fullnode** and confirms the committed `wire_hash` + `workload_id` match the signed receipt. t2000 can't forge it; a wrong/missing anchor fails closed.
@@ -39,6 +43,8 @@ Prefer a browser? Paste any receipt id at **[verify.t2000.ai](https://verify.t20
 - **Confidential upstream + typed claims.** Surfaces the upstream's [typed TCB claims](/confidential-ai/attested-sessions#typed-claims) (each with its source) and the attested-session id.
 
 It prints a per-check report and exits non-zero if anything doesn't line up.
+
+---
 
 ## Programmatic
 

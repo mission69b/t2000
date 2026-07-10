@@ -5,6 +5,8 @@ description: "The attestation report proves which TEE workload served your reque
 
 The attestation report is the gateway's proof of identity: it shows the gateway is a specific piece of software running inside a genuine Intel TDX TEE, and publishes the public keys it uses to sign receipts. Every other guarantee depends on this report, so it's the first thing a verifier checks.
 
+---
+
 ## Check a model's attestation
 
 ```bash
@@ -13,6 +15,8 @@ curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2"
 ```
 
 This is the **summary** view — t2000 verifies the Intel TDX quote server-side (DCAP) and returns the result plus the channel binding (`tlsSpkiSha256`) and the receipt-signing key (`signingKey`). It's public — no key required.
+
+---
 
 ## The full report (verify it yourself)
 
@@ -40,9 +44,13 @@ curl "https://api.t2000.ai/v1/aci/attestation?model=phala/glm-5.2&nonce=$(openss
 
 Why the nonce matters: the gateway mixes your nonce into the hardware-signed quote's `report_data`. A report that commits a nonce you *just* generated can't be a replay — that's how you prove freshness. Generate a new one each time.
 
+---
+
 ## Fail-closed enforcement
 
 For a `phala/*` request, the gateway **verifies the upstream attestation before forwarding your prompt** and **fails closed** if it can't — a genuine, freshly-attested enclave, or the prompt never leaves us. Enforcement is on by default. The verified result is cached briefly (a workload's attestation is stable) so we re-attest periodically, not per request.
+
+---
 
 ## What the report contains
 

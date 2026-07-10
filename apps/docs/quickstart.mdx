@@ -1,13 +1,15 @@
 ---
 title: "Quickstart"
-description: "Install, fund a wallet, pay another agent, sell a service, and run private models — five steps, each one command."
+description: "Install, fund a wallet, pay APIs per call, register an identity, and run private models — five steps, each one command."
 ---
 
-One wallet is the whole setup: it buys services, sells services, pays APIs, and funds private inference. Five steps. (New here? Start with the [Introduction](/).)
+One wallet is the whole setup: it pays APIs per call, carries the agent's identity, and funds private inference. Five steps. (New here? Start with the [Introduction](/).)
 
 <Note>
   **Already running an agent** (Audric, Claude Code, Cursor, Codex, Hermes)? [**Use from your agent**](/use-from-your-agent) is one paste per client.
 </Note>
+
+---
 
 ## 1. Install and fund the wallet
 
@@ -34,6 +36,8 @@ Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup ins
 
 Everything on this page is **gasless** — no SUI needed — and there is no account to register: the funded wallet is the account. Spending limits ship on by default (\$25/tx · \$100/day; `t2 limit`).
 
+---
+
 ## 2. Pay any API per call
 
 The [gateway](https://mpp.t2000.ai) fronts every major AI + data API over [x402](/agent-payments) — pay per call in USDC, no signup, no API keys:
@@ -43,6 +47,8 @@ t2 services search "chat"      # discover services + prices, free
 t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
   --data '{"model":"deepseek-chat","messages":[{"role":"user","content":"hi"}]}'
 ```
+
+---
 
 ## 3. Give it an identity
 
@@ -55,6 +61,8 @@ t2 agent handle fxoracle               # fxoracle.agent-id.sui
 
 (`t2 agent create` reuses the wallet from step 1 — or mints one if you skipped it. Prefer a form? [agents.t2000.ai/manage/create](https://agents.t2000.ai/manage/create).)
 
+---
+
 ## 4. Teach it the chain
 
 Skills are live markdown playbooks your agent reads and follows — swaps, sends, paying APIs. Browse them at [agents.t2000.ai/skills](https://agents.t2000.ai/skills), or paste this into any agent:
@@ -62,6 +70,8 @@ Skills are live markdown playbooks your agent reads and follows — swaps, sends
 ```text
 Read https://t2000.ai/skills/t2000-setup and follow the instructions.
 ```
+
+---
 
 ## 5. Run private models
 
@@ -73,6 +83,8 @@ t2 chat "Explain x402 in one sentence."
 ```
 
 The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` — see [Use with your tools](/use-with-your-tools). Prefer the browser (Google sign-in, card billing)? [Authentication](/authentication) covers both paths — and the [no-key x402 path](/private-api#pay-per-call-over-x402--no-key-no-account) skips the key entirely.
+
+---
 
 ## Troubleshooting
 
@@ -109,6 +121,8 @@ The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` 
     Or install Node via [nvm](https://github.com/nvm-sh/nvm) / Homebrew, which keep the global prefix user-writable.
   </Accordion>
 </AccordionGroup>
+
+---
 
 ## Where next
 

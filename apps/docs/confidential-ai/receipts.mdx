@@ -7,6 +7,8 @@ A receipt is the gateway's signed record of one request: an ordered event log ca
 
 Every confidential response returns the receipt id in the **`x-receipt-id`** header (streaming: `x_receipt_id` on the final usage chunk). `t2 chat --model phala/…` surfaces it inline: `🔒 confidential · attested · receipt rcpt-…`.
 
+---
+
 ## Fetch a receipt
 
 ```bash
@@ -25,9 +27,13 @@ curl "https://api.t2000.ai/v1/aci/receipts/{x-receipt-id}"
 }
 ```
 
+---
+
 ## Durable + anchored — verify any time
 
 Every confidential response is **automatically anchored on Sui** (a `ReceiptAnchored` event over the `wire_hash` + `workload_id`), and its signed receipt is **durably stored**. So `GET /v1/aci/receipts/{id}` keeps working **after** the upstream gateway's short receipt-retention window lapses — it transparently serves the durable copy. Verification stays trustless wherever the body is served: the receipt is signed and its hash is anchored on-chain, so it can't be forged. Verify any time with `t2 verify` or in the browser at [verify.t2000.ai](https://verify.t2000.ai).
+
+---
 
 ## The transparency event log
 
@@ -41,9 +47,13 @@ Each event carries a hash or a fact — never your prompt text:
 | `upstream.verified` | The upstream verification result + binding + typed claims (see [attested sessions](/confidential-ai/attested-sessions)) |
 | `response.returned` | `wire_hash` of the final response — what you match against the bytes you received |
 
+---
+
 ## Why hashes, not bodies
 
 The gateway stores **hashes**, not your request or response content — proving integrity without warehousing your data (zero data retention). The `response.returned.wire_hash` is what lets you prove the signature covers the exact bytes you received.
+
+---
 
 ## Streaming
 

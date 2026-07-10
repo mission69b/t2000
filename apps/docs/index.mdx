@@ -1,11 +1,11 @@
 ---
 title: "Introduction"
-description: "The agent stack on Sui — SDK, CLI, and MCP for AI agents that hold money, pay for intelligence, prove who they are, and earn."
+description: "The agent stack on Sui — wallet, payments, identity, and private AI for agents. CLI, SDK, and MCP."
 ---
 
 > **Machine visitor?** The condensed docs live at [`developers.t2000.ai/llms.txt`](https://developers.t2000.ai/llms.txt) — and installed skills verify their own freshness with `t2 skills check`.
 
-**t2000** is the Sui-native agent stack — one identity, one wallet, one balance, for **machines and humans**. Agents hold and move USDC, pay for intelligence, prove who they are, and **earn** from services they sell.
+**t2000** is the Sui-native agent stack — one identity, one wallet, one balance, for **machines and humans**. Agents hold and move USDC, pay for intelligence per call, and prove who they are on-chain.
 
 <CardGroup cols={3}>
   <Card title="Pay for anything" icon="credit-card" href="/agent-payments">
@@ -15,7 +15,7 @@ description: "The agent stack on Sui — SDK, CLI, and MCP for AI agents that ho
     An on-chain Agent ID — name, @handle, owner, public directory. Free + gasless.
   </Card>
   <Card title="Build on the stack" icon="code" href="/quickstart">
-    The five-step quickstart — wallet, payments, commerce, private models.
+    The five-step quickstart — wallet, payments, identity, private models.
   </Card>
 </CardGroup>
 
@@ -32,6 +32,8 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — 
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.
 </Note>
 
+---
+
 ## Where next
 
 <CardGroup cols={2}>
@@ -45,12 +47,17 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — 
     Pay any API in USDC over x402. Every major AI + data API on the gateway, pay-per-call.
   </Card>
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
-    A portable on-chain identity for every agent — handle, owner, profile, reputation, and the public [directory](https://agents.t2000.ai). Register gaslessly with one command.
+    A portable on-chain identity for every agent — handle, owner, profile, and the public [directory](https://agents.t2000.ai). Register gaslessly with one command.
   </Card>
   <Card title="Private & Confidential API" icon="lock" href="/private-api">
     OpenAI-compatible inference — every model behind one key, private by default (ZDR), with a **verifiable** confidential GPU-TEE tier (Sui-anchored receipts you check with `t2 verify`). Manage it at [agents.t2000.ai/manage](/platform).
   </Card>
+  <Card title="CLI Command Reference" icon="terminal" href="/cli-reference">
+    Every `t2` command on one page — wallet, payments, identity, limits, MCP.
+  </Card>
 </CardGroup>
+
+---
 
 ## Architecture at a glance
 
@@ -65,11 +72,15 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — 
 | Skills | — | [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) |
 | Consumer app | Audric | [`audric.ai`](https://audric.ai) |
 
+---
+
 ## What you can build
 
 - **A USDC-paying agent.** Drop `@t2000/cli` into any agent loop; it runs `t2 pay` against every paid API on the gateway without you holding SUI for gas.
 - **A wallet-aware AI assistant.** Install `@t2000/mcp` in Claude Desktop or Cursor; the agent gets live tools for the wallet, agent payments, and private inference — plus the skills that teach it the patterns.
 - **A Sui-native fintech.** `@t2000/sdk` gives you gasless USDC + USDsui transfers, Cetus swaps, and x402 pay — all from one class.
+
+---
 
 ## Why t2000
 
@@ -78,6 +89,8 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — 
 **Gasless by default for the things that matter.** USDC and USDsui transfers go through `0x2::balance::send_funds` — the Sui foundation sponsors the gas. Your agent never needs SUI to pay another agent in USDC.
 
 **One stack, one brand.** `@t2000/{sdk,cli,mcp,id}` are version-locked and ship together. No mix-and-match version drift.
+
+---
 
 ## Links
 

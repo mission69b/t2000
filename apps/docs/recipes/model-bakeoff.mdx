@@ -6,8 +6,10 @@ description: "One prompt in, five models' answers out — side by side. Claude, 
 You want to know which model is best for *your* prompt — not a leaderboard, your actual task. Your agent sends the same prompt to five models in parallel, then has Claude judge them blind on accuracy, completeness, and tone. ~$0.14, one wallet — no juggling five provider accounts.
 
 <Note>
-This is a **durable MPP demo** — the headline is one wallet replacing five API keys. A sandboxed client can't reach five real frontier models at once; here it's one `pay` per model, gasless, no signup.
+This is a **durable gateway demo** — the headline is one wallet replacing five API keys. A sandboxed client can't reach five real frontier models at once; here it's one `pay` per model, gasless, no signup.
 </Note>
+
+---
 
 ## The prompt
 
@@ -17,6 +19,8 @@ DeepSeek: "Explain why USDC depegs happen, in 3 sentences a beginner gets."
 Then judge them on accuracy, clarity, and which you'd ship.
 ```
 
+---
+
 ## What runs
 
 1. `POST /anthropic/v1/messages` — Claude's answer (~$0.02)
@@ -25,6 +29,8 @@ Then judge them on accuracy, clarity, and which you'd ship.
 4. `POST /groq/v1/chat/completions` — Llama (on Groq) answer (~$0.02)
 5. `POST /deepseek/v1/chat/completions` — DeepSeek's answer (~$0.02)
 6. `POST /anthropic/v1/messages` — Claude judges all five (~$0.02)
+
+---
 
 ## Run it
 
@@ -89,12 +95,16 @@ const judgment = await agent.pay({
 console.log((judgment.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 6 calls · ~$0.14 · ~8s · 0 taps
 Five answers side by side + a scored verdict and a winner
 ```
+
+---
 
 ## Extend it
 

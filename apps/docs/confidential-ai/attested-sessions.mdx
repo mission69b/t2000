@@ -5,6 +5,8 @@ description: "The verified upstream channel behind a confidential response — i
 
 When the gateway verifies a confidential upstream, it records an **attested session**: an immutable snapshot of the verified TEE channel the request was bound to. A receipt's `upstream.verified.session_id` (`as_…`) references it, so you can trace any confidential response to the exact security context that served it.
 
+---
+
 ## Resolve a session
 
 ```bash
@@ -12,6 +14,8 @@ curl "https://api.t2000.ai/v1/aci/sessions/{session-id}"
 ```
 
 It captures the verified upstream identity + endpoint, the enforced [channel binding](#channel-binding), a set of [typed claims](#typed-claims), and the byte-preserving evidence the verifier checked. The `session_id` is a content hash of that material — re-verifying the same channel resolves to the same id (idempotent), and any change (rotated cert, new measurement) produces a *new* id, so the context can't silently change.
+
+---
 
 ## Channel binding
 
@@ -23,6 +27,8 @@ Verifying an upstream isn't enough on its own — the gateway also **binds the c
 | `e2ee_public_key_sha256` | The upstream's E2E key — encrypts the request body so only the attested enclave can decrypt |
 
 A "verified" result that carries no enforceable binding is rejected — there's no "verified but unpinned".
+
+---
 
 ## Typed claims
 

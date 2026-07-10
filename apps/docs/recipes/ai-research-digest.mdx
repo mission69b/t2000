@@ -6,8 +6,10 @@ description: "A weekly digest of the AI research that actually matters — speci
 Keep up without doom-scrolling. Your agent pulls the week's notable AI papers (with arXiv IDs, dates, authors), surfaces the launches and debates worth tracking, and hands back a tight digest with a one-line "why it matters" per item. Self-contained — no inputs needed. ~$0.06.
 
 <Note>
-A **durable MPP demo**: this is live, web-grounded retrieval a code sandbox can't fabricate. The value is paid semantic search + real-time citations, not generation — exactly the kind of recipe that earns its keep regardless of how capable the client is.
+A **durable gateway demo**: this is live, web-grounded retrieval a code sandbox can't fabricate. The value is paid semantic search + real-time citations, not generation — exactly the kind of recipe that earns its keep regardless of how capable the client is.
 </Note>
+
+---
 
 ## The prompt
 
@@ -18,11 +20,15 @@ papers with arXiv IDs, dates, and authors, plus 3 debates or launches to
 track. One line on why each matters.
 ```
 
+---
+
 ## What runs
 
 1. `POST /exa/v1/search` — semantic search for recent papers + primary pages (~$0.02)
 2. `POST /perplexity/v1/chat/completions` — web-grounded "what's notable this week" with citations (~$0.02)
 3. `POST /anthropic/v1/messages` — Claude distills the digest, keeping IDs + sources (~$0.02)
+
+---
 
 ## Run it
 
@@ -86,12 +92,16 @@ const digest = await agent.pay({
 console.log((digest.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 2-3 calls · ~$0.06 · ~8s · 0 taps
 5-8 papers w/ arXiv IDs + 3 things to track, each with why-it-matters
 ```
+
+---
 
 ## Extend it
 

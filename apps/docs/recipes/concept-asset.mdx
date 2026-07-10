@@ -1,9 +1,11 @@
 ---
 title: "Concept → demo asset"
-description: "From idea to image + pitch + voiceover in one prompt. Chains fal.ai + Anthropic + ElevenLabs over MPP."
+description: "From idea to image + pitch + voiceover in one prompt. Chains fal.ai + Anthropic + ElevenLabs over x402."
 ---
 
 Your agent takes a concept, generates a hero image with fal.ai's Flux, writes a 60-second elevator pitch with Claude, and synthesizes the pitch as an MP3 via ElevenLabs — all in one chain, paid as you go in USDC. ~$0.18, ~18 seconds.
+
+---
 
 ## The prompt
 
@@ -11,17 +13,21 @@ Your agent takes a concept, generates a hero image with fal.ai's Flux, writes a 
 Use t2 services. Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synthesize it as MP3 via ElevenLabs.
 ```
 
+---
+
 ## What runs
 
 1. `POST /fal/fal-ai/flux/dev` — Flux image generation (~$0.06)
 2. `POST /anthropic/v1/messages` — Claude writes the pitch (~$0.02)
 3. `POST /elevenlabs/v1/text-to-speech/:voiceId` — pitch becomes audio (~$0.10)
 
+---
+
 ## Run it
 
 ### Claude Desktop (MCP)
 
-Same install pattern as any MPP recipe:
+Same install pattern as any recipe:
 
 ```bash
 npm install -g @t2000/cli && t2 init && t2 fund && t2 mcp install
@@ -80,6 +86,8 @@ const mp3 = await fetch(url).then((res) => res.arrayBuffer());
 writeFileSync('./pitch.mp3', Buffer.from(mp3));
 ```
 
+---
+
 ## Expected output
 
 ```
@@ -90,6 +98,8 @@ hero image (hosted URL) · pitch text · ./pitch.mp3
 <Note>
 The image comes back as a hosted fal URL and the pitch as text — only the voiceover is written to disk above. Add `writeFileSync` for the others if you want local copies. The ElevenLabs step draws on the gateway's pooled voice quota; if it's exhausted the call returns an error (you still pay the micro-charge, surfaced truthfully).
 </Note>
+
+---
 
 ## Extend it
 

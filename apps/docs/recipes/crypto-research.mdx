@@ -5,6 +5,8 @@ description: "One token, the full picture. Market data + headlines + a web-groun
 
 Beyond a price check: your agent pulls market data, recent news, and a citation-backed narrative, then synthesizes a single-asset deep-dive. Useful when you want the *why* behind the number, not just the number. ~$0.08.
 
+---
+
 ## The prompt
 
 ```
@@ -13,12 +15,16 @@ NewsAPI, and a web-grounded narrative with citations from Perplexity. Then a
 200-word take.
 ```
 
+---
+
 ## What runs
 
 1. `POST /coingecko/v1/markets` — price, market cap, volume, 7d sparkline (~$0.02)
 2. `POST /newsapi/v1/search` — recent headlines (~$0.02)
 3. `POST /perplexity/v1/chat/completions` — web-grounded narrative with live citations (~$0.02)
 4. `POST /anthropic/v1/messages` — Claude fuses it into the final take (~$0.02)
+
+---
 
 ## Run it
 
@@ -79,12 +85,16 @@ const take = await agent.pay({
 console.log((take.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 4 calls · ~$0.08 · ~8s · 0 taps
 SUI deep-dive: market data + narrative + cited take
 ```
+
+---
 
 ## Extend it
 

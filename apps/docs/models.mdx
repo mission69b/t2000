@@ -9,6 +9,8 @@ description: "The t2000 model catalog — open, frontier, and confidential — b
 curl https://api.t2000.ai/v1/models
 ```
 
+---
+
 ## The catalog
 
 The launch set is curated — the models developers actually run agents on, plus the frontier set for completeness:
@@ -25,12 +27,16 @@ The live set is always whatever `GET /v1/models` returns — it intersects this 
 **Reasoning vs fast models.** `glm-5.2` and `kimi-k2.6` are **reasoning** models — they generate a hidden reasoning trace before answering, so they're deeper but noticeably slower (higher latency, more tokens). They carry `"reasoning": true` in `GET /v1/models` (and a `reasoning` tag in `t2 models`). For snappy responses, reach for a non-reasoning model like `gpt-oss-120b`, `deepseek-v4-flash`, or `qwen3.6-27b`. We never cap `max_tokens` by default — the choice of depth vs speed is yours (pass your own `max_tokens` to bound a call).
 </Note>
 
+---
+
 ## Privacy tiers
 
 Each model carries a `privacy` field so you can choose your posture programmatically:
 
 - **`private`** (default, every model) — **zero data retention**: providers are contractually bound not to store or train on your prompts.
 - **`confidential`** (`phala/*`) — inference runs in a **verified GPU-TEE**, with a signed receipt **auto-anchored on Sui** + durably stored, so you can [verify it yourself](/confidential-ai/verify) any time (CLI or [verify.t2000.ai](https://verify.t2000.ai)). Carries a premium over `private` for the verifiable-privacy guarantee. See [Confidential AI](/confidential-ai/how-it-works).
+
+---
 
 ## Pricing
 

@@ -12,6 +12,8 @@ Two surfaces use it:
 
 Both auto-handle the HTTP 402 challenge → quote → USDC payment (gasless) → retry loop.
 
+---
+
 ## How it works
 
 ```
@@ -30,6 +32,8 @@ Client            Gateway (mpp.t2000.ai)         Upstream
 
 USDC transfers go through `0x2::balance::send_funds` — **gasless** via the Sui foundation sponsor. Your agent never needs SUI to pay another agent in USDC.
 
+---
+
 ## Try it free — no wallet, no signup
 
 Explore the whole catalog before funding anything. Discovery + live metrics are open endpoints — no wallet, no payment, no account:
@@ -41,6 +45,8 @@ t2 services inspect https://mpp.t2000.ai/openai    # exact prices + input schema
 ```
 
 Or hit the catalog directly: [`/api/services`](https://mpp.t2000.ai/api/services), [`/llms.txt`](https://mpp.t2000.ai/llms.txt), and live counters at [`/api/mpp/stats`](https://mpp.t2000.ai/api/mpp/stats). When you're ready for a *paid* call, create + fund a wallet (below) — **\$5 ≈ ~250 calls at the \$0.02 floor**.
+
+---
 
 ## Pay your first API in 30 seconds
 
@@ -59,6 +65,8 @@ t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
 ```
 
 That's it. The x402 challenge is handled automatically; payment broadcasts to Sui mainnet; the response comes back.
+
+---
 
 ## Hero examples
 
@@ -107,6 +115,8 @@ That's it. The x402 challenge is handled automatically; payment broadcasts to Su
   </Card>
 </CardGroup>
 
+---
+
 ## OpenAI-compatible inference
 
 Every chat provider on the gateway speaks the **OpenAI Chat Completions shape** — same request body, same response JSON. One request format, many providers, all **$0.02/call**, no signup and no API keys:
@@ -138,6 +148,8 @@ t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
 ```
 
 Programmatic version: [`agent.pay()` in the Agent SDK](/agent-sdk).
+
+---
 
 ## Services
 
@@ -174,6 +186,8 @@ The catalog spans AI, media, search, data, web, translation, and more — the li
 | Translation | DeepL, Google Translate |
 | Everything else | Judge0 (code exec), Lob (physical mail), Resend (email), Pushover (push), VirusTotal (security), ExchangeRate (forex), Short.io, TinyPNG |
 
+---
+
 ## Pricing
 
 Each service sets its own per-endpoint price. The gateway applies a thin overlay (covered by service margins). Pay per call — no subscription, no commit:
@@ -187,6 +201,8 @@ Each service sets its own per-endpoint price. The gateway applies a thin overlay
 Always pass `--max-price <USD>` (default `$1.00`) so a misconfigured endpoint can't drain the wallet.
 
 The live per-endpoint price is always in the [catalog](https://mpp.t2000.ai/llms.txt) and the [OpenAPI spec](https://mpp.t2000.ai/openapi.json) (`x-payment-info.price`) — those are generated from the gateway's price source of truth, so they never drift from what you're charged.
+
+---
 
 ## Binary responses
 
@@ -202,6 +218,8 @@ Endpoints that produce binary output — audio (TTS), raw image bytes, PDFs — 
 
 Fetch `url` to get the file. This keeps responses safe to pass through any JSON or text transport (SDK, MCP, agent context) without corruption, and keeps the bytes out of the LLM's context window. JSON and text endpoints are returned inline as usual.
 
+---
+
 ## CLI reference
 
 | Command | What it does |
@@ -210,6 +228,8 @@ Fetch `url` to get the file. This keeps responses safe to pass through any JSON 
 | `t2 services inspect <url>` | Show service info + endpoint list + pricing. Works on both service base URLs and specific endpoint URLs. |
 | `t2 pay <url>` | Pay for an x402-protected API. `--data`, `--method`, `--header <K:V>` (repeatable), `--max-price <USD>`, `--estimate` (parse 402 without paying). |
 | `t2 history` | List recent payments with Suiscan digests + amount + service. |
+
+---
 
 ## MCP
 
@@ -224,6 +244,8 @@ Fetch `url` to get the file. This keeps responses safe to pass through any JSON 
 </Note>
 
 See [Agent Wallet → MCP Integration](/agent-wallet#mcp-integration) for full client setup.
+
+---
 
 ## Programmatic
 
@@ -244,6 +266,8 @@ const result = await agent.pay({
 
 Full SDK reference: [Agent SDK](/agent-sdk).
 
+---
+
 ## Architecture
 
 - **Gateway** — Next.js 16 on Vercel at [`mpp.t2000.ai`](https://mpp.t2000.ai). Proxies upstream APIs behind x402 (HTTP 402) payment challenges.
@@ -251,6 +275,8 @@ Full SDK reference: [Agent SDK](/agent-sdk).
 - **Network** — Sui mainnet. USDC = `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`.
 - **Gasless** — USDC transfers via `0x2::balance::send_funds` (Sui foundation sponsor).
 - **Logging** — Prisma + NeonDB. Every payment is logged with its tx digest; browse at [`mpp.t2000.ai/activity`](https://mpp.t2000.ai/activity). Agent-to-agent purchases stream on the same feed.
+
+---
 
 ## Why x402
 
@@ -261,6 +287,8 @@ Full SDK reference: [Agent SDK](/agent-sdk).
 **Sui-native.** USDC settlement, gasless transfer, finality in ~400ms. The whole flow — pay + retry — usually completes in under 2 seconds.
 
 **No charge on failure.** Payment settles on-chain *before* the upstream runs (so a forged or unfunded payment can never burn an upstream call), and if that upstream then fails, the gateway issues an **automated gasless USDC refund** back to your wallet in the same request — net-zero, on-chain-verifiable. You only pay for calls that succeed.
+
+---
 
 ## Links
 

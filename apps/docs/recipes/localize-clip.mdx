@@ -6,8 +6,10 @@ description: "An English clip in, the same clip in another language out. fal Whi
 You have a voice clip in English and want it in Spanish — not subtitles, actual spoken audio. Your agent transcribes the clip, translates the text with context-aware AI, then synthesizes a natural voice reading it back in the target language. ~$0.14, end to end — audio in, audio out.
 
 <Note>
-This is a **durable MPP demo** — every leg needs a real model: real transcription, real translation, real voice synthesis. A sandboxed client can't fake any of them. The artifact (the re-voiced clip) is re-hosted on our store, so the URL is durable.
+This is a **durable gateway demo** — every leg needs a real model: real transcription, real translation, real voice synthesis. A sandboxed client can't fake any of them. The artifact (the re-voiced clip) is re-hosted on our store, so the URL is durable.
 </Note>
+
+---
 
 ## The prompt
 
@@ -17,11 +19,15 @@ https://example.com/clip.mp3
 Use fal Whisper to transcribe, DeepL to translate, and ElevenLabs to read it back.
 ```
 
+---
+
 ## What runs
 
 1. `POST /fal/fal-ai/whisper` — transcribe the source clip to text (~$0.02)
 2. `POST /deepl/v1/translate` — translate the transcript, context-aware (~$0.02)
 3. `POST /elevenlabs/v1/text-to-speech/:voiceId` — synthesize the translated voice (~$0.10)
+
+---
 
 ## Run it
 
@@ -70,12 +76,16 @@ const speech = await agent.pay({
 console.log((speech.body as { url: string }).url);
 ```
 
+---
+
 ## Expected output
 
 ```
 3 calls · ~$0.14 · ~12s · 0 taps
 A Spanish-voiced .mp3 of the original clip, on a durable URL
 ```
+
+---
 
 ## Extend it
 

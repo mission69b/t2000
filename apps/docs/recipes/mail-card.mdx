@@ -8,8 +8,10 @@ The most interesting demo of agentic payments isn't another LLM chain — it's l
 You pay ~$2.08 in USDC. A physical postcard shows up in someone's mailbox 3–5 days later.
 
 <Note>
-The card front is the only part a capable client could draw itself; the **un-fakeable** part is the last step — a sandbox can't put a stamped postcard in a real mailbox. That's the durable MPP value: a real-world action settled in USDC.
+The card front is the only part a capable client could draw itself; the **un-fakeable** part is the last step — a sandbox can't put a stamped postcard in a real mailbox. That's the durable value of the gateway: a real-world action settled in USDC.
 </Note>
+
+---
 
 ## The prompt
 
@@ -17,11 +19,15 @@ The card front is the only part a capable client could draw itself; the **un-fak
 Use t2 services. Write a warm note for {recipient}, render it as a card front via fal.ai, and mail it to {address} via Lob.
 ```
 
+---
+
 ## What runs
 
 1. `POST /anthropic/v1/messages` — Claude writes the note text (~$0.02)
 2. `POST /fal/fal-ai/flux/dev` — Flux renders the card front (~$0.06)
 3. `POST /lob/v1/postcards` — Lob prints + mails the physical postcard (~$2.00)
+
+---
 
 ## Run it
 
@@ -96,6 +102,8 @@ const postcard = await agent.pay({
 
 The chain above runs end-to-end in Claude Desktop if you paste the natural-language prompt — the MCP wallet handles the three 402s in sequence and Claude orchestrates the data flow.
 
+---
+
 ## Expected output
 
 ```
@@ -103,6 +111,8 @@ The chain above runs end-to-end in Claude Desktop if you paste the natural-langu
 ```
 
 Lob returns a tracking ID + expected delivery date.
+
+---
 
 ## Extend it
 

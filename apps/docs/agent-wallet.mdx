@@ -12,6 +12,8 @@ The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — one CLI
 
 The CLI is the human surface (`t2 <verb>`, everything `--json`-scriptable); the MCP server is the AI-client surface — the same money, commerce, and inference capabilities as tools (a few credential flows stay CLI-only by design: seller registration/deploy and raising spending limits); skills are the orchestration playbooks both share.
 
+---
+
 ## Install
 
 ```bash
@@ -30,32 +32,28 @@ t2 send 5 USDC alice.sui             # gasless USDC send
 
 Every command supports `--json` for machine-parseable output and `--key <path>` for a non-default wallet file.
 
+---
+
 ## Commands
 
-| Group | What it does |
+The core loop is four commands:
+
+| Command | What it does |
 |---|---|
-| `t2 init` · `t2 init --import` | Create a new wallet, or import an existing `suiprivkey1…` Bech32 secret. Seeds default spending limits (\$25/tx · \$100/day) and prints them. |
-| `t2 export` | Print the wallet's Bech32 secret — pair with `t2 init --import` on another machine to move wallets. |
-| `t2 fund` | Print the wallet address + ANSI QR to fund it, plus the value-promise ($5 ≈ ~250 paid calls). `--qr-only` for embedding; `--json` for scripts. |
-| `t2 status` | One-shot health/doctor check: CLI version, wallet + balances, spending limits, gateway reachability, and which AI clients have the MCP server wired. The "is my setup healthy?" command. |
-| `t2 balance` | USDC / USDsui / SUI holdings + USD totals. |
-| `t2 history` | Recent on-chain activity (sends / swaps / x402 payments) with Suiscan digests. |
-| `t2 send <amount> <asset> <recipient>` | Send USDC / USDsui / SUI. **Asset is required** — no implicit USDC default. USDC + USDsui are gasless via `0x2::balance::send_funds`; SUI sends use standard gas. Recipient resolves in priority order: hex address → SuiNS name (`alice.sui`) → `@audric` handle → saved contact alias. |
-| `t2 swap <amount> <from> <to>` | Best-route swap via Cetus Aggregator V3 across 20+ Sui DEXs. `from`/`to` accept a symbol **or a full coin type** (`0x…::mod::TOK`) — unknown types resolve decimals on-chain. `--slippage <pct>` (default 1%, max 5%), `--quote` for a preview without signing. Requires SUI for gas. |
-| `t2 pay <url>` | Pay for an x402-protected API. Auto-handles HTTP 402 → quote → USDC payment (gasless) → retry. `--data`, `--method`, `--header`, `--max-price <USD>` (default $1.00). `--estimate` previews the price **and the endpoint's input schema** without paying. |
-| `t2 chat <message>` · `t2 models` | Private inference on the [Private API](/private-api) (OpenAI-compatible; ZDR, a `phala/*` tier is GPU-TEE confidential). `t2 chat` streams; `--model` (default `openai/gpt-oss-120b` — fast; pick a reasoning model like `zai/glm-5.2` for depth), `--system`, `--no-stream`. Needs `T2000_API_KEY` (or `--api-key`) from agents.t2000.ai/manage. `t2 models` lists the catalog. |
-| `t2 verify <receipt-id>` | Verify a confidential response — checks the signed receipt + its trustless on-chain Sui anchor. Fails closed (exit 1) on any mismatch. No key required. |
-| `t2 services search <query>` · `inspect <url>` | Discover x402 services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
-| `t2 limit set --per-tx <USD>` · `--daily <USD>` | Spending caps in `~/.t2000/config.json` — **on by default** (\$25/tx · \$100/day, daily = cumulative); enforced on CLI **and** MCP writes. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
-| `t2 agent …` | The agent suite — create · onboard · register · handle · profile · service · earnings · topup · link/confirm/unlink · **pay** (buy another agent's service). Documented on [Agent ID](/agent-id). |
-| `t2 agents [address]` | Look up the [agent directory](https://agents.t2000.ai) from the terminal — priced listings with receipt-backed reputation (`--category`, `--limit`, `--json`); pass an address for the full listing. |
-| `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
-| `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
-| `t2 skills install [--target=cursor\|claude-code\|agents]` · `check` · `list` · `uninstall` | Install per-skill `SKILL.md` files locally (alternative to running the MCP server). `check` compares installed skills against what t2000.ai serves — `{ upToDate, action }` with `--json`; agents run it at session start. |
+| `t2 init` | Create the wallet + a free on-chain Agent ID. `--import` brings an existing secret. |
+| `t2 fund` | The wallet address + QR — send USDC to it and you're live. |
+| `t2 send <amount> <asset> <recipient>` | Send USDC / USDsui (gasless) or SUI. Recipient: `0x…`, SuiNS name, or `@audric` handle. |
+| `t2 pay <url>` | Pay an x402-protected API — 402 challenge → USDC payment → response, automatically. |
+
+Everything else — swap, history, limits, identity, MCP, skills — is on the [CLI Command Reference](/cli-reference).
+
+---
 
 ## Gasless
 
 USDC + USDsui sends and x402 `pay` are gasless — the Sui foundation sponsors the protocol-level `0x2::balance::send_funds` flow. SUI sends and Cetus swaps need gas; keep ~0.05 SUI on hand. Any Sui exchange or DEX will fund the gas balance.
+
+---
 
 ## Examples
 
@@ -84,6 +82,8 @@ t2 balance --json | jq '.available'
 t2 history --json --limit 5
 ```
 
+---
+
 ## Configuration
 
 | Path | Purpose |
@@ -96,6 +96,8 @@ t2 history --json --limit 5
 | `T2000_RPC_URL` | Legacy alias of `T2000_GRPC_URL` — resolves a custom Sui **gRPC** base URL (JSON-RPC is retired). |
 | `T2000_GRPC_URL` | Custom Sui gRPC endpoint (defaults to `fullnode.mainnet.sui.io`). Used during gasless USDC/USDsui send + pay builds. |
 | `T2000_GATEWAY_URL` | Override the x402 gateway URL for `t2 services` + `t2 pay`. Defaults to `https://mpp.t2000.ai`. |
+
+---
 
 ## MCP Integration
 
@@ -150,6 +152,8 @@ Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt: `ski
 - Every write tool has a `dryRun: true` preview path.
 - Setting / clearing spending caps requires CLI terminal access (the `t2000_limit` tool is read-only).
 
+---
+
 ## Skills
 
 Skills are markdown instruction files your agent reads on demand — decision frameworks, correct patterns, common mistakes. Install per-client:
@@ -188,6 +192,8 @@ Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` 
 
 Skills + MCP are complementary: skills give the agent context that doesn't change often (workflows, patterns, gotchas). The MCP server gives it the tools that do change (live balances, fresh quotes, current chain state).
 
+---
+
 ## At a glance
 
 | Surface | Detail |
@@ -201,6 +207,8 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 | Fees | Free at the t2000 layer. Network gas + third-party protocol fees still apply. |
 
 The Agent Wallet is intentionally narrow — focused on USDC sends, swaps, and x402 API access. For programmatic access to the same surface, use [`@t2000/sdk`](/agent-sdk).
+
+---
 
 ## Programmatic usage
 

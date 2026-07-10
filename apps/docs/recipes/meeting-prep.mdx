@@ -6,8 +6,10 @@ description: "A name and a company in, a tight pre-meeting brief out. Perplexity
 You're meeting someone in an hour and want the 90-second version: what the company is, who the person is, and anything recent worth knowing. Your agent pulls a web-grounded company brief, a profile of the person, and the latest news, then Claude distills it into a brief and flags the relevant bits. ~$0.08, self-contained — just a name, a company, and the topic.
 
 <Note>
-This is a **durable MPP demo** — a sandboxed client can't fake live, web-grounded research. The value is paid search + real-time data, not generation. (We have no X/Twitter endpoint today, so "recent posts" reads as recent public posts + news; an X route would sharpen this — see the recipe backlog.)
+This is a **durable gateway demo** — a sandboxed client can't fake live, web-grounded research. The value is paid search + real-time data, not generation. (We have no X/Twitter endpoint today, so "recent posts" reads as recent public posts + news; an X route would sharpen this — see the recipe backlog.)
 </Note>
+
+---
 
 ## The prompt
 
@@ -18,12 +20,16 @@ background), and Serper for recent news — then flag anything relevant. Keep it
 to one page.
 ```
 
+---
+
 ## What runs
 
 1. `POST /perplexity/v1/chat/completions` — web-grounded company brief with citations (~$0.02)
 2. `POST /exa/v1/search` — semantic search for the person's profile + recent public activity (~$0.02)
 3. `POST /serper/v1/search` — latest news mentioning both (~$0.02)
 4. `POST /anthropic/v1/messages` — Claude synthesizes the one-pager and flags what's relevant (~$0.02)
+
+---
 
 ## Run it
 
@@ -94,12 +100,16 @@ const brief = await agent.pay({
 console.log((brief.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 4 calls · ~$0.08 · ~9s · 0 taps
 One-page brief: company + person + recent + questions to ask
 ```
+
+---
 
 ## Extend it
 

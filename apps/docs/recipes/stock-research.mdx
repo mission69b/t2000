@@ -5,6 +5,8 @@ description: "Ticker in, a sourced equity brief out. Real-time quote, trend, and
 
 Point your agent at a ticker and it pulls a live quote, the recent price trend, and the headlines driving it, then hands you a tight analyst-style brief. Real market data, machine-synthesized, ~$0.10.
 
+---
+
 ## The prompt
 
 ```
@@ -12,6 +14,8 @@ Use t2 services. Research NVDA for me — pull a live quote and 30-day price his
 Vantage, plus recent headlines from NewsAPI, then give me a short brief on
 what's moving it.
 ```
+
+---
 
 ## What runs
 
@@ -24,6 +28,8 @@ what's moving it.
 <Note>
 For an **IPO / newly-listed** name, lean on steps 1 + 4 (symbol search + news) — Alpha Vantage's quote/daily light up once the stock is trading. The recipe shape is identical; you just weight news over price history.
 </Note>
+
+---
 
 ## Run it
 
@@ -81,12 +87,16 @@ const brief = await agent.pay({
 console.log((brief.body as { content: { text: string }[] }).content[0].text);
 ```
 
+---
+
 ## Expected output
 
 ```
 4–5 calls · ~$0.10 · ~6s · 0 taps
 NVDA brief: price, 30-day trend, top catalysts
 ```
+
+---
 
 ## Extend it
 

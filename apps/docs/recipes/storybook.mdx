@@ -6,10 +6,12 @@ description: "One sentence in, a printable picture book out. Claude writes the s
 Your agent turns a premise into a short illustrated children's book: Claude writes the story beat-by-beat, fal.ai's Flux paints a consistent illustration for each page, and PDFShift binds them into a print-ready PDF. ~$0.34, no API keys.
 
 <Note>
-**Why this is genuinely MPP (unlike a coloring book).** Clean line art is drawable as SVG, so a code-sandbox client (Claude Desktop) will hand-draw a coloring book itself for free — fair enough. But a richly illustrated, consistent-character *painterly* storybook is beyond hand-drawn vector art; it needs a real image model. There's no local sandbox shortcut, so the model call earns its keep on every client. And for sandboxless clients (a browser app like Audric), it's the only path regardless.
+**Why this earns a paid call (unlike a coloring book).** Clean line art is drawable as SVG, so a code-sandbox client (Claude Desktop) will hand-draw a coloring book itself for free — fair enough. But a richly illustrated, consistent-character *painterly* storybook is beyond hand-drawn vector art; it needs a real image model. There's no local sandbox shortcut, so the model call earns its keep on every client. And for sandboxless clients (a browser app like Audric), it's the only path regardless.
 
 This is the **creation half** of an Audric Store demo: *"Make a storybook about a brave little fox and sell it for $4."* The **store half** — Walrus permanence, the capped edition, and the 92%-to-creator USDC sale — lands with **Audric Store**.
 </Note>
+
+---
 
 ## The prompt
 
@@ -19,11 +21,15 @@ swim — about 5 pages, warm watercolor style, illustrated with Flux. Bundle it
 into a PDF with PDFShift.
 ```
 
+---
+
 ## What runs
 
 1. `POST /anthropic/v1/messages` — Claude writes the story + a per-page illustration prompt, with a shared character sheet for consistency (~$0.02)
 2. `POST /fal/fal-ai/flux/dev` — one illustration per page (~$0.06 each)
 3. `POST /pdfshift/v1/convert` — bind the pages (HTML→PDF, server-side) into one hosted PDF (~$0.02)
+
+---
 
 ## Run it
 
@@ -71,7 +77,7 @@ const book = JSON.parse((plan.body as { content: { text: string }[] }).content[0
   pages: { text: string; art: string }[];
 };
 
-// 2. MPP: illustrate each page — a real image model, the part a sandbox can't fake.
+// 2. Paid call: illustrate each page — a real image model, the part a sandbox can't fake.
 const pages: { text: string; url: string }[] = [];
 for (const page of book.pages) {
   const img = await agent.pay({
@@ -108,12 +114,16 @@ writeFileSync('./fox-storybook.pdf', Buffer.from(bytes));
 console.log('Storybook:', url);
 ```
 
+---
+
 ## Expected output
 
 ```
 7 calls · ~$0.34 · ~35s · 0 taps    (1 Claude + 5 page illustrations + 1 PDF bind)
 ./fox-storybook.pdf    (hosted link)
 ```
+
+---
 
 ## Extend it
 

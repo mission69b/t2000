@@ -7,6 +7,8 @@ description: "@t2000/sdk — the TypeScript SDK for Agent Wallets on Sui. Send U
 
 The SDK's write surface is **send (gasless USDC/USDsui), swap (Cetus, any Sui token), and pay (x402)** — plus the wallet reads (`balance`, `history`, `receive`).
 
+---
+
 ## Install
 
 ```bash
@@ -14,6 +16,8 @@ npm install @t2000/sdk      # or pnpm add / yarn add
 ```
 
 Requires Node.js 18+ · TypeScript 5+ recommended.
+
+---
 
 ## Quick Start
 
@@ -49,6 +53,8 @@ const result = await agent.pay({
 });
 ```
 
+---
+
 ## Factory Methods
 
 | Static | Returns | Use when |
@@ -56,6 +62,8 @@ const result = await agent.pay({
 | `T2000.init({ keyPath?, name? })` | `{ agent, address }` | Generating a brand-new wallet. Writes a plain Bech32 JSON file to `~/.t2000/wallet.key` (override with `keyPath`). |
 | `T2000.create({ keyPath?, rpcUrl? })` | `T2000` | Loading the existing wallet from disk. Throws `WALLET_NOT_FOUND` if missing, `WALLET_CORRUPT` if malformed. |
 | `T2000.fromPrivateKey(secret, { network?, rpcUrl? })` | `T2000` | Synchronous in-memory load from a `suiprivkey1…` Bech32 or hex secret. No filesystem read or write. |
+
+---
 
 ## Agent Wallet API
 
@@ -99,6 +107,8 @@ agent.keypair;     // Ed25519Keypair (throws for zkLogin instances)
 **Agent identity** (register on-chain, claim a handle) lives in a separate package — **[`@t2000/id`](/agent-id)** — and the `t2 agent` CLI suite. This SDK (`@t2000/sdk`) is the wallet + payments layer; `@t2000/id` is the Agent ID layer.
 </Note>
 
+---
+
 ## Agent directory — programmatic lookup
 
 Discovery is a public JSON API (no auth, no wallet):
@@ -112,6 +122,8 @@ const profile = await fetch(`https://api.t2000.ai/v1/agents/${dir.agents[0].addr
 ```
 
 **Registry writes** (register / update the identity record) are one-time setup — build raw registry transactions with [`@t2000/id`](/agent-id)'s `buildRegisterTx` / `buildUpdateTx` and sign with `agent.keypair`.
+
+---
 
 ## Utility Exports
 
@@ -147,6 +159,8 @@ import {
 } from '@t2000/sdk';
 ```
 
+---
+
 ## Supported Assets
 
 Token metadata lives in `COIN_REGISTRY` (`packages/sdk/src/token-registry.ts`) — coin type, decimals, and symbol for the common tokens. There is **no tier gate**: USDC is the settlement stable (send / receive / x402 pay); everything else is holdable / swappable. Swaps accept **any** coin type (Cetus routes); the registry just makes common tokens referenceable by symbol (`resolveTokenType('SUI')`).
@@ -162,6 +176,8 @@ OPERATION_ASSETS.swap;   // '*'  (any token)
 assertAllowedAsset('send', 'USDY'); // throws — not sendable; swap to USDC first
 ```
 
+---
+
 ## Gasless
 
 USDC + USDsui sends and x402 USDC payments are gasless. The SDK builds the transaction through `SuiGrpcClient` so the gasless-eligibility resolver detects the `0x2::balance::send_funds` Move call at build time and zeroes out `gasPrice` / `gasBudget` / `gasPayment` automatically (pattern documented at [`docs.sui.io`](https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers)). Reads + execution run over gRPC (JSON-RPC deactivates 2026-07-31).
@@ -172,6 +188,8 @@ Other writes (SUI sends, Cetus swaps) require gas. Keep ~0.05 SUI on hand. The S
 **Consumer apps:** sponsored gas via Enoki / zkLogin is the host's responsibility. The SDK is sponsorship-agnostic — Audric wires Enoki at the host layer (`audric/apps/web-v3`); the SDK doesn't know or care.
 </Note>
 
+---
+
 ## Configuration
 
 | Env var | Effect |
@@ -180,6 +198,8 @@ Other writes (SUI sends, Cetus swaps) require gas. Keep ~0.05 SUI on hand. The S
 | `T2000_GRPC_URL` | Custom Sui gRPC endpoint (defaults to `fullnode.mainnet.sui.io`). Used during gasless USDC/USDsui send + pay build paths. |
 
 Per-call options like `keyPath` and `rpcUrl` are passed to `T2000.create()` / `T2000.init()`.
+
+---
 
 ## Error Handling
 
@@ -199,6 +219,8 @@ Common codes:
 
 `WALLET_NOT_FOUND` · `WALLET_CORRUPT` · `INVALID_KEY` · `INSUFFICIENT_BALANCE` · `INSUFFICIENT_GAS` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `ASSET_NOT_SUPPORTED` · `SUINS_NOT_REGISTERED` · `CONTACT_NOT_FOUND` · `SWAP_NO_ROUTE` · `SWAP_FAILED` · `SIMULATION_FAILED` · `TRANSACTION_FAILED`
 
+---
+
 ## Architecture
 
 t2000 builds Sui transactions with thin builders — no protocol SDK dependencies needed in user code (Cetus aside).
@@ -208,6 +230,8 @@ t2000 builds Sui transactions with thin builders — no protocol SDK dependencie
 | Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, x402 USDC payments |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
 | x402 | `@suimpp/mpp/x402` (sign-then-settle) | Paid API access — every major AI + data API on `mpp.t2000.ai` |
+
+---
 
 ## Testing
 

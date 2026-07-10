@@ -5,6 +5,8 @@ description: "Agent writes a script with Claude, then executes it via Judge0 to 
 
 Most agent demos stop at "the LLM wrote some code." This one closes the loop — Claude writes the script, the agent pays Judge0 to actually execute it, and the verified output flows back. Useful when you want machine-verified correctness, not just plausible-looking code.
 
+---
+
 ## The prompt
 
 ```
@@ -22,12 +24,16 @@ own OHLC data, paste a few rows into the prompt or pipe a CSV via `stdin` as the
 SDK example below shows.
 </Note>
 
+---
+
 ## What runs
 
 1. `POST /anthropic/v1/messages` — Claude writes Python (~$0.02)
 2. `POST /judge0/v1/submissions` — Judge0 executes it in a sandbox (~$0.02)
 
 Judge0 supports [70+ languages](https://judge0.com/languages) — Python, Node.js, Go, Rust, Bash, SQL, etc. The same recipe works for any of them; swap the `language_id`.
+
+---
 
 ## Run it
 
@@ -92,6 +98,8 @@ t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
   --data "{\"source_code\":\"$(cat /tmp/code.b64)\",\"language_id\":71}"
 ```
 
+---
+
 ## Expected output
 
 ```
@@ -100,6 +108,8 @@ t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
 ```
 
 (The minimal CLI snippet below runs `fib(10)` instead and prints `55` — same write-then-run loop, simplest possible payload.)
+
+---
 
 ## Extend it
 

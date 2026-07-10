@@ -14,6 +14,8 @@ API key:   sk-…        (create one at agents.t2000.ai/manage → API keys)
   Get a key + add credit at **[agents.t2000.ai/manage](https://agents.t2000.ai/manage)** (sign in with Google — same Passport + balance as Audric). Calls are metered per token and fail closed at a $0 balance. Browse models + pricing any time with `GET /v1/models` (public, no key).
 </Note>
 
+---
+
 ## Environment variables (the universal swap)
 
 Almost every OpenAI client reads these two variables. Set them once and the tool is repointed at t2000:
@@ -24,6 +26,8 @@ export OPENAI_API_KEY="sk-..."
 ```
 
 Then pick a model from the catalog (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-5`, or a confidential `phala/glm-5.2`).
+
+---
 
 ## OpenAI SDK
 
@@ -61,6 +65,8 @@ console.log(resp.choices[0].message.content);
 
 </CodeGroup>
 
+---
+
 ## Cursor
 
 Cursor can route its chat models through any OpenAI-compatible endpoint:
@@ -72,6 +78,8 @@ Cursor can route its chat models through any OpenAI-compatible endpoint:
 <Note>
   Cursor's agentic features are tuned for specific frontier models. For a drop-in private chat model, add a model like `zai/glm-5.2` or `anthropic/claude-sonnet-5` and select it in the chat model picker.
 </Note>
+
+---
 
 ## OpenAI Codex CLI
 
@@ -94,6 +102,8 @@ Then run with the profile (`export T2000_API_KEY=sk-…` first):
 codex --profile t2000
 ```
 
+---
+
 ## Vercel AI SDK
 
 Use the OpenAI-compatible provider:
@@ -114,6 +124,8 @@ const { text } = await generateText({
 });
 ```
 
+---
+
 ## LangChain
 
 ```python
@@ -127,9 +139,13 @@ llm = ChatOpenAI(
 print(llm.invoke("Hello from t2000").content)
 ```
 
+---
+
 ## Other OpenAI-compatible clients
 
 The same base URL + key works in any tool that targets OpenAI Chat Completions — coding agents like **Kilo Code**, **Cline**, **Continue**, and **Aider** (`--openai-api-base`), frameworks like **LiteLLM** (`openai/<model>`) and **LlamaIndex**, and most "bring your own OpenAI key" apps and agents. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`, pick a model id from [`GET /v1/models`](/models), and every call is private by default — billed from your one balance.
+
+---
 
 ## Anthropic-format tools (Claude Code)
 
@@ -137,6 +153,8 @@ Tools that speak the **Anthropic Messages** format (`/v1/messages`) — such as 
 
 - **A translation proxy** today — run [LiteLLM](https://github.com/BerriAI/litellm) (or a similar Anthropic↔OpenAI shim) pointed at `https://api.t2000.ai/v1`, and set the tool's `ANTHROPIC_BASE_URL` to the proxy.
 - **Native `/v1/messages`** is on the roadmap (the additional-endpoints item) — when it ships, Anthropic-format tools will work with the base-URL swap alone.
+
+---
 
 ## Good to know
 

@@ -11,6 +11,8 @@ The **Confidential** tier (`phala/*` models) runs inference behind an **Attested
 
 You don't have to trust our word. You fetch these artifacts and check the signatures, hashes, and the on-chain anchor yourself.
 
+---
+
 ## The two proof layers
 
 <CardGroup cols={2}>
@@ -24,6 +26,8 @@ You don't have to trust our word. You fetch these artifacts and check the signat
 
 The report answers *"who served me?"*. The receipt answers *"what did they do with my request?"*. A receipt is only meaningful once you've verified the report — the report is what binds the receipt's signing key to a genuine TEE.
 
+---
+
 ## Confidential vs routed
 
 The API serves two postures through one endpoint. The difference is whether the **upstream** that runs the model is itself attested:
@@ -35,6 +39,8 @@ The API serves two postures through one endpoint. The difference is whether the 
 | Who sees your prompt | Only the attested gateway + attested upstream enclave | The gateway, then the third-party provider |
 
 Confidentiality is a property of the **verified upstream**, confirmed per response from the receipt — not of the model id. See [Confidential vs routed in the trust boundary](/confidential-ai/trust-boundary).
+
+---
 
 ## What you can verify
 
