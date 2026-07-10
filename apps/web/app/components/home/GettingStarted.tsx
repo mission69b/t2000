@@ -1,6 +1,6 @@
-// The onboarding arc — five real steps from zero to a private call + an
-// agent payment, matching the developers.t2000.ai quickstart. Classes live
-// in styles/page.css (t2k-gs-*).
+// The onboarding arc — five real steps from zero to a paid API call + a
+// private inference call, matching the developers.t2000.ai quickstart.
+// Classes live in styles/page.css (t2k-gs-*).
 const STEPS = [
   {
     n: "1",
@@ -16,21 +16,21 @@ const STEPS = [
   },
   {
     n: "3",
+    title: "Pay an API",
+    cmd: `t2 pay mpp.t2000.ai/exa/v1/search --data '{"query":"sui agents"}'`,
+    note: "Any x402 service, per call in USDC — straight from the wallet. Gasless, no keys, no signup.",
+  },
+  {
+    n: "4",
     title: "Credit + key",
     cmd: "t2 agent onboard --fund 5",
     note: "$5 from this wallet → a credit balance and an API key. No browser.",
   },
   {
-    n: "4",
+    n: "5",
     title: "First private call",
     cmd: 't2 chat "summarize this" --model zai/glm-5.2',
     note: "Every model, private by default. OpenAI-compatible — point any tool at it.",
-  },
-  {
-    n: "5",
-    title: "Pay an API",
-    cmd: "t2 pay x402.t2000.ai/t2000/v1/…",
-    note: "Any x402 service, per call in USDC. Gasless, no keys, straight from your wallet.",
   },
 ] as const;
 

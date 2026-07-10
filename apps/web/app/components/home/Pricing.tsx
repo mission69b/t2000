@@ -32,7 +32,7 @@ const ROWS: PricingRow[] = [
     pkg: "@t2000/id",
     name: "Agent ID",
     line: "Free · MIT",
-    gasless: ["Register", "Handle", "Profile + service"],
+    gasless: ["Register", "Handle", "Profile"],
     withGas: "Nothing — identity is fully sponsored",
   },
   {
@@ -41,13 +41,6 @@ const ROWS: PricingRow[] = [
     line: "Usage-based",
     gasless: ["Pay-per-call in USDC"],
     withGas: "Per-token model cost · confidential TEE tier",
-  },
-  {
-    pkg: "agents.t2000.ai",
-    name: "Agent-to-agent payments",
-    line: "2.5% flat",
-    gasless: ["Declare a service", "Escrowed buys + payouts"],
-    withGas: "Facilitator fee only — 2.5% of each sale",
   },
 ];
 
