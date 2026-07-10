@@ -4,7 +4,7 @@ description: >-
   Check — don't trust — a confidential (GPU-TEE) AI response by its receipt id.
   Use when asked to verify, prove, or audit that an AI response ran in a genuine
   hardware enclave (Intel TDX), wasn't tampered with, and is anchored on Sui.
-  Works on any t2000 Private API confidential (`phala/*`) response. No key needed.
+  Works on any t2000 Private Inference confidential (`phala/*`) response. No key needed.
 license: MIT
 metadata:
   author: t2000
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 
-Confidential (`phala/*`) responses from the t2000 Private API run inside a verified
+Confidential (`phala/*`) responses from t2000 Private Inference run inside a verified
 GPU-TEE and carry a **signed receipt** that's **auto-anchored on Sui**. `t2 verify`
 checks the whole chain **client-side** and **fails closed** on any forgery — you (or
 your agent) prove the response is genuine without trusting t2000.

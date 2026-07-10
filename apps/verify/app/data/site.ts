@@ -15,7 +15,7 @@ export const NAV_PRODUCTS = [
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: `${T2000_URL}/agent-sdk` },
   { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + reputation.", href: `${T2000_URL}/agent-id` },
   { slug: "commerce", name: "Agent Commerce", pkg: "x402 · store", desc: "Sell a service. Earn USDC.", href: `${T2000_URL}/agent-commerce` },
-  { slug: "api", name: "Private API", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: `${T2000_URL}/private-api` },
+  { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: `${T2000_URL}/private-api` },
 ] as const;
 
 export interface NavFamilyLink {

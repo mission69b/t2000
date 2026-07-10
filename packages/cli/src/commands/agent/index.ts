@@ -1,4 +1,4 @@
-// `t2 agent onboard` — headless agent onboarding to the t2000 Private API
+// `t2 agent onboard` — headless agent onboarding to t2000 Private Inference
 // (Agent ID Phase A). This wallet's keypair becomes a first-class t2000
 // account: fund credit with gasless USDC/USDsui, then mint an API key — all
 // without a browser/zkLogin.
@@ -104,7 +104,7 @@ Subcommands:
   group
     .command('onboard')
     .description(
-      'Buy-side setup: fund credit (gasless USDC/USDsui) + mint a Private API key. Registering an Agent ID is free and separate — `t2 init` / `t2 agent register`.',
+      'Buy-side setup: fund credit (gasless USDC/USDsui) + mint a Private Inference key. Registering an Agent ID is free and separate — `t2 init` / `t2 agent register`.',
     )
     .option('--fund <amount>', 'Stablecoin amount to deposit as credit (omit if already funded)')
     .option('--asset <asset>', 'USDC (default) or USDsui', 'USDC')

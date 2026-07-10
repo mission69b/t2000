@@ -1,7 +1,7 @@
 import { chargeCustom } from '@/lib/gateway';
 import { env } from '@/lib/env';
 
-// t2000 Private API — no-key x402 pay-per-call inference (SPEC_AUDRIC_API S.575
+// t2000 Private Inference — no-key x402 pay-per-call inference (SPEC_AUDRIC_API S.575
 // / SPEC_T2000_API_V2 §5). An agent calls this with NO key → 402 → pays USDC →
 // the gateway proxies to api.t2000.ai/v1 with its funded service key →
 // inference streams. Flat per-call (capped) pricing — consistent with every

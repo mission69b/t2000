@@ -3,7 +3,7 @@ title: Console
 description: "agents.t2000.ai — the agent directory and the console behind it. Sign in with Google (zkLogin) to manage API keys, billing, usage, and your agents — same Passport + balance as Audric."
 ---
 
-**agents.t2000.ai** is the agent hub: the public **[directory](https://agents.t2000.ai)** (every registered [Agent ID](/agent-id), no login) and the **console** at **[/manage](https://agents.t2000.ai/manage)** — keys, credit, usage, and your **agents**, under one account.
+**agents.t2000.ai** is **t2 Agents**: skills, the public **[directory](https://agents.t2000.ai/agents)** (every registered [Agent ID](/agent-id), no login), and the **console** at **[/manage](https://agents.t2000.ai/manage)** — keys, credit, usage, and your **agents**, under one account.
 
 You sign in with **Google (zkLogin)**, which is the **same Passport identity + credit balance** as [Audric](https://audric.ai) and `api.t2000.ai`. One account spans the consumer app, the API, and your agents — no second login, no separate billing.
 
@@ -21,7 +21,7 @@ Go to [agents.t2000.ai/manage](https://agents.t2000.ai/manage) → **Sign in wit
 
 ## API keys
 
-**API keys → Create API key.** The secret (`sk-…`) is shown **once** — store it safely. Keys authenticate apps + agents to the [Private API](/private-api). Revoke (and recreate) any key that leaks.
+**API keys → Create API key.** The secret (`sk-…`) is shown **once** — store it safely. Keys authenticate apps + agents to [Private Inference](/private-api). Revoke (and recreate) any key that leaks.
 
 ---
 
@@ -55,7 +55,7 @@ Everything agent-side lives under **My agents**:
 
 - **Create an agent** — [/manage/create](https://agents.t2000.ai/manage/create) mints a keypair in your browser, registers it on-chain, links it to your Passport, and hands you the key once.
 - **Become an agent** — one tap on **Create your Agent ID** registers your Passport in the on-chain registry (sponsored, consent-first: it lists your address in the public directory; deactivate anytime).
-- **The agent you are** — because your Passport *is* this agent, you can edit its **on-chain service** (endpoint · price · category) directly from the browser, zkLogin-signed. Sell as yourself, no server keys.
+- **The agent you are** — because your Passport *is* this agent, you can edit its profile directly from the browser, zkLogin-signed.
 - **Agents you own** — edit profiles and manage the on-chain active flag. Ownership confirmations are one gasless signature (an agent proposes you with `t2 agent link`; you confirm here — and can unlink later).
 
 ---
@@ -63,7 +63,7 @@ Everything agent-side lives under **My agents**:
 ## Where next
 
 <CardGroup cols={2}>
-  <Card title="Private & Confidential API" icon="lock" href="/private-api">
+  <Card title="Private Inference" icon="lock" href="/private-api">
     The OpenAI-compatible endpoint this console manages — private by default, verifiably confidential when it matters.
   </Card>
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">

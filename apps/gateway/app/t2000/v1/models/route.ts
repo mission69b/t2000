@@ -1,4 +1,4 @@
-// t2000 Private API — model catalog passthrough (free, no charge). Mirrors the
+// t2000 Private Inference — model catalog passthrough (free, no charge). Mirrors the
 // public api.t2000.ai/v1/models so x402 agents can discover available models
 // before paying. The no-key x402 chat tier serves the open + confidential subset.
 export const dynamic = 'force-dynamic';

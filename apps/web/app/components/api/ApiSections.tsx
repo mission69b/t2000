@@ -158,7 +158,7 @@ export function ApiX402() {
                 letterSpacing: "-0.011em",
               }}
             >
-              The Private API is a first-party service on the gateway, so an
+              Private Inference is a first-party service on the gateway, so an
               agent can pay per call from its wallet&rsquo;s USDC — gasless, no
               key. The gateway handles{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>

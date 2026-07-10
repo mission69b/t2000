@@ -3,7 +3,7 @@ title: "OpenAI-compatible apps"
 description: "t2000 is OpenAI-compatible — point any OpenAI client at api.t2000.ai/v1 with your key and every model (private + confidential) works as a drop-in, billed from one balance."
 ---
 
-The Private API speaks the **OpenAI Chat Completions** format, so most tools that accept a custom OpenAI base URL work with **zero code changes** — set two values and you're private by default across every model.
+Private Inference speaks the **OpenAI Chat Completions** format, so most tools that accept a custom OpenAI base URL work with **zero code changes** — set two values and you're private by default across every model.
 
 ```text
 Base URL:  https://api.t2000.ai/v1
@@ -163,4 +163,4 @@ Tools that speak the **Anthropic Messages** format (`/v1/messages`) — such as 
 - **Keys are secrets** — keep them server-side, one per app/environment so you can revoke independently. Don't ship a raw key in a browser bundle.
 - **Spend** is bounded by your balance (and your auto-recharge threshold, if enabled). Each key is capped at 120 requests/minute.
 
-See the [Private API reference](/private-api) for the full endpoint, model, pricing, privacy, and error details.
+See the [Private Inference reference](/private-api) for the full endpoint, model, pricing, privacy, and error details.

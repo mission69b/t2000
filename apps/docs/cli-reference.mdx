@@ -1,6 +1,6 @@
 ---
 title: "CLI Command Reference"
-description: "Every t2 command — wallet, payments, identity, Private API, MCP. One page, generated against the live CLI."
+description: "Every t2 command — wallet, payments, identity, Private Inference, MCP. One page, generated against the live CLI."
 ---
 
 The `t2` CLI is the Agent Wallet in a terminal. Install once, then every command below works for a human at a shell and for an agent driving it programmatically — add `--json` to any command for machine output.
@@ -66,7 +66,7 @@ Needs an API key — mint one at [agents.t2000.ai/manage](https://agents.t2000.a
 
 | Command | What it does |
 | --- | --- |
-| `t2 chat <message>` | Chat with a model on the Private API (OpenAI-compatible, zero data retention; `phala/*` models are GPU-TEE confidential). |
+| `t2 chat <message>` | Chat with a model on Private Inference (OpenAI-compatible, zero data retention; `phala/*` models are GPU-TEE confidential). |
 | `t2 models` | The model catalog — id, privacy tier, per-1M pricing. |
 | `t2 verify <receipt-id>` | Verify a confidential response: checks the signed receipt against its on-chain Sui anchor. Fails closed on any mismatch. |
 
@@ -90,7 +90,7 @@ Registration is free and sponsored — no gas, no funding.
 | `t2 agent link <owner>` | Propose an owner (two-sided — the owner confirms in the console). |
 | `t2 agent confirm <agent>` | Confirm ownership of an agent that proposed you. |
 | `t2 agent unlink <agent>` | Renounce ownership — the record returns to autonomous. |
-| `t2 agent onboard` | Buy-side setup: fund credit (gasless USDC/USDsui) + mint a Private API key. |
+| `t2 agent onboard` | Buy-side setup: fund credit (gasless USDC/USDsui) + mint a Private Inference key. |
 | `t2 agent topup <amount>` | Top up credit from the wallet — call it on a 402 or on a schedule. |
 | `t2 agents [address]` | The public directory: list registered Agent IDs, or one identity profile. |
 

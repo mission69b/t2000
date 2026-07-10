@@ -23,7 +23,7 @@ function receiptLine(receiptId: string | undefined): void {
 }
 
 // `t2 chat` + `t2 models` — the agent-native distribution surface for the
-// t2000 Private API (SPEC_AUDRIC_API, S.575). Key-based today (`--api-key` or
+// t2000 Private Inference (SPEC_AUDRIC_API, S.575). Key-based today (`--api-key` or
 // T2000_API_KEY from agents.t2000.ai/manage); the x402 no-key pay-per-call path is a
 // later add. The SDK owns the HTTP/SSE; this is the thin CLI wrapper.
 
@@ -45,14 +45,14 @@ export function registerChat(program: Command): void {
     .command('chat')
     .argument('<message...>', 'Your prompt')
     .description(
-      "Chat with a model on the t2000 Private API (OpenAI-compatible, ZDR; a phala/* tier is GPU-TEE confidential). Needs an API key — generate one at agents.t2000.ai/manage, then pass --api-key or set T2000_API_KEY.",
+      "Chat with a model on t2000 Private Inference (OpenAI-compatible, ZDR; a phala/* tier is GPU-TEE confidential). Needs an API key — generate one at agents.t2000.ai/manage, then pass --api-key or set T2000_API_KEY.",
     )
     .option('--model <id>', `Model id (default ${DEFAULT_MODEL}; see \`t2 models\`)`, DEFAULT_MODEL)
     .option('--system <text>', 'System prompt')
     .option('--max-tokens <n>', 'Max output tokens')
     .option('--temperature <t>', 'Sampling temperature (0–2)')
     .option('--no-stream', 'Wait for the full response instead of streaming')
-    .option('--api-key <key>', 'Private API key (or set T2000_API_KEY)')
+    .option('--api-key <key>', 'Private Inference key (or set T2000_API_KEY)')
     .option('--api <url>', 'API base URL (default https://api.t2000.ai/v1)')
     .action(
       async (
@@ -122,8 +122,8 @@ export function registerChat(program: Command): void {
 
   program
     .command('models')
-    .description('List the t2000 Private API model catalog (id · privacy tier · per-1M pricing).')
-    .option('--api-key <key>', 'Private API key (or set T2000_API_KEY)')
+    .description('List the t2000 Private Inference model catalog (id · privacy tier · per-1M pricing).')
+    .option('--api-key <key>', 'Private Inference key (or set T2000_API_KEY)')
     .option('--api <url>', 'API base URL (default https://api.t2000.ai/v1)')
     .action(async (opts: { apiKey?: string; api?: string }) => {
       try {

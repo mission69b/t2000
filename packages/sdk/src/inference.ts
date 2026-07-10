@@ -1,7 +1,7 @@
 import { T2000Error } from './errors.js';
 
 // Private Inference API client (SPEC_AUDRIC_API — agent-native layer, S.575).
-// Key-based access to the t2000 Private API (OpenAI-compatible) at
+// Key-based access to t2000 Private Inference (OpenAI-compatible) at
 // `api.t2000.ai/v1`. The x402 pay-per-call (no-key) path is a later add; this
 // is the key-based distribution surface used by `t2 chat` + the MCP `t2000_chat`
 // tool. Browser-safe (fetch + ReadableStream only — no wallet/Node deps).
@@ -16,7 +16,7 @@ export interface ChatMessage {
 export interface ChatParams {
   model: string;
   messages: ChatMessage[];
-  /** Private API key (`sk-…`). Falls back to `T2000_API_KEY` env. */
+  /** Private Inference key (`sk-…`). Falls back to `T2000_API_KEY` env. */
   apiKey?: string;
   /** Override the API base (default `api.t2000.ai/v1`; e.g. for testing). */
   apiBase?: string;
@@ -62,7 +62,7 @@ function resolveApiKey(apiKey?: string): string {
   if (!key) {
     throw new T2000Error(
       'INVALID_KEY',
-      'No Private API key. Pass `apiKey` or set T2000_API_KEY. Generate one at agents.t2000.ai/manage (Pro/Max).',
+      'No Private Inference key. Pass `apiKey` or set T2000_API_KEY. Generate one at agents.t2000.ai/manage.',
     );
   }
   return key;
@@ -195,7 +195,7 @@ export async function* chatCompletionStream(
   return { receiptId };
 }
 
-/** List the Private API model catalog (`GET /v1/models`). The key is sent when
+/** List Private Inference model catalog (`GET /v1/models`). The key is sent when
  *  available but not required (the catalog may be public). */
 export async function listModels(opts?: {
   apiKey?: string;

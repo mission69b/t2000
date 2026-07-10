@@ -118,7 +118,7 @@ const serverSchema = z.object({
   TINIFY_API_KEY: optionalString,
   TOGETHER_API_KEY: optionalString,
   VIRUSTOTAL_API_KEY: optionalString,
-  // t2000 Private API service key (sk-…) — a funded t2000 account's key the
+  // t2000 Private Inference service key (sk-…) — a funded t2000 account's key the
   // gateway uses to call api.t2000.ai for the no-key x402 inference tier. When
   // unset, the /t2000 chat route degrades to 503. Optional like other vendors.
   T2000_PRIVATE_API_KEY: optionalString,

@@ -5,7 +5,7 @@ description: >-
   or any MCP-compatible client. Use when asked to set up MCP, paste an MCP
   server config, install @t2000/mcp, or troubleshoot why the MCP server
   "doesn't do anything" when run from a terminal. v4 surface: 13 tools
-  (6 read + 3 write + 3 Private API + 1 limit-view) and one
+  (6 read + 3 write + 3 Private Inference + 1 limit-view) and one
   skill-* prompt per SKILL.md in t2000-skills/skills/.
 license: MIT
 metadata:
@@ -128,14 +128,14 @@ All support `dryRun: true` for previews without signing (where applicable).
 | `t2000_send` | Send USDC / USDsui / SUI. Asset REQUIRED. USDC + USDsui are gasless. |
 | `t2000_swap` | Swap tokens via Cetus Aggregator. Requires SUI for gas. |
 | `t2000_pay` | Pay for an x402-protected API service (USDC, gasless). |
-### Private API (3)
+### Private Inference (3)
 
 Need a `T2000_API_KEY` in the client's env config.
 
 | Tool | Description |
 |------|-------------|
 | `t2000_chat` | Private (zero-retention) or confidential (GPU-TEE) inference. |
-| `t2000_models` | The Private API model catalog. |
+| `t2000_models` | The Private Inference model catalog. |
 | `t2000_verify` | Trustlessly verify a confidential receipt (`rcpt-…`). |
 
 ### Settings (1)

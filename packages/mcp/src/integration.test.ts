@@ -14,7 +14,7 @@ import { T2000_SERVER_INSTRUCTIONS } from './instructions.js';
 // Integration test surface mirrors the core CLI: 6 read tools (balance /
 // address / receive / history / services / agents), 3 write tools (send /
 // swap / pay), 1 settings tool (limit) = 10 here. Production additionally
-// registers the 3 Private API chat tools (chat / models / verify) via
+// registers the 3 Private Inference chat tools (chat / models / verify) via
 // registerChatTools = 13 total. Pre-v4 the count was 27 (DeFi + safeguards;
 // deletions tracked in S.336).
 //

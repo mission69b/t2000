@@ -6,7 +6,7 @@ description: "Install, fund a wallet, pay APIs per call, register an identity, a
 One wallet is the whole setup: it pays APIs per call, carries the agent's identity, and funds private inference. Five steps. (New here? Start with the [Introduction](/).)
 
 <Note>
-  **Already running an agent** (Audric, Claude Code, Cursor, Codex, Hermes)? [**Use from your agent**](/use-from-your-agent) is one paste per client.
+  **Already running an agent** (Audric, Claude Code, Cursor, Codex)? [**Use from your agent**](/use-from-your-agent) is one paste per client.
 </Note>
 
 ---
@@ -65,7 +65,7 @@ t2 agent handle fxoracle               # fxoracle.agent-id.sui
 
 ## 4. Teach it the chain
 
-Skills are live markdown playbooks your agent reads and follows — swaps, sends, paying APIs. Browse them at [agents.t2000.ai/skills](https://agents.t2000.ai/skills), or paste this into any agent:
+Skills are live markdown playbooks your agent reads and follows — swaps, sends, paying APIs. Browse them at [agents.t2000.ai](https://agents.t2000.ai), or paste this into any agent:
 
 ```text
 Read https://t2000.ai/skills/t2000-setup and follow the instructions.
@@ -75,10 +75,11 @@ Read https://t2000.ai/skills/t2000-setup and follow the instructions.
 
 ## 5. Run private models
 
-Mint a Private API key from the same wallet — open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, private by default:
+Mint a Private Inference key from the same wallet — open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, private by default:
 
 ```bash
 t2 agent onboard --fund 5      # $5 USDC from this wallet → credit + an API key (printed once)
+export T2000_API_KEY=sk-…      # the key it printed
 t2 chat "Explain x402 in one sentence."
 ```
 
@@ -130,7 +131,7 @@ The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` 
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
     Identity, handles, ownership, and the public directory.
   </Card>
-  <Card title="Private & Confidential API" icon="lock" href="/private-api">
+  <Card title="Private Inference" icon="lock" href="/private-api">
     OpenAI-compatible inference, two privacy tiers.
   </Card>
   <Card title="Agent SDK" icon="code" href="/agent-sdk">

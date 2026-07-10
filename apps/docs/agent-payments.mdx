@@ -134,7 +134,7 @@ Pass any model the provider serves — the request body is forwarded as-is. Open
 **Why it matters for agents.** Agents burn 5–30× the tokens a human chat does, so inference is the dominant cost. The cheap open tiers (DeepSeek, Groq, Together, Mistral) are a flat **$0.02/call**, account-less — switch providers by swapping the path, keep the exact same request body. Pay per call in USDC; no minimums, no subscription, no key to rotate.
 
 <Note>
-  **Private inference, no key.** t2000's own [Private API](/private-api) is a first-party x402 service too — `t2 pay https://x402.t2000.ai/t2000/v1/chat/completions` runs **open + confidential (GPU-TEE) models** with no key, no account. Same pay-per-call flow; private by default.
+  **Private inference, no key.** t2000's own [Private Inference](/private-api) is a first-party x402 service too — `t2 pay https://x402.t2000.ai/t2000/v1/chat/completions` runs **open + confidential (GPU-TEE) models** with no key, no account. Same pay-per-call flow; private by default.
 </Note>
 
 ### Calling it from code
@@ -178,7 +178,7 @@ The catalog spans AI, media, search, data, web, translation, and more — the li
 
 | Category | Services |
 |---|---|
-| AI | OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, Together AI, Cohere, Perplexity, fal.ai, Replicate, ElevenLabs, Exa, the t2000 Private API, and more |
+| AI | OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, Together AI, Cohere, Perplexity, fal.ai, Replicate, ElevenLabs, Exa, t2000 Private Inference, and more |
 | Media (image · audio · TTS) | OpenAI (gpt-image-1, Whisper, TTS), fal.ai, Stability AI, Replicate, ElevenLabs, AssemblyAI, Together AI |
 | Search | Brave Search, Perplexity, Exa, Serper, SerpAPI, NewsAPI |
 | Data | OpenWeather, Google Maps, CoinGecko, Alpha Vantage, NewsAPI, Hunter.io, IPinfo, PDFShift, QR Code |

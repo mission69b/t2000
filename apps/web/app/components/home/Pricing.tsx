@@ -37,7 +37,7 @@ const ROWS: PricingRow[] = [
   },
   {
     pkg: "api.t2000.ai",
-    name: "Private API",
+    name: "Private Inference",
     line: "Usage-based",
     gasless: ["Pay-per-call in USDC"],
     withGas: "Per-token model cost · confidential TEE tier",

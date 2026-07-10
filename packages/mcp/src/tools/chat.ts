@@ -8,7 +8,7 @@ import {
 } from '@t2000/sdk';
 import { errorResult } from '../errors.js';
 
-// `t2000_chat` + `t2000_models` — private inference on the t2000 Private API
+// `t2000_chat` + `t2000_models` — private inference on t2000 Private Inference
 // (SPEC_AUDRIC_API, S.575). Key-based: the server reads T2000_API_KEY from its
 // env (set it in the MCP client config). The x402 no-key path is a later add.
 
@@ -19,7 +19,7 @@ const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 export function registerChatTools(server: McpServer): void {
   server.tool(
     't2000_chat',
-    "Run private inference on the t2000 Private API (OpenAI-compatible; ZDR by default, a `phala/*` tier is GPU-TEE confidential), billed to the user's t2000 credit. Requires T2000_API_KEY in the server env (any funded account can mint one — agents.t2000.ai/manage or `t2 agent onboard`). Pass a single `prompt`, or a full `messages` list. Discover model ids with t2000_models; defaults to the fast gpt-oss-120b.",
+    "Run private inference on t2000 Private Inference (OpenAI-compatible; ZDR by default, a `phala/*` tier is GPU-TEE confidential), billed to the user's t2000 credit. Requires T2000_API_KEY in the server env (any funded account can mint one — agents.t2000.ai/manage or `t2 agent onboard`). Pass a single `prompt`, or a full `messages` list. Discover model ids with t2000_models; defaults to the fast gpt-oss-120b.",
     {
       prompt: z
         .string()
@@ -77,7 +77,7 @@ export function registerChatTools(server: McpServer): void {
 
   server.tool(
     't2000_models',
-    'List the t2000 Private API model catalog (id · privacy tier · per-1M pricing). Call before t2000_chat to pick a model.',
+    'List the t2000 Private Inference model catalog (id · privacy tier · per-1M pricing). Call before t2000_chat to pick a model.',
     {},
     async () => {
       try {

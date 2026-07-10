@@ -194,10 +194,10 @@ export class T2000 extends EventEmitter<T2000Events> {
   //
   // Inference as a wallet verb — the agent's brain + wallet in one package.
   // Key-based today (`apiKey` / `T2000_API_KEY`); the x402 no-key pay-per-call
-  // path is a later add. The model runs on the t2000 Private API (ZDR; a
+  // path is a later add. The model runs on t2000 Private Inference (ZDR; a
   // `phala/*` confidential tier runs in a GPU-TEE).
 
-  /** Non-streaming chat completion against the Private API. */
+  /** Non-streaming chat completion against Private Inference. */
   async chat(params: ChatParams): Promise<ChatResult> {
     return chatCompletion(params);
   }
@@ -210,7 +210,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     return chatCompletionStream(params);
   }
 
-  /** The Private API model catalog (`GET /v1/models`). */
+  /** The Private Inference model catalog (`GET /v1/models`). */
   async models(opts?: { apiKey?: string; apiBase?: string }): Promise<ApiModel[]> {
     return listModels(opts);
   }

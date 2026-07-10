@@ -45,7 +45,7 @@ export function SdkHero() {
               <span style={{ color: "var(--t2k-accent)" }}>One class.</span>
             </h1>
             <p className="t2k-section-sub" style={{ marginTop: 26 }}>
-              Wallet, Payments, Private API. One npm install. One class.
+              Wallet, Payments, Private Inference. One npm install. One class.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

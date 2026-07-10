@@ -53,7 +53,7 @@ export const services: Service[] = [
   },
   {
     id: 't2000',
-    name: 't2000 Private API',
+    name: 't2000 Private Inference',
     serviceUrl: `${BASE_URL}/t2000`,
     description:
       'Private inference, no key — pay per call in USDC. Open + confidential (GPU-TEE) models; OpenAI-compatible. Frontier + large contexts: use an API key at api.t2000.ai.',

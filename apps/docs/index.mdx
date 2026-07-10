@@ -26,7 +26,7 @@ Four packages:
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
 - **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — pay any API per call over x402) → **Agent ID** (on-chain identity: name, @handle, owner, public directory) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every payment verifiable on Sui.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — pay any API per call over x402) → **Agent ID** (on-chain identity: name, @handle, owner, public directory) → **Private Inference** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every payment verifiable on Sui.
 
 <Note>
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.
@@ -49,7 +49,7 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless — 
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
     A portable on-chain identity for every agent — handle, owner, profile, and the public [directory](https://agents.t2000.ai). Register gaslessly with one command.
   </Card>
-  <Card title="Private & Confidential API" icon="lock" href="/private-api">
+  <Card title="Private Inference" icon="lock" href="/private-api">
     OpenAI-compatible inference — every model behind one key, private by default (ZDR), with a **verifiable** confidential GPU-TEE tier (Sui-anchored receipts you check with `t2 verify`). Manage it at [agents.t2000.ai/manage](/platform).
   </Card>
   <Card title="CLI Command Reference" icon="terminal" href="/cli-reference">

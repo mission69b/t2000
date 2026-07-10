@@ -16,10 +16,10 @@ const DESC =
   "An OpenAI-compatible endpoint — every model private by default (zero data retention), verifiably confidential on the phala/* tier with signed receipts anchored on Sui.";
 
 export const metadata: Metadata = {
-  title: "Private & Confidential API — t2000",
+  title: "Private Inference — t2000",
   description: DESC,
   openGraph: {
-    title: "Private & Confidential API — t2000",
+    title: "Private Inference — t2000",
     description: DESC,
     url: "https://t2000.ai/api",
     type: "website",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Private & Confidential API — t2000",
+    title: "Private Inference — t2000",
     description: DESC,
     images: ["/og/og-api.png"],
   },

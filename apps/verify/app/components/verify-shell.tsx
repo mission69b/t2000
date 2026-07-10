@@ -117,7 +117,7 @@ export function VerifyCloser() {
         </p>
         <div className="flex flex-wrap justify-center" style={{ gap: 10, marginTop: 28 }}>
           <a href={`${T2000_URL}/private-api`} className="t2k-btn t2k-btn--blue t2k-btn--lg">
-            Private API&nbsp;→
+            Private Inference&nbsp;→
           </a>
           <a
             href={`${DEVELOPERS_URL}/confidential-ai/how-it-works`}

@@ -77,7 +77,7 @@ The per-task skills above assume a shared **agent-ops layer**: payment-error rec
 
 ## t2000 MCP Server
 
-Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools* — 15 in total: 6 read (`balance`, `address`, `receive`, `history`, `services`, `agents`), 4 write (`send`, `swap`, `pay`, `agent_pay`), 1 earnings (`agent_earnings`), 1 settings (`limit`), 3 Private API (`chat`, `models`, `verify`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
+Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools*: read (`balance`, `address`, `receive`, `history`, `services`, `agents`), write (`send`, `swap`, `pay`), settings (`limit`), and Private Inference (`chat`, `models`, `verify`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
 
 ```bash
 npx @t2000/cli mcp install

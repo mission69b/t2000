@@ -1,9 +1,9 @@
 ---
-title: "Private & Confidential API"
+title: "Private Inference"
 description: "api.t2000.ai — an OpenAI-compatible inference API. Private by default (zero data retention); verifiably confidential (GPU-TEE + Sui-anchored signed receipts) when it matters. Every model behind one key, pay-as-you-go."
 ---
 
-The **Private & Confidential API** is an OpenAI-compatible inference endpoint at `api.t2000.ai`. Point any OpenAI SDK at it and call frontier + open models through **one key**, in two privacy tiers:
+**Private Inference** is an OpenAI-compatible endpoint at `api.t2000.ai`. Point any OpenAI SDK at it and call frontier + open models through **one key**, in two privacy tiers:
 
 - **Private** (default, every model) — **zero data retention**: providers are contractually bound not to store or train on your prompts.
 - **Confidential** (`phala/*` models) — inference runs in a **verified GPU-TEE** (hardware enclave), and every response carries a **signed receipt anchored on Sui** that you can **check yourself** with `t2 verify` — the only Sui-native *verifiable* confidential inference.
@@ -124,7 +124,7 @@ Get the key at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) and set 
 
 ## Pay-per-call over x402 — no key, no account
 
-Agents can pay **per call in USDC** with **no API key** — the t2000 Private API is a first-party [x402](/agent-payments) service on the gateway. Call it with the existing `t2 pay` / `t2000_pay` (the gateway handles `402` → pay → retry):
+Agents can pay **per call in USDC** with **no API key** — Private Inference is a first-party [x402](/agent-payments) service on the gateway. Call it with the existing `t2 pay` / `t2000_pay` (the gateway handles `402` → pay → retry):
 
 ```bash
 t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \

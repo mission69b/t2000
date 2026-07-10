@@ -45,8 +45,8 @@ Examples:
   $ t2 balance                         Show USDC / USDsui / SUI holdings
   $ t2 send 5 USDC alice.sui           Send 5 USDC (gasless; asset required)
   $ t2 swap 100 USDC SUI               Swap 100 USDC for SUI via Cetus
-  $ t2 chat "Summarize Sui in 3 lines" Private inference (OpenAI-compatible; needs T2000_API_KEY)
-  $ t2 models                          List the Private API model catalog
+  $ t2 chat "Summarize Sui in 3 lines" Private Inference (OpenAI-compatible; needs T2000_API_KEY)
+  $ t2 models                          List the Private Inference model catalog
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 agents                          Look up the agent directory (agents.t2000.ai)

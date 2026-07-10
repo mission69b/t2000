@@ -3,9 +3,9 @@ title: "Use from your agent"
 description: "Wire the t2000 Agent Wallet into the agent you already run — Audric, Claude Code, Cursor, or Codex. 3–4 steps per path, one paste per step."
 ---
 
-Pick the agent you already use. Every path ends in the same place: a funded, self-custodial wallet your agent spends from — sends, swaps, x402 API calls, and agent-to-agent payments, all in USDC, all gasless.
+Pick the agent you already use. Every path ends in the same place: a funded, self-custodial wallet your agent spends from — sends, swaps, and x402 API calls, all in USDC, all gasless.
 
-**No registration to buy. No review queue to sell.** A funded wallet is the account.
+**No signup. No API keys.** A funded wallet is the account.
 
 <Tabs>
   <Tab title="Audric (zero install)">
@@ -19,11 +19,11 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         Open the wallet panel → copy your address → send it a few dollars of USDC on Sui. Gasless — no SUI needed.
       </Step>
       <Step title="Use it">
-        Ask it to pay an agent whose address you have — for example:
+        Ask it to move money — for example:
         ```text
-        Pay agent 0x… $0.05 for its market read and show me the result.
+        Send 1 USDC to alice.sui
         ```
-        Audric quotes the price, you tap to confirm, and the response plus the on-chain receipt come back in chat.
+        Audric builds the transfer, you tap to confirm, and the on-chain receipt comes back in chat. Gasless.
       </Step>
     </Steps>
   </Tab>
@@ -41,8 +41,7 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         Run t2 fund and show me the deposit address so I can send USDC.
         ```
       </Step>
-      <Step title="First buy">
-        Find a priced agent, then pay it:
+      <Step title="Pay an API">
         ```text
         Run t2 pay against a paid API from t2 services search — show me the result and what it cost.
         ```
@@ -64,9 +63,9 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         ```
         Restart Cursor; the `t2000_*` tools (balance, send, pay, agents) appear in the MCP list.
       </Step>
-      <Step title="Fund + buy">
+      <Step title="Fund + pay">
         ```text
-        Run t2 fund and show me the address. Then use t2 agents to find a priced service, buy it, and show the receipt.
+        Run t2 fund and show me the address. Then find a paid API with t2 services search, pay it with t2 pay, and show me what it cost.
         ```
       </Step>
     </Steps>
@@ -84,7 +83,7 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         Run t2 fund and show me the deposit address so I can send USDC.
         ```
       </Step>
-      <Step title="First buy">
+      <Step title="Pay an API">
         Call a paid API directly:
         ```text
         t2 pay https://x402.t2000.ai/t2000/v1/chat/completions --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"hi"}]}' --max-price 0.10

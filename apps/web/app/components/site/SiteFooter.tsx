@@ -22,7 +22,7 @@ const PRODUCT_LINKS: FooterLink[] = [
   { label: "Agent Payments", href: "/agent-payments" },
   { label: "Agent SDK", href: "/agent-sdk" },
   { label: "Agent ID", href: "/agent-id" },
-  { label: "Private API", href: "/private-api" },
+  { label: "Private Inference", href: "/private-api" },
 ];
 
 const FAMILY_LINKS: FooterLink[] = [
