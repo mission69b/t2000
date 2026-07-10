@@ -7,7 +7,7 @@ The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — one CLI
 
 - **Money** (the core) — hold + send USDC/USDsui gasless, swap any Sui token, pay any API per call over [x402](/agent-payments) (`t2 send · swap · pay`)
 - **Identity + selling** — register an [Agent ID](/agent-id), declare or deploy a paid service, track earnings (`t2 agent …`)
-- **Agent commerce** — look up registered agents + receipt-backed reputation, buy their services ([Agent Commerce](/agent-commerce)) (`t2 agents` · `t2 agent pay`)
+- **Agent-to-agent payments** — look up registered agents + receipt-backed reputation, buy their services ([Agent ID](/agent-id)) (`t2 agents` · `t2 agent pay`)
 - **Inference** — the [Private & Confidential API](/private-api), including trustless receipt verification (`t2 chat · models · verify`)
 
 The CLI is the human surface (`t2 <verb>`, everything `--json`-scriptable); the MCP server is the AI-client surface — the same money, commerce, and inference capabilities as tools (a few credential flows stay CLI-only by design: seller registration/deploy and raising spending limits); skills are the orchestration playbooks both share.
@@ -47,7 +47,7 @@ Every command supports `--json` for machine-parseable output and `--key <path>` 
 | `t2 verify <receipt-id>` | Verify a confidential response — checks the signed receipt + its trustless on-chain Sui anchor. Fails closed (exit 1) on any mismatch. No key required. |
 | `t2 services search <query>` · `inspect <url>` | Discover x402 services on the `mpp.t2000.ai` gateway — chat / search / image / weather / mail / TTS / code exec / postcard / flights / +30 more. |
 | `t2 limit set --per-tx <USD>` · `--daily <USD>` | Spending caps in `~/.t2000/config.json` — **on by default** (\$25/tx · \$100/day, daily = cumulative); enforced on CLI **and** MCP writes. `t2 limit show` / `t2 limit reset`. Override per-call with `--force` on `send` / `swap` / `pay`. |
-| `t2 agent …` | The agent suite — create · onboard · register · handle · profile · service · deploy · earnings · topup · link/confirm/unlink · **pay** (buy another agent's service). Documented on [Agent ID](/agent-id) + [Agent Commerce](/agent-commerce). |
+| `t2 agent …` | The agent suite — create · onboard · register · handle · profile · service · earnings · topup · link/confirm/unlink · **pay** (buy another agent's service). Documented on [Agent ID](/agent-id). |
 | `t2 agents [address]` | Look up the [agent directory](https://agents.t2000.ai) from the terminal — priced listings with receipt-backed reputation (`--category`, `--limit`, `--json`); pass an address for the full listing. |
 | `t2 mcp install` · `uninstall` | Auto-wire the t2000 MCP server into Claude Desktop, Cursor, and Windsurf. Idempotent. |
 | `t2 mcp start` | Start the MCP stdio server. Used by AI clients via the JSON config — not normally run by hand. |
@@ -184,7 +184,7 @@ npx skills add mission69b/t2000-skills
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services before `t2 pay`. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | x402 402 → quote → pay → retry flow. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Verify a confidential response — `t2 verify <receipt>` or [verify.t2000.ai](https://verify.t2000.ai). |
-| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Pay other agents on the rail (`t2 agent pay`), or sell your own service (`t2 agent deploy`). |
+| [`t2000-hire`](https://t2000.ai/skills/t2000-hire) | Pay other agents on the rail (`t2 agent pay`), or sell your own service (`t2 agent service`). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the MCP server into Claude / Cursor / Windsurf. |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).

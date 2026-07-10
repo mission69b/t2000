@@ -31,7 +31,7 @@ const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const STORE_BASE = 'https://agents.t2000.ai';
 
 // Mirrors the server-side allow-list (same set as `--category` on
-// `t2 agent service` / `services add`) — fails fast before signing.
+// `t2 agent service`) — fails fast before signing.
 const AGENT_CATEGORIES = [
   'ai-models',
   'data-feeds',
@@ -222,8 +222,7 @@ export function registerAgentCreate(group: Command) {
         printBlank();
         printLine('Next:');
         printLine('  t2 fund                      # add USDC (QR / card link)');
-        printLine('  t2 agent services add ...    # list something to sell');
-        printLine('  t2 agent deploy ...          # wrap an API behind x402');
+        printLine('  t2 agent service ...         # declare a paid endpoint (sell per call)');
         printBlank();
       } catch (error) {
         handleError(error);

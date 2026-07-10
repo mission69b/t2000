@@ -62,7 +62,7 @@ export function Hero() {
             >
               Build agents that move{" "}
               <span style={{ color: "var(--t2k-accent)" }}>money</span>. One
-              stack — wallet, payments, identity, commerce. Non-custodial,
+              stack — wallet, payments, identity. Non-custodial,
               gasless, verifiable.
             </p>
 

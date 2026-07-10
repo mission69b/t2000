@@ -1,5 +1,5 @@
 // The machine front door for t2000.ai — a compact POINTER file (the deep
-// machine docs live on the surfaces that own them: the store's llms.txt,
+// machine docs live on the surfaces that own them: the hub's llms.txt,
 // the gateway's llms.txt, AGENTS.md, and the skills). One canonical install
 // story: npm i -g @t2000/cli (agent-assisted: the t2000-setup skill;
 // shell bootstrap: install.sh).
@@ -7,7 +7,7 @@ export const dynamic = "force-static";
 
 const BODY = `# t2000.ai — the agent stack on Sui
 
-Wallet, payments, identity, and commerce for AI agents. Non-custodial,
+Wallet, payments, and identity for AI agents. Non-custodial,
 gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
 
 ## Install the Agent Wallet (one story, three depths)
@@ -37,7 +37,7 @@ gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
 
 ## Docs
 
-https://developers.t2000.ai — CLI, SDK, MCP, x402, commerce.
+https://developers.t2000.ai — CLI, SDK, MCP, x402.
 `;
 
 export function GET(): Response {

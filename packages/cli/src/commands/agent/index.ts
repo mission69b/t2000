@@ -9,14 +9,12 @@
 //   2. GET a challenge nonce → sign it as a personal message with the keypair.
 //   3. POST it to mint an API key (returned once).
 
-import { createHash } from 'node:crypto';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { Command } from 'commander';
 import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
-import { registerAgentServices } from './services.js';
 import {
   handleError,
   isJsonMode,
@@ -30,14 +28,10 @@ import {
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const DEFAULT_GATEWAY = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
-// The PUBLIC-facing rail domain shown on agent profiles (same gateway as
-// DEFAULT_GATEWAY, aliased). x402 is the recognizable protocol brand for a
-// payable endpoint; it matches the SDK's x402.t2000.ai pay URLs.
-const DEFAULT_RAIL = process.env.T2000_RAIL_URL ?? 'https://x402.t2000.ai';
 
-// The curated storefront categories (agents.t2000.ai chips). Mirrors the
-// server-side allow-list — the API rejects anything else, this just fails fast
-// with a clear message before signing.
+// The directory categories. Mirrors the server-side allow-list — the API
+// rejects anything else, this just fails fast with a clear message before
+// signing.
 const AGENT_CATEGORIES = [
   'ai-models',
   'data-feeds',
@@ -60,18 +54,6 @@ function normalizeCategory(input: string | undefined): string | undefined {
     );
   }
   return c;
-}
-
-/** Collect repeatable `--header k=v` flags into an object. */
-function collectHeader(
-  value: string,
-  previous: Record<string, string>,
-): Record<string, string> {
-  const [key, ...rest] = value.split('=');
-  if (key && rest.length > 0) {
-    previous[key.trim()] = rest.join('=').trim();
-  }
-  return previous;
 }
 
 function normalizeTopupAsset(input: string | undefined): 'USDC' | 'USDsui' {
@@ -143,13 +125,11 @@ Subcommands:
   $ t2 agent onboard --fund 5               Fund 5 USDC → mint an API key (ready to call)
   $ t2 agent onboard --fund 5 --asset USDsui
   $ t2 agent onboard                        Already funded → just mint a key
-  $ t2 agent services add --slug sui-price --title "SUI spot" --description "…" --price 0.02
-  $ t2 agent services sync ./services.json  Manifest IS the catalog (catalog-scale sellers)
+  $ t2 agent pay <address>                  Pay another agent's declared service
 `,
     );
 
   registerAgentCreate(group);
-  registerAgentServices(group, { apiBase: DEFAULT_API_BASE });
 
   group
     .command('onboard')
@@ -614,175 +594,6 @@ Subcommands:
     );
 
   group
-    .command('deploy')
-    .description(
-      "Deploy a paid service by wrapping any HTTP API — t2000 hosts the proxy (your key stays server-side, encrypted), lists it, and settles payments. No server needed. Use --remove to take it down. [Agent Commerce]",
-    )
-    .option('--upstream <url>', 'The upstream API URL to wrap (https)')
-    .option(
-      '--header <k=v>',
-      'Header to inject into upstream calls (repeatable; e.g. your API key)',
-      collectHeader,
-      {},
-    )
-    .option('--method <method>', 'Upstream method: GET or POST (default POST)')
-    .option('--price <usdc>', 'Price per call in USDC (e.g. 0.02)')
-    .option(
-      '--category <category>',
-      `Storefront category: ${AGENT_CATEGORIES.join(' | ')}`,
-    )
-    .option('--remove', 'Take down the deployed service')
-    .option(
-      '--service <slug>',
-      'Catalog service slug — wrap config for ONE SKU (Store v2; omit = the default service)',
-    )
-    .option('--gateway <url>', `Gateway base URL (default ${DEFAULT_GATEWAY})`)
-    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(
-      async (opts: {
-        upstream?: string;
-        header?: Record<string, string>;
-        method?: string;
-        price?: string;
-        category?: string;
-        remove?: boolean;
-        service?: string;
-        gateway?: string;
-        key?: string;
-        api?: string;
-      }) => {
-        try {
-          const base = opts.api ?? DEFAULT_API_BASE;
-          const gateway = opts.gateway ?? DEFAULT_GATEWAY;
-          const category = normalizeCategory(opts.category);
-          const slug = opts.service?.trim().toLowerCase() || undefined;
-          const agent = await withAgent({ keyPath: opts.key });
-          const address = agent.address();
-
-          if (opts.remove) {
-            const ts = Date.now();
-            const msg = `t2000-deploy-remove:${ts}${slug ? `:${slug}` : ''}`;
-            const { signature } = await agent.keypair.signPersonalMessage(
-              new TextEncoder().encode(msg),
-            );
-            await fetchJson(`${gateway}/deploy/config`, {
-              method: 'DELETE',
-              body: { address, timestamp: ts, signature, ...(slug ? { slug } : {}) },
-            });
-            // Clear the directory endpoint (default service only — a slug
-            // removal touches its wrap config, not the on-chain pointer;
-            // delist the SKU with `t2 agent services remove --slug`).
-            if (!slug) {
-              await runSponsoredTx({
-                keypair: agent.keypair,
-                actor: address,
-                prepareUrl: `${base}/agent/service/prepare`,
-                prepareBody: { address, mcpEndpoint: '' },
-                submitUrl: `${base}/agent/service/submit`,
-              }).catch(() => undefined);
-            }
-            if (isJsonMode()) {
-              printJson({ address, removed: true });
-              return;
-            }
-            printBlank();
-            printSuccess('Service taken down.');
-            printBlank();
-            return;
-          }
-
-          if (!(opts.upstream && opts.price)) {
-            throw new Error('Both --upstream and --price are required (or use --remove).');
-          }
-          const price = Number.parseFloat(opts.price);
-          if (Number.isNaN(price) || price <= 0) {
-            throw new Error(`--price must be a positive number (got "${opts.price}").`);
-          }
-          const method =
-            (opts.method ?? 'POST').toUpperCase() === 'GET' ? 'GET' : 'POST';
-          const headers = opts.header ?? {};
-
-          // 1. Store the proxy config (signed, config-bound, headers encrypted).
-          const ts = Date.now();
-          const bodyHash = createHash('sha256')
-            .update(
-              `${opts.upstream}|${method}|${JSON.stringify(headers)}${slug ? `|${slug}` : ''}`,
-            )
-            .digest('hex');
-          const msg = `t2000-deploy:${ts}:${bodyHash}`;
-          const { signature } = await agent.keypair.signPersonalMessage(
-            new TextEncoder().encode(msg),
-          );
-          await fetchJson(`${gateway}/deploy/config`, {
-            method: 'POST',
-            body: {
-              address,
-              timestamp: ts,
-              signature,
-              upstreamUrl: opts.upstream,
-              method,
-              headers,
-              ...(slug ? { slug } : {}),
-            },
-          });
-
-          // 2. List it in the directory. A SLUG deploy is one SKU of the
-          // catalog — its listing row lives in services[] (t2 agent services),
-          // not the on-chain default pointer; skip the registry update.
-          if (slug) {
-            if (isJsonMode()) {
-              printJson({ address, slug, upstream: opts.upstream, price });
-              return;
-            }
-            printBlank();
-            printSuccess(`Wrap config stored for service "${slug}".`);
-            printKeyValue('Wraps', opts.upstream);
-            printKeyValue('Buy URL', `${DEFAULT_RAIL}/commerce/pay/${address}/${slug}`);
-            printInfo(
-              `List it in the catalog: t2 agent services add --slug ${slug} --title … --description … --price ${opts.price}`,
-            );
-            printBlank();
-            return;
-          }
-          const { digest } = await runSponsoredTx({
-            keypair: agent.keypair,
-            actor: address,
-            prepareUrl: `${base}/agent/service/prepare`,
-            prepareBody: {
-              address,
-              // The real, x402-callable buy endpoint (GET → 402 + requirements,
-              // pay → collect/deliver/forward). `/deploy/<addr>` was a phantom
-              // (no route → 404). Any x402 client can hit this URL.
-              mcpEndpoint: `${DEFAULT_RAIL}/commerce/pay/${address}`,
-              paymentMethods: ['x402'],
-              priceUsdc: opts.price,
-              ...(category ? { category } : {}),
-            },
-            submitUrl: `${base}/agent/service/submit`,
-          });
-
-          if (isJsonMode()) {
-            printJson({ address, upstream: opts.upstream, price, digest });
-            return;
-          }
-          printBlank();
-          printSuccess('Service deployed — live + listed in the directory.');
-          printKeyValue('Wraps', opts.upstream);
-          printKeyValue('Price', `$${opts.price} USDC`);
-          if (category) {
-            printKeyValue('Category', category);
-          }
-          printKeyValue('Tx', String(digest));
-          printInfo(`Buyers: t2 agent pay ${truncateAddress(address)}`);
-          printBlank();
-        } catch (error) {
-          handleError(error);
-        }
-      },
-    );
-
-  group
     .command('pay')
     .argument('<seller>', "The seller agent's Sui address")
     .description(
@@ -791,10 +602,6 @@ Subcommands:
     .option('--amount <usdc>', "Override the price (default: the seller's declared price)")
     .option('--data <json>', "Service input forwarded to the seller's endpoint")
     .option('--max-price <usdc>', 'Max USDC to auto-approve (default 1.00, or --amount)')
-    .option(
-      '--service <slug>',
-      "Catalog service slug — buys ONE SKU of the seller's catalog (Store v2)",
-    )
     .option(
       '--gateway <url>',
       `Gateway base URL (default ${DEFAULT_GATEWAY})`,
@@ -808,7 +615,6 @@ Subcommands:
           amount?: string;
           data?: string;
           maxPrice?: string;
-          service?: string;
           gateway?: string;
           force?: boolean;
           key?: string;
@@ -835,12 +641,9 @@ Subcommands:
           const resolvedSeller = seller.startsWith('0x')
             ? seller
             : (await agent.resolveRecipient(seller)).address;
-          const slugPath = opts.service
-            ? `/${opts.service.trim().toLowerCase()}`
-            : '';
           const url = opts.amount
-            ? `${gateway}/commerce/pay/${resolvedSeller}${slugPath}?amount=${encodeURIComponent(opts.amount)}`
-            : `${gateway}/commerce/pay/${resolvedSeller}${slugPath}`;
+            ? `${gateway}/commerce/pay/${resolvedSeller}?amount=${encodeURIComponent(opts.amount)}`
+            : `${gateway}/commerce/pay/${resolvedSeller}`;
 
           const result = await agent.pay({
             url,

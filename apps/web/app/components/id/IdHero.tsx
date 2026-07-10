@@ -8,7 +8,7 @@ interface DirectoryRow {
   sales: string;
 }
 
-// Live directory card — joins the store's top sellers (settlement-derived)
+// Live directory card — joins the directory's top sellers (settlement-derived)
 // with the public agents directory for names/prices. No fixture rows.
 async function fetchTopAgents(): Promise<DirectoryRow[]> {
   try {

@@ -9,14 +9,13 @@ import {
   X402_VERSION,
 } from '@suimpp/mpp/x402';
 import {
-  computeFeeMicros,
+  isSafeUpstreamUrl,
   recordCommerceReceipt,
   splitAmount,
   uptoSettlement,
 } from '@/lib/commerce';
-import { getDeployedService, isSafeUpstreamUrl } from '@/lib/deploy';
 import { logPayment } from '@/lib/log-payment';
-import { appendBuyerParams, DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
+import { DELIVERY_AUTH_HEADER, signDelivery } from '@/lib/sellers';
 import { COLLECT_ADDRESS } from '@/lib/constants';
 import { refundUsdc, treasurySendUsdc } from '@/lib/refund';
 import {
@@ -85,18 +84,9 @@ function verifyChallengeId(challengeId: string, seller: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-interface AgentServiceDoc {
-  slug: string;
-  priceUsdc?: string | null;
-  endpoint?: string | null;
-  method?: 'GET' | 'POST';
-  active?: boolean;
-}
-
 interface SellerProfile {
   priceUsdc: string | null;
   mcpEndpoint: string | null;
-  services: AgentServiceDoc[];
 }
 
 async function fetchSellerProfile(seller: string): Promise<SellerProfile> {
@@ -105,20 +95,18 @@ async function fetchSellerProfile(seller: string): Promise<SellerProfile> {
       next: { revalidate: 30 },
     });
     if (!res.ok) {
-      return { priceUsdc: null, mcpEndpoint: null, services: [] };
+      return { priceUsdc: null, mcpEndpoint: null };
     }
     const data = (await res.json()) as {
       priceUsdc?: string | null;
       mcpEndpoint?: string | null;
-      services?: AgentServiceDoc[] | null;
     };
     return {
       priceUsdc: data.priceUsdc ?? null,
       mcpEndpoint: data.mcpEndpoint ?? null,
-      services: Array.isArray(data.services) ? data.services : [],
     };
   } catch {
-    return { priceUsdc: null, mcpEndpoint: null, services: [] };
+    return { priceUsdc: null, mcpEndpoint: null };
   }
 }
 
@@ -135,29 +123,19 @@ async function deliverToSeller(
   endpoint: string,
   body: string,
   buyer: string,
-  opts?: { method?: 'GET' | 'POST'; extraHeaders?: Record<string, string> },
 ): Promise<DeliveryResult> {
-  const method = opts?.method ?? 'POST';
-  // [S.638] GET upstreams receive buyer input as query params (bounded,
-  // seller-saved params always win); POST upstreams get it as the body.
-  const target = method === 'GET' ? appendBuyerParams(endpoint, body) : endpoint;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
   try {
-    const res = await fetch(target, {
-      method,
+    const res = await fetch(endpoint, {
+      method: 'POST',
       headers: {
         'content-type': 'application/json',
-        // Seller-configured auth (Agent Deploy) — injected server-side, never
-        // exposed to the buyer. Buyer identity comes last (can't be overridden).
-        ...(opts?.extraHeaders ?? {}),
         'x-agent-buyer': buyer,
-        // Signed proof this call came through the paid delivery leg — the
-        // gateway-hosted seller routes (app/sellers/*) refuse without it.
-        // Signed over origin+path only — buyer query params don't break it.
-        [DELIVERY_AUTH_HEADER]: signDelivery(target),
+        // Signed proof this call came through the paid delivery leg.
+        [DELIVERY_AUTH_HEADER]: signDelivery(endpoint),
       },
-      body: method === 'POST' ? body || undefined : undefined,
+      body: body || undefined,
       // Block SSRF-via-redirect (a public URL 30x-ing to an internal host).
       redirect: 'error',
       signal: controller.signal,
@@ -236,7 +214,6 @@ async function readCapped(
 export async function handle(
   req: Request,
   seller0: string,
-  slug?: string,
 ): Promise<Response> {
   let seller: string;
   try {
@@ -252,43 +229,11 @@ export async function handle(
   const override = (url.searchParams.get('amount') ?? '').trim();
   const profile = await fetchSellerProfile(seller);
 
-  // Store v2 Phase 1: slug-addressed service resolution. The slug names one
-  // SKU of the seller's catalog; the bare URL keeps serving the legacy
-  // default (profile.mcpEndpoint + priceUsdc) unchanged.
-  const service = slug
-    ? (profile.services.find((s) => s.slug === slug && s.active !== false) ??
-      null)
-    : null;
-  if (slug && !service) {
-    return Response.json(
-      { error: `Unknown service "${slug}" for this seller.` },
-      { status: 404 },
-    );
-  }
-
   // `?amount` OVERRIDES the declared price (the doc'd contract, line 34) —
   // lets a buyer pay more than a listing's price. S.639 fix: this was
   // `priceUsdc ?? override`, so a priced listing silently beat the override.
-  const amount = override || (service ? service.priceUsdc : profile.priceUsdc);
+  const amount = override || profile.priceUsdc;
   if (!amount) {
-    // [S.697 UX] The common case behind a bare-URL 400 is a catalog seller
-    // (SKUs priced, no default) — point the buyer at the slugs instead of a
-    // dead end (founder hit exactly this after a console deploy).
-    const activeSlugs = profile.services
-      .filter((s) => s.active !== false && s.priceUsdc)
-      .map((s) => s.slug);
-    if (!slug && activeSlugs.length > 0) {
-      return Response.json(
-        {
-          error: `This seller sells named services — buy one by slug: ${activeSlugs
-            .slice(0, 10)
-            .map((s) => `/commerce/pay/${seller}/${s}`)
-            .join(' · ')}`,
-          services: activeSlugs,
-        },
-        { status: 400 },
-      );
-    }
     return Response.json(
       { error: 'Seller has not declared a price (and no amount override given). Set one with `t2 agent service --price`.' },
       { status: 400 },
@@ -361,36 +306,12 @@ export async function handle(
   const { settle, report } = settled;
   const buyer = report.sender ?? settle.payer;
 
-  // Agent Deploy (Option A): the wrap config applies ONLY while the listing
-  // actually points at the rail buy URL — the on-chain record decides which
-  // mode is active (S.639 fix: a stale wrap must never shadow a self-hosted
-  // endpoint the seller declared later). The upstream/key never touch the
-  // directory or any response.
-  // Slug services (Phase 1): same rule per SKU — a service with its own
-  // https endpoint self-hosts; otherwise its per-slug wrap config delivers.
-  const buyUrlMarker = slug
-    ? `/commerce/pay/${seller.toLowerCase()}/${slug}`
-    : `/commerce/pay/${seller.toLowerCase()}`;
-  const declaredEndpoint = service
-    ? (service.endpoint ?? null)
-    : (profile.mcpEndpoint ?? null);
-  const listingIsWrap =
-    !declaredEndpoint || declaredEndpoint.toLowerCase().endsWith(buyUrlMarker);
-  const deployed = listingIsWrap ? await getDeployedService(seller, slug) : null;
-  const deliveryTarget = deployed?.upstreamUrl ?? declaredEndpoint ?? null;
+  // Delivery target = the seller's on-chain declared endpoint, SSRF-guarded.
+  // No endpoint (or an unsafe one) → payment-only mode.
+  const deliveryTarget = profile.mcpEndpoint ?? null;
   const deliveryMode =
     Boolean(deliveryTarget) && isSafeUpstreamUrl(deliveryTarget as string);
-  // Receipts record WHICH SKU sold (per-service sold counts derive later).
-  const receiptResource = slug
-    ? `/commerce/pay/${seller}/${slug}`
-    : (profile.mcpEndpoint ?? undefined);
-  // Delivery method: per-service declared method wins in BOTH modes (S.670
-  // fix — self-hosted catalog endpoints used to be POSTed unconditionally,
-  // so a GET-only upstream refunded every sale). The deploy config's stored
-  // method remains the default-service fallback.
-  if (deployed && service?.method) {
-    deployed.method = service.method;
-  }
+  const receiptResource = profile.mcpEndpoint ?? undefined;
 
   // DELIVERY MODE — the treasury holds the gross while we attempt delivery
   // (the escrow window). The seller is released only on a 2xx.
@@ -399,11 +320,6 @@ export async function handle(
       deliveryTarget as string,
       buyerBody,
       buyer,
-      deployed
-        ? { method: deployed.method, extraHeaders: deployed.headers }
-        : service?.method
-          ? { method: service.method }
-          : undefined,
     );
     if (!delivered.ok) {
       let refunded: string | null = null;
@@ -442,17 +358,8 @@ export async function handle(
     // max, already collected); charge the seller-reported actual (≤ max),
     // refund the excess, settle the fee/net on the actual.
     const upto = uptoSettlement(split.grossMicros, delivered.settleAmount);
-
-    // [S.697] Hosted-compute fee: t2000 ran this delivery (wrap) → +2.5% of
-    // the charged amount off the seller's net, floor-guarded. Self-hosted
-    // endpoints pay the facilitator fee only.
-    const computeFee = computeFeeMicros(
-      upto.actualMicros,
-      upto.netMicros,
-      Boolean(deployed),
-    );
-    const totalFeeMicros = upto.feeMicros + computeFee;
-    const sellerNetMicros = upto.netMicros - computeFee;
+    const totalFeeMicros = upto.feeMicros;
+    const sellerNetMicros = upto.netMicros;
     const sellerNetDecimal = (sellerNetMicros / 1e6).toFixed(6);
 
     // Refund the buyer the unused authorization (only when above the dust floor).
@@ -539,11 +446,6 @@ export async function handle(
           feeMicros: totalFeeMicros,
           netMicros: sellerNetMicros,
           feeBps: 250,
-          // Wrap deliveries: t2000 ran the compute — the extra 2.5% shows
-          // as its own line (S.697).
-          ...(computeFee > 0
-            ? { computeFeeMicros: computeFee, computeFeeBps: 250 }
-            : {}),
           collectDigest: settle.transaction,
           forwardDigest,
           ...(refundDigest ? { refundDigest } : {}),

@@ -19,11 +19,11 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         Open the wallet panel → copy your address → send it a few dollars of USDC on Sui. Gasless — no SUI needed.
       </Step>
       <Step title="Use it">
-        Ask for a specific service — for example:
+        Ask it to pay an agent whose address you have — for example:
         ```text
-        Buy the Morning Market Brief from Funkii AI and show it to me.
+        Pay agent 0x… $0.05 for its market read and show me the result.
         ```
-        Audric quotes the price ($0.10), you tap to confirm, and the brief plus the on-chain receipt come back in chat.
+        Audric quotes the price, you tap to confirm, and the response plus the on-chain receipt come back in chat.
       </Step>
     </Steps>
   </Tab>
@@ -42,9 +42,9 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
         ```
       </Step>
       <Step title="First buy">
-        Buy Funkii AI's composed morning read:
+        Find a priced agent, then pay it:
         ```text
-        Buy the Morning Market Brief: t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf --service daily-brief --max-price 0.15 — show me the brief and the settlement digest.
+        Run t2 agents to find a priced service, buy the best fit with t2 agent pay — show me the result and the settlement digest.
         ```
       </Step>
     </Steps>
@@ -107,13 +107,12 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
       <Step title="Buy">
         ```bash
         t2 agents                              # priced listings + reputation
-        t2 agent pay <seller> [--service <slug>]
+        t2 agent pay <seller>
         ```
       </Step>
       <Step title="Sell (optional)">
         ```bash
-        t2 agent deploy --upstream <url> --price 0.02   # wrap any API — no server
-        t2 agent services add --slug <slug> --title … --description … --price …
+        t2 agent service --mcp-endpoint <url> --payment-methods x402 --price 0.02
         ```
       </Step>
     </Steps>
@@ -123,8 +122,8 @@ Pick the agent you already use. Every path ends in the same place: a funded, sel
 ## Where to go next
 
 <CardGroup cols={2}>
-  <Card title="Agent Commerce" icon="store" href="/agent-commerce">
-    Buy and sell services — escrowed delivery, automatic refunds, receipts.
+  <Card title="Agent ID" icon="fingerprint" href="/agent-id">
+    Identity + paid services — escrowed delivery, automatic refunds, receipts.
   </Card>
   <Card title="Agent Wallet" icon="wallet" href="/agent-wallet">
     Sends, swaps, spending limits, and the x402 pay loop.

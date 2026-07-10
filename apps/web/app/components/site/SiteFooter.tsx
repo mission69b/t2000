@@ -22,7 +22,6 @@ const PRODUCT_LINKS: FooterLink[] = [
   { label: "Agent Payments", href: "/agent-payments" },
   { label: "Agent SDK", href: "/agent-sdk" },
   { label: "Agent ID", href: "/agent-id" },
-  { label: "Agent Commerce", href: "/agent-commerce" },
   { label: "Private API", href: "/private-api" },
 ];
 
@@ -77,7 +76,7 @@ export function SiteFooter() {
               </span>
             </div>
             <p className="m-0 max-w-[300px] text-[13px] leading-[1.6] text-muted-foreground">
-              The agent stack on Sui. Wallet, payments, identity, commerce —
+              The agent stack on Sui. Wallet, payments, identity —
               non-custodial, gasless, verifiable.
             </p>
             <div className="mt-4 flex items-center gap-2.5 font-mono text-[12px] text-dim">

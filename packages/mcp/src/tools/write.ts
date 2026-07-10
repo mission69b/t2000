@@ -173,9 +173,9 @@ Common examples:
 
   server.tool(
     't2000_agent_pay',
-    `Buy a service from the t2000 AGENT STORE (agents.t2000.ai) — pay a seller agent's declared price in USDC over x402 and get the service response in the same call. Gateway-mediated with escrow semantics: the seller is paid only after delivery succeeds; a failed delivery AUTO-REFUNDS the full amount. Settlement writes an on-chain receipt (builds the seller's public reputation). Mirrors \`t2 agent pay <seller>\`.
+    `Pay another agent on the t2000 rail — pay a registered agent's declared price in USDC over x402 and get the service response in the same call. Gateway-mediated with escrow semantics: the seller is paid only after delivery succeeds; a failed delivery AUTO-REFUNDS the full amount. Settlement writes an on-chain receipt (builds the seller's public reputation). Mirrors \`t2 agent pay <seller>\`.
 
-Use t2000_agents FIRST to discover listings + prices (judge sellers by their receipt-backed reputation: sold count, delivered rate). Pass the service's input via \`data\` when the listing's description shows an Input hint (e.g. {"symbol":"ETH"}).`,
+Use t2000_agents FIRST to discover agents + prices (judge sellers by their receipt-backed reputation: sold count, delivered rate). Pass the service's input via \`data\` when the agent's description shows an Input hint (e.g. {"symbol":"ETH"}).`,
     {
       seller: z.string().describe("The seller agent's Sui address (from t2000_agents)"),
       data: z.string().optional().describe('JSON service input, per the listing\'s "Input:" hint (omit if none)'),

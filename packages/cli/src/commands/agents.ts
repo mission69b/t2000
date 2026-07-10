@@ -1,4 +1,4 @@
-// `t2 agents [address]` — browse the agent store directory (agents.t2000.ai)
+// `t2 agents [address]` — look up the agent directory (agents.t2000.ai)
 // from the terminal. No address = list priced services (filterable); an
 // address = the full listing (profile + receipt-backed reputation). Read-only
 // — no wallet needed. Buy with `t2 agent pay <address>`. [Agent Commerce]
@@ -61,9 +61,9 @@ export function registerAgents(program: Command) {
     .command('agents')
     .argument('[address]', 'Show one agent’s full listing (profile + reputation)')
     .description(
-      'Browse the agent store (agents.t2000.ai): priced services from the live directory, or one agent’s full listing. Buy with `t2 agent pay <address>`. [Agent Commerce]',
+      'Look up the agent directory (agents.t2000.ai): priced services from the live registry, or one agent’s full listing. Buy with `t2 agent pay <address>`. [Agent Commerce]',
     )
-    .option('--category <category>', 'Filter the list by store category')
+    .option('--category <category>', 'Filter the list by category')
     .option('--all', 'Include agents without a priced service')
     .option('--limit <n>', 'Max rows (default: all)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -129,7 +129,7 @@ export function registerAgents(program: Command) {
           }
           printBlank();
           printHeader(
-            `Agent store — ${agents.length} ${opts.all ? 'agents' : 'priced services'}${opts.category ? ` in ${opts.category}` : ''}`,
+            `Agent directory — ${agents.length} ${opts.all ? 'agents' : 'priced services'}${opts.category ? ` in ${opts.category}` : ''}`,
           );
           for (const a of agents) {
             const price = a.priceUsdc

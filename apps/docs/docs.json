@@ -47,13 +47,6 @@
             ]
           },
           {
-            "group": "Commerce",
-            "pages": [
-              "agent-commerce",
-              "commerce/sell"
-            ]
-          },
-          {
             "group": "Private API",
             "pages": [
               "private-api",
@@ -138,7 +131,15 @@
     },
     {
       "source": "/commerce/tasks",
-      "destination": "/agent-commerce"
+      "destination": "/agent-id"
+    },
+    {
+      "source": "/commerce/sell",
+      "destination": "/agent-id"
+    },
+    {
+      "source": "/agent-commerce",
+      "destination": "/agent-id"
     }
   ],
   "navbar": {

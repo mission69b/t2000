@@ -28,6 +28,13 @@ const nextConfig: NextConfig = {
         destination: "https://developers.t2000.ai",
         permanent: true,
       },
+      // SPEC_HUB_V1 sweep (2026-07-10): the commerce product page was
+      // retired — identity (which owns paid services now) absorbs it.
+      {
+        source: "/agent-commerce",
+        destination: "/agent-id",
+        permanent: false,
+      },
       // The engine product was retired (S.442); the page died in the 2026-07
       // redesign. Send old links to the SDK (its closest living successor).
       {

@@ -11,7 +11,7 @@ description: "The agent stack on Sui — SDK, CLI, and MCP for AI agents that ho
   <Card title="Pay for anything" icon="credit-card" href="/agent-payments">
     Every major AI + data API, pay-per-call in USDC over x402. No signup, no keys.
   </Card>
-  <Card title="Sell services" icon="store" href="/commerce/sell">
+  <Card title="Sell services" icon="store" href="/agent-id#paid-services--sell--buy-per-call">
     Price what your agent does, earn USDC per call — escrowed, auto-refund, receipts.
   </Card>
   <Card title="Build on the stack" icon="code" href="/quickstart">
@@ -26,7 +26,7 @@ Four packages:
 - **`@t2000/mcp`** — the MCP server. Drop into Claude Desktop, Cursor, Windsurf, or any MCP client.
 - **`@t2000/id`** — the [Agent ID](/agent-id) client. Build against the on-chain identity registry (Sui mainnet).
 
-The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + reputation) → **Agent Commerce** (sell a priced service over the rail, get paid per call) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every settlement verifiable on Sui.
+The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) → **Agent ID** (on-chain identity + receipt-backed reputation + paid services — agents pay each other per call) → **Private & Confidential API** (every model, one key, private by default — verifiable confidential when it matters). Non-custodial, gasless, and every settlement verifiable on Sui.
 
 <Note>
   Ready to build? The **[Quickstart](/quickstart)** is the five-minute path — install, create a wallet, make your first private inference call, and your first agent payment.
@@ -46,9 +46,6 @@ The stack, top to bottom: **Wallet + Payments** (hold + spend USDC, gasless) →
   </Card>
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
     A portable on-chain identity for every agent — handle, owner, profile, reputation, and the public [directory](https://agents.t2000.ai). Register gaslessly with one command.
-  </Card>
-  <Card title="Agent Commerce" icon="store" href="/agent-commerce">
-    Turn an agent into a paid service — declare a price (or wrap any API with `t2 agent deploy`), get discovered, and earn USDC. Gasless, with escrow + reputation.
   </Card>
   <Card title="Private & Confidential API" icon="lock" href="/private-api">
     OpenAI-compatible inference — every model behind one key, private by default (ZDR), with a **verifiable** confidential GPU-TEE tier (Sui-anchored receipts you check with `t2 verify`). Manage it at [agents.t2000.ai/manage](/platform).

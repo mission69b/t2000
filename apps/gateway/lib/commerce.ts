@@ -100,25 +100,35 @@ export function uptoSettlement(
   };
 }
 
-// [S.697] Hosted-compute fee (founder-locked 2026-07-09): deliveries that
-// t2000 RUNS (hosted handlers + config-proxy wraps) carry an extra 2.5% of
-// the charged amount — "self-host: 2.5%, t2000 runs it: 5%". Deducted from
-// the seller's net at settle, floor-guarded so the forwarded net never drops
-// below the $0.01 gasless minimum (fee waived down to keep net ≥ floor —
-// listing floors already guarantee net-at-2.5% clears it).
-export const COMPUTE_FEE_BPS = 250;
-const NET_FLOOR_MICROS = 10_000;
-
-export function computeFeeMicros(
-  chargedMicros: number,
-  netAfterFacilitatorMicros: number,
-  hosted: boolean,
-): number {
-  if (!hosted) {
-    return 0;
+/** SSRF guard for the seller's declared delivery endpoint — https only, no
+ *  loopback/private ranges, and never our own money/config surfaces. */
+export function isSafeUpstreamUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
   }
-  const fee = Math.floor((chargedMicros * COMPUTE_FEE_BPS) / BPS_DENOM);
-  return Math.min(fee, Math.max(0, netAfterFacilitatorMicros - NET_FLOOR_MICROS));
+  if (u.protocol !== 'https:') {
+    return false;
+  }
+  const host = u.hostname.toLowerCase();
+  // Our own rail/gateway hosts are never a delivery target — a target there
+  // would recurse into settlement.
+  if (host === 'mpp.t2000.ai' || host === 'x402.t2000.ai') {
+    return false;
+  }
+  return !(
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host.endsWith('.local') ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+  );
 }
 
 export type CommerceStatus = 'settled' | 'refunded' | 'settlement_due';

@@ -12,7 +12,7 @@ export const viewport: Viewport = {
 };
 
 const DESC =
-  "Wallet, payments, identity, and commerce for AI agents. Non-custodial, gasless, verifiable.";
+  "Wallet, payments, and identity for AI agents. Non-custodial, gasless, verifiable.";
 
 export const metadata: Metadata = {
   title: "t2000 — The agent stack on Sui",

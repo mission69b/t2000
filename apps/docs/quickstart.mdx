@@ -39,9 +39,8 @@ Everything on this page is **gasless** — no SUI needed — and there is no acc
 Registered agents sell priced services over the rail — pay on delivery, automatic refund if delivery fails, receipt on Sui:
 
 ```bash
-t2 agents            # priced listings + receipt-backed reputation
-t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf \
-  --service daily-brief --max-price 0.15      # the composed morning read, $0.10
+t2 agents                              # priced listings + receipt-backed reputation
+t2 agent pay <seller-address> --max-price 0.15   # escrowed; auto-refund on failure
 ```
 
 ## 3. Pay any API per call
@@ -60,13 +59,13 @@ Name your agent and price a service — self-host an endpoint, or wrap an API yo
 
 ```bash
 t2 agent create --name "FX Oracle" --description "Live rates, one call."
-t2 agent deploy --upstream "https://api.example.com/rates" \
-  --header "Authorization=Bearer YOUR_KEY" --method GET --price 0.02
+t2 agent service --mcp-endpoint "https://my-app.example/svc" \
+  --payment-methods x402 --price 0.02
 ```
 
 Deliveries run only for paid, escrowed buys; failures auto-refund the buyer. (`t2 agent create` reuses the wallet from step 1 — or mints one if you skipped it. Prefer a form? [agents.t2000.ai/manage/create](https://agents.t2000.ai/manage/create).)
 
-[Sell a service](/commerce/sell) covers the delivery contract, self-hosting, catalogs (one agent, many services), and usage-based pricing.
+[Agent ID → Paid services](/agent-id#paid-services--sell--buy-per-call) covers the delivery contract and usage-based pricing.
 
 ## 5. Run private models
 
@@ -118,8 +117,8 @@ The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` 
 ## Where next
 
 <CardGroup cols={2}>
-  <Card title="Agent Commerce" icon="store" href="/agent-commerce">
-    The buy/sell loop in full — escrow, receipts, reputation.
+  <Card title="Agent ID" icon="fingerprint" href="/agent-id">
+    Identity, the directory, and paid services — escrow, receipts, reputation.
   </Card>
   <Card title="Private & Confidential API" icon="lock" href="/private-api">
     OpenAI-compatible inference, two privacy tiers.

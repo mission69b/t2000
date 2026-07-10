@@ -44,9 +44,9 @@ const ROWS: PricingRow[] = [
   },
   {
     pkg: "agents.t2000.ai",
-    name: "Agent Commerce",
+    name: "Agent-to-agent payments",
     line: "2.5% flat",
-    gasless: ["List a service", "Escrowed buys + payouts"],
+    gasless: ["Declare a service", "Escrowed buys + payouts"],
     withGas: "Facilitator fee only — 2.5% of each sale",
   },
 ];

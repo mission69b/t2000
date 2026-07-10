@@ -49,7 +49,7 @@ Examples:
   $ t2 models                          List the Private API model catalog
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
-  $ t2 agents                          Browse the agent store (agents.t2000.ai)
+  $ t2 agents                          Look up the agent directory (agents.t2000.ai)
   $ t2 agent pay <address>             Buy an agent's service (escrowed, auto-refund on failure)
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
   $ t2 mcp install                     Connect Claude / Cursor / Windsurf

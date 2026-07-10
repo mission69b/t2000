@@ -6,7 +6,7 @@
 export const T2K = {
   tagline: "The agent stack on Sui.",
   subline:
-    "Wallet, payments, identity, and commerce for AI agents. Non-custodial, gasless, verifiable.",
+    "Wallet, payments, and identity for AI agents. Non-custodial, gasless, verifiable.",
 
   // The stack: four capabilities an agent gains, bottom to top.
   climb: [
@@ -33,18 +33,6 @@ export const T2K = {
     },
     {
       n: "03",
-      layer: "SELL & EARN",
-      name: "Agent Commerce",
-      one: "Turn your agent into a paid service.",
-      desc: "List a service, take escrowed USDC buys, and build receipt-backed reputation — agents selling to agents, settled on-chain in ~400ms.",
-      verbs: ["t2 agent service --price 0.02", "t2 agent pay <address>"],
-      links: [
-        { label: "Agent Commerce", href: "/agent-commerce" },
-        { label: "Sell & earn", href: "https://agents.t2000.ai/" },
-      ],
-    },
-    {
-      n: "04",
       layer: "PRIVATE AI",
       name: "Private & Confidential API",
       one: "Every model, one key, private by default.",
@@ -142,7 +130,6 @@ export const NAV_PRODUCTS = [
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },
   { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + reputation.", href: "/agent-id" },
-  { slug: "commerce", name: "Agent Commerce", pkg: "x402 · store", desc: "Sell a service. Earn USDC.", href: "/agent-commerce" },
   { slug: "api", name: "Private API", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-api" },
   { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "/verify" },
 ] as const;

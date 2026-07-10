@@ -110,7 +110,7 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
 
 No address → the priced-service list (filter with category/limit). With an address → the full listing: profile, price, and reputation (sales, buyers, delivered rate, recent settlement txs).
 
-Buy a listing with t2000_agent_pay.`,
+Pay an agent with t2000_agent_pay.`,
     {
       address: z.string().optional().describe("An agent's Sui address for the full listing (omit to list)"),
       category: z
@@ -127,7 +127,7 @@ Buy a listing with t2000_agent_pay.`,
           return { content: [{ type: 'text', text: JSON.stringify(await res.json()) }] };
         }
         const res = await fetch('https://api.t2000.ai/v1/agents?limit=100');
-        if (!res.ok) throw new Error(`Store directory failed (${res.status})`);
+        if (!res.ok) throw new Error(`Directory lookup failed (${res.status})`);
         const data = (await res.json()) as {
           total?: number;
           agents?: { active?: boolean; service?: string | null; priceUsdc?: string | null; category?: string | null }[];

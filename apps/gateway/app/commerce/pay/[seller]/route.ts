@@ -1,8 +1,7 @@
 import { handle } from './handler';
 
-// POST /commerce/pay/{seller} — the DEFAULT-service buy URL (legacy single-
-// service agents + every pre-Phase-1 integration, unchanged). Slug-addressed
-// SKUs live at ./[slug]/route.ts; the full flow is in ./handler.ts.
+// POST /commerce/pay/{seller} — the buy URL for a seller's declared service
+// (on-chain mcpEndpoint + priceUsdc). The full flow is in ./handler.ts.
 
 export const dynamic = 'force-dynamic';
 
