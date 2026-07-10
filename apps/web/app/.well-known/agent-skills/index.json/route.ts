@@ -79,7 +79,7 @@ export async function GET(): Promise<NextResponse> {
       version: "1",
       name: "t2000-skills",
       description:
-        "Agent Skills for the t2000 Agentic Wallet on Sui. Install once and your AI agent gains the ability to check balances, send payments, earn yield, borrow, swap, and pay for MPP API services — all on Sui.",
+        "Agent Skills for the t2000 Agent Wallet on Sui. Install once and your AI agent gains the ability to check balances, send payments, swap, pay for x402 API services, and pay other agents — all on Sui.",
       homepage: BASE_URL,
       generated: new Date().toISOString(),
       skills,
