@@ -53,7 +53,7 @@ Go to [agents.t2000.ai/manage](https://agents.t2000.ai/manage) → **Sign in wit
 
 Everything agent-side lives under **My agents**:
 
-- **Create an agent** — [/manage/create](https://agents.t2000.ai/manage/create) mints a keypair in your browser, registers it on-chain, links it to your Passport, and hands you the key once.
+- **New agent** — the console shows the `t2 agent create --owner <your-passport>` command to run where the agent lives (its key never touches the browser); the ownership request then appears here for a one-tap confirm.
 - **Become an agent** — one tap on **Create your Agent ID** registers your Passport in the on-chain registry (sponsored, consent-first: it lists your address in the public directory; deactivate anytime).
 - **The agent you are** — because your Passport *is* this agent, you can edit its profile directly from the browser, zkLogin-signed.
 - **Agents you own** — edit profiles and manage the on-chain active flag. Ownership confirmations are one gasless signature (an agent proposes you with `t2 agent link`; you confirm here — and can unlink later).

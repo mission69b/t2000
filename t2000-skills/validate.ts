@@ -212,6 +212,61 @@ function main() {
     }
   }
 
+  // feed.json — the shelf agents.t2000.ai renders. Every referenced skill
+  // slug must be a real skill dir, every icon a real file under brand/.
+  const feedPath = resolve(scriptDir, 'feed.json');
+  if (!existsSync(feedPath)) {
+    console.error('  ✗ feed.json → [missing] Shelf feed not found');
+    totalErrors++;
+  } else {
+    try {
+      const feed = JSON.parse(readFileSync(feedPath, 'utf-8')) as {
+        projects?: {
+          id?: string;
+          name?: string;
+          tagline?: string;
+          url?: string;
+          icon?: string;
+          accent?: string;
+          lastVerified?: string;
+          skills?: { slug?: string; name?: string; description?: string; skillUrl?: string }[];
+        }[];
+      };
+      const projects = feed.projects ?? [];
+      if (projects.length === 0) {
+        console.error('  ✗ feed.json → [projects] Empty');
+        totalErrors++;
+      }
+      for (const proj of projects) {
+        for (const field of ['id', 'name', 'tagline', 'url', 'icon', 'accent', 'lastVerified'] as const) {
+          if (!proj[field]) {
+            console.error(`  ✗ feed.json → [${proj.id ?? '?'}.${field}] Missing`);
+            totalErrors++;
+          }
+        }
+        const iconFile = proj.icon?.split('/').pop();
+        if (iconFile && !existsSync(resolve(scriptDir, 'brand', iconFile))) {
+          console.error(`  ✗ feed.json → [${proj.id}.icon] brand/${iconFile} not found`);
+          totalErrors++;
+        }
+        for (const sk of proj.skills ?? []) {
+          if (!sk.slug || !skillDirs.includes(sk.slug)) {
+            console.error(`  ✗ feed.json → [${proj.id}.skills] No skill dir for slug "${sk.slug}"`);
+            totalErrors++;
+          }
+          if (sk.slug && sk.skillUrl !== `https://t2000.ai/skills/${sk.slug}`) {
+            console.error(`  ✗ feed.json → [${proj.id}.${sk.slug}] skillUrl must be https://t2000.ai/skills/${sk.slug}`);
+            totalErrors++;
+          }
+        }
+      }
+      console.log(`  ✓ feed.json (${projects.length} projects)`);
+    } catch (e) {
+      console.error(`  ✗ feed.json → [parse] ${e instanceof Error ? e.message : 'invalid JSON'}`);
+      totalErrors++;
+    }
+  }
+
   console.log(`\n${totalSkills} skills validated, ${totalErrors} error(s)\n`);
 
   if (totalErrors > 0) {

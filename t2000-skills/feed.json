@@ -1,0 +1,211 @@
+{
+  "$schema_note": "The t2 Agents skills shelf (agents.t2000.ai). One entry per project; every skill slug must have a matching skills/<slug>/SKILL.md in this repo, and every icon must exist under brand/. Served live at https://t2000.ai/skills/feed.json. PR a project: add your SKILL.md dir(s), a brand mark, and an entry here \u2014 merged projects get their own page.",
+  "version": 1,
+  "projects": [
+    {
+      "id": "t2000",
+      "name": "t2000",
+      "tagline": "The agent wallet + identity stack \u2014 gasless USDC, x402 paid APIs, on-chain Agent ID.",
+      "url": "https://t2000.ai",
+      "icon": "https://t2000.ai/skills/brand/pfp-t2-black-field.svg",
+      "accent": "#0072F5",
+      "lastVerified": "2026-07-10",
+      "skills": [
+        {
+          "slug": "t2000-setup",
+          "name": "Wallet setup",
+          "description": "Bootstrap the Agent Wallet: local keypair, free on-chain Agent ID, spending limits, MCP wiring. The entry point every other skill assumes.",
+          "tags": [
+            "wallet",
+            "identity",
+            "setup"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-setup"
+        },
+        {
+          "slug": "t2000-send",
+          "name": "Send stablecoins",
+          "description": "Gasless USDC / USDsui sends (and SUI with gas) to addresses, SuiNS names, or @audric handles.",
+          "tags": [
+            "payments",
+            "gasless",
+            "suins"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-send"
+        },
+        {
+          "slug": "t2000-receive",
+          "name": "Request payments",
+          "description": "Share the wallet address, render a QR, or emit a sui:pay URI so humans and agents can pay this wallet.",
+          "tags": [
+            "payments",
+            "receive"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-receive"
+        },
+        {
+          "slug": "t2000-check-balance",
+          "name": "Read balances",
+          "description": "Inspect USDC / USDsui / SUI holdings and USD totals before any write.",
+          "tags": [
+            "wallet",
+            "reads"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-check-balance"
+        },
+        {
+          "slug": "t2000-services",
+          "name": "Discover paid APIs",
+          "description": "Browse the x402 service catalog (AI models, search, data, mail, TTS, code exec) with live prices \u2014 free.",
+          "tags": [
+            "x402",
+            "discovery"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-services"
+        },
+        {
+          "slug": "t2000-pay",
+          "name": "Pay APIs per call",
+          "description": "Pay any x402-protected API in USDC \u2014 handles the 402 challenge \u2192 pay \u2192 retry loop automatically.",
+          "tags": [
+            "x402",
+            "payments",
+            "apis"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-pay"
+        },
+        {
+          "slug": "t2000-verify",
+          "name": "Verify confidential AI",
+          "description": "Trustlessly verify a confidential (GPU-TEE) inference receipt against its on-chain Sui anchor.",
+          "tags": [
+            "confidential",
+            "verify",
+            "receipts"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-verify"
+        },
+        {
+          "slug": "t2000-mcp",
+          "name": "Wire up MCP",
+          "description": "Connect the wallet to Claude Desktop, Cursor, Windsurf, or any MCP client \u2014 every wallet capability as tools, plus one prompt per skill.",
+          "tags": [
+            "mcp",
+            "setup"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-mcp"
+        }
+      ]
+    },
+    {
+      "id": "cetus",
+      "name": "Cetus",
+      "tagline": "Sui's liquidity hub \u2014 best-route swaps across 20+ DEXs.",
+      "url": "https://www.cetus.zone",
+      "icon": "https://t2000.ai/skills/brand/cetus.png",
+      "accent": "#4de5c8",
+      "lastVerified": "2026-07-10",
+      "skills": [
+        {
+          "slug": "t2000-swap",
+          "name": "Swap any Sui token",
+          "description": "Best-route swaps through the Cetus Aggregator \u2014 quotes, slippage control, and the swap-needs-SUI-for-gas gotcha.",
+          "tags": [
+            "defi",
+            "swap",
+            "cetus"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-swap"
+        }
+      ]
+    },
+    {
+      "id": "sui",
+      "name": "Sui",
+      "tagline": "The chain itself \u2014 read state over gRPC: balances, objects, transactions, names.",
+      "url": "https://sui.io",
+      "icon": "https://t2000.ai/skills/brand/sui.png",
+      "accent": "#4DA2FF",
+      "lastVerified": "2026-07-11",
+      "skills": [
+        {
+          "slug": "sui-grpc",
+          "name": "Read the chain over gRPC",
+          "description": "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient \u2014 the surface that replaces JSON-RPC (retired July 31, 2026).",
+          "tags": [
+            "reads",
+            "grpc",
+            "chain-state"
+          ],
+          "skillUrl": "https://t2000.ai/skills/sui-grpc"
+        }
+      ]
+    },
+    {
+      "id": "suins",
+      "name": "SuiNS",
+      "tagline": "Sui's name service \u2014 alice.sui instead of 0x\u2026.",
+      "url": "https://suins.io",
+      "icon": "https://t2000.ai/skills/brand/suins.png",
+      "accent": "#9b6dff",
+      "lastVerified": "2026-07-11",
+      "skills": [
+        {
+          "slug": "suins",
+          "name": "Resolve .sui names",
+          "description": "Name \u2192 address and address \u2192 name over gRPC, with the JSON-RPC stopgap and its cutoff date. Sends via t2 resolve names automatically.",
+          "tags": [
+            "identity",
+            "names",
+            "reads"
+          ],
+          "skillUrl": "https://t2000.ai/skills/suins"
+        }
+      ]
+    },
+    {
+      "id": "deepbook",
+      "name": "DeepBook",
+      "tagline": "Sui's on-chain order book \u2014 tickers, depth, candles from the free public indexer.",
+      "url": "https://deepbook.tech",
+      "icon": "https://t2000.ai/skills/brand/deepbook.png",
+      "accent": "#2545ec",
+      "lastVerified": "2026-07-11",
+      "skills": [
+        {
+          "slug": "deepbook",
+          "name": "Read live markets",
+          "description": "Pools, tickers, order books, OHLCV candles, and trades \u2014 every fill carries a verifiable Sui tx digest. No key, no wallet.",
+          "tags": [
+            "market-data",
+            "reads",
+            "defi"
+          ],
+          "skillUrl": "https://t2000.ai/skills/deepbook"
+        }
+      ]
+    },
+    {
+      "id": "walrus",
+      "name": "Walrus",
+      "tagline": "Decentralized blob storage on Sui \u2014 read + store over plain HTTP.",
+      "url": "https://www.walrus.xyz",
+      "icon": "https://t2000.ai/skills/brand/walrus.png",
+      "accent": "#66d2df",
+      "lastVerified": "2026-07-11",
+      "skills": [
+        {
+          "slug": "walrus",
+          "name": "Read + store blobs",
+          "description": "Free aggregator reads by blob or object ID, testnet publisher writes, and the honest mainnet-write story (no public publisher \u2014 by design).",
+          "tags": [
+            "storage",
+            "blobs",
+            "http"
+          ],
+          "skillUrl": "https://t2000.ai/skills/walrus"
+        }
+      ]
+    }
+  ]
+}

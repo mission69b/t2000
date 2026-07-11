@@ -80,7 +80,17 @@ Protocol playbooks beyond the wallet — same format, same one-paste install:
 | [`deepbook`](https://t2000.ai/skills/deepbook) | Live market data from DeepBook, Sui's on-chain order book — pools, tickers, order books, candles, trades — via the free public indexer. |
 | [`walrus`](https://t2000.ai/skills/walrus) | Read + store blobs on Walrus over plain HTTP — free aggregator reads, testnet publisher writes, and the honest mainnet-write story. |
 
-Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
+Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json), and the project-grouped shelf that [agents.t2000.ai](https://agents.t2000.ai) renders is [`feed.json`](feed.json) (served at [`t2000.ai/skills/feed.json`](https://t2000.ai/skills/feed.json)).
+
+### Add your protocol (PR)
+
+One PR puts your project on the [agents.t2000.ai](https://agents.t2000.ai) shelf with its own page — no deploy on our side:
+
+1. `skills/<slug>/SKILL.md` — the playbook, in the frontmatter format above. Every command in it must be **run against your live mainnet surface** before you write it down.
+2. `brand/<your-mark>.png` — a square brand mark (SVG/PNG, ~200px).
+3. A project entry in [`feed.json`](feed.json) — id, name, one-line tagline, url, `icon` (`https://t2000.ai/skills/brand/<file>`), accent hex, `lastVerified` date, and your skill rows.
+
+`npx tsx validate.ts` must pass (it checks frontmatter, feed shape, icon files, and slug↔dir consistency). Merged = live within ~5 minutes.
 
 ### Operating guide — [`AGENTS.md`](https://t2000.ai/AGENTS.md)
 

@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
   // not a literal, so we use `/skills/*` to match the dynamic segment.
   outputFileTracingIncludes: {
     "/skills/*": ["../../t2000-skills/skills/**/SKILL.md"],
+    "/skills/feed.json": ["../../t2000-skills/feed.json"],
+    "/skills/brand/*": ["../../t2000-skills/brand/*"],
     "/.well-known/agent-skills/index.json": ["../../t2000-skills/skills/**/SKILL.md"],
     "/AGENTS.md": ["../../t2000-skills/AGENTS.md"],
   },
