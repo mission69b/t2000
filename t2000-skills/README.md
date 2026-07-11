@@ -66,8 +66,19 @@ Installs all eleven skills (the `t2000-agent-wallet` plugin) via Claude Code's n
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
-| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the 18-tool surface, and the most common "MCP doesn't load" failure modes. |
+| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the tool surface, and the most common "MCP doesn't load" failure modes. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Check — don't trust — a confidential (GPU-TEE) AI response by its receipt id: `t2 verify <rcpt-…>` runs the trustless checks (signed receipt · attested upstream · on-chain Sui anchor · signature · Intel TDX quote) and fails closed. No key needed; also at verify.t2000.ai. |
+
+### Sui ecosystem skills
+
+Protocol playbooks beyond the wallet — same format, same one-paste install:
+
+| Skill | Description |
+|-------|-------------|
+| [`sui-grpc`](https://t2000.ai/skills/sui-grpc) | Read Sui chain state over gRPC — balances, objects, transactions, coin metadata, names. JSON-RPC retires July 31, 2026; this is the replacement surface. |
+| [`suins`](https://t2000.ai/skills/suins) | Resolve SuiNS names (`alice.sui`) to addresses and back — gRPC-first, with the JSON-RPC stopgap and its cutoff date. |
+| [`deepbook`](https://t2000.ai/skills/deepbook) | Live market data from DeepBook, Sui's on-chain order book — pools, tickers, order books, candles, trades — via the free public indexer. |
+| [`walrus`](https://t2000.ai/skills/walrus) | Read + store blobs on Walrus over plain HTTP — free aggregator reads, testnet publisher writes, and the honest mainnet-write story. |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
 

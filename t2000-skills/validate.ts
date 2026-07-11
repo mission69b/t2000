@@ -189,6 +189,9 @@ function main() {
   // save/withdraw/borrow/repay were removed). Keep in sync when adding
   // or removing a skill directory.
   const expectedSkills = [
+    'deepbook',
+    'sui-grpc',
+    'suins',
     't2000-check-balance',
     't2000-mcp',
     't2000-pay',
@@ -198,6 +201,7 @@ function main() {
     't2000-setup',
     't2000-swap',
     't2000-verify',
+    'walrus',
   ];
 
   const missing = expectedSkills.filter(s => !skillDirs.includes(s));

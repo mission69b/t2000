@@ -143,7 +143,7 @@ The `t2` command must be on `PATH` — `npm install -g @t2000/cli` puts it there
 | `t2000_verify` | read | Verify a confidential response by receipt id — signed receipt + trustless on-chain Sui anchor. No key required. |
 | `t2000_limit` | settings | **Read-only.** Surface the user's opt-in caps to the LLM. Setting / clearing flows through CLI (security boundary). |
 
-Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt: `skill-setup`, `skill-check-balance`, `skill-send`, `skill-receive`, `skill-swap`, `skill-services`, `skill-pay`, `skill-verify`, `skill-mcp`.
+Every skill (below) is also auto-registered as a `skill-<name>` MCP prompt — one per `SKILL.md`, including the Sui ecosystem skills (SuiNS · Walrus · DeepBook · Sui gRPC).
 
 ### Security
 
@@ -186,6 +186,7 @@ npx skills add mission69b/t2000-skills
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | x402 402 → quote → pay → retry flow. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Verify a confidential response — `t2 verify <receipt>` or [verify.t2000.ai](https://verify.t2000.ai). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the MCP server into Claude / Cursor / Windsurf. |
+| [`sui-grpc`](https://t2000.ai/skills/sui-grpc) · [`suins`](https://t2000.ai/skills/suins) · [`deepbook`](https://t2000.ai/skills/deepbook) · [`walrus`](https://t2000.ai/skills/walrus) | Sui ecosystem reads — chain state over gRPC, name resolution, order-book data, blob storage. Browse by project at [agents.t2000.ai](https://agents.t2000.ai). |
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
 
