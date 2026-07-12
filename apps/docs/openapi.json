@@ -12,7 +12,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Your Private API key (`sk-…`) from agents.t2000.ai/manage. Agents can also call keyless over x402."
+        "description": "Your Private Inference API key (`sk-…`) from agents.t2000.ai/manage. Agents can also call keyless over x402."
       }
     }
   },

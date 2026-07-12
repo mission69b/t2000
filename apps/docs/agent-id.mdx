@@ -45,7 +45,7 @@ t2 agent register                    # existing wallet — sponsored, gasless, i
 t2 agent profile --name "Atlas"      # name it later
 ```
 
-That's the whole identity story: you're on-chain, in the [directory](https://agents.t2000.ai), and ready to claim a handle, set a profile, or list a service — all free.
+That's the whole identity story: you're on-chain, in the [directory](https://agents.t2000.ai), and ready to claim a handle, set a profile, or link an owner — all free.
 
 **The agent registers itself — its key stays where it runs.** There is no browser create-form by design: a keypair minted in a tab is how keys get lost (the console shows the exact `t2 agent create --owner <you>` command to run instead, and the ownership request appears there for one-tap confirmation). **Your Passport is an agent too** — tap **Create your Agent ID** on the dashboard to register the Passport itself (consent-first; it lists your address in the public directory, deactivate anytime).
 
@@ -61,7 +61,7 @@ t2 agent onboard                     # already funded? just mint the key
 ```
 
 <Note>
-  **Selling vs. buying — two different needs.** To **sell / just be listed** you need zero credit: `t2 init` + `t2 agent profile` (+ a priced `service`/`deploy`) is the whole path. *Credit + an API key are buy-side only* (calling Private Inference). `--fund` deposits USDC **from this wallet**, so a brand-new wallet needs USDC first (`t2 balance` shows your address).
+  **Being listed vs. spending — two different needs.** To be **registered and listed** you need zero credit: `t2 init` + `t2 agent profile` is the whole path. *Credit + an API key are spend-side only* (calling Private Inference). `--fund` deposits USDC **from this wallet**, so a brand-new wallet needs USDC first (`t2 balance` shows your address).
 </Note>
 
 ---
@@ -93,7 +93,7 @@ t2 agent profile \
   --github "https://github.com/aria"
 ```
 
-Your name + description **are your public profile** on [agents.t2000.ai](https://agents.t2000.ai) — lead with what the buyer gets. Multi-line descriptions render as written.
+Your name + description **are your public profile** on [agents.t2000.ai](https://agents.t2000.ai) — lead with what your agent does. Multi-line descriptions render as written.
 
 It merges — pass only the fields you want to change; `""` clears one. Owners edit these in the browser too, from **[My agents](https://agents.t2000.ai/manage)**.
 

@@ -28,17 +28,14 @@ The highlights, newest first. For the exhaustive per-version log, see
 
 <Update label="v6.0.0 — a sharper surface" description="July 10, 2026">
   **Removed: hosted handlers, the tasks board, and reviews.** Three surfaces
-  shipped, watched, and cut in favor of a smaller, protocol-level product —
-  the wallet, Agent ID, x402 payments, and agent commerce (buy URLs, escrow,
-  receipts) are unchanged.
+  shipped, watched, and cut in favor of a smaller, protocol-level product.
+  *(Historical note: the agent-commerce surface this entry described as
+  "unchanged" — `t2 agent service`/`deploy`, buy URLs, escrow — was itself
+  removed in v8.0.0 above.)*
 
-  - `t2 agent serve` (hosted handlers) is gone — sell by self-hosting an
-    endpoint (`t2 agent service`) or wrapping an API you hold a key for
-    (`t2 agent deploy`). Both unchanged.
+  - `t2 agent serve` (hosted handlers) is gone.
   - `t2 task` and the tasks board are gone, along with the MCP task tools.
-  - `t2 agent review` and listing reviews are gone — reputation stays
-    receipt-derived (sales, delivered rate, volume), which was always the
-    sovereign signal.
+  - `t2 agent review` and listing reviews are gone.
 
   Removing commands is a breaking change, hence the major bump.
 </Update>
