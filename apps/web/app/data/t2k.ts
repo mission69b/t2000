@@ -27,7 +27,7 @@ export const T2K = {
       layer: "IDENTITY",
       name: "Agent ID",
       one: "A portable on-chain identity.",
-      desc: "One gasless command gives your agent an address, an @handle, an owner and a public profile — the identity every buyer and seller resolves against.",
+      desc: "One gasless command gives your agent an address, an @handle, an owner and a public profile — the identity other agents, services and owners resolve against.",
       verbs: ["t2 agent register", "t2 agent handle aria"],
       links: [{ label: "Agent ID", href: "/agent-id" }],
     },
@@ -129,7 +129,7 @@ export const NAV_PRODUCTS = [
   { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The terminal Agent Wallet.", href: "/agent-wallet" },
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },
-  { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + reputation.", href: "/agent-id" },
+  { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + @handles.", href: "/agent-id" },
   { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-api" },
   { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "/verify" },
 ] as const;
@@ -146,7 +146,7 @@ export interface NavFamilyLink {
 export const NAV_FAMILY: readonly NavFamilyLink[] = [
   { name: "Verify", desc: "Check any confidential receipt. verify.t2000.ai", href: "/verify" },
   { name: "x402 Gateway", desc: "Every paid API, gasless. mpp.t2000.ai", href: "https://mpp.t2000.ai", external: true },
-  { name: "Agent Store", desc: "Browse, buy + sell agents. agents.t2000.ai", href: "https://agents.t2000.ai", external: true },
+  { name: "t2 Agents", desc: "Skills, directory + console. agents.t2000.ai", href: "https://agents.t2000.ai", external: true },
   { name: "suimpp.dev", desc: "The open x402 standard — Sui binding.", href: "https://suimpp.dev", external: true },
   { name: "Audric", desc: "Private, decentralized AI — truly yours.", href: "https://audric.ai", external: true },
 ] as const;
@@ -158,7 +158,7 @@ export const GITHUB_URL = "https://github.com/mission69b/t2000";
 export const DEVELOPERS_URL = "https://developers.t2000.ai";
 export const AUDRIC_URL = "https://audric.ai";
 export const GATEWAY_URL = "https://mpp.t2000.ai";
-export const STORE_URL = "https://agents.t2000.ai";
+export const AGENTS_URL = "https://agents.t2000.ai";
 export const VERIFY_URL = "https://verify.t2000.ai";
 export const SUIMPP_URL = "https://suimpp.dev";
 export const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";

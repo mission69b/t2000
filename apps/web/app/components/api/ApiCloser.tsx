@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { STORE_URL } from "../../data/t2k";
+import { AGENTS_URL } from "../../data/t2k";
 
 const SNIPPET = "export OPENAI_BASE_URL=https://api.t2000.ai/v1";
 
@@ -64,7 +64,7 @@ export function ApiCloser() {
         </button>
         <div className="mt-[26px] flex flex-wrap justify-center gap-2.5">
           <a
-            href={`${STORE_URL}/manage`}
+            href={`${AGENTS_URL}/manage`}
             target="_blank"
             rel="noopener noreferrer"
             className="t2k-btn t2k-btn--blue t2k-btn--lg"

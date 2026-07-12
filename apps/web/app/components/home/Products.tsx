@@ -51,10 +51,10 @@ export function Products() {
           >
             <span className="t2k-mono-tag t2k-mono-tag--blue">agents.t2000.ai</span>
             <div>
-              <div className="t2k-climb-base-name">Agent Hub</div>
+              <div className="t2k-climb-base-name">t2 Agents</div>
               <div className="t2k-climb-base-sub">
-                The directory + console. Look up any registered agent, sell services,
-                and manage one Passport, keys, billing and every receipt.
+                Skills, the agent directory + console. Look up any registered
+                agent and manage one Passport, keys and billing.
               </div>
             </div>
             <span className="t2k-climb-base-arrow">→</span>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { DEVELOPERS_URL, STORE_URL } from "../../data/t2k";
+import { DEVELOPERS_URL, AGENTS_URL } from "../../data/t2k";
 
 function IdMono({ children, accent }: { children: ReactNode; accent?: boolean }) {
   return (
@@ -120,8 +120,8 @@ export function IdQuickstart() {
 const PIECES = [
   { n: "01", title: "Register", plain: "Your address, on-chain. Idempotent and sponsored.", cmd: "t2 agent register" },
   { n: "02", title: "Claim a handle", plain: "A readable alias — @alice, i.e. alice.agent-id.sui — that resolves to your address.", cmd: "t2 agent handle alice" },
-  { n: "03", title: "Set a profile", plain: "Name, image, links — your storefront card.", cmd: "t2 agent profile --name …" },
-  { n: "04", title: "Declare a service", plain: "An endpoint and a price. Now you're payable.", cmd: "t2 agent service --price 0.02" },
+  { n: "03", title: "Set a profile", plain: "Name, image, links — your public profile card.", cmd: "t2 agent profile --name …" },
+  { n: "04", title: "Link an owner", plain: "Propose your Passport as owner; confirm in the console. Two-sided — nobody can claim an agent falsely.", cmd: "t2 agent link 0xPASSPORT" },
 ] as const;
 
 export function IdPieces() {
@@ -206,16 +206,15 @@ export function IdDirectory() {
               { t: "{", c: "var(--fg-subtle)" },
               { t: '  "name": "Aria",  "active": true,', c: "var(--fg)" },
               { t: '  "category": "research",', c: "var(--fg)" },
-              { t: '  "priceUsdc": "0.02",', c: "var(--fg)" },
               { t: '  "owner": "0x…",  "links": { … },', c: "var(--fg)" },
-              { t: '  "reputation": {', c: "var(--fg)" },
-              { t: '    "sales": 214, "buyers": 96,', c: "var(--t2k-success)" },
-              { t: '    "deliveredRate": 0.99 }', c: "var(--t2k-success)" },
+              { t: '  "identity": {', c: "var(--fg)" },
+              { t: '    "registry": "0x…",', c: "var(--t2k-success)" },
+              { t: '    "registerDigest": "8fQ2…" }', c: "var(--t2k-success)" },
               { t: "}", c: "var(--fg-subtle)" },
             ]}
           />
           <div>
-            <div className="t2k-eyebrow mb-5">{"// STORE + DIRECTORY"}</div>
+            <div className="t2k-eyebrow mb-5">{"// THE DIRECTORY"}</div>
             <h2
               className="t2k-display"
               style={{
@@ -236,10 +235,10 @@ export function IdDirectory() {
                 letterSpacing: "-0.012em",
               }}
             >
-              A storefront for humans at <IdMono>agents.t2000.ai</IdMono>, and a
+              A profile for humans at <IdMono>agents.t2000.ai</IdMono>, and a
               public JSON API for machines. Profiles are{" "}
               <span style={{ color: "var(--fg)" }}>ERC-8004 compatible</span> —
-              owner, links, and receipt-backed reputation included.
+              owner, links, and the on-chain record included.
             </p>
             <p
               className="mt-[18px] text-[14px]"
@@ -283,7 +282,7 @@ export function IdCloser() {
         </div>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <a
-            href={STORE_URL}
+            href={AGENTS_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="t2k-btn t2k-btn--blue t2k-btn--lg"

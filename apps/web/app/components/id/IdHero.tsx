@@ -1,46 +1,35 @@
 import Link from "next/link";
-import { DEVELOPERS_URL, GATEWAY_URL, STORE_URL } from "../../data/t2k";
+import { DEVELOPERS_URL, AGENTS_URL } from "../../data/t2k";
 
 interface DirectoryRow {
   handle: string;
   cat: string;
-  price: string;
-  sales: string;
+  address: string;
 }
 
-// Live directory card — joins the directory's top sellers (settlement-derived)
-// with the public agents directory for names/prices. No fixture rows.
-async function fetchTopAgents(): Promise<DirectoryRow[]> {
+// Live directory card — the newest active registrations from the public
+// agents directory. No fixture rows.
+async function fetchRecentAgents(): Promise<DirectoryRow[]> {
   try {
-    const [statsRes, agentsRes] = await Promise.all([
-      fetch(`${GATEWAY_URL}/commerce/stats`, { next: { revalidate: 300 } }),
-      fetch("https://api.t2000.ai/v1/agents?limit=100", {
-        next: { revalidate: 300 },
-      }),
-    ]);
-    if (!statsRes.ok || !agentsRes.ok) return [];
-    const stats = (await statsRes.json()) as {
-      topSellers?: { seller: string; sales: number }[];
-    };
+    const agentsRes = await fetch("https://api.t2000.ai/v1/agents?limit=100", {
+      next: { revalidate: 300 },
+    });
+    if (!agentsRes.ok) return [];
     const dir = (await agentsRes.json()) as {
       agents?: {
         address: string;
         name: string;
         category: string | null;
-        priceUsdc: string | null;
         active: boolean;
       }[];
     };
-    const byAddress = new Map((dir.agents ?? []).map((a) => [a.address, a]));
     const rows: DirectoryRow[] = [];
-    for (const s of stats.topSellers ?? []) {
-      const a = byAddress.get(s.seller);
-      if (!a || !a.active || !a.priceUsdc) continue;
+    for (const a of dir.agents ?? []) {
+      if (!a.active || !a.name) continue;
       rows.push({
         handle: `@${a.name}`,
         cat: a.category ?? "other",
-        price: `$${a.priceUsdc}`,
-        sales: String(s.sales),
+        address: `${a.address.slice(0, 6)}…${a.address.slice(-4)}`,
       });
       if (rows.length === 5) break;
     }
@@ -51,7 +40,7 @@ async function fetchTopAgents(): Promise<DirectoryRow[]> {
 }
 
 export async function IdHero() {
-  const rows = await fetchTopAgents();
+  const rows = await fetchRecentAgents();
 
   return (
     <section
@@ -118,7 +107,7 @@ export async function IdHero() {
             </p>
             <div className="mt-8 flex flex-wrap gap-2.5">
               <a
-                href={STORE_URL}
+                href={AGENTS_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="t2k-btn t2k-btn--blue t2k-btn--lg"
@@ -184,15 +173,14 @@ function DirectoryCard({ rows }: { rows: DirectoryRow[] }) {
         <div
           className="grid gap-3 font-mono text-[10.5px] uppercase"
           style={{
-            gridTemplateColumns: "1fr auto auto",
+            gridTemplateColumns: "1fr auto",
             padding: "6px 18px 8px",
             color: "var(--fg-subtle)",
             letterSpacing: "0.04em",
           }}
         >
           <span>agent</span>
-          <span>price</span>
-          <span>sold</span>
+          <span>address</span>
         </div>
         {rows.length === 0 && (
           <div
@@ -210,7 +198,7 @@ function DirectoryCard({ rows }: { rows: DirectoryRow[] }) {
             key={r.handle}
             className="grid items-center gap-3 font-mono text-[12.5px]"
             style={{
-              gridTemplateColumns: "1fr auto auto",
+              gridTemplateColumns: "1fr auto",
               padding: "9px 18px",
               borderTop: "1px solid var(--ds-gray-alpha-200)",
             }}
@@ -221,13 +209,10 @@ function DirectoryCard({ rows }: { rows: DirectoryRow[] }) {
               </span>
               <span style={{ color: "var(--fg-subtle)", fontSize: 11 }}>{r.cat}</span>
             </span>
-            <span style={{ color: "var(--fg)", fontVariantNumeric: "tabular-nums" }}>
-              {r.price}
-            </span>
             <span
               style={{ color: "var(--fg-muted)", fontVariantNumeric: "tabular-nums" }}
             >
-              {r.sales}
+              {r.address}
             </span>
           </div>
         ))}
@@ -241,8 +226,8 @@ function DirectoryCard({ rows }: { rows: DirectoryRow[] }) {
           color: "var(--fg-subtle)",
         }}
       >
-        <span style={{ color: "var(--t2k-success)" }}>●</span> receipt-backed
-        reputation · every row verifiable on Suiscan
+        <span style={{ color: "var(--t2k-success)" }}>●</span> anchored
+        on-chain · every row verifiable on Suiscan
       </div>
     </div>
   );

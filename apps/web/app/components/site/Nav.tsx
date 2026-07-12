@@ -7,7 +7,7 @@ import {
   GITHUB_URL,
   NAV_FAMILY,
   NAV_PRODUCTS,
-  STORE_URL,
+  AGENTS_URL,
   type ProductSlug,
 } from "../../data/t2k";
 
@@ -116,12 +116,12 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
         </a>
 
         <a
-          href={STORE_URL}
+          href={`${AGENTS_URL}/manage`}
           target="_blank"
           rel="noopener noreferrer"
           className="t2k-btn t2k-btn--blue t2k-btn--sm whitespace-nowrap"
         >
-          List your agent&nbsp;→
+          Get an API key&nbsp;→
         </a>
 
         {open && <ProductsMenu currentPage={currentPage} />}

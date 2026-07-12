@@ -5,7 +5,7 @@ import {
   DISCORD_URL,
   GATEWAY_URL,
   GITHUB_URL,
-  STORE_URL,
+  AGENTS_URL,
   SUIMPP_URL,
   TWITTER_URL,
 } from "../../data/t2k";
@@ -28,7 +28,7 @@ const PRODUCT_LINKS: FooterLink[] = [
 const FAMILY_LINKS: FooterLink[] = [
   { label: "Verify", href: "/verify" },
   { label: "x402 Gateway", href: GATEWAY_URL, external: true },
-  { label: "Agent Store", href: STORE_URL, external: true },
+  { label: "t2 Agents", href: AGENTS_URL, external: true },
   { label: "suimpp.dev", href: SUIMPP_URL, external: true },
   { label: "Audric", href: AUDRIC_URL, external: true },
   { label: "Developers", href: DEVELOPERS_URL, external: true },
