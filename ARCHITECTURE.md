@@ -127,24 +127,40 @@ Pay-per-call USDC for every major AI + data API. No accounts, no API keys, no ga
 ```
 Agent                            Gateway                              Sui
   │── POST /openai/v1/… ──────────►│
-  │◄─ 402 (x402 envelope) ─────────│   challenge HMAC-bound to this server
+  │◄─ 402 Payment Required ────────│   dual-dialect, same challenge:
+  │    · x402 JSON envelope         │   native x402 (accepts[] w/ the
+  │      (accepts[], sui · USDC)    │   Sui/USDC scheme) AND the legacy
+  │    · legacy WWW-Authenticate    │   MPP header for pre-x402 CLIs —
+  │      Payment header             │   both HMAC-bound to this server
   │                                │
   ├─ build + sign USDC transfer (gasless, sign-then-settle)
   │── retry + payment credential ─►│
-  │                                │── verify on-chain (gRPC) ─────────►│
-  │                                │   success · amount · recipient
-  │                                │── proxy upstream (key injected     │
-  │                                │   server-side from env)            │
-  │◄─ 200 + x-payment-receipt ─────│
+  │                                │── settle + verify on-chain ───────►│
+  │                                │   tx success · USDC ≥ price ·
+  │                                │   recipient = treasury
+  │                                │── proxy upstream (key injected
+  │                                │   server-side from env)
+  │                                │
+  │        upstream OK             │        upstream FAILS (5xx/timeout)
+  │◄─ 200 + x-payment-receipt ─────│──► auto-refund: fresh gasless USDC
+  │                                │    transfer treasury → payer
+  │◄─ error + refund digest ───────│    (skipped only under the $0.01
+  │        (not charged)           │     dust guard)
 ```
 
-- **Dual-dialect:** native x402 envelopes + the legacy MPP header dialect are both
-  served (pre-x402 CLIs keep working). Discovery: `/.well-known/x402.json`,
-  `/api/services` (catalog SSOT: `apps/gateway/lib/services.ts`), `/llms.txt`.
-- **Stateless verification:** HMAC-signed challenges (no DB lookup), then an on-chain
-  check of the digest — status, USDC amount, treasury recipient.
-- **No-charge-on-failure:** a failed upstream call auto-refunds the payer from the
-  treasury (sub-$0.01 dust guard).
+- **Dual-dialect:** the same endpoint serves both the native **x402** envelope (the
+  402 body carries `accepts[]` with the Sui/USDC payment scheme) and the **legacy MPP
+  header dialect** (`WWW-Authenticate: Payment` challenge) — so pre-x402 installed
+  CLIs keep working. Same HMAC binding, same settlement, same verification either way.
+  Discovery: `/.well-known/x402.json`, `/api/services` (catalog SSOT:
+  `apps/gateway/lib/services.ts`), `/llms.txt`.
+- **Stateless verification:** challenges are HMAC-signed (no DB lookup to validate);
+  the paid digest is then checked on-chain — status, USDC amount, treasury recipient.
+- **No-charge-on-failure:** the charge stands only if the upstream call succeeds. On
+  an upstream failure the gateway issues an automated refund — a fresh gasless USDC
+  transfer from the treasury back to the payer — and returns the upstream error plus
+  the refund digest. The only exception is the sub-$0.01 dust guard (refund gas/noise
+  not worth more than the charge).
 - **Key isolation:** upstream API keys exist only as gateway env vars; agents never
   see them.
 - **Payment log:** gateway-owned Neon (service, endpoint, amount, digest, sender) —
@@ -179,6 +195,15 @@ The SDK is sponsorship-agnostic: `executeTx` builds → signs → executes → r
 `{digest, gasCostSui}`. Audric's Enoki sponsorship is a host-layer concern in the
 audric repo, not in the SDK.
 
+### Funding (getting USDC in)
+
+- **From crypto:** send USDC on Sui to the wallet address (`t2 fund` prints it + a QR).
+- **From a card (USD → USDC onramp):** `agents.t2000.ai/manage/topup` — a Stripe
+  crypto onramp that settles USDC to the signed-in Passport; from there, fund an
+  agent wallet with a normal gasless send. (Audric ships its own onramp for
+  consumers.) Distinct from *credit* top-up: cards can also buy inference credit
+  directly on the billing page — no USDC involved in that flow.
+
 ### Chain access
 
 gRPC only (`SuiGrpcClient`; JSON-RPC retires 2026-07-31 and is banned in new code).
@@ -196,17 +221,56 @@ The SDK + CLI are fee-free. The one live fee is Audric's **swap overlay fee**
 ## Substrate — Agent ID
 
 On-chain identity for machine keypairs: the `agent_id::registry` Move package
-(Sui mainnet). Dormant by design (`PRODUCT.md`) — no build until autonomous agents
-holding money need the owner/kill-switch story.
+(source: `contracts/agent_id/`, deployed on Sui mainnet). Dormant by design
+(`PRODUCT.md`) — no further build until autonomous agents holding money need the
+owner/kill-switch story.
+
+### The Move contract
+
+One **shared `Registry` object** holds a `Table<address, AgentRecord>` plus an
+ERC-8004-style `next_id` counter. Sui `Table` entries are dynamic fields, so updates
+to different agents don't contend. The package is upgradeable with a version gate:
+`Registry.version` must match the package `VERSION` or mutations abort, and only the
+cold-held `AdminCap` can `migrate` after an upgrade — the upgrade authority never
+lives on a server.
+
+**`AgentRecord` fields** (fixed post-deploy — Move can't add struct fields in an
+upgrade; future data attaches as dynamic fields):
+
+| Field | What it holds |
+|---|---|
+| `agent: address` | The agent's Sui address — the canonical id |
+| `numeric_id: u64` | ERC-8004-style sequential id |
+| `owner: Option<address>` | Confirmed human owner (Passport), if any |
+| `pending_owner: Option<address>` | An unconfirmed ownership proposal |
+| `mcp_endpoint: Option<String>` | Where the agent's MCP/API lives |
+| `payment_methods: vector<String>` | e.g. `["x402"]` — how it takes payment |
+| `did: Option<String>` | Reserved for the x401 identity handshake |
+| `metadata_uri: Option<String>` | Off-chain rich profile pointer (Walrus) |
+| `active: bool` | Reversible kill-switch state |
+| `created_at_ms` / `updated_at_ms` | Clock timestamps |
+
+**Access rules** (enforced in Move): `register`/`update` — only the agent itself
+(`sender == agent`, self-sovereign; registration aborts if already registered);
+`set_pending_owner` — the agent proposes; `confirm_ownership` — only the proposed
+owner's signature binds it (nobody can claim a famous Passport unilaterally);
+`renounce_ownership` — only the confirmed owner; `set_active` — the agent **or** its
+confirmed owner (the reversible kill-switch — deactivate and reactivate, so a record
+can't get stuck dead while still blocking re-registration).
+
+**Events** — `AgentRegistered`, `AgentUpdated`, `PendingOwnerSet`, `OwnerLinked`,
+`OwnershipRenounced`, `AgentActiveSet` — are consumed by an off-chain indexer (a
+console cron, every 30 min) into the Postgres read-cache that serves the directory;
+the chain stays the source of truth.
+
+### Around the contract
 
 - **Register:** `t2 init` / `t2 agent register` / `t2 agent create` — sponsored,
-  gasless, idempotent. Address-anchored (plus an ERC-8004-style numeric id).
-- **@handles:** `t2 agent handle alice` → `alice.agent-id.sui` (SuiNS, custody-minted,
-  unique on-chain, releasable by the current target only).
-- **Ownership:** two-sided — the agent *proposes* (`t2 agent link <passport>`), the
-  owner *confirms* (console or `t2 agent confirm`); `unlink`/deactivate are the
-  kill-switch. Nobody can claim an agent unilaterally.
-- **Profile:** name/image/description/links, challenge-signed, no gas.
+  gasless, idempotent.
+- **@handles:** `t2 agent handle alice` → `alice.agent-id.sui` — SuiNS is the handle
+  truth (custody-minted, unique on-chain, releasable by the current target only);
+  deliberately OFF the registry object.
+- **Profile:** name/image/description/links — challenge-signed to the API, no gas.
 - **Directory:** public JSON at `api.t2000.ai/v1/agents` (ERC-8004
   `registration-v1`-compatible) + human profiles at `agents.t2000.ai`.
 

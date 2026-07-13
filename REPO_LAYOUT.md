@@ -18,12 +18,15 @@ t2000/
 │   ├── gateway/                             (MPP API gateway — mpp.t2000.ai)
 │   ├── verify/                              (verify.t2000.ai — public confidential-receipt explorer + paste-to-verify)
 │   └── web/                                 (t2000.ai marketing site)
-├── packages/                                ← npm packages (3 published: sdk, cli, mcp)
+├── packages/                                ← npm packages (4 published: sdk, cli, mcp, id)
 │   ├── cli/                                 (@t2000/cli)
+│   ├── id/                                  (@t2000/id — agent_id::registry client)
 │   ├── mcp/                                 (@t2000/mcp)
 │   └── sdk/                                 (@t2000/sdk)
 │   # design tokens live in design-tokens/tokens.css (copy-in, no package)
-├── t2000-skills/                            ← agent skills (canonical SKILL.md source)
+├── contracts/                               ← Move sources (agent_id, confidential_anchor — live on mainnet)
+├── scripts/                                 ← release tooling (release-notes.sh)
+├── t2000-skills/                            ← agent skills (canonical SKILL.md source + feed.json shelf)
 └── tsconfig.base.json, turbo.json,          ← workspace config
     package.json, pnpm-workspace.yaml
 ```
