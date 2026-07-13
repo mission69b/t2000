@@ -37,9 +37,10 @@ from a wallet. They don't mix.
   the developer engine: route coding-agent traffic through Private Inference via
   the `t2000/auto` router.
 
-## Deprecated
+## Removed
 
-- **`t2 agent onboard`** (wallet → credit → key) — deprecated 2026-07-13, removal at
-  the next major. Keys come from the console, period. (`t2 agent topup` remains for
-  existing wallet-credit accounts; machines making one-off inference calls use
-  keyless x402 on the gateway.)
+- **`t2 agent onboard` + `t2 agent topup`** (wallet → credit → key) — removed
+  2026-07-13 (ships in the next major). Keys come from the console, period;
+  machines making one-off inference calls use keyless x402 on the gateway.
+  `t2 chat` / `t2 verify` remain — they *consume* a key (`T2000_API_KEY`) and
+  verify receipts; they are not a second onboarding path.

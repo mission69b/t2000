@@ -1,14 +1,12 @@
 // `t2 agent` — Agent ID (on-chain identity: register · handle · profile ·
-// ownership) + the wallet-credit primitives.
-//
-// ⚠️ `onboard` is DEPRECATED (2026-07-13, PRODUCT.md one-path decision): keys
-// come from the console (agents.t2000.ai/manage), period. The command still
-// works (warn-first) and is removed at the next major. `topup` remains for
-// existing wallet-credit accounts.
+// ownership). Identity only: API keys come from the console
+// (agents.t2000.ai/manage) — the `onboard`/`topup` wallet-credit commands were
+// removed 2026-07-13 (PRODUCT.md one-path decision); machines making one-off
+// inference calls use keyless x402 on the gateway.
 
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { Command } from 'commander';
-import { formatUsd, type SupportedAsset, type T2000, truncateAddress } from '@t2000/sdk';
+import { truncateAddress } from '@t2000/sdk';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
@@ -23,42 +21,6 @@ import {
 } from '../../output.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
-
-function normalizeTopupAsset(input: string | undefined): 'USDC' | 'USDsui' {
-  return input?.toLowerCase() === 'usdsui' ? 'USDsui' : 'USDC';
-}
-
-/**
- * Send a gasless stablecoin deposit to the server's treasury and credit it —
- * the shared funding step behind both `onboard --fund` and `topup`. This is
- * the "never runs dry" primitive: an agent calls `t2 agent topup` (on a 402
- * from /v1, or on a schedule) to refill its own credit from its wallet.
- */
-async function fundCredit(
-  agent: T2000,
-  base: string,
-  amountStr: string,
-  assetOpt: string | undefined,
-): Promise<{ amount: number; asset: 'USDC' | 'USDsui'; balanceUsd: unknown }> {
-  const amount = Number.parseFloat(amountStr);
-  if (Number.isNaN(amount) || amount <= 0) {
-    throw new Error(`amount must be a positive number (got "${amountStr}").`);
-  }
-  const asset = normalizeTopupAsset(assetOpt);
-
-  const cfg = await fetchJson(`${base}/agent/topup`, { method: 'GET' });
-  const treasury = cfg.treasury as string | undefined;
-  if (!treasury) {
-    throw new Error('Could not resolve the t2000 treasury address.');
-  }
-
-  const sent = await agent.send({ to: treasury, amount, asset: asset as SupportedAsset });
-  const topup = await fetchJson(`${base}/agent/topup`, {
-    method: 'POST',
-    body: { address: agent.address(), digest: sent.tx },
-  });
-  return { amount, asset, balanceUsd: topup.balanceUsd };
-}
 
 async function fetchJson(
   url: string,
@@ -96,138 +58,6 @@ Subcommands:
     );
 
   registerAgentCreate(group);
-
-  group
-    .command('onboard')
-    .description(
-      '[DEPRECATED] Mint a Private Inference key from this wallet. Keys come from the console now — https://agents.t2000.ai/manage. Removal at the next major.',
-    )
-    .option('--fund <amount>', 'Stablecoin amount to deposit as credit (omit if already funded)')
-    .option('--asset <asset>', 'USDC (default) or USDsui', 'USDC')
-    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(
-      async (opts: {
-        fund?: string;
-        asset?: string;
-        key?: string;
-        api?: string;
-      }) => {
-        try {
-          if (!isJsonMode()) {
-            printInfo(
-              'DEPRECATED: `t2 agent onboard` will be removed in the next major. ' +
-                'Mint keys in the console instead: https://agents.t2000.ai/manage ' +
-                '(`t2 agent topup` keeps working for existing wallet-credit accounts).',
-            );
-          }
-          const base = opts.api ?? DEFAULT_API_BASE;
-          const agent = await withAgent({ keyPath: opts.key });
-          const address = agent.address();
-
-          // 1. Optional funding: send stablecoin to the treasury, then credit it.
-          if (opts.fund !== undefined) {
-            const funded = await fundCredit(agent, base, opts.fund, opts.asset);
-            if (!isJsonMode()) {
-              printSuccess(
-                `Funded ${formatUsd(funded.amount)} ${funded.asset} → credit $${funded.balanceUsd}`,
-              );
-            }
-          }
-
-          // 2. Challenge → sign → mint key.
-          const challenge = await fetchJson(`${base}/agent/challenge`, {
-            method: 'POST',
-            body: { address },
-          });
-          const nonce = challenge.nonce as string | undefined;
-          if (!nonce) {
-            throw new Error('Failed to get a challenge nonce.');
-          }
-
-          const message = new TextEncoder().encode(`t2000-agent-keys:${nonce}`);
-          const { signature } = await agent.keypair.signPersonalMessage(message);
-
-          const minted = await fetchJson(`${base}/agent/keys`, {
-            method: 'POST',
-            body: { address, nonce, signature },
-          });
-          const key = minted.key as string | undefined;
-          if (!key) {
-            throw new Error('Failed to mint an API key.');
-          }
-
-          // 3. Ensure an on-chain Agent ID (sponsored/gasless, idempotent).
-          //    Best-effort: a sponsor-empty / transient failure must not fail
-          //    onboarding — the identity registers on a later run.
-          let registered = false;
-          try {
-            await registerWallet({ keypair: agent.keypair, address, base });
-            registered = true;
-          } catch {
-            // best-effort
-          }
-
-          if (isJsonMode()) {
-            printJson({ address, apiKey: key, baseUrl: base, registered });
-            return;
-          }
-          printBlank();
-          printSuccess('Agent onboarded — API key minted (shown once, store it now)');
-          printKeyValue('Address', truncateAddress(address));
-          printKeyValue('API key', key);
-          printKeyValue(
-            'Agent ID',
-            registered ? 'registered' : 'pending (retry: t2 agent register)',
-          );
-          printKeyValue('Base URL', base);
-          printBlank();
-          printInfo(`export OPENAI_BASE_URL=${base}  OPENAI_API_KEY=${key}`);
-          printBlank();
-        } catch (error) {
-          handleError(error);
-        }
-      },
-    );
-
-  group
-    .command('topup')
-    .argument('<amount>', 'Stablecoin amount to deposit as credit')
-    .description(
-      "Top up this wallet's t2000 credit with gasless USDC/USDsui (no new key). The 'never runs dry' primitive — call it on a 402 or a schedule.",
-    )
-    .option('--asset <asset>', 'USDC (default) or USDsui', 'USDC')
-    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(
-      async (
-        amount: string,
-        opts: { asset?: string; key?: string; api?: string },
-      ) => {
-        try {
-          const base = opts.api ?? DEFAULT_API_BASE;
-          const agent = await withAgent({ keyPath: opts.key });
-          const funded = await fundCredit(agent, base, amount, opts.asset);
-
-          if (isJsonMode()) {
-            printJson({
-              address: agent.address(),
-              funded: funded.amount,
-              asset: funded.asset,
-              balanceUsd: funded.balanceUsd,
-            });
-            return;
-          }
-          printBlank();
-          printSuccess(
-            `Topped up ${formatUsd(funded.amount)} ${funded.asset} → credit $${funded.balanceUsd}`,
-          );
-          printBlank();
-        } catch (error) {
-          handleError(error);
-        }
-      },
-    );
 
   group
     .command('register')

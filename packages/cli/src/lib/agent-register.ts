@@ -1,5 +1,5 @@
 // Shared sponsored-registration helper (Agent ID B.1 gate 5b). Used by
-// `t2 agent register`, `t2 agent onboard` (ensure-registered), and `t2 init`
+// `t2 agent register`, `t2 agent create`, and `t2 init`
 // (best-effort). Two-phase: prepare (server builds the sponsored tx) → the
 // wallet signs the bytes → submit (server sponsor-co-signs + executes).
 
@@ -63,7 +63,7 @@ export interface RegisterResult {
 
 /**
  * Register `address` on-chain via the sponsored flow. Throws on failure (the
- * caller decides whether that's fatal — `register` surfaces it; `onboard`/`init`
+ * caller decides whether that's fatal — `register` surfaces it; `create`/`init`
  * treat it as best-effort).
  */
 export async function registerWallet(opts: {
