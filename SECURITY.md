@@ -4,70 +4,64 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.36.x  | ✅        |
-| < 0.36  | ❌        |
+| 8.x (latest major) | ✅ |
+| < 8 | ❌ |
+
+`@t2000/{sdk,cli,mcp,id}` release in lockstep — only the latest major receives
+security fixes.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in t2000, please report it responsibly.
-
 **Do NOT open a public GitHub issue for security vulnerabilities.**
-
-### How to report
 
 **GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/mission69b/t2000/security/advisories/new)
 
-### What to include
-
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
+Include: a description, steps to reproduce, potential impact, and a suggested fix
+if you have one.
 
 ### Response timeline
 
-- **Acknowledgment**: Within 48 hours
-- **Initial assessment**: Within 5 business days
-- **Fix timeline**: Critical issues within 7 days, others within 30 days
+- **Acknowledgment**: within 48 hours
+- **Initial assessment**: within 5 business days
+- **Fix timeline**: critical issues within 7 days, others within 30 days
 
 ### Scope
 
-The following are in scope:
-- `@t2000/sdk` — Key management, transaction building, send / swap / pay routing
-- `@t2000/cli` — Input validation, wallet file handling
-- `@t2000/mcp` — MCP server tool permissions, input validation
-- `@suimpp/mpp` — x402 / MPP payment method (Sui USDC)
-- Move contracts — On-chain fee collection, admin controls
-- Website — XSS, injection, authentication bypass
-
-> `@t2000/engine` was retired and deleted from this monorepo (2026-06-14). The published
-> `@t2000/engine@4.x` remains on npm for the frozen legacy Audric app and is out of scope
-> for this repo's security policy.
+- `@t2000/sdk` — key handling, transaction building, gasless send / swap / pay,
+  spend-limit enforcement, receipt verification (`verifyReceipt`)
+- `@t2000/cli` — input validation, wallet file handling (`~/.t2000`, `0600`)
+- `@t2000/mcp` — tool permissions, input validation
+- `@t2000/id` — `agent_id::registry` transaction builders
+- Move contracts (`contracts/`) — `agent_id::registry` (ownership / kill-switch
+  authorization) and `confidential_anchor` (receipt-anchor integrity)
+- `apps/gateway` (mpp.t2000.ai) — payment verification, refund path, upstream
+  API-key isolation
+- Websites (`apps/web`, `apps/verify`, `apps/docs`) — XSS, injection
 
 ### Out of scope
 
-- Third-party protocol vulnerabilities (NAVI contracts)
-- Social engineering attacks
-- Denial of service via rate limiting (already implemented)
-- Issues in dependencies (report to upstream maintainers)
+- The retired `@t2000/engine@4.x` on npm (frozen legacy consumer app only)
+- Social engineering; DoS via rate limiting (implemented)
+- Vulnerabilities in third-party dependencies (report upstream)
 
 ## Security Measures
 
-- AES-256-GCM encrypted key storage with scrypt KDF
-- Transaction simulation before execution
-- On-chain timelocked governance (7-day fee change delay)
-- Automated security scanning via GitHub Actions (CodeQL, dependency audit)
-- Transaction simulation + input validation across SDK and CLI
-
-> **Engine Security Model — historical.** `@t2000/engine` (the conversational-finance
-> harness — permission tiers, guards, delegated `pending_action` execution, cost limits,
-> session isolation) was retired and deleted from this monorepo on 2026-06-14. Its security
-> model applied to the engine package only and is no longer part of this repo. The published
-> `@t2000/engine@4.x` consumed by the frozen legacy Audric app is out of scope here.
+- **Non-custodial keys** — Ed25519, Bech32 JSON at `0600`; the private key never
+  leaves the user's machine. (No PIN/passphrase layer by design — the security
+  boundary is the filesystem ACL; see `ARCHITECTURE.md § Wallet + keys`.)
+- **Default-on spending limits** — per-tx + daily caps enforced inside the SDK,
+  gating CLI **and** MCP writes.
+- **Payment verification** — HMAC-bound stateless challenges + on-chain USDC
+  verification; automated refund on upstream failure (no-charge-on-failure).
+- **Confidential inference** — fail-closed GPU-TEE attestation, TEE-signed
+  receipts, Sui-anchored hashes, client-side DCAP verification (`t2 verify`).
+- **Upstream API keys** — gateway env vars only; never exposed to callers.
+- **Automated scanning** — CodeQL + dependency audit in GitHub Actions.
 
 ## Audit Status
 
 **Last audit**: March 2026 (automated full-stack review)
-**Status**: Findings being remediated — contact the maintainers for the full report
+**Status**: findings remediated on a rolling basis — contact the maintainers for
+the report.
 
-This is beta software. Use at your own risk. See [DISCLAIMER](/disclaimer) for details.
+This is beta software. Use at your own risk.
