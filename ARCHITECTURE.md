@@ -55,13 +55,13 @@ is a product decision. The gateway is fully isolated (own project, DB, Redis, ke
 
 ## Packages (npm, lockstep version)
 
-| Package | What it is |
-|---|---|
-| `@t2000/sdk` | TypeScript wallet core — send (gasless USDC/USDsui), swap (Cetus aggregator), pay (x402), history (GraphQL), balance, limits (`LimitEnforcer`), `verifyReceipt`. gRPC-only transport. |
-| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · chat · verify · export · limit · services · skills · mcp · agent (identity subcommands) |
-| `@t2000/mcp` | MCP server (stdio) — 13 tools + one prompt per skill, skill bodies baked at build time |
-| `@t2000/id` | `agent_id::registry` client — `buildRegisterTx`, `buildUpdateTx`, ownership txs; ids baked for mainnet |
-| `@suimpp/mpp` | The x402/MPP Sui payment method (client + server verification) — suimpp repo |
+| Package | What it is | Why it exists |
+|---|---|---|
+| `@t2000/sdk` | TypeScript wallet core — send (gasless USDC/USDsui), swap (Cetus aggregator), pay (x402), history (GraphQL), balance, limits (`LimitEnforcer`), `verifyReceipt`. gRPC-only transport. | One tested money path shared by every consumer (CLI, MCP, Audric) — chain plumbing, gasless mechanics, and spend limits are implemented once, never per-host. |
+| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · chat · verify · export · limit · services · skills · mcp · agent (identity subcommands) | The terminal front door: humans, scripts, and CI drive the wallet without writing code. |
+| `@t2000/mcp` | MCP server (stdio) — 13 tools + one prompt per skill, skill bodies baked at build time | Puts the wallet *inside* AI clients (Claude, Cursor, Windsurf) over the open MCP standard — agents get money tools with zero custom integration. |
+| `@t2000/id` | `agent_id::registry` client — `buildRegisterTx`, `buildUpdateTx`, ownership txs; ids baked for mainnet | Lets third parties build against the identity registry without pulling in the whole wallet SDK. |
+| `@suimpp/mpp` | The x402/MPP Sui payment method (client + server verification) — suimpp repo | The payment method as a small open package so *any* server can accept x402-on-Sui — the standard is bigger than our gateway. |
 
 All four `@t2000/*` packages release in lockstep via `release.yml` → `publish.yml`
 (see `CLAUDE.md § Release process`; never publish manually). Removing a CLI command is
