@@ -121,9 +121,14 @@ describe('docs consistency — MCP tool names, skill links, prompt names', () =>
   });
 
   it('every t2000.ai/skills/<slug> link points at an existing skill', () => {
+    // Reserved non-skill paths under /skills/: the shelf feed (feed.json) and
+    // the brand-mark assets (brand/<file>) — S.705 shelf infrastructure.
+    const reserved = new Set(['feed', 'brand']);
     const violations = scanPattern(
       /t2000\.ai\/skills\/([a-z0-9-]+)/g,
-      (slug) => existsSync(join(REPO_ROOT, 't2000-skills/skills', slug, 'SKILL.md')),
+      (slug) =>
+        reserved.has(slug) ||
+        existsSync(join(REPO_ROOT, 't2000-skills/skills', slug, 'SKILL.md')),
     );
     expect(violations, `dead skill links in docs:\n${report(violations)}`).toEqual([]);
   });

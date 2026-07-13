@@ -22,9 +22,9 @@ const STEPS = [
   },
   {
     n: "4",
-    title: "Credit + key",
-    cmd: "t2 agent onboard --fund 5",
-    note: "$5 from this wallet → a credit balance and an API key. No browser.",
+    title: "Get a key",
+    cmd: "open https://agents.t2000.ai/manage",
+    note: "Sign in with Google → add credit (card or USDC) → API keys → Create. The one key path.",
   },
   {
     n: "5",
@@ -47,7 +47,7 @@ export function GettingStarted() {
             className="m-0 max-w-[300px] text-[16px] leading-[1.55]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            Five commands. No signup, no keys, no gas.
+            Five steps, zero gas — a wallet for paying, a key for models.
           </p>
         </header>
 

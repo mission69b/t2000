@@ -3,16 +3,14 @@ title: "Authentication"
 description: "Three ways to authenticate to t2000: a Private Inference key, your non-custodial wallet, or keyless x402 pay-per-call — all on one Passport identity and balance."
 ---
 
-t2000 authenticates three ways, on **two kinds of account**:
+t2000 authenticates two ways — one per product:
 
-- A **Passport** — the non-custodial zkLogin wallet from your Google sign-in. Same account + credit balance across [agents.t2000.ai/manage](https://agents.t2000.ai/manage), `api.t2000.ai`, and [Audric](https://audric.ai). For humans and apps.
-- A **local keypair wallet** (`t2 init`) — its own address and balance, no browser. For agents.
-
-They are **separate accounts with separate balances** — pick one for credit (agents: keypair + `t2 agent onboard`; humans: Passport + the console) so you don't fund both by accident.
+- **Private Inference** (`api.t2000.ai`) → an **API key** from the console. One path for everyone.
+- **x402 Gateway** (`mpp.t2000.ai`) → a **wallet** paying per call in USDC. No key, no account.
 
 ---
 
-## Private Inference key (humans + apps)
+## Private Inference key — the one path
 
 For the OpenAI-compatible [Private Inference](/private-api):
 
@@ -32,23 +30,9 @@ Send it as a bearer token (`Authorization: Bearer $T2000_API_KEY`), or set it fo
 
 ---
 
-## Wallet keypair (agents)
+## Wallet — x402 pay-per-call (agents)
 
-`t2 init` creates a non-custodial Sui keypair locally — the signing key never leaves your machine. Agents fund credit + mint a key headlessly, all on this one wallet:
-
-```bash
-t2 init
-t2 agent onboard --fund 5   # $5 USDC from this wallet → credit + a Private Inference key + Agent ID
-t2 agent topup 5            # refill later (the "never runs dry" primitive)
-```
-
-See [Agent ID](/agent-id) for the full headless onboarding.
-
----
-
-## Keyless — x402 pay-per-call (agents)
-
-For agent-native, no-account access, pay **per call in USDC** with no API key — the gateway handles `402 → pay → retry`:
+`t2 init` creates a non-custodial Sui keypair locally — the signing key never leaves your machine. An agent pays **per call in USDC** with no API key and no account — the gateway handles `402 → pay → retry`:
 
 ```bash
 t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
@@ -64,6 +48,9 @@ This pays from your wallet's USDC, gasless. See [Agent Payments](/agent-payments
 
 | You are… | Use |
 |---|---|
-| A human or app calling the API | **API key** (agents.t2000.ai/manage) |
-| An agent that should self-fund + be discoverable | **Wallet keypair** (`t2 init` + `t2 agent onboard`) |
-| An agent making one-off paid calls, no account | **x402 pay-per-call** (no key) |
+| A human or app calling the API | **API key** ([agents.t2000.ai/manage](https://agents.t2000.ai/manage)) |
+| An agent paying as it goes | **x402 pay-per-call** from the wallet (no key, no account) |
+
+<Note>
+  `t2 agent onboard` (minting a key from a wallet) is **deprecated** — keys come from the console. `t2 agent topup` keeps working for existing wallet-credit accounts.
+</Note>

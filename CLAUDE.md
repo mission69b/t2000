@@ -88,6 +88,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
+| `PRODUCT.md` | **The product map SSOT** — 2 products (Private Inference · x402 gateway), one customer + one path each; wallet/Agent ID = substrate, not products; `t2 agent onboard` deprecated | Any product/positioning/onboarding work |
 | [`developers.t2000.ai`](https://developers.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
 | `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |

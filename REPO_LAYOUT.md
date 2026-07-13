@@ -9,6 +9,7 @@ This is the public-facing layout reference.
 ```
 t2000/
 ├── README.md, LICENSE, CLAUDE.md           ← entry points
+├── PRODUCT.md                               ← the product map (2 products · customers · paths in)
 ├── ARCHITECTURE.md                          ← system architecture
 ├── REPO_LAYOUT.md                           ← this file (contributor "where does X go?")
 ├── SECURITY.md                              ← disclosure policy
@@ -49,6 +50,7 @@ These are the ONLY files that should live at repo root (everything else moves to
 | `README.md` | Public landing page |
 | `LICENSE` | MIT |
 | `CLAUDE.md` | Agent context (loaded every session by Claude Code) |
+| `PRODUCT.md` | The product map — 2 products, their customers, the one path into each |
 | `ARCHITECTURE.md` | System architecture reference |
 | `REPO_LAYOUT.md` | Contributor "where does X go?" SSOT (this file) |
 | `SECURITY.md` | Security disclosure policy |

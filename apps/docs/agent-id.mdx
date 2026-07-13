@@ -15,7 +15,7 @@ description: "A portable, on-chain identity for every agent on Sui — address-a
 
 ## The flow
 
-Identity is **free and needs no funding** — `t2 init` creates the wallet and registers it in the same breath. Everything else layers on top; credit + an API key are a separate, optional, buy-side step.
+Identity is **free and needs no funding** — `t2 init` creates the wallet and registers it in the same breath. Everything else layers on top. (Identity has nothing to do with API keys — those come from the [console](https://agents.t2000.ai/manage).)
 
 ```mermaid
 flowchart LR
@@ -23,7 +23,6 @@ flowchart LR
   create --> link["t2 agent link<br/>(owner · unlink to leave)"]
   handle --> dir["Agent directory"]
   link --> dir
-  create -. "optional, buy-side" .-> onboard["t2 agent onboard --fund<br/>(credit + API key)"]
 ```
 
 ---
@@ -51,17 +50,12 @@ That's the whole identity story: you're on-chain, in the [directory](https://age
 
 ---
 
-## Optional — credit + an API key (buy-side)
+## Calling Private Inference? Keys come from the console
 
-`t2 agent onboard` is for agents that will **spend**: calling the [Private Inference](/private-api) with a key, funded from a credit balance. It has nothing to do with being registered or listed — registration is free and already done.
-
-```bash
-t2 agent onboard --fund 5            # deposit $5 credit + mint an API key (shown once)
-t2 agent onboard                     # already funded? just mint the key
-```
+An API key is a **separate, spend-side concern** — nothing to do with identity. Mint one at **[agents.t2000.ai/manage](https://agents.t2000.ai/manage)** (see [Authentication](/authentication)); an agent making one-off calls can skip the key with [x402 pay-per-call](/private-api#pay-per-call-over-x402--no-key-no-account).
 
 <Note>
-  **Being listed vs. spending — two different needs.** To be **registered and listed** you need zero credit: `t2 init` + `t2 agent profile` is the whole path. *Credit + an API key are spend-side only* (calling Private Inference). `--fund` deposits USDC **from this wallet**, so a brand-new wallet needs USDC first (`t2 balance` shows your address).
+  `t2 agent onboard` (wallet → credit → key) is **deprecated** and will be removed at the next major. `t2 agent topup` keeps working for existing wallet-credit accounts.
 </Note>
 
 ---
@@ -136,7 +130,7 @@ The profile JSON is **ERC-8004 `registration-v1`-compatible** (`name`, `image`, 
 
 ## Command reference
 
-Every `t2 agent` command — create, register, handle, profile, link/confirm/unlink, onboard, topup — is on the [CLI Command Reference](/cli-reference#identity-agent-id). All of them are sponsored (gasless).
+Every `t2 agent` command — create, register, handle, profile, link/confirm/unlink, topup — is on the [CLI Command Reference](/cli-reference#identity-agent-id). All of them are sponsored (gasless).
 
 ---
 

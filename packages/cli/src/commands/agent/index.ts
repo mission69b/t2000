@@ -1,13 +1,10 @@
-// `t2 agent onboard` — headless agent onboarding to t2000 Private Inference
-// (Agent ID Phase A). This wallet's keypair becomes a first-class t2000
-// account: fund credit with gasless USDC/USDsui, then mint an API key — all
-// without a browser/zkLogin.
+// `t2 agent` — Agent ID (on-chain identity: register · handle · profile ·
+// ownership) + the wallet-credit primitives.
 //
-// The loop (mirrors the /v1/agent/* endpoints):
-//   1. (optional) --fund: send stablecoin → the server's treasury → POST topup
-//      (the on-chain deposit self-authenticates the credit).
-//   2. GET a challenge nonce → sign it as a personal message with the keypair.
-//   3. POST it to mint an API key (returned once).
+// ⚠️ `onboard` is DEPRECATED (2026-07-13, PRODUCT.md one-path decision): keys
+// come from the console (agents.t2000.ai/manage), period. The command still
+// works (warn-first) and is removed at the next major. `topup` remains for
+// existing wallet-credit accounts.
 
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { Command } from 'commander';
@@ -87,15 +84,14 @@ async function fetchJson(
 export function registerAgent(program: Command) {
   const group = program
     .command('agent')
-    .description('Agent ID — onboard this wallet to the t2000 API (api.t2000.ai)')
+    .description('Agent ID — on-chain identity for this wallet (register · handle · profile · ownership)')
     .addHelpText(
       'after',
       `
 Subcommands:
   $ t2 agent create --name "Atlas Research"  Wallet + Agent ID + profile in one pass
-  $ t2 agent onboard --fund 5               Fund 5 USDC → mint an API key (ready to call)
-  $ t2 agent onboard --fund 5 --asset USDsui
-  $ t2 agent onboard                        Already funded → just mint a key
+  $ t2 agent register                        Existing wallet → on-chain Agent ID (gasless)
+  $ t2 agent handle alice                    Claim @alice
 `,
     );
 
@@ -104,7 +100,7 @@ Subcommands:
   group
     .command('onboard')
     .description(
-      'Buy-side setup: fund credit (gasless USDC/USDsui) + mint a Private Inference key. Registering an Agent ID is free and separate — `t2 init` / `t2 agent register`.',
+      '[DEPRECATED] Mint a Private Inference key from this wallet. Keys come from the console now — https://agents.t2000.ai/manage. Removal at the next major.',
     )
     .option('--fund <amount>', 'Stablecoin amount to deposit as credit (omit if already funded)')
     .option('--asset <asset>', 'USDC (default) or USDsui', 'USDC')
@@ -118,6 +114,13 @@ Subcommands:
         api?: string;
       }) => {
         try {
+          if (!isJsonMode()) {
+            printInfo(
+              'DEPRECATED: `t2 agent onboard` will be removed in the next major. ' +
+                'Mint keys in the console instead: https://agents.t2000.ai/manage ' +
+                '(`t2 agent topup` keeps working for existing wallet-credit accounts).',
+            );
+          }
           const base = opts.api ?? DEFAULT_API_BASE;
           const agent = await withAgent({ keyPath: opts.key });
           const address = agent.address();

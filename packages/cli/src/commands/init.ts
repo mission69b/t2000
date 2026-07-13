@@ -108,7 +108,7 @@ export function registerInit(program: Command) {
         // Best-effort on-chain Agent ID — gives the wallet a registry identity
         // from the start. Non-blocking + timeout-bounded so `init` stays
         // offline-tolerant; if it can't reach the sponsor it silently defers
-        // (a later `t2 agent register`/`onboard` completes it).
+        // (a later `t2 agent register` completes it).
         let registered = false;
         if (opts.register !== false) {
           try {

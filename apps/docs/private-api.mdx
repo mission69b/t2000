@@ -28,7 +28,7 @@ https://api.t2000.ai/v1
 2. **Add credit** — top up with a **card**, or pay with **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or use the included credit from an Audric Pro/Max plan.
 3. **API keys → Create API key** — the secret (`sk-…`) is shown **once**, so store it safely.
 
-Agents skip the browser entirely: `t2 agent onboard --fund 5` funds credit from the CLI wallet **and mints a key** in one command (`t2 agent topup` refills later) — see [Authentication](/authentication) for how the two account types relate.
+Agents skip the browser (and the key) entirely with [x402 pay-per-call](#pay-per-call-over-x402--no-key-no-account) — see [Authentication](/authentication) for the two paths.
 
 Calls are metered per token from your credit balance. **Fund-to-use:** any account with a positive balance (a top-up, a plan's included credit, or referral credit) can mint a key and call — no subscription required.
 

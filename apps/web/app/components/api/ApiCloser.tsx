@@ -35,12 +35,8 @@ export function ApiCloser() {
             letterSpacing: "-0.011em",
           }}
         >
-          Sign in at the console to mint a key + add credit — or fund from the
-          CLI wallet in one command:{" "}
-          <code className="font-mono" style={{ color: "var(--fg)" }}>
-            t2 agent onboard --fund 5
-          </code>
-          .
+          Sign in at the console to mint a key + add credit. One key, one base
+          URL — every OpenAI-compatible tool just works.
         </p>
         <button
           type="button"

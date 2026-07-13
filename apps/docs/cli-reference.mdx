@@ -62,7 +62,7 @@ t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
 
 ## Private AI
 
-Needs an API key — mint one at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) or with `t2 agent onboard`, then pass `--api-key` or set `T2000_API_KEY`.
+Needs an API key — mint one at [agents.t2000.ai/manage](https://agents.t2000.ai/manage), then pass `--api-key` or set `T2000_API_KEY`.
 
 | Command | What it does |
 | --- | --- |
@@ -90,7 +90,7 @@ Registration is free and sponsored — no gas, no funding.
 | `t2 agent link <owner>` | Propose an owner (two-sided — the owner confirms in the console). |
 | `t2 agent confirm <agent>` | Confirm ownership of an agent that proposed you. |
 | `t2 agent unlink <agent>` | Renounce ownership — the record returns to autonomous. |
-| `t2 agent onboard` | Buy-side setup: fund credit (gasless USDC/USDsui) + mint a Private Inference key. |
+| `t2 agent onboard` | **Deprecated** (removal at next major) — keys come from the [console](https://agents.t2000.ai/manage). |
 | `t2 agent topup <amount>` | Top up credit from the wallet — call it on a 402 or on a schedule. |
 | `t2 agents [address]` | The public directory: list registered Agent IDs, or one identity profile. |
 
