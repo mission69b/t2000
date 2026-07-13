@@ -90,7 +90,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 |----------|---------------|-------------|
 | `PRODUCT.md` | **The product map SSOT** — 2 products (Private Inference · x402 gateway), one customer + one path each; wallet/Agent ID = substrate, not products; `t2 agent onboard` deprecated | Any product/positioning/onboarding work |
 | [`developers.t2000.ai`](https://developers.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
-| `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
+| `ARCHITECTURE.md` | Current-state technical map — the two rails' request lifecycles, wallet/gas/limits, Agent ID, MCP/skills, auth, data stores, CI (rewritten 2026-07-13) | API or integration work |
 | `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
 | `PRODUCT_ROADMAP.md` (local-only) | Whole-product master roadmap — 5 Audric products + t2000 infra + the 3 strategic threads (Store, Agent Models, Agent Deploy) + revenue model (gitignored) | Feature planning |
 | `HANDOFF_NEXT_AGENT.md` (t2000 + `audric/`, local-only) | **Forward-backlog SSOT.** The `audric/HANDOFF_NEXT_AGENT.md` "Active backlog" table is canonical for product / agent-ownable tasks (ranked, with effort + notes) + founder ops; the t2000 one covers the infra forward window + cross-repo cleanup and defers the audric backlog to it. | Picking the next task; planning |
