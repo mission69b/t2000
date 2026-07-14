@@ -106,36 +106,9 @@ Set your endpoint + payment methods on the registry record with [`@t2000/id`](/a
 
 ---
 
-## 6. Ship a skill so agents find you
+## Optional — a skill, so agents reach for you by intent
 
-A **skill** is your API's how-to in agent-readable form — a markdown playbook that agents (Claude Code, Cursor, and friends) load and follow. Once merged it's served at `t2000.ai/skills/<your-slug>`, rendered on the [agents.t2000.ai](https://agents.t2000.ai) shelf, and listed in the machine discovery manifest — so an agent told "book a luxury hotel" can find you, learn your endpoints, and pay you without a human wiring anything.
-
-One PR to [t2000-skills](https://github.com/mission69b/t2000/tree/main/t2000-skills), three files, no deploy on our side:
-
-1. **`skills/<slug>/SKILL.md`** — the playbook. Frontmatter + three things an agent needs: *when to use you* (the phrases/jobs that should route to your API), *how to call each endpoint* (the exact `t2 pay` command with the price), and *what comes back* (response shape, common errors). **Every command must be run against your live mainnet endpoint before you write it down** — the shelf rule.
-
-```markdown
----
-name: jmpr-hotels
-description: Search + book curated luxury hotels, paid per-call in USDC over x402.
----
-
-## When to use
-The user wants a 5-star / boutique / ultra-luxury hotel with live rates.
-
-## Search ($0.02/call)
-t2 pay https://agent.jmpr.world/v1/hotels/search \
-  --data '{"destination":"Paris","checkin":"2026-08-01","nights":3}' --max-price 0.05
-Returns: { hotels: [{ id, name, rating, nightly_rate, … }] }
-
-## Detail → Reserve
-… one section per endpoint, same shape …
-```
-
-2. **`brand/<your-mark>.png`** — a square brand mark (~200px).
-3. **A project entry in `feed.json`** — id, name, one-line tagline, url, icon path, accent hex, `lastVerified` date, and your skill rows.
-
-Run `npx tsx validate.ts` (checks frontmatter, feed shape, icons, slug↔dir consistency) — if it passes and the PR merges, you're live within ~5 minutes.
+Being listed makes you *findable*; a **skill** makes agents route whole intents to you proactively — "find me a 5-star hotel in Paris" loads your playbook without the user ever mentioning APIs or payments. It's optional, it can only be written once you're live (every command is verified against mainnet first), and **for early sellers we write it with you at launch**. Self-serve later via a PR to [t2000-skills](https://github.com/mission69b/t2000/tree/main/t2000-skills) — the repo README has the format.
 
 ---
 
@@ -148,6 +121,5 @@ Run `npx tsx validate.ts` (checks frontmatter, feed shape, icons, slug↔dir con
 | Settle + verify | `t2 pay <your-endpoint> --max-price 0.10` → 200 + `X-PAYMENT-RESPONSE`, USDC lands at `payTo` |
 | Discovery | `check()` returns `ok: true` |
 | Listed | your profile at agents.t2000.ai |
-| Skill live | `curl https://t2000.ai/skills/<your-slug>` returns your playbook |
 
 **Links:** [suimpp.dev/spec](https://suimpp.dev/spec) (the normative wire format) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) (server reference) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) (validator) · [Agent Payments](/agent-payments) (the buyer side) · [Agent ID](/agent-id) (identity + directory) · live example envelope: [mpp.t2000.ai/.well-known/x402.json](https://mpp.t2000.ai/.well-known/x402.json)
