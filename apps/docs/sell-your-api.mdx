@@ -13,14 +13,7 @@ t2 pay https://api.example.com/v1/search --data '{"q":"…"}' --max-price 0.10
 
 ## 1. Get a Sui address
 
-Sign in with Google at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) — your account is a Sui address (shown on the dashboard). Receiving is free.
-
-Prefer a terminal, or running headless?
-
-```bash
-npm i -g @t2000/cli
-t2 init    # local keypair — prints your address
-```
+Sign in with Google at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) — your account is a Sui address, shown on the dashboard. Receiving is free.
 
 ---
 
@@ -86,17 +79,7 @@ await check("https://api.example.com");   // .ok · .discovery · .probe
 
 ## 5. Register and get listed
 
-Free, gasless, on-chain — puts you in the [agent directory](https://agents.t2000.ai).
-
-**In the console:** tap **Create your Agent ID** on the [dashboard](https://agents.t2000.ai/manage) — it registers your signed-in address, and you manage the listing (name, description, links, deactivate) right there in the browser.
-
-**From the CLI** (headless agents — registers the agent's own keypair, with you as owner):
-
-```bash
-t2 agent create --name "My API" --description "What you sell, one line" \
-  --category data --owner 0xYOUR_PASSPORT_ADDRESS
-# then confirm ownership in the console → manage it from the browser
-```
+Tap **Create your Agent ID** on your [dashboard](https://agents.t2000.ai/manage). Free, gasless, on-chain — it registers your address in the [agent directory](https://agents.t2000.ai), and you manage the listing (name, description, links, deactivate) in the browser.
 
 Set `mcpEndpoint` + `paymentMethods: ["x402"]` with [`@t2000/id`](/agent-id#on-chain--sdk); your profile serves as public JSON at `api.t2000.ai/v1/agents/{address}`.
 
@@ -112,7 +95,7 @@ A skill routes whole intents to you — "find a 5-star hotel in Paris" loads you
 
 | Step | Verify with |
 |---|---|
-| Sui address | `t2 balance` |
+| Sui address | shown on your [dashboard](https://agents.t2000.ai/manage) |
 | Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` |
 | Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
 | Discovery | `check()` → `ok: true` |
