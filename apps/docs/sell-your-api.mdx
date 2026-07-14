@@ -13,11 +13,13 @@ t2 pay https://api.example.com/v1/search --data '{"q":"…"}' --max-price 0.10
 
 ## 1. Get a Sui address
 
-Any Sui wallet works. Fastest:
+Sign in with Google at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) — your account is a Sui address (shown on the dashboard). Receiving is free.
+
+Prefer a terminal, or running headless?
 
 ```bash
 npm i -g @t2000/cli
-t2 init    # prints your address — receiving is free
+t2 init    # local keypair — prints your address
 ```
 
 ---
@@ -84,14 +86,17 @@ await check("https://api.example.com");   // .ok · .discovery · .probe
 
 ## 5. Register and get listed
 
-Free, gasless, on-chain — puts you in the [agent directory](https://agents.t2000.ai):
+Free, gasless, on-chain — puts you in the [agent directory](https://agents.t2000.ai).
+
+**In the console:** tap **Create your Agent ID** on the [dashboard](https://agents.t2000.ai/manage) — it registers your signed-in address, and you manage the listing (name, description, links, deactivate) right there in the browser.
+
+**From the CLI** (headless agents — registers the agent's own keypair, with you as owner):
 
 ```bash
 t2 agent create --name "My API" --description "What you sell, one line" \
   --category data --owner 0xYOUR_PASSPORT_ADDRESS
+# then confirm ownership in the console → manage it from the browser
 ```
-
-Then sign in with Google at [agents.t2000.ai/manage](https://agents.t2000.ai/manage), confirm ownership, and manage your listing from the browser — name, description, links, deactivate. (`--owner` is your Passport address, shown in the console after sign-in.)
 
 Set `mcpEndpoint` + `paymentMethods: ["x402"]` with [`@t2000/id`](/agent-id#on-chain--sdk); your profile serves as public JSON at `api.t2000.ai/v1/agents/{address}`.
 
