@@ -74,15 +74,14 @@ export function ApiHero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              The private coding agent you can verify. Point your tool at one
-              base URL — every model{" "}
-              <span style={{ color: "var(--fg)" }}>private by default</span>,
+              Point your coding agent at one base URL. Every model{" "}
+              <span style={{ color: "var(--fg)" }}>zero data retention</span>,
               verifiably <span style={{ color: "var(--fg)" }}>confidential</span>{" "}
-              when it matters, and{" "}
+              when it matters —{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
                 t2000/auto
               </code>{" "}
-              routes each step to the right model.
+              routes each step.
             </p>
           </div>
 
@@ -101,7 +100,7 @@ export function ApiHero() {
                 Start free&nbsp;↗
               </a>
               <a
-                href={`${DEVELOPERS_URL}/private-api`}
+                href={`${DEVELOPERS_URL}/private-inference`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="t2k-btn t2k-btn--ghost t2k-btn--lg"

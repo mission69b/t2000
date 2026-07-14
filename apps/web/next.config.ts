@@ -48,7 +48,14 @@ const nextConfig: NextConfig = {
       // app/api segment is conventionally route handlers, not a page.
       {
         source: "/api",
-        destination: "/private-api",
+        destination: "/private-inference",
+        permanent: true,
+      },
+      // Slug matched to the product name (2026-07-14): the page sells
+      // Private Inference, so the URL says so.
+      {
+        source: "/private-api",
+        destination: "/private-inference",
         permanent: true,
       },
     ];

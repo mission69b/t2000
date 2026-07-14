@@ -25,15 +25,15 @@ https://api.t2000.ai/v1
 ## Get a key
 
 1. Sign in at **[agents.t2000.ai/manage](https://agents.t2000.ai/manage)** with Google.
-2. **Add credit** — top up with a **card**, or pay with **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or use the included credit from an Audric Pro/Max plan.
-3. **API keys → Create API key** — the secret (`sk-…`) is shown **once**, so store it safely.
+2. **API keys → Create API key** — free, no deposit. The secret (`sk-…`) is shown **once**, so store it safely.
+3. **Add credit** for paid models — card, **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or an Audric Pro/Max plan's included credit.
 
 Agents skip the browser (and the key) entirely with [x402 pay-per-call](#pay-per-call-over-x402--no-key-no-account) — see [Authentication](/authentication) for the two paths.
 
-Calls are metered per token from your credit balance. **Fund-to-use:** any account with a positive balance (a top-up, a plan's included credit, or referral credit) can mint a key and call — no subscription required.
+**Free tier:** every account gets a **daily allowance on `moonshotai/kimi-k2.7-code`** (resets daily, UTC) — so a fresh key works at a $0 balance. Every other model is metered per token from your credit balance and fails closed at $0.
 
 <Note>
-  Calls fail closed at a $0 balance — add credit at agents.t2000.ai/manage. Keep keys server-side; rotate (revoke + recreate) if one leaks.
+  Keep keys server-side; rotate (revoke + recreate) if one leaks.
 </Note>
 
 ---

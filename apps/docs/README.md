@@ -2,7 +2,7 @@
 
 Source for the Mintlify-hosted developer documentation site at [`developers.t2000.ai`](https://developers.t2000.ai).
 
-Sectioned nav (S.702 "virtuals-style" restructure — see `docs.json` for the SSOT): **Get started** (index, quickstart, use-from-your-agent, platform) · **Wallet & payments** · **Identity** (agent-id) · **Private Inference** (private-api, authentication, models, use-with-your-tools) · **Confidential AI** (8 pages) · **Reference** (cli-reference, agent-sdk, agent-stack) · **API reference** (OpenAPI-backed) — plus the Recipes and Changelog tabs.
+Sectioned nav (S.702 "virtuals-style" restructure — see `docs.json` for the SSOT): **Get started** (index, quickstart, use-from-your-agent, platform) · **Wallet & payments** · **Identity** (agent-id) · **Private Inference** (private-inference, authentication, models, use-with-your-tools) · **Confidential AI** (8 pages) · **Reference** (cli-reference, agent-sdk, agent-stack) · **API reference** (OpenAPI-backed) — plus the Recipes and Changelog tabs.
 
 ## Local development
 

@@ -12,20 +12,20 @@ t2000 authenticates two ways — one per product:
 
 ## Private Inference key — the one path
 
-For the OpenAI-compatible [Private Inference](/private-api):
+For the OpenAI-compatible [Private Inference](/private-inference):
 
 1. Sign in at **[agents.t2000.ai/manage](https://agents.t2000.ai/manage)** with Google (zkLogin).
-2. **Add credit** — card, **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or an Audric Pro/Max plan's included credit.
-3. **API keys → Create API key** — the secret (`sk-…`) is shown **once**; store it safely.
+2. **API keys → Create API key** — free, no deposit. The secret (`sk-…`) is shown **once**; store it safely.
+3. **Add credit** for paid models — card, **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or an Audric Pro/Max plan's included credit.
 
 ```bash
 export T2000_API_KEY="sk-…"
 ```
 
-Send it as a bearer token (`Authorization: Bearer $T2000_API_KEY`), or set it for the CLI/SDK and the MCP server env. **Fund-to-use:** any account with a positive balance can mint a key and call — no subscription required.
+Send it as a bearer token (`Authorization: Bearer $T2000_API_KEY`), or set it for the CLI/SDK and the MCP server env. A fresh key works at a $0 balance via the free daily allowance on `moonshotai/kimi-k2.7-code`; every other model is metered from credit — no subscription required.
 
 <Note>
-  Calls fail closed at a $0 balance. Keep keys server-side; rotate (revoke + recreate) if one leaks. Each key is capped at 120 req/min.
+  Paid models fail closed at a $0 balance. Keep keys server-side; rotate (revoke + recreate) if one leaks. Each key is capped at 120 req/min.
 </Note>
 
 ---

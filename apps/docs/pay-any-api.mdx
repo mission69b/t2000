@@ -83,7 +83,7 @@ Every chat provider speaks the **OpenAI Chat Completions shape** — swap the pa
 `embeddings`, `images/generations`, `audio/speech`, and `audio/transcriptions` are mirrored too. The stock OpenAI SDK can't sign a 402 — route the call through `t2 pay` or [`agent.pay()`](/agent-sdk) and parse the verbatim OpenAI response as usual.
 
 <Note>
-  **Private inference, no key.** t2000's own [Private Inference](/private-api) is a first-party x402 service — open + confidential (GPU-TEE) models, same pay-per-call flow.
+  **Private inference, no key.** t2000's own [Private Inference](/private-inference) is a first-party x402 service — open + confidential (GPU-TEE) models, same pay-per-call flow.
 </Note>
 
 ---

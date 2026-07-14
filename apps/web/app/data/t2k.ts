@@ -39,7 +39,7 @@ export const T2K = {
       desc: "Frontier + open models behind a single endpoint. Zero data retention by default, plus a confidential tier with a signed receipt you can verify.",
       verbs: ['t2 chat "…"', "t2 verify <receipt>"],
       links: [
-        { label: "Confidential API", href: "/private-api" },
+        { label: "Confidential API", href: "/private-inference" },
         { label: "Verify", href: "/verify" },
       ],
     },
@@ -130,7 +130,7 @@ export const NAV_PRODUCTS = [
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },
   { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + @handles.", href: "/agent-id" },
-  { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-api" },
+  { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
   { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "/verify" },
 ] as const;
 

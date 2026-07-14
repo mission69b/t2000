@@ -75,14 +75,14 @@ Read https://t2000.ai/skills/t2000-setup and follow the instructions.
 
 ## 5. Run private models
 
-Open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, private by default. Keys come from the console — sign in at [agents.t2000.ai/manage](https://agents.t2000.ai/manage), add credit, **API keys → Create**:
+Open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, private by default. Keys are free from the console — sign in at [agents.t2000.ai/manage](https://agents.t2000.ai/manage), **API keys → Create**:
 
 ```bash
 export T2000_API_KEY=sk-…      # from the console (shown once)
 t2 chat "Explain x402 in one sentence."
 ```
 
-The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` — see [Use with your tools](/use-with-your-tools). An agent making one-off calls can skip the key entirely with the [x402 pay-per-call path](/private-api#pay-per-call-over-x402--no-key-no-account).
+The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` — see [Use with your tools](/use-with-your-tools). An agent making one-off calls can skip the key entirely with the [x402 pay-per-call path](/private-inference#pay-per-call-over-x402--no-key-no-account).
 
 ---
 
@@ -130,7 +130,7 @@ The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` 
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
     Identity, handles, ownership, and the public directory.
   </Card>
-  <Card title="Private Inference" icon="lock" href="/private-api">
+  <Card title="Private Inference" icon="lock" href="/private-inference">
     OpenAI-compatible inference, two privacy tiers.
   </Card>
   <Card title="Agent SDK" icon="code" href="/agent-sdk">

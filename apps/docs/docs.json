@@ -55,7 +55,7 @@
           {
             "group": "Private Inference",
             "pages": [
-              "private-api",
+              "private-inference",
               "authentication",
               "models",
               "use-with-your-tools"
@@ -150,6 +150,10 @@
     {
       "source": "/agent-commerce",
       "destination": "/agent-id"
+    },
+    {
+      "source": "/private-api",
+      "destination": "/private-inference"
     }
   ],
   "navbar": {

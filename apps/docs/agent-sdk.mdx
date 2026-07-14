@@ -79,7 +79,7 @@ These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending U
 | `agent.swap({ from, to, amount, slippage? })` | `SwapResult` | Cetus Aggregator V3 (20+ DEXs). User-friendly names (`'USDC'`, `'SUI'`, `'CETUS'`, …) or full coin types. Default slippage 1%, max 5%. **Requires SUI for gas.** |
 | `agent.swapQuote({ from, to, amount, slippage? })` | `SwapQuoteResult` | Preview route + output + price impact (no execution). |
 | `agent.pay(options)` | `PayResult` | x402-protected paid API. Handles 402 → quote → USDC payment → retry. USDC transfer is gasless. `options.maxPrice` caps spend (default 1 USDC). |
-| `agent.chat(params)` | `ChatResult` | Private inference on the [Private Inference](/private-api) (OpenAI-compatible). Key-based — `params.apiKey` or `T2000_API_KEY`. Returns `{ content, model, usage, raw }`. |
+| `agent.chat(params)` | `ChatResult` | Private inference on the [Private Inference](/private-inference) (OpenAI-compatible). Key-based — `params.apiKey` or `T2000_API_KEY`. Returns `{ content, model, usage, raw }`. |
 | `agent.chatStream(params)` | `AsyncGenerator<string>` | Streaming inference — async-iterate the assistant text deltas. |
 | `agent.models(opts?)` | `ApiModel[]` | Private Inference model catalog (id · context · per-1M pricing · privacy tier). |
 | `agent.verify(receiptId, opts?)` | `VerifyResult` | Verify a confidential response — signed receipt + trustless on-chain Sui anchor. `verified:false` on any mismatch. |

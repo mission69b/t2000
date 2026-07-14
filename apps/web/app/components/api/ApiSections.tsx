@@ -78,12 +78,11 @@ export async function ApiModels() {
             className="m-0 max-w-[400px] text-[16px] leading-[1.55]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            The catalog below is live — prices in USD per 1M tokens, straight
-            from{" "}
+            Live catalog — USD per 1M tokens, straight from{" "}
             <code className="font-mono" style={{ color: "var(--fg)" }}>
               GET /v1/models
-            </code>{" "}
-            — public, no key.
+            </code>
+            . Public, no key.
           </p>
         </header>
         <div className="grid gap-4 lg:grid-cols-2">
@@ -198,9 +197,8 @@ export function ApiRouter() {
             className="m-0 max-w-[400px] text-[15px] leading-[1.6]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            Coding agents fire hundreds of small calls. Most are grunt work; a
-            few are hard. The router sends each where it belongs — you&rsquo;re
-            billed at the price of the model that actually served.
+            Agents fire hundreds of calls; a few are hard. The router sends
+            each where it belongs — billed at the model that served.
           </p>
         </header>
         <div className="grid gap-4 lg:grid-cols-3">
@@ -476,9 +474,8 @@ export function ApiIntegrations() {
               letterSpacing: "-0.011em",
             }}
           >
-            The API speaks the OpenAI Chat Completions format. Set two
-            environment variables and most tools repoint with zero code changes
-            — private by default across every model.
+            Two environment variables. Most tools repoint with zero code
+            changes.
           </p>
         </header>
 
@@ -520,7 +517,7 @@ export function ApiIntegrations() {
                 color: "var(--fg-muted)",
               }}
             >
-              Create a key + add credit at{" "}
+              Keys are free — sign in at{" "}
               <span style={{ color: "var(--fg)" }}>agents.t2000.ai/manage</span>.
               Then pick any model ID from the catalog.
             </div>

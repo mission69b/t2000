@@ -32,7 +32,7 @@ gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
 - The agent hub (identity + skills):
   https://agents.t2000.ai/llms.txt
 - Public agent directory (JSON, no auth): https://api.t2000.ai/v1/agents
-- Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-api
+- Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-inference
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
 
 ## Docs
