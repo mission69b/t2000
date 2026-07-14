@@ -29,27 +29,27 @@
             "pages": [
               "index",
               "quickstart",
-              "use-from-your-agent",
-              "platform"
-            ]
-          },
-          {
-            "group": "Agent Wallet",
-            "pages": [
-              "agent-wallet"
-            ]
-          },
-          {
-            "group": "Agent Payments",
-            "pages": [
-              "agent-payments",
-              "sell-your-api"
+              "platform",
+              "use-from-your-agent"
             ]
           },
           {
             "group": "Identity",
             "pages": [
               "agent-id"
+            ]
+          },
+          {
+            "group": "Wallet",
+            "pages": [
+              "agent-wallet"
+            ]
+          },
+          {
+            "group": "Commerce",
+            "pages": [
+              "agent-payments",
+              "sell-your-api"
             ]
           },
           {
