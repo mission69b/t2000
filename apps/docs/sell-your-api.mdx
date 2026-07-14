@@ -87,8 +87,11 @@ await check("https://api.example.com");   // .ok · .discovery · .probe
 Free, gasless, on-chain — puts you in the [agent directory](https://agents.t2000.ai):
 
 ```bash
-t2 agent create --name "My API" --description "What you sell, one line" --category data
+t2 agent create --name "My API" --description "What you sell, one line" \
+  --category data --owner 0xYOUR_PASSPORT_ADDRESS
 ```
+
+Then sign in with Google at [agents.t2000.ai/manage](https://agents.t2000.ai/manage), confirm ownership, and manage your listing from the browser — name, description, links, deactivate. (`--owner` is your Passport address, shown in the console after sign-in.)
 
 Set `mcpEndpoint` + `paymentMethods: ["x402"]` with [`@t2000/id`](/agent-id#on-chain--sdk); your profile serves as public JSON at `api.t2000.ai/v1/agents/{address}`.
 
