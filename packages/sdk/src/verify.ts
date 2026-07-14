@@ -1,4 +1,5 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { ed25519 } from '@noble/curves/ed25519';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
@@ -16,7 +17,8 @@ import { DEFAULT_API_BASE } from './inference.js';
 //
 // All three core checks are trustless client-side: the Sui anchor (read from a
 // fullnode), the receipt signature (recompute dstack ACI canonical bytes per
-// `canonical.rs` + recover the secp256k1 signer, §9.4), and the TDX quote
+// `canonical.rs` + verify against the attested key — ed25519 current,
+// secp256k1-recover legacy), and the TDX quote
 // (@phala/dcap-qvl chains to Intel's root — removing the server-side-DCAP SPOF).
 // The remaining hop is keyset_endorsement (tying the receipt key to the quote's
 // identity key); the receipt-sig check already proves the receipt is signed by
@@ -177,19 +179,52 @@ function jcs(value: Jsonish): string {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${jcs(value[k])}`).join(',')}}`;
 }
 
-// Verify the ACI receipt signature per dstack §9.4: ecdsa-secp256k1, a 65-byte
-// `r‖s‖v` signature over `sha256(JCS(receipt with signature.value omitted))`;
-// recover the public key and require it to equal the attested receipt-signing
-// key. Returns true only on a genuine match (any error → false).
-function verifyReceiptSignature(receipt: AciReceipt, signingKeyHex: string): boolean {
+// Verify the ACI receipt signature. The dstack gateway has shipped two schemes:
+//
+//  • `ed25519` (current, key_id `dstack-kms-receipt-ed25519-v1`): a 64-byte
+//    signature over the RAW JCS bytes of the receipt exactly as served — every
+//    field present (incl. newer ones like `model`), with only `signature.value`
+//    omitted. Verified against the attested 32-byte ed25519 key.
+//  • `ecdsa-secp256k1` (legacy, §9.4): a 65-byte `r‖s‖v` signature over
+//    `sha256(JCS(<the 10 protocol fields>))`; recover the public key and
+//    require it to equal the attested key.
+//
+// Returns true only on a genuine match (any error → false).
+// (Module-level export for tests; the public SDK surface is `verifyReceipt`.)
+export function verifyReceiptSignature(
+  receipt: AciReceipt,
+  signingKeyHex: string
+): boolean {
   try {
     const sig = receipt.signature;
-    if (sig?.algo !== 'ecdsa-secp256k1' || !sig.value) {
+    if (!sig?.value) {
       return false;
     }
-    // Reconstruct the exact canonical value: the 10 protocol fields, with the
-    // signature object stripped of `value` (event_log entries are already the
-    // flat {seq,type,...fields} shape the gateway canonicalises).
+    const endorsed = hexToBytes(signingKeyHex.replace(/^0x/, ''));
+    const sigBytes = hexToBytes(sig.value);
+
+    if (sig.algo === 'ed25519') {
+      if (sigBytes.length !== 64 || endorsed.length !== 32) {
+        return false;
+      }
+      // Canonicalise the receipt AS SERVED (untyped fields included) so the
+      // check stays correct when the gateway adds receipt fields — only
+      // `signature.value` is stripped.
+      const { value: _omitted, ...sigRest } = sig;
+      const canonical = {
+        ...(receipt as unknown as { [k: string]: Jsonish }),
+        signature: sigRest as unknown as Jsonish,
+      };
+      const msg = new TextEncoder().encode(jcs(canonical));
+      return ed25519.verify(sigBytes, msg, endorsed);
+    }
+
+    if (sig.algo !== 'ecdsa-secp256k1') {
+      return false;
+    }
+    // Legacy: reconstruct the exact canonical value — the 10 protocol fields,
+    // with the signature object stripped of `value` (event_log entries are
+    // already the flat {seq,type,...fields} shape the gateway canonicalises).
     const canonical: Jsonish = {
       api_version: receipt.api_version ?? '',
       receipt_id: receipt.receipt_id ?? '',
@@ -204,7 +239,6 @@ function verifyReceiptSignature(receipt: AciReceipt, signingKeyHex: string): boo
     };
     const prehash = sha256(new TextEncoder().encode(jcs(canonical)));
 
-    const sigBytes = hexToBytes(sig.value);
     if (sigBytes.length !== 65) {
       return false;
     }
@@ -219,8 +253,7 @@ function verifyReceiptSignature(receipt: AciReceipt, signingKeyHex: string): boo
       .addRecoveryBit(v)
       .recoverPublicKey(prehash)
       .toHex(false);
-    const endorsed = bytesToHex(hexToBytes(signingKeyHex.replace(/^0x/, '')));
-    return recovered.toLowerCase() === endorsed.toLowerCase();
+    return recovered.toLowerCase() === bytesToHex(endorsed).toLowerCase();
   } catch {
     return false;
   }
