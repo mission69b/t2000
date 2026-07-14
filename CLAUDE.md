@@ -184,6 +184,8 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 | Bug fix, type fix, test fix | `patch` |
 | Breaking API change | `major` |
 
+> **⚠️ Majors are rare — default down (founder, 2026-07-15).** The 5.x→6→7→8 climb happened in ~a week and looked bad. `major` is ONLY for changes that break code an external consumer could actually have written against the published API. Internal refactors, removals of unshipped/unused surface, and doc/catalog changes are `minor` at most. When several breaking removals are queued, **batch them into one major** — never ship majors back-to-back. When in doubt, `patch`.
+
 #### ⚠️ What NOT to do
 
 - **Never** run `npm --prefix packages/X version Y` manually before pushing a tag

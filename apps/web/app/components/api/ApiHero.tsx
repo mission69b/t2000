@@ -74,14 +74,14 @@ export function ApiHero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              Point your coding agent at one base URL. Every model{" "}
-              <span style={{ color: "var(--fg)" }}>zero data retention</span>,
-              verifiably <span style={{ color: "var(--fg)" }}>confidential</span>{" "}
-              when it matters —{" "}
+              An OpenAI-compatible API for coding agents. Every model runs
+              with <span style={{ color: "var(--fg)" }}>zero data retention</span>{" "}
+              — prompts are never stored or trained on.{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
                 t2000/auto
               </code>{" "}
-              routes each step.
+              picks the cheapest capable model per call, so most of your bill
+              runs at open-model prices.
             </p>
           </div>
 

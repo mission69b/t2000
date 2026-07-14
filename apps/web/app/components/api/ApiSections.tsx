@@ -49,7 +49,7 @@ export async function ApiModels() {
       tag: "every model · ZDR",
       accent: false,
       blurb:
-        "Zero data retention — providers are contractually bound not to store or train on your prompts.",
+        "Every model, zero data retention: providers are contractually bound not to store or train on your prompts.",
       models: models.filter((m) => m.privacy === "private" && !m.router),
     },
     {
@@ -57,7 +57,7 @@ export async function ApiModels() {
       tag: "phala/* · verifiable",
       accent: true,
       blurb:
-        "Runs in a verified GPU-TEE; every response carries a signed receipt anchored on Sui you can check yourself.",
+        "Inference runs inside a hardware enclave (GPU-TEE); every response carries a signed receipt anchored on Sui — you can prove where it ran.",
       models: models.filter((m) => m.privacy === "confidential"),
     },
   ];
@@ -67,11 +67,11 @@ export async function ApiModels() {
       <div className="t2k-container">
         <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <span className="t2k-eyebrow">{"// ONE ENDPOINT · TWO POSTURES"}</span>
+            <span className="t2k-eyebrow">{"// THE CATALOG"}</span>
             <h2 className="t2k-section-title mt-3">
-              Private by default.
+              Every model.
               <br />
-              Confidential when it matters.
+              Two privacy tiers.
             </h2>
           </div>
           <p
@@ -188,27 +188,30 @@ export function ApiRouter() {
           <div>
             <span className="t2k-eyebrow">{"// BUILT FOR CODING AGENTS"}</span>
             <h2 className="t2k-section-title mt-3">
-              One id.
+              Automatic model routing
               <br />
-              The right model per step.
+              cuts your bill.
             </h2>
           </div>
           <p
             className="m-0 max-w-[400px] text-[15px] leading-[1.6]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            Agents fire hundreds of calls; a few are hard. The router sends
-            each where it belongs — billed at the model that served.
+            Set{" "}
+            <code className="font-mono" style={{ color: "var(--fg)" }}>
+              model: t2000/auto
+            </code>
+            . Routine steps run on a cheap open model; hard steps escalate to
+            a frontier one. You pay the price of the model that served.
           </p>
         </header>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="t2k-card flex flex-col gap-3" style={{ padding: 24, background: "var(--bg)" }}>
             <span className="t2k-mono-tag t2k-mono-tag--blue">t2000/auto</span>
             <p className="m-0 text-[13.5px] leading-[1.6]" style={{ color: "var(--fg-muted)" }}>
-              Bulk steps run on{" "}
-              <code className="font-mono" style={{ color: "var(--fg)" }}>zai/glm-5.2</code>.
-              Long context, plan/architecture asks, and retry-after-failure
-              escalate to{" "}
+              Runs bulk steps on{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>zai/glm-5.2</code>;
+              escalates long context, planning, and retries-after-failure to{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
                 anthropic/claude-sonnet-5
               </code>
@@ -218,11 +221,11 @@ export function ApiRouter() {
           <div className="t2k-card flex flex-col gap-3" style={{ padding: 24, background: "var(--bg)" }}>
             <span className="t2k-mono-tag">t2000/auto-open</span>
             <p className="m-0 text-[13.5px] leading-[1.6]" style={{ color: "var(--fg-muted)" }}>
-              The same router, never leaving open models — hard steps go to{" "}
+              The same router, open models only — hard steps go to{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
                 moonshotai/kimi-k2.7-code
               </code>
-              . For price ceilings and privacy purists.
+              . Your prompts never reach a closed-model provider.
             </p>
           </div>
           <div className="t2k-card flex flex-col gap-3" style={{ padding: 24, background: "var(--bg)" }}>
@@ -230,15 +233,15 @@ export function ApiRouter() {
               transparent
             </span>
             <p className="m-0 text-[13.5px] leading-[1.6]" style={{ color: "var(--fg-muted)" }}>
-              Every response says what served it:{" "}
+              Every response names the model that served it and why:{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
                 x-t2000-served-model
               </code>{" "}
               +{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
                 x-t2000-route-reason
-              </code>{" "}
-              headers. No blended rates, no mystery bills.
+              </code>
+              . You can audit every charge.
             </p>
           </div>
         </div>
@@ -258,9 +261,9 @@ export function ApiRouter() {
               Free daily coding. No ads. Your code is not the product.
             </span>
             <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
-              Every account gets a daily allowance on{" "}
+              Every account gets a free daily allowance on{" "}
               <code className="font-mono">moonshotai/kimi-k2.7-code</code> —
-              works in any OpenAI-compatible tool. Resets daily.
+              works in any OpenAI-compatible tool.
             </span>
           </div>
           <a
@@ -300,13 +303,12 @@ export function ApiX402() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Private Inference is a first-party service on the gateway, so an
-              agent can pay per call from its wallet&rsquo;s USDC — gasless, no
-              key. The gateway handles{" "}
+              Agents can pay per call from their wallet&rsquo;s USDC — no key,
+              no account, gasless. The gateway handles{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
                 402 → pay → retry
-              </code>
-              . The agent-native path.
+              </code>{" "}
+              automatically.
             </p>
             <Link
               href="/agent-payments"
@@ -386,7 +388,7 @@ const RUNGS = [
   {
     k: "04",
     name: "Verify it yourself",
-    desc: "t2 verify checks the Sui anchor, receipt signature, and TDX quote on your machine. Check the proofs yourself.",
+    desc: "t2 verify checks the Sui anchor, receipt signature, and TDX quote on your machine — no trust in our server required.",
   },
 ] as const;
 
@@ -396,19 +398,19 @@ export function ApiPrivacy() {
       <div className="t2k-container">
         <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <span className="t2k-eyebrow">{"// VERIFIABLE, NOT JUST CLAIMED"}</span>
+            <span className="t2k-eyebrow">{"// HOW CONFIDENTIAL WORKS"}</span>
             <h2 className="t2k-section-title mt-3">
-              The only Sui-native verifiable
+              Every confidential response
               <br />
-              confidential inference.
+              comes with proof.
             </h2>
           </div>
           <p
             className="m-0 max-w-[360px] text-[15px] leading-[1.6]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            Anchored on Sui and read straight from a fullnode — so we can&rsquo;t
-            forge it.
+            The proof is anchored on Sui and read from a public fullnode — we
+            can&rsquo;t forge it, and you don&rsquo;t have to trust our server.
           </p>
         </header>
         <div className="grid gap-4 lg:grid-cols-2">
