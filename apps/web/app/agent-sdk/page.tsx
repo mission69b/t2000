@@ -9,7 +9,7 @@ import { ProductStrip } from "../components/site/ProductStrip";
 import { SiteFooter } from "../components/site/SiteFooter";
 
 const DESC =
-  "The whole agent stack in one class. Wallet signing, gasless transfers, Cetus routing, x402 pay, private inference. Powers Audric.";
+  "Build agents that move money. A TypeScript SDK with a non-custodial Sui wallet built in: gasless USDC sends, per-call x402 API payments, Cetus swaps. Powers Audric.";
 
 export const metadata: Metadata = {
   title: "Agent SDK — t2000",

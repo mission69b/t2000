@@ -40,12 +40,14 @@ export function SdkHero() {
                 color: "var(--fg)",
               }}
             >
-              The whole stack.
+              Build agents
               <br />
-              <span style={{ color: "var(--t2k-accent)" }}>One class.</span>
+              <span style={{ color: "var(--t2k-accent)" }}>that move money.</span>
             </h1>
             <p className="t2k-section-sub" style={{ marginTop: 26 }}>
-              Wallet, Payments, Private Inference. One npm install. One class.
+              A TypeScript SDK with a non-custodial Sui wallet built in. Your
+              agent sends USDC, pays APIs per call, and swaps — gasless, each
+              one a single method call.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

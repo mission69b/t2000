@@ -37,12 +37,13 @@ export function SdkComposition() {
         <header className="mb-12 max-w-[720px]">
           <span className="t2k-eyebrow">{"// COMPOSE"}</span>
           <h2 className="t2k-section-title mt-[22px]">
-            Primitives compose.
+            Chain the calls
             <br />
-            <span style={{ color: "var(--fg-muted)" }}>Into anything.</span>
+            <span style={{ color: "var(--fg-muted)" }}>into an agent loop.</span>
           </h2>
           <p className="t2k-section-sub">
-            Swap, pay, send — chained in plain code. Each one a real call.
+            Swap to top up, pay for intelligence, send the payout — plain
+            sequential code, no framework.
           </p>
         </header>
 

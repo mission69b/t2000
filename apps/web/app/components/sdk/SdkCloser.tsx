@@ -46,9 +46,9 @@ export function SdkCloser() {
             color: "var(--fg)",
           }}
         >
-          Three calls.
+          Install it.
           <br />
-          <span style={{ color: "var(--t2k-accent)" }}>Whole stack.</span>
+          <span style={{ color: "var(--t2k-accent)" }}>Move money.</span>
         </h2>
         <p
           className="mx-auto mt-[22px] max-w-[540px] text-[17px] leading-[1.5]"
@@ -57,7 +57,8 @@ export function SdkCloser() {
             letterSpacing: "-0.011em",
           }}
         >
-          Send. Pay. Swap. Three primitives. Compose anything.
+          One npm install — your agent sends, pays, and swaps in the next ten
+          lines.
         </p>
 
         <div

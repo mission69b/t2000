@@ -85,12 +85,13 @@ export function SdkExamples() {
         <header className="mb-12 max-w-[720px]">
           <span className="t2k-eyebrow">{"// EXAMPLES"}</span>
           <h2 className="t2k-section-title mt-[22px]">
-            Stablecoins.
+            Everything is
             <br />
-            <span style={{ color: "var(--fg-muted)" }}>In code.</span>
+            <span style={{ color: "var(--fg-muted)" }}>one method call.</span>
           </h2>
           <p className="t2k-section-sub">
-            Four primitives. One class. Every line below runs.
+            Send USDC, pay an API, swap, read the balance. Every line below
+            runs.
           </p>
         </header>
 
