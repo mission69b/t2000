@@ -34,6 +34,9 @@ zero exec --worktree "<risky/parallel task>"   # isolated git worktree
 ```
 
 - Auth comes from the environment (`T2000_API_KEY`) — never put keys in the prompt.
+- Noisy TTY commands (test suites, builds, watchers): tell zero to run them
+  quiet — `CI=true … 2>&1 | tail -30` — raw spinner/ANSI output corrupts
+  `exec` rendering (dogfood finding, 2026-07-14).
 - Monitor the run; when it finishes, REVIEW THE DIFF yourself (git panel /
   `git diff`) before reporting back. You own the result, not zero.
 - Never let zero commit. Commits happen through the normal review flow.
