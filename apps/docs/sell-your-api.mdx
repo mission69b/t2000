@@ -1,32 +1,30 @@
 ---
 title: "Sell your API on Sui"
-description: "Accept per-call USDC payments from any Sui agent — x402 on Sui, no accounts, no API keys for your buyers, instant settlement to your wallet."
+description: "Accept per-call USDC from any Sui agent — no accounts, no API keys for buyers, instant settlement."
 ---
 
-Any AI agent with a Sui wallet can pay your API per call — no signup, no API keys, no invoicing. You return a standard **402 Payment Required** with an x402 envelope; the buyer's client signs a USDC payment; you settle it on-chain (~400ms) and serve the response. Buyers pay gasless from tools like the [t2 CLI](/cli-reference):
+Return a `402` with an x402 envelope; the buyer signs a USDC payment; you settle it on-chain (~400ms) and serve the response. Buyers pay gasless:
 
 ```bash
 t2 pay https://api.example.com/v1/search --data '{"q":"…"}' --max-price 0.10
 ```
 
-Five steps to being payable, verified, and listed.
-
 ---
 
 ## 1. Get a Sui address
 
-Payments settle as USDC to a Sui address you control. Any Sui wallet works; the fastest path:
+Any Sui wallet works. Fastest:
 
 ```bash
 npm i -g @t2000/cli
-t2 init          # local keypair → prints your address (fund nothing; receiving is free)
+t2 init    # prints your address — receiving is free
 ```
 
 ---
 
-## 2. Return the x402 envelope on 402
+## 2. Return the x402 envelope
 
-When a request arrives unpaid, respond `402` with an `accepts[]` entry for the Sui scheme. This is a live example from our own gateway — the only values you change are `asset` amounts, `payTo`, and `resource`:
+Respond `402` with a `sui:mainnet` entry in `accepts[]`. Live example from our gateway — change the amounts, `payTo`, and `resource`:
 
 ```json
 {
@@ -46,69 +44,59 @@ When a request arrives unpaid, respond `402` with an `accepts[]` entry for the S
 }
 ```
 
-- `asset` is Circle USDC on Sui (the exact coin type above), and `maxAmountRequired` is in base units — USDC has 6 decimals, so `"20000"` = $0.02.
-- Already serving x402 on another chain? Keep your existing `accepts[]` entries and **add** the `sui:mainnet` one alongside — clients pick the network they speak.
-- The full envelope contract (including the `extra.suimpp` challenge fields for replay protection) is specified at [suimpp.dev/spec](https://suimpp.dev/spec).
+- `asset` is Circle USDC on Sui. `maxAmountRequired` is base units — 6 decimals, so `"20000"` = $0.02.
+- Already serving x402 on another chain? Add the `sui:mainnet` entry alongside.
+- Full envelope contract, including replay protection: [suimpp.dev/spec](https://suimpp.dev/spec).
 
 ---
 
-## 3. Settle and verify the retry
+## 3. Settle and verify
 
-Sui x402 is **sign-then-settle**: the buyer signs the payment transaction but never submits it. The signed transaction arrives on the retry in the `X-PAYMENT` header (base64 JSON) — **your server submits it** and verifies before serving:
+Sui x402 is **sign-then-settle** — the buyer signs but never submits. The signed transaction arrives in the `X-PAYMENT` header; your server settles it:
 
-1. Parse the `X-PAYMENT` header.
+1. Parse `X-PAYMENT` (base64 JSON).
 2. Submit the signed transaction to a Sui fullnode.
-3. Verify: transaction **succeeded** · USDC balance change to your `payTo` **≥ `maxAmountRequired`** · asset is the USDC coin type.
-4. Serve the response with the `X-PAYMENT-RESPONSE` header (base64 JSON containing the settlement digest).
+3. Verify: succeeded · USDC to your `payTo` ≥ `maxAmountRequired` · asset is the USDC coin type.
+4. Serve with the `X-PAYMENT-RESPONSE` header (settlement digest).
 
-On Node this is a few lines — `@suimpp/mpp` ships the whole server side:
+Node ships the whole server side:
 
 ```ts
-import {
-  createX402Requirements,
-  verifyX402Payment,
-  settleX402Payment,
-} from "@suimpp/mpp/x402";
+import { verifyX402Payment, settleX402Payment } from "@suimpp/mpp/x402";
 ```
 
-On other stacks (Python, Go, …), implement the four checks above against your fullnode — [suimpp.dev/spec](https://suimpp.dev/spec) is the normative reference and the [`@suimpp/mpp` source](https://www.npmjs.com/package/@suimpp/mpp) is the reference implementation to port.
+Other stacks: port the four checks — [suimpp.dev/spec](https://suimpp.dev/spec) is normative, [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) is the reference.
 
 <Note>
-  Don't skip verification order: settle first, then check the effects of **that digest**. Never trust a client-supplied digest for a transaction you didn't submit.
+  Settle first, then check that digest's effects. Never trust a client-supplied digest.
 </Note>
 
 ---
 
 ## 4. Validate your endpoint
 
-`@suimpp/discovery` probes your OpenAPI + 402 and tells you what's wrong before an agent finds out:
-
 ```ts
 import { check } from "@suimpp/discovery";
-const result = await check("https://api.example.com");
-// result.ok · result.discovery (OpenAPI + x-payment-info) · result.probe (402 shape)
+await check("https://api.example.com");   // .ok · .discovery · .probe
 ```
-
-Optionally describe pricing in your OpenAPI with `x-payment-info` extensions so agents can discover costs before calling — see the spec.
 
 ---
 
-## 5. Register your Agent ID and get listed
+## 5. Register and get listed
 
-A free, gasless on-chain identity makes you discoverable in the [agent directory](https://agents.t2000.ai):
+Free, gasless, on-chain — puts you in the [agent directory](https://agents.t2000.ai):
 
 ```bash
 t2 agent create --name "My API" --description "What you sell, one line" --category data
-t2 agent handle myapi        # optional @handle
 ```
 
-Set your endpoint + payment methods on the registry record with [`@t2000/id`](/agent-id#on-chain--sdk) (`buildUpdateTx` — `mcpEndpoint`, `paymentMethods: ["x402"]`), and your profile serves as public JSON at `api.t2000.ai/v1/agents/{address}` (ERC-8004-compatible).
+Set `mcpEndpoint` + `paymentMethods: ["x402"]` with [`@t2000/id`](/agent-id#on-chain--sdk); your profile serves as public JSON at `api.t2000.ai/v1/agents/{address}`.
 
 ---
 
-## Optional — a skill, so agents reach for you by intent
+## Optional: a skill
 
-Being listed makes you *findable*; a **skill** makes agents route whole intents to you proactively — "find me a 5-star hotel in Paris" loads your playbook without the user ever mentioning APIs or payments. It's optional, it can only be written once you're live (every command is verified against mainnet first), and **for early sellers we write it with you at launch**. Self-serve later via a PR to [t2000-skills](https://github.com/mission69b/t2000/tree/main/t2000-skills) — the repo README has the format.
+A skill routes whole intents to you — "find a 5-star hotel in Paris" loads your playbook, no API mentioned. Written once you're live (commands are mainnet-verified); for early sellers we write it with you. Format: [t2000-skills](https://github.com/mission69b/t2000/tree/main/t2000-skills).
 
 ---
 
@@ -116,10 +104,10 @@ Being listed makes you *findable*; a **skill** makes agents route whole intents 
 
 | Step | Verify with |
 |---|---|
-| Sui address | `t2 balance` shows it |
-| 402 envelope with `sui:mainnet` entry | `curl -X POST <your-endpoint>` → 402 body has `accepts[]` |
-| Settle + verify | `t2 pay <your-endpoint> --max-price 0.10` → 200 + `X-PAYMENT-RESPONSE`, USDC lands at `payTo` |
-| Discovery | `check()` returns `ok: true` |
-| Listed | your profile at agents.t2000.ai |
+| Sui address | `t2 balance` |
+| Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` |
+| Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
+| Discovery | `check()` → `ok: true` |
+| Listed | your profile on agents.t2000.ai |
 
-**Links:** [suimpp.dev/spec](https://suimpp.dev/spec) (the normative wire format) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) (server reference) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) (validator) · [Agent Payments](/agent-payments) (the buyer side) · [Agent ID](/agent-id) (identity + directory) · live example envelope: [mpp.t2000.ai/.well-known/x402.json](https://mpp.t2000.ai/.well-known/x402.json)
+**Links:** [suimpp.dev/spec](https://suimpp.dev/spec) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) · [Agent Payments](/agent-payments) · [Agent ID](/agent-id) · [live envelope](https://mpp.t2000.ai/.well-known/x402.json)
