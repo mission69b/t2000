@@ -34,15 +34,15 @@
             ]
           },
           {
-            "group": "Wallet & payments",
+            "group": "Agent Wallet",
             "pages": [
-              "agent-wallet",
-              "agent-payments"
+              "agent-wallet"
             ]
           },
           {
-            "group": "Sell",
+            "group": "Agent Payments",
             "pages": [
+              "agent-payments",
               "sell-your-api"
             ]
           },
