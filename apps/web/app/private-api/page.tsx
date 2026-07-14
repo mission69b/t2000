@@ -9,6 +9,7 @@ import {
   ApiIntegrations,
   ApiModels,
   ApiPrivacy,
+  ApiRouter,
   ApiX402,
 } from "../components/api/ApiSections";
 
@@ -39,6 +40,7 @@ export default function ApiPage() {
       <Nav currentPage="api" />
       <main>
         <ApiHero />
+        <ApiRouter />
         <ApiModels />
         <ApiX402 />
         <ApiPrivacy />

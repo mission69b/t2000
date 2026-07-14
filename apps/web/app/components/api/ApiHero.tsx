@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { DEVELOPERS_URL } from "../../data/t2k";
+import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
 
 // Confidential path demo: a phala/* call returns a receipt; t2 verify
 // checks the Sui anchor + receipt signature + TDX quote client-side.
@@ -74,10 +74,15 @@ export function ApiHero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              An OpenAI-compatible endpoint. Point any OpenAI SDK at it — every
-              model <span style={{ color: "var(--fg)" }}>private by default</span>,
+              The private coding agent you can verify. Point your tool at one
+              base URL — every model{" "}
+              <span style={{ color: "var(--fg)" }}>private by default</span>,
               verifiably <span style={{ color: "var(--fg)" }}>confidential</span>{" "}
-              when it matters. Paid per token in USDC.
+              when it matters, and{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>
+                t2000/auto
+              </code>{" "}
+              routes each step to the right model.
             </p>
           </div>
 
@@ -88,16 +93,21 @@ export function ApiHero() {
           <div className="lg:col-start-1">
             <div className="flex flex-wrap gap-2.5">
               <a
-                href={`${DEVELOPERS_URL}/private-api`}
+                href={`${AGENTS_URL}/manage`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="t2k-btn t2k-btn--blue t2k-btn--lg"
               >
+                Start free&nbsp;↗
+              </a>
+              <a
+                href={`${DEVELOPERS_URL}/private-api`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="t2k-btn t2k-btn--ghost t2k-btn--lg"
+              >
                 Read the docs&nbsp;↗
               </a>
-              <Link href="/verify" className="t2k-btn t2k-btn--ghost t2k-btn--lg">
-                Verify a receipt&nbsp;→
-              </Link>
             </div>
             <div className="mt-[30px] flex flex-wrap gap-[22px]">
               {(

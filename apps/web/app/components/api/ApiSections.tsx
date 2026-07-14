@@ -1,35 +1,67 @@
 import Link from "next/link";
 
-const TIERS = [
-  {
-    label: "PRIVATE",
-    tag: "every model · ZDR",
-    accent: false,
-    blurb:
-      "Zero data retention — providers are contractually bound not to store or train on your prompts.",
-    models: [
-      "anthropic/claude-sonnet-5",
-      "openai/gpt-oss-120b",
-      "zai/glm-5.2",
-      "deepseek/deepseek-v3.2",
-    ],
-  },
-  {
-    label: "CONFIDENTIAL",
-    tag: "phala/* · verifiable",
-    accent: true,
-    blurb:
-      "Runs in a verified GPU-TEE; every response carries a signed receipt anchored on Sui you can check yourself.",
-    models: [
-      "phala/glm-5.2",
-      "phala/deepseek-v4-flash",
-      "phala/gpt-oss-120b",
-      "phala/qwen3.6-27b",
-    ],
-  },
-] as const;
+import { AGENTS_URL } from "../../data/t2k";
 
-export function ApiModels() {
+// Live catalog — rendered from the public GET /v1/models (revalidated), never
+// hand-written (CLAUDE.md docs rule: catalog tables come from live truth).
+interface CatalogModel {
+  id: string;
+  name: string;
+  privacy: "private" | "confidential";
+  router?: boolean;
+  pricing?: { input_per_1m?: number; output_per_1m?: number };
+}
+
+// Build-time fallback ONLY (fetch failure) — a snapshot, not the SSOT.
+const MODELS_FALLBACK: CatalogModel[] = [
+  { id: "zai/glm-5.2", name: "GLM 5.2", privacy: "private", pricing: { input_per_1m: 1.96, output_per_1m: 6.16 } },
+  { id: "moonshotai/kimi-k2.7-code", name: "Kimi K2.7 Code", privacy: "private", pricing: { input_per_1m: 1.33, output_per_1m: 5.6 } },
+  { id: "anthropic/claude-sonnet-5", name: "Claude Sonnet 5", privacy: "private", pricing: { input_per_1m: 2.6, output_per_1m: 13 } },
+  { id: "deepseek/deepseek-v3.2", name: "DeepSeek V3.2", privacy: "private", pricing: { input_per_1m: 0.39, output_per_1m: 0.59 } },
+  { id: "phala/glm-5.2", name: "GLM 5.2 (Confidential)", privacy: "confidential", pricing: { input_per_1m: 2.8, output_per_1m: 8.8 } },
+  { id: "phala/gpt-oss-120b", name: "GPT-OSS 120B (Confidential)", privacy: "confidential", pricing: { input_per_1m: 0.3, output_per_1m: 1.2 } },
+];
+
+async function fetchModels(): Promise<CatalogModel[]> {
+  try {
+    const res = await fetch("https://api.t2000.ai/v1/models", {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) throw new Error(`models ${res.status}`);
+    const body = (await res.json()) as { data: CatalogModel[] };
+    return body.data;
+  } catch {
+    return MODELS_FALLBACK;
+  }
+}
+
+function fmtPer1M(n: number | undefined): string {
+  if (n === undefined || !Number.isFinite(n)) return "—";
+  const r = Math.round(n * 100) / 100;
+  return `$${r}`;
+}
+
+export async function ApiModels() {
+  const models = await fetchModels();
+  const groups = [
+    {
+      label: "PRIVATE",
+      tag: "every model · ZDR",
+      accent: false,
+      blurb:
+        "Zero data retention — providers are contractually bound not to store or train on your prompts.",
+      models: models.filter((m) => m.privacy === "private" && !m.router),
+    },
+    {
+      label: "CONFIDENTIAL",
+      tag: "phala/* · verifiable",
+      accent: true,
+      blurb:
+        "Runs in a verified GPU-TEE; every response carries a signed receipt anchored on Sui you can check yourself.",
+      models: models.filter((m) => m.privacy === "confidential"),
+    },
+  ];
+
   return (
     <section className="t2k-section">
       <div className="t2k-container">
@@ -46,14 +78,8 @@ export function ApiModels() {
             className="m-0 max-w-[400px] text-[16px] leading-[1.55]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            Namespaced model IDs (
-            <code className="font-mono" style={{ color: "var(--fg)" }}>
-              provider/model
-            </code>
-            ). The live catalog, pricing, and each model&rsquo;s{" "}
-            <code className="font-mono" style={{ color: "var(--fg)" }}>private</code>/
-            <code className="font-mono" style={{ color: "var(--fg)" }}>confidential</code>{" "}
-            tag ride{" "}
+            The catalog below is live — prices in USD per 1M tokens, straight
+            from{" "}
             <code className="font-mono" style={{ color: "var(--fg)" }}>
               GET /v1/models
             </code>{" "}
@@ -61,7 +87,7 @@ export function ApiModels() {
           </p>
         </header>
         <div className="grid gap-4 lg:grid-cols-2">
-          {TIERS.map((g) => (
+          {groups.map((g) => (
             <div
               key={g.label}
               className="t2k-card flex flex-col gap-4"
@@ -95,19 +121,38 @@ export function ApiModels() {
                 {g.blurb}
               </p>
               <div className="mt-0.5 flex flex-col gap-[9px]">
+                <div
+                  className="flex items-baseline justify-between font-mono text-[10.5px] uppercase"
+                  style={{ letterSpacing: "0.08em", color: "var(--fg-subtle)" }}
+                >
+                  <span>model</span>
+                  <span>in / out per 1M</span>
+                </div>
                 {g.models.map((m) => (
                   <div
-                    key={m}
-                    className="flex items-center gap-2.5 font-mono text-[13px]"
+                    key={m.id}
+                    className="flex items-baseline justify-between gap-3 font-mono text-[13px]"
                     style={{ color: "var(--fg)", letterSpacing: "-0.005em" }}
                   >
+                    <span className="flex items-center gap-2.5 truncate">
+                      <span
+                        className="h-[5px] w-[5px] flex-none rounded-full"
+                        style={{
+                          background: g.accent ? "var(--t2k-success)" : "var(--t2k-accent)",
+                        }}
+                      />
+                      {m.id}
+                    </span>
                     <span
-                      className="h-[5px] w-[5px] flex-none rounded-full"
+                      className="whitespace-nowrap text-[12px]"
                       style={{
-                        background: g.accent ? "var(--t2k-success)" : "var(--t2k-accent)",
+                        color: "var(--fg-muted)",
+                        fontVariantNumeric: "tabular-nums",
                       }}
-                    />
-                    {m}
+                    >
+                      {fmtPer1M(m.pricing?.input_per_1m)} /{" "}
+                      {fmtPer1M(m.pricing?.output_per_1m)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -130,6 +175,105 @@ export function ApiModels() {
             Metered per token from one credit balance — no subscription, no
             per-provider account. Settled in USDC.
           </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function ApiRouter() {
+  return (
+    <section className="t2k-section" style={{ background: "var(--ds-background-200)" }}>
+      <div className="t2k-container">
+        <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <span className="t2k-eyebrow">{"// BUILT FOR CODING AGENTS"}</span>
+            <h2 className="t2k-section-title mt-3">
+              One model id.
+              <br />
+              The right model per step.
+            </h2>
+          </div>
+          <p
+            className="m-0 max-w-[400px] text-[15px] leading-[1.6]"
+            style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
+          >
+            Coding agents fire hundreds of small calls. Most are grunt work; a
+            few are hard. The router sends each where it belongs — you&rsquo;re
+            billed at the price of the model that actually served.
+          </p>
+        </header>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="t2k-card flex flex-col gap-3" style={{ padding: 24, background: "var(--bg)" }}>
+            <span className="t2k-mono-tag t2k-mono-tag--blue">t2000/auto</span>
+            <p className="m-0 text-[13.5px] leading-[1.6]" style={{ color: "var(--fg-muted)" }}>
+              Bulk steps run on{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>zai/glm-5.2</code>.
+              Long context, plan/architecture asks, and retry-after-failure
+              escalate to{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>
+                anthropic/claude-sonnet-5
+              </code>
+              .
+            </p>
+          </div>
+          <div className="t2k-card flex flex-col gap-3" style={{ padding: 24, background: "var(--bg)" }}>
+            <span className="t2k-mono-tag">t2000/auto-open</span>
+            <p className="m-0 text-[13.5px] leading-[1.6]" style={{ color: "var(--fg-muted)" }}>
+              The same router, never leaving open models — hard steps go to{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>
+                moonshotai/kimi-k2.7-code
+              </code>
+              . For price ceilings and privacy purists.
+            </p>
+          </div>
+          <div className="t2k-card flex flex-col gap-3" style={{ padding: 24, background: "var(--bg)" }}>
+            <span className="t2k-mono-tag" style={{ color: "var(--t2k-success)" }}>
+              transparent
+            </span>
+            <p className="m-0 text-[13.5px] leading-[1.6]" style={{ color: "var(--fg-muted)" }}>
+              Every response says what served it:{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>
+                x-t2000-served-model
+              </code>{" "}
+              +{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>
+                x-t2000-route-reason
+              </code>{" "}
+              headers. No blended rates, no mystery bills.
+            </p>
+          </div>
+        </div>
+        <div
+          className="mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-lg border"
+          style={{
+            padding: "18px 22px",
+            borderColor: "rgba(29,168,96,0.35)",
+            background: "rgba(29,168,96,0.04)",
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <span
+              className="text-[15px] font-semibold"
+              style={{ color: "var(--fg)", letterSpacing: "-0.014em" }}
+            >
+              Free daily coding. No ads. Your code is not the product.
+            </span>
+            <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
+              Every account gets a daily allowance on{" "}
+              <code className="font-mono">moonshotai/kimi-k2.7-code</code> —
+              works in any OpenAI-compatible tool. Resets daily.
+            </span>
+          </div>
+          <a
+            href={`${AGENTS_URL}/manage`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t2k-btn t2k-btn--ghost"
+            style={{ borderColor: "rgba(29,168,96,0.45)", color: "var(--t2k-success)" }}
+          >
+            Start free&nbsp;↗
+          </a>
         </div>
       </div>
     </section>

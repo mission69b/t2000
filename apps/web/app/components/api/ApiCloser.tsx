@@ -35,8 +35,12 @@ export function ApiCloser() {
             letterSpacing: "-0.011em",
           }}
         >
-          Sign in at the console to mint a key + add credit. One key, one base
-          URL — every OpenAI-compatible tool just works.
+          Sign in at the console to mint a key. One key, one base URL — every
+          OpenAI-compatible tool just works. Free daily coding on{" "}
+          <code className="font-mono" style={{ color: "var(--fg)" }}>
+            kimi-k2.7-code
+          </code>{" "}
+          before you spend a cent.
         </p>
         <button
           type="button"
