@@ -46,7 +46,7 @@
             ]
           },
           {
-            "group": "Commerce",
+            "group": "Payments",
             "pages": [
               "agent-payments",
               "sell-your-api"
