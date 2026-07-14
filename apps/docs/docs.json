@@ -37,7 +37,8 @@
             "group": "Wallet & payments",
             "pages": [
               "agent-wallet",
-              "agent-payments"
+              "agent-payments",
+              "sell-your-api"
             ]
           },
           {
