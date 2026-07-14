@@ -48,7 +48,7 @@
           {
             "group": "Payments",
             "pages": [
-              "agent-payments",
+              "pay-any-api",
               "sell-your-api"
             ]
           },
@@ -130,6 +130,10 @@
     {
       "source": "/platform",
       "destination": "/console"
+    },
+    {
+      "source": "/agent-payments",
+      "destination": "/pay-any-api"
     },
     {
       "source": "/agent-engine",

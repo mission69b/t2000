@@ -38,7 +38,7 @@ Each page is a curated, Mintlify-flavored view of the canonical package README:
 |---|---|
 | `index.mdx` | `t2000-skills/README.md` quickstart + repo top-level value prop |
 | `agent-wallet.mdx` | `packages/cli/README.md` + `packages/mcp/README.md` + `t2000-skills/README.md` |
-| `agent-payments.mdx` | `apps/gateway/README.md` + `packages/cli/README.md` (pay section) |
+| `pay-any-api.mdx` | `apps/gateway/README.md` + `packages/cli/README.md` (pay section) |
 | `agent-sdk.mdx` | `packages/sdk/README.md` |
 | `agent-engine.mdx` | Retired deprecation stub — `@t2000/engine` was deleted from the monorepo. |
 

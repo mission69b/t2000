@@ -124,7 +124,7 @@ Get the key at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) and set 
 
 ## Pay-per-call over x402 — no key, no account
 
-Agents can pay **per call in USDC** with **no API key** — Private Inference is a first-party [x402](/agent-payments) service on the gateway. Call it with the existing `t2 pay` / `t2000_pay` (the gateway handles `402` → pay → retry):
+Agents can pay **per call in USDC** with **no API key** — Private Inference is a first-party [x402](/pay-any-api) service on the gateway. Call it with the existing `t2 pay` / `t2000_pay` (the gateway handles `402` → pay → retry):
 
 ```bash
 t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
