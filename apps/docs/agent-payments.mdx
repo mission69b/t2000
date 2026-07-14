@@ -5,7 +5,9 @@ description: "Pay any API in USDC over x402 — per call, gasless, no signup, no
 
 **Agent Payments** is x402 on Sui: the gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) serves every major AI + data API as paid HTTP endpoints your agent pays in USDC. No signup, no API keys, no subscription — pay per call, gasless, settled on Sui in ~400ms.
 
-```bash
+<CodeGroup>
+
+```bash CLI
 npm install -g @t2000/cli
 t2 init    # create a wallet
 t2 fund    # transfer USDC to the printed address — $1 covers ~50 LLM calls
@@ -14,7 +16,13 @@ t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
   --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello, world!"}]}'
 ```
 
-That's a paid GPT-4o call for $0.02. The 402 challenge, payment, and retry are automatic.
+```text Paste into your agent
+Use t2 services to find an image-generation API, pay it with t2 pay to generate a hero image of a mountain lake at dawn, and show me the image URL and what it cost.
+```
+
+</CodeGroup>
+
+That's a paid GPT-4o call for $0.02. The 402 challenge, payment, and retry are automatic. (Agent not set up yet? [Use from your agent](/use-from-your-agent) is one paste per client.)
 
 Browsing is free — no wallet, no account:
 
@@ -93,7 +101,7 @@ Always pass `--max-price <USD>` (default $1.00) so a misconfigured endpoint can'
 | Surface | Call | Reference |
 |---|---|---|
 | CLI | `t2 pay <url> --data '…' --max-price 0.10` | [CLI reference](/cli-reference) |
-| MCP | `t2000_pay` + `t2000_services` from any AI client | [Agent Wallet → MCP](/agent-wallet#mcp-integration) |
+| MCP | `t2000_pay` + `t2000_services` from any AI client | [Agent Wallet → MCP](/agent-wallet#mcp) |
 | SDK | `agent.pay({ url, body, maxPrice })` | [Agent SDK](/agent-sdk) |
 
 <Note>
