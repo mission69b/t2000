@@ -3,7 +3,7 @@ title: "Sell your API on Sui"
 description: "Accept per-call USDC from any Sui agent — no accounts, no API keys for buyers, instant settlement."
 ---
 
-Return a `402` with an x402 envelope; the buyer signs a USDC payment; you settle it on-chain (~400ms) and serve the response. Buyers pay gasless:
+Return a `402` with an x402 envelope; the buyer signs a USDC payment; you settle it on-chain (~400ms) and serve the response. This page is the **seller** side — buyers pay gasless ([Agent Payments](/agent-payments) is their page):
 
 ```bash
 t2 pay https://api.example.com/v1/search --data '{"q":"…"}' --max-price 0.10
