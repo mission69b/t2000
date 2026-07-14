@@ -188,7 +188,7 @@ export function ApiRouter() {
           <div>
             <span className="t2k-eyebrow">{"// BUILT FOR CODING AGENTS"}</span>
             <h2 className="t2k-section-title mt-3">
-              One model id.
+              One id.
               <br />
               The right model per step.
             </h2>
