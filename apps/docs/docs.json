@@ -29,7 +29,7 @@
             "pages": [
               "index",
               "quickstart",
-              "platform",
+              "console",
               "use-from-your-agent"
             ]
           },
@@ -127,6 +127,10 @@
     ]
   },
   "redirects": [
+    {
+      "source": "/platform",
+      "destination": "/console"
+    },
     {
       "source": "/agent-engine",
       "destination": "/agent-sdk"
