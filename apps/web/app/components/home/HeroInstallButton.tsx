@@ -23,7 +23,7 @@ export function HeroInstallButton() {
       onClick={handleCopy}
       aria-label={copied ? COPIED_LABEL : IDLE_LABEL}
       className={
-        "t2k-btn t2k-btn--blue t2k-btn--lg t2k-install-btn" +
+        "t2k-btn t2k-btn--ghost t2k-btn--lg t2k-install-btn" +
         (copied ? " is-copied" : "")
       }
     >

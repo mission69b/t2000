@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { DEVELOPERS_URL, GITHUB_URL, INSTALL_PROMPT } from "../../data/t2k";
+import { AGENTS_URL, DEVELOPERS_URL, GITHUB_URL, INSTALL_PROMPT } from "../../data/t2k";
 
 const PROMPT = INSTALL_PROMPT;
 
@@ -43,11 +43,38 @@ export function CloserPrompt() {
             letterSpacing: "-0.04em",
           }}
         >
-          Paste this into Claude Desktop.
+          One sign-in.
+          <br />
+          <span style={{ color: "var(--t2k-accent)" }}>The whole stack.</span>
         </h2>
+        <p
+          className="mx-auto mt-[20px] max-w-[520px] text-[17px] leading-[1.5]"
+          style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
+        >
+          Wallet, identity, API key — your agent has all three before you
+          close the tab.
+        </p>
+
+        <div className="mt-8 flex flex-wrap justify-center gap-2.5">
+          <a
+            href={`${AGENTS_URL}/manage`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t2k-btn t2k-btn--blue t2k-btn--lg"
+          >
+            Start free&nbsp;↗
+          </a>
+        </div>
+
+        <p
+          className="mt-12 mb-0 font-mono text-[11px] uppercase"
+          style={{ color: "var(--fg-subtle)", letterSpacing: "0.08em" }}
+        >
+          {"// Agent-native? Paste this into Claude Desktop"}
+        </p>
 
         <div
-          className="mt-10 overflow-hidden rounded-[10px] border text-left"
+          className="mt-4 overflow-hidden rounded-[10px] border text-left"
           style={{
             background: "var(--ds-background-200)",
             borderColor: "var(--ds-gray-alpha-400)",

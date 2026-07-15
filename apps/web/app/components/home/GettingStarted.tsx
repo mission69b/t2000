@@ -1,36 +1,31 @@
-// The onboarding arc — five real steps from zero to a paid API call + a
-// private inference call, matching the developers.t2000.ai quickstart.
+// The onboarding arc — ONE path: sign in at the console, and the account is
+// the whole stack (Sui wallet + Agent ID + API key). The CLI is the one-line
+// machine path below the grid, mentioned not marketed (spec item 12).
 // Classes live in styles/page.css (t2k-gs-*).
 const STEPS = [
   {
     n: "1",
-    title: "Install + wallet",
-    cmd: "npm i -g @t2000/cli && t2 init",
-    note: "Local keypair, gasless. Registers your Agent ID out of the box.",
+    title: "Sign in",
+    cmd: "open https://agents.t2000.ai/manage",
+    note: "Google sign-in. Your account is a non-custodial Sui wallet + an Agent ID — nothing to install, nothing to fund.",
   },
   {
     n: "2",
-    title: "Fund it",
-    cmd: "t2 fund",
-    note: "Your address + a QR — send USDC on Sui. $5 covers credit + hundreds of calls. No SUI, ever.",
+    title: "Create an API key",
+    cmd: "API keys → Create",
+    note: "Free. Includes a daily coding allowance on kimi-k2.7-code — paid models draw from credit (card or USDC).",
   },
   {
     n: "3",
-    title: "Pay an API",
-    cmd: `t2 pay mpp.t2000.ai/exa/v1/search --data '{"query":"sui agents"}'`,
-    note: "Any x402 service, per call in USDC — straight from the wallet. Gasless, no keys, no signup.",
+    title: "Point your tool at it",
+    cmd: 'base_url = "https://api.t2000.ai/v1" · model = "t2000/auto"',
+    note: "Works in Cursor, zero, aider — any OpenAI-compatible client. Every model zero data retention; the router picks the cheapest capable model per step.",
   },
   {
     n: "4",
-    title: "Get a key",
-    cmd: "open https://agents.t2000.ai/manage",
-    note: "Sign in with Google → add credit (card or USDC) → API keys → Create. The one key path.",
-  },
-  {
-    n: "5",
-    title: "First private call",
-    cmd: 't2 chat "summarize this" --model zai/glm-5.2',
-    note: "Every model, private by default. OpenAI-compatible — point any tool at it.",
+    title: "Let it pay for things",
+    cmd: `t2 pay mpp.t2000.ai/exa/v1/search --data '{"query":"sui agents"}'`,
+    note: "The same account's wallet pays any x402 API per call in USDC — gasless, no signup with the upstream.",
   },
 ] as const;
 
@@ -47,7 +42,7 @@ export function GettingStarted() {
             className="m-0 max-w-[300px] text-[16px] leading-[1.55]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            Five steps, zero gas — a wallet for paying, a key for models.
+            One sign-in — the key for models, the wallet for paying.
           </p>
         </header>
 
@@ -66,6 +61,17 @@ export function GettingStarted() {
             </li>
           ))}
         </ol>
+
+        <p
+          className="mt-5 font-mono text-[12.5px]"
+          style={{ color: "var(--fg-subtle)", letterSpacing: "0.01em" }}
+        >
+          {"// Terminal-native? "}
+          <span style={{ color: "var(--fg-muted)" }}>
+            npm i -g @t2000/cli && t2 init
+          </span>
+          {" — a local keypair wallet, no account needed."}
+        </p>
       </div>
     </section>
   );

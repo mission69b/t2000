@@ -1,4 +1,4 @@
-import { DEVELOPERS_URL } from "../../data/t2k";
+import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
 import { HeroInstallButton } from "./HeroInstallButton";
 import { HeroTerminal } from "./HeroTerminal";
 
@@ -62,11 +62,19 @@ export function Hero() {
             >
               Build agents that move{" "}
               <span style={{ color: "var(--t2k-accent)" }}>money</span>. One
-              stack — wallet, payments, identity. Non-custodial,
+              sign-in is a wallet, an identity, and an API key — non-custodial,
               gasless, verifiable.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">
+              <a
+                href={`${AGENTS_URL}/manage`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="t2k-btn t2k-btn--blue t2k-btn--lg"
+              >
+                Start free&nbsp;↗
+              </a>
               <HeroInstallButton />
               <a
                 href={DEVELOPERS_URL}
