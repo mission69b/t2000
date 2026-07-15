@@ -44,7 +44,7 @@ t2code exec "Rename getCwd to getCurrentWorkingDirectory across src/,
 update call sites, then make 'pnpm typecheck' pass."
 ```
 
-The **`t2000-code-delegate`** skill teaches a skill-reading agent (Cursor, Claude Code, …) when and how to do this — dispatch, supervise, review the diff, report back:
+The **`t2000-code-delegate`** skill teaches any agent that reads Agent Skills (Cursor, Claude Code, …) when and how to do this — dispatch, supervise, review the diff, report back:
 
 ```bash
 t2 skills install --target=cursor    # installs t2000-* skills as Cursor rules
