@@ -34,7 +34,9 @@ Delegate when ALL of these hold:
   build is green).
 - It is **mechanical at execution time**: sweeps, renames, applying an
   agreed-on plan, fixing tests to green, dependency bumps with known fallout,
-  repetitive doc/comment updates.
+  repetitive doc/comment updates. This includes executing a self-contained
+  plan file written by a planning skill (e.g. shadcn/improve's `plans/*.md` —
+  point the spec at the plan file and its verification gates).
 - You can **verify the result from the diff + the verification step** without
   re-deriving every decision.
 

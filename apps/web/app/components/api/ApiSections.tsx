@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AGENTS_URL } from "../../data/t2k";
+import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
 
 // Live catalog — rendered from the public GET /v1/models (revalidated), never
 // hand-written (CLAUDE.md docs rule: catalog tables come from live truth).
@@ -274,6 +274,38 @@ export function ApiRouter() {
             style={{ borderColor: "rgba(29,168,96,0.45)", color: "var(--t2k-success)" }}
           >
             Start free&nbsp;↗
+          </a>
+        </div>
+        <div
+          className="mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-lg border"
+          style={{
+            padding: "18px 22px",
+            borderColor: "var(--border)",
+            background: "var(--bg)",
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <span
+              className="text-[15px] font-semibold"
+              style={{ color: "var(--fg)", letterSpacing: "-0.014em" }}
+            >
+              t2 code — the private coding agent you can verify.
+            </span>
+            <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
+              A terminal coding agent built on this API:{" "}
+              <code className="font-mono" style={{ color: "var(--fg)" }}>
+                npm i -g @t2000/code
+              </code>
+              . Router by default, per-repo privacy pinning, wallet tools in-session.
+            </span>
+          </div>
+          <a
+            href={`${DEVELOPERS_URL}/t2-code`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t2k-btn t2k-btn--ghost"
+          >
+            Meet t2 code&nbsp;↗
           </a>
         </div>
       </div>

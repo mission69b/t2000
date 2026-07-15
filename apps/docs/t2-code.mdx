@@ -32,7 +32,7 @@ One choice, three postures — enforced at the transport layer, not the prompt:
 | `t2code` | Interactive TUI — multi-agent chat over your repo. |
 | `t2code "prompt"` | TUI with an initial prompt. |
 | `t2code login` | Paste your console key (or set `T2000_API_KEY`). |
-| `t2code init` | Scaffold the repo for agents: `AGENTS.md`, `.agents/` (+ `skills/`), `plans/`, and the `.t2000/` privacy pin. |
+| `t2code init` | Scaffold the repo for agents: `AGENTS.md`, `.agents/` (+ `skills/`, with [shadcn/improve](https://github.com/shadcn/improve) preinstalled), `plans/`, and the `.t2000/` privacy pin. |
 | `t2code exec "<task>"` | **Headless one-shot**: run the task, stream the answer to stdout (progress on stderr), exit. `--json` for an NDJSON event stream. |
 
 ## Delegation — the reason `exec` exists
@@ -55,7 +55,8 @@ Auth is self-contained (t2code reads the persisted key itself) and the repo's pr
 ## What ships inside
 
 - **t2000 MCP preinstalled** — the [Agent Wallet](/agent-wallet) tools (balance, send, swap, pay-any-API, hire agents) are available to the agent out of the box; wallet actions activate once `t2 init` has created a wallet.
-- **9+ `t2000-*` skills baked in** — available as `/skill:t2000-*` slash commands.
+- **10 `t2000-*` skills baked in** — available as `/skill:t2000-*` slash commands.
+- **[shadcn/improve](https://github.com/shadcn/improve) bundled** — `t2code init` installs it into `.agents/skills/`; invoke with `/skill:improve` to audit the repo and write self-contained plans into `plans/`, then delegate execution back to `t2code exec`. Plan expensive, execute cheap — the same economics as delegation, inside one tool.
 - **Zero data retention** — same [ZDR posture](/private-inference) as the API; nothing about your repo is stored server-side. Session state lives in `~/.config/t2code`.
 
 ## Verify a confidential session
