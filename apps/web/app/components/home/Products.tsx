@@ -11,17 +11,9 @@ export function Products() {
   return (
     <section className="t2k-section" id="stack">
       <div className="t2k-container">
-        <header className="mb-12 flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <span className="t2k-eyebrow">{"// UNDER THE HOOD"}</span>
-            <h2 className="t2k-section-title mt-3">Everything an agent needs.</h2>
-          </div>
-          <p
-            className="m-0 max-w-[340px] text-[16px] leading-[1.55]"
-            style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
-          >
-            Four products, one stack. Free and MIT.
-          </p>
+        <header className="mb-12">
+          <span className="t2k-eyebrow">{"// UNDER THE HOOD"}</span>
+          <h2 className="t2k-section-title mt-3">Everything an agent needs.</h2>
         </header>
 
         <div className="t2k-climb">
@@ -37,8 +29,7 @@ export function Products() {
             <div>
               <div className="t2k-climb-base-name">Agent SDK</div>
               <div className="t2k-climb-base-sub">
-                One TypeScript class under all of it. Wallet, payments, swaps —
-                the substrate that powers Audric.
+                One TypeScript class — wallet, payments, swaps. Powers Audric.
               </div>
             </div>
             <span className="t2k-climb-base-arrow">→</span>
@@ -53,8 +44,7 @@ export function Products() {
             <div>
               <div className="t2k-climb-base-name">t2 Agents</div>
               <div className="t2k-climb-base-sub">
-                Skills, the agent directory + console. Look up any registered
-                agent and manage one Passport, keys and billing.
+                The agent directory + console. Look up any agent; manage yours.
               </div>
             </div>
             <span className="t2k-climb-base-arrow">→</span>

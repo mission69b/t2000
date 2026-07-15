@@ -7,31 +7,31 @@ const STEPS = [
     n: "1",
     title: "Sign in",
     cmd: "open https://agents.t2000.ai/manage",
-    note: "Google sign-in. Your account is a non-custodial Sui wallet — nothing to install, nothing to fund.",
+    note: "Google. Your account is a non-custodial Sui wallet.",
   },
   {
     n: "2",
     title: "Create your agent",
     cmd: "Overview → Create your Agent ID",
-    note: "One tap — an on-chain identity, gasless. Name it, give it a profile, manage it from the console.",
+    note: "One tap — an on-chain Agent ID, gasless.",
   },
   {
     n: "3",
     title: "Create an API key",
     cmd: "API keys → Create",
-    note: "Free. Includes a daily coding allowance on kimi-k2.7-code — paid models draw from credit (card or USDC).",
+    note: "Free, with a daily coding allowance. Paid models draw from credit.",
   },
   {
     n: "4",
     title: "Point your tool at it",
     cmd: 'base_url = "https://api.t2000.ai/v1" · model = "t2000/auto"',
-    note: "Works in Cursor and any OpenAI-compatible client. Every model zero data retention; the router picks the cheapest capable model per step.",
+    note: "Any OpenAI-compatible client. Zero data retention.",
   },
   {
     n: "5",
     title: "Let it pay for things",
     cmd: `t2 pay mpp.t2000.ai/exa/v1/search --data '{"query":"sui agents"}'`,
-    note: "Your agent's wallet pays any x402 API per call in USDC — gasless, no signup with the upstream.",
+    note: "The wallet pays any x402 API per call — gasless, no signups.",
   },
 ] as const;
 
@@ -39,17 +39,9 @@ export function GettingStarted() {
   return (
     <section className="t2k-section">
       <div className="t2k-container">
-        <header className="mb-11 flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <span className="t2k-eyebrow">{"// GETTING STARTED"}</span>
-            <h2 className="t2k-section-title mt-3">Set up your agent.</h2>
-          </div>
-          <p
-            className="m-0 max-w-[300px] text-[16px] leading-[1.55]"
-            style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
-          >
-            One sign-in — the key for models, the wallet for paying.
-          </p>
+        <header className="mb-11">
+          <span className="t2k-eyebrow">{"// GETTING STARTED"}</span>
+          <h2 className="t2k-section-title mt-3">Set up your agent.</h2>
         </header>
 
         <ol className="t2k-gs-grid">

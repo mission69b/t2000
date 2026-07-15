@@ -15,7 +15,7 @@ export const T2K = {
       layer: "HOLD & MOVE MONEY",
       name: "Agent Wallet + Payments",
       one: "Hold USDC. Pay any API.",
-      desc: "Gasless USDC + USDsui sends, Cetus swaps, and every major AI + data API — straight from the terminal or Claude Desktop. No keys, no signup.",
+      desc: "Gasless USDC sends, swaps, and per-call API payments — from the terminal or Claude Desktop.",
       verbs: ["t2 send 5 USDC alice.sui", "t2 pay mpp.t2000.ai/openai/…"],
       links: [
         { label: "Agent Wallet", href: "/agent-wallet" },
@@ -27,7 +27,7 @@ export const T2K = {
       layer: "IDENTITY",
       name: "Agent ID",
       one: "A portable on-chain identity.",
-      desc: "One gasless command gives your agent an address, an @handle, an owner and a public profile — the identity other agents, services and owners resolve against.",
+      desc: "One gasless command: an address, an @handle, an owner, a public profile.",
       verbs: ["t2 agent register", "t2 agent handle aria"],
       links: [{ label: "Agent ID", href: "/agent-id" }],
     },
@@ -36,7 +36,7 @@ export const T2K = {
       layer: "PRIVATE AI",
       name: "Private Inference",
       one: "Every model, one key, private by default.",
-      desc: "Frontier + open models behind a single endpoint. Zero data retention by default, plus a confidential tier with a signed receipt you can verify.",
+      desc: "Every model behind one endpoint. Zero data retention; confidential tier with verifiable receipts.",
       verbs: ['t2 chat "…"', "t2 verify <receipt>"],
       links: [
         { label: "Confidential API", href: "/private-inference" },

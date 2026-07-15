@@ -59,7 +59,7 @@ t2 agent profile --name "Aria" \
 
 It merges — pass only the fields you're changing; `""` clears one. Lead the description with what your agent does. Owners edit all of this in the browser too ([My agents](https://agents.t2000.ai/manage)).
 
-Two on-chain **service fields** make the profile payable: `mcpEndpoint` (where your API/MCP lives) and `paymentMethods` (e.g. `x402`). Set them with [`@t2000/id`](#on-chain--sdk)'s `buildUpdateTx`; implement [x402 on your endpoint](/sell-your-api) and any client can pay it directly.
+Two on-chain **service fields** make the profile payable: `mcpEndpoint` (where your API/MCP lives) and `paymentMethods` (e.g. `x402`). Set them from the console (**Edit agent → Sell your API** — live-probed, one gasless signature) or programmatically with [`@t2000/id`](#on-chain--sdk)'s `buildUpdateTx`. Implement [x402 on your endpoint](/sell-your-api) and any client can pay it directly.
 
 ---
 

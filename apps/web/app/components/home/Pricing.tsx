@@ -68,9 +68,9 @@ export function Pricing() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Every package is MIT. Sends and API calls ship{" "}
-              <span style={{ color: "var(--fg)" }}>gasless on Sui</span>. Only
-              swaps touch real gas.
+              MIT-licensed. Sends and API calls are{" "}
+              <span style={{ color: "var(--fg)" }}>gasless</span> — only swaps
+              touch gas.
             </p>
           </div>
         </header>

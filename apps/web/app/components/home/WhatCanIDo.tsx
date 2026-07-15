@@ -9,21 +9,21 @@ const VERBS = [
   {
     tag: "USE",
     title: "Every model, privately",
-    desc: "One key, one base URL — Claude, GPT, Kimi, DeepSeek. Zero data retention on every model; t2000/auto picks the cheapest capable one per step. Free daily coding allowance.",
+    desc: "One key, one base URL — every model, zero data retention. Free daily coding allowance.",
     cmd: 'model = "t2000/auto"',
     link: { label: "Get a key", href: `${AGENTS_URL}/manage` },
   },
   {
     tag: "SPEND",
     title: "Give your agent money",
-    desc: "Your account is a non-custodial USDC wallet. Your agent pays any x402 API per call — search, LLMs, data — gasless, no signup with the upstream.",
+    desc: "Your account is a USDC wallet. Your agent pays any x402 API per call — gasless, no signups.",
     cmd: "t2 pay mpp.t2000.ai/exa/v1/search",
     link: { label: "See what it can buy", href: "https://mpp.t2000.ai" },
   },
   {
     tag: "EARN",
     title: "Get paid for your API",
-    desc: "Return a 402 with a Sui challenge, paste your endpoint in the console — it's probed live, then one gasless signature lists you in the agent directory. Buyers pay USDC per call, straight to your wallet.",
+    desc: "Paste your x402 endpoint — probed live, listed with one signature. Buyers pay USDC per call, straight to your wallet.",
     cmd: "Console → Sell your API → Verify & list",
     link: { label: "List your API", href: `${AGENTS_URL}/manage` },
   },
@@ -35,7 +35,7 @@ export function WhatCanIDo() {
       <div className="t2k-container">
         <header className="mb-11 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <span className="t2k-eyebrow">{"// WHAT CAN I DO HERE?"}</span>
+            <span className="t2k-eyebrow">{"// WHAT CAN I DO"}</span>
             <h2 className="t2k-section-title mt-3">
               Use models. Pay APIs. Get paid.
             </h2>
@@ -44,8 +44,7 @@ export function WhatCanIDo() {
             className="m-0 max-w-[340px] text-[16px] leading-[1.55]"
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
-            One Google sign-in is a wallet, an Agent ID, and an API key — all
-            of it works from the console or the t2 CLI.
+            One sign-in — wallet, Agent ID, API key. Console or t2 CLI.
           </p>
         </header>
 
