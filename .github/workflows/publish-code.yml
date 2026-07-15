@@ -1,0 +1,38 @@
+# Publishes @t2000/code (the t2 code npm launcher) from the tarball attached
+# to the matching mission69b/t2code-releases GitHub release.
+#
+# Why here: this repo owns the org's NPM_TOKEN. The t2 code source lives in
+# the (local) codebuff patch-set checkout, whose build uploads binaries + the
+# packed launcher tgz to t2code-releases; this workflow only ships the
+# already-built launcher to npm. @t2000/code versions independently of the
+# 4-package lockstep (sdk/cli/mcp/id).
+#
+# Usage: gh workflow run publish-code.yml --field version=0.1.0
+
+name: Publish @t2000/code
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version X.Y.Z — expects release v{version} on mission69b/t2code-releases with asset t2000-code-{version}.tgz"
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Download launcher tarball from t2code-releases
+        run: |
+          curl -fL -o t2000-code.tgz \
+            "https://github.com/mission69b/t2code-releases/releases/download/v${{ inputs.version }}/t2000-code-${{ inputs.version }}.tgz"
+
+      - name: Publish to npm
+        run: npm publish t2000-code.tgz --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
