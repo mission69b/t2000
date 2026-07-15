@@ -93,13 +93,14 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     await server.close();
   });
 
-  it('lists the 10 core tools (+3 chat tools registered separately in production)', async () => {
+  it('lists the 11 core tools (+3 chat tools registered separately in production)', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(10);
+    expect(tools).toHaveLength(11);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
       't2000_address',
+      't2000_agent_sell',
       't2000_agents',
       't2000_balance',
       't2000_history',

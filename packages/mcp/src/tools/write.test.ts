@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerWriteTools } from './write.js';
 import { T2000Error } from '@t2000/sdk';
@@ -10,6 +10,11 @@ import { T2000Error } from '@t2000/sdk';
 function createMockAgent() {
   return {
     address: vi.fn().mockReturnValue('0xowner'),
+    signer: {
+      getAddress: vi.fn().mockReturnValue('0xowner'),
+      signTransaction: vi.fn().mockResolvedValue({ signature: 'sig-b64' }),
+      signPersonalMessage: vi.fn().mockResolvedValue({ signature: 'sig-b64' }),
+    },
     balance: vi.fn().mockResolvedValue({
       stables: { USDC: 96.81 },
       available: 96.81,
@@ -73,11 +78,12 @@ describe('write tools (v4 surface)', () => {
     registerWriteTools(server, agent);
   });
 
-  it('registers 3 write tools (agent_pay + agent_review deleted with the store)', () => {
-    expect(tools.size).toBe(3);
+  it('registers 4 write tools (agent_pay + agent_review deleted with the store)', () => {
+    expect(tools.size).toBe(4);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_swap')).toBe(true);
     expect(tools.has('t2000_pay')).toBe(true);
+    expect(tools.has('t2000_agent_sell')).toBe(true);
     expect(tools.has('t2000_agent_pay')).toBe(false);
     expect(tools.has('t2000_agent_review')).toBe(false);
   });
@@ -231,6 +237,85 @@ describe('write tools (v4 surface)', () => {
       const handler = tools.get('t2000_pay')!;
       const result = await handler({ url: 'https://mpp.t2000.ai/openai/v1', method: 'POST' });
       expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('t2000_agent_sell', () => {
+    const fetchMock = vi.fn();
+
+    beforeEach(() => {
+      vi.stubGlobal('fetch', fetchMock);
+      fetchMock.mockReset();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('prepare → sign → submit; returns the listing + digest', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            nonce: 'n1',
+            txBytes: Buffer.from('txbytes').toString('base64'),
+            probe: { ok: true, amount: '0.02', currency: 'USDC' },
+          }),
+        })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, digest: '0xselldigest' }) });
+
+      const handler = tools.get('t2000_agent_sell')!;
+      const result = await handler({ endpoint: 'https://api.me.com/v1/search' });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.ok).toBe(true);
+      expect(data.listed).toBe(true);
+      expect(data.pricePerCall).toBe('0.02 USDC');
+      expect(data.digest).toBe('0xselldigest');
+      expect(agent.signer.signTransaction).toHaveBeenCalled();
+      // Both legs post the agent's own address — never a caller-supplied one.
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).address).toBe('0xowner');
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body).address).toBe('0xowner');
+    });
+
+    it('surfaces probe failures per-check without signing', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: { message: 'Endpoint probe failed — fix the checks below and try again.' },
+          probe: { ok: false, issues: [{ code: 'no-402', message: 'Expected 402, got 405' }] },
+        }),
+      });
+
+      const handler = tools.get('t2000_agent_sell')!;
+      const result = await handler({ endpoint: 'https://example.com' });
+      expect(result.isError).toBe(true);
+      const data = JSON.parse(result.content[0].text);
+      expect(data.probeIssues[0].message).toBe('Expected 402, got 405');
+      expect(agent.signer.signTransaction).not.toHaveBeenCalled();
+    });
+
+    it('remove: true clears the listing (empty endpoint, no probe payload required)', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ nonce: 'n2', txBytes: Buffer.from('tx2').toString('base64'), probe: null }),
+        })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, digest: '0xcleardigest' }) });
+
+      const handler = tools.get('t2000_agent_sell')!;
+      const result = await handler({ remove: true });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.listed).toBe(false);
+      expect(data.endpoint).toBeNull();
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).endpoint).toBe('');
+    });
+
+    it('rejects a call with neither endpoint nor remove', async () => {
+      const handler = tools.get('t2000_agent_sell')!;
+      const result = await handler({});
+      expect(result.isError).toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 });

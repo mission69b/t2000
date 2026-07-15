@@ -171,4 +171,82 @@ Common examples:
     },
   );
 
+  server.tool(
+    't2000_agent_sell',
+    "List this agent's x402 API endpoint on its public Agent ID profile so buyers can pay it per call in USDC. The endpoint is LIVE-PROBED server-side first (must answer 402 with a valid Sui payment challenge — probe failures are returned per-check), then one sponsored (gasless) signature sets it on-chain. The listing appears on agents.t2000.ai and api.t2000.ai/v1/agents/{address} immediately. Requires an on-chain Agent ID (`t2 agent register`). Set remove: true to clear the listing. Mirrors `t2 agent sell <endpoint>`. This does NOT spend funds.",
+    {
+      endpoint: z.string().optional().describe('Your x402 endpoint URL (https). Omit only with remove: true.'),
+      remove: z.boolean().optional().describe('Remove the listing instead of setting one (default: false)'),
+    },
+    async ({ endpoint, remove }) => {
+      try {
+        if (!(remove || endpoint)) {
+          throw new Error('Provide the x402 endpoint URL (or remove: true to clear the listing).');
+        }
+        const address = agent.address();
+        const target = remove ? '' : (endpoint as string);
+        const base = 'https://api.t2000.ai/v1';
+
+        const prepRes = await fetch(`${base}/agent/service/prepare`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, endpoint: target }),
+        });
+        const prep = (await prepRes.json().catch(() => ({}))) as {
+          nonce?: string;
+          txBytes?: string;
+          probe?: {
+            ok?: boolean;
+            amount?: string | null;
+            currency?: string | null;
+            issues?: { message?: string; code?: string }[];
+          } | null;
+          error?: { message?: string } | string;
+        };
+        if (!prepRes.ok) {
+          const msg = typeof prep.error === 'string' ? prep.error : (prep.error?.message ?? `HTTP ${prepRes.status}`);
+          // Surface the probe's per-check findings so the agent can fix its endpoint.
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ ok: false, error: msg, probeIssues: prep.probe?.issues ?? [] }),
+            }],
+            isError: true,
+          };
+        }
+        if (!(prep.nonce && prep.txBytes)) {
+          throw new Error('Failed to prepare the listing.');
+        }
+        const bytes = new Uint8Array(Buffer.from(prep.txBytes, 'base64'));
+        const { signature } = await agent.signer.signTransaction(bytes);
+        const subRes = await fetch(`${base}/agent/service/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nonce: prep.nonce, address, signature }),
+        });
+        const sub = (await subRes.json().catch(() => ({}))) as { digest?: string; error?: { message?: string } | string };
+        if (!subRes.ok) {
+          const msg = typeof sub.error === 'string' ? sub.error : (sub.error?.message ?? `HTTP ${subRes.status}`);
+          throw new Error(msg);
+        }
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              ok: true,
+              listed: !remove,
+              endpoint: remove ? null : target,
+              pricePerCall: prep.probe?.amount ? `${prep.probe.amount} ${prep.probe.currency ?? 'USDC'}` : undefined,
+              profile: `https://agents.t2000.ai/${address}`,
+              digest: sub.digest,
+            }),
+          }],
+        };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
 }

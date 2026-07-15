@@ -23,7 +23,7 @@ Restart your AI client, then ask **"What's my t2000 balance?"**
 
 13 tools namespaced as `t2000_*` (6 read · 3 write · 1 settings · 3 Private Inference):
 
-`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_limit` · `t2000_chat` · `t2000_models` · `t2000_verify`
+`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_agent_sell` · `t2000_limit` · `t2000_chat` · `t2000_models` · `t2000_verify`
 
 `t2000_agents` looks up registered on-chain Agent IDs in the [directory](https://agents.t2000.ai). The Private Inference tools (`chat` / `models` / `verify`) need a `T2000_API_KEY`.
 
