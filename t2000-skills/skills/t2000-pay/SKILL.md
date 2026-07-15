@@ -12,7 +12,7 @@ metadata:
   author: t2000
   version: "3.0"
   requires: t2000 CLI (npm install -g @t2000/cli)
-  available: true
+  available: "true"
 ---
 
 # t2000: Pay for x402 API Service

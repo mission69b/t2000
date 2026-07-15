@@ -88,11 +88,13 @@ const MENTION = /\bt2 ([a-z][a-z0-9-]*)(?: ([a-z][a-z0-9-]*))?/g;
 
 /** English continuations after a prose "t2" ("the t2 command", "t2 is
  *  ready", "use t2 services to …"). NOT candidate subcommand names —
- *  deliberately excludes plausible drift like `list`, `sell`, `earnings`. */
+ *  deliberately excludes plausible drift like `list`, `sell`, `earnings`.
+ *  'code' = the "t2 code" PRODUCT (the separate `t2code` binary from
+ *  @t2000/code, SPEC_INFERENCE_DEMAND step 2), not a `t2` verb. */
 const PROSE_STOPWORDS = new Set([
   'command', 'commands', 'is', 'can', 'cannot', 'does', 'will', 'and', 'or',
   'to', 'for', 'the', 'a', 'an', 'in', 'on', 'with', 'via', 'ready', 'verb',
-  'verbs', 'binary', 'bins', 'alias', 'aliases', 'wallet',
+  'verbs', 'binary', 'bins', 'alias', 'aliases', 'wallet', 'code',
 ]);
 
 function scan(surface: CommandSurface): Violation[] {

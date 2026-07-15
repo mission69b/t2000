@@ -7,8 +7,8 @@ import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
 // Confidential path demo: a phala/* call returns a receipt; t2 verify
 // checks the Sui anchor + receipt signature + TDX quote client-side.
 const LINES = [
-  { t: "cmd", s: 't2 chat --model phala/glm-5.2 \\' },
-  { t: "cont", s: '  "Summarize the filing."' },
+  { t: "cmd", s: 'curl api.t2000.ai/v1/chat/completions \\' },
+  { t: "cont", s: '  -d \'{"model":"phala/glm-5.2", …}\'' },
   { t: "gap", s: "" },
   { t: "conf", s: "🔒 confidential · attested · enclave verified" },
   { t: "out", s: '"Here\u2019s the summary you asked for …"' },

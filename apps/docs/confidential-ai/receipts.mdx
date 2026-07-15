@@ -5,7 +5,7 @@ description: "A signed receipt is a per-response transparency log that binds you
 
 A receipt is the gateway's signed record of one request: an ordered event log capturing what it received, which upstream it verified, and what it returned, with a hash at each step. It's signed by a key published in the [attestation report](/confidential-ai/attestation), so a verified receipt proves the response came from the attested workload and wasn't altered.
 
-Every confidential response returns the receipt id in the **`x-receipt-id`** header (streaming: `x_receipt_id` on the final usage chunk). `t2 chat --model phala/…` surfaces it inline: `🔒 confidential · attested · receipt rcpt-…`.
+Every confidential response returns the receipt id in the **`x-receipt-id`** header (streaming: `x_receipt_id` on the final usage chunk). The MCP `t2000_chat` tool (model `phala/…`) surfaces it inline: `🔒 confidential · attested · receipt rcpt-…`.
 
 ---
 

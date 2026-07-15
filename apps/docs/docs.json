@@ -56,6 +56,7 @@
             "group": "Private Inference",
             "pages": [
               "private-inference",
+              "t2-code",
               "authentication",
               "models",
               "use-with-your-tools"

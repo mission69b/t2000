@@ -23,10 +23,11 @@ your agent) prove the response is genuine without trusting t2000.
 
 ## Where the receipt id comes from
 
-Any confidential inference call returns one:
+Any confidential inference call returns one — e.g. the MCP `t2000_chat` tool with a
+`phala/*` model surfaces it inline:
 
-```bash
-t2 chat --model phala/glm-5.2 "…"     # → 🔒 confidential · attested · receipt rcpt-…
+```text
+🔒 confidential · attested · receipt rcpt-…
 ```
 
 The API returns it in the `x-receipt-id` header (streaming: `x_receipt_id` on the

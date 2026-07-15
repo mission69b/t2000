@@ -94,8 +94,8 @@ Beyond any OpenAI SDK, the t2000 toolchain wraps the API as first-class verbs �
 
 ```bash CLI
 export T2000_API_KEY=sk-...
-t2 chat "Explain x402 in one sentence." --model zai/glm-5.2   # streams
-t2 models                                                      # list the catalog
+t2 models                        # list the catalog (id · privacy tier · pricing)
+t2code exec "Explain x402 in one sentence."   # t2 code — one-shot, headless
 ```
 
 ```typescript SDK
@@ -172,8 +172,11 @@ See **[Models](/models)** for the full catalog and how pricing works.
 `phala/*` models run in a **verified GPU-TEE** and return a **signed receipt** that's **automatically anchored on Sui** and durably stored — so you can **check yourself** with `t2 verify` (or at [verify.t2000.ai](https://verify.t2000.ai)) **any time** — the only Sui-native *verifiable* confidential inference. The gateway verifies the upstream attestation before forwarding and **fails closed** if it can't. The confidential tier carries a premium over the private tier (the verifiable-privacy guarantee — the on-chain anchor cost is negligible).
 
 ```bash
-t2 chat --model phala/glm-5.2 "hello"     # → 🔒 confidential · attested · receipt rcpt-…
-t2 verify rcpt-…                          # → ✓ verified (Sui anchor + receipt signature, trustless)
+curl https://api.t2000.ai/v1/chat/completions \
+  -H "Authorization: Bearer $T2000_API_KEY" \
+  -d '{"model":"phala/glm-5.2","messages":[{"role":"user","content":"hello"}]}' \
+  -i | grep -i x-receipt-id                 # → x-receipt-id: rcpt-…
+t2 verify rcpt-…                            # → ✓ verified (Sui anchor + receipt signature, trustless)
 ```
 
 <CardGroup cols={2}>

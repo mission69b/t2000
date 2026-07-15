@@ -44,5 +44,6 @@ from a wallet. They don't mix.
 - **`t2 agent onboard` + `t2 agent topup`** (wallet → credit → key) — removed
   2026-07-13 (shipped in v8). Keys come from the console, period;
   machines making one-off inference calls use keyless x402 on the gateway.
-  `t2 chat` / `t2 verify` remain — they *consume* a key (`T2000_API_KEY`) and
-  verify receipts; they are not a second onboarding path.
+  `t2 models` / `t2 verify` remain — they *consume* a key (`T2000_API_KEY`) and
+  verify receipts; they are not a second onboarding path. (`t2 chat` was
+  absorbed into `t2 code` at the Step-2 ship — one inference surface.)

@@ -25,8 +25,8 @@ const LANES: Lane[] = [
   {
     n: "03",
     title: "Inference",
-    verbs: ["t2 chat", "models", "verify"],
-    desc: "Private & Confidential inference on every model, plus trustless on-chain receipt verification.",
+    verbs: ["t2 models", "verify"],
+    desc: "The Private Inference catalog plus trustless on-chain receipt verification. Interactive chat lives in t2 code.",
   },
 ];
 

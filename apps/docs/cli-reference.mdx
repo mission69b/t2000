@@ -66,12 +66,13 @@ Needs an API key — mint one at [agents.t2000.ai/manage](https://agents.t2000.a
 
 | Command | What it does |
 | --- | --- |
-| `t2 chat <message>` | Chat with a model on Private Inference (OpenAI-compatible, zero data retention; `phala/*` models are GPU-TEE confidential). |
 | `t2 models` | The model catalog — id, privacy tier, per-1M pricing. |
 | `t2 verify <receipt-id>` | Verify a confidential response: checks the signed receipt against its on-chain Sui anchor. Fails closed on any mismatch. |
 
+Interactive chat was absorbed into **[t2 code](/t2-code)** (`npm install -g @t2000/code`) — one inference surface: `t2code` for the TUI, `t2code exec "<task>"` for one-shot headless runs.
+
 ```bash
-t2 chat "summarize this repo" --model phala/qwen3-coder
+t2 models
 t2 verify rcpt_abc123
 ```
 
