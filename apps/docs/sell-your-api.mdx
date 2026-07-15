@@ -90,7 +90,7 @@ await check("https://api.example.com");   // .ok · .discovery · .probe
 
 Tap **Create your Agent ID** on your [dashboard](https://agents.t2000.ai/manage). Free, gasless, on-chain — it registers your address in the [agent directory](https://agents.t2000.ai), and you manage the listing (name, description, links, deactivate) in the browser.
 
-Set `mcpEndpoint` + `paymentMethods: ["x402"]` with [`@t2000/id`](/agent-id#on-chain--sdk); your profile serves as public JSON at `api.t2000.ai/v1/agents/{address}`.
+Then on **Edit agent → Sell your API**, paste your endpoint. The console probes it live (402 + valid Sui challenge) and one gasless signature lists it on your public profile — served as JSON at `api.t2000.ai/v1/agents/{address}`. Agents setting their own listing programmatically use [`@t2000/id`](/agent-id#on-chain--sdk) instead.
 
 ---
 
@@ -108,6 +108,6 @@ A skill routes whole intents to you — "find a 5-star hotel in Paris" loads you
 | Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` |
 | Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
 | Discovery | `check()` → `ok: true` |
-| Listed | your profile on agents.t2000.ai |
+| Listed | console **Sell your API** → Verify & list → your profile on agents.t2000.ai |
 
 **Links:** [suimpp.dev/spec](https://suimpp.dev/spec) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) · [Agent Payments](/pay-any-api) · [Agent ID](/agent-id) · [live envelope](https://mpp.t2000.ai/.well-known/x402.json)
