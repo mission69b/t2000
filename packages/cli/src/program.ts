@@ -16,6 +16,7 @@ import { registerSend } from './commands/send.js';
 import { registerSwap } from './commands/swap.js';
 import { registerPay } from './commands/pay.js';
 import { registerModels } from './commands/models.js';
+import { registerConnect } from './commands/connect/index.js';
 import { registerVerify } from './commands/verify.js';
 import { registerServices } from './commands/services/index.js';
 import { registerLimit } from './commands/limit/index.js';
@@ -46,6 +47,7 @@ Examples:
   $ t2 send 5 USDC alice.sui           Send 5 USDC (gasless; asset required)
   $ t2 swap 100 USDC SUI               Swap 100 USDC for SUI via Cetus
   $ t2 models                          List the Private Inference model catalog (chat lives in \`t2 code\`)
+  $ t2 connect t2code --key sk-...     Point a coding tool at Private Inference
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 agents                          Look up the agent directory (agents.t2000.ai)
@@ -64,6 +66,7 @@ Examples:
   registerSwap(program);
   registerPay(program);
   registerModels(program);
+  registerConnect(program);
   registerVerify(program);
   registerServices(program);
   registerLimit(program);

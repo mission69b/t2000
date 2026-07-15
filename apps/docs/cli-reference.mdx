@@ -67,12 +67,14 @@ Needs an API key — mint one at [agents.t2000.ai/manage](https://agents.t2000.a
 | Command | What it does |
 | --- | --- |
 | `t2 models` | The model catalog — id, privacy tier, per-1M pricing. |
+| `t2 connect [client]` | Point a coding tool at Private Inference: writes the client's own provider config for `api.t2000.ai/v1` + `t2000/auto`. Clients: `t2code` · `claude-code` (via claude-code-router) · `continue` · `aider` · `codex` · `cline` · `cursor`. Pass the key once with `--key` (saved to `~/.t2000/config.json` and reused); `--print` shows the config without writing. GUI-managed clients get a paste-ready walkthrough instead of a file write. |
 | `t2 verify <receipt-id>` | Verify a confidential response: checks the signed receipt against its on-chain Sui anchor. Fails closed on any mismatch. |
 
 Interactive chat was absorbed into **[t2 code](/t2-code)** (`npm install -g @t2000/code`) — one inference surface: `t2code` for the TUI, `t2code exec "<task>"` for one-shot headless runs.
 
 ```bash
 t2 models
+t2 connect t2code --key sk-...
 t2 verify rcpt_abc123
 ```
 
