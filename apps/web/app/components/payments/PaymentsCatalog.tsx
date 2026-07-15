@@ -1,34 +1,100 @@
 import { GATEWAY_URL } from "../../data/t2k";
 
-interface Category {
+interface Service {
+  name: string;
+  categories: string[];
+}
+
+interface CategoryRow {
   cat: string;
   count: number;
   examples: string;
 }
 
-const CATEGORIES: Category[] = [
-  { cat: "AI Chat", count: 9, examples: "OpenAI · Anthropic · DeepSeek · Mistral · Together · Groq · Cohere · Perplexity · xAI" },
-  { cat: "Web Search", count: 10, examples: "Brave · Tavily · Exa · You.com · Serper · Perplexity Sonar · Bing · Kagi · SerpAPI · Linkup" },
-  { cat: "Image Generation", count: 9, examples: "DALL-E 3 · gpt-image-1 · FAL Flux · Stability · Replicate · Midjourney · Imagen · Recraft · Ideogram" },
-  { cat: "Data", count: 9, examples: "Maps · Weather · Crypto · Stocks · FX · Flights · Sports · News · Sui RPC" },
-  { cat: "Web Scraping", count: 8, examples: "Firecrawl · Jina · Browserbase · ScrapingBee · Apify · ZenRows · Spider · Crawlbase" },
-  { cat: "Audio + TTS", count: 7, examples: "Whisper · AssemblyAI · ElevenLabs · OpenAI TTS · Hume · Cartesia · Inworld" },
-  { cat: "Embeddings", count: 6, examples: "OpenAI · Cohere · Voyage · Mistral · Jina · Together" },
-  { cat: "Intelligence", count: 4, examples: "Wolfram · Perplexity Research · Riza · BlockVision" },
-  { cat: "Translation", count: 3, examples: "DeepL · Google · Lilt" },
-  { cat: "Email + Push", count: 3, examples: "Resend · Loops · Pushcut" },
-  { cat: "Physical Mail", count: 3, examples: "Lob postcards · Lob letters · PostGrid" },
-  { cat: "Commerce", count: 3, examples: "Stripe · Square · NMI" },
-  { cat: "Tools", count: 3, examples: "URL screenshot · PDF render · Cron job" },
-];
+// Display labels for the catalog's raw category keys. Unknown keys fall
+// back to title-case so a new gateway category renders without a deploy
+// here.
+const CATEGORY_LABELS: Record<string, string> = {
+  ai: "AI Models",
+  media: "Media Generation",
+  search: "Web Search",
+  data: "Data APIs",
+  web: "Web Scraping",
+  translation: "Translation",
+  communication: "Email",
+  messaging: "Push",
+  compute: "Code Execution",
+  commerce: "Commerce",
+  security: "Security",
+  finance: "FX & Finance",
+  utility: "Utilities",
+};
 
-export function PaymentsCatalog() {
+const MAX_EXAMPLES = 6;
+
+function labelFor(key: string): string {
+  return (
+    CATEGORY_LABELS[key] ??
+    key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()
+  );
+}
+
+// Category rows derived from the LIVE gateway catalog — never hand-written
+// (the pre-2026-07-15 static table named services that were not on the
+// rail; see CLAUDE.md "catalog tables come from live truth").
+async function fetchCategories(): Promise<{
+  rows: CategoryRow[];
+  services: number | null;
+}> {
+  try {
+    const res = await fetch(`${GATEWAY_URL}/api/services`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) throw new Error(`gateway ${res.status}`);
+    const services: Service[] = await res.json();
+
+    const byCat = new Map<string, string[]>();
+    for (const s of services) {
+      for (const c of s.categories ?? []) {
+        const list = byCat.get(c) ?? [];
+        list.push(s.name);
+        byCat.set(c, list);
+      }
+    }
+
+    const rows = [...byCat.entries()]
+      .map(([cat, names]) => ({
+        cat: labelFor(cat),
+        count: names.length,
+        examples:
+          names.slice(0, MAX_EXAMPLES).join(" · ") +
+          (names.length > MAX_EXAMPLES
+            ? ` · +${names.length - MAX_EXAMPLES} more`
+            : ""),
+      }))
+      .sort((a, b) => b.count - a.count || a.cat.localeCompare(b.cat));
+
+    return { rows, services: services.length };
+  } catch {
+    // Gateway unreachable at render time: show the section without
+    // invented numbers — the full-catalog link is still the way in.
+    return { rows: [], services: null };
+  }
+}
+
+export async function PaymentsCatalog() {
+  const { rows, services } = await fetchCategories();
+
   return (
     <section className="t2k-section">
       <div className="t2k-container">
         <header className="mb-12 grid items-end gap-12 lg:grid-cols-[1.1fr_1fr]">
           <div>
-            <span className="t2k-eyebrow">{"// THE CATALOG · 13 CATEGORIES"}</span>
+            <span className="t2k-eyebrow">
+              {rows.length > 0
+                ? `// THE CATALOG · ${rows.length} CATEGORIES`
+                : "// THE CATALOG"}
+            </span>
             <h2
               className="t2k-section-title mt-[22px]"
               style={{ lineHeight: 1.0 }}
@@ -46,18 +112,27 @@ export function PaymentsCatalog() {
                 letterSpacing: "-0.011em",
               }}
             >
-              Pay-per-request to every major AI provider. USDC on Sui.
-              Gasless. Live on{" "}
+              Pay-per-request to{" "}
+              {services ? (
+                <span style={{ color: "var(--fg)" }}>
+                  {services} live services
+                </span>
+              ) : (
+                "every major AI provider"
+              )}
+              . USDC on Sui. Gasless. Live on{" "}
               <span style={{ color: "var(--fg)" }}>mpp.t2000.ai</span>.
             </p>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          {CATEGORIES.map((c) => (
-            <CategoryCard key={c.cat} {...c} />
-          ))}
-        </div>
+        {rows.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((c) => (
+              <CategoryCard key={c.cat} {...c} />
+            ))}
+          </div>
+        ) : null}
 
         <a
           href={`${GATEWAY_URL}/services`}
@@ -93,7 +168,7 @@ export function PaymentsCatalog() {
   );
 }
 
-function CategoryCard({ cat, count, examples }: Category) {
+function CategoryCard({ cat, count, examples }: CategoryRow) {
   return (
     <div
       className="t2k-card t2k-card-hover flex flex-col gap-2"
