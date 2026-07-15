@@ -54,6 +54,7 @@ Subcommands:
   $ t2 agent create --name "Atlas Research"  Wallet + Agent ID + profile in one pass
   $ t2 agent register                        Existing wallet → on-chain Agent ID (gasless)
   $ t2 agent handle alice                    Claim @alice
+  $ t2 agent sell https://api.me.com/v1/x    List your x402 endpoint (live-probed, gasless)
 `,
     );
 
@@ -288,6 +289,103 @@ Subcommands:
           }
           printBlank();
           printSuccess('Profile updated.');
+          printBlank();
+        } catch (error) {
+          handleError(error);
+        }
+      },
+    );
+
+  group
+    .command('sell')
+    .argument(
+      '[endpoint]',
+      'Your x402 endpoint URL (https). Omit with --remove to clear the listing.',
+    )
+    .description(
+      'List your x402 endpoint on your public Agent ID profile. The endpoint is live-probed (must answer 402 with a Sui payment challenge), then set on-chain — sponsored, gasless. Same flow as the console\u2019s "Sell your API".',
+    )
+    .option('--remove', 'Remove the listing instead')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(
+      async (
+        endpoint: string | undefined,
+        opts: { remove?: boolean; key?: string; api?: string },
+      ) => {
+        try {
+          if (!(opts.remove || endpoint)) {
+            throw new Error(
+              'Provide your x402 endpoint URL (or --remove to clear the listing).',
+            );
+          }
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const agent = await withAgent({ keyPath: opts.key });
+          const address = agent.address();
+          const target = opts.remove ? '' : (endpoint as string);
+
+          // Two-phase sponsored flow, inline (not runSponsoredTx) so a failed
+          // probe surfaces its per-check findings, not just one message.
+          const prepRes = await fetch(`${base}/agent/service/prepare`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address, endpoint: target }),
+          });
+          const prep = (await prepRes.json().catch(() => ({}))) as {
+            nonce?: string;
+            txBytes?: string;
+            probe?: {
+              ok?: boolean;
+              amount?: string | null;
+              currency?: string | null;
+              issues?: { message?: string; code?: string }[];
+            } | null;
+            error?: { message?: string } | string;
+          };
+          if (!prepRes.ok) {
+            const issues = prep.probe?.issues ?? [];
+            const msg =
+              typeof prep.error === 'string'
+                ? prep.error
+                : (prep.error?.message ?? `HTTP ${prepRes.status}`);
+            const detail = issues
+              .map((i) => `  ✗ ${i.message ?? i.code}`)
+              .join('\n');
+            throw new Error(detail ? `${msg}\n${detail}` : msg);
+          }
+          if (!(prep.nonce && prep.txBytes)) {
+            throw new Error('Failed to prepare the listing.');
+          }
+          const bytes = new Uint8Array(Buffer.from(prep.txBytes, 'base64'));
+          const { signature } = await agent.keypair.signTransaction(bytes);
+          const sub = await fetchJson(`${base}/agent/service/submit`, {
+            method: 'POST',
+            body: { nonce: prep.nonce, address, signature },
+          });
+
+          if (isJsonMode()) {
+            printJson({
+              address,
+              endpoint: opts.remove ? null : target,
+              listed: !opts.remove,
+              probe: prep.probe ?? null,
+              digest: sub.digest,
+            });
+            return;
+          }
+          printBlank();
+          if (opts.remove) {
+            printSuccess('Listing removed.');
+          } else {
+            printSuccess('Listed — your endpoint is live on your public profile.');
+            if (prep.probe?.amount) {
+              printKeyValue('Price', `${prep.probe.amount} USDC per call`);
+            }
+            printKeyValue('Endpoint', target);
+            printInfo(`Buyers pay it with: t2 pay ${target}`);
+            printKeyValue('Profile', `https://agents.t2000.ai/${address}`);
+          }
+          printKeyValue('Tx', String(sub.digest));
           printBlank();
         } catch (error) {
           handleError(error);

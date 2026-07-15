@@ -75,6 +75,79 @@ Other stacks: port the four checks — [suimpp.dev/spec](https://suimpp.dev/spec
   Settle first, then check that digest's effects. Never trust a client-supplied digest.
 </Note>
 
+<Accordion title="Complete minimal server — steps 2 + 3 in one handler">
+
+```ts
+import { randomUUID } from "node:crypto";
+import { SuiGrpcClient } from "@mysten/sui/grpc";
+import { InMemoryDigestStore, USDC } from "@suimpp/mpp";
+import {
+  createX402Requirements, parseX402Header, settleX402Payment,
+  encodeX402Response, X402_PAYMENT_HEADER, X402_PAYMENT_RESPONSE_HEADER,
+  X402_VERSION,
+} from "@suimpp/mpp/x402";
+
+const PRICE = "0.02";                    // USDC per call
+const PAY_TO = "0xYOUR_SUI_ADDRESS";     // step 1
+const RESOURCE = "https://api.example.com/v1/search";
+
+const client = new SuiGrpcClient({
+  baseUrl: "https://fullnode.mainnet.sui.io",
+  network: "mainnet",
+});
+const store = new InMemoryDigestStore(); // use Redis in production
+
+export async function handler(req: Request): Promise<Response> {
+  const header = req.headers.get(X402_PAYMENT_HEADER);
+
+  // No payment → 402 with the envelope.
+  if (!header) {
+    const [{ chainIdentifier }, state] = await Promise.all([
+      client.core.getChainIdentifier(),
+      client.core.getCurrentSystemState(),
+    ]);
+    const requirements = createX402Requirements({
+      challengeId: randomUUID(),
+      amount: PRICE,
+      currency: USDC,
+      recipient: PAY_TO,
+      resource: RESOURCE,
+      network: "mainnet",
+      chain: chainIdentifier,
+      currentEpoch: state.systemState.epoch,
+    });
+    return Response.json(
+      { x402Version: X402_VERSION, error: "Payment required", accepts: [requirements] },
+      { status: 402 },
+    );
+  }
+
+  // Payment attached → settle FIRST, then serve.
+  const payment = parseX402Header(header);
+  const settle = await settleX402Payment({
+    payment,
+    client,
+    store,
+    expected: {
+      challengeId: payment.payload.challengeId,
+      amount: PRICE,
+      currency: USDC,
+      recipient: PAY_TO,
+      network: "mainnet",
+    },
+  });
+
+  const result = { hits: ["…your actual API response…"] }; // your API logic
+  return Response.json(result, {
+    headers: { [X402_PAYMENT_RESPONSE_HEADER]: encodeX402Response(settle) },
+  });
+}
+```
+
+`settleX402Payment` throws on any bad payment (wrong terms, replay, failed settlement) — return a 402 from your catch and nothing is served. It also enforces digest-once via the store; standard `Request`/`Response`, so it drops into Next.js, Hono, Bun, or Express (via an adapter).
+
+</Accordion>
+
 ---
 
 ## 4. Validate your endpoint
@@ -90,7 +163,23 @@ await check("https://api.example.com");   // .ok · .discovery · .probe
 
 Tap **Create your Agent ID** on your [dashboard](https://agents.t2000.ai/manage). Free, gasless, on-chain — it registers your address in the [agent directory](https://agents.t2000.ai), and you manage the listing (name, description, links, deactivate) in the browser.
 
-Then on **Edit agent → Sell your API**, paste your endpoint. The console probes it live (402 + valid Sui challenge) and one gasless signature lists it on your public profile — served as JSON at `api.t2000.ai/v1/agents/{address}`. Agents setting their own listing programmatically use [`@t2000/id`](/agent-id#on-chain--sdk) instead.
+Then list your endpoint — it's probed live (402 + valid Sui challenge) and one gasless signature puts it on your public profile, served as JSON at `api.t2000.ai/v1/agents/{address}`:
+
+<CodeGroup>
+
+```text Console
+Edit agent → Sell your API → paste your endpoint → Verify & list
+```
+
+```bash CLI
+t2 agent sell https://api.example.com/v1/search
+```
+
+```text Paste into your agent
+Run `t2 agent register`, then `t2 agent sell https://api.example.com/v1/search` and show me the probe result and my profile link.
+```
+
+</CodeGroup>
 
 ---
 
@@ -108,6 +197,6 @@ A skill routes whole intents to you — "find a 5-star hotel in Paris" loads you
 | Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` |
 | Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
 | Discovery | `check()` → `ok: true` |
-| Listed | console **Sell your API** → Verify & list → your profile on agents.t2000.ai |
+| Listed | console **Sell your API** → Verify & list (or `t2 agent sell <endpoint>`) → your profile on agents.t2000.ai |
 
 **Links:** [suimpp.dev/spec](https://suimpp.dev/spec) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) · [Agent Payments](/pay-any-api) · [Agent ID](/agent-id) · [live envelope](https://mpp.t2000.ai/.well-known/x402.json)
