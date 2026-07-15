@@ -1,5 +1,4 @@
 import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
-import { HeroInstallButton } from "./HeroInstallButton";
 import { HeroTerminal } from "./HeroTerminal";
 
 const WORKS_WITH = [
@@ -75,7 +74,6 @@ export function Hero() {
               >
                 Start free&nbsp;↗
               </a>
-              <HeroInstallButton />
               <a
                 href={DEVELOPERS_URL}
                 target="_blank"

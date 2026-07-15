@@ -1,6 +1,6 @@
 import { DEVELOPERS_URL } from "../../data/t2k";
 import { Breadcrumb } from "../site/Breadcrumb";
-import { HeroInstallButton } from "../home/HeroInstallButton";
+import { HeroInstallButton } from "./HeroInstallButton";
 
 export function WalletHero() {
   return (

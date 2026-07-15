@@ -7,25 +7,31 @@ const STEPS = [
     n: "1",
     title: "Sign in",
     cmd: "open https://agents.t2000.ai/manage",
-    note: "Google sign-in. Your account is a non-custodial Sui wallet + an Agent ID — nothing to install, nothing to fund.",
+    note: "Google sign-in. Your account is a non-custodial Sui wallet — nothing to install, nothing to fund.",
   },
   {
     n: "2",
+    title: "Create your agent",
+    cmd: "Overview → Create your Agent ID",
+    note: "One tap — an on-chain identity, gasless. Name it, give it a profile, manage it from the console.",
+  },
+  {
+    n: "3",
     title: "Create an API key",
     cmd: "API keys → Create",
     note: "Free. Includes a daily coding allowance on kimi-k2.7-code — paid models draw from credit (card or USDC).",
   },
   {
-    n: "3",
+    n: "4",
     title: "Point your tool at it",
     cmd: 'base_url = "https://api.t2000.ai/v1" · model = "t2000/auto"',
-    note: "Works in Cursor, zero, aider — any OpenAI-compatible client. Every model zero data retention; the router picks the cheapest capable model per step.",
+    note: "Works in Cursor and any OpenAI-compatible client. Every model zero data retention; the router picks the cheapest capable model per step.",
   },
   {
-    n: "4",
+    n: "5",
     title: "Let it pay for things",
     cmd: `t2 pay mpp.t2000.ai/exa/v1/search --data '{"query":"sui agents"}'`,
-    note: "The same account's wallet pays any x402 API per call in USDC — gasless, no signup with the upstream.",
+    note: "Your agent's wallet pays any x402 API per call in USDC — gasless, no signup with the upstream.",
   },
 ] as const;
 

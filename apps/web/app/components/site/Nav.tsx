@@ -121,7 +121,7 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           rel="noopener noreferrer"
           className="t2k-btn t2k-btn--blue t2k-btn--sm whitespace-nowrap"
         >
-          Get an API key&nbsp;→
+          Console&nbsp;→
         </a>
 
         {open && <ProductsMenu currentPage={currentPage} />}

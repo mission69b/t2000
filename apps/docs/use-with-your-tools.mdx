@@ -86,24 +86,9 @@ Cursor can route its chat models through any OpenAI-compatible endpoint:
 
 ---
 
-## zero
+## Coding CLIs (custom OpenAI-compatible provider)
 
-[zero](https://github.com/Gitlawb/zero) is an open-source coding CLI that takes custom OpenAI-compatible providers. This exact config is what we run daily:
-
-```bash
-export T2000_API_KEY=sk-...
-
-zero providers add custom-openai-compatible \
-  --name t2000 \
-  --model t2000/auto \
-  --base-url https://api.t2000.ai/v1 \
-  --api-key-env T2000_API_KEY \
-  --set-active
-
-zero doctor --connectivity   # probe: should report 200 on /v1/models
-```
-
-Then `zero tui` for interactive sessions or `zero exec "…"` for one-shot tasks. Tool calls (file edits, shell) pass through `/v1` natively — the router escalates hard steps, and the free daily allowance applies when the served model is `kimi-k2.7-code`.
+Most open-source coding CLIs take a custom OpenAI-compatible provider — give it the base URL, your key, and `t2000/auto` as the model. Tool calls (file edits, shell) pass through `/v1` natively — the router escalates hard steps, and the free daily allowance applies when the served model is `kimi-k2.7-code`.
 
 ---
 
