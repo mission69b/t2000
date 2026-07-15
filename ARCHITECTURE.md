@@ -40,7 +40,7 @@ planned developer engine (`t2 connect` / `t2 code` — `spec/SPEC_INFERENCE_DEMA
 |---|---|---|---|---|
 | `api.t2000.ai` | `/v1` routes in audric web-v3 | audric | Vercel (shared project with audric.ai) | Private Inference: chat completions, models, ACI receipts/attestation |
 | `mpp.t2000.ai` | `apps/gateway` | t2000 | Vercel (isolated project + DB) | x402 gateway: catalog, 402 endpoints, explorer, activity |
-| `agents.t2000.ai` | `apps/console` | audric | Vercel | t2 Agents: skills shelf home, `/agents` directory, console (keys · billing · usage · ownership) |
+| `agents.t2000.ai` | `apps/console` | audric | Vercel | t2 Agents: skills shelf home, `/agents` directory, console (keys · billing · usage · ownership · Sell your API) |
 | `t2000.ai` | `apps/web` | t2000 | Vercel | Marketing site + skills served as markdown (`/skills/*`, `feed.json`) |
 | `developers.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |
 | `verify.t2000.ai` | `apps/verify` | t2000 | Vercel | Public confidential-receipt explorer + paste-to-verify |
@@ -58,8 +58,8 @@ is a product decision. The gateway is fully isolated (own project, DB, Redis, ke
 | Package | What it is | Why it exists |
 |---|---|---|
 | `@t2000/sdk` | TypeScript wallet core — send (gasless USDC/USDsui), swap (Cetus aggregator), pay (x402), history (GraphQL), balance, limits (`LimitEnforcer`), `verifyReceipt`. gRPC-only transport. | One tested money path shared by every consumer (CLI, MCP, Audric) — chain plumbing, gasless mechanics, and spend limits are implemented once, never per-host. |
-| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · chat · verify · export · limit · services · skills · mcp · agent (identity subcommands) | The terminal front door: humans, scripts, and CI drive the wallet without writing code. |
-| `@t2000/mcp` | MCP server (stdio) — 13 tools + one prompt per skill, skill bodies baked at build time | Puts the wallet *inside* AI clients (Claude, Cursor, Windsurf) over the open MCP standard — agents get money tools with zero custom integration. |
+| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · chat · verify · export · limit · services · skills · mcp · agent (identity subcommands incl. `sell`) | The terminal front door: humans, scripts, and CI drive the wallet without writing code. |
+| `@t2000/mcp` | MCP server (stdio) — 14 tools + one prompt per skill, skill bodies baked at build time | Puts the wallet *inside* AI clients (Claude, Cursor, Windsurf) over the open MCP standard — agents get money tools with zero custom integration. |
 | `@t2000/id` | `agent_id::registry` client — `buildRegisterTx`, `buildUpdateTx`, ownership txs; ids baked for mainnet | Lets third parties build against the identity registry without pulling in the whole wallet SDK. |
 | `@suimpp/mpp` | The x402/MPP Sui payment method (client + server verification) — suimpp repo | The payment method as a small open package so *any* server can accept x402-on-Sui — the standard is bigger than our gateway. |
 
@@ -80,10 +80,16 @@ OpenAI-compatible. One path in: **console → API key → base URL** (see `PRODU
    Fail-closed at $0 credit.
 2. **Model routing.** The catalog (`/v1/models`) serves open + frontier models through
    the Vercel AI Gateway with `zeroDataRetention: true` (the ZDR default), plus the
-   `phala/*` **confidential tier** served from GPU-TEE enclaves.
+   `phala/*` **confidential tier** served from GPU-TEE enclaves. `model: "t2000/auto"`
+   is the coding-profile router: deterministic heuristics (context length,
+   retry-after-failure, plan/architecture phrasing) pick bulk / frontier / open per
+   request; the served model + reason come back in `x-t2000-served-model` /
+   `x-t2000-route-reason`, and billing is at the served model's price.
 3. **Billing.** Metered per request at the served model's live price × its margin,
    debited from the append-only micro-USD credit ledger (card top-up via Stripe, or
    gasless USDC/USDsui top-up from a Passport; one ledger shared with Audric).
+   **Free tier:** keys are free to mint, and `kimi-k2.7-code` carries a per-account
+   daily allowance (env-set, Redis-tracked) billed at $0 before credit is touched.
 4. **Machine path (keyless).** Agents can skip accounts entirely: the gateway lists a
    `t2000` service, so `t2 pay …/t2000/v1/chat/completions` buys a completion per-call
    over x402.
@@ -221,9 +227,10 @@ The SDK + CLI are fee-free. The one live fee is Audric's **swap overlay fee**
 ## Substrate — Agent ID
 
 On-chain identity for machine keypairs: the `agent_id::registry` Move package
-(source: `contracts/agent_id/`, deployed on Sui mainnet). Dormant by design
-(`PRODUCT.md`) — no further build until autonomous agents holding money need the
-owner/kill-switch story.
+(source: `contracts/agent_id/`, deployed on Sui mainnet). Identity itself stays
+minimal; the one live product surface on it is the **seller listing** — an agent
+sets `mcp_endpoint` + `payment_methods` on its record so buyers can pay its x402
+API per call (see "Around the contract" below).
 
 ### The Move contract
 
@@ -271,6 +278,12 @@ the chain stays the source of truth.
   truth (custody-minted, unique on-chain, releasable by the current target only);
   deliberately OFF the registry object.
 - **Profile:** name/image/description/links — challenge-signed to the API, no gas.
+- **Sell your API:** list an x402 endpoint on the record — console **Edit agent →
+  Sell your API**, `t2 agent sell <endpoint>`, or the `t2000_agent_sell` MCP tool.
+  The endpoint is live-probed server-side (must answer 402 with a valid Sui
+  challenge), then one sponsored signature sets `mcp_endpoint` +
+  `payment_methods: ["x402"]` on-chain; the listing appears on the public profile
+  + directory JSON immediately. `--remove` / `remove: true` clears it.
 - **Directory:** public JSON at `api.t2000.ai/v1/agents` (ERC-8004
   `registration-v1`-compatible) + human profiles at `agents.t2000.ai`.
 
@@ -279,12 +292,12 @@ the chain stays the source of truth.
 ## MCP server + skills
 
 **`@t2000/mcp`** (stdio; installed by `t2 mcp install` into Claude Desktop / Cursor /
-Windsurf configs) — 13 tools:
+Windsurf configs) — 14 tools:
 
 | Category | Tools |
 |---|---|
 | Read | `t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_models` |
-| Write | `t2000_send` · `t2000_swap` · `t2000_pay` |
+| Write | `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_agent_sell` |
 | Inference | `t2000_chat` (needs `T2000_API_KEY`) · `t2000_verify` |
 | Config | `t2000_limit` |
 
@@ -331,7 +344,7 @@ which AI client is used. The SDK and CLI have zero telemetry.
   api via the audric repo); Mintlify auto-deploys docs.
 - **Packages:** `gh workflow run release.yml --field bump=…` → lockstep version bump
   + tag → `publish.yml` (CI → npm publish ×4 → GitHub release → Discord). Current
-  line: v8.x; the next release is a major (v9 — CLI command removals).
+  line: v8.x.
 - **CI:** lint + typecheck + test on every push; the MCP package carries
   docs-consistency guards (stale CLI mentions and dead skill links in docs fail CI).
 

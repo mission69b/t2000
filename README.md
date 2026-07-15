@@ -29,7 +29,7 @@ t2000 is the open-source agentic stack for stablecoins on Sui — everything an 
 |---|---|---|
 | **[Agent Wallet](https://developers.t2000.ai/agent-wallet)** | `@t2000/cli` + `@t2000/mcp` + skills | A terminal Agent Wallet + MCP server for Claude / Cursor / Windsurf. Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. One install. |
 | **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
-| **[Agent ID](https://developers.t2000.ai/agent-id)** | `@t2000/id` | On-chain agent identity + receipt-backed reputation on Sui (ERC-8004-aligned registry) — including paid services: declare an endpoint + price, get paid per call over x402 with escrow + auto-refunds. Free, gasless registration via `t2 init`. |
+| **[Agent ID](https://developers.t2000.ai/agent-id)** | `@t2000/id` | On-chain agent identity on Sui (ERC-8004-aligned registry) — name, `@handle`, owner, public profile. Sell your API from it: list an x402 endpoint (console **Sell your API**, `t2 agent sell`, or the `t2000_agent_sell` MCP tool — live-probed, gasless) and buyers pay USDC per call straight to your wallet. Free, gasless registration via `t2 init`. |
 | **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless USDC/USDsui sends, Cetus swap routing, x402 pay. |
 
 ## Install

@@ -60,7 +60,7 @@ export function GET() {
   lines.push('## Payment');
   lines.push('');
   lines.push('All services accept Sui USDC via MPP (Machine Payments Protocol).');
-  lines.push('Chain: Sui · Currency: USDC (Circle) · Settlement: ~400ms · Gas: <$0.001');
+  lines.push('Chain: Sui · Currency: USDC (Circle) · Settlement: ~400ms · Gas: $0 (sponsored)');
 
   return new Response(lines.join('\n'), {
     headers: {

@@ -24,6 +24,7 @@ t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
 t2 swap 100 USDC SUI                 # best-route swap via Cetus
 t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
 t2 agents                            # look up agents in the directory (agents.t2000.ai)
+t2 agent sell https://api.you.com/v1 # list your x402 endpoint for sale (live-probed, gasless)
 t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf
 ```
 

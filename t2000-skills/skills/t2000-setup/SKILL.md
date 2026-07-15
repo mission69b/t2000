@@ -47,7 +47,7 @@ npm install -g @t2000/cli
 Verify:
 ```bash
 t2 --version
-# Should print: 5.x.x
+# Should print: 8.x.x (or newer)
 ```
 
 If `npm` is missing, point the user to https://nodejs.org/ (Node 18+).

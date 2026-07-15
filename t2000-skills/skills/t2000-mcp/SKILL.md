@@ -4,8 +4,8 @@ description: >-
   Connect a t2000 Agent Wallet to Claude Desktop, Cursor, Cline, Continue,
   or any MCP-compatible client. Use when asked to set up MCP, paste an MCP
   server config, install @t2000/mcp, or troubleshoot why the MCP server
-  "doesn't do anything" when run from a terminal. v4 surface: 13 tools
-  (6 read + 3 write + 3 Private Inference + 1 limit-view) and one
+  "doesn't do anything" when run from a terminal. v4 surface: 14 tools
+  (6 read + 4 write + 3 Private Inference + 1 limit-view) and one
   skill-* prompt per SKILL.md in t2000-skills/skills/.
 license: MIT
 metadata:
@@ -18,7 +18,7 @@ metadata:
 
 ## Purpose
 
-Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **13 tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
+Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **14 tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
 
 ## ⚠️ The most common confusion
 
@@ -46,7 +46,7 @@ That's it. No PIN. No safeguards gate. The MCP server starts as soon as the wall
 t2 mcp install
 ```
 
-This is interactive — it discovers installed clients (Claude Desktop, Cursor, Windsurf, Cline, Continue) and offers a multi-select. The CLI writes the correct config block into each chosen client. Then restart the client.
+Not interactive — it detects installed clients (Claude Desktop, Cursor, Windsurf) and writes the correct config block into each one it finds, reporting "configured" or "already configured" per client. Idempotent — safe to re-run. Then restart the client. For clients it doesn't auto-detect (Cline, Continue, Codex, …), use the manual JSON below.
 
 ### 2-alt. Manual MCP config
 
@@ -76,7 +76,7 @@ Alternative (if `@t2000/cli` is already installed globally):
 }
 ```
 
-> Until the `t2` alias ships in Phase C, the published binary is `t2000`. Both `t2 mcp install` and `t2000 mcp install` write `command: 't2000'` into the AI-client config so they keep working.
+> The install ships two equivalent bins: **`t2`** (canonical) and **`t2000`** (alias). Either works as the `command` in the config block.
 
 ### 3. Restart the client
 
@@ -106,7 +106,7 @@ printf '%s\n' \
 
 You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and exit. If you see that, the server is healthy and ready to be launched by a client.
 
-## Available Tools (13)
+## Available Tools (14)
 
 ### Read (6)
 
@@ -119,7 +119,7 @@ You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and
 | `t2000_services` | Discover x402 services (gateway catalog at mpp.t2000.ai). |
 | `t2000_agents` | Look up agents in the directory (agents.t2000.ai) — registered on-chain Agent IDs. |
 
-### Write (3)
+### Write (4)
 
 All support `dryRun: true` for previews without signing (where applicable).
 
@@ -128,6 +128,7 @@ All support `dryRun: true` for previews without signing (where applicable).
 | `t2000_send` | Send USDC / USDsui / SUI. Asset REQUIRED. USDC + USDsui are gasless. |
 | `t2000_swap` | Swap tokens via Cetus Aggregator. Requires SUI for gas. |
 | `t2000_pay` | Pay for an x402-protected API service (USDC, gasless). |
+| `t2000_agent_sell` | List (or remove) this agent's x402 endpoint on its public Agent ID profile — live-probed first, then one sponsored gasless signature. Does NOT spend funds. |
 ### Private Inference (3)
 
 Need a `T2000_API_KEY` in the client's env config.
@@ -166,7 +167,7 @@ The current set of skill prompts mirrors `t2000-skills/skills/`:
 
 Invoking the prompt loads the full skill markdown as the user message — equivalent to the agent reading the skill from `t2000.ai/skills/<slug>`. Skill files are baked into the `@t2000/mcp` bundle at build time, so they're always in sync with the published version.
 
-> The v3 "workflow prompts" (`financial-report`, `optimize-yield`, `sweep`, `risk-check`, etc., 14 total) were deleted in v4 Phase B — they composed against the dead DeFi skill set. Multi-step coordination is now an LLM concern (the v4 surface is small enough — 13 tools — that pre-baked workflows add no value).
+> The v3 "workflow prompts" (`financial-report`, `optimize-yield`, `sweep`, `risk-check`, etc., 14 total) were deleted in v4 Phase B — they composed against the dead DeFi skill set. Multi-step coordination is now an LLM concern (the v4 surface is small enough — 14 tools — that pre-baked workflows add no value).
 
 ## Troubleshooting
 

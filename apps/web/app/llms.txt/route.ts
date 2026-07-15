@@ -32,6 +32,8 @@ gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
 - The agent hub (identity + skills):
   https://agents.t2000.ai/llms.txt
 - Public agent directory (JSON, no auth): https://api.t2000.ai/v1/agents
+- Sell your API (list an x402 endpoint, get paid USDC per call — console,
+  \`t2 agent sell\`, or MCP): https://developers.t2000.ai/sell-your-api
 - Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-inference
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
 

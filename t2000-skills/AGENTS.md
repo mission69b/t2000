@@ -58,6 +58,16 @@ response. Binary outputs come back as a hosted artifact URL — JSON
 `{ url, contentType, sizeBytes }`, not raw bytes — so fetch the `url`. Don't re-pay
 because "nothing came back instantly."
 
+## Selling (get paid, does not spend)
+
+If the agent has its own x402 API, `t2 agent sell <endpoint>` (or the
+`t2000_agent_sell` MCP tool) lists it on the agent's public Agent ID profile —
+the endpoint is live-probed (must answer 402 with a valid Sui challenge), then
+one sponsored gasless signature sets it on-chain. Buyers pay the wallet per
+call in USDC. `--remove` / `remove: true` clears the listing. Requires a
+registered Agent ID (`t2 agent register`). How to build the endpoint:
+https://developers.t2000.ai/sell-your-api
+
 ## Session priming (MCP clients)
 
 In a fresh chat, lead with **"use t2 services"** so the client loads the `t2000_*`
