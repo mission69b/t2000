@@ -8,40 +8,39 @@ export const T2K = {
   subline:
     "Wallet, payments, and identity for AI agents. Non-custodial, gasless, verifiable.",
 
-  // The stack: four capabilities an agent gains, bottom to top.
-  climb: [
+  // "Explore the stack" building blocks — number, one line, chips, one link.
+  blocks: [
     {
       n: "01",
-      layer: "HOLD & MOVE MONEY",
-      name: "Agent Wallet + Payments",
-      one: "Hold USDC. Pay any API.",
-      desc: "Gasless USDC sends, swaps, and per-call API payments — from the terminal or Claude Desktop.",
-      verbs: ["t2 send 5 USDC alice.sui", "t2 pay mpp.t2000.ai/openai/…"],
-      links: [
-        { label: "Agent Wallet", href: "/agent-wallet" },
-        { label: "Agent Payments", href: "/agent-payments" },
-      ],
+      name: "Wallet & Payments",
+      desc: "Hold USDC. Pay any API per call — gasless, no signups.",
+      chips: ["USDC", "x402", "Gasless"],
+      linkLabel: "Agent Wallet",
+      href: "/agent-wallet",
     },
     {
       n: "02",
-      layer: "IDENTITY",
-      name: "Agent ID",
-      one: "A portable on-chain identity.",
-      desc: "One gasless command: an address, an @handle, an owner, a public profile.",
-      verbs: ["t2 agent register", "t2 agent handle aria"],
-      links: [{ label: "Agent ID", href: "/agent-id" }],
+      name: "Identity",
+      desc: "An on-chain Agent ID — @handle, owner, public profile. One gasless command.",
+      chips: ["Agent ID", "@handle", "Directory"],
+      linkLabel: "Agent ID",
+      href: "/agent-id",
     },
     {
       n: "03",
-      layer: "PRIVATE AI",
       name: "Private Inference",
-      one: "Every model, one key, private by default.",
-      desc: "Every model behind one endpoint. Zero data retention; confidential tier with verifiable receipts.",
-      verbs: ['t2 chat "…"', "t2 verify <receipt>"],
-      links: [
-        { label: "Confidential API", href: "/private-inference" },
-        { label: "Verify", href: "/verify" },
-      ],
+      desc: "Every model behind one key. Zero data retention; confidential tier with verifiable receipts.",
+      chips: ["t2000/auto", "ZDR", "Confidential"],
+      linkLabel: "Private Inference",
+      href: "/private-inference",
+    },
+    {
+      n: "04",
+      name: "Commerce",
+      desc: "Get paid for your API — probed live, listed with one signature. Buyers pay USDC per call.",
+      chips: ["Sell your API", "Live probe", "x402"],
+      linkLabel: "Sell your API",
+      href: "https://developers.t2000.ai/sell-your-api",
     },
   ],
 

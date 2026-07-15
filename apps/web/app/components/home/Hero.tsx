@@ -1,5 +1,5 @@
 import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
-import { HeroTerminal } from "./HeroTerminal";
+import { HeroPaths } from "./HeroPaths";
 
 const WORKS_WITH = [
   { l: "Claude Desktop" },
@@ -85,7 +85,7 @@ export function Hero() {
             </div>
           </div>
 
-          <HeroTerminal />
+          <HeroPaths />
         </div>
 
         <div className="mt-[72px]">

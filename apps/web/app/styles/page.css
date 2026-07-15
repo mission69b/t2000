@@ -263,117 +263,117 @@
   .t2k-tabular { font-variant-numeric: tabular-nums; }
 
   /* ============================================================
-     The climb — numbered vertical ladder (Products)
+     Hero paths — Console / CLI / Prompt / Audric tab card
      ============================================================ */
-  .t2k-climb { display: flex; flex-direction: column; }
-
-  .t2k-rung { display: grid; grid-template-columns: 48px 1fr; gap: 20px; }
-
-  .t2k-rung-spine {
-    display: flex; flex-direction: column; align-items: center;
-  }
-  .t2k-rung-node {
-    flex: 0 0 auto;
-    width: 40px; height: 40px;
-    display: inline-flex; align-items: center; justify-content: center;
+  .t2k-hp-tabs {
+    display: inline-flex; gap: 4px; margin-bottom: 14px;
+    padding: 4px;
     border: 1px solid var(--border);
-    border-radius: 50%;
-    font-family: var(--font-mono); font-size: 13px;
-    color: var(--fg-muted); letter-spacing: 0.02em;
-    background: var(--bg);
-    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+    border-radius: 8px;
+    background: var(--ds-gray-alpha-100);
   }
-  .t2k-rung-line {
-    flex: 1 1 auto;
-    width: 1px; min-height: 24px;
-    background: var(--border);
-    margin: 6px 0;
+  .t2k-hp-tab {
+    height: 32px; padding: 0 14px;
+    border: 0; border-radius: 5px;
+    background: transparent; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500;
+    letter-spacing: -0.011em; color: var(--fg-muted);
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  .t2k-hp-tab:hover { color: var(--fg); }
+  .t2k-hp-tab.is-active {
+    background: var(--ds-gray-alpha-200); color: var(--fg);
   }
 
-  .t2k-rung-body {
-    border: 1px solid var(--border);
+  .t2k-hp-card {
+    overflow: hidden;
+    border: 1px solid var(--ds-gray-alpha-400);
     border-radius: 10px;
-    padding: 24px 26px;
-    margin-bottom: 20px;
-    background: var(--bg);
-    transition: border-color var(--dur-fast) var(--ease-out);
-  }
-  .t2k-rung-head {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    gap: 20px; flex-wrap: wrap;
-  }
-  .t2k-rung-layer {
-    font-family: var(--font-mono); font-size: 11px;
-    letter-spacing: 0.08em; color: var(--fg-subtle);
-  }
-  .t2k-rung-name {
-    font-family: var(--font-sans); font-weight: 600;
-    font-size: 23px; line-height: 1.1; letter-spacing: -0.022em;
-    margin: 6px 0 0;
-  }
-  .t2k-rung-one {
-    font-size: 15px; font-weight: 500; letter-spacing: -0.011em;
-    color: var(--fg); text-align: right; max-width: 280px;
-  }
-  .t2k-rung-desc {
-    font-size: 14px; line-height: 1.6; color: var(--fg-muted);
-    margin: 14px 0 0; max-width: 640px;
-  }
-  .t2k-rung-foot {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    gap: 24px; flex-wrap: wrap; margin-top: 20px;
-  }
-  .t2k-rung-verbs {
-    padding: 12px 14px;
     background: var(--ds-background-200);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
-    color: var(--fg-muted);
-    display: flex; flex-direction: column; gap: 2px;
+    box-shadow: 0 0 0 1px rgba(0,114,245,0.10), 0 24px 60px -20px rgba(0,114,245,0.20);
   }
-  .t2k-rung-dollar { color: var(--fg-subtle); margin-right: 6px; }
-  .t2k-rung-links { display: flex; gap: 18px; flex-wrap: wrap; }
-  .t2k-rung-link {
-    font-size: 13px; font-weight: 500; letter-spacing: -0.011em;
-    color: var(--t2k-accent); text-decoration: none; white-space: nowrap;
+  .t2k-hp-card-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ds-gray-alpha-300);
+    background: var(--ds-gray-100);
   }
-  .t2k-rung-link:hover { text-decoration: underline; }
+  .t2k-hp-card-body {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 20px;
+    padding: 26px 24px;
+    min-height: 360px;
+  }
 
-  /* Substrate + platform base cards */
-  .t2k-climb-base {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
-    margin-top: 12px;
+  .t2k-hp-steps {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 18px;
+    flex: 1;
   }
-  .t2k-climb-base-card {
-    display: flex; align-items: flex-start; gap: 16px;
-    padding: 22px 24px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    text-decoration: none; color: var(--fg);
+  .t2k-hp-steps li { display: flex; gap: 14px; align-items: flex-start; }
+  .t2k-hp-n {
+    width: 24px; height: 24px; flex: 0 0 auto; margin-top: 1px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--t2k-accent); color: #fff;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  }
+  .t2k-hp-step-t {
+    font-family: var(--font-sans); font-weight: 600; font-size: 15.5px;
+    letter-spacing: -0.014em;
+  }
+  .t2k-hp-step-s {
+    font-size: 13px; line-height: 1.5; color: var(--fg-muted); margin-top: 2px;
+  }
+
+  .t2k-hp-blurb {
+    margin: 0;
+    font-size: 14.5px; line-height: 1.6; color: var(--fg-muted);
+    letter-spacing: -0.011em;
+  }
+  .t2k-hp-prompt {
+    flex: 1;
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
+    color: var(--fg);
     background: var(--bg);
-    transition: border-color var(--dur-fast) var(--ease-out);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
   }
-  .t2k-climb-base-card:hover { border-color: var(--ds-gray-alpha-500); }
-  .t2k-climb-base-name {
-    font-family: var(--font-sans); font-weight: 600; font-size: 17px;
-    letter-spacing: -0.017em; margin-bottom: 4px;
+  .t2k-hp-prompt-mark { color: var(--t2k-accent); margin-right: 6px; }
+  .t2k-hp-audric-rows {
+    flex: 1;
+    display: flex; flex-direction: column; gap: 8px;
+    font-size: 14px; color: var(--fg-muted); letter-spacing: -0.011em;
   }
-  .t2k-climb-base-sub { font-size: 13.5px; line-height: 1.55; color: var(--fg-muted); }
-  .t2k-climb-base-arrow { margin-left: auto; color: var(--t2k-accent); font-size: 15px; }
+  .t2k-hp-check { color: var(--t2k-success); margin-right: 8px; }
 
-  @media (max-width: 720px) {
-    .t2k-rung-one { text-align: left; }
-    .t2k-climb-base { grid-template-columns: 1fr; }
+  /* ============================================================
+     No-code band — one strip into the console
+     ============================================================ */
+  .t2k-band {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 28px; flex-wrap: wrap;
+    padding: 34px 38px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--ds-background-200);
+  }
+  .t2k-band-title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(24px, 3vw, 32px); line-height: 1.1;
+    letter-spacing: -0.028em; margin: 10px 0 0;
+  }
+  .t2k-band-sub {
+    font-size: 15px; line-height: 1.55; color: var(--fg-muted);
+    letter-spacing: -0.011em; margin: 10px 0 0; max-width: 560px;
   }
 
   /* ============================================================
-     What can I do — three-verb strip (USE / SPEND / EARN)
+     Explore the stack — building-block cards
      ============================================================ */
-  .t2k-wcid-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  .t2k-blk-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
   }
-  .t2k-wcid-card {
+  .t2k-blk-card {
     display: flex; flex-direction: column; gap: 12px;
     padding: 26px 26px 24px;
     border: 1px solid var(--border);
@@ -382,74 +382,61 @@
     background: var(--bg);
     transition: border-color var(--dur-fast) var(--ease-out);
   }
-  .t2k-wcid-card:hover { border-color: var(--ds-gray-alpha-500); }
-  .t2k-wcid-title {
+  .t2k-blk-card:hover { border-color: var(--ds-gray-alpha-500); }
+  .t2k-blk-num {
+    font-family: var(--font-mono); font-size: 12px;
+    letter-spacing: 0.06em; color: var(--fg-subtle);
+  }
+  .t2k-blk-title {
     margin: 0;
-    font-family: var(--font-sans); font-weight: 600; font-size: 19px;
+    font-family: var(--font-sans); font-weight: 600; font-size: 20px;
     letter-spacing: -0.02em;
   }
-  .t2k-wcid-desc {
+  .t2k-blk-desc {
     margin: 0; flex: 1;
     font-size: 13.5px; line-height: 1.55; color: var(--fg-muted);
   }
-  .t2k-wcid-link {
+  .t2k-blk-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .t2k-blk-chip {
+    font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 9px;
+    background: var(--ds-gray-alpha-100);
+  }
+  .t2k-blk-link {
+    margin-top: 4px;
     font-size: 13px; font-weight: 500; letter-spacing: -0.011em;
     color: var(--t2k-accent); white-space: nowrap;
   }
-  .t2k-wcid-card:hover .t2k-wcid-link { text-decoration: underline; }
+  .t2k-blk-card:hover .t2k-blk-link { text-decoration: underline; }
 
-  @media (max-width: 900px) {
-    .t2k-wcid-grid { grid-template-columns: 1fr; }
+  /* Substrate cards below the grid */
+  .t2k-blk-base {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+    margin-top: 16px;
   }
-
-  /* ============================================================
-     Getting started — 5-step stepper
-     ============================================================ */
-  .t2k-gs-grid {
-    list-style: none; margin: 0; padding: 0;
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+  .t2k-blk-base-card {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 22px 24px;
     border: 1px solid var(--border);
-    border-radius: 10px; overflow: hidden;
+    border-radius: 10px;
+    text-decoration: none; color: var(--fg);
     background: var(--bg);
+    transition: border-color var(--dur-fast) var(--ease-out);
   }
-  .t2k-gs-step {
-    padding: 24px 22px;
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; gap: 12px;
+  .t2k-blk-base-card:hover { border-color: var(--ds-gray-alpha-500); }
+  .t2k-blk-base-name {
+    font-family: var(--font-sans); font-weight: 600; font-size: 17px;
+    letter-spacing: -0.017em; margin-bottom: 4px;
   }
-  .t2k-gs-step:last-child { border-right: 0; }
-  .t2k-gs-head { display: flex; align-items: center; gap: 10px; }
-  .t2k-gs-num {
-    width: 24px; height: 24px; flex: 0 0 auto;
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 50%; background: var(--t2k-accent); color: #fff;
-    font-family: var(--font-mono); font-size: 12px; font-weight: 500;
-  }
-  .t2k-gs-title {
-    font-family: var(--font-sans); font-weight: 600; font-size: 15px;
-    letter-spacing: -0.014em;
-  }
-  .t2k-gs-cmd {
-    display: block;
-    font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
-    color: var(--fg-muted); word-break: break-all;
-    background: var(--ds-background-200);
-    border: 1px solid var(--border);
-    border-radius: 6px; padding: 9px 10px;
-  }
-  .t2k-gs-dollar { color: var(--fg-subtle); margin-right: 6px; }
-  .t2k-gs-note { font-size: 13px; line-height: 1.5; color: var(--fg-muted); margin: 0; }
+  .t2k-blk-base-sub { font-size: 13.5px; line-height: 1.55; color: var(--fg-muted); }
+  .t2k-blk-base-arrow { margin-left: auto; color: var(--t2k-accent); font-size: 15px; }
 
   @media (max-width: 900px) {
-    .t2k-gs-grid { grid-template-columns: 1fr 1fr; }
-    .t2k-gs-step:nth-child(2n) { border-right: 0; }
-    .t2k-gs-step { border-bottom: 1px solid var(--border); }
-    .t2k-gs-step:nth-last-child(-n+1) { border-bottom: 0; }
-  }
-  @media (max-width: 560px) {
-    .t2k-gs-grid { grid-template-columns: 1fr; }
-    .t2k-gs-step { border-right: 0; border-bottom: 1px solid var(--border); }
-    .t2k-gs-step:last-child { border-bottom: 0; }
+    .t2k-blk-grid { grid-template-columns: 1fr; }
+    .t2k-blk-base { grid-template-columns: 1fr; }
   }
 
   /* ============================================================
