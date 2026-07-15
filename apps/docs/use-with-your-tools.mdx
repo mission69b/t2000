@@ -3,16 +3,23 @@ title: "OpenAI-compatible apps"
 description: "t2000 is OpenAI-compatible — point any OpenAI client at api.t2000.ai/v1 with your key and every model (private + confidential) works as a drop-in, billed from one balance."
 ---
 
-Private Inference speaks the **OpenAI Chat Completions** format, so most tools that accept a custom OpenAI base URL work with **zero code changes** — set two values and you're private by default across every model.
+Private Inference speaks the **OpenAI Chat Completions** format, so most tools that accept a custom OpenAI base URL work with **zero code changes** — set three values and you're private by default across every model.
 
 ```text
 Base URL:  https://api.t2000.ai/v1
-API key:   sk-…        (create one at agents.t2000.ai/manage → API keys)
+API key:   sk-…            (create one at agents.t2000.ai/manage → API keys)
+Model:     t2000/auto      (routes each step; billed at the model that served)
 ```
 
 <Note>
   Get a free key at **[agents.t2000.ai/manage](https://agents.t2000.ai/manage)** (sign in with Google — same Passport + balance as Audric). Every account gets a free daily allowance on `moonshotai/kimi-k2.7-code`; paid models are metered per token and fail closed at a $0 balance. Browse models + pricing any time with `GET /v1/models` (public, no key).
 </Note>
+
+## Which model id to set
+
+- **`t2000/auto`** — the default for coding agents. Routine steps run on a cheap open model; long-context, planning, and retry-after-failure steps escalate to a frontier one. You pay the price of the model that served (`x-t2000-served-model` header names it).
+- **`t2000/auto-open`** — the same router, open models only. Your prompts never reach a closed-model provider.
+- **A pinned id** — any id from [`GET /v1/models`](/models), e.g. `phala/glm-5.2` for hardware-verified confidential inference.
 
 ---
 
@@ -24,8 +31,6 @@ Almost every OpenAI client reads these two variables. Set them once and the tool
 export OPENAI_BASE_URL="https://api.t2000.ai/v1"
 export OPENAI_API_KEY="sk-..."
 ```
-
-Then pick a model from the catalog (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-5`, or a confidential `phala/glm-5.2`).
 
 ---
 
@@ -73,11 +78,32 @@ Cursor can route its chat models through any OpenAI-compatible endpoint:
 
 1. **Settings → Models → API Keys → OpenAI API Key.**
 2. Paste your `sk-…` key, expand **Override OpenAI Base URL**, and set it to `https://api.t2000.ai/v1`.
-3. Under **Models**, add the model IDs you want (e.g. `zai/glm-5.2`, `anthropic/claude-sonnet-5`), then **Verify**.
+3. Under **Models**, add `t2000/auto` (plus any pinned ids you want), then **Verify**.
 
 <Note>
-  Cursor's agentic features are tuned for specific frontier models. For a drop-in private chat model, add a model like `zai/glm-5.2` or `anthropic/claude-sonnet-5` and select it in the chat model picker.
+  Cursor's agentic features are tuned for specific frontier models. For a drop-in private chat model, add `t2000/auto` (or a pinned id like `anthropic/claude-sonnet-5`) and select it in the chat model picker.
 </Note>
+
+---
+
+## zero
+
+[zero](https://github.com/Gitlawb/zero) is an open-source coding CLI that takes custom OpenAI-compatible providers. This exact config is what we run daily:
+
+```bash
+export T2000_API_KEY=sk-...
+
+zero providers add custom-openai-compatible \
+  --name t2000 \
+  --model t2000/auto \
+  --base-url https://api.t2000.ai/v1 \
+  --api-key-env T2000_API_KEY \
+  --set-active
+
+zero doctor --connectivity   # probe: should report 200 on /v1/models
+```
+
+Then `zero tui` for interactive sessions or `zero exec "…"` for one-shot tasks. Tool calls (file edits, shell) pass through `/v1` natively — the router escalates hard steps, and the free daily allowance applies when the served model is `kimi-k2.7-code`.
 
 ---
 
@@ -92,7 +118,7 @@ base_url = "https://api.t2000.ai/v1"
 env_key = "T2000_API_KEY"
 
 [profiles.t2000]
-model = "anthropic/claude-sonnet-5"
+model = "t2000/auto"
 model_provider = "t2000"
 ```
 
@@ -143,7 +169,7 @@ print(llm.invoke("Hello from t2000").content)
 
 ## Other OpenAI-compatible clients
 
-The same base URL + key works in any tool that targets OpenAI Chat Completions — coding agents like **Kilo Code**, **Cline**, **Continue**, and **Aider** (`--openai-api-base`), frameworks like **LiteLLM** (`openai/<model>`) and **LlamaIndex**, and most "bring your own OpenAI key" apps and agents. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`, pick a model id from [`GET /v1/models`](/models), and every call is private by default — billed from your one balance.
+The same base URL + key works in any tool that targets OpenAI Chat Completions — coding agents like **Kilo Code**, **Cline**, **Continue**, and **Aider** (`--openai-api-base`), frameworks like **LiteLLM** (`openai/<model>`) and **LlamaIndex**, and most "bring your own OpenAI key" apps and agents. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`, set the model to `t2000/auto` (or pick a pinned id from [`GET /v1/models`](/models)), and every call is private by default — billed from your one balance.
 
 ---
 
