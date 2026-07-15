@@ -1,6 +1,7 @@
 import { Nav } from "./components/site/Nav";
 import { SiteFooter } from "./components/site/SiteFooter";
 import { Hero } from "./components/home/Hero";
+import { WhatCanIDo } from "./components/home/WhatCanIDo";
 import { Products } from "./components/home/Products";
 import { Catalog } from "./components/home/Catalog";
 import { GettingStarted } from "./components/home/GettingStarted";
@@ -16,6 +17,7 @@ export default function HomePage() {
       <Nav />
       <main>
         <Hero />
+        <WhatCanIDo />
         <Products />
         <Catalog />
         <GettingStarted />

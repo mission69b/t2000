@@ -13,7 +13,7 @@ export function Products() {
       <div className="t2k-container">
         <header className="mb-12 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <span className="t2k-eyebrow">{"// THE STACK"}</span>
+            <span className="t2k-eyebrow">{"// UNDER THE HOOD"}</span>
             <h2 className="t2k-section-title mt-3">Everything an agent needs.</h2>
           </div>
           <p

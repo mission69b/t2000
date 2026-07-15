@@ -368,6 +368,41 @@
   }
 
   /* ============================================================
+     What can I do — three-verb strip (USE / SPEND / EARN)
+     ============================================================ */
+  .t2k-wcid-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  }
+  .t2k-wcid-card {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 26px 26px 24px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-decoration: none; color: var(--fg);
+    background: var(--bg);
+    transition: border-color var(--dur-fast) var(--ease-out);
+  }
+  .t2k-wcid-card:hover { border-color: var(--ds-gray-alpha-500); }
+  .t2k-wcid-title {
+    margin: 0;
+    font-family: var(--font-sans); font-weight: 600; font-size: 19px;
+    letter-spacing: -0.02em;
+  }
+  .t2k-wcid-desc {
+    margin: 0; flex: 1;
+    font-size: 13.5px; line-height: 1.55; color: var(--fg-muted);
+  }
+  .t2k-wcid-link {
+    font-size: 13px; font-weight: 500; letter-spacing: -0.011em;
+    color: var(--t2k-accent); white-space: nowrap;
+  }
+  .t2k-wcid-card:hover .t2k-wcid-link { text-decoration: underline; }
+
+  @media (max-width: 900px) {
+    .t2k-wcid-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ============================================================
      Getting started — 5-step stepper
      ============================================================ */
   .t2k-gs-grid {
