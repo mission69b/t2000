@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
+import { AGENTS_URL } from "../../data/t2k";
 
 // Live catalog — rendered from the public GET /v1/models (revalidated), never
 // hand-written (CLAUDE.md docs rule: catalog tables come from live truth).
@@ -289,7 +289,7 @@ export function ApiRouter() {
               className="text-[15px] font-semibold"
               style={{ color: "var(--fg)", letterSpacing: "-0.014em" }}
             >
-              t2 code — the private coding agent you can verify.
+              t2 code — the free private coding agent.
             </span>
             <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
               A terminal coding agent built on this API:{" "}
@@ -299,14 +299,9 @@ export function ApiRouter() {
               . Router by default, per-repo privacy pinning, wallet tools in-session.
             </span>
           </div>
-          <a
-            href={`${DEVELOPERS_URL}/t2-code`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="t2k-btn t2k-btn--ghost"
-          >
-            Meet t2 code&nbsp;↗
-          </a>
+          <Link href="/code" className="t2k-btn t2k-btn--ghost">
+            Meet t2 code&nbsp;→
+          </Link>
         </div>
       </div>
     </section>

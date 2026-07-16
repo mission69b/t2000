@@ -123,8 +123,9 @@ export const T2K_STORIES: StoryItem[] = [
   },
 ];
 
-// Nav + footer + product-strip product set (the six product pages).
+// Nav + footer + product-strip product set (the seven product pages).
 export const NAV_PRODUCTS = [
+  { slug: "code", name: "t2 code", pkg: "@t2000/code", desc: "The free private coding agent.", href: "/code" },
   { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The terminal Agent Wallet.", href: "/agent-wallet" },
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },

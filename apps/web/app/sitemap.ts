@@ -6,6 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: `${base}/`,                lastModified: now, changeFrequency: 'weekly', priority: 1.0 },
+    { url: `${base}/code`,            lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/agent-wallet`,    lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/agent-payments`,  lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/agent-sdk`,       lastModified: now, changeFrequency: 'weekly', priority: 0.9 },

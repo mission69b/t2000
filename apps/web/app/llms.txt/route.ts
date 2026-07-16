@@ -35,6 +35,7 @@ gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
 - Sell your API (list an x402 endpoint, get paid USDC per call — console,
   \`t2 agent sell\`, or MCP): https://developers.t2000.ai/sell-your-api
 - Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-inference
+- t2 code (the free private coding agent — npm i -g @t2000/code): https://developers.t2000.ai/t2-code
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
 
 ## Docs
