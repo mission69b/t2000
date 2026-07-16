@@ -2,8 +2,8 @@
 /**
  * create-t2-app — the zero-install interactive starter for the t2000 stack.
  *
- *   npm create t2-app            → prompts (name → template → privacy mode)
- *   npm create t2-app my-app -- --template chat --privacy private --yes
+ *   npm create t2-app@latest            → prompts (name → template → privacy mode)
+ *   npm create t2-app@latest my-app -- --template chat --privacy private --yes
  *
  * Every template scaffolds ROUTER-WIRED: model t2000/auto against
  * api.t2000.ai/v1, plus the agent layer t2code init would add (AGENTS.md,
@@ -53,7 +53,7 @@ function printHelp(): void {
 ${pc.bold('create-t2-app')} — start a router-wired agent project
 
 Usage:
-  npm create t2-app [name] -- [options]
+  npm create t2-app@latest [name] -- [options]
 
 Options:
   -t, --template <id>   ${TEMPLATES.map((t) => t.id).join(' | ')}

@@ -3,13 +3,13 @@
 Start a router-wired agent project in one command — nothing to install first.
 
 ```bash
-npm create t2-app
+npm create t2-app@latest
 ```
 
 Interactive: name → template → privacy mode. Or scripted:
 
 ```bash
-npm create t2-app my-app -- --template chat --privacy private --yes
+npm create t2-app@latest my-app -- --template chat --privacy private --yes
 ```
 
 ## Templates
