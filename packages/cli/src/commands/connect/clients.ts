@@ -25,6 +25,7 @@ export type ConnectClientSlug =
   | 'continue'
   | 'aider'
   | 'codex'
+  | 'grok'
   | 'cline'
   | 'cursor';
 
@@ -66,6 +67,12 @@ export const CONNECT_CLIENTS: ConnectClient[] = [
     name: 'OpenAI Codex CLI',
     aliases: [],
     blurb: 't2000 provider profile in ~/.codex/config.toml',
+  },
+  {
+    slug: 'grok',
+    name: 'Grok Build',
+    aliases: ['grok-build'],
+    blurb: 'custom-model block in ~/.grok/config.toml (the BYOK pattern)',
   },
   {
     slug: 'cline',
@@ -248,4 +255,43 @@ export function codexTomlBlock(): string {
 
 export function codexHasProvider(existingToml: string): boolean {
   return existingToml.includes('[model_providers.t2000]');
+}
+
+// --------------------------------------------------------------- Grok Build
+//
+// Grok Build (xAI's TUI) supports BYOK custom models via ~/.grok/config.toml
+// `[model.<alias>]` blocks — the generic custom-model TOML pattern; any tool
+// with the same shape reuses these builders. Key rides T2000_API_KEY (env_key),
+// never the file.
+
+export function grokConfigPath(home = homedir()): string {
+  return join(home, '.grok', 'config.toml');
+}
+
+/** Appended to config.toml — safe because `[model.t2000]` is a unique table. */
+export function grokModelBlock(): string {
+  return [
+    ``,
+    `# t2000 Private Inference (written by \`t2 connect grok\`)`,
+    `[model.t2000]`,
+    `model = "${DEFAULT_MODEL}"`,
+    `base_url = "${API_BASE}"`,
+    `name = "t2000 auto (Private Inference)"`,
+    `env_key = "T2000_API_KEY"`,
+    `api_backend = "chat_completions"`,
+    ``,
+  ].join('\n');
+}
+
+/**
+ * Fresh-file body only: `[models]` may already exist in a user config and
+ * duplicating the table would be invalid TOML, so the default is only set
+ * when we own the whole file.
+ */
+export function grokFreshConfigToml(): string {
+  return grokModelBlock().trimStart() + [`[models]`, `default = "t2000"`, ``].join('\n');
+}
+
+export function grokHasModel(existingToml: string): boolean {
+  return existingToml.includes('[model.t2000]');
 }

@@ -13,6 +13,9 @@ import {
   codexTomlBlock,
   continueFreshConfigYaml,
   continueModelYaml,
+  grokFreshConfigToml,
+  grokHasModel,
+  grokModelBlock,
   resolveClientSlug,
   t2codeHasKey,
   withCcrProvider,
@@ -28,6 +31,8 @@ describe('resolveClientSlug', () => {
     expect(resolveClientSlug('CCR')).toBe('claude-code');
     expect(resolveClientSlug('claude')).toBe('claude-code');
     expect(resolveClientSlug('aider')).toBe('aider');
+    expect(resolveClientSlug('grok')).toBe('grok');
+    expect(resolveClientSlug('grok-build')).toBe('grok');
   });
 
   it('returns undefined for unknown clients', () => {
@@ -134,5 +139,32 @@ describe('codex toml', () => {
   it('codexHasProvider detects the provider table', () => {
     expect(codexHasProvider(codexTomlBlock())).toBe(true);
     expect(codexHasProvider('')).toBe(false);
+  });
+});
+
+describe('grok toml', () => {
+  it('model block uses env_key (the key never lands in the toml file)', () => {
+    const block = grokModelBlock();
+    expect(block).toContain('[model.t2000]');
+    expect(block).toContain(`model = "${DEFAULT_MODEL}"`);
+    expect(block).toContain(`base_url = "${API_BASE}"`);
+    expect(block).toContain('env_key = "T2000_API_KEY"');
+    expect(block).toContain('api_backend = "chat_completions"');
+    expect(block).not.toContain('sk-');
+  });
+
+  it('fresh config sets t2000 as the default model; append block does not', () => {
+    const fresh = grokFreshConfigToml();
+    expect(fresh).toContain('[models]');
+    expect(fresh).toContain('default = "t2000"');
+    // The append-to-existing block must never duplicate the [models] table.
+    expect(grokModelBlock()).not.toContain('[models]');
+  });
+
+  it('grokHasModel detects the model table', () => {
+    expect(grokHasModel(grokModelBlock())).toBe(true);
+    expect(grokHasModel(grokFreshConfigToml())).toBe(true);
+    expect(grokHasModel('')).toBe(false);
+    expect(grokHasModel('[model.other]\nmodel = "x"')).toBe(false);
   });
 });

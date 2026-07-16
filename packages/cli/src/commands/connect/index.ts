@@ -28,6 +28,10 @@ import {
   continueConfigPath,
   continueFreshConfigYaml,
   continueModelYaml,
+  grokConfigPath,
+  grokFreshConfigToml,
+  grokHasModel,
+  grokModelBlock,
   resolveClientSlug,
   t2codeCredentialsPath,
   t2codeHasKey,
@@ -255,6 +259,48 @@ function connectCodex(key: string, print: boolean): ConnectResult {
   };
 }
 
+function connectGrok(key: string, print: boolean): ConnectResult {
+  const path = grokConfigPath();
+  const existing = existsSync(path) ? readFileSync(path, 'utf-8') : '';
+  if (grokHasModel(existing)) {
+    return {
+      client: 'grok',
+      action: 'exists',
+      path,
+      detail: 't2000 model already in config.toml — run `grok -m t2000` (or /model t2000)',
+    };
+  }
+  if (print) {
+    return {
+      client: 'grok',
+      action: 'snippet',
+      path,
+      detail: existsSync(path)
+        ? 'would append the t2000 model block'
+        : 'would create config.toml with the t2000 model (+ default)',
+      text: existsSync(path) ? grokModelBlock() : grokFreshConfigToml(),
+    };
+  }
+  if (existsSync(path)) {
+    appendFileSync(path, grokModelBlock());
+    return {
+      client: 'grok',
+      action: 'written',
+      path,
+      detail:
+        `t2000 model added — export T2000_API_KEY=${maskKey(key)} then \`grok -m t2000\` ` +
+        `(set \`default = "t2000"\` under your existing [models] to make it stick)`,
+    };
+  }
+  writeFileEnsuringDir(path, grokFreshConfigToml(), 0o600);
+  return {
+    client: 'grok',
+    action: 'written',
+    path,
+    detail: `config.toml created with t2000 as default — export T2000_API_KEY=${maskKey(key)} then \`grok\``,
+  };
+}
+
 function connectCline(key: string): ConnectResult {
   return {
     client: 'cline',
@@ -303,6 +349,8 @@ function runConnect(slug: ConnectClientSlug, key: string, print: boolean): Conne
       return connectAider(key, print);
     case 'codex':
       return connectCodex(key, print);
+    case 'grok':
+      return connectGrok(key, print);
     case 'cline':
       return connectCline(key);
     case 'cursor':
@@ -314,7 +362,7 @@ export function registerConnect(program: Command): void {
   program
     .command('connect')
     .description('Point a coding tool at Private Inference (api.t2000.ai/v1) with your key')
-    .argument('[client]', 'client to connect: t2code | claude-code | continue | aider | codex | cline | cursor')
+    .argument('[client]', 'client to connect: t2code | claude-code | continue | aider | codex | grok | cline | cursor')
     .option('--key <sk-key>', `Private Inference key (create one at ${CONSOLE_KEYS_URL})`)
     .option('--print', 'Show what would be written / the paste snippet, without writing')
     .addHelpText(

@@ -23,6 +23,7 @@ If you have the [t2 CLI](/cli-reference) installed, `t2 connect <client>` writes
 npm install -g @t2000/cli
 t2 connect t2code --key sk-...     # t2 code (the t2000 coding agent)
 t2 connect claude-code             # Claude Code, via claude-code-router
+t2 connect grok                    # Grok Build (BYOK custom-model block)
 t2 connect aider                   # also: continue · codex · cline · cursor
 ```
 
@@ -125,6 +126,32 @@ Then run with the profile (`export T2000_API_KEY=sk-…` first):
 ```bash
 codex --profile t2000
 ```
+
+---
+
+## Grok Build
+
+xAI's Grok Build TUI takes BYOK custom models in `~/.grok/config.toml` — the same pattern (`t2 connect grok` writes this for you):
+
+```toml
+[model.t2000]
+model = "t2000/auto"
+base_url = "https://api.t2000.ai/v1"
+name = "t2000 auto (Private Inference)"
+env_key = "T2000_API_KEY"
+api_backend = "chat_completions"
+
+[models]
+default = "t2000"
+```
+
+Then (`export T2000_API_KEY=sk-…` first):
+
+```bash
+grok -m t2000     # or /model t2000 in the TUI
+```
+
+Note the trade-off plainly: routing Grok Build's *inference* through us covers the model side, but the binary itself is xAI's — auto-updating, closed development (no external contributions). If the client's own wire behavior matters to you, that's what [t2 code](/t2-code) is for.
 
 ---
 
