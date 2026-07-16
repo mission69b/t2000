@@ -29,10 +29,13 @@ export const T2K = {
     },
     {
       n: "03",
-      name: "Private Inference",
-      desc: "Every model behind one key. Zero data retention; confidential tier with verifiable receipts.",
-      chips: ["t2000/auto", "ZDR", "Confidential"],
-      links: [{ label: "Private Inference", href: "/private-inference" }],
+      name: "Private AI",
+      desc: "Every model behind one key — zero data retention, confidential tier. And t2 code, the free private coding agent on top of it.",
+      chips: ["t2000/auto", "ZDR", "t2 code"],
+      links: [
+        { label: "Private Inference", href: "/private-inference" },
+        { label: "t2 code", href: "/code" },
+      ],
     },
     {
       n: "04",

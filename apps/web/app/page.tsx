@@ -1,7 +1,7 @@
 import { Nav } from "./components/site/Nav";
 import { SiteFooter } from "./components/site/SiteFooter";
 import { Hero } from "./components/home/Hero";
-import { CodeBand } from "./components/home/CodeBand";
+import { ConsoleBand } from "./components/home/ConsoleBand";
 import { StackBlocks } from "./components/home/StackBlocks";
 import { Pricing } from "./components/home/Pricing";
 import { Metrics } from "./components/home/Metrics";
@@ -15,7 +15,7 @@ export default function HomePage() {
       <Nav />
       <main>
         <Hero />
-        <CodeBand />
+        <ConsoleBand />
         <StackBlocks />
         <Metrics />
         <Pricing />
