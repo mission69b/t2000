@@ -4,6 +4,7 @@ import type { X402Requirements } from '@suimpp/mpp/x402';
 import type { TransactionSigner } from '../signer.js';
 import type { PayOptions, PayResult } from '../types.js';
 import { T2000Error } from '../errors.js';
+import { parseChallengeAmount } from '../mpp-cost.js';
 import { executeTx } from './executeTx.js';
 import {
   type PreflightResult,
@@ -49,18 +50,25 @@ export function preflightPay(input: { url: string; maxPrice?: number }): Preflig
 // (no fs / keyManager / SafeguardEnforcer), so the Audric client can run it
 // in-browser on the zkLogin session key. `T2000.pay()` delegates here.
 //
-// x402 `sui-exact`, ONE path (SPEC_AGENT_PAYMENTS_X402 1.2; scheme =
-// SUIMPP_X402_SCHEME.md v0.3). The flow: sign an authorization, the gateway
-// settles. The legacy MPP "digest dialect" (client broadcasts, retries with
-// the tx digest) was retired from the SDK — the gateway dual-serves both for
-// installed pre-x402 CLIs, so the SDK client doesn't need a fallback. Both
-// dialects always rode the SAME gasless `send_funds<USDC>` rail; the only
-// difference was who submits, and x402 is now the only one we speak.
+// TWO dialects, ONE preference order (both ride the SAME gasless
+// `send_funds<USDC>` rail; the only difference is who submits):
 //
-// Settlement: the withdrawal form draws from the SIP-58 address balance (the
-// canonical stateless, offline-signable shape), so coin-object funds are
-// migrated in first when needed (S.414 finding). The client only SIGNS — the
-// gateway submits (settle-then-serve), so a failed upstream is never charged.
+// 1. x402 `sui-exact` (preferred — SPEC_AGENT_PAYMENTS_X402 1.2; scheme =
+//    SUIMPP_X402_SCHEME.md v0.3): the 402 body carries `accepts[]`; the
+//    client signs an authorization, the SERVER settles (settle-then-serve,
+//    so a failed upstream is never charged). The withdrawal form draws from
+//    the SIP-58 address balance, so coin-object funds are migrated in first
+//    when needed (S.414 finding).
+//
+// 2. MPP header dialect (fallback — suimpp.dev/spec): the 402 carries only a
+//    `WWW-Authenticate: Payment … method="sui"` challenge, no x402 body. The
+//    CLIENT broadcasts the gasless USDC transfer and retries with the digest
+//    credential. S.452 retired this path assuming all sellers were our
+//    gateway (which dual-serves); the first EXTERNAL seller (JMPR, S.453)
+//    shipped header-only — the client must speak everything the gateway and
+//    suimpp spec serve, so the fallback is back. Trade-off vs x402: the
+//    client pays BEFORE the server proves it can deliver, so a broken seller
+//    can charge without serving — x402 stays preferred whenever offered.
 // ---------------------------------------------------------------------------
 
 export async function payWithMpp(args: {
@@ -90,15 +98,50 @@ export async function payWithMpp(args: {
   }
 
   const requirements = await pickSuiExactRequirements(probe, client.network);
-  if (!requirements) {
-    throw new T2000Error(
-      'FACILITATOR_REJECTION',
-      `Endpoint returned 402 without an x402 'exact' / sui:${client.network} payment requirement. ` +
-        `This SDK only speaks the x402 dialect.`,
-    );
+  if (requirements) {
+    return payViaX402({ signer, client, options, reqInit, requirements });
   }
 
-  return payViaX402({ signer, client, options, reqInit, requirements });
+  // No x402 envelope — fall back to the MPP header dialect when the 402
+  // advertises a `sui` method challenge.
+  const headerChallenge = await parseMppSuiChallenge(probe);
+  if (headerChallenge) {
+    return payViaMppHeader({ signer, client, options });
+  }
+
+  throw new T2000Error(
+    'FACILITATOR_REJECTION',
+    `Endpoint returned 402 without an x402 'exact' / sui:${client.network} requirement in the body ` +
+      `or an MPP 'sui' challenge in WWW-Authenticate. Nothing this SDK can pay.`,
+  );
+}
+
+/**
+ * Parse the MPP header dialect from a 402 response: the
+ * `WWW-Authenticate: Payment …` challenge(s), looking for `method="sui"`.
+ * Returns the decoded `{ amount, currency, recipient }` request (amount is a
+ * decimal string, e.g. "0.02") or `undefined` when the response carries no
+ * sui challenge. Exported for the CLI's `t2 pay --estimate`.
+ */
+export async function parseMppSuiChallenge(
+  response: Response,
+): Promise<{ amount: string; currency: string; recipient: string; description?: string } | undefined> {
+  try {
+    const { Challenge } = await import('mppx');
+    const challenges = Challenge.fromResponseList(response);
+    const suiChallenge = challenges.find((c) => c.method === 'sui' && c.intent === 'charge');
+    if (!suiChallenge) return undefined;
+    const req = suiChallenge.request as Record<string, unknown>;
+    if (typeof req?.amount !== 'string' || typeof req?.recipient !== 'string') return undefined;
+    return {
+      amount: req.amount,
+      currency: typeof req.currency === 'string' ? req.currency : '',
+      recipient: req.recipient,
+      description: suiChallenge.description,
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +174,7 @@ async function payViaX402(args: {
   );
 
   const amountRaw = BigInt(requirements.maxAmountRequired);
+  assertWithinMaxPrice(atomicToHuman(amountRaw, await assetDecimals(requirements.asset)), options.maxPrice);
 
   // The x402 withdrawal form spends ONLY the SIP-58 address balance. A wallet
   // funded by ordinary coin transfers (or swap output) holds Coin<USDC>
@@ -181,6 +225,101 @@ async function payViaX402(args: {
       ? { reference: digest, timestamp: new Date().toISOString() }
       : result.receipt,
   };
+}
+
+// ---------------------------------------------------------------------------
+// MPP header dialect — client broadcasts, retries with the digest credential.
+// The pre-S.452 `payViaLegacy`, restored (S.453) for header-only external
+// sellers. mppx's client handles the 402 → pay → retry loop; we plug in the
+// Sui charge method with an `execute` override that routes the on-chain leg
+// through `executeTx` (gRPC build → gasless resolver → the same
+// `send_funds<USDC>` rail as x402).
+// ---------------------------------------------------------------------------
+
+async function payViaMppHeader(args: {
+  signer: TransactionSigner;
+  client: SuiGrpcClient;
+  options: PayOptions;
+}): Promise<PayResult> {
+  const { signer, client, options } = args;
+
+  const { Mppx } = await import('mppx/client');
+  const { sui, USDC, USDC_TESTNET } = await import('@suimpp/mpp/client');
+
+  const signerAddress = signer.getAddress();
+  const network: 'mainnet' | 'testnet' = client.network === 'testnet' ? 'testnet' : 'mainnet';
+  const grpcClient = await makeGrpcBuildClient(client);
+
+  let paymentDigest: string | undefined;
+  let gasCostSui = 0;
+  // The real amount charged on-chain is the 402 challenge price (a decimal
+  // USDC string like "0.01"), NOT the caller's `maxPrice` ceiling (Bug 1,
+  // dogfood 2026-05-31). Capture it in `onChallenge` — and enforce the
+  // ceiling THERE, before any credential is created: the header dialect pays
+  // client-side, so this hook is the last stop before money moves.
+  let chargedAmount: number | undefined;
+
+  const mppx = Mppx.create({
+    polyfill: false,
+    onChallenge: async (challenge: { request?: { amount?: unknown } }) => {
+      const parsed = parseChallengeAmount(challenge);
+      if (parsed !== undefined) {
+        chargedAmount = parsed;
+        assertWithinMaxPrice(parsed, options.maxPrice);
+      }
+      return undefined;
+    },
+    methods: [
+      sui({
+        client,
+        currency: network === 'testnet' ? USDC_TESTNET : USDC,
+        signer: {
+          toSuiAddress: () => signerAddress,
+          signPersonalMessage: (bytes: Uint8Array) => signer.signPersonalMessage(bytes),
+        } as unknown as Parameters<typeof sui>[0]['signer'],
+        execute: async (tx) => {
+          const result = await executeTx(client, signer, () => tx, { buildClient: grpcClient });
+          paymentDigest = result.digest;
+          gasCostSui = result.gasCostSui;
+          return { digest: result.digest };
+        },
+      }),
+    ],
+  });
+
+  const method = (options.method ?? 'GET').toUpperCase();
+  const canHaveBody = method !== 'GET' && method !== 'HEAD';
+
+  const response = await mppx.fetch(options.url, {
+    method,
+    headers: options.headers,
+    body: canHaveBody ? options.body : undefined,
+  });
+
+  const paid = !!paymentDigest;
+  const result = await finalize(response, { paid });
+  if (!paid) return { ...result, dialect: 'legacy' };
+  return {
+    ...result,
+    dialect: 'legacy',
+    cost: chargedAmount ?? options.maxPrice ?? undefined,
+    gasCostSui,
+    receipt: paymentDigest
+      ? { reference: paymentDigest, timestamp: new Date().toISOString() }
+      : undefined,
+  };
+}
+
+/** Throw `PRICE_EXCEEDS_LIMIT` when the challenge price exceeds the caller's
+ * `maxPrice` ceiling (no ceiling = pay whatever the 402 asks). */
+function assertWithinMaxPrice(price: number, maxPrice: number | undefined): void {
+  if (maxPrice !== undefined && price > maxPrice) {
+    throw new T2000Error(
+      'PRICE_EXCEEDS_LIMIT',
+      `Service price $${price} exceeds maxPrice ceiling $${maxPrice}`,
+      { price, maxPrice },
+    );
+  }
 }
 
 /**

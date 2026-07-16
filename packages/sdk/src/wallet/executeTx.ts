@@ -40,7 +40,18 @@ export async function executeTx(
     include: { effects: true },
   });
   const txn = result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
-  await client.core.waitForTransaction({ digest: txn.digest });
+  try {
+    await client.core.waitForTransaction({ digest: txn.digest });
+  } catch (err) {
+    // A successful executeTransaction already returned the certified effects —
+    // the wait only provides read-your-write index visibility. On a lagging
+    // fullnode it can time out AFTER the tx landed; propagating that turns a
+    // SUCCESSFUL on-chain payment into a reported failure, which bait-invites
+    // a double-pay retry (S.453 JMPR e2e: two 0.02 USDC charges for one call).
+    // Effects in hand = executed + certified → proceed. No effects = nothing
+    // proves execution → rethrow.
+    if (!txn.effects) throw err;
+  }
   const effects = txn.effects ?? undefined;
   const gasUsed = effects?.gasUsed;
   let gasCostSui = 0;

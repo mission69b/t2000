@@ -62,7 +62,8 @@
     "@phala/dcap-qvl": "^0.5.2",
     "@suimpp/mpp": "^0.8.1",
     "bn.js": "^5.2.1",
-    "eventemitter3": "^5"
+    "eventemitter3": "^5",
+    "mppx": "^0.4.9"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",

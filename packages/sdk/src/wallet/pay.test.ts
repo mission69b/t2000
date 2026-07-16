@@ -21,6 +21,40 @@ vi.mock('@mysten/sui/grpc', () => ({
   },
 }));
 
+// --- Legacy MPP header dialect mocks ---------------------------------------
+// `mppx` (root) is NOT mocked — parseMppSuiChallenge exercises the real
+// Challenge.fromResponseList against a realistic WWW-Authenticate header.
+// `mppx/client` + `@suimpp/mpp/client` are mocked to simulate the pay loop:
+// fetch → onChallenge → sui method execute → 200.
+const mppxFetchMock = vi.fn();
+let mppxChallengeAmount = '0.02'; // per-test override for the simulated challenge price
+const mppxCreateMock = vi.fn((config: {
+  onChallenge?: (c: unknown) => Promise<string | undefined>;
+  methods: Array<{ __opts: { execute: (tx: unknown) => Promise<{ digest: string }> } }>;
+}) => ({
+  fetch: async (url: string, init: unknown) => {
+    mppxFetchMock(url, init);
+    // Simulate the mppx loop: probe hits 402 → parse challenge → hook → pay → retry.
+    await config.onChallenge?.({
+      id: 'cid',
+      realm: 'seller.example',
+      method: 'sui',
+      intent: 'charge',
+      request: { amount: mppxChallengeAmount, currency: USDC_TYPE, recipient: '0xseller' },
+    });
+    await config.methods[0].__opts.execute({ __tx: true });
+    return mockResponse({ status: 200, body: { ok: true } });
+  },
+}));
+vi.mock('mppx/client', () => ({
+  Mppx: { create: (config: unknown) => mppxCreateMock(config as Parameters<typeof mppxCreateMock>[0]) },
+}));
+vi.mock('@suimpp/mpp/client', () => ({
+  sui: (opts: unknown) => ({ __opts: opts }),
+  USDC: { type: 'usdc-mainnet' },
+  USDC_TESTNET: { type: 'usdc-testnet' },
+}));
+
 vi.mock('../token-registry.js', () => ({ getDecimalsForCoinType: () => 6 }));
 
 // migration path deps — invoke the buildTx callback so the inner
@@ -200,7 +234,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     ).rejects.toThrow(/insufficient/i);
   });
 
-  it('throws when a 402 carries no x402 payment requirement (no legacy fallback)', async () => {
+  it('throws when a 402 carries neither an x402 envelope nor an MPP sui challenge', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: { detail: 'Payment required' } }));
 
     await expect(
@@ -209,8 +243,102 @@ describe('payWithMpp — x402 sign-then-settle', () => {
         client: makeClient(),
         options: { url: 'https://legacy.example/x', maxPrice: 0.05 },
       }),
-    ).rejects.toThrow(/x402/i);
+    ).rejects.toThrow(/nothing this sdk can pay/i);
     expect(buildX402Mock).not.toHaveBeenCalled();
+    expect(mppxCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('throws PRICE_EXCEEDS_LIMIT when the x402 price exceeds maxPrice', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('200000') })); // $0.20
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      }),
+    ).rejects.toThrow(/exceeds maxPrice/i);
+    expect(buildX402Mock).not.toHaveBeenCalled(); // rejected before signing
+  });
+});
+
+// The MPP header dialect (WWW-Authenticate: Payment … method="sui") — the
+// restored pre-S.452 fallback for header-only external sellers (JMPR shape).
+function mppHeader402(amount = '0.02'): Response {
+  const request = toBase64(
+    new TextEncoder().encode(JSON.stringify({ amount, currency: USDC_TYPE, recipient: '0xseller' })),
+  );
+  return mockResponse({
+    status: 402,
+    body: { detail: 'Payment required', methods: ['tempo', 'sui'] },
+    headers: {
+      'WWW-Authenticate':
+        `Payment id="cid-tempo", realm="seller.example", method="tempo", intent="charge", request="${request}", ` +
+        `Payment id="cid-sui", realm="seller.example", method="sui", intent="charge", request="${request}"`,
+    },
+  });
+}
+
+describe('payWithMpp — MPP header dialect fallback', () => {
+  it('pays a header-only 402 via the legacy digest dialect', async () => {
+    mppxChallengeAmount = '0.02';
+    fetchMock.mockResolvedValueOnce(mppHeader402('0.02')); // probe (mppx re-fetches internally via its own mock)
+
+    const result = await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+    });
+
+    expect(buildX402Mock).not.toHaveBeenCalled();
+    expect(mppxCreateMock).toHaveBeenCalledTimes(1);
+    expect(executeTxMock).toHaveBeenCalledTimes(1); // the on-chain payment leg
+    expect(result.paid).toBe(true);
+    expect(result.dialect).toBe('legacy');
+    expect(result.cost).toBe(0.02); // challenge price, not the maxPrice ceiling
+    expect(result.receipt?.reference).toBe('0xmigration');
+  });
+
+  it('prefers x402 when a 402 carries BOTH the envelope and the header', async () => {
+    const request = toBase64(
+      new TextEncoder().encode(JSON.stringify({ amount: '0.02', currency: USDC_TYPE, recipient: '0xseller' })),
+    );
+    fetchMock
+      .mockResolvedValueOnce(
+        mockResponse({
+          status: 402,
+          body: x402Accepts('20000'),
+          headers: {
+            'WWW-Authenticate': `Payment id="cid", realm="s", method="sui", intent="charge", request="${request}"`,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
+      );
+
+    const result = await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+    });
+
+    expect(result.dialect).toBe('x402');
+    expect(mppxCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('throws PRICE_EXCEEDS_LIMIT from onChallenge BEFORE paying when the header price exceeds maxPrice', async () => {
+    mppxChallengeAmount = '0.50';
+    fetchMock.mockResolvedValueOnce(mppHeader402('0.50'));
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://seller.example/x', maxPrice: 0.05 },
+      }),
+    ).rejects.toThrow(/exceeds maxPrice/i);
+    expect(executeTxMock).not.toHaveBeenCalled(); // money never moved
   });
 });
 

@@ -194,9 +194,9 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
     return;
   }
 
-  // Read the x402 `accepts[]` envelope from the 402 body. The gateway
-  // advertises it on every 402 (SUIMPP_X402_SCHEME); we no longer parse the
-  // legacy WWW-Authenticate challenge.
+  // Read the x402 `accepts[]` envelope from the 402 body (preferred — the
+  // gateway advertises it on every 402 per SUIMPP_X402_SCHEME). Header-only
+  // sellers (MPP `WWW-Authenticate` dialect) are handled below as a fallback.
   interface X402Accept {
     scheme?: string;
     network?: string;
@@ -213,12 +213,28 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
   } catch {
     accepts = [];
   }
-  const req = accepts.find((a) => a.scheme === 'exact' && a.network?.startsWith('sui:')) ?? accepts[0];
+  let req = accepts.find((a) => a.scheme === 'exact' && a.network?.startsWith('sui:')) ?? accepts[0];
+  let dialect = 'x402';
   if (!req) {
-    throw new Error(
-      'Service returned 402 but advertised no x402 payment requirement (accepts[]). ' +
-        'This CLI only speaks the x402 dialect.',
-    );
+    // MPP header dialect fallback — same preference order as sdk.pay().
+    // Normalize the header challenge (decimal amount) into the x402 shape
+    // (raw 6-decimal units) so one print path serves both dialects.
+    const { parseMppSuiChallenge } = await import('@t2000/sdk');
+    const challenge = await parseMppSuiChallenge(response);
+    if (!challenge) {
+      throw new Error(
+        'Service returned 402 but advertised neither an x402 requirement (accepts[]) ' +
+          "nor an MPP 'sui' challenge (WWW-Authenticate). Nothing this CLI can pay.",
+      );
+    }
+    dialect = 'MPP header';
+    req = {
+      scheme: 'exact',
+      network: 'sui:mainnet',
+      asset: challenge.currency || 'USDC',
+      maxAmountRequired: String(Math.round(Number(challenge.amount) * 1_000_000)),
+      payTo: challenge.recipient,
+    };
   }
 
   const amountRaw = req.maxAmountRequired;
@@ -244,6 +260,7 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
       method,
       status: 402,
       estimate: {
+        dialect,
         scheme: req.scheme,
         network: req.network,
         resource: req.resource,
@@ -259,7 +276,7 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
   }
 
   printBlank();
-  printSuccess(`Service requires payment (x402 ${req.scheme ?? 'exact'} on ${req.network ?? 'sui'})`);
+  printSuccess(`Service requires payment (${dialect} ${req.scheme ?? 'exact'} on ${req.network ?? 'sui'})`);
   printKeyValue('Price', pc.green(display));
   printKeyValue('Asset', asset);
   printKeyValue('Recipient', recipient);

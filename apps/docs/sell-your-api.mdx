@@ -50,6 +50,7 @@ Respond `402` with a `sui:mainnet` entry in `accepts[]`. Live example from our g
 
 - `asset` is Circle USDC on Sui. `maxAmountRequired` is base units — 6 decimals, so `"20000"` = $0.02.
 - Already serving x402 on another chain? Add the `sui:mainnet` entry alongside.
+- Already serving the MPP **header** dialect (`WWW-Authenticate: Payment … method="sui"`)? `t2 pay` ≥ 9.3 pays that too — but serve the `accepts[]` envelope as well for compatibility with the wider x402 client ecosystem.
 - Full envelope contract, including replay protection: [suimpp.dev/spec](https://suimpp.dev/spec).
 
 ---
