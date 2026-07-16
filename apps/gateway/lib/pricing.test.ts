@@ -112,7 +112,7 @@ describe('route <-> catalog coverage (no dual SSOT, no orphans)', () => {
     expect(offenders.map((f) => relative(appDir, f))).toEqual([]);
   });
 
-  it('every catalog endpoint is backed by a route file (no orphan prices)', () => {
+  it('every proxied catalog endpoint is backed by a route file (no orphan prices; direct sellers exempt)', () => {
     const routeKeys = new Set<string>();
     for (const file of routeFiles) {
       const src = readFileSync(file, 'utf8');
@@ -129,6 +129,8 @@ describe('route <-> catalog coverage (no dual SSOT, no orphans)', () => {
     }
     const orphans: string[] = [];
     for (const svc of services) {
+      // Direct sellers live at their own origin — no local route to demand.
+      if (svc.direct) continue;
       for (const ep of svc.endpoints) {
         const key = `${svc.id} ${ep.method.toUpperCase()} ${normPath(ep.path)}`;
         if (!routeKeys.has(key)) orphans.push(key);

@@ -66,6 +66,10 @@ export function generateX402Manifest(): X402Manifest {
   const items: ManifestItem[] = [];
 
   for (const service of services) {
+    // Direct sellers are excluded: /.well-known/x402.json is this-origin-only
+    // by design (per-origin x402 discovery) — sellers serve their own
+    // manifest at their origin, and their payTo isn't ours to advertise.
+    if (service.direct) continue;
     for (const endpoint of service.endpoints) {
       // Dynamic-priced endpoints (price computed from the request body)
       // can't advertise a static amount — discovery skips them; their

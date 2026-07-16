@@ -256,6 +256,7 @@ function CatalogRow({
           >
             {service.name}
           </span>
+          {service.direct && <DirectBadge />}
         </div>
 
         <span
@@ -316,6 +317,12 @@ function CatalogRow({
             <span>
               Base URL{" "}
               <span style={{ color: "var(--fg)" }}>{service.serviceUrl}</span>
+              {service.direct && (
+                <span style={{ display: "block", marginTop: 4 }}>
+                  Direct seller — payment settles to the seller; delivery is the
+                  seller's responsibility.
+                </span>
+              )}
             </span>
             <div className="flex gap-4">
               <Link
@@ -326,7 +333,11 @@ function CatalogRow({
                 View details →
               </Link>
               <a
-                href="https://mpp.t2000.ai/openapi.json"
+                href={
+                  service.direct
+                    ? `${service.serviceUrl}/openapi.json`
+                    : "https://mpp.t2000.ai/openapi.json"
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="no-underline transition-colors"
@@ -411,6 +422,27 @@ function CatalogEndpointRow({
         <CopyChip label="curl" payload={payloads.curl} muted />
       </div>
     </div>
+  );
+}
+
+function DirectBadge() {
+  return (
+    <span
+      className="font-mono uppercase"
+      style={{
+        fontSize: 9.5,
+        letterSpacing: "0.10em",
+        color: "var(--t2k-accent)",
+        border: "1px solid var(--t2k-accent)",
+        borderRadius: 4,
+        padding: "2px 6px",
+        opacity: 0.9,
+        whiteSpace: "nowrap",
+      }}
+      title="Direct seller — payment settles straight to the seller's wallet"
+    >
+      direct
+    </span>
   );
 }
 

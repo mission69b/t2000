@@ -23,5 +23,9 @@ export function sampleBodyFor(svcName: string, path: string): string {
   if (svcName === "Stability AI") return '{"prompt":"a sunlit room"}';
   if (svcName === "Replicate")
     return '{"model":"black-forest-labs/flux-schnell","input":{"prompt":"a sunlit room"}}';
+  if (svcName === "JMPR Travel" && path.includes("flights"))
+    return '{"origin":"SYD","destination":"NRT","depart_date":"2026-09-01","cabin":"business"}';
+  if (svcName === "JMPR Travel")
+    return '{"destination":"Tokyo","check_in":"2026-09-01","check_out":"2026-09-05","tier":"ultra-luxury"}';
   return "{ }";
 }

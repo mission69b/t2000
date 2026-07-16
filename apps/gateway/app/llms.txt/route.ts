@@ -48,9 +48,14 @@ export function GET() {
   ];
 
   for (const svc of services) {
-    lines.push(`### ${svc.name}`);
+    lines.push(`### ${svc.name}${svc.direct ? ' (direct seller)' : ''}`);
     lines.push(svc.description);
     lines.push(`Base URL: ${svc.serviceUrl}`);
+    if (svc.direct) {
+      lines.push(
+        'Direct seller: a third-party x402 endpoint at its own origin — payment settles to the seller; delivery is the seller\'s responsibility.',
+      );
+    }
     for (const ep of svc.endpoints) {
       lines.push(`- ${ep.method} ${ep.path} — ${ep.description} — $${ep.price}`);
     }

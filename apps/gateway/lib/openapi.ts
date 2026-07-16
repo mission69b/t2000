@@ -38,6 +38,9 @@ export function generateOpenApiDocument(): OpenApiDocument {
   const paths: Record<string, Record<string, unknown>> = {};
 
   for (const service of services) {
+    // Direct sellers live at their own origin with their own payTo — this
+    // document describes routes served by THIS gateway only.
+    if (service.direct) continue;
     for (const endpoint of service.endpoints) {
       const fullPath = `/${service.id}${endpoint.path}`;
       const operationId = toOperationId(service.id, endpoint.path);
@@ -93,14 +96,15 @@ export function generateOpenApiDocument(): OpenApiDocument {
     }
   }
 
-  const totalEndpoints = services.reduce((sum, s) => sum + s.endpoints.length, 0);
+  const proxied = services.filter((s) => !s.direct);
+  const totalEndpoints = proxied.reduce((sum, s) => sum + s.endpoints.length, 0);
 
   return {
     openapi: '3.1.0',
     info: {
       title: 't2000 MPP Gateway',
       version: '1.0.0',
-      description: `${services.length} MPP-enabled API services (${totalEndpoints} endpoints) payable with Sui USDC. No API keys. No accounts. Just pay per request.`,
+      description: `${proxied.length} MPP-enabled API services (${totalEndpoints} endpoints) payable with Sui USDC. No API keys. No accounts. Just pay per request.`,
       'x-guidance': [
         'All endpoints accept POST requests with JSON bodies.',
         'Payment is handled via MPP (Machine Payments Protocol) using Sui USDC.',

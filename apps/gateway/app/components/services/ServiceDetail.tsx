@@ -52,7 +52,10 @@ export function ServiceDetail({
 
           <div className="flex flex-wrap items-end justify-between gap-8">
             <div>
-              <span className="t2k-eyebrow">// {categoryLabel(primary).toUpperCase()}</span>
+              <span className="t2k-eyebrow">
+                // {categoryLabel(primary).toUpperCase()}
+                {service.direct ? " · DIRECT SELLER" : ""}
+              </span>
               <h1
                 style={{
                   fontFamily: "var(--font-display)",
@@ -78,6 +81,22 @@ export function ServiceDetail({
               >
                 {service.description}
               </p>
+              {service.direct && (
+                <p
+                  className="max-w-[560px] font-mono"
+                  style={{
+                    marginTop: 12,
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    color: "var(--fg-subtle)",
+                  }}
+                >
+                  Direct seller: these endpoints live at the seller's origin and
+                  payment settles straight to their wallet — t2000 is the
+                  payment rail, not the operator. Delivery is the seller's
+                  responsibility.
+                </p>
+              )}
             </div>
 
             <div

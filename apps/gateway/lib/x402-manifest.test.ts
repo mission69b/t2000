@@ -6,19 +6,24 @@ import { services } from './services';
 describe('generateX402Manifest — Bazaar-v2-shaped discovery catalog', () => {
   const manifest = generateX402Manifest();
 
-  it('lists every fixed-price endpoint and skips dynamic ones', () => {
-    const fixed = services.flatMap((s) =>
-      s.endpoints.filter((e) => {
-        const n = Number.parseFloat(e.price);
-        return Number.isFinite(n) && n > 0;
-      }),
-    );
+  it('lists every fixed-price endpoint and skips dynamic + direct ones', () => {
+    // Direct sellers stay out — the manifest is this-origin-only by design.
+    const fixed = services
+      .filter((s) => !s.direct)
+      .flatMap((s) =>
+        s.endpoints.filter((e) => {
+          const n = Number.parseFloat(e.price);
+          return Number.isFinite(n) && n > 0;
+        }),
+      );
     expect(manifest.items).toHaveLength(fixed.length);
     expect(manifest.pagination.total).toBe(fixed.length);
     expect(manifest.x402Version).toBe(2);
-    // No dynamic-priced resource leaked in with a bogus amount.
+    // No dynamic-priced resource leaked in with a bogus amount, and no
+    // direct-seller origin leaked into our this-origin-only manifest.
     for (const item of manifest.items) {
       expect(Number.parseInt(item.accepts[0].amount, 10)).toBeGreaterThan(0);
+      expect(item.resource).not.toContain('jmpr.world');
     }
   });
 

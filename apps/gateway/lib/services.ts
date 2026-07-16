@@ -16,6 +16,17 @@ export interface Service {
   categories: string[];
   logo: string;
   endpoints: Endpoint[];
+  /**
+   * Catalog federation (SPEC_AGENT_ECONOMY §2.2): a direct entry is a
+   * third-party x402 seller — `serviceUrl` is THEIR origin, payment settles
+   * straight to their wallet (no proxy, no margin; we're the rail). Curated:
+   * listing requires a passing `discovery check()` + a registered Agent ID +
+   * approval. Direct entries carry the seller's own guarantees — the
+   * no-charge-on-failure promise applies to proxied services only. They are
+   * excluded from our /.well-known/x402.json (per-origin discovery — sellers
+   * serve their own manifest) and exempt from the route-coverage tests.
+   */
+  direct?: boolean;
 }
 
 const BASE_URL = env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
@@ -601,6 +612,34 @@ export const services: Service[] = [
     endpoints: [
       { method: 'POST', path: '/v1/compress', description: 'Compress an image from a URL (lossy, transparent-aware)', price: '0.02' },
       { method: 'POST', path: '/v1/resize', description: 'Compress and resize an image from a URL', price: '0.02' },
+    ],
+  },
+  // -------------------------------------------------------------------------
+  // Direct sellers (catalog federation) — third-party x402 sellers on Sui.
+  // serviceUrl is the SELLER's origin; payment settles to their wallet.
+  // -------------------------------------------------------------------------
+  {
+    id: 'jmpr',
+    name: 'JMPR Travel',
+    serviceUrl: 'https://agent.jmpr.world',
+    description:
+      'Luxury travel for agents — 5-star hotel and flight search, bookable suites and fares, reserve and cancel. First direct seller on the rail (Agent ID #77); payment settles straight to the seller.',
+    chain: 'sui',
+    currency: 'USDC',
+    categories: ['commerce'],
+    logo: '/logos/jmpr.svg',
+    direct: true,
+    endpoints: [
+      { method: 'POST', path: '/v1/hotels/search', description: 'Search luxury hotels — 5-star, ultra-luxury, boutique', price: '0.02' },
+      { method: 'POST', path: '/v1/hotels/detail', description: 'Hotel property record plus bookable suites & rates', price: '0.02' },
+      { method: 'POST', path: '/v1/flights/search', description: 'Search flights by route and date', price: '0.02' },
+      { method: 'POST', path: '/v1/flights/detail', description: 'Full flight itinerary and fare details', price: '0.02' },
+      { method: 'POST', path: '/v1/bookings/reserve', description: 'Reserve a hotel booking (returns payment options)', price: '0.05' },
+      { method: 'GET', path: '/v1/bookings/{booking_id}', description: 'Get current state of a hotel booking', price: '0.01' },
+      { method: 'POST', path: '/v1/bookings/{booking_id}/cancel', description: 'Cancel a hotel booking', price: '0.05' },
+      { method: 'POST', path: '/v1/flights/bookings/reserve', description: 'Reserve a flight booking (returns payment options)', price: '0.05' },
+      { method: 'GET', path: '/v1/flights/bookings/{booking_id}', description: 'Get current state of a flight booking', price: '0.01' },
+      { method: 'POST', path: '/v1/flights/bookings/{booking_id}/cancel', description: 'Cancel a flight booking', price: '0.05' },
     ],
   },
 ];
