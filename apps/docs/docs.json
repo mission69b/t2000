@@ -57,6 +57,7 @@
             "pages": [
               "private-inference",
               "t2-code",
+              "create-t2-app",
               "authentication",
               "models",
               "use-with-your-tools"

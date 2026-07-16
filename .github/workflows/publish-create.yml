@@ -1,0 +1,45 @@
+# Publishes create-t2-app (the `npm create t2-app` interactive starter) from
+# monorepo source. Versions independently of the 4-package lockstep
+# (sdk/cli/mcp/id) — bump packages/create-t2-app/package.json, commit, then:
+#
+#   gh workflow run publish-create.yml
+#
+# `npm publish` is idempotent-safe here via continue-on-error, matching
+# publish.yml's convention.
+
+name: Publish create-t2-app
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint + typecheck + test + build
+        working-directory: packages/create-t2-app
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm build
+
+      - name: Publish to npm
+        working-directory: packages/create-t2-app
+        run: pnpm publish --access public --no-git-checks
+        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

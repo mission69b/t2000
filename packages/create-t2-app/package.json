@@ -1,0 +1,49 @@
+{
+  "name": "create-t2-app",
+  "version": "0.1.0",
+  "description": "Start a router-wired agent project — interactive starter for the t2000 stack (npm create t2-app).",
+  "type": "module",
+  "bin": {
+    "create-t2-app": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md"
+  ],
+  "keywords": [
+    "create-t2-app",
+    "t2000",
+    "ai",
+    "agent",
+    "starter",
+    "template",
+    "sui"
+  ],
+  "author": "t2000",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mission69b/t2000.git",
+    "directory": "packages/create-t2-app"
+  },
+  "homepage": "https://t2000.ai/code",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@clack/prompts": "^0.11.0",
+    "@types/node": "^20",
+    "eslint": "^9",
+    "picocolors": "^1.1.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
