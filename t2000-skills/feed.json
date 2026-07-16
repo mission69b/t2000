@@ -206,6 +206,29 @@
           "skillUrl": "https://t2000.ai/skills/walrus"
         }
       ]
+    },
+    {
+      "id": "openzeppelin",
+      "name": "OpenZeppelin",
+      "tagline": "Audited Move building blocks \u2014 safe math, access control, allowances, timelocks.",
+      "url": "https://docs.openzeppelin.com/contracts-sui",
+      "icon": "https://t2000.ai/skills/brand/openzeppelin.png",
+      "accent": "#4E5EE4",
+      "lastVerified": "2026-07-16",
+      "skills": [
+        {
+          "slug": "sui-move-security",
+          "name": "Write + review safe Move",
+          "description": "The never-roll-your-own rules for value-path Move \u2014 mul_div over manual math, explicit rounding, checked shifts, capability transfer policies \u2014 mapped to OpenZeppelin's audited packages, with a review checklist.",
+          "tags": [
+            "move",
+            "security",
+            "audit",
+            "defi"
+          ],
+          "skillUrl": "https://t2000.ai/skills/sui-move-security"
+        }
+      ]
     }
   ]
 }

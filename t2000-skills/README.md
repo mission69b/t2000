@@ -79,6 +79,9 @@ Protocol playbooks beyond the wallet — same format, same one-paste install:
 | [`suins`](https://t2000.ai/skills/suins) | Resolve SuiNS names (`alice.sui`) to addresses and back — gRPC-first, with the JSON-RPC stopgap and its cutoff date. |
 | [`deepbook`](https://t2000.ai/skills/deepbook) | Live market data from DeepBook, Sui's on-chain order book — pools, tickers, order books, candles, trades — via the free public indexer. |
 | [`walrus`](https://t2000.ai/skills/walrus) | Read + store blobs on Walrus over plain HTTP — free aggregator reads, testnet publisher writes, and the honest mainnet-write story. |
+| [`sui-move-security`](https://t2000.ai/skills/sui-move-security) | Write + review Sui Move that touches value with OpenZeppelin's audited packages — the never-roll-your-own rules (mul_div, explicit rounding, checked shifts, capability transfer policies) plus a review checklist. |
+
+> Building **on** Sui more broadly (Move, PTBs, object model, dApp Kit)? Install the official Sui Agent Skills by Mysten Labs: `npx skills add mystenlabs/skills --all` ([docs.sui.io/skills](https://docs.sui.io/skills)). This shelf stays focused on what agents can't get elsewhere: money, identity, and protocol playbooks for the t2000 rail.
 
 Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json), and the project-grouped shelf that [agents.t2000.ai](https://agents.t2000.ai) renders is [`feed.json`](feed.json) (served at [`t2000.ai/skills/feed.json`](https://t2000.ai/skills/feed.json)).
 
