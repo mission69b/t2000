@@ -35,9 +35,10 @@ from a wallet. They don't mix.
 ## The consumers (demand for the rails)
 
 - **[Audric](https://audric.ai)** — the consumer AI app; buys inference + gateway calls.
-- **`t2 code` / `t2 connect`** *(in development — `spec/active/SPEC_INFERENCE_DEMAND.md`)* —
-  the developer engine: route coding-agent traffic through Private Inference via
-  the `t2000/auto` router.
+- **`t2 code` / `t2 connect`** (shipped — `@t2000/code`, [t2000.ai/code](https://t2000.ai/code)) —
+  the developer engine: a terminal coding agent on Private Inference via the
+  `t2000/auto` router; `t2 connect` points existing tools (claude-code, codex,
+  aider, …) at the same account and models.
 
 ## Removed
 

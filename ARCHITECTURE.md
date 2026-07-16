@@ -58,7 +58,7 @@ is a product decision. The gateway is fully isolated (own project, DB, Redis, ke
 | Package | What it is | Why it exists |
 |---|---|---|
 | `@t2000/sdk` | TypeScript wallet core — send (gasless USDC/USDsui), swap (Cetus aggregator), pay (x402), history (GraphQL), balance, limits (`LimitEnforcer`), `verifyReceipt`. gRPC-only transport. | One tested money path shared by every consumer (CLI, MCP, Audric) — chain plumbing, gasless mechanics, and spend limits are implemented once, never per-host. |
-| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · chat · verify · export · limit · services · skills · mcp · agent (identity subcommands incl. `sell`) | The terminal front door: humans, scripts, and CI drive the wallet without writing code. |
+| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · verify · export · limit · services · skills · mcp · connect · agent (identity subcommands incl. `sell`) | The terminal front door: humans, scripts, and CI drive the wallet without writing code. (Chat moved into `@t2000/code`.) |
 | `@t2000/mcp` | MCP server (stdio) — 14 tools + one prompt per skill, skill bodies baked at build time | Puts the wallet *inside* AI clients (Claude, Cursor, Windsurf) over the open MCP standard — agents get money tools with zero custom integration. |
 | `@t2000/id` | `agent_id::registry` client — `buildRegisterTx`, `buildUpdateTx`, ownership txs; ids baked for mainnet | Lets third parties build against the identity registry without pulling in the whole wallet SDK. |
 | `@suimpp/mpp` | The x402/MPP Sui payment method (client + server verification) — suimpp repo | The payment method as a small open package so *any* server can accept x402-on-Sui — the standard is bigger than our gateway. |
@@ -171,7 +171,15 @@ Agent                            Gateway                              Sui
   see them.
 - **Payment log:** gateway-owned Neon (service, endpoint, amount, digest, sender) —
   feeds `/activity` and the public stats; aggregates only, no address profiling.
-- **Margin:** ~2× upstream list price.
+- **Catalog federation (direct sellers):** the catalog also lists third-party x402
+  sellers at their own origin (`direct: true` in `services.ts`; first entry: JMPR
+  Travel). The gateway is not in the request path — payment settles straight to the
+  seller's pinned `payTo` wallet, and no-charge-on-failure does NOT apply (it's a
+  proxied-services promise). Clients report direct payments to `POST /api/mpp/report`
+  (digest + url); the gateway verifies the USDC inflow to the seller on-chain before
+  writing the activity-feed row.
+- **Margin:** ~2× upstream list price (proxied only; direct sellers pay us nothing —
+  the rail wins on volume and discovery).
 
 ---
 
@@ -344,7 +352,7 @@ which AI client is used. The SDK and CLI have zero telemetry.
   api via the audric repo); Mintlify auto-deploys docs.
 - **Packages:** `gh workflow run release.yml --field bump=…` → lockstep version bump
   + tag → `publish.yml` (CI → npm publish ×4 → GitHub release → Discord). Current
-  line: v8.x.
+  line: v9.x.
 - **CI:** lint + typecheck + test on every push; the MCP package carries
   docs-consistency guards (stale CLI mentions and dead skill links in docs fail CI).
 

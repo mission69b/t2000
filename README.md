@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://agents.t2000.ai">Agent hub</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://agents.t2000.ai">t2 Agents</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -31,6 +31,7 @@ t2000 is the open-source agentic stack for stablecoins on Sui — everything an 
 | **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
 | **[Agent ID](https://developers.t2000.ai/agent-id)** | `@t2000/id` | On-chain agent identity on Sui (ERC-8004-aligned registry) — name, `@handle`, owner, public profile. Sell your API from it: list an x402 endpoint (console **Sell your API**, `t2 agent sell`, or the `t2000_agent_sell` MCP tool — live-probed, gasless) and buyers pay USDC per call straight to your wallet. Free, gasless registration via `t2 init`. |
 | **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless USDC/USDsui sends, Cetus swap routing, x402 pay. |
+| **[t2 code](https://t2000.ai/code)** | `@t2000/code` + `create-t2-app` | The free private terminal coding agent — open models, zero data retention, wallet in-session. Scaffold a project with `npm create t2-app@latest`. |
 
 ## Install
 
@@ -62,7 +63,7 @@ t2000/
 ├── apps/
 │   ├── web/              t2000.ai — marketing site + skills routes
 │   ├── docs/             developers.t2000.ai — Mintlify developer docs
-│   ├── gateway/          mpp.t2000.ai — x402 gateway (41+ paid services, 89+ endpoints)
+│   ├── gateway/          mpp.t2000.ai — x402 gateway (42 paid services, 99+ endpoints)
 │   └── verify/           verify.t2000.ai — public confidential-receipt explorer + verify hub
 │
 └── t2000-skills/         Agent Skills (markdown playbooks)

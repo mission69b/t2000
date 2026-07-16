@@ -45,6 +45,8 @@ await agent.send({ to: '0x8b3e…', amount: 5, asset: 'USDsui' });
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });
 
 // Pay — any x402-protected API. Gasless USDC; handles HTTP 402 transparently.
+// Speaks both dialects: x402 `accepts[]` body (preferred) and the MPP
+// WWW-Authenticate header. JSON string bodies default to content-type: application/json.
 const result = await agent.pay({
   url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
   method: 'POST',
@@ -78,7 +80,7 @@ These methods mirror the [`@t2000/cli`](/agent-wallet) surface 1:1 — sending U
 | `agent.resolveRecipient(input)` | `{ address, suinsName?, contactName? }` | Public resolver — same lookup `send` uses. Handy for dry-run previews. |
 | `agent.swap({ from, to, amount, slippage? })` | `SwapResult` | Cetus Aggregator V3 (20+ DEXs). User-friendly names (`'USDC'`, `'SUI'`, `'CETUS'`, …) or full coin types. Default slippage 1%, max 5%. **Requires SUI for gas.** |
 | `agent.swapQuote({ from, to, amount, slippage? })` | `SwapQuoteResult` | Preview route + output + price impact (no execution). |
-| `agent.pay(options)` | `PayResult` | x402-protected paid API. Handles 402 → quote → USDC payment → retry. USDC transfer is gasless. `options.maxPrice` caps spend (default 1 USDC). |
+| `agent.pay(options)` | `PayResult` | x402-protected paid API. Handles 402 → quote → USDC payment → retry. Accepts both challenge dialects — x402 `accepts[]` body (preferred) and the MPP `WWW-Authenticate` header — and defaults `content-type: application/json` for JSON string bodies. USDC transfer is gasless. `options.maxPrice` caps spend (default 1 USDC) and is enforced against the challenge amount. |
 | `agent.chat(params)` | `ChatResult` | Private inference on the [Private Inference](/private-inference) (OpenAI-compatible). Key-based — `params.apiKey` or `T2000_API_KEY`. Returns `{ content, model, usage, raw }`. |
 | `agent.chatStream(params)` | `AsyncGenerator<string>` | Streaming inference — async-iterate the assistant text deltas. |
 | `agent.models(opts?)` | `ApiModel[]` | Private Inference model catalog (id · context · per-1M pricing · privacy tier). |
@@ -229,7 +231,7 @@ t2000 builds Sui transactions with thin builders — no protocol SDK dependencie
 |---|---|---|
 | Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, x402 USDC payments |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
-| x402 | `@suimpp/mpp/x402` (sign-then-settle) | Paid API access — every major AI + data API on `mpp.t2000.ai` |
+| x402 / MPP | `@suimpp/mpp/x402` (sign-then-settle) + `mppx` header-dialect fallback | Paid API access — every major AI + data API on `mpp.t2000.ai`, plus direct x402 sellers at their own origin |
 
 ---
 

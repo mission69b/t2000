@@ -52,8 +52,12 @@ Client            Gateway (mpp.t2000.ai)         Upstream
 USDC transfers go through `0x2::balance::send_funds` — **gasless** via the Sui foundation sponsor. Your agent never needs SUI.
 
 <Note>
-  **No charge on failure.** Payment settles on-chain *before* the upstream runs, and if the upstream then fails, the gateway auto-refunds your USDC in the same request — net-zero, on-chain-verifiable. You only pay for calls that succeed.
+  **No charge on failure** (proxied services). Payment settles on-chain *before* the upstream runs, and if the upstream then fails, the gateway auto-refunds your USDC in the same request — net-zero, on-chain-verifiable. You only pay for calls that succeed.
 </Note>
+
+### Direct sellers
+
+The catalog also lists **direct sellers** — third-party x402 endpoints served from the seller's own origin (e.g. JMPR Travel at `agent.jmpr.world`). For these, your client pays the seller's wallet directly; the gateway is not in the request path. The no-charge-on-failure guarantee above applies to **proxied services only** — direct entries carry the seller's own guarantees. Direct entries are marked in the catalog and on their service page.
 
 ---
 

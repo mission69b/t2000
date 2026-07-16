@@ -40,7 +40,6 @@ Each page is a curated, Mintlify-flavored view of the canonical package README:
 | `agent-wallet.mdx` | `packages/cli/README.md` + `packages/mcp/README.md` + `t2000-skills/README.md` |
 | `pay-any-api.mdx` | `apps/gateway/README.md` + `packages/cli/README.md` (pay section) |
 | `agent-sdk.mdx` | `packages/sdk/README.md` |
-| `agent-engine.mdx` | Retired deprecation stub — `@t2000/engine` was deleted from the monorepo. |
 
 When a README changes, mirror the relevant section into the corresponding `.mdx`. Don't fork — keep the README the source-of-truth.
 
