@@ -3,7 +3,7 @@ name: sui-grpc
 description: >-
   Read Sui chain state over gRPC — balances, objects, transactions, coin
   metadata, names. Use for any direct Sui read; JSON-RPC deactivates
-  July 31, 2026, so new integrations MUST use gRPC. Read-only.
+  the week of July 20, 2026 (mainnet), so new integrations MUST use gRPC. Read-only.
 license: MIT
 metadata:
   author: t2000
@@ -17,7 +17,7 @@ metadata:
 
 The canonical way to read Sui in 2026. One client covers balances, objects, transactions, metadata, and name service.
 
-> **JSON-RPC is being retired (July 31, 2026).** `SuiClient` / `suix_*` / `sui_*` HTTP methods stop working on public fullnodes. Everything below is the replacement surface, verified against mainnet.
+> **JSON-RPC is being retired (mainnet: week of July 20, 2026).** `SuiClient` / `suix_*` / `sui_*` HTTP methods stop working on public fullnodes. Everything below is the replacement surface, verified against mainnet.
 
 ## Setup
 

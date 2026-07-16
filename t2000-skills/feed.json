@@ -131,7 +131,7 @@
         {
           "slug": "sui-grpc",
           "name": "Read the chain over gRPC",
-          "description": "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient \u2014 the surface that replaces JSON-RPC (retired July 31, 2026).",
+          "description": "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient \u2014 the surface that replaces JSON-RPC (retired the week of July 20, 2026 on mainnet).",
           "tags": [
             "reads",
             "grpc",

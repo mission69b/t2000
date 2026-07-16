@@ -75,7 +75,7 @@ Protocol playbooks beyond the wallet — same format, same one-paste install:
 
 | Skill | Description |
 |-------|-------------|
-| [`sui-grpc`](https://t2000.ai/skills/sui-grpc) | Read Sui chain state over gRPC — balances, objects, transactions, coin metadata, names. JSON-RPC retires July 31, 2026; this is the replacement surface. |
+| [`sui-grpc`](https://t2000.ai/skills/sui-grpc) | Read Sui chain state over gRPC — balances, objects, transactions, coin metadata, names. JSON-RPC retires the week of July 20, 2026 on mainnet; this is the replacement surface. |
 | [`suins`](https://t2000.ai/skills/suins) | Resolve SuiNS names (`alice.sui`) to addresses and back — gRPC-first, with the JSON-RPC stopgap and its cutoff date. |
 | [`deepbook`](https://t2000.ai/skills/deepbook) | Live market data from DeepBook, Sui's on-chain order book — pools, tickers, order books, candles, trades — via the free public indexer. |
 | [`walrus`](https://t2000.ai/skills/walrus) | Read + store blobs on Walrus over plain HTTP — free aggregator reads, testnet publisher writes, and the honest mainnet-write story. |

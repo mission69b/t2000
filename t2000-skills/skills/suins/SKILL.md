@@ -25,7 +25,7 @@ SuiNS is Sui's name service — `alice.sui` instead of `0x…`. Two reads cover 
 
 1. **A null result is a valid answer.** A name can exist with no target address set — treat "no target" as "cannot pay this name", not an error.
 2. **Never guess an address from a name.** If resolution returns nothing, stop and say so.
-3. **Prefer gRPC.** Sui JSON-RPC deactivates July 31, 2026 — do not build new resolution on `suix_resolveNameServiceAddress`.
+3. **Prefer gRPC.** Sui JSON-RPC shuts down the week of July 20, 2026 (mainnet) — do not build new resolution on `suix_resolveNameServiceAddress`.
 4. **Sending to a name?** The t2000 wallet resolves SuiNS itself: `t2 send 5 USDC alice.sui` — no separate lookup step needed.
 
 ## Resolve (gRPC — the current path)
@@ -50,7 +50,7 @@ console.log(rev.record?.name);
 
 Verified against mainnet: `agent-id.sui` → `0x6988a92d5695909b7baa4d996324a873fbbeec94eec445eab99cc08ed30e4532`.
 
-## Resolve (JSON-RPC — works today, retired July 31, 2026)
+## Resolve (JSON-RPC — works today, retired the week of July 20, 2026 on mainnet)
 
 ```bash
 curl -s -X POST https://fullnode.mainnet.sui.io \

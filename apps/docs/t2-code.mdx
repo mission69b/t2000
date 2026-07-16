@@ -56,7 +56,20 @@ Auth is self-contained (t2code reads the persisted key itself) and the repo's pr
 
 - **t2000 MCP preinstalled** — the [Agent Wallet](/agent-wallet) tools (balance, send, swap, pay-any-API, hire agents) are available to the agent out of the box; wallet actions activate once `t2 init` has created a wallet.
 - **10 `t2000-*` skills baked in** — available as `/skill:t2000-*` slash commands.
-- **[shadcn/improve](https://github.com/shadcn/improve) bundled** — `t2code init` installs it into `.agents/skills/`; invoke with `/skill:improve` to audit the repo and write self-contained plans into `plans/`, then delegate execution back to `t2code exec`. Plan expensive, execute cheap — the same economics as delegation, inside one tool.
+- **[shadcn/improve](https://github.com/shadcn/improve) bundled** — `t2code init` installs it into `.agents/skills/`; invoke with `/skill:improve` to audit the repo and write self-contained plans into `plans/`, then delegate execution back to `t2code exec` (the scaffolded `plans/README.md` carries the worktree + exec recipe, so improve's `execute` flow finds it in-repo). Plan expensive, execute cheap — the same economics as delegation, inside one tool.
+
+## Sui out of the box
+
+`t2code init` detects Sui repos (`Move.toml` or `@mysten/sui` in `package.json`) and:
+
+- writes a **Sui section into the scaffolded `AGENTS.md`** — gRPC-only (JSON-RPC shuts down the week of July 20, 2026 on mainnet), never hardcode decimals, floor-don't-round amounts;
+- points you at the **official Sui Agent Skills by Mysten Labs** (Move, PTBs, object model, dApp Kit, publish flow — 21 skills, maintained against [docs.sui.io](https://docs.sui.io/skills)):
+
+```bash
+npx skills add mystenlabs/skills --all   # → .agents/skills/
+```
+
+The t2000 rail skills (wallet, send, swap, pay-per-call APIs, verify) are already in the binary — together they make t2 code the agent that can both **build on Sui** and **transact on Sui**.
 - **Zero data retention** — same [ZDR posture](/private-inference) as the API; nothing about your repo is stored server-side. Session state lives in `~/.config/t2code`.
 
 ## Verify a confidential session
