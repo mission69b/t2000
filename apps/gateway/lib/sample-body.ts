@@ -23,9 +23,11 @@ export function sampleBodyFor(svcName: string, path: string): string {
   if (svcName === "Stability AI") return '{"prompt":"a sunlit room"}';
   if (svcName === "Replicate")
     return '{"model":"black-forest-labs/flux-schnell","input":{"prompt":"a sunlit room"}}';
+  // Field names match JMPR's live openapi.json exactly — their API charges
+  // BEFORE validating, so a wrong sample = a paid 422 (learned live, $0.02).
   if (svcName === "JMPR Travel" && path.includes("flights"))
-    return '{"origin":"SYD","destination":"NRT","depart_date":"2026-09-01","cabin":"business"}';
+    return '{"from_airport":"SYD","to_airport":"NRT","departure_date":"2026-09-01","trip_type":"one_way","cabin_class":"business"}';
   if (svcName === "JMPR Travel")
-    return '{"destination":"Tokyo","check_in":"2026-09-01","check_out":"2026-09-05","tier":"ultra-luxury"}';
+    return '{"city":"Tokyo","checkin_date":"2026-09-01","checkout_date":"2026-09-05","user_requirements":"ultra-luxury 5-star"}';
   return "{ }";
 }
