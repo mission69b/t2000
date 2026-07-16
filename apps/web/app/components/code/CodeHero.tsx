@@ -1,28 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { DEVELOPERS_URL } from "../../data/t2k";
 
-// A real-shaped t2code session: privacy badge on entry, plan → edit → test,
-// served-by line with the free-allowance price. Keep lines honest to the
-// product — this mock is the hero, not a fantasy.
-const LINES = [
-  { t: "cmd", s: "t2code" },
-  { t: "badge", s: "◆ t2 code · privacy: private — open models only" },
-  { t: "gap", s: "" },
-  { t: "user", s: "> add rate limiting to /api/chat and cover it with tests" },
-  { t: "dim", s: "read route.ts, middleware.ts · plan ready" },
-  { t: "ok", s: "✎ src/lib/rate-limit.ts        +64" },
-  { t: "ok", s: "✎ src/app/api/chat/route.ts    +9" },
-  { t: "ok", s: "✓ vitest run — 14 passed" },
-  { t: "gap", s: "" },
-  { t: "user", s: "> /skill:improve" },
-  { t: "ok", s: "✓ audit plan → plans/improve-api.md" },
-  { t: "served", s: "served by kimi-k2.7-code · $0.00 (free daily)" },
+const INSTALL = "npm install -g @t2000/code";
+
+// The REAL welcome screen — logo art + copy lifted from the t2code source
+// (cli/src/login/constants.ts LOGO_T2CODE, cli/src/commands/t2code-privacy.ts).
+// Faithful except the tagline, which drops "rail" per positioning.
+const LOGO_LINES = [
+  " ████████╗██████╗      ██████╗ ██████╗ ██████╗ ███████╗",
+  " ╚══██╔══╝╚════██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝",
+  "    ██║    █████╔╝    ██║     ██║   ██║██║  ██║█████╗  ",
+  "    ██║   ██╔═══╝     ██║     ██║   ██║██║  ██║██╔══╝  ",
+  "    ██║   ███████╗    ╚██████╗╚██████╔╝██████╔╝███████╗",
+  "    ╚═╝   ╚══════╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝",
 ] as const;
 
-const INSTALL = "npm install -g @t2000/code";
+// Box-drawing chars get the accent (matches the TUI's SHADOW_CHARS sheen set).
+const SHADOW = new Set(["╚", "═", "╝", "║", "╔", "╗"]);
+
+const MODES = [
+  {
+    id: "private",
+    line: "private      — t2000/auto-open · open models only, never a closed lab",
+  },
+  {
+    id: "full",
+    line: "full         — t2000/auto router · best quality, may escalate to frontier labs",
+  },
+  {
+    id: "confidential",
+    line: "confidential — phala/* GPU-TEE only · attested, verifiable receipts (t2 verify)",
+  },
+] as const;
 
 export function CodeHero() {
   const [copied, setCopied] = useState(false);
@@ -35,16 +47,17 @@ export function CodeHero() {
   return (
     <section
       className="relative overflow-hidden border-b"
-      style={{ padding: "92px 0 64px", borderBottomColor: "var(--border)" }}
+      style={{ padding: "92px 0 72px", borderBottomColor: "var(--border)" }}
     >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute"
         style={{
-          right: "-8%",
-          top: "6%",
-          width: 720,
-          height: 520,
+          left: "50%",
+          top: "30%",
+          width: 900,
+          height: 600,
+          transform: "translateX(-50%)",
           background:
             "radial-gradient(45% 50% at 50% 50%, rgba(0,114,245,0.10) 0%, transparent 70%)",
           filter: "blur(24px)",
@@ -59,7 +72,7 @@ export function CodeHero() {
           <span className="opacity-60">←</span> t2000.ai
         </Link>
 
-        <div className="grid gap-y-9 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] lg:items-center lg:gap-x-14">
+        <div className="grid gap-y-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-end lg:gap-x-14">
           <div>
             <div className="t2k-eyebrow mb-[22px]">
               {"// T2 CODE · THE TERMINAL CODING AGENT"}
@@ -89,11 +102,7 @@ export function CodeHero() {
             </p>
           </div>
 
-          <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
-            <CodeHeroTerminal />
-          </div>
-
-          <div className="lg:col-start-1">
+          <div className="flex flex-col items-start gap-6 lg:items-end">
             <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
@@ -126,7 +135,7 @@ export function CodeHero() {
                 Read the docs&nbsp;↗
               </a>
             </div>
-            <div className="mt-[30px] flex flex-wrap gap-[22px]">
+            <div className="flex flex-wrap gap-[22px]">
               {(
                 [
                   ["Open models", "private by default"],
@@ -152,42 +161,50 @@ export function CodeHero() {
             </div>
           </div>
         </div>
+
+        <div className="mt-14">
+          <WelcomeScreen />
+        </div>
       </div>
     </section>
   );
 }
 
-function CodeHeroTerminal() {
-  const [n, setN] = useState(0);
+function LogoArt() {
+  return (
+    <pre
+      aria-label="t2 code"
+      className="m-0 font-mono"
+      style={{ fontSize: "clamp(8px, 1.4vw, 13px)", lineHeight: 1.25 }}
+    >
+      {LOGO_LINES.map((line, li) => (
+        <div key={li}>
+          {[...line].map((ch, ci) => (
+            <span
+              key={ci}
+              style={{
+                color: SHADOW.has(ch) ? "var(--t2k-accent)" : "var(--fg)",
+              }}
+            >
+              {ch}
+            </span>
+          ))}
+        </div>
+      ))}
+    </pre>
+  );
+}
 
-  useEffect(() => {
-    if (n >= LINES.length) {
-      const r = setTimeout(() => setN(0), 3200);
-      return () => clearTimeout(r);
-    }
-    const d = LINES[n].t === "gap" ? 120 : 430;
-    const r = setTimeout(() => setN(n + 1), d);
-    return () => clearTimeout(r);
-  }, [n]);
-
-  const color = (t: string) =>
-    t === "badge"
-      ? "var(--t2k-accent)"
-      : t === "ok"
-        ? "var(--t2k-success)"
-        : t === "user" || t === "cmd"
-          ? "var(--fg)"
-          : t === "served"
-            ? "var(--fg-subtle)"
-            : "var(--fg-muted)";
+function WelcomeScreen() {
+  const [mode, setMode] = useState(0);
 
   return (
     <div
-      className="t2k-card overflow-hidden p-0"
-      style={{ background: "var(--bg)" }}
+      className="t2k-card mx-auto max-w-[880px] overflow-hidden p-0"
+      style={{ background: "var(--bg)", boxShadow: "var(--shadow-lg)" }}
     >
       <div
-        className="flex items-center gap-2 border-b px-4 py-3"
+        className="relative flex items-center gap-2 border-b px-4 py-3"
         style={{ borderBottomColor: "var(--border)" }}
       >
         <span
@@ -203,43 +220,78 @@ function CodeHeroTerminal() {
           style={{ background: "#28c840" }}
         />
         <span
-          className="ml-2 font-mono text-[12px]"
+          className="absolute left-1/2 -translate-x-1/2 font-mono text-[12px]"
           style={{ color: "var(--fg-subtle)" }}
         >
-          ~/your-app
-        </span>
-        <span className="flex-1" />
-        <span
-          className="inline-flex items-center gap-1.5 font-mono text-[11px]"
-          style={{ color: "var(--fg-subtle)" }}
-        >
-          <span className="t2k-dot" /> private
+          t2code
         </span>
       </div>
+
       <div
-        className="font-mono text-[12.5px]"
-        style={{ padding: "18px 18px 22px", lineHeight: 1.75, minHeight: 340 }}
+        className="overflow-x-auto font-mono text-[12.5px]"
+        style={{ padding: "26px 26px 20px", lineHeight: 1.75 }}
       >
-        {LINES.slice(0, n).map((l, i) => (
-          <div
-            key={i}
-            className="whitespace-pre-wrap"
-            style={{
-              color: color(l.t),
-              minHeight: l.t === "gap" ? 10 : undefined,
-            }}
-          >
-            {l.t === "cmd" && (
-              <span style={{ color: "var(--fg-subtle)", marginRight: 6 }}>
-                $
-              </span>
-            )}
-            {l.s}
-          </div>
-        ))}
-        {n < LINES.length && (
+        <LogoArt />
+
+        <p className="m-0 mt-5" style={{ color: "var(--fg)" }}>
+          t2 code will run commands on your behalf to help you build. Private
+          inference, zero data retention.
+        </p>
+        <p className="m-0 mt-3" style={{ color: "var(--fg)" }}>
+          Directory <span style={{ color: "var(--fg-muted)" }}>~/dev/private-agent</span>
+        </p>
+
+        <p className="m-0 mt-4" style={{ color: "var(--fg)" }}>
+          Privacy mode
+        </p>
+        <div className="mt-1 flex flex-col">
+          {MODES.map((m, i) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMode(i)}
+              className="cursor-pointer whitespace-pre border-0 bg-transparent p-0 text-left font-mono text-[12.5px]"
+              style={{
+                lineHeight: 1.75,
+                color: i === mode ? "var(--fg)" : "var(--fg-muted)",
+              }}
+            >
+              {"  "}
+              <span
+                style={{
+                  color: i === mode ? "var(--t2k-accent)" : "var(--fg-subtle)",
+                }}
+              >
+                {i === mode ? "●" : "○"}
+              </span>{" "}
+              {m.line}
+            </button>
+          ))}
+        </div>
+
+        <p className="m-0 mt-4 whitespace-pre-wrap" style={{ color: "var(--fg-muted)" }}>
+          {"  "}Active: <span style={{ color: "var(--fg)" }}>{MODES[mode].id}</span>{" "}
+          — pinned by this repo (.t2000/config.json)
+        </p>
+        <p className="m-0 whitespace-pre-wrap" style={{ color: "var(--fg-muted)" }}>
+          {"  "}Endpoint: api.t2000.ai/v1 (zero data retention)
+        </p>
+        <p
+          className="m-0 mt-3 whitespace-pre-wrap text-[11.5px]"
+          style={{ color: "var(--fg-subtle)" }}
+        >
+          {"  "}Switch globally: /privacy private | full | confidential — the
+          repo pin wins over the global setting.
+        </p>
+      </div>
+
+      <div className="px-4 pb-4">
+        <div
+          className="flex items-center gap-2 rounded-lg border px-4 py-3 font-mono text-[12.5px]"
+          style={{ borderColor: "var(--ds-gray-alpha-500)" }}
+        >
           <span
-            className="inline-block align-middle"
+            className="inline-block"
             style={{
               width: 7,
               height: 15,
@@ -247,7 +299,20 @@ function CodeHeroTerminal() {
               animation: "t2k-blink 1s steps(1) infinite",
             }}
           />
-        )}
+          <span style={{ color: "var(--fg-subtle)" }}>
+            Enter a coding task or / for commands
+          </span>
+          <span className="flex-1" />
+          <span
+            className="rounded border px-2 py-0.5 text-[10.5px]"
+            style={{
+              borderColor: "var(--ds-gray-alpha-400)",
+              color: "var(--fg-subtle)",
+            }}
+          >
+            &lt; DEFAULT
+          </span>
+        </div>
       </div>
     </div>
   );
