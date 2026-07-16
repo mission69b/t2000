@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
+import { CREATE_CMD } from "../../data/templates";
+import { CopyButton } from "../ui/CopyButton";
 import { HeroPaths } from "./HeroPaths";
 
 const WORKS_WITH = [
@@ -82,6 +85,32 @@ export function Hero() {
               >
                 Read the docs
               </a>
+            </div>
+
+            <div
+              className="mt-6 inline-flex max-w-full items-center gap-3 rounded-lg border py-2 pr-2 pl-3.5"
+              style={{
+                background: "var(--ds-gray-alpha-100)",
+                borderColor: "var(--ds-gray-alpha-300)",
+              }}
+            >
+              <code
+                className="min-w-0 truncate font-mono text-[13px]"
+                style={{ color: "var(--fg)" }}
+              >
+                <span style={{ color: "var(--fg-subtle)" }}>$ </span>
+                {CREATE_CMD}
+              </code>
+              <CopyButton payload={CREATE_CMD} />
+            </div>
+            <div className="mt-2.5">
+              <Link
+                href="/templates"
+                className="text-[12.5px] font-medium no-underline transition-colors hover:text-foreground"
+                style={{ color: "var(--fg-subtle)", letterSpacing: "-0.011em" }}
+              >
+                Browse templates →
+              </Link>
             </div>
           </div>
 

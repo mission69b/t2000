@@ -79,6 +79,14 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
             <Chevron open={open} />
           </button>
 
+          <Link
+            href="/templates"
+            onMouseEnter={() => setOpen(false)}
+            className={linkBase}
+          >
+            Templates
+          </Link>
+
           <a
             href={DEVELOPERS_URL}
             target="_blank"

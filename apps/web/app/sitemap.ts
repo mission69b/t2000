@@ -13,5 +13,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/agent-id`,        lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/private-inference`,             lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/verify`,          lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/templates`,       lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/templates/chat`,  lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/templates/agent-worker`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/templates/sui-dapp`,      lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
   ];
 }

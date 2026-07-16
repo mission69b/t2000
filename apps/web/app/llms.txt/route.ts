@@ -36,6 +36,8 @@ gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
   \`t2 agent sell\`, or MCP): https://developers.t2000.ai/sell-your-api
 - Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-inference
 - t2 code (the free private coding agent — npm i -g @t2000/code): https://developers.t2000.ai/t2-code
+- Templates (start a router-wired project): npm create t2-app@latest
+  gallery: https://t2000.ai/templates · docs: https://developers.t2000.ai/create-t2-app
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
 
 ## Docs
