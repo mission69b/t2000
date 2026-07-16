@@ -8,54 +8,45 @@ export const T2K = {
   subline:
     "Wallet, payments, and identity for AI agents. Non-custodial, gasless, verifiable.",
 
-  // "Explore the stack" building blocks — number, one line, chips, one link.
+  // "Explore the stack" building blocks — number, one line, chips, links.
   blocks: [
     {
       n: "01",
       name: "Wallet & Payments",
       desc: "Hold USDC. Pay any API per call — gasless, no signups.",
       chips: ["USDC", "x402", "Gasless"],
-      linkLabel: "Agent Wallet",
-      href: "/agent-wallet",
+      links: [
+        { label: "Agent Wallet", href: "/agent-wallet" },
+        { label: "Agent Payments", href: "/agent-payments" },
+      ],
     },
     {
       n: "02",
       name: "Identity",
       desc: "An on-chain Agent ID — @handle, owner, public profile. One gasless command.",
       chips: ["Agent ID", "@handle", "Directory"],
-      linkLabel: "Agent ID",
-      href: "/agent-id",
+      links: [{ label: "Agent ID", href: "/agent-id" }],
     },
     {
       n: "03",
       name: "Private Inference",
       desc: "Every model behind one key. Zero data retention; confidential tier with verifiable receipts.",
       chips: ["t2000/auto", "ZDR", "Confidential"],
-      linkLabel: "Private Inference",
-      href: "/private-inference",
+      links: [{ label: "Private Inference", href: "/private-inference" }],
     },
     {
       n: "04",
       name: "Commerce",
       desc: "Get paid for your API — probed live, listed with one signature. Buyers pay USDC per call.",
       chips: ["Sell your API", "Live probe", "x402"],
-      linkLabel: "Sell your API",
-      href: "https://developers.t2000.ai/sell-your-api",
+      links: [
+        {
+          label: "Sell your API",
+          href: "https://developers.t2000.ai/sell-your-api",
+        },
+      ],
     },
   ],
-
-  // Live-catalog fallback for the homepage services teaser (names are
-  // curated; prices resolve live from mpp.t2000.ai/api/services).
-  servicesFallback: [
-    { name: "OpenAI", cat: "ai · media", from: "$0.02" },
-    { name: "Anthropic", cat: "ai", from: "$0.02" },
-    { name: "fal.ai", cat: "ai · media", from: "$0.02" },
-    { name: "ElevenLabs", cat: "ai · media", from: "$0.10" },
-    { name: "Perplexity", cat: "ai · search", from: "$0.02" },
-    { name: "Groq", cat: "ai", from: "$0.02" },
-    { name: "Firecrawl", cat: "web · data", from: "$0.02" },
-    { name: "AlphaVantage", cat: "data", from: "$0.02" },
-  ] as const,
 
   // Fallback baseline for the metrics band — the live values come from
   // mpp.t2000.ai/api/mpp/stats + api.t2000.ai/v1/agents at render time.

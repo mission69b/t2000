@@ -263,91 +263,7 @@
   .t2k-tabular { font-variant-numeric: tabular-nums; }
 
   /* ============================================================
-     Hero paths — Console / CLI / Prompt / Audric tab card
-     ============================================================ */
-  .t2k-hp-tabs {
-    display: inline-flex; gap: 4px; margin-bottom: 14px;
-    padding: 4px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--ds-gray-alpha-100);
-  }
-  .t2k-hp-tab {
-    height: 32px; padding: 0 14px;
-    border: 0; border-radius: 5px;
-    background: transparent; cursor: pointer;
-    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500;
-    letter-spacing: -0.011em; color: var(--fg-muted);
-    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-  }
-  .t2k-hp-tab:hover { color: var(--fg); }
-  .t2k-hp-tab.is-active {
-    background: var(--ds-gray-alpha-200); color: var(--fg);
-  }
-
-  .t2k-hp-card {
-    overflow: hidden;
-    border: 1px solid var(--ds-gray-alpha-400);
-    border-radius: 10px;
-    background: var(--ds-background-200);
-    box-shadow: 0 0 0 1px rgba(0,114,245,0.10), 0 24px 60px -20px rgba(0,114,245,0.20);
-  }
-  .t2k-hp-card-head {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--ds-gray-alpha-300);
-    background: var(--ds-gray-100);
-  }
-  .t2k-hp-card-body {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 20px;
-    padding: 26px 24px;
-    min-height: 360px;
-  }
-
-  .t2k-hp-steps {
-    list-style: none; margin: 0; padding: 0;
-    display: flex; flex-direction: column; gap: 18px;
-    flex: 1;
-  }
-  .t2k-hp-steps li { display: flex; gap: 14px; align-items: flex-start; }
-  .t2k-hp-n {
-    width: 24px; height: 24px; flex: 0 0 auto; margin-top: 1px;
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 50%; background: var(--t2k-accent); color: #fff;
-    font-family: var(--font-mono); font-size: 12px; font-weight: 500;
-  }
-  .t2k-hp-step-t {
-    font-family: var(--font-sans); font-weight: 600; font-size: 15.5px;
-    letter-spacing: -0.014em;
-  }
-  .t2k-hp-step-s {
-    font-size: 13px; line-height: 1.5; color: var(--fg-muted); margin-top: 2px;
-  }
-
-  .t2k-hp-blurb {
-    margin: 0;
-    font-size: 14.5px; line-height: 1.6; color: var(--fg-muted);
-    letter-spacing: -0.011em;
-  }
-  .t2k-hp-prompt {
-    flex: 1;
-    font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
-    color: var(--fg);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-  }
-  .t2k-hp-prompt-mark { color: var(--t2k-accent); margin-right: 6px; }
-  .t2k-hp-audric-rows {
-    flex: 1;
-    display: flex; flex-direction: column; gap: 8px;
-    font-size: 14px; color: var(--fg-muted); letter-spacing: -0.011em;
-  }
-  .t2k-hp-check { color: var(--t2k-success); margin-right: 8px; }
-
-  /* ============================================================
-     No-code band — one strip into the console
+     Feature band — one strip, one sentence, one button
      ============================================================ */
   .t2k-band {
     display: flex; align-items: center; justify-content: space-between;
@@ -409,8 +325,9 @@
     margin-top: 4px;
     font-size: 13px; font-weight: 500; letter-spacing: -0.011em;
     color: var(--t2k-accent); white-space: nowrap;
+    text-decoration: none;
   }
-  .t2k-blk-card:hover .t2k-blk-link { text-decoration: underline; }
+  .t2k-blk-link:hover { text-decoration: underline; }
 
   /* Substrate cards below the grid */
   .t2k-blk-base {

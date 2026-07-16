@@ -16,7 +16,7 @@ const FILES: ScaffoldFile[] = [
     name: "AGENTS.md",
     tag: "context",
     blurb:
-      "Repo context every agent reads — yours, t2 code's, anyone's. Sui repos get the ground rules appended automatically.",
+      "Repo context every agent reads. Sui repos get the ground rules added automatically.",
     lines: [
       { c: "accent", s: "# Project" },
       { s: "" },
@@ -36,7 +36,7 @@ const FILES: ScaffoldFile[] = [
     name: ".agents/skills/",
     tag: "11 skills",
     blurb:
-      "Skills are markdown playbooks loaded when relevant — 11 ship in the binary, project skills drop in as folders. Any of them is a /skill: command.",
+      "11 playbooks ship built in; drop your own in as folders. Each one is a /skill: command.",
     lines: [
       { c: "accent", s: "improve/" },
       { c: "dim", s: "  plan-expensive, execute-cheap audits" },
@@ -54,7 +54,7 @@ const FILES: ScaffoldFile[] = [
     name: "plans/",
     tag: "workflows",
     blurb:
-      "Plan expensive, execute cheap: a strong model writes the plan, a cheap headless run executes it, you review the diff.",
+      "A strong model writes the plan, a cheap headless run executes it, you review the diff.",
     lines: [
       { c: "dim", s: "# plans/README.md" },
       { s: "" },
@@ -70,7 +70,7 @@ const FILES: ScaffoldFile[] = [
     name: ".t2000/config.json",
     tag: "privacy pin",
     blurb:
-      "Pins the privacy mode for this repo. Commit it and it binds every contributor — the pin overrides everyone's global setting.",
+      "Pins the privacy mode for the repo. Commit it and every contributor inherits it.",
     lines: [
       { s: "{" },
       { c: "accent", s: '  "privacy": "private"' },
@@ -109,8 +109,8 @@ export function CodeScaffold() {
             <code className="font-mono" style={{ color: "var(--fg)" }}>
               t2code init
             </code>{" "}
-            scaffolds the agent layer into your repo — context, skills,
-            workflows, and a privacy pin your whole team inherits.
+            writes context, skills, workflows, and a privacy pin into your
+            repo. One command — the repo is agent-ready.
           </p>
         </header>
 

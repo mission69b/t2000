@@ -58,8 +58,8 @@ export function StackBlocks() {
 type Block = (typeof T2K.blocks)[number];
 
 function BlockCard({ b }: { b: Block }) {
-  const inner = (
-    <>
+  return (
+    <div className="t2k-blk-card">
       <div className="t2k-blk-head">
         <span className="t2k-blk-num">{b.n}</span>
       </div>
@@ -72,21 +72,25 @@ function BlockCard({ b }: { b: Block }) {
           </span>
         ))}
       </div>
-      <span className="t2k-blk-link">{b.linkLabel} →</span>
-    </>
-  );
-  return b.href.startsWith("/") ? (
-    <Link href={b.href} className="t2k-blk-card">
-      {inner}
-    </Link>
-  ) : (
-    <a
-      href={b.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="t2k-blk-card"
-    >
-      {inner}
-    </a>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {b.links.map((l) =>
+          l.href.startsWith("/") ? (
+            <Link key={l.href} href={l.href} className="t2k-blk-link">
+              {l.label} →
+            </Link>
+          ) : (
+            <a
+              key={l.href}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="t2k-blk-link"
+            >
+              {l.label} →
+            </a>
+          ),
+        )}
+      </div>
+    </div>
   );
 }

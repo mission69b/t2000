@@ -95,10 +95,10 @@ export function CodeHero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              A terminal agent that plans, edits, and tests your code on{" "}
-              <span style={{ color: "var(--fg)" }}>open models</span> — zero
-              data retention, telemetry stripped at the source, and a free
-              daily allowance. Your code is not the product.
+              Plans, edits, and tests your code on{" "}
+              <span style={{ color: "var(--fg)" }}>open models</span>. Zero
+              data retention, zero telemetry, a free daily allowance. Your
+              code is not the product.
             </p>
           </div>
 

@@ -4,32 +4,32 @@ const FEATURES = [
   {
     tag: "t2code exec",
     name: "Headless, delegable",
-    desc: "One-shot mode with a strict contract: stdout is the answer, progress goes to stderr. Delegate mechanical work from Cursor, Claude Code, or CI — and pay open-model prices for it.",
+    desc: "Runs one task, prints one answer. Delegate the grunt work from Cursor, Claude Code, or CI — at open-model prices.",
   },
   {
     tag: "/skill:improve",
     name: "Skills built in",
-    desc: "11 playbooks ship in the binary — codebase audits, secure Move review, wallet and payment flows. Project skills load from .agents/skills/; every one is a slash command.",
+    desc: "11 playbooks in the binary — audits, Move security, payment flows. Each one is a slash command.",
   },
   {
     tag: "auto-detect",
     name: "Sui out of the box",
-    desc: "Move.toml or @mysten/sui in the repo? init appends the ground rules to AGENTS.md and offers the official Sui Agent Skills by Mysten Labs — with your consent, never silently.",
+    desc: "Detects a Sui repo, adds the ground rules, and offers Mysten's official skills — with your consent.",
   },
   {
     tag: "MCP preinstalled",
     name: "A wallet in-session",
-    desc: "The t2000 wallet tools come wired: check balances, send USDC, pay per-call APIs (search, image gen, TTS) without leaving the session.",
+    desc: "Check balances, send USDC, and pay per-call APIs without leaving the session.",
   },
   {
     tag: "stripped at source",
     name: "Nothing phones home",
-    desc: "Analytics and log shipping are deleted from the code, not toggled off. The binary talks to api.t2000.ai and nothing else — no session uploads, no crash reports, no tracking.",
+    desc: "Telemetry is deleted from the code, not toggled off. The binary talks to api.t2000.ai — nothing else.",
   },
   {
     tag: "t2000/auto",
     name: "Routing cuts the bill",
-    desc: "Routine steps run on cheap open models; hard steps escalate. Every response names the model that served it, and the free daily allowance covers everyday coding.",
+    desc: "Cheap models for routine steps, escalation for hard ones. The free allowance covers everyday coding.",
   },
 ] as const;
 
@@ -89,9 +89,10 @@ export function CodeFeatures() {
             </span>
             <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
               <code className="font-mono" style={{ color: "var(--fg)" }}>
-                t2 connect claude-code · grok · aider · codex · cline
+                t2 connect claude-code
               </code>{" "}
-              points it at the same account and models — one command.
+              points it at the same account and models. Also: grok, aider,
+              codex, cline.
             </span>
           </div>
           <a

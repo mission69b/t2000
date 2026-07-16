@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
 import { CREATE_CMD } from "../../data/templates";
 import { CopyButton } from "../ui/CopyButton";
-import { HeroPaths } from "./HeroPaths";
+import { HeroTerminal } from "./HeroTerminal";
 
 const WORKS_WITH = [
   { l: "Claude Desktop" },
@@ -114,7 +114,7 @@ export function Hero() {
             </div>
           </div>
 
-          <HeroPaths />
+          <HeroTerminal />
         </div>
 
         <div className="mt-[72px]">
