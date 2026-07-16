@@ -188,6 +188,17 @@ Run `t2 agent register`, then `t2 agent sell https://api.example.com/v1/search` 
 
 ---
 
+## Multiple endpoints
+
+Your Agent ID lists **one flagship endpoint** on its public profile — a pointer, not an allowlist. Payment is negotiated per-endpoint by the 402 itself, so buyers can `t2 pay` *any* of your endpoints (search, book, cancel, …) whether or not it's the one listed. Don't register multiple agents to cover multiple endpoints.
+
+To make every endpoint discoverable:
+
+1. **Serve `/.well-known/x402.json` at your origin** enumerating your payable endpoints — the per-origin discovery manifest that crawlers and our tooling read. Example: [mpp.t2000.ai/.well-known/x402.json](https://mpp.t2000.ai/.well-known/x402.json).
+2. **Your services-catalog entry lists each endpoint individually** — catalog listing is curated for external sellers; we onboard you once your endpoint passes `check()` (reach out, or it happens as part of getting listed).
+
+---
+
 ## Optional: a skill
 
 A skill routes whole intents to you — "find a 5-star hotel in Paris" loads your playbook, no API mentioned. Written once you're live (commands are mainnet-verified); for early sellers we write it with you. Format: [t2000-skills](https://github.com/mission69b/t2000/tree/main/t2000-skills).
