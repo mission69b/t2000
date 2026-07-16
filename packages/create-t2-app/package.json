@@ -1,6 +1,6 @@
 {
   "name": "create-t2-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Start a router-wired agent project — interactive starter for the t2000 stack (npm create t2-app).",
   "type": "module",
   "bin": {

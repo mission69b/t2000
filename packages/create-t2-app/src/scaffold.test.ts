@@ -69,10 +69,12 @@ describe('scaffold', () => {
     expect(existsSync(path.join(target, 'plans', 'README.md'))).toBe(true);
 
     // The hard rule: router-wired — t2000/auto against api.t2000.ai
-    const entry =
-      id === 'chat'
-        ? readFileSync(path.join(target, 'app', 'api', 'chat', 'route.ts'), 'utf8')
-        : readFileSync(path.join(target, 'src', 'worker.ts'), 'utf8');
+    const entryByTemplate: Record<string, string[]> = {
+      'agent-worker': ['src', 'worker.ts'],
+      chat: ['app', 'api', 'chat', 'route.ts'],
+      'sui-dapp': ['app', 'api', 'agent', 'route.ts'],
+    };
+    const entry = readFileSync(path.join(target, ...entryByTemplate[id]), 'utf8');
     expect(entry).toContain('t2000/auto');
     expect(entry).toContain('api.t2000.ai/v1');
   });

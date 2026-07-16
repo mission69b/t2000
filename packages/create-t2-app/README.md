@@ -18,6 +18,7 @@ npm create t2-app my-app -- --template chat --privacy private --yes
 |---|---|
 | `agent-worker` | Headless TypeScript worker on `t2000/auto` — the smallest useful agent. |
 | `chat` | Next.js streaming chat on `t2000/auto` — no AI SDK, the wiring is two readable files. |
+| `sui-dapp` | Sui dApp: wallet connect (dapp-kit), gRPC balance reads, and an AI copilot that knows your holdings. |
 
 Every template is wired to the t2000 router (`api.t2000.ai/v1`, model
 `t2000/auto`) out of the box: `npm install`, set `T2000_API_KEY`
@@ -33,7 +34,7 @@ like [t2 code](https://t2000.ai/code) honor the same pin.
 ## Options
 
 ```
--t, --template <id>   agent-worker | chat
+-t, --template <id>   agent-worker | chat | sui-dapp
     --privacy <mode>  private | full | confidential   (default: private)
 -y, --yes             accept defaults for anything not provided
     --no-git          skip git init

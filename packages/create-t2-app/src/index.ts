@@ -181,10 +181,17 @@ async function main(): Promise<void> {
       `cd ${appName}`,
       'npm install',
       `export T2000_API_KEY=sk-...   ${pc.dim('# free key: agents.t2000.ai/manage')}`,
-      templateId === 'chat' ? 'npm run dev' : 'npm start',
+      templateId === 'agent-worker' ? 'npm start' : 'npm run dev',
     ].join('\n'),
     'Next steps',
   );
+
+  if (templateId === 'sui-dapp') {
+    p.note(
+      `npx skills add mystenlabs/skills --all\n${pc.dim('Official Sui Agent Skills (Move, PTBs, object model — by Mysten Labs)')}`,
+      'Building on Sui?',
+    );
+  }
 
   p.outro(
     `Code on it privately: ${pc.bold('npm i -g @t2000/code && t2code')} ${pc.dim('· docs: developers.t2000.ai/t2-code')}`,

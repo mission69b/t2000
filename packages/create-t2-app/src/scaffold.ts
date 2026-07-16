@@ -32,6 +32,11 @@ export const TEMPLATES: TemplateMeta[] = [
     label: 'AI chat app',
     hint: 'Next.js streaming chat on t2000/auto — dependency-light, no framework magic',
   },
+  {
+    id: 'sui-dapp',
+    label: 'Sui dApp',
+    hint: 'wallet connect + gRPC reads + an AI copilot that knows your holdings',
+  },
 ];
 
 export interface ScaffoldOptions {
