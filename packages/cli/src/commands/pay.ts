@@ -156,9 +156,21 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
     printInfo(`→ ${method} ${url}  ${pc.dim('(estimate — no payment)')}`);
   }
 
+  // Mirror the SDK's paid path: default content-type when the body is JSON,
+  // or strict servers (FastAPI) 422 the probe before the 402 ever fires.
+  let headers = opts.header;
+  if (canHaveBody && opts.data && !Object.keys(headers ?? {}).some((k) => k.toLowerCase() === 'content-type')) {
+    try {
+      JSON.parse(opts.data);
+      headers = { ...(headers ?? {}), 'content-type': 'application/json' };
+    } catch {
+      // not JSON — leave headers alone
+    }
+  }
+
   const response = await fetch(url, {
     method,
-    headers: opts.header,
+    headers,
     body: canHaveBody ? opts.data : undefined,
   });
 

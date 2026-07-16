@@ -76,7 +76,8 @@ export async function payWithMpp(args: {
   client: SuiGrpcClient;
   options: PayOptions;
 }): Promise<PayResult> {
-  const { signer, client, options } = args;
+  const { signer, client } = args;
+  let options = args.options;
 
   // Layer 2 — cheap synchronous preflight (URL shape + maxPrice sanity) before
   // any network round-trip. Rethrow the precise code+message verbatim.
@@ -85,6 +86,24 @@ export async function payWithMpp(args: {
 
   const method = (options.method ?? 'GET').toUpperCase();
   const canHaveBody = method !== 'GET' && method !== 'HEAD';
+
+  // Default `content-type: application/json` when the body IS JSON and the
+  // caller didn't say otherwise. Without it, fetch stamps `text/plain` and
+  // strict servers (FastAPI et al.) receive the body as a string — a 422
+  // before the 402 ever fires (live finding vs JMPR, the first external
+  // seller). Every retry below reads from the normalized `options`.
+  if (
+    canHaveBody &&
+    typeof options.body === 'string' &&
+    isJsonText(options.body) &&
+    !hasContentType(options.headers)
+  ) {
+    options = {
+      ...options,
+      headers: { ...(options.headers ?? {}), 'content-type': 'application/json' },
+    };
+  }
+
   const reqInit: RequestInit = {
     method,
     headers: options.headers,
@@ -384,6 +403,22 @@ async function ensureAddressBalanceCovers(args: {
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
+
+/** Cheap "is this JSON?" check — parse, don't guess from the first char. */
+function isJsonText(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Case-insensitive content-type presence check on a plain header record. */
+function hasContentType(headers: Record<string, string> | undefined): boolean {
+  if (!headers) return false;
+  return Object.keys(headers).some((k) => k.toLowerCase() === 'content-type');
+}
 
 /** Read the response body (json or text) and assemble the base PayResult. */
 async function finalize(response: Response, opts: { paid: boolean }): Promise<PayResult> {

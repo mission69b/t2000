@@ -357,3 +357,51 @@ describe('payWithMpp — free / cached', () => {
     expect(buildX402Mock).not.toHaveBeenCalled();
   });
 });
+
+describe('payWithMpp — content-type defaulting', () => {
+  // Without the default, fetch stamps text/plain and strict servers (FastAPI)
+  // 422 the string body before the 402 ever fires (live finding vs JMPR).
+  it('defaults content-type: application/json when the body is JSON and none is set', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { ok: true } }));
+
+    await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient(),
+      options: { url: 'https://x.example/api', method: 'POST', body: '{"city":"Tokyo"}' },
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers).toEqual({ 'content-type': 'application/json' });
+  });
+
+  it('respects a caller-supplied Content-Type (any casing)', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { ok: true } }));
+
+    await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient(),
+      options: {
+        url: 'https://x.example/api',
+        method: 'POST',
+        body: '{"a":1}',
+        headers: { 'Content-Type': 'application/vnd.custom+json' },
+      },
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers).toEqual({ 'Content-Type': 'application/vnd.custom+json' });
+  });
+
+  it('leaves non-JSON bodies alone', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { ok: true } }));
+
+    await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient(),
+      options: { url: 'https://x.example/api', method: 'POST', body: 'plain text' },
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers).toBeUndefined();
+  });
+});
