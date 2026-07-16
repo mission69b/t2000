@@ -27,6 +27,13 @@ export interface Service {
    * serve their own manifest) and exempt from the route-coverage tests.
    */
   direct?: boolean;
+  /**
+   * Direct entries only: the seller's on-chain USDC receiving address (from
+   * their 402 challenge, pinned at curation time). /api/mpp/report verifies a
+   * reported digest actually paid THIS address before the activity feed
+   * records it — the report is a pointer, the chain is the truth.
+   */
+  payTo?: string;
 }
 
 const BASE_URL = env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
@@ -629,6 +636,7 @@ export const services: Service[] = [
     categories: ['commerce'],
     logo: '/logos/jmpr.svg',
     direct: true,
+    payTo: '0xae4ce37d16c0478f35806bdded712cc17320c94915da62022922afb379520281',
     endpoints: [
       { method: 'POST', path: '/v1/hotels/search', description: 'Search luxury hotels — 5-star, ultra-luxury, boutique', price: '0.02' },
       { method: 'POST', path: '/v1/hotels/detail', description: 'Hotel property record plus bookable suites & rates', price: '0.02' },

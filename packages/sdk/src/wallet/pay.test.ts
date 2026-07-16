@@ -358,6 +358,59 @@ describe('payWithMpp — free / cached', () => {
   });
 });
 
+describe('payWithMpp — direct-seller activity report', () => {
+  const reportCalls = () =>
+    fetchMock.mock.calls.filter(([u]) => String(u).includes('/api/mpp/report'));
+
+  it('reports a paid non-gateway call to the gateway (digest + url, best-effort)', async () => {
+    mppxChallengeAmount = '0.02';
+    fetchMock.mockResolvedValueOnce(mppHeader402('0.02')); // probe
+    // Any subsequent fetch (the report) resolves harmlessly via the bare mock.
+
+    await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+    });
+
+    const reports = reportCalls();
+    expect(reports).toHaveLength(1);
+    const [, init] = reports[0];
+    expect(JSON.parse(init.body)).toEqual({ digest: '0xmigration', url: 'https://seller.example/x' });
+  });
+
+  it('does NOT report gateway-origin payments (the gateway logs its own)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
+      );
+
+    await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+    });
+
+    expect(reportCalls()).toHaveLength(0);
+  });
+
+  it('a failing report never fails the payment', async () => {
+    mppxChallengeAmount = '0.02';
+    fetchMock
+      .mockResolvedValueOnce(mppHeader402('0.02')) // probe
+      .mockRejectedValueOnce(new Error('gateway down')); // the report
+
+    const result = await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+    });
+
+    expect(result.paid).toBe(true);
+  });
+});
+
 describe('payWithMpp — content-type defaulting', () => {
   // Without the default, fetch stamps text/plain and strict servers (FastAPI)
   // 422 the string body before the 402 ever fires (live finding vs JMPR).
