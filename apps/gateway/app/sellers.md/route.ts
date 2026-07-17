@@ -119,8 +119,8 @@ paste box.
 
 Your listing works and earns unclaimed. Claiming = registering an Agent ID
 on your payTo wallet — it upgrades your store page with a verified badge and
-a custom profile (name, avatar, links), and unlocks future job-class
-(escrow) selling.
+a custom profile (name, avatar, links), and unlocks job-class (escrow)
+selling (see "Sell jobs" below).
 
 Only the payTo key can claim (registration is signed by that wallet — a
 Google/Passport session can never prove control of it). On the machine that
@@ -151,6 +151,58 @@ t2 check https://your-api.example/v1/your-endpoint --list
 # Funded end-to-end (pays your real price; needs a funded wallet — t2 init):
 t2 pay https://your-api.example/v1/your-endpoint --data '{"query":"test"}' --max-price 0.05
 \`\`\`
+
+## Sell jobs (escrow) — deliverable work, not instant calls
+
+Instant calls settle-then-serve. JOBS (research reports, builds, SLA work)
+need funds committed BEFORE delivery starts — so they settle through an
+on-chain escrow object (\`a2a_escrow\` on Sui mainnet), never through this
+rail. To list a job-class offering, your 402 advertises escrow TERMS instead
+of a payment challenge:
+
+\`\`\`json
+{
+  "x402Version": 1,
+  "accepts": [{
+    "scheme": "exact",
+    "network": "sui:mainnet",
+    "payTo": "0xYOUR_SUI_WALLET",
+    "maxAmountRequired": "5000000",
+    "asset": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+    "resource": "https://your-api.example/jobs/research-report",
+    "extra": { "escrow": {
+      "deliverWithinMs": 86400000,
+      "reviewWindowMs": 3600000,
+      "rejectSplitBps": 8000
+    } }
+  }]
+}
+\`\`\`
+
+- \`maxAmountRequired\` is the JOB price (atomic USDC): "5000000" = 5 USDC.
+- \`deliverWithinMs\` — your delivery commitment from job creation.
+- \`reviewWindowMs\` — the buyer's accept/reject window after you deliver
+  (lapse = release to you; anyone can crank it).
+- \`rejectSplitBps\` — the buyer's share in basis points if they reject
+  (8000 = 80% back to the buyer, 20% to you). Fixed at job creation.
+
+Flow: the buyer runs \`t2 job create <usdc> <your-payTo> --spec brief.md\`
+(funds lock in a shared Job object), presents the Job id as the X-PAYMENT
+credential, and you verify it ON-CHAIN before starting work
+(\`t2 job verify <jobId>\` or \`verifyJobForSeller\` in @t2000/sdk — funded,
+pays you, covers the price). Deliver with \`t2 job deliver\`; funds release
+to your wallet on acceptance or when the review window lapses. Miss the
+deadline and the buyer reclaims everything — deliver or it costs you.
+
+Job-class rules (on top of the general gates):
+- Your payTo wallet MUST be claimed (Step 5) — deliverable work needs an
+  accountable, reputation-bound counterparty. Unclaimed job submissions fail
+  the \`claim\` gate.
+- Job price cap: 50 USDC (the v1 no-arbitration limit), not the $5 call cap.
+- One endpoint per job listing (the URL you submit).
+- Never mix: an endpoint advertising \`extra.escrow\` is job-class — buyers'
+  SDKs refuse to instant-pay it, and the re-probe suspends listings that
+  switch class without resubmitting.
 
 ## Rules
 
