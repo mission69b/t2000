@@ -2,6 +2,10 @@ import { getCatalog } from '@/lib/catalog-live';
 import { getEndpointSchema } from '@/lib/schemas';
 import { NextResponse } from 'next/server';
 
+// ISR, not static: without this the handler prerenders at BUILD time and
+// self-listed direct sellers (Redis, post-deploy) would never appear.
+export const revalidate = 60;
+
 export async function GET() {
   // Attach each endpoint's request-body JSON schema (param names, types,
   // required fields, descriptions) so callers — Audric, the CLI, any MPP

@@ -212,7 +212,10 @@ describe('entry construction', () => {
             '/v1/book': {
               post: {
                 summary: 'Book it',
-                'x-payment-info': { price: '0.50', currency: 'USDC' },
+                // The nested live shape (JMPR): price is an object.
+                'x-payment-info': {
+                  price: { mode: 'fixed', currency: 'USD', amount: '0.500000' },
+                },
                 responses: { '402': {} },
               },
             },

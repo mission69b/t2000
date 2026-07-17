@@ -90,13 +90,22 @@ async function enumerateEndpoints(
     const doc = await fetchSpec(origin);
     const rows: Endpoint[] = [];
     for (const ep of extractEndpoints(doc)) {
-      const price = ep.paymentInfo.price ?? ep.paymentInfo.amount;
-      if (!price || !Number.isFinite(parseFloat(price))) continue;
+      // Live specs (JMPR) nest the price as { mode, currency, amount } even
+      // though discovery's PaymentInfo type declares `price?: string` —
+      // accept both shapes, plus the flat `amount` fallback.
+      const pi = ep.paymentInfo as { price?: unknown; amount?: unknown };
+      const raw =
+        typeof pi.price === 'string'
+          ? pi.price
+          : typeof pi.price === 'object' && pi.price !== null
+            ? (pi.price as { amount?: unknown }).amount
+            : pi.amount;
+      if (typeof raw !== 'string' || !Number.isFinite(parseFloat(raw))) continue;
       rows.push({
         method: ep.method.toUpperCase(),
         path: ep.path,
         description: ep.summary ?? ep.operationId ?? '',
-        price: parseFloat(price).toString(),
+        price: parseFloat(raw).toString(),
       });
     }
     if (rows.length > 0) {
