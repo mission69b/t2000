@@ -25,9 +25,11 @@ export function sampleBodyFor(svcName: string, path: string): string {
     return '{"model":"black-forest-labs/flux-schnell","input":{"prompt":"a sunlit room"}}';
   // Field names match JMPR's live openapi.json exactly — their API charges
   // BEFORE validating, so a wrong sample = a paid 422 (learned live, $0.02).
-  if (svcName === "JMPR Travel" && path.includes("flights"))
+  // Prefix-matched: the self-listed entry (S.748) is named from their OpenAPI
+  // title ("JMPR — Luxury Hotels API"), not the old static "JMPR Travel".
+  if (svcName.startsWith("JMPR") && path.includes("flights/search"))
     return '{"from_airport":"SYD","to_airport":"NRT","departure_date":"2026-09-01","trip_type":"one_way","cabin_class":"business"}';
-  if (svcName === "JMPR Travel")
+  if (svcName.startsWith("JMPR") && path.includes("hotels/search"))
     return '{"city":"Tokyo","checkin_date":"2026-09-01","checkout_date":"2026-09-05","user_requirements":"ultra-luxury 5-star"}';
   return "{ }";
 }
