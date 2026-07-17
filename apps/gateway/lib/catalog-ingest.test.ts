@@ -350,6 +350,71 @@ describe('previewSeller (dry run + listing grade)', () => {
   });
 });
 
+describe('escrow-intent (job-class) listings — SPEC_A2A_ESCROW slice 2', () => {
+  const TERMS = { deliverWithinMs: 86_400_000, reviewWindowMs: 3_600_000, rejectSplitBps: 8000 };
+  const JOB_URL = 'https://api.example-seller.dev/jobs/research-report';
+  const claimed = async () => ({ agent: SELLER, mcp_endpoint: null });
+  const unclaimed = async () => null;
+
+  it('claim gate: an UNCLAIMED payTo wallet cannot list a job', async () => {
+    const res = await ingestSellerByUrl(JOB_URL, {
+      probe: passingProbe({ escrow: TERMS, priceUsdc: '5' }),
+      getRecord: unclaimed,
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.gates.at(-1)).toMatchObject({ gate: 'claim', ok: false });
+    expect(res.gates.at(-1)?.detail).toContain('agent register');
+    expect(await getEntry(SELLER)).toBeNull();
+  });
+
+  it('a claimed wallet lists a single-endpoint job entry with terms', async () => {
+    const res = await ingestSellerByUrl(JOB_URL, {
+      probe: passingProbe({ escrow: TERMS, priceUsdc: '5' }),
+      getRecord: claimed,
+      fetchSpec: async () => {
+        throw new Error('should not be called — job listings skip OpenAPI enumeration');
+      },
+    });
+    expect(res.ok).toBe(true);
+    expect(res.gates.find((g) => g.gate === 'claim')).toMatchObject({ ok: true });
+    const entry = await getEntry(SELLER);
+    expect(entry?.service.escrow).toEqual(TERMS);
+    expect(entry?.service.categories).toEqual(['jobs']);
+    expect(entry?.service.endpoints).toEqual([
+      { method: 'POST', path: '/jobs/research-report', description: '', price: '5' },
+    ]);
+  });
+
+  it('job cap is $50, not the $5 call cap — $30 passes, $60 fails', async () => {
+    const pass = await previewSeller(JOB_URL, {
+      probe: passingProbe({ escrow: TERMS, priceUsdc: '30' }),
+      getRecord: claimed,
+      fetchSpec: noSpec,
+    });
+    expect(pass.ok).toBe(true);
+
+    const fail = await previewSeller(JOB_URL, {
+      probe: passingProbe({ escrow: TERMS, priceUsdc: '60' }),
+      getRecord: claimed,
+      fetchSpec: noSpec,
+    });
+    expect(fail.ok).toBe(false);
+    expect(fail.gates.at(-1)).toMatchObject({ gate: 'price-cap', ok: false });
+    expect(fail.gates.at(-1)?.detail).toContain('job-value cap');
+  });
+
+  it('instant listings never hit the claim gate (no regression)', async () => {
+    const res = await ingestSellerByUrl(ENDPOINT, {
+      probe: passingProbe(),
+      getRecord: unclaimed,
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.gates.find((g) => g.gate === 'claim')).toBeUndefined();
+  });
+});
+
 describe('legacy address path (released CLI/MCP clients)', () => {
   it('resolves the on-chain endpoint then runs the URL ingest', async () => {
     const res = await ingestSeller(SELLER, {
@@ -479,6 +544,49 @@ describe('reprobeAll', () => {
     const entry = await getEntry(SELLER);
     expect(entry?.state).toBe('suspended');
     expect(entry?.lastProbeIssues?.[0]).toContain('x402');
+  });
+
+  it('class drift fails: a job-class entry whose 402 drops escrow terms', async () => {
+    await seed('live', 2);
+    const entry = (await getEntry(SELLER)) as DynamicCatalogEntry;
+    await putEntry({
+      ...entry,
+      service: {
+        ...entry.service,
+        escrow: { deliverWithinMs: 1000, reviewWindowMs: 0, rejectSplitBps: 8000 },
+      },
+    });
+    await reprobeAll(passingProbe()); // instant probe, no escrow
+    const after = await getEntry(SELLER);
+    expect(after?.state).toBe('suspended');
+    expect(after?.lastProbeIssues?.[0]).toContain('no longer advertises escrow');
+  });
+
+  it('an instant entry whose 402 turns job-class fails too (resubmit to relist)', async () => {
+    await seed('live', 2);
+    await reprobeAll(
+      passingProbe({
+        escrow: { deliverWithinMs: 1000, reviewWindowMs: 0, rejectSplitBps: 8000 },
+      }),
+    );
+    const entry = await getEntry(SELLER);
+    expect(entry?.state).toBe('suspended');
+    expect(entry?.lastProbeIssues?.[0]).toContain('now advertises escrow');
+  });
+
+  it('a passing reprobe refreshes escrow terms on a job-class entry', async () => {
+    await seed('live', 0);
+    const entry = (await getEntry(SELLER)) as DynamicCatalogEntry;
+    await putEntry({
+      ...entry,
+      service: {
+        ...entry.service,
+        escrow: { deliverWithinMs: 1000, reviewWindowMs: 0, rejectSplitBps: 8000 },
+      },
+    });
+    const fresh = { deliverWithinMs: 2000, reviewWindowMs: 500, rejectSplitBps: 5000 };
+    await reprobeAll(passingProbe({ escrow: fresh }));
+    expect((await getEntry(SELLER))?.service.escrow).toEqual(fresh);
   });
 
   it('skips delisted entries', async () => {

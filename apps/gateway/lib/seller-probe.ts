@@ -17,7 +17,17 @@ export interface SellerProbeResult {
   /** Decimal USDC price quoted by the challenge, e.g. "0.02". */
   priceUsdc?: string;
   dialect?: 'x402' | 'mpp-header';
+  /** Set when the x402 entry is JOB-CLASS (`extra.escrow` — SPEC_A2A_ESCROW):
+   *  the endpoint sells deliverable work settled through an on-chain escrow
+   *  Job object, not an instant settle-then-serve call. */
+  escrow?: ProbedEscrowTerms;
   issues: string[];
+}
+
+export interface ProbedEscrowTerms {
+  deliverWithinMs: number;
+  reviewWindowMs: number;
+  rejectSplitBps: number;
 }
 
 interface X402Accepts {
@@ -25,6 +35,34 @@ interface X402Accepts {
   network?: string;
   payTo?: string;
   maxAmountRequired?: string;
+  extra?: { escrow?: Partial<ProbedEscrowTerms> };
+}
+
+/** Validate the advertised job terms — a job-class listing with nonsense
+ *  terms is unbuyable, so malformed terms fail the probe (fail closed). */
+function parseEscrowTerms(
+  extra: X402Accepts['extra'],
+): { terms?: ProbedEscrowTerms; issue?: string } {
+  const e = extra?.escrow;
+  if (!e) return {};
+  const { deliverWithinMs, reviewWindowMs, rejectSplitBps } = e;
+  if (
+    typeof deliverWithinMs !== 'number' ||
+    deliverWithinMs <= 0 ||
+    typeof reviewWindowMs !== 'number' ||
+    reviewWindowMs < 0 ||
+    typeof rejectSplitBps !== 'number' ||
+    !Number.isInteger(rejectSplitBps) ||
+    rejectSplitBps < 0 ||
+    rejectSplitBps > 10_000
+  ) {
+    return {
+      issue:
+        'the 402 advertises escrow terms but they are malformed — extra.escrow needs ' +
+        'deliverWithinMs > 0, reviewWindowMs ≥ 0, and integer rejectSplitBps 0–10000',
+    };
+  }
+  return { terms: { deliverWithinMs, reviewWindowMs, rejectSplitBps } };
 }
 
 /** Atomic 6dp USDC → decimal string ("20000" → "0.02"). */
@@ -53,14 +91,23 @@ export async function probeSellerEndpoint(url: string): Promise<SellerProbeResul
     return { ok: false, issues: [`expected 402 payment challenge, got ${response.status}`] };
   }
 
-  // Dialect 1 — x402 body envelope.
+  // Dialect 1 — x402 body envelope (instant OR job-class escrow entry).
   try {
     const body = (await response.clone().json()) as { accepts?: X402Accepts[] };
     const exact = body.accepts?.find((a) => a.scheme === 'exact' && a.network === 'sui:mainnet');
     if (exact?.payTo && exact.maxAmountRequired) {
       const price = atomicToDecimal(exact.maxAmountRequired);
       if (price) {
-        return { ok: true, payTo: exact.payTo.toLowerCase(), priceUsdc: price, dialect: 'x402', issues: [] };
+        const { terms, issue } = parseEscrowTerms(exact.extra);
+        if (issue) return { ok: false, payTo: exact.payTo.toLowerCase(), issues: [issue] };
+        return {
+          ok: true,
+          payTo: exact.payTo.toLowerCase(),
+          priceUsdc: price,
+          dialect: 'x402',
+          escrow: terms,
+          issues: [],
+        };
       }
     }
   } catch {

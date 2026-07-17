@@ -18,6 +18,11 @@
 //                  pay breaks the catalog promise, so it isn't a listing.
 //   4. price-cap — every listed price ≤ CATALOG_MAX_PRICE_USDC
 //
+// Job-class (escrow-intent) 402s (extra.escrow — SPEC_A2A_ESCROW slice 2)
+// take two extra rules after the dialect gate: `claim` (the payTo wallet
+// must carry a registered Agent ID — deliverable work needs an accountable
+// counterparty) and the $50 job cap instead of the $5 call cap.
+//
 // (S.748's agent-id + payTo-cross-check gates are DROPPED — they defended
 // against a non-attack and were the sign-up friction. Agent ID is now the
 // OPTIONAL claim: registering one on the payTo wallet upgrades the store
@@ -42,7 +47,7 @@ import { probeSellerEndpoint, type SellerProbeResult } from './seller-probe';
 import { services, type Endpoint, type Service } from './services';
 
 export interface GateResult {
-  gate: 'url' | 'agent-id' | 'probe' | 'dialect' | 'price-cap';
+  gate: 'url' | 'agent-id' | 'probe' | 'dialect' | 'price-cap' | 'claim';
   ok: boolean;
   detail: string;
 }
@@ -95,6 +100,12 @@ function priceCap(): number {
   const parsed = parseFloat(env.CATALOG_MAX_PRICE_USDC ?? '5');
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 }
+
+/** Job-class listing price cap — mirrors the SDK's `MAX_JOB_USDC` (the v1
+ *  no-arbitration reject-split is only fair at small sizes,
+ *  SPEC_A2A_ESCROW §2). Deliberately NOT the $5 instant-call cap: a job is
+ *  one deliverable, not a per-call price. */
+const JOB_MAX_PRICE_USDC = 50;
 
 /** Deterministic catalog slug from the seller origin (agent.jmpr.world →
  *  "jmpr"); suffixed with the wallet head when a static row owns the slug. */
@@ -278,7 +289,7 @@ export async function previewSeller(
   rawUrl: string,
   deps: Partial<IngestDeps> = {},
 ): Promise<PreviewResult> {
-  const { probe, fetchSpec } = { ...DEFAULT_DEPS, ...deps };
+  const { probe, fetchSpec, getRecord } = { ...DEFAULT_DEPS, ...deps };
   const gates: GateResult[] = [];
 
   let endpointUrl: URL;
@@ -340,8 +351,74 @@ export async function previewSeller(
   }
   gates.push({ gate: 'dialect', ok: true, detail: 'x402 accepts[] envelope served' });
 
-  // Endpoint enumeration (OpenAPI x-payment-info when served, else the probe).
   const origin = endpointUrl.origin;
+
+  // Job-class (escrow-intent) listing — SPEC_A2A_ESCROW slice 2. The 402
+  // advertises escrow terms instead of an instant challenge: settlement is
+  // the buyer-funded on-chain Job object, never this rail. Two extra rules:
+  //
+  //   claim  — the payTo wallet MUST be claimed (Agent ID registered on it).
+  //            Instant calls are settle-then-serve so an anonymous wallet
+  //            risks nothing; a job commits the buyer's funds BEFORE
+  //            delivery, so the counterparty must be accountable +
+  //            reputation-bound. The one listing class where the optional
+  //            claim is required.
+  //   cap    — the $50 job cap (SDK MAX_JOB_USDC), not the $5 call cap.
+  //
+  // v1 job listings are single-endpoint (the probed job URL + its terms) —
+  // OpenAPI enumeration can't tell which other operations are job-class,
+  // and a wrong guess here misprices deliverable work.
+  if (probed.escrow) {
+    const record = await getRecord(probed.payTo).catch(() => null);
+    if (!record) {
+      gates.push({
+        gate: 'claim',
+        ok: false,
+        detail:
+          'escrow (job-class) listings require a claimed payTo wallet — register an Agent ID ' +
+          'on it first (npx @t2000/cli agent register), then resubmit',
+      });
+      return { ok: false, gates, payTo: probed.payTo, warnings: [] };
+    }
+    gates.push({ gate: 'claim', ok: true, detail: 'payTo wallet has a registered Agent ID' });
+
+    if (parseFloat(probed.priceUsdc) > JOB_MAX_PRICE_USDC) {
+      gates.push({
+        gate: 'price-cap',
+        ok: false,
+        detail: `job price $${probed.priceUsdc} is above the $${JOB_MAX_PRICE_USDC} job-value cap (v1 no-arbitration limit)`,
+      });
+      return { ok: false, gates, payTo: probed.payTo, warnings: [] };
+    }
+    gates.push({ gate: 'price-cap', ok: true, detail: `job price ≤ $${JOB_MAX_PRICE_USDC}` });
+
+    const host = endpointUrl.hostname;
+    const service: Service = {
+      id: slugForSeller(origin, probed.payTo),
+      name: host,
+      serviceUrl: origin,
+      description: `Job-class (escrow) seller at ${host}. USDC escrows in an on-chain Job object; released on delivery.`,
+      chain: 'sui',
+      currency: 'USDC',
+      categories: ['jobs'],
+      logo: '/logos/direct-seller.svg',
+      endpoints: [
+        {
+          method: 'POST',
+          path: endpointUrl.pathname,
+          description: '',
+          price: probed.priceUsdc,
+        },
+      ],
+      direct: true,
+      dialect: probed.dialect,
+      payTo: probed.payTo,
+      escrow: probed.escrow,
+    };
+    return { ok: true, gates, service, payTo: probed.payTo, warnings: [] };
+  }
+
+  // Endpoint enumeration (OpenAPI x-payment-info when served, else the probe).
   const enumerated = await enumerateEndpoints(origin, endpointUrl.pathname, probed, fetchSpec);
 
   // Gate 4 — price cap over everything we're about to list.
@@ -541,13 +618,19 @@ export async function reprobeAll(
     // header-only to x402 recovers on the next probe without resubmitting;
     // one that drops x402 comes down.
     const payToDrift = probed.ok && !!probed.payTo && probed.payTo !== entry.agentAddress;
-    const pass = probed.ok && !payToDrift && probed.dialect === 'x402';
+    // A listing must keep its class: a job-class (escrow) entry whose 402
+    // stops advertising escrow terms — or an instant entry that starts —
+    // is a different product than what buyers see. Terms VALUES may drift
+    // (refreshed below); the class may not without a resubmission.
+    const classDrift =
+      probed.ok && Boolean(entry.service.escrow) !== Boolean(probed.escrow);
+    const pass = probed.ok && !payToDrift && !classDrift && probed.dialect === 'x402';
     if (pass) {
       summary.passed += 1;
       if (entry.state === 'suspended') summary.recovered.push(entry.service.id);
       await putEntry({
         ...entry,
-        service: { ...entry.service, dialect: probed.dialect },
+        service: { ...entry.service, dialect: probed.dialect, escrow: probed.escrow },
         state: 'live',
         failCount: 0,
         updatedAt: now,
@@ -563,7 +646,13 @@ export async function reprobeAll(
           ? [
               `payout wallet changed (challenge now pays ${probed.payTo}) — resubmit the URL to relist under the new wallet`,
             ]
-          : ['x402 accepts[] envelope required for listing (header-only 402)'];
+          : classDrift
+            ? [
+                entry.service.escrow
+                  ? 'listing is job-class but the 402 no longer advertises escrow terms — resubmit to relist as an instant call'
+                  : 'the 402 now advertises escrow terms but the listing is instant — resubmit to relist as a job',
+              ]
+            : ['x402 accepts[] envelope required for listing (header-only 402)'];
       // Identity change = immediate suspend; flakiness gets the 3-day window.
       const suspend =
         entry.state === 'live' && (payToDrift || failCount >= SUSPEND_AFTER_FAILURES);

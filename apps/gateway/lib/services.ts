@@ -58,6 +58,27 @@ export interface Service {
    * records it — the report is a pointer, the chain is the truth.
    */
   payTo?: string;
+  /**
+   * Job-class (escrow-intent) listing — SPEC_A2A_ESCROW slice 2. Set when
+   * the seller's 402 advertises `extra.escrow` terms instead of an instant
+   * payment challenge: the buyer escrows USDC in a shared on-chain
+   * `a2a_escrow::escrow::Job` object (t2 job create), the seller delivers
+   * against it, settlement is release/reject/refund on the object. The
+   * gateway never holds funds. Escrow listings require a CLAIMED payTo
+   * wallet (registered Agent ID) — deliverable work needs an accountable,
+   * reputation-bound counterparty.
+   */
+  escrow?: EscrowTerms;
+}
+
+/** Job terms a job-class 402 advertises (`extra.escrow`, @suimpp/mpp 0.9). */
+export interface EscrowTerms {
+  /** Delivery commitment, in ms from job creation. */
+  deliverWithinMs: number;
+  /** Buyer's accept/reject window after delivery, in ms. */
+  reviewWindowMs: number;
+  /** Buyer's share in bps on reject (0–10000), fixed at create. */
+  rejectSplitBps: number;
 }
 
 const BASE_URL = env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
