@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
-import { ingestSeller } from '@/lib/catalog-ingest';
+import { ingestSeller, ingestSellerByUrl } from '@/lib/catalog-ingest';
 
 export const dynamic = 'force-dynamic';
 
-// CLI / MCP / console all POST here — signature-free by design: the input is
-// only a Sui address, and authorization is the seller's own on-chain Agent ID
-// record (mcpEndpoint is set by a seller-signed sponsored tx). See
-// lib/catalog-ingest.ts for the gates.
+// [SPEC_T2_AGENTS_STORE] Zero-friction listing: POST { url } — a bare https
+// URL, no account, no signature. The seller's own 402 challenge declares the
+// payout wallet (= the listing identity); the gates are machine checks, not
+// sign-ups. See lib/catalog-ingest.ts.
+//
+// Legacy: POST { address } (released `t2 agent list-catalog` / MCP
+// `t2000_agent_sell {catalog:true}` clients) resolves the wallet's on-chain
+// Agent ID endpoint, then runs the same URL ingest.
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'POST, OPTIONS',
@@ -44,28 +48,36 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { address?: unknown };
+  let body: { url?: unknown; address?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'invalid JSON body' }, { status: 400, headers: CORS });
   }
-  if (typeof body.address !== 'string') {
+  if (typeof body.url !== 'string' && typeof body.address !== 'string') {
     return NextResponse.json(
-      { error: 'address is required (the seller Agent ID wallet)' },
+      { error: 'url is required (your paid API endpoint, https)' },
       { status: 400, headers: CORS },
     );
   }
 
-  const result = await ingestSeller(body.address);
+  const result =
+    typeof body.url === 'string'
+      ? await ingestSellerByUrl(body.url)
+      : await ingestSeller(body.address as string);
   const status = result.ok ? 200 : 422;
   return NextResponse.json(
     {
       ok: result.ok,
       gates: result.gates,
       ...(result.serviceId
-        ? { serviceId: result.serviceId, url: `https://mpp.t2000.ai/services/${result.serviceId}` }
+        ? {
+            serviceId: result.serviceId,
+            url: `https://mpp.t2000.ai/services/${result.serviceId}`,
+            ...(result.payTo ? { storeUrl: `https://agents.t2000.ai/${result.payTo}` } : {}),
+          }
         : {}),
+      ...(result.warnings?.length ? { warnings: result.warnings } : {}),
       ...(result.removed ? { removed: true } : {}),
     },
     { status, headers: CORS },

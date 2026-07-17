@@ -1,9 +1,16 @@
-// [SPEC_CATALOG_SELF_LISTING] Gate tests — every gate has a pass AND a fail
-// case (fail closed). Chain reads, probes, and OpenAPI fetches are injected;
-// Redis is an in-memory fake through setCatalogRedis().
+// [SPEC_T2_AGENTS_STORE] Gate tests — every gate has a pass AND a fail case
+// (fail closed), for both the URL path (canonical) and the legacy address
+// path. Chain reads, probes, and OpenAPI fetches are injected; Redis is an
+// in-memory fake through setCatalogRedis().
 import type { Redis } from '@upstash/redis';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ingestSeller, reprobeAll, slugForSeller } from './catalog-ingest';
+import {
+  ingestSeller,
+  ingestSellerByUrl,
+  previewSeller,
+  reprobeAll,
+  slugForSeller,
+} from './catalog-ingest';
 import {
   getEntry,
   listEntries,
@@ -69,53 +76,35 @@ beforeEach(() => {
   setCatalogRedis(fakeRedis());
 });
 
-describe('gate 1 — agent-id', () => {
-  it('fails for an unregistered address', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: async () => null,
-      probe: passingProbe(),
-      fetchSpec: noSpec,
-    });
-    expect(res.ok).toBe(false);
-    expect(res.gates[0]).toMatchObject({ gate: 'agent-id', ok: false });
-  });
-
-  it('fails when the record has no on-chain endpoint', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(null),
-      probe: passingProbe(),
-      fetchSpec: noSpec,
-    });
-    expect(res.ok).toBe(false);
-    expect(res.gates[0].detail).toContain('t2 agent sell');
-  });
-
-  it('rejects a malformed address without touching the chain', async () => {
-    const res = await ingestSeller('not-an-address', {
-      getRecord: async () => {
+describe('gate 1 — url', () => {
+  it('rejects a non-https URL without probing', async () => {
+    const res = await ingestSellerByUrl('http://insecure.example/v1/x', {
+      probe: async () => {
         throw new Error('should not be called');
       },
-      probe: passingProbe(),
       fetchSpec: noSpec,
     });
     expect(res.ok).toBe(false);
+    expect(res.gates[0]).toMatchObject({ gate: 'url', ok: false });
   });
 
-  it('passes with a registered https endpoint', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
-      probe: passingProbe(),
-      fetchSpec: noSpec,
-    });
-    expect(res.gates[0]).toMatchObject({ gate: 'agent-id', ok: true });
+  it('rejects garbage input', async () => {
+    const res = await ingestSellerByUrl('not a url', { probe: passingProbe(), fetchSpec: noSpec });
+    expect(res.ok).toBe(false);
+    expect(res.gates[0]).toMatchObject({ gate: 'url', ok: false });
+  });
+
+  it('passes a valid https URL — no account, no Agent ID, no signature', async () => {
+    const res = await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
     expect(res.ok).toBe(true);
+    expect(res.gates[0]).toMatchObject({ gate: 'url', ok: true });
+    expect(res.payTo).toBe(SELLER);
   });
 });
 
 describe('gate 2 — probe', () => {
   it('fails when the endpoint does not answer a payable 402', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
+    const res = await ingestSellerByUrl(ENDPOINT, {
       probe: async () => ({ ok: false, issues: ['expected 402 payment challenge, got 200'] }),
       fetchSpec: noSpec,
     });
@@ -125,11 +114,7 @@ describe('gate 2 — probe', () => {
   });
 
   it('passes on a valid x402 challenge and stamps the dialect', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
-      probe: passingProbe(),
-      fetchSpec: noSpec,
-    });
+    const res = await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
     expect(res.gates.find((g) => g.gate === 'probe')).toMatchObject({ ok: true });
     expect((await getEntry(SELLER))?.service.dialect).toBe('x402');
   });
@@ -137,8 +122,7 @@ describe('gate 2 — probe', () => {
 
 describe('gate 3 — dialect (x402 required)', () => {
   it('rejects a header-only seller — some buyers (zkLogin) cannot pay it', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
+    const res = await ingestSellerByUrl(ENDPOINT, {
       probe: passingProbe({ dialect: 'mpp-header' }),
       fetchSpec: noSpec,
     });
@@ -150,17 +134,12 @@ describe('gate 3 — dialect (x402 required)', () => {
 
   it('suspends a LIVE entry immediately when the seller drops to header-only', async () => {
     // Listed while x402…
-    await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
-      probe: passingProbe(),
-      fetchSpec: noSpec,
-    });
+    await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
     expect((await getEntry(SELLER))?.state).toBe('live');
 
     // …then a resubmission finds header-only: down NOW, not after the
     // daily-reprobe failure window.
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
+    const res = await ingestSellerByUrl(ENDPOINT, {
       probe: passingProbe({ dialect: 'mpp-header' }),
       fetchSpec: noSpec,
     });
@@ -171,32 +150,9 @@ describe('gate 3 — dialect (x402 required)', () => {
   });
 });
 
-describe('gate 3 — payto binding', () => {
-  it('fails when the challenge pays a different wallet', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
-      probe: passingProbe({ payTo: OTHER }),
-      fetchSpec: noSpec,
-    });
-    expect(res.ok).toBe(false);
-    expect(res.gates.at(-1)).toMatchObject({ gate: 'payto', ok: false });
-    expect(await getEntry(SELLER)).toBeNull();
-  });
-
-  it('passes when the challenge pays the registered wallet', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
-      probe: passingProbe(),
-      fetchSpec: noSpec,
-    });
-    expect(res.gates.find((g) => g.gate === 'payto')).toMatchObject({ ok: true });
-  });
-});
-
 describe('gate 4 — price cap', () => {
   it('fails when any listed price exceeds the cap', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
+    const res = await ingestSellerByUrl(ENDPOINT, {
       probe: passingProbe({ priceUsdc: '25' }),
       fetchSpec: noSpec,
     });
@@ -205,8 +161,7 @@ describe('gate 4 — price cap', () => {
   });
 
   it('passes at or below the cap', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
+    const res = await ingestSellerByUrl(ENDPOINT, {
       probe: passingProbe({ priceUsdc: '5' }),
       fetchSpec: noSpec,
     });
@@ -214,15 +169,12 @@ describe('gate 4 — price cap', () => {
   });
 });
 
-describe('entry construction', () => {
-  it('single-endpoint fast path lists the probed endpoint', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
-      probe: passingProbe(),
-      fetchSpec: noSpec,
-    });
+describe('entry construction (URL path)', () => {
+  it('single-endpoint fast path lists the probed endpoint, keyed by payTo', async () => {
+    const res = await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
     expect(res.ok).toBe(true);
     const entry = await getEntry(SELLER);
+    expect(entry?.agentAddress).toBe(SELLER);
     expect(entry?.service.direct).toBe(true);
     expect(entry?.service.payTo).toBe(SELLER);
     expect(entry?.service.endpoints).toEqual([
@@ -231,8 +183,7 @@ describe('entry construction', () => {
   });
 
   it('multi-endpoint path enumerates from OpenAPI x-payment-info', async () => {
-    const res = await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
+    const res = await ingestSellerByUrl(ENDPOINT, {
       probe: passingProbe(),
       fetchSpec: async () =>
         ({
@@ -293,13 +244,130 @@ describe('entry construction', () => {
   });
 
   it('resubmission keeps the slug and submittedAt, refreshes the rest', async () => {
-    const deps = { getRecord: record(ENDPOINT), probe: passingProbe(), fetchSpec: noSpec };
-    const first = await ingestSeller(SELLER, deps);
+    const deps = { probe: passingProbe(), fetchSpec: noSpec };
+    const first = await ingestSellerByUrl(ENDPOINT, deps);
     const before = await getEntry(SELLER);
-    const second = await ingestSeller(SELLER, deps);
+    const second = await ingestSellerByUrl(ENDPOINT, deps);
     expect(second.serviceId).toBe(first.serviceId);
     const after = await getEntry(SELLER);
     expect(after?.submittedAt).toBe(before?.submittedAt);
+  });
+
+  it('delisted is terminal — resubmission is rejected', async () => {
+    await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
+    const entry = (await getEntry(SELLER)) as DynamicCatalogEntry;
+    await putEntry({ ...entry, state: 'delisted' });
+    const res = await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
+    expect(res.ok).toBe(false);
+    expect(res.gates[0].detail).toContain('delisted');
+  });
+});
+
+describe('previewSeller (dry run + listing grade)', () => {
+  it('writes nothing', async () => {
+    const res = await previewSeller(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
+    expect(res.ok).toBe(true);
+    expect(res.service?.payTo).toBe(SELLER);
+    expect(await getEntry(SELLER)).toBeNull();
+  });
+
+  it('grades a spec-less listing with the no-openapi copy-prompt', async () => {
+    const res = await previewSeller(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
+    expect(res.warnings).toHaveLength(1);
+    expect(res.warnings[0].code).toBe('no-openapi');
+    expect(res.warnings[0].prompt).toContain('x-payment-info');
+  });
+
+  it('grades missing schemas + unpriced endpoints on a served spec', async () => {
+    const res = await previewSeller(ENDPOINT, {
+      probe: passingProbe(),
+      fetchSpec: async () =>
+        ({
+          openapi: '3.1.0',
+          info: { title: 'Example Seller', version: '1.0' },
+          paths: {
+            '/v1/quote': {
+              post: {
+                summary: 'Get a quote',
+                'x-payment-info': { price: '0.02', currency: 'USDC' },
+                responses: { '402': {} },
+              },
+            },
+            '/v1/dynamic': {
+              post: {
+                summary: 'Dynamic pricing',
+                'x-payment-info': { price: { mode: 'dynamic' } },
+                responses: { '402': {} },
+              },
+            },
+          },
+        }) as never,
+    });
+    expect(res.ok).toBe(true);
+    const codes = res.warnings.map((w) => w.code).sort();
+    expect(codes).toEqual(['missing-schemas', 'no-description', 'unpriced-endpoints']);
+    for (const w of res.warnings) expect(w.prompt.length).toBeGreaterThan(40);
+  });
+
+  it('a clean spec earns zero warnings', async () => {
+    const res = await previewSeller(ENDPOINT, {
+      probe: passingProbe(),
+      fetchSpec: async () =>
+        ({
+          openapi: '3.1.0',
+          info: { title: 'Example Seller', version: '1.0', description: 'Quotes.' },
+          paths: {
+            '/v1/quote': {
+              post: {
+                summary: 'Get a quote',
+                'x-payment-info': { price: '0.02', currency: 'USDC' },
+                requestBody: {
+                  content: {
+                    'application/json': {
+                      schema: { type: 'object', properties: { city: { type: 'string' } } },
+                    },
+                  },
+                },
+                responses: { '402': {} },
+              },
+            },
+          },
+        }) as never,
+    });
+    expect(res.warnings).toEqual([]);
+  });
+});
+
+describe('legacy address path (released CLI/MCP clients)', () => {
+  it('resolves the on-chain endpoint then runs the URL ingest', async () => {
+    const res = await ingestSeller(SELLER, {
+      getRecord: record(ENDPOINT),
+      probe: passingProbe(),
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(true);
+    expect((await getEntry(SELLER))?.service.payTo).toBe(SELLER);
+  });
+
+  it('unregistered address points at the URL path instead', async () => {
+    const res = await ingestSeller(SELLER, {
+      getRecord: async () => null,
+      probe: passingProbe(),
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.gates[0].detail).toContain('POST your API URL');
+  });
+
+  it('rejects a malformed address without touching the chain', async () => {
+    const res = await ingestSeller('not-an-address', {
+      getRecord: async () => {
+        throw new Error('should not be called');
+      },
+      probe: passingProbe(),
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(false);
   });
 
   it('clearing the on-chain endpoint removes the entry', async () => {
@@ -310,13 +378,16 @@ describe('entry construction', () => {
     expect(await getEntry(SELLER)).toBeNull();
   });
 
-  it('delisted is terminal — resubmission is rejected', async () => {
-    await ingestSeller(SELLER, { getRecord: record(ENDPOINT), probe: passingProbe(), fetchSpec: noSpec });
-    const entry = (await getEntry(SELLER)) as DynamicCatalogEntry;
-    await putEntry({ ...entry, state: 'delisted' });
-    const res = await ingestSeller(SELLER, { getRecord: record(ENDPOINT), probe: passingProbe(), fetchSpec: noSpec });
-    expect(res.ok).toBe(false);
-    expect(res.gates[0].detail).toContain('delisted');
+  it('no payTo cross-check anymore — a challenge paying a different wallet lists under THAT wallet', async () => {
+    const res = await ingestSeller(SELLER, {
+      getRecord: record(ENDPOINT),
+      probe: passingProbe({ payTo: OTHER }),
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.payTo).toBe(OTHER);
+    expect((await getEntry(OTHER))?.service.payTo).toBe(OTHER);
+    expect(await getEntry(SELLER)).toBeNull();
   });
 });
 
@@ -382,10 +453,12 @@ describe('reprobeAll', () => {
     expect(entry?.failCount).toBe(0);
   });
 
-  it('treats a payTo drift as a failure', async () => {
-    await seed('live', 2);
+  it('a payTo CHANGE suspends immediately — identity must not silently transfer', async () => {
+    await seed('live', 0);
     await reprobeAll(passingProbe({ payTo: OTHER }));
-    expect((await getEntry(SELLER))?.state).toBe('suspended');
+    const entry = await getEntry(SELLER);
+    expect(entry?.state).toBe('suspended');
+    expect(entry?.lastProbeIssues?.[0]).toContain('payout wallet changed');
   });
 
   it('treats a drop to header-only as a failure (same bar as ingest)', async () => {

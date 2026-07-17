@@ -1,15 +1,14 @@
-// [SPEC_CATALOG_SELF_LISTING] Seller ingest — the machine gates.
+// [SPEC_T2_AGENTS_STORE] Seller ingest — zero-friction, account-free.
 //
-// Permissionless entry, moderation-after. The submit route takes ONLY a Sui
-// address and needs no signature: authorization is the seller's own on-chain
-// Agent ID record (`mcpEndpoint` is set by a seller-signed sponsored tx via
-// `t2 agent sell` / the console SellApiCard). Anyone can trigger a
-// (re)validation of a registered seller; nobody can list an endpoint the
-// seller didn't sign for, and nothing can be listed that pays anyone but the
-// seller's registered wallet.
+// The API is the account. Submission is a bare https URL (paste it on
+// /sell, POST it from an agent) — no Agent ID, no sign-in, no signature.
+// Everything derives from the seller's own API: `payTo` from their 402
+// challenge (that wallet IS the seller's identity + entry key), endpoints /
+// prices / name / description from their OpenAPI. Listing someone else's API
+// harms nobody: it pays the wallet the API itself declares.
 //
 // Gates (fail closed, each failure names its gate):
-//   1. agent-id  — address has a registry record with an https mcpEndpoint
+//   1. url       — a valid https URL
 //   2. probe     — the endpoint answers 402 with a payable Sui challenge
 //   3. dialect   — the 402 carries an x402 accepts[] envelope (sui:mainnet
 //                  exact). REQUIRED since 2026-07-17: header-only sellers
@@ -17,8 +16,13 @@
 //                  which zkLogin (Passport/browser) signatures fail AFTER the
 //                  on-chain payment settled — a listing only some buyers can
 //                  pay breaks the catalog promise, so it isn't a listing.
-//   4. payto     — the challenge pays the Agent ID's own wallet
-//   5. price-cap — every listed price ≤ CATALOG_MAX_PRICE_USDC
+//   4. price-cap — every listed price ≤ CATALOG_MAX_PRICE_USDC
+//
+// (S.748's agent-id + payTo-cross-check gates are DROPPED — they defended
+// against a non-attack and were the sign-up friction. Agent ID is now the
+// OPTIONAL claim: registering one on the payTo wallet upgrades the store
+// page; it never gates listing. The submit route's rate brake is the spam
+// control.)
 //
 // Multi-endpoint enumeration comes from the seller's OpenAPI doc with
 // `x-payment-info` extensions (the @suimpp/discovery standard, what JMPR
@@ -38,9 +42,28 @@ import { probeSellerEndpoint, type SellerProbeResult } from './seller-probe';
 import { services, type Endpoint, type Service } from './services';
 
 export interface GateResult {
-  gate: 'agent-id' | 'probe' | 'dialect' | 'payto' | 'price-cap';
+  gate: 'url' | 'agent-id' | 'probe' | 'dialect' | 'price-cap';
   ok: boolean;
   detail: string;
+}
+
+/** A non-blocking listing-quality finding. `prompt` is copy-paste text the
+ *  seller can hand their own coding agent to fix it (the /sell page renders
+ *  a copy button per warning). */
+export interface SellerWarning {
+  code: 'no-openapi' | 'no-description' | 'missing-schemas' | 'unpriced-endpoints';
+  message: string;
+  prompt: string;
+}
+
+export interface PreviewResult {
+  ok: boolean;
+  gates: GateResult[];
+  /** The would-be catalog row (nothing written). Set when all gates pass. */
+  service?: Service;
+  /** The seller wallet the challenge pays — the listing identity. */
+  payTo?: string;
+  warnings: SellerWarning[];
 }
 
 export interface IngestResult {
@@ -48,7 +71,11 @@ export interface IngestResult {
   gates: GateResult[];
   /** Set on success — the catalog row id (mpp.t2000.ai/services/<id>). */
   serviceId?: string;
-  /** True when the call removed an existing entry (on-chain endpoint cleared). */
+  /** The seller wallet — the store page is agents.t2000.ai/<payTo>. */
+  payTo?: string;
+  warnings?: SellerWarning[];
+  /** True when the call removed an existing entry (legacy address path,
+   *  on-chain endpoint cleared). */
   removed?: boolean;
 }
 
@@ -70,7 +97,7 @@ function priceCap(): number {
 }
 
 /** Deterministic catalog slug from the seller origin (agent.jmpr.world →
- *  "jmpr"); suffixed with the address head when a static row owns the slug. */
+ *  "jmpr"); suffixed with the wallet head when a static row owns the slug. */
 export function slugForSeller(origin: string, address: string): string {
   const host = new URL(origin).hostname;
   const parts = host.split('.');
@@ -123,6 +150,14 @@ function requestSchemaFor(
     : undefined;
 }
 
+interface Enumerated {
+  endpoints: Endpoint[];
+  name?: string;
+  description?: string;
+  hadSpec: boolean;
+  unpriced: number;
+}
+
 /** Build the endpoint rows: OpenAPI x-payment-info when the seller serves a
  *  spec, else the single probed endpoint. Endpoints without a parseable
  *  fixed price are skipped (a dynamic price can't clear the cap gate). */
@@ -131,10 +166,11 @@ async function enumerateEndpoints(
   probedPath: string,
   probe: SellerProbeResult,
   fetchSpec: typeof fetchOpenApi,
-): Promise<{ endpoints: Endpoint[]; name?: string; description?: string }> {
+): Promise<Enumerated> {
   try {
     const doc = await fetchSpec(origin);
     const rows: Endpoint[] = [];
+    let unpriced = 0;
     for (const ep of extractEndpoints(doc)) {
       // Live specs (JMPR) nest the price as { mode, currency, amount } even
       // though discovery's PaymentInfo type declares `price?: string` —
@@ -146,7 +182,10 @@ async function enumerateEndpoints(
           : typeof pi.price === 'object' && pi.price !== null
             ? (pi.price as { amount?: unknown }).amount
             : pi.amount;
-      if (typeof raw !== 'string' || !Number.isFinite(parseFloat(raw))) continue;
+      if (typeof raw !== 'string' || !Number.isFinite(parseFloat(raw))) {
+        unpriced += 1;
+        continue;
+      }
       rows.push({
         method: ep.method.toUpperCase(),
         path: ep.path,
@@ -160,6 +199,8 @@ async function enumerateEndpoints(
         endpoints: rows,
         name: doc.info.title,
         description: doc.info.description,
+        hadSpec: true,
+        unpriced,
       };
     }
   } catch {
@@ -174,84 +215,90 @@ async function enumerateEndpoints(
         price: probe.priceUsdc ?? '0',
       },
     ],
+    hadSpec: false,
+    unpriced: 0,
   };
 }
 
-export async function ingestSeller(
-  rawAddress: string,
+/** Listing-quality warnings — never blocking, each with a copy-paste prompt
+ *  the seller hands their own coding agent. */
+function gradeListing(origin: string, e: Enumerated): SellerWarning[] {
+  const warnings: SellerWarning[] = [];
+  if (!e.hadSpec) {
+    warnings.push({
+      code: 'no-openapi',
+      message: `No OpenAPI spec found at ${origin}/openapi.json — only the probed endpoint is listed, with no name or docs.`,
+      prompt:
+        `My paid API at ${origin} is listed on agents.t2000.ai from its 402 challenge alone. ` +
+        `Serve an OpenAPI 3.x document at ${origin}/openapi.json that describes every paid endpoint, ` +
+        `with an "x-payment-info" extension on each operation carrying its fixed USDC price ` +
+        `(e.g. "x-payment-info": { "price": "0.02", "currency": "USDC" }), plus a clear info.title ` +
+        `and info.description. The catalog re-reads it on resubmission.`,
+    });
+    return warnings; // The remaining grades all read the spec.
+  }
+  if (!e.description) {
+    warnings.push({
+      code: 'no-description',
+      message: 'The OpenAPI info block has no description — the listing gets a generic one.',
+      prompt:
+        `Add a one-paragraph info.description to the OpenAPI document at ${origin}/openapi.json ` +
+        `describing what the API sells and who it's for. It becomes the listing description on agents.t2000.ai.`,
+    });
+  }
+  const noSchema = e.endpoints.filter((ep) => !ep.schema);
+  if (noSchema.length > 0) {
+    warnings.push({
+      code: 'missing-schemas',
+      message: `${noSchema.length} endpoint(s) have no application/json request-body schema — buyers must guess field names, and a wrong guess on a direct seller is a paid error.`,
+      prompt:
+        `In the OpenAPI document at ${origin}/openapi.json, add a requestBody application/json schema ` +
+        `(typed properties + required[] + per-field descriptions) to these operations: ` +
+        `${noSchema.map((ep) => `${ep.method} ${ep.path}`).join(', ')}. ` +
+        `Buyers' agents build request bodies from these schemas.`,
+    });
+  }
+  if (e.unpriced > 0) {
+    warnings.push({
+      code: 'unpriced-endpoints',
+      message: `${e.unpriced} endpoint(s) in the spec were skipped — their x-payment-info has no fixed parseable price.`,
+      prompt:
+        `In the OpenAPI document at ${origin}/openapi.json, give every paid operation an ` +
+        `"x-payment-info" extension with a fixed decimal price (e.g. { "price": "0.02", "currency": "USDC" }). ` +
+        `Operations without a parseable fixed price cannot be listed.`,
+    });
+  }
+  return warnings;
+}
+
+/** Run every gate + enumeration against a seller URL. Pure read — writes
+ *  nothing. The /sell page's preview endpoint and the ingest write path
+ *  share this exactly (no preview/list drift by construction). */
+export async function previewSeller(
+  rawUrl: string,
   deps: Partial<IngestDeps> = {},
-): Promise<IngestResult> {
-  const { getRecord, probe, fetchSpec } = { ...DEFAULT_DEPS, ...deps };
+): Promise<PreviewResult> {
+  const { probe, fetchSpec } = { ...DEFAULT_DEPS, ...deps };
   const gates: GateResult[] = [];
 
-  if (!isValidSuiAddress(rawAddress)) {
-    return {
-      ok: false,
-      gates: [{ gate: 'agent-id', ok: false, detail: 'not a valid Sui address' }],
-    };
-  }
-  const address = normalizeSuiAddress(rawAddress).toLowerCase();
-
-  // Admin delist is terminal until cleared — resubmission doesn't wash it.
-  const priorEntry = await getEntry(address);
-  if (priorEntry?.state === 'delisted') {
-    return {
-      ok: false,
-      gates: [
-        {
-          gate: 'agent-id',
-          ok: false,
-          detail: 'this seller was delisted by the operator — contact us to appeal',
-        },
-      ],
-    };
-  }
-
-  // Gate 1 — on-chain Agent ID with a declared endpoint.
-  const record = await getRecord(address).catch(() => null);
-  if (!record) {
-    gates.push({
-      gate: 'agent-id',
-      ok: false,
-      detail: 'no Agent ID registered for this address — run `t2 agent register` first',
-    });
-    return { ok: false, gates };
-  }
-  const endpoint = record.mcp_endpoint ?? undefined;
-  if (!endpoint) {
-    // On-chain endpoint cleared → the catalog entry (if any) goes with it.
-    const existing = await getEntry(address);
-    if (existing) {
-      await removeEntry(address);
-      gates.push({
-        gate: 'agent-id',
-        ok: true,
-        detail: 'on-chain endpoint cleared — catalog entry removed',
-      });
-      return { ok: true, gates, removed: true };
-    }
-    gates.push({
-      gate: 'agent-id',
-      ok: false,
-      detail: 'Agent ID has no x402 endpoint on-chain — run `t2 agent sell <url>` first',
-    });
-    return { ok: false, gates };
-  }
   let endpointUrl: URL;
   try {
-    endpointUrl = new URL(endpoint);
+    endpointUrl = new URL(rawUrl);
     if (endpointUrl.protocol !== 'https:') throw new Error('not https');
   } catch {
-    gates.push({ gate: 'agent-id', ok: false, detail: 'on-chain endpoint is not a valid https URL' });
-    return { ok: false, gates };
+    return {
+      ok: false,
+      gates: [{ gate: 'url', ok: false, detail: 'not a valid https URL' }],
+      warnings: [],
+    };
   }
-  gates.push({ gate: 'agent-id', ok: true, detail: `Agent ID found, endpoint ${endpoint}` });
+  gates.push({ gate: 'url', ok: true, detail: endpointUrl.href });
 
-  // Gate 2 — live 402 probe (dual-dialect).
-  const probed = await probe(endpoint);
+  // Gate 2 — live 402 probe (the challenge is the listing's source of truth).
+  const probed = await probe(endpointUrl.href);
   if (!probed.ok || !probed.payTo || !probed.priceUsdc) {
     gates.push({ gate: 'probe', ok: false, detail: probed.issues.join('; ') || 'probe failed' });
-    return { ok: false, gates };
+    return { ok: false, gates, warnings: [] };
   }
   gates.push({
     gate: 'probe',
@@ -273,39 +320,15 @@ export async function ingestSeller(
         '(scheme "exact", network "sui:mainnet") so every buyer, browser wallets included, ' +
         'can pay; see developers.t2000.ai/sell-your-api',
     });
-    // A previously live entry that no longer clears the bar comes DOWN now,
-    // not after the daily-reprobe failure window — the listing must never
-    // outlive its payability.
-    if (priorEntry && priorEntry.state === 'live') {
-      const now = new Date().toISOString();
-      await putEntry({
-        ...priorEntry,
-        state: 'suspended',
-        updatedAt: now,
-        lastProbeAt: now,
-        lastProbeIssues: ['x402 accepts[] envelope required for listing (header-only 402)'],
-      });
-    }
-    return { ok: false, gates };
+    return { ok: false, gates, payTo: probed.payTo, warnings: [] };
   }
   gates.push({ gate: 'dialect', ok: true, detail: 'x402 accepts[] envelope served' });
-
-  // Gate 4 — the challenge pays the seller's own registered wallet.
-  if (probed.payTo !== address) {
-    gates.push({
-      gate: 'payto',
-      ok: false,
-      detail: `challenge pays ${probed.payTo}, but the Agent ID wallet is ${address} — the listing must settle to the registered wallet`,
-    });
-    return { ok: false, gates };
-  }
-  gates.push({ gate: 'payto', ok: true, detail: 'challenge pays the registered Agent ID wallet' });
 
   // Endpoint enumeration (OpenAPI x-payment-info when served, else the probe).
   const origin = endpointUrl.origin;
   const enumerated = await enumerateEndpoints(origin, endpointUrl.pathname, probed, fetchSpec);
 
-  // Gate 5 — price cap over everything we're about to list.
+  // Gate 4 — price cap over everything we're about to list.
   const cap = priceCap();
   const over = enumerated.endpoints.filter((e) => parseFloat(e.price) > cap);
   if (over.length > 0) {
@@ -314,15 +337,14 @@ export async function ingestSeller(
       ok: false,
       detail: `${over.length} endpoint(s) above the $${cap} per-call listing cap (${over[0].path} at $${over[0].price})`,
     });
-    return { ok: false, gates };
+    return { ok: false, gates, payTo: probed.payTo, warnings: [] };
   }
   gates.push({ gate: 'price-cap', ok: true, detail: `all prices ≤ $${cap}` });
 
-  // Build + store the entry. Resubmission revalidates and overwrites.
-  const id = priorEntry?.service.id ?? slugForSeller(origin, address);
+  const payTo = probed.payTo;
   const host = endpointUrl.hostname;
   const service: Service = {
-    id,
+    id: slugForSeller(origin, payTo),
     name: enumerated.name ?? host,
     serviceUrl: origin,
     description:
@@ -335,13 +357,66 @@ export async function ingestSeller(
     endpoints: enumerated.endpoints,
     direct: true,
     dialect: probed.dialect,
-    payTo: address,
+    payTo,
   };
+  return { ok: true, gates, service, payTo, warnings: gradeListing(origin, enumerated) };
+}
+
+/** List (or relist) a seller from a bare URL. Account-free: the entry keys
+ *  on the challenge's payTo wallet. Resubmission revalidates + overwrites
+ *  (slug + submittedAt survive). */
+export async function ingestSellerByUrl(
+  rawUrl: string,
+  deps: Partial<IngestDeps> = {},
+): Promise<IngestResult> {
+  const preview = await previewSeller(rawUrl, deps);
+
+  // A previously live entry that no longer clears the dialect bar comes DOWN
+  // now, not after the daily-reprobe failure window — the listing must never
+  // outlive its payability. (payTo is parseable from header-only challenges.)
+  if (!preview.ok) {
+    const dialectFail = preview.gates.find((g) => g.gate === 'dialect' && !g.ok);
+    if (dialectFail && preview.payTo) {
+      const prior = await getEntry(preview.payTo);
+      if (prior && prior.state === 'live') {
+        const now = new Date().toISOString();
+        await putEntry({
+          ...prior,
+          state: 'suspended',
+          updatedAt: now,
+          lastProbeAt: now,
+          lastProbeIssues: ['x402 accepts[] envelope required for listing (header-only 402)'],
+        });
+      }
+    }
+    return { ok: false, gates: preview.gates, payTo: preview.payTo };
+  }
+
+  const payTo = preview.payTo!;
+  const service = preview.service!;
+
+  // Admin delist is terminal until cleared — resubmission doesn't wash it.
+  const priorEntry = await getEntry(payTo);
+  if (priorEntry?.state === 'delisted') {
+    return {
+      ok: false,
+      gates: [
+        {
+          gate: 'url',
+          ok: false,
+          detail: 'this seller was delisted by the operator — contact us to appeal',
+        },
+      ],
+      payTo,
+    };
+  }
+
+  const id = priorEntry?.service.id ?? service.id;
   const now = new Date().toISOString();
   const entry: DynamicCatalogEntry = {
-    service,
-    agentAddress: address,
-    probeUrl: endpoint,
+    service: { ...service, id },
+    agentAddress: payTo,
+    probeUrl: new URL(rawUrl).href,
     state: 'live',
     failCount: 0,
     submittedAt: priorEntry?.submittedAt ?? now,
@@ -349,15 +424,80 @@ export async function ingestSeller(
     lastProbeAt: now,
   };
   await putEntry(entry);
-  return { ok: true, gates, serviceId: id };
+  return { ok: true, gates: preview.gates, serviceId: id, payTo, warnings: preview.warnings };
+}
+
+/** Legacy address path (shipped CLI `t2 agent list-catalog` / MCP
+ *  `t2000_agent_sell {catalog:true}` still POST an address): resolve the
+ *  wallet's on-chain Agent ID endpoint, then run the URL ingest. Kept so
+ *  released clients don't break; new clients submit the URL directly. */
+export async function ingestSeller(
+  rawAddress: string,
+  deps: Partial<IngestDeps> = {},
+): Promise<IngestResult> {
+  const { getRecord } = { ...DEFAULT_DEPS, ...deps };
+
+  if (!isValidSuiAddress(rawAddress)) {
+    return {
+      ok: false,
+      gates: [{ gate: 'agent-id', ok: false, detail: 'not a valid Sui address' }],
+    };
+  }
+  const address = normalizeSuiAddress(rawAddress).toLowerCase();
+
+  const record = await getRecord(address).catch(() => null);
+  if (!record) {
+    return {
+      ok: false,
+      gates: [
+        {
+          gate: 'agent-id',
+          ok: false,
+          detail:
+            'no Agent ID registered for this address — POST your API URL instead ({ "url": ... }), no registration needed',
+        },
+      ],
+    };
+  }
+  const endpoint = record.mcp_endpoint ?? undefined;
+  if (!endpoint) {
+    // On-chain endpoint cleared → the catalog entry (if any) goes with it.
+    // (Legacy entries key on the registered wallet, which the old gates
+    // pinned equal to payTo.)
+    const existing = await getEntry(address);
+    if (existing) {
+      await removeEntry(address);
+      return {
+        ok: true,
+        gates: [
+          { gate: 'agent-id', ok: true, detail: 'on-chain endpoint cleared — catalog entry removed' },
+        ],
+        removed: true,
+      };
+    }
+    return {
+      ok: false,
+      gates: [
+        {
+          gate: 'agent-id',
+          ok: false,
+          detail:
+            'Agent ID has no x402 endpoint on-chain — POST your API URL instead ({ "url": ... })',
+        },
+      ],
+    };
+  }
+  return await ingestSellerByUrl(endpoint, deps);
 }
 
 // ---------------------------------------------------------------------------
 // Daily re-probe — keeps the permissionless catalog honest. A live entry
-// whose endpoint stops answering a payable 402 (or stops paying the seller's
-// wallet) accumulates consecutive failures and is suspended (hidden, kept)
-// at the threshold; a passing probe recovers it. Delisted entries are
-// admin-owned and skipped.
+// whose endpoint stops answering a payable x402 402 accumulates consecutive
+// failures and is suspended (hidden, kept) at the threshold; a passing probe
+// recovers it. A payTo CHANGE suspends immediately: the payout wallet is the
+// seller's identity, and reputation must not silently transfer to a new
+// wallet (resubmitting lists the new wallet as a fresh page). Delisted
+// entries are admin-owned and skipped.
 // ---------------------------------------------------------------------------
 
 const SUSPEND_AFTER_FAILURES = 3;
@@ -380,10 +520,12 @@ export async function reprobeAll(
     summary.checked += 1;
     const now = new Date().toISOString();
     const probed = await probe(entry.probeUrl);
-    // Same bar as ingest: payable 402 + x402 envelope + pays the registered
-    // wallet. A seller that upgrades from header-only to x402 recovers on the
-    // next probe without resubmitting; one that drops x402 comes down.
-    const pass = probed.ok && probed.payTo === entry.agentAddress && probed.dialect === 'x402';
+    // Same bar as ingest: payable 402 + x402 envelope, still paying the
+    // wallet this listing belongs to. A seller that upgrades from
+    // header-only to x402 recovers on the next probe without resubmitting;
+    // one that drops x402 comes down.
+    const payToDrift = probed.ok && !!probed.payTo && probed.payTo !== entry.agentAddress;
+    const pass = probed.ok && !payToDrift && probed.dialect === 'x402';
     if (pass) {
       summary.passed += 1;
       if (entry.state === 'suspended') summary.recovered.push(entry.service.id);
@@ -401,10 +543,14 @@ export async function reprobeAll(
       const failCount = entry.failCount + 1;
       const issues = !probed.ok
         ? probed.issues
-        : probed.dialect !== 'x402'
-          ? ['x402 accepts[] envelope required for listing (header-only 402)']
-          : [`challenge pays ${probed.payTo}, expected ${entry.agentAddress}`];
-      const suspend = failCount >= SUSPEND_AFTER_FAILURES && entry.state === 'live';
+        : payToDrift
+          ? [
+              `payout wallet changed (challenge now pays ${probed.payTo}) — resubmit the URL to relist under the new wallet`,
+            ]
+          : ['x402 accepts[] envelope required for listing (header-only 402)'];
+      // Identity change = immediate suspend; flakiness gets the 3-day window.
+      const suspend =
+        entry.state === 'live' && (payToDrift || failCount >= SUSPEND_AFTER_FAILURES);
       if (suspend) summary.suspended.push(entry.service.id);
       await putEntry({
         ...entry,
