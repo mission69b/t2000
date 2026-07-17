@@ -31,6 +31,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
+      # gateway imports @t2000/id (workspace) — build it before gateway typecheck
+      - run: pnpm --filter @t2000/id build
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/cli typecheck
@@ -59,6 +61,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
+      # gateway imports @t2000/id (workspace) — build it before gateway test
+      - run: pnpm --filter @t2000/id build
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
