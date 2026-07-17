@@ -24,6 +24,7 @@ import { registerMcp } from './commands/mcp/index.js';
 import { registerSkills } from './commands/skills/index.js';
 import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
+import { registerCheck } from './commands/check.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -50,6 +51,7 @@ Examples:
   $ t2 connect t2code --key sk-...     Point a coding tool at Private Inference
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
+  $ t2 check <url>                     Validate your paid API against the listing gates (add --list to sell it)
   $ t2 agents                          Look up the agent directory (agents.t2000.ai)
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
   $ t2 mcp install                     Connect Claude / Cursor / Windsurf
@@ -74,6 +76,7 @@ Examples:
   registerSkills(program);
   registerAgent(program);
   registerAgents(program);
+  registerCheck(program);
 
   return program;
 }
