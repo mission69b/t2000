@@ -25,61 +25,88 @@ export default async function SellPage() {
     <>
       <MppNav currentPage="sell" />
       <main>
-        <div className="t2k-container">
-          <div className="mx-auto max-w-[760px] pb-16">
-            <section className="pt-14">
-              <div className="t2k-eyebrow">{"// SELL ON THE GATEWAY"}</div>
-              <h1
-                className="t2k-display mt-2"
-                style={{ fontSize: "clamp(30px, 4vw, 44px)" }}
-              >
-                Paste a URL. Start selling.
-              </h1>
-              <p
-                className="mt-3 max-w-[560px] text-[14px] leading-relaxed"
-                style={{ color: "var(--fg-muted)" }}
-              >
-                If your API answers 402 with an x402 payment challenge, it can
-                sell here — no account, no sign-up, no keys. Buyers pay USDC
-                per call, straight to your wallet, and every sale lands on your
-                on-chain track record.
-              </p>
-            </section>
+        {/* Hero — same shape as the service-detail hero (bordered section,
+            display headline, 17px sub). */}
+        <section
+          style={{
+            padding: "48px 0 56px",
+            borderBottom: "1px solid var(--ds-gray-alpha-300)",
+          }}
+        >
+          <div className="t2k-container">
+            <span className="t2k-eyebrow">// SELL ON THE GATEWAY</span>
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 600,
+                fontSize: "clamp(40px, 5.4vw, 64px)",
+                lineHeight: 1.0,
+                letterSpacing: "-0.035em",
+                margin: "12px 0 0",
+                color: "var(--fg)",
+              }}
+            >
+              Paste a URL. Start selling.
+            </h1>
+            <p
+              className="max-w-[560px]"
+              style={{
+                marginTop: 16,
+                fontSize: 17,
+                lineHeight: 1.55,
+                color: "var(--fg-muted)",
+                letterSpacing: "-0.011em",
+              }}
+            >
+              If your API answers 402 with an x402 payment challenge, it can
+              sell here — no account, no sign-up, no keys. Buyers pay USDC per
+              call, straight to your wallet, and every sale lands on your
+              on-chain track record.
+            </p>
+          </div>
+        </section>
 
-            <section className="pt-7">
+        <section className="t2k-section--tight" style={{ paddingBottom: 96 }}>
+          <div className="t2k-container">
+            <div className="grid max-w-[820px] gap-4">
               <SellFlow />
-            </section>
 
-            <section className="grid gap-3 pt-6 pb-4">
-              <div className="t2k-card grid gap-3">
+              <div className="t2k-card grid gap-3 p-6">
                 <div
-                  className="text-[13px] font-semibold"
-                  style={{ color: "var(--fg)" }}
+                  className="text-[14px] font-semibold"
+                  style={{ color: "var(--fg)", letterSpacing: "-0.011em" }}
                 >
                   Don&apos;t speak 402 yet?
                 </div>
                 <p
-                  className="m-0 text-[12.5px] leading-relaxed"
-                  style={{ color: "var(--fg-muted)" }}
+                  className="m-0 text-[13.5px] leading-relaxed"
+                  style={{
+                    color: "var(--fg-muted)",
+                    letterSpacing: "-0.011em",
+                  }}
                 >
                   Hand this to your coding agent — it reads the seller guide,
                   adds x402 to your API, and lists it end to end:
                 </p>
-                <div className="flex items-start gap-2">
+                <div className="flex flex-wrap items-start gap-2">
                   <p
-                    className="m-0 flex-1 rounded-md border px-3 py-2 font-mono text-[11px] leading-[1.55]"
+                    className="m-0 flex-1 basis-[320px] rounded-md border px-3.5 py-3 font-mono text-[12px] leading-[1.6]"
                     style={{
+                      background: "var(--ds-gray-alpha-100)",
                       borderColor: "var(--ds-gray-alpha-400)",
-                      color: "var(--fg-subtle)",
+                      color: "var(--fg-muted)",
                     }}
                   >
                     {AGENT_PROMPT}
                   </p>
-                  <CopyChip label="Copy prompt" payload={AGENT_PROMPT} muted />
+                  <CopyChip label="Copy prompt" payload={AGENT_PROMPT} />
                 </div>
                 <p
-                  className="m-0 text-[12px] leading-relaxed"
-                  style={{ color: "var(--fg-subtle)" }}
+                  className="m-0 text-[12.5px] leading-relaxed"
+                  style={{
+                    color: "var(--fg-subtle)",
+                    letterSpacing: "-0.011em",
+                  }}
                 >
                   Prefer to read it yourself:{" "}
                   <a
@@ -100,14 +127,17 @@ export default async function SellPage() {
                     /sellers.md
                   </a>{" "}
                   · from a terminal:{" "}
-                  <span className="font-mono" style={{ color: "var(--fg)" }}>
+                  <span
+                    className="font-mono text-[12px]"
+                    style={{ color: "var(--fg)" }}
+                  >
                     t2 check &lt;url&gt; --list
                   </span>
                 </p>
               </div>
-            </section>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
       <MppFooter
         serviceCount={totalServices(catalog)}
