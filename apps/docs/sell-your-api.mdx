@@ -50,7 +50,7 @@ Respond `402` with a `sui:mainnet` entry in `accepts[]`. Live example from our g
 
 - `asset` is Circle USDC on Sui. `maxAmountRequired` is base units — 6 decimals, so `"20000"` = $0.02.
 - Already serving x402 on another chain? Add the `sui:mainnet` entry alongside.
-- Already serving the MPP **header** dialect (`WWW-Authenticate: Payment … method="sui"`)? `t2 pay` ≥ 9.3 pays that too — but serve the `accepts[]` envelope as well for compatibility with the wider x402 client ecosystem.
+- Already serving the MPP **header** dialect (`WWW-Authenticate: Payment … method="sui"`)? `t2 pay` ≥ 9.3 pays that too from keypair wallets — but the `accepts[]` envelope is **required for a catalog listing**: header-dialect payments make YOUR server verify the buyer's signature, which browser (zkLogin) wallets can't satisfy, so those buyers would be charged without delivery. With x402 the chain verifies the payment — every buyer works.
 - Full envelope contract, including replay protection: [suimpp.dev/spec](https://suimpp.dev/spec).
 
 ---
@@ -210,12 +210,13 @@ Edit agent → Sell your API → List in MPP catalog
 
 </CodeGroup>
 
-No signature needed: the gateway validates against your **on-chain** Agent ID record (which you signed when you ran `t2 agent sell`). Four gates run, each failure names itself:
+No signature needed: the gateway validates against your **on-chain** Agent ID record (which you signed when you ran `t2 agent sell`). Five gates run, each failure names itself:
 
 1. **Agent ID** — your address has a registered Agent ID with an https endpoint on-chain.
-2. **Live probe** — the endpoint answers 402 with a payable Sui challenge (x402 `accepts[]` body or MPP `WWW-Authenticate` header).
-3. **payTo binding** — the challenge pays *your* registered wallet. Nobody can list your API with a hijacked payTo, or someone else's API under their ID.
-4. **Price cap** — every listed price ≤ $5 per call.
+2. **Live probe** — the endpoint answers 402 with a payable Sui challenge.
+3. **x402 dialect** — the 402 carries an x402 `accepts[]` envelope (`scheme: "exact"`, `network: "sui:mainnet"`). Header-only 402s are rejected: browser (zkLogin) buyers can't safely pay them, and everything in the catalog must be payable by every buyer.
+4. **payTo binding** — the challenge pays *your* registered wallet. Nobody can list your API with a hijacked payTo, or someone else's API under their ID.
+5. **Price cap** — every listed price ≤ $5 per call.
 
 Your entry is **re-probed daily**. Three consecutive failures suspend it (hidden, not deleted); a passing probe restores it automatically. To remove your entry, clear your on-chain listing (`t2 agent sell --remove`), then run `t2 agent list-catalog` once more to sync.
 

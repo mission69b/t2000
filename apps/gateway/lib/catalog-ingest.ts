@@ -11,9 +11,14 @@
 // Gates (fail closed, each failure names its gate):
 //   1. agent-id  — address has a registry record with an https mcpEndpoint
 //   2. probe     — the endpoint answers 402 with a payable Sui challenge
-//                  (dual-dialect: x402 accepts[] body OR MPP header)
-//   3. payto     — the challenge pays the Agent ID's own wallet
-//   4. price-cap — every listed price ≤ CATALOG_MAX_PRICE_USDC
+//   3. dialect   — the 402 carries an x402 accepts[] envelope (sui:mainnet
+//                  exact). REQUIRED since 2026-07-17: header-only sellers
+//                  verify the payer's personal-message signature themselves,
+//                  which zkLogin (Passport/browser) signatures fail AFTER the
+//                  on-chain payment settled — a listing only some buyers can
+//                  pay breaks the catalog promise, so it isn't a listing.
+//   4. payto     — the challenge pays the Agent ID's own wallet
+//   5. price-cap — every listed price ≤ CATALOG_MAX_PRICE_USDC
 //
 // Multi-endpoint enumeration comes from the seller's OpenAPI doc with
 // `x-payment-info` extensions (the @suimpp/discovery standard, what JMPR
@@ -33,7 +38,7 @@ import { probeSellerEndpoint, type SellerProbeResult } from './seller-probe';
 import { services, type Endpoint, type Service } from './services';
 
 export interface GateResult {
-  gate: 'agent-id' | 'probe' | 'payto' | 'price-cap';
+  gate: 'agent-id' | 'probe' | 'dialect' | 'payto' | 'price-cap';
   ok: boolean;
   detail: string;
 }
@@ -254,7 +259,38 @@ export async function ingestSeller(
     detail: `402 challenge OK (${probed.dialect}), ${probed.priceUsdc} USDC per call`,
   });
 
-  // Gate 3 — the challenge pays the seller's own registered wallet.
+  // Gate 3 — x402 envelope required. Header-only sellers are payable by
+  // keypair wallets but NOT by browser Passport (zkLogin) buyers — the seller
+  // verifies the payer's personal-message signature itself, and zkLogin sigs
+  // fail that check after the money already moved (JMPR, 2026-07-17). A
+  // catalog entry only some buyers can pay isn't a catalog entry.
+  if (probed.dialect !== 'x402') {
+    gates.push({
+      gate: 'dialect',
+      ok: false,
+      detail:
+        'the 402 answers only the MPP header dialect — serve an x402 accepts[] envelope ' +
+        '(scheme "exact", network "sui:mainnet") so every buyer, browser wallets included, ' +
+        'can pay; see developers.t2000.ai/sell-your-api',
+    });
+    // A previously live entry that no longer clears the bar comes DOWN now,
+    // not after the daily-reprobe failure window — the listing must never
+    // outlive its payability.
+    if (priorEntry && priorEntry.state === 'live') {
+      const now = new Date().toISOString();
+      await putEntry({
+        ...priorEntry,
+        state: 'suspended',
+        updatedAt: now,
+        lastProbeAt: now,
+        lastProbeIssues: ['x402 accepts[] envelope required for listing (header-only 402)'],
+      });
+    }
+    return { ok: false, gates };
+  }
+  gates.push({ gate: 'dialect', ok: true, detail: 'x402 accepts[] envelope served' });
+
+  // Gate 4 — the challenge pays the seller's own registered wallet.
   if (probed.payTo !== address) {
     gates.push({
       gate: 'payto',
@@ -269,7 +305,7 @@ export async function ingestSeller(
   const origin = endpointUrl.origin;
   const enumerated = await enumerateEndpoints(origin, endpointUrl.pathname, probed, fetchSpec);
 
-  // Gate 4 — price cap over everything we're about to list.
+  // Gate 5 — price cap over everything we're about to list.
   const cap = priceCap();
   const over = enumerated.endpoints.filter((e) => parseFloat(e.price) > cap);
   if (over.length > 0) {
@@ -344,15 +380,15 @@ export async function reprobeAll(
     summary.checked += 1;
     const now = new Date().toISOString();
     const probed = await probe(entry.probeUrl);
-    const pass = probed.ok && probed.payTo === entry.agentAddress;
+    // Same bar as ingest: payable 402 + x402 envelope + pays the registered
+    // wallet. A seller that upgrades from header-only to x402 recovers on the
+    // next probe without resubmitting; one that drops x402 comes down.
+    const pass = probed.ok && probed.payTo === entry.agentAddress && probed.dialect === 'x402';
     if (pass) {
       summary.passed += 1;
       if (entry.state === 'suspended') summary.recovered.push(entry.service.id);
       await putEntry({
         ...entry,
-        // Keep the dialect stamp fresh — a seller that upgrades from
-        // header-only to x402 becomes browser/zkLogin-payable on the next
-        // probe without resubmitting.
         service: { ...entry.service, dialect: probed.dialect },
         state: 'live',
         failCount: 0,
@@ -363,9 +399,11 @@ export async function reprobeAll(
     } else {
       summary.failed += 1;
       const failCount = entry.failCount + 1;
-      const issues = probed.ok
-        ? [`challenge pays ${probed.payTo}, expected ${entry.agentAddress}`]
-        : probed.issues;
+      const issues = !probed.ok
+        ? probed.issues
+        : probed.dialect !== 'x402'
+          ? ['x402 accepts[] envelope required for listing (header-only 402)']
+          : [`challenge pays ${probed.payTo}, expected ${entry.agentAddress}`];
       const suspend = failCount >= SUSPEND_AFTER_FAILURES && entry.state === 'live';
       if (suspend) summary.suspended.push(entry.service.id);
       await putEntry({

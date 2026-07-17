@@ -124,30 +124,50 @@ describe('gate 2 — probe', () => {
     expect(await getEntry(SELLER)).toBeNull();
   });
 
-  it('passes on a valid dual-dialect challenge', async () => {
+  it('passes on a valid x402 challenge and stamps the dialect', async () => {
+    const res = await ingestSeller(SELLER, {
+      getRecord: record(ENDPOINT),
+      probe: passingProbe(),
+      fetchSpec: noSpec,
+    });
+    expect(res.gates.find((g) => g.gate === 'probe')).toMatchObject({ ok: true });
+    expect((await getEntry(SELLER))?.service.dialect).toBe('x402');
+  });
+});
+
+describe('gate 3 — dialect (x402 required)', () => {
+  it('rejects a header-only seller — some buyers (zkLogin) cannot pay it', async () => {
     const res = await ingestSeller(SELLER, {
       getRecord: record(ENDPOINT),
       probe: passingProbe({ dialect: 'mpp-header' }),
       fetchSpec: noSpec,
     });
-    expect(res.gates.find((g) => g.gate === 'probe')).toMatchObject({ ok: true });
+    expect(res.ok).toBe(false);
+    expect(res.gates.at(-1)).toMatchObject({ gate: 'dialect', ok: false });
+    expect(res.gates.at(-1)?.detail).toContain('x402 accepts[]');
+    expect(await getEntry(SELLER)).toBeNull();
   });
 
-  it('stamps the probed dialect on the stored entry (browser payers key off it)', async () => {
+  it('suspends a LIVE entry immediately when the seller drops to header-only', async () => {
+    // Listed while x402…
     await ingestSeller(SELLER, {
+      getRecord: record(ENDPOINT),
+      probe: passingProbe(),
+      fetchSpec: noSpec,
+    });
+    expect((await getEntry(SELLER))?.state).toBe('live');
+
+    // …then a resubmission finds header-only: down NOW, not after the
+    // daily-reprobe failure window.
+    const res = await ingestSeller(SELLER, {
       getRecord: record(ENDPOINT),
       probe: passingProbe({ dialect: 'mpp-header' }),
       fetchSpec: noSpec,
     });
-    expect((await getEntry(SELLER))?.service.dialect).toBe('mpp-header');
-
-    // Seller upgrades to x402 → resubmission refreshes the stamp.
-    await ingestSeller(SELLER, {
-      getRecord: record(ENDPOINT),
-      probe: passingProbe({ dialect: 'x402' }),
-      fetchSpec: noSpec,
-    });
-    expect((await getEntry(SELLER))?.service.dialect).toBe('x402');
+    expect(res.ok).toBe(false);
+    const entry = await getEntry(SELLER);
+    expect(entry?.state).toBe('suspended');
+    expect(entry?.lastProbeIssues?.[0]).toContain('x402');
   });
 });
 
@@ -366,6 +386,14 @@ describe('reprobeAll', () => {
     await seed('live', 2);
     await reprobeAll(passingProbe({ payTo: OTHER }));
     expect((await getEntry(SELLER))?.state).toBe('suspended');
+  });
+
+  it('treats a drop to header-only as a failure (same bar as ingest)', async () => {
+    await seed('live', 2);
+    await reprobeAll(passingProbe({ dialect: 'mpp-header' }));
+    const entry = await getEntry(SELLER);
+    expect(entry?.state).toBe('suspended');
+    expect(entry?.lastProbeIssues?.[0]).toContain('x402');
   });
 
   it('skips delisted entries', async () => {
