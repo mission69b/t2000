@@ -128,7 +128,7 @@ All support `dryRun: true` for previews without signing (where applicable).
 | `t2000_send` | Send USDC / USDsui / SUI. Asset REQUIRED. USDC + USDsui are gasless. |
 | `t2000_swap` | Swap tokens via Cetus Aggregator. Requires SUI for gas. |
 | `t2000_pay` | Pay for an x402-protected API service (USDC, gasless). |
-| `t2000_agent_sell` | List (or remove) this agent's x402 endpoint on its public Agent ID profile — live-probed first, then one sponsored gasless signature. Does NOT spend funds. |
+| `t2000_agent_sell` | List (or remove) this agent's x402 endpoint on its public Agent ID profile — live-probed first, then one sponsored gasless signature. `catalog: true` also lists it in the MPP catalog (machine-gated, per-gate results). Does NOT spend funds. |
 ### Private Inference (3)
 
 Need a `T2000_API_KEY` in the client's env config.

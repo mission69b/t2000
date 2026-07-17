@@ -170,6 +170,13 @@ const serverSchema = z.object({
   SHORTIO_DOMAIN: optionalString,
   BLOB_READ_WRITE_TOKEN: optionalString, // Vercel Blob — hosts ALL binary upstream responses (audio/image/pdf) as artifact URLs; when unset, binary endpoints degrade to a 503 JSON error rather than corrupting bytes
 
+  // [SPEC_CATALOG_SELF_LISTING] Catalog self-listing knobs. CRON_SECRET
+  // authenticates the daily re-probe (Vercel cron sends it as a Bearer
+  // token); unset → the cron route answers 503 (fail closed, loud).
+  // CATALOG_MAX_PRICE_USDC is the per-call listing price cap (gate 4).
+  CRON_SECRET: optionalString,
+  CATALOG_MAX_PRICE_USDC: optionalStringWithDefault('5'),
+
   // ---- Test-only ----
   E2E_TEST_PRIVATE_KEY: optionalString,
   DIGEST: optionalString,
@@ -260,6 +267,8 @@ function getRuntimeEnv(): Record<string, string | undefined> {
     SUI_NETWORK: process.env.SUI_NETWORK,
     SHORTIO_DOMAIN: process.env.SHORTIO_DOMAIN,
     BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+    CRON_SECRET: process.env.CRON_SECRET,
+    CATALOG_MAX_PRICE_USDC: process.env.CATALOG_MAX_PRICE_USDC,
     E2E_TEST_PRIVATE_KEY: process.env.E2E_TEST_PRIVATE_KEY,
     DIGEST: process.env.DIGEST,
     // Client (NEXT_PUBLIC_*)
@@ -339,6 +348,8 @@ const SERVER_ONLY_KEYS = new Set<string>([
   'SUI_NETWORK',
   'SHORTIO_DOMAIN',
   'BLOB_READ_WRITE_TOKEN',
+  'CRON_SECRET',
+  'CATALOG_MAX_PRICE_USDC',
   'E2E_TEST_PRIVATE_KEY',
   'DIGEST',
 ]);

@@ -1,15 +1,17 @@
-import { services } from '@/lib/services';
+import { getCatalog } from '@/lib/catalog-live';
 import { getEndpointSchema } from '@/lib/schemas';
 import { NextResponse } from 'next/server';
 
-export function GET() {
+export async function GET() {
   // Attach each endpoint's request-body JSON schema (param names, types,
   // required fields, descriptions) so callers — Audric, the CLI, any MPP
   // agent — shape the call body from the contract instead of guessing.
   // Single source of truth: lib/schemas.ts (the same map the OpenAPI doc
   // uses). NOT duplicated into services.ts. Endpoints without a registered
-  // schema pass through unchanged.
-  const enriched = services.map((service) => ({
+  // schema pass through unchanged. The catalog is the merged view:
+  // static services ⊕ live self-listed direct sellers (Redis).
+  const catalog = await getCatalog();
+  const enriched = catalog.map((service) => ({
     ...service,
     endpoints: service.endpoints.map((endpoint) => {
       const schema = getEndpointSchema(service.id, endpoint.path);

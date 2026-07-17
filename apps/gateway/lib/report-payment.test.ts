@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SuiGrpcClient } from '@mysten/sui/grpc';
+import type { Redis } from '@upstash/redis';
 
 const logPaymentMock = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock('./log-payment', () => ({ logPayment: logPaymentMock }));
@@ -7,11 +8,49 @@ vi.mock('./env', () => ({ env: {} }));
 
 import { findDirectServiceByUrl, verifyAndLogDirectPayment } from './report-payment';
 import { SUI_USDC_TYPE } from './constants';
-import { services } from './services';
+import { putEntry, setCatalogRedis } from './catalog-store';
 
-const jmpr = services.find((s) => s.id === 'jmpr')!;
-const JMPR_PAY_TO = jmpr.payTo!;
+// Direct sellers are dynamic entries now (SPEC_CATALOG_SELF_LISTING) — seed
+// a JMPR-shaped one through an in-memory Redis fake.
+const JMPR_PAY_TO = '0x' + 'ae'.repeat(32);
 const VALID_DIGEST = 'D57rycxGS9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+beforeAll(async () => {
+  const kv = new Map<string, unknown>();
+  const sets = new Map<string, Set<string>>();
+  setCatalogRedis({
+    get: async (k: string) => kv.get(k) ?? null,
+    set: async (k: string, v: unknown) => void kv.set(k, v),
+    del: async (k: string) => void kv.delete(k),
+    sadd: async (k: string, ...m: string[]) => void sets.set(k, new Set([...(sets.get(k) ?? []), ...m])),
+    srem: async () => 0,
+    smembers: async (k: string) => [...(sets.get(k) ?? [])],
+    mget: async (...keys: string[]) => keys.map((k) => kv.get(k) ?? null),
+  } as unknown as Redis);
+  await putEntry({
+    service: {
+      id: 'jmpr',
+      name: 'JMPR Travel',
+      serviceUrl: 'https://agent.jmpr.world',
+      description: 'Luxury travel for agents.',
+      chain: 'sui',
+      currency: 'USDC',
+      categories: ['commerce'],
+      logo: '/logos/direct-seller.svg',
+      direct: true,
+      payTo: JMPR_PAY_TO,
+      endpoints: [
+        { method: 'POST', path: '/v1/hotels/search', description: 'Search luxury hotels', price: '0.02' },
+      ],
+    },
+    agentAddress: JMPR_PAY_TO,
+    probeUrl: 'https://agent.jmpr.world/v1/hotels/search',
+    state: 'live',
+    failCount: 0,
+    submittedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+});
 
 function clientWith(changes: Array<{ coinType: string; address?: string; amount: string }>) {
   return {
@@ -25,15 +64,15 @@ function clientWith(changes: Array<{ coinType: string; address?: string; amount:
 }
 
 describe('findDirectServiceByUrl', () => {
-  it('matches a direct seller by origin and extracts the endpoint path', () => {
-    const match = findDirectServiceByUrl('https://agent.jmpr.world/v1/hotels/search');
+  it('matches a direct seller by origin and extracts the endpoint path', async () => {
+    const match = await findDirectServiceByUrl('https://agent.jmpr.world/v1/hotels/search');
     expect(match?.service.id).toBe('jmpr');
     expect(match?.endpoint).toBe('/v1/hotels/search');
   });
 
-  it('rejects non-direct origins (the gateway itself) and garbage', () => {
-    expect(findDirectServiceByUrl('https://mpp.t2000.ai/openai/v1/chat/completions')).toBeNull();
-    expect(findDirectServiceByUrl('not a url')).toBeNull();
+  it('rejects non-direct origins (the gateway itself) and garbage', async () => {
+    expect(await findDirectServiceByUrl('https://mpp.t2000.ai/openai/v1/chat/completions')).toBeNull();
+    expect(await findDirectServiceByUrl('not a url')).toBeNull();
   });
 });
 

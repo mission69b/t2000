@@ -56,21 +56,25 @@ export function toServiceCard(s: Service): ServiceCard {
   };
 }
 
-export function allCards(): ServiceCard[] {
-  return services.map(toServiceCard);
+// Every aggregate below takes an optional service list so pages that render
+// the merged catalog (static ⊕ dynamic direct sellers, via getCatalog()) can
+// pass it in. Defaulting to the static list keeps build-time callers
+// (home-page metrics, metadata) synchronous.
+export function allCards(list: Service[] = services): ServiceCard[] {
+  return list.map(toServiceCard);
 }
 
-export function totalServices(): number {
-  return services.length;
+export function totalServices(list: Service[] = services): number {
+  return list.length;
 }
 
-export function totalEndpoints(): number {
-  return services.reduce((sum, s) => sum + s.endpoints.length, 0);
+export function totalEndpoints(list: Service[] = services): number {
+  return list.reduce((sum, s) => sum + s.endpoints.length, 0);
 }
 
-export function totalCategories(): number {
+export function totalCategories(list: Service[] = services): number {
   const set = new Set<string>();
-  for (const s of services) {
+  for (const s of list) {
     for (const c of s.categories) set.add(c);
   }
   return set.size;
@@ -79,9 +83,9 @@ export function totalCategories(): number {
 /**
  * Distinct categories with counts. The catalog filter bar uses this.
  */
-export function categoryBuckets(): Array<{ id: string; label: string; count: number }> {
+export function categoryBuckets(list: Service[] = services): Array<{ id: string; label: string; count: number }> {
   const counts = new Map<string, number>();
-  for (const s of services) {
+  for (const s of list) {
     const primary = s.categories[0] ?? 'utility';
     counts.set(primary, (counts.get(primary) ?? 0) + 1);
   }

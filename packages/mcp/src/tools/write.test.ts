@@ -317,5 +317,55 @@ describe('write tools (v4 surface)', () => {
       expect(result.isError).toBe(true);
       expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    it('catalog: true also submits to the MPP catalog and returns the gates', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            nonce: 'n3',
+            txBytes: Buffer.from('tx3').toString('base64'),
+            probe: { ok: true, amount: '0.02', currency: 'USDC' },
+          }),
+        })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, digest: '0xd3' }) })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            ok: true,
+            gates: [{ gate: 'agent-id', ok: true, detail: 'found' }],
+            serviceId: 'me',
+            url: 'https://mpp.t2000.ai/services/me',
+          }),
+        });
+
+      const handler = tools.get('t2000_agent_sell')!;
+      const result = await handler({ endpoint: 'https://api.me.com/v1/search', catalog: true });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.ok).toBe(true);
+      expect(data.catalog.ok).toBe(true);
+      expect(data.catalog.serviceId).toBe('me');
+      // The catalog hop posts the agent's own address, signature-free.
+      expect(fetchMock.mock.calls[2][0]).toBe('https://mpp.t2000.ai/api/catalog/submit');
+      expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ address: '0xowner' });
+    });
+
+    it('a failed catalog hop does not fail the on-chain listing', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ nonce: 'n4', txBytes: Buffer.from('tx4').toString('base64'), probe: { ok: true } }),
+        })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, digest: '0xd4' }) })
+        .mockRejectedValueOnce(new Error('gateway down'));
+
+      const handler = tools.get('t2000_agent_sell')!;
+      const result = await handler({ endpoint: 'https://api.me.com/v1/search', catalog: true });
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse(result.content[0].text);
+      expect(data.ok).toBe(true);
+      expect(data.digest).toBe('0xd4');
+      expect(data.catalog.ok).toBe(false);
+    });
   });
 });

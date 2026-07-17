@@ -1,4 +1,7 @@
+import { bcs } from '@mysten/sui/bcs';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Transaction } from '@mysten/sui/transactions';
+import { deriveDynamicFieldID } from '@mysten/sui/utils';
 
 /**
  * @t2000/id — client for the `agent_id::registry` Move package (Agent ID
@@ -108,6 +111,63 @@ export function buildRenounceOwnershipTx(agent: string): Transaction {
     ],
   });
   return tx;
+}
+
+/** An agent's on-chain registry record (registry Table dynamic field),
+ *  field names as stored by the Move package. */
+export interface OnChainAgentRecord {
+  agent: string;
+  mcp_endpoint?: string | null;
+  payment_methods?: string[] | null;
+  did?: string | null;
+  metadata_uri?: string | null;
+}
+
+/**
+ * Read one agent's registry record. Returns `null` when the address is not
+ * registered. gRPC only (JSON-RPC is deactivated July 31, 2026).
+ *
+ * Callers that already hold a `SuiGrpcClient` should pass it; otherwise a
+ * mainnet client is constructed per call.
+ */
+export async function getAgentRecord(
+  address: string,
+  opts: { client?: SuiGrpcClient; network?: 'mainnet' | 'testnet' } = {},
+): Promise<OnChainAgentRecord | null> {
+  const network = opts.network ?? 'mainnet';
+  const client =
+    opts.client ??
+    new SuiGrpcClient({
+      baseUrl:
+        network === 'testnet'
+          ? 'https://fullnode.testnet.sui.io'
+          : 'https://fullnode.mainnet.sui.io',
+      network,
+    });
+  const reg = await client.core.getObject({
+    objectId: AGENT_ID_REGISTRY_ID,
+    include: { json: true },
+  });
+  const tableId = (reg.object?.json as { agents?: { id?: string } } | undefined)
+    ?.agents?.id;
+  if (!tableId) return null;
+  const fieldId = deriveDynamicFieldID(
+    tableId,
+    'address',
+    bcs.Address.serialize(address).toBytes(),
+  );
+  try {
+    const obj = await client.core.getObject({
+      objectId: fieldId,
+      include: { json: true },
+    });
+    const rec = (obj.object?.json as { value?: OnChainAgentRecord } | undefined)
+      ?.value;
+    return rec?.agent ? rec : null;
+  } catch {
+    // Field object absent → not registered.
+    return null;
+  }
 }
 
 /** Toggle an agent's active flag (signer must be the agent or its owner). */

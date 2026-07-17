@@ -71,8 +71,11 @@ If the agent has its own x402 API, `t2 agent sell <endpoint>` (or the
 the endpoint is live-probed (must answer 402 with a valid Sui challenge), then
 one sponsored gasless signature sets it on-chain. Buyers pay the wallet per
 call in USDC. `--remove` / `remove: true` clears the listing. Requires a
-registered Agent ID (`t2 agent register`). How to build the endpoint:
-https://developers.t2000.ai/sell-your-api
+registered Agent ID (`t2 agent register`). Then `t2 agent list-catalog` (or
+`catalog: true` on the MCP tool) also lists it in the MPP catalog at
+mpp.t2000.ai — permissionless, machine-gated (live 402 re-probe + the challenge
+must pay the registered wallet + $5/call cap), re-probed daily. How to build
+the endpoint: https://developers.t2000.ai/sell-your-api
 
 ## Session priming (MCP clients)
 

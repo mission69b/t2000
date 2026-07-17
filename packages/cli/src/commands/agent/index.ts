@@ -21,6 +21,7 @@ import {
 } from '../../output.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
+const DEFAULT_GATEWAY_BASE = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
 
 async function fetchJson(
   url: string,
@@ -55,6 +56,7 @@ Subcommands:
   $ t2 agent register                        Existing wallet → on-chain Agent ID (gasless)
   $ t2 agent handle alice                    Claim @alice
   $ t2 agent sell https://api.me.com/v1/x    List your x402 endpoint (live-probed, gasless)
+  $ t2 agent list-catalog                    Also list it in the MPP catalog (machine-gated)
 `,
     );
 
@@ -392,6 +394,81 @@ Subcommands:
         }
       },
     );
+
+  group
+    .command('list-catalog')
+    .description(
+      'List your x402 endpoint in the MPP catalog (mpp.t2000.ai) — permissionless, machine-gated. Reads your on-chain Agent ID listing (set with `t2 agent sell`), live-probes it, and verifies the 402 pays your wallet. Serve OpenAPI with x-payment-info at /openapi.json to list multiple endpoints.',
+    )
+    .option(
+      '--remove',
+      'Remove your catalog entry (clear your on-chain listing first: t2 agent sell --remove)',
+    )
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--gateway <url>', `Gateway base URL (default ${DEFAULT_GATEWAY_BASE})`)
+    .action(async (opts: { remove?: boolean; key?: string; gateway?: string }) => {
+      try {
+        const agent = await withAgent({ keyPath: opts.key });
+        const address = agent.address();
+        const base = opts.gateway ?? DEFAULT_GATEWAY_BASE;
+
+        const res = await fetch(`${base}/api/catalog/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address }),
+        });
+        const out = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          gates?: { gate: string; ok: boolean; detail: string }[];
+          serviceId?: string;
+          url?: string;
+          removed?: boolean;
+          error?: string;
+        };
+        if (out.error && !out.gates) {
+          throw new Error(out.error);
+        }
+
+        if (opts.remove && out.ok && !out.removed) {
+          // The catalog follows the chain: entry can't be removed while the
+          // on-chain listing is still set (the submit just revalidated it).
+          throw new Error(
+            'Your on-chain listing is still live, so the catalog entry stays. Run `t2 agent sell --remove` first, then re-run `t2 agent list-catalog`.',
+          );
+        }
+
+        if (isJsonMode()) {
+          printJson({
+            address,
+            ok: out.ok ?? false,
+            gates: out.gates ?? [],
+            serviceId: out.serviceId ?? null,
+            url: out.url ?? null,
+            removed: out.removed ?? false,
+          });
+          if (!out.ok) process.exitCode = 1;
+          return;
+        }
+
+        printBlank();
+        for (const gate of out.gates ?? []) {
+          printInfo(`${gate.ok ? '✓' : '✗'} ${gate.gate}: ${gate.detail}`);
+        }
+        printBlank();
+        if (out.removed) {
+          printSuccess('Catalog entry removed.');
+        } else if (out.ok) {
+          printSuccess('Listed in the MPP catalog.');
+          if (out.url) printKeyValue('Catalog', out.url);
+          printInfo('Re-probed daily — keep the 402 answering or the entry suspends.');
+        } else {
+          throw new Error('Not listed — fix the failed gate(s) above and re-run.');
+        }
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
 
   group
     .command('handle')

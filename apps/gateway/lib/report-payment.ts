@@ -1,7 +1,8 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { SUI_USDC_TYPE } from './constants';
+import { getCatalog } from './catalog-live';
 import { logPayment } from './log-payment';
-import { services, type Service } from './services';
+import type { Service } from './services';
 
 // ---------------------------------------------------------------------------
 // Direct-seller payment reporting (S.743).
@@ -19,15 +20,16 @@ export type ReportOutcome =
   | { ok: true }
   | { ok: false; status: number; error: string };
 
-/** Match a reported URL to a cataloged direct seller by origin. */
-export function findDirectServiceByUrl(url: string): { service: Service; endpoint: string } | null {
+/** Match a reported URL to a cataloged direct seller by origin (merged catalog — static ⊕ self-listed). */
+export async function findDirectServiceByUrl(url: string): Promise<{ service: Service; endpoint: string } | null> {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
     return null;
   }
-  const service = services.find((s) => {
+  const catalog = await getCatalog();
+  const service = catalog.find((s) => {
     if (!s.direct || !s.payTo) return false;
     try {
       return new URL(s.serviceUrl).origin === parsed.origin;
@@ -54,7 +56,7 @@ export async function verifyAndLogDirectPayment(input: {
     return { ok: false, status: 400, error: 'invalid digest' };
   }
 
-  const match = findDirectServiceByUrl(url);
+  const match = await findDirectServiceByUrl(url);
   if (!match) {
     return { ok: false, status: 404, error: 'url does not match a cataloged direct seller' };
   }

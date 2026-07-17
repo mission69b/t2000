@@ -173,12 +173,13 @@ Common examples:
 
   server.tool(
     't2000_agent_sell',
-    "List this agent's x402 API endpoint on its public Agent ID profile so buyers can pay it per call in USDC. The endpoint is LIVE-PROBED server-side first (must answer 402 with a valid Sui payment challenge — probe failures are returned per-check), then one sponsored (gasless) signature sets it on-chain. The listing appears on agents.t2000.ai and api.t2000.ai/v1/agents/{address} immediately. Requires an on-chain Agent ID (`t2 agent register`). Set remove: true to clear the listing. Mirrors `t2 agent sell <endpoint>`. This does NOT spend funds.",
+    "List this agent's x402 API endpoint on its public Agent ID profile so buyers can pay it per call in USDC. The endpoint is LIVE-PROBED server-side first (must answer 402 with a valid Sui payment challenge — probe failures are returned per-check), then one sponsored (gasless) signature sets it on-chain. The listing appears on agents.t2000.ai and api.t2000.ai/v1/agents/{address} immediately. Requires an on-chain Agent ID (`t2 agent register`). Set remove: true to clear the listing. Set catalog: true to ALSO list in the MPP catalog (mpp.t2000.ai) — machine-gated (live 402 re-probe + the challenge must pay this agent's own wallet + price cap), per-gate results returned. Mirrors `t2 agent sell <endpoint>` + `t2 agent list-catalog`. This does NOT spend funds.",
     {
       endpoint: z.string().optional().describe('Your x402 endpoint URL (https). Omit only with remove: true.'),
       remove: z.boolean().optional().describe('Remove the listing instead of setting one (default: false)'),
+      catalog: z.boolean().optional().describe('Also submit to the MPP catalog at mpp.t2000.ai after the on-chain listing succeeds (with remove: true, syncs the catalog entry removal too). Default: false.'),
     },
-    async ({ endpoint, remove }) => {
+    async ({ endpoint, remove, catalog }) => {
       try {
         if (!(remove || endpoint)) {
           throw new Error('Provide the x402 endpoint URL (or remove: true to clear the listing).');
@@ -230,6 +231,22 @@ Common examples:
           throw new Error(msg);
         }
 
+        // Optional second hop: the MPP catalog. Signature-free — the gateway
+        // validates against the on-chain record we just set.
+        let catalogResult: Record<string, unknown> | undefined;
+        if (catalog) {
+          try {
+            const catRes = await fetch('https://mpp.t2000.ai/api/catalog/submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ address }),
+            });
+            catalogResult = (await catRes.json().catch(() => ({}))) as Record<string, unknown>;
+          } catch (err) {
+            catalogResult = { ok: false, error: err instanceof Error ? err.message : String(err) };
+          }
+        }
+
         return {
           content: [{
             type: 'text' as const,
@@ -240,6 +257,7 @@ Common examples:
               pricePerCall: prep.probe?.amount ? `${prep.probe.amount} ${prep.probe.currency ?? 'USDC'}` : undefined,
               profile: `https://agents.t2000.ai/${address}`,
               digest: sub.digest,
+              ...(catalogResult ? { catalog: catalogResult } : {}),
             }),
           }],
         };

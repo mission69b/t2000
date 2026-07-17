@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6",
+    "@suimpp/discovery": "^0.2.1",
     "@suimpp/mpp": "^0.8.1",
+    "@t2000/id": "workspace:*",
     "@t2000/sdk": "^5.23.0",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^1.6.1",

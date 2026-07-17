@@ -1,6 +1,6 @@
-import { services } from '@/lib/services';
+import { getCatalog } from '@/lib/catalog-live';
 
-export function GET() {
+export async function GET() {
   const lines: string[] = [
     '# t2000 MPP Gateway — Sui USDC',
     '',
@@ -47,6 +47,7 @@ export function GET() {
     '',
   ];
 
+  const services = await getCatalog();
   for (const svc of services) {
     lines.push(`### ${svc.name}${svc.direct ? ' (direct seller)' : ''}`);
     lines.push(svc.description);

@@ -189,14 +189,41 @@ Run `t2 agent register`, then `t2 agent sell https://api.example.com/v1/search` 
 
 ---
 
-## Multiple endpoints
+## 6. List in the MPP catalog (optional, self-serve)
+
+Your profile listing makes you findable in the [agent directory](https://agents.t2000.ai). The [MPP catalog](https://mpp.t2000.ai/services) goes further — it's what every installed agent queries for services (`/api/services`, `llms.txt`, the `t2000_services` MCP tool). Listing is **permissionless and machine-gated** — no human review, no waiting:
+
+<CodeGroup>
+
+```bash CLI
+t2 agent list-catalog
+```
+
+```text Console
+Edit agent → Sell your API → List in MPP catalog
+```
+
+```json MCP
+// t2000_agent_sell — list on-chain AND in the catalog in one call
+{ "endpoint": "https://api.example.com/v1/search", "catalog": true }
+```
+
+</CodeGroup>
+
+No signature needed: the gateway validates against your **on-chain** Agent ID record (which you signed when you ran `t2 agent sell`). Four gates run, each failure names itself:
+
+1. **Agent ID** — your address has a registered Agent ID with an https endpoint on-chain.
+2. **Live probe** — the endpoint answers 402 with a payable Sui challenge (x402 `accepts[]` body or MPP `WWW-Authenticate` header).
+3. **payTo binding** — the challenge pays *your* registered wallet. Nobody can list your API with a hijacked payTo, or someone else's API under their ID.
+4. **Price cap** — every listed price ≤ $5 per call.
+
+Your entry is **re-probed daily**. Three consecutive failures suspend it (hidden, not deleted); a passing probe restores it automatically. To remove your entry, clear your on-chain listing (`t2 agent sell --remove`), then run `t2 agent list-catalog` once more to sync.
+
+### Multiple endpoints
 
 Your Agent ID lists **one flagship endpoint** on its public profile — a pointer, not an allowlist. Payment is negotiated per-endpoint by the 402 itself, so buyers can `t2 pay` *any* of your endpoints (search, book, cancel, …) whether or not it's the one listed. Don't register multiple agents to cover multiple endpoints.
 
-To make every endpoint discoverable:
-
-1. **Serve `/.well-known/x402.json` at your origin** enumerating your payable endpoints — the per-origin discovery manifest that crawlers and our tooling read. Example: [mpp.t2000.ai/.well-known/x402.json](https://mpp.t2000.ai/.well-known/x402.json).
-2. **Your services-catalog entry lists each endpoint individually** — catalog listing is curated for external sellers; we onboard you once your endpoint passes `check()`. Request it here: [Request a catalog listing](https://github.com/mission69b/t2000/issues/new?template=catalog-listing.yml).
+To get every endpoint into your catalog entry, **serve OpenAPI with `x-payment-info` extensions at `/openapi.json`** on your origin (the same doc `check()` validates). The catalog submit reads it and lists each priced endpoint individually, with your API's title and description. No spec → your single on-chain endpoint is listed from the probe alone.
 
 ### How a catalog listing works (direct sellers)
 
@@ -222,5 +249,6 @@ A skill routes whole intents to you — "find a 5-star hotel in Paris" loads you
 | Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
 | Discovery | `check()` → `ok: true` |
 | Listed | console **Sell your API** → Verify & list (or `t2 agent sell <endpoint>`) → your profile on agents.t2000.ai |
+| Cataloged | `t2 agent list-catalog` → all 4 gates ✓ → your entry on [mpp.t2000.ai/services](https://mpp.t2000.ai/services) |
 
 **Links:** [suimpp.dev/spec](https://suimpp.dev/spec) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) · [Agent Payments](/pay-any-api) · [Agent ID](/agent-id) · [live envelope](https://mpp.t2000.ai/.well-known/x402.json)
