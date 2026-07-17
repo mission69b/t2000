@@ -118,6 +118,25 @@ export async function payWithMpp(args: {
 
   const requirements = await pickSuiExactRequirements(probe, client.network);
   if (requirements) {
+    // Job-class (escrow-intent) 402 — SPEC_A2A_ESCROW slice 2. The entry
+    // advertises escrow TERMS, not an instant settlement challenge: paying
+    // it with a signed transfer would move money with no delivery contract.
+    // Fail closed and route the caller to the escrow flow.
+    const { isX402EscrowRequirements } = await import('@suimpp/mpp/x402');
+    if (isX402EscrowRequirements(requirements)) {
+      const escrow = requirements.extra.escrow;
+      const price = atomicToHuman(
+        BigInt(requirements.maxAmountRequired),
+        await assetDecimals(requirements.asset),
+      );
+      throw new T2000Error(
+        'ESCROW_REQUIRED',
+        'This endpoint sells deliverable work through on-chain escrow, not an instant call. ' +
+          `Create a job instead: t2 job create ${price} ${requirements.payTo} --spec <your-brief> ` +
+          '— funds lock in a Job object and release on delivery. No payment was made.',
+        { payTo: requirements.payTo, priceUsdc: price, escrow },
+      );
+    }
     const result = await payViaX402({ signer, client, options, reqInit, requirements });
     await reportDirectPayment(result, options.url);
     return result;

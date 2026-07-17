@@ -60,7 +60,7 @@
     "@noble/curves": "^1.9.0",
     "@noble/hashes": "^1.8.0",
     "@phala/dcap-qvl": "^0.5.2",
-    "@suimpp/mpp": "^0.8.1",
+    "@suimpp/mpp": "^0.9.0",
     "bn.js": "^5.2.1",
     "eventemitter3": "^5",
     "mppx": "^0.4.9"

@@ -13,6 +13,10 @@ vi.mock('@suimpp/mpp/x402', () => ({
   buildX402SignedPayment: (...args: unknown[]) => buildX402Mock(...args),
   X402_PAYMENT_HEADER: 'X-PAYMENT',
   X402_PAYMENT_RESPONSE_HEADER: 'X-PAYMENT-RESPONSE',
+  // Mirrors the real discriminator (an entry with extra.escrow.deliverWithinMs).
+  isX402EscrowRequirements: (entry: unknown) =>
+    typeof (entry as { extra?: { escrow?: { deliverWithinMs?: unknown } } })?.extra?.escrow
+      ?.deliverWithinMs === 'number',
 }));
 
 vi.mock('@mysten/sui/grpc', () => ({
@@ -246,6 +250,43 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     ).rejects.toThrow(/nothing this sdk can pay/i);
     expect(buildX402Mock).not.toHaveBeenCalled();
     expect(mppxCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('fails CLOSED on a job-class (escrow-intent) 402 — route to t2 job create', async () => {
+    // SPEC_A2A_ESCROW slice 2: the entry advertises escrow TERMS, not an
+    // instant challenge. Paying it instantly would move money with no
+    // delivery contract.
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        status: 402,
+        body: {
+          accepts: [
+            {
+              scheme: 'exact',
+              network: 'sui:mainnet',
+              asset: USDC_TYPE,
+              maxAmountRequired: '5000000', // $5 job
+              payTo: '0xjobseller',
+              resource: 'https://seller.example/jobs/report',
+              maxTimeoutSeconds: 60,
+              extra: {
+                escrow: { deliverWithinMs: 86_400_000, reviewWindowMs: 3_600_000, rejectSplitBps: 8000 },
+              },
+            },
+          ],
+        },
+      }),
+    );
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '10000000', coins: [] }),
+        options: { url: 'https://seller.example/jobs/report', maxPrice: 10 },
+      }),
+    ).rejects.toMatchObject({ code: 'ESCROW_REQUIRED' });
+    expect(buildX402Mock).not.toHaveBeenCalled(); // nothing signed
+    expect(executeTxMock).not.toHaveBeenCalled(); // money never moved
   });
 
   it('throws PRICE_EXCEEDS_LIMIT when the x402 price exceeds maxPrice', async () => {
