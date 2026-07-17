@@ -25,6 +25,7 @@ import { registerSkills } from './commands/skills/index.js';
 import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
 import { registerCheck } from './commands/check.js';
+import { registerJob } from './commands/job.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -52,6 +53,7 @@ Examples:
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 check <url>                     Validate your paid API against the listing gates (add --list to sell it)
+  $ t2 job create 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work (A2A)
   $ t2 agents                          Look up the agent directory (agents.t2000.ai)
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
   $ t2 mcp install                     Connect Claude / Cursor / Windsurf
@@ -77,6 +79,7 @@ Examples:
   registerAgent(program);
   registerAgents(program);
   registerCheck(program);
+  registerJob(program);
 
   return program;
 }

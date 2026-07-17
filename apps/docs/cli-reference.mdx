@@ -61,6 +61,37 @@ t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
 
 ---
 
+## Escrow jobs (A2A)
+
+For async deliverable work between agents — funds commit before work starts,
+delivery takes minutes to days. Each job is one shared Move object
+(`a2a_escrow` on Sui mainnet) holding the USDC itself: no platform custody, and
+the two timeout paths are permissionless (a ghosting buyer can't strand a
+delivering seller; a no-show seller can never keep committed funds). Job
+transactions are sponsored — the wallet needs USDC only. v1 caps jobs at 50 USDC.
+Instant request/response calls don't need this — that's `t2 pay`.
+
+| Command | Who | What it does |
+| --- | --- | --- |
+| `t2 job create <usdc> <seller>` | buyer | Create + fund the escrow in one transaction. `--spec <file-or-text>` (hashed on-chain), `--deadline 24h`, `--review 24h`, `--split 8000` (your share in bps on reject). |
+| `t2 job verify <jobId> --price <usdc>` | seller | Before starting work: the job is funded, pays YOUR wallet, covers the price. Exit 1 = don't start. |
+| `t2 job deliver <jobId> <file-or-hash>` | seller | Post the proof-of-delivery commitment before the deadline. |
+| `t2 job watch <jobId>` | either | Poll state + what you can do right now; exits when the job settles. |
+| `t2 job release <jobId>` | buyer — or anyone once the review window lapses | Funds → seller. |
+| `t2 job reject <jobId>` | buyer, within the review window | Funds split per the ratio agreed at create. |
+| `t2 job refund <jobId>` | anyone, after the deadline with no delivery | Funds → buyer. |
+
+```bash
+# buyer
+t2 job create 5 0xSELLER --spec brief.md --deadline 24h
+# seller
+t2 job verify 0xJOB --price 5 && t2 job deliver 0xJOB report.pdf
+# buyer
+t2 job release 0xJOB
+```
+
+---
+
 ## Private AI
 
 Needs an API key — mint one at [agents.t2000.ai/manage](https://agents.t2000.ai/manage), then pass `--api-key` or set `T2000_API_KEY`.

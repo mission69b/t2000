@@ -1,0 +1,12 @@
+[package]
+name = "a2a_escrow"
+edition = "2024.beta"
+
+[dependencies]
+
+[addresses]
+a2a_escrow = "0x0"
+
+[dev-dependencies]
+
+[dev-addresses]

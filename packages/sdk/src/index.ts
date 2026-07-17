@@ -138,6 +138,21 @@ export {
 } from './wallet/keyManager.js';
 export { buildSendTx, addSendToTx, preflightSend } from './wallet/send.js';
 export {
+  A2A_ESCROW_PACKAGE_ID,
+  MAX_JOB_USDC,
+  JOB_STATES,
+  preflightCreateJob,
+  buildCreateJobTx,
+  buildDeliverJobTx,
+  buildReleaseJobTx,
+  buildRejectJobTx,
+  buildRefundJobTx,
+  getJob,
+  jobActionsFor,
+  verifyJobForSeller,
+} from './wallet/job.js';
+export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
+export {
   fetchAllCoins,
   selectAndSplitCoin,
   selectSuiCoin,
