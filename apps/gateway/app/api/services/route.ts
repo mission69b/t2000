@@ -1,4 +1,5 @@
 import { getCatalog } from '@/lib/catalog-live';
+import { sampleBodyFor } from '@/lib/sample-body';
 import { getEndpointSchema } from '@/lib/schemas';
 import { NextResponse } from 'next/server';
 
@@ -19,7 +20,16 @@ export async function GET() {
     ...service,
     endpoints: service.endpoints.map((endpoint) => {
       const schema = getEndpointSchema(service.id, endpoint.path);
-      return schema ? { ...endpoint, schema: schema.requestBody } : endpoint;
+      // Known-good illustrative body (lib/sample-body.ts) — seeds try-it
+      // forms so a first call isn't a guessed (and possibly paid) 4xx.
+      const sample = sampleBodyFor(service.name, endpoint.path);
+      return {
+        ...endpoint,
+        ...(schema ? { schema: schema.requestBody } : {}),
+        ...(sample !== '{ }' && endpoint.method !== 'GET'
+          ? { sampleBody: sample }
+          : {}),
+      };
     }),
   }));
 
