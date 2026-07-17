@@ -4,6 +4,14 @@ export interface Endpoint {
   path: string;
   description: string;
   price: string;
+  /**
+   * Request-body JSON schema. Static services get it attached at the API
+   * layer from lib/schemas.ts; self-listed direct sellers get it extracted
+   * from their own OpenAPI doc at ingest time (catalog-ingest.ts) so callers
+   * can shape a valid body instead of guessing — sellers like JMPR charge
+   * before validating, so a guessed body is a paid 422.
+   */
+  schema?: Record<string, unknown>;
 }
 
 export interface Service {

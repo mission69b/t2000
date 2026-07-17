@@ -206,6 +206,16 @@ describe('entry construction', () => {
               post: {
                 summary: 'Get a quote',
                 'x-payment-info': { price: '0.02', currency: 'USDC' },
+                // The JMPR shape: body schema behind anyOf + $ref.
+                requestBody: {
+                  content: {
+                    'application/json': {
+                      schema: {
+                        anyOf: [{ $ref: '#/components/schemas/QuoteRequest' }, { type: 'null' }],
+                      },
+                    },
+                  },
+                },
                 responses: { '402': {} },
               },
             },
@@ -220,6 +230,14 @@ describe('entry construction', () => {
               },
             },
           },
+          components: {
+            schemas: {
+              QuoteRequest: {
+                type: 'object',
+                properties: { city: { type: 'string', description: 'City. Required.' } },
+              },
+            },
+          },
         }) as never,
     });
     expect(res.ok).toBe(true);
@@ -227,6 +245,14 @@ describe('entry construction', () => {
     expect(entry?.service.name).toBe('Example Seller');
     expect(entry?.service.endpoints).toHaveLength(2);
     expect(entry?.service.endpoints[1]).toMatchObject({ path: '/v1/book', price: '0.5' });
+    // Request-body schema extracted + $ref dereferenced (paid-422 defense).
+    const quote = entry?.service.endpoints[0];
+    expect(quote?.schema).toMatchObject({
+      anyOf: [
+        { type: 'object', properties: { city: { type: 'string', description: 'City. Required.' } } },
+        { type: 'null' },
+      ],
+    });
   });
 
   it('resubmission keeps the slug and submittedAt, refreshes the rest', async () => {

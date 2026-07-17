@@ -77,6 +77,47 @@ export function slugForSeller(origin: string, address: string): string {
   return staticIds.has(base) ? `${base}-${address.slice(2, 8)}` : base;
 }
 
+/** Resolve `$ref`s in an OpenAPI schema fragment against the doc's
+ *  components (depth/cycle-guarded), so the stored per-endpoint schema is
+ *  self-contained. Sellers like JMPR wrap request bodies in
+ *  `anyOf: [$ref, null]` — callers need the dereferenced shape. */
+function derefSchema(
+  node: unknown,
+  doc: Record<string, unknown>,
+  depth = 0,
+): unknown {
+  if (depth > 8 || node === null || typeof node !== 'object') return node;
+  if (Array.isArray(node)) return node.map((n) => derefSchema(n, doc, depth + 1));
+  const obj = node as Record<string, unknown>;
+  if (typeof obj.$ref === 'string') {
+    const m = obj.$ref.match(/^#\/components\/schemas\/(.+)$/);
+    const target = m
+      ? (doc.components as { schemas?: Record<string, unknown> } | undefined)?.schemas?.[m[1]]
+      : undefined;
+    return target ? derefSchema(target, doc, depth + 1) : {};
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) out[k] = derefSchema(v, doc, depth + 1);
+  return out;
+}
+
+/** The endpoint's application/json request-body schema, dereferenced. */
+function requestSchemaFor(
+  doc: Record<string, unknown>,
+  path: string,
+  method: string,
+): Record<string, unknown> | undefined {
+  const op = (doc.paths as Record<string, Record<string, unknown>> | undefined)?.[path]?.[
+    method.toLowerCase()
+  ] as { requestBody?: { content?: Record<string, { schema?: unknown }> } } | undefined;
+  const schema = op?.requestBody?.content?.['application/json']?.schema;
+  if (!schema || typeof schema !== 'object') return undefined;
+  const resolved = derefSchema(schema, doc);
+  return resolved && typeof resolved === 'object'
+    ? (resolved as Record<string, unknown>)
+    : undefined;
+}
+
 /** Build the endpoint rows: OpenAPI x-payment-info when the seller serves a
  *  spec, else the single probed endpoint. Endpoints without a parseable
  *  fixed price are skipped (a dynamic price can't clear the cap gate). */
@@ -106,6 +147,7 @@ async function enumerateEndpoints(
         path: ep.path,
         description: ep.summary ?? ep.operationId ?? '',
         price: parseFloat(raw).toString(),
+        schema: requestSchemaFor(doc as unknown as Record<string, unknown>, ep.path, ep.method),
       });
     }
     if (rows.length > 0) {
