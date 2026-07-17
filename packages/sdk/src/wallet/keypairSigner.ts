@@ -2,6 +2,8 @@ import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import type { TransactionSigner } from '../signer.js';
 
 export class KeypairSigner implements TransactionSigner {
+  readonly kind = 'keypair' as const;
+
   constructor(private readonly keypair: Ed25519Keypair) {}
 
   getAddress(): string {

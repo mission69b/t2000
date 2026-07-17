@@ -127,6 +127,23 @@ export async function payWithMpp(args: {
   // advertises a `sui` method challenge.
   const headerChallenge = await parseMppSuiChallenge(probe);
   if (headerChallenge) {
+    // Fail CLOSED before any money moves: the header dialect pays first and
+    // proves identity with a personal-message signature the SELLER verifies.
+    // zkLogin signatures are ZK constructs external sellers can't check —
+    // the payment settles on-chain, then the retry 402s and the buyer ate
+    // the charge (live: JMPR × Audric Passport, 2026-07-17). x402 is immune
+    // (the tx itself carries the zkLogin sig; the CHAIN verifies it), so
+    // zkLogin payers require sellers that offer x402.
+    if (signer.kind === 'zklogin') {
+      throw new T2000Error(
+        'DIALECT_UNSUPPORTED',
+        'This seller only offers the MPP header dialect, which zkLogin (Passport) wallets ' +
+          'cannot safely pay: the seller cannot verify zkLogin signatures, so the payment ' +
+          'would settle on-chain without the service delivering. No payment was made. ' +
+          'Use an x402-capable service, or pay from a keypair wallet (t2 CLI / MCP).',
+        { dialect: 'mpp-header', signerKind: 'zklogin' },
+      );
+    }
     const result = await payViaMppHeader({ signer, client, options });
     await reportDirectPayment(result, options.url);
     return result;

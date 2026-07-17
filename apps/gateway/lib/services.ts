@@ -40,6 +40,18 @@ export interface Service {
    */
   direct?: boolean;
   /**
+   * Direct entries only: which 402 dialect the seller's endpoint answered at
+   * ingest probe time. Load-bearing for browser payers: `x402` settles
+   * sign-then-settle (the chain verifies the payer's signature, so zkLogin /
+   * Passport wallets work); `mpp-header` pays client-first and the SELLER
+   * verifies a personal-message signature — zkLogin sigs are unverifiable to
+   * external sellers, so Passport payments settle without delivery (JMPR
+   * incident, 2026-07-17). UIs use this to route zkLogin users away from
+   * header-only sellers BEFORE any money moves; the SDK enforces the same
+   * rule at pay time (DIALECT_UNSUPPORTED).
+   */
+  dialect?: 'x402' | 'mpp-header';
+  /**
    * Direct entries only: the seller's on-chain USDC receiving address (from
    * their 402 challenge, pinned at curation time). /api/mpp/report verifies a
    * reported digest actually paid THIS address before the activity feed

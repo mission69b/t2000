@@ -327,6 +327,42 @@ describe('payWithMpp — MPP header dialect fallback', () => {
     expect(mppxCreateMock).not.toHaveBeenCalled();
   });
 
+  it('fails CLOSED for zkLogin signers on a header-only 402 — no money moves', async () => {
+    // External sellers verify the payer's personal-message signature
+    // seller-side; zkLogin sigs are unverifiable to them, so the payment
+    // would settle without delivery (JMPR live incident, 2026-07-17).
+    fetchMock.mockResolvedValueOnce(mppHeader402('0.02'));
+
+    const zkSigner = { ...makeSigner(), kind: 'zklogin' } as TransactionSigner;
+    await expect(
+      payWithMpp({
+        signer: zkSigner,
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+      }),
+    ).rejects.toMatchObject({ code: 'DIALECT_UNSUPPORTED' });
+    expect(mppxCreateMock).not.toHaveBeenCalled();
+    expect(executeTxMock).not.toHaveBeenCalled(); // money never moved
+  });
+
+  it('still pays x402 for zkLogin signers (chain verifies the sig, not the seller)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
+      );
+
+    const zkSigner = { ...makeSigner(), kind: 'zklogin' } as TransactionSigner;
+    const result = await payWithMpp({
+      signer: zkSigner,
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+    });
+
+    expect(result.paid).toBe(true);
+    expect(result.dialect).toBe('x402');
+  });
+
   it('throws PRICE_EXCEEDS_LIMIT from onChallenge BEFORE paying when the header price exceeds maxPrice', async () => {
     mppxChallengeAmount = '0.50';
     fetchMock.mockResolvedValueOnce(mppHeader402('0.50'));

@@ -132,6 +132,23 @@ describe('gate 2 — probe', () => {
     });
     expect(res.gates.find((g) => g.gate === 'probe')).toMatchObject({ ok: true });
   });
+
+  it('stamps the probed dialect on the stored entry (browser payers key off it)', async () => {
+    await ingestSeller(SELLER, {
+      getRecord: record(ENDPOINT),
+      probe: passingProbe({ dialect: 'mpp-header' }),
+      fetchSpec: noSpec,
+    });
+    expect((await getEntry(SELLER))?.service.dialect).toBe('mpp-header');
+
+    // Seller upgrades to x402 → resubmission refreshes the stamp.
+    await ingestSeller(SELLER, {
+      getRecord: record(ENDPOINT),
+      probe: passingProbe({ dialect: 'x402' }),
+      fetchSpec: noSpec,
+    });
+    expect((await getEntry(SELLER))?.service.dialect).toBe('x402');
+  });
 });
 
 describe('gate 3 — payto binding', () => {

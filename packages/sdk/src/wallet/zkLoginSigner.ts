@@ -16,6 +16,8 @@ export interface ZkLoginProof {
 }
 
 export class ZkLoginSigner implements TransactionSigner {
+  readonly kind = 'zklogin' as const;
+
   constructor(
     private readonly ephemeralKeypair: Ed25519Keypair,
     private readonly zkProof: ZkLoginProof,

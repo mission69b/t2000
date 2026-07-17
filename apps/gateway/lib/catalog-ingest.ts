@@ -298,6 +298,7 @@ export async function ingestSeller(
     logo: '/logos/direct-seller.svg',
     endpoints: enumerated.endpoints,
     direct: true,
+    dialect: probed.dialect,
     payTo: address,
   };
   const now = new Date().toISOString();
@@ -349,6 +350,10 @@ export async function reprobeAll(
       if (entry.state === 'suspended') summary.recovered.push(entry.service.id);
       await putEntry({
         ...entry,
+        // Keep the dialect stamp fresh — a seller that upgrades from
+        // header-only to x402 becomes browser/zkLogin-payable on the next
+        // probe without resubmitting.
+        service: { ...entry.service, dialect: probed.dialect },
         state: 'live',
         failCount: 0,
         updatedAt: now,
