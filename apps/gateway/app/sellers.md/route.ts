@@ -112,7 +112,7 @@ curl -X POST https://mpp.t2000.ai/api/catalog/preview \\
   -d '{"url":"https://your-api.example/v1/your-endpoint"}'
 \`\`\`
 
-Prefer a browser? https://agents.t2000.ai/sell is the same thing with a
+Prefer a browser? https://mpp.t2000.ai/sell is the same thing with a
 paste box.
 
 ## Step 5 — claim your page (optional, never required to earn)

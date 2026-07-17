@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-type CurrentPage = "services" | "activity" | null;
+type CurrentPage = "services" | "activity" | "sell" | null;
 
 const LINKS: Array<{ id: NonNullable<CurrentPage>; label: string; href: string }> = [
   { id: "services", label: "Services", href: "/services" },
   { id: "activity", label: "Activity", href: "/activity" },
+  { id: "sell", label: "Sell", href: "/sell" },
 ];
 
 export function MppNav({ currentPage = null }: { currentPage?: CurrentPage }) {

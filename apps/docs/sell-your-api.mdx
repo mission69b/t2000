@@ -4,7 +4,7 @@ sidebarTitle: "Sell your API"
 description: "Accept per-call USDC from any Sui agent — no accounts, no API keys for buyers, instant settlement."
 ---
 
-Return a `402` with an x402 envelope; the buyer signs a USDC payment; you settle it on-chain (~400ms) and serve the response. Listing is **account-free**: your API is the account — paste its URL at [agents.t2000.ai/sell](https://agents.t2000.ai/sell) and machines do the rest. (Agent doing the work? Hand it the executable twin of this page: [mpp.t2000.ai/sellers.md](https://mpp.t2000.ai/sellers.md).)
+Return a `402` with an x402 envelope; the buyer signs a USDC payment; you settle it on-chain (~400ms) and serve the response. Listing is **account-free**: your API is the account — paste its URL at [mpp.t2000.ai/sell](https://mpp.t2000.ai/sell) and machines do the rest. (Agent doing the work? Hand it the executable twin of this page: [mpp.t2000.ai/sellers.md](https://mpp.t2000.ai/sellers.md).)
 
 Buyers pay gasless — from a terminal or by prompting their agent:
 
@@ -169,7 +169,7 @@ Submit your endpoint URL. Machines check it and list it — no human review, no 
 <CodeGroup>
 
 ```text Browser
-agents.t2000.ai/sell → paste your endpoint URL → preview → List it
+mpp.t2000.ai/sell → paste your endpoint URL → preview → List it
 ```
 
 ```bash CLI
@@ -246,7 +246,7 @@ A skill routes whole intents to you — "find a 5-star hotel in Paris" loads you
 | Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` |
 | Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
 | Gates + grade | `t2 check <endpoint>` → all gates ✓ |
-| Listed | `t2 check <endpoint> --list` (or [agents.t2000.ai/sell](https://agents.t2000.ai/sell)) → your entry on [mpp.t2000.ai/services](https://mpp.t2000.ai/services) + store page at `agents.t2000.ai/<payTo>` |
+| Listed | `t2 check <endpoint> --list` (or [mpp.t2000.ai/sell](https://mpp.t2000.ai/sell)) → your entry on [mpp.t2000.ai/services](https://mpp.t2000.ai/services) + store page at `agents.t2000.ai/<payTo>` |
 | Claimed (optional) | `t2 agent register` with the payTo wallet → verified badge on your store page |
 
 **Links:** [suimpp.dev/spec](https://suimpp.dev/spec) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) · [Agent Payments](/pay-any-api) · [Agent ID](/agent-id) · [live envelope](https://mpp.t2000.ai/.well-known/x402.json)
