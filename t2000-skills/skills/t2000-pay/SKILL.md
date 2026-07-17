@@ -42,7 +42,7 @@ t2 services inspect https://mpp.t2000.ai/openai/v1/chat/completions
 t2000_services
 ```
 
-All services are hosted at `https://mpp.t2000.ai/`. See the `t2000-services` skill for the full discovery workflow.
+Most services are hosted at `https://mpp.t2000.ai/`; the catalog also federates **direct sellers** (marked `direct` — e.g. JMPR Travel at `agent.jmpr.world`) whose endpoints live on their own origin and settle straight to their wallet. `t2 pay` works identically for both; note the gateway's no-charge-on-failure guarantee covers proxied services only. See the `t2000-services` skill for the full discovery workflow.
 
 ## Command
 ```bash
@@ -52,12 +52,12 @@ t2 pay <url> [options]
 ## Options
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--method <method>` | HTTP method (GET, POST, PUT) | POST |
-| `--data <json>` | Request body for POST/PUT | — |
-| `--max-price <amount>` | Max USDC per request | $1.00 |
+| `--method <method>` | HTTP method (GET, POST, PUT) | GET (auto-promotes to POST when `--data` is set) |
+| `--data <json>` | Request body for POST/PUT (JSON bodies default `content-type: application/json`) | — |
+| `--max-price <amount>` | Max USDC to auto-approve (enforced before any payment) | $1.00 |
 | `--header <key=value>` | Additional HTTP header (repeatable) | — |
-| `--timeout <seconds>` | Request timeout in seconds | 30 |
-| `--dry-run` | Show what would be paid without paying | — |
+| `--estimate` | Show the price without paying (no funds spent) | — |
+| `--force` | Override spending limits for this call (see `t2 limit`) | — |
 
 ## Available Services
 
@@ -66,7 +66,7 @@ t2 pay <url> [options]
 > `GET https://mpp.t2000.ai/api/services`. Inspect one with `t2 services inspect <url>`.
 > Prices are NOT listed here on purpose — they would drift from the catalog. Resolve the
 > real price at call time (the `--max-price` ceiling guards against overpaying), or run
-> `t2 pay <url> --dry-run` to see what would be charged before paying.
+> `t2 pay <url> --estimate` to see what would be charged before paying.
 
 The catalog spans every major AI + data API, grouped roughly as:
 

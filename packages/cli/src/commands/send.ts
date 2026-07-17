@@ -15,9 +15,10 @@
 //     actually kicked in.
 //   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`.
 //
-// SuiNS + @audric handle resolution is delegated to the SDK's
-// `T2000.resolveRecipient` — both `alice.sui` and `mission69b@audric`
-// resolve transparently without CLI-side handling.
+// SuiNS resolution is delegated to the SDK's `T2000.resolveRecipient` —
+// 0x addresses and `.sui` names (including subnames like
+// `alice.audric.sui` / `alice.agent-id.sui`) resolve without CLI-side
+// handling. Bare `@handle` forms are NOT resolvable.
 
 import type { Command } from 'commander';
 import pc from 'picocolors';
@@ -44,7 +45,7 @@ const ACCEPTED_ASSETS_LIST = ACCEPTED_ASSETS.join(', ');
  * Accepted shapes (all asset-required):
  *   - `t2 send 5 USDC 0x…`
  *   - `t2 send 5 USDC alice.sui`
- *   - `t2 send 5 USDC mission69b@audric`
+ *   - `t2 send 5 USDC alice.audric.sui`
  *   - `t2 send 5 USDC to 0x…`  ← legacy "to" filler word still tolerated
  *
  * Rejected:
@@ -61,7 +62,7 @@ export function parseSendArgs(args: string[]): {
 
   if (filtered.length < 2) {
     throw new Error(
-      `Usage: t2 send <amount> <asset> <recipient>\n  asset must be one of: ${ACCEPTED_ASSETS_LIST}\n  recipient can be a 0x address, SuiNS name (alice.sui), or @audric handle`,
+      `Usage: t2 send <amount> <asset> <recipient>\n  asset must be one of: ${ACCEPTED_ASSETS_LIST}\n  recipient can be a 0x address or SuiNS name (alice.sui, alice.audric.sui)`,
     );
   }
 
@@ -113,7 +114,7 @@ export function registerSend(program: Command) {
     .argument('<amount>', 'Amount of <asset> to send (denominated in asset units, NOT USD)')
     .argument(
       '[args...]',
-      'Asset (USDC | USDsui | SUI), optional "to" keyword, and recipient (0x address, SuiNS name like alice.sui, or @audric handle)',
+      'Asset (USDC | USDsui | SUI), optional "to" keyword, and recipient (0x address or SuiNS name like alice.sui)',
     )
     .description('Send USDC, USDsui, or SUI. USDC + USDsui are gasless (no SUI required).')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
@@ -124,7 +125,7 @@ export function registerSend(program: Command) {
 Examples:
   $ t2 send 5 USDC 0xabc…              Send 5 USDC (gasless) to a hex address
   $ t2 send 5 USDsui alice.sui         Send 5 USDsui (gasless) to a SuiNS name
-  $ t2 send 0.1 SUI mission69b@audric  Send 0.1 SUI (gas required) to an @audric handle
+  $ t2 send 0.1 SUI alice.audric.sui   Send 0.1 SUI (gas required) to a SuiNS subname
 `,
     )
     .action(async (amount: string, args: string[], opts: { key?: string; force?: boolean }) => {

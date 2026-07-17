@@ -3,9 +3,9 @@ name: t2000-send
 description: >-
   Send USDC, USDsui, or SUI from the t2000 Agent Wallet to another Sui
   address. Use when asked to pay someone, transfer funds, send money, tip
-  a creator, or make a payment to a specific Sui address, SuiNS name, or
-  saved contact. Do NOT use for API payments — use the t2000-pay skill
-  for x402-protected services.
+  a creator, or make a payment to a specific Sui address or SuiNS name.
+  Do NOT use for API payments — use the t2000-pay skill for
+  x402-protected services.
 license: MIT
 metadata:
   author: t2000
@@ -39,7 +39,7 @@ t2 send <amount> <asset> to <recipient>      # `to` filler optional
 # Examples:
 t2 send 5 USDC 0x8b3e...d412                  # 5 USDC to a hex address (gasless)
 t2 send 5 USDsui alice.sui                    # 5 USDsui to a SuiNS name (gasless)
-t2 send 50 USDC to mission69b@audric          # @audric handle (gasless)
+t2 send 50 USDC to alice.audric.sui           # SuiNS subname (gasless)
 t2 send 0.1 SUI 0x8b3e...d412                 # 0.1 SUI to a hex address (gas required)
 ```
 
@@ -81,7 +81,7 @@ For non-gasless sends (SUI), the gas line shows the actual SUI burn:
 1. Sufficient asset balance (USDC / USDsui / SUI as requested).
 2. For SUI sends only: sufficient SUI for gas.
 3. For USDC + USDsui: zero SUI is acceptable — the Sui foundation sponsors the gas.
-4. Limit check (CLI only): per-tx cap (any asset) + daily-send cap (any asset). Override with `--force`.
+4. Limit check (every write — CLI and MCP, enforced in `@t2000/sdk`): per-tx cap (any asset) + daily-send cap (any asset). Override with `--force` (CLI only).
 
 ## Error handling
 
@@ -92,8 +92,7 @@ For non-gasless sends (SUI), the gas line shows the actual SUI burn:
 | `INVALID_ADDRESS` | Recipient is not a valid Sui hex address. |
 | `INVALID_ASSET` | Asset is missing or not in the allowlist (USDC / USDsui / SUI). |
 | `SUINS_NOT_REGISTERED` | The `.sui` name isn't registered. |
-| `CONTACT_NOT_FOUND` | The name isn't a SuiNS name, an @audric handle, or a saved local contact. |
-| `LIMIT_EXCEEDED` | CLI hit a `t2 limit set` cap. Use `--force` to override. |
+| `LIMIT_EXCEEDED` | The write hit a `t2 limit set` cap. Use `--force` (CLI) to override once. |
 | `SIMULATION_FAILED` | Transaction would fail on-chain (details in the error message). |
 
 ## Recipient resolution flow

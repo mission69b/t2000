@@ -210,7 +210,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 
 ### Package imports (`@mysten/sui@2.x`) — gRPC ONLY
 
-> **Sui JSON-RPC shuts down the week of July 20, 2026 (mainnet) — never write new JSON-RPC.** All reads/writes
+> **Sui JSON-RPC is deactivated July 31, 2026 (mainnet) — never write new JSON-RPC.** All reads/writes
 > go through `SuiGrpcClient` (SPEC_STORE_V2 §8b is the standing constraint; the gateway's
 > eslint bans `jsonrpc` bodies). `SuiJsonRpcClient` / `@mysten/sui/jsonRpc` are legacy —
 > do not import them.

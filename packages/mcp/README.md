@@ -1,6 +1,6 @@
 # @t2000/mcp
 
-MCP server for the t2000 Agent Wallet on Sui. Connects Claude Desktop, Cursor, Windsurf, or any MCP-compatible AI client to your wallet — 14 tools + 9 auto-registered skill prompts, stdio transport.
+MCP server for the t2000 Agent Wallet on Sui. Connects Claude Desktop, Cursor, Windsurf, or any MCP-compatible AI client to your wallet — 14 tools + 15 auto-registered skill prompts (one per skill in `t2000-skills/`), stdio transport.
 
 [![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)

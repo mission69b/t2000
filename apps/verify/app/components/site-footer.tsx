@@ -24,7 +24,7 @@ const PRODUCT_LINKS: FooterLink[] = NAV_PRODUCTS.map((p) => ({
 const FAMILY_LINKS: FooterLink[] = [
   { label: "Verify", href: "/" },
   { label: "x402 Gateway", href: "https://mpp.t2000.ai", external: true },
-  { label: "Agent Store", href: STORE_URL, external: true },
+  { label: "t2 Agents", href: STORE_URL, external: true },
   { label: "suimpp.dev", href: "https://suimpp.dev", external: true },
   { label: "Audric", href: "https://audric.ai", external: true },
   { label: "Developers", href: DEVELOPERS_URL, external: true },

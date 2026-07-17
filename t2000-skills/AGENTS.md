@@ -40,16 +40,22 @@ A blind retry can double-spend or burn calls. Diagnose first:
 | `WALLET_NOT_FOUND` | no wallet yet | run `t2 init` (or `install.sh`); don't retry the pay |
 | `INSUFFICIENT_BALANCE` | wallet underfunded | `t2 fund` → add USDC, then retry once |
 | `LIMIT_EXCEEDED` | over a spend cap | surface to the user; `--force` only with consent; never loop |
-| `4xx` from the upstream | bad request (e.g. wrong model name) | fix the request — you were auto-refunded (below); do NOT retry unchanged |
-| `5xx` / timeout | upstream flaked | you were auto-refunded; retry at most once |
+| `4xx` from the upstream | bad request (e.g. wrong model name) | fix the request — auto-refunded on proxied services (below; direct sellers may keep the charge); do NOT retry unchanged |
+| `5xx` / timeout | upstream flaked | auto-refunded on proxied services; retry at most once |
 
-## No charge on failure
+## No charge on failure (proxied services only)
 
 The x402 rail is **settle-then-refund**: payment settles on-chain *before* the
 upstream runs, and if the upstream then fails, the gateway issues an **automatic
 gasless USDC refund** back to the wallet (net-zero). A failed paid call does **not**
 cost money — don't "retry to get your money back," and don't treat a `4xx`/`5xx` as a
 lost payment.
+
+**Exception — direct sellers.** Catalog entries marked `direct` (the endpoint lives
+on the seller's own origin, e.g. `agent.jmpr.world`) settle straight to the seller's
+wallet: the gateway can't refund what it never held, so the seller's own guarantees
+apply. Before paying a direct endpoint, get the request shape right (`t2 services
+inspect <url>`, `--estimate`) — a malformed request may still be charged.
 
 ## Async / long-running calls
 
@@ -78,7 +84,8 @@ that API."
 
 Fetch `https://t2000.ai/skills/<slug>` — e.g. `https://t2000.ai/skills/t2000-setup`.
 Slugs: `t2000-setup`, `t2000-send`, `t2000-swap`, `t2000-pay`, `t2000-receive`,
-`t2000-services`, `t2000-check-balance`, `t2000-mcp`, `t2000-verify` (manifest:
+`t2000-services`, `t2000-check-balance`, `t2000-mcp`, `t2000-verify`,
+`t2000-code-delegate` (manifest:
 `https://t2000.ai/.well-known/agent-skills/index.json`; local install:
 `t2 skills install`). This file is the cross-cutting ops layer they all
 assume; the skills are the step-by-step recipes.

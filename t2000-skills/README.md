@@ -51,7 +51,7 @@ Resolves the public **[`mission69b/t2000-skills`](https://github.com/mission69b/
 /plugin install t2000-agent-wallet@t2000-skills
 ```
 
-Installs all eleven skills (the `t2000-agent-wallet` plugin) via Claude Code's native plugin marketplace — backed by `.claude-plugin/marketplace.json` in the same repo.
+Installs all ten wallet skills (the `t2000-agent-wallet` plugin) via Claude Code's native plugin marketplace — backed by `.claude-plugin/marketplace.json` in the same repo.
 
 > Offline / by hand: `git clone https://github.com/mission69b/t2000-skills` (or the monorepo) and copy `skills/<slug>/SKILL.md` into your agent's skills dir.
 
@@ -61,13 +61,14 @@ Installs all eleven skills (the `t2000-agent-wallet` plugin) via Claude Code's n
 |-------|-------------|
 | [`t2000-setup`](https://t2000.ai/skills/t2000-setup) | End-to-end Agent Wallet bootstrap: `t2 init`, optional `t2 limit set`, and `t2 mcp install`. Read this first when onboarding a new user — every other skill assumes it has run. |
 | [`t2000-check-balance`](https://t2000.ai/skills/t2000-check-balance) | Inspect wallet balances (USDC / USDsui / SUI) before any write. Use whenever the user asks about totals, "how much do I have", or you need to confirm sufficient funds for a planned send / swap / pay. |
-| [`t2000-send`](https://t2000.ai/skills/t2000-send) | Send USDC, USDsui, or SUI to a Sui address, SuiNS name, or saved contact. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
+| [`t2000-send`](https://t2000.ai/skills/t2000-send) | Send USDC, USDsui, or SUI to a Sui address or SuiNS name. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
 | [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Share the wallet address, render an ANSI QR in terminal, or emit a Payment Kit `sui:pay?…` URI via MCP. Use for "share my address", "create a payment link", or "QR code". |
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the tool surface, and the most common "MCP doesn't load" failure modes. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Check — don't trust — a confidential (GPU-TEE) AI response by its receipt id: `t2 verify <rcpt-…>` runs the trustless checks (signed receipt · attested upstream · on-chain Sui anchor · signature · Intel TDX quote) and fails closed. No key needed; also at verify.t2000.ai. |
+| [`t2000-code-delegate`](https://t2000.ai/skills/t2000-code-delegate) | Delegate mechanical coding work (sweeps, renames, test-fix loops) to t2 code via headless `t2code exec` — open-model pricing, private by default; the host agent specifies, supervises, and reviews the diff. |
 
 ### Sui ecosystem skills
 
@@ -75,7 +76,7 @@ Protocol playbooks beyond the wallet — same format, same one-paste install:
 
 | Skill | Description |
 |-------|-------------|
-| [`sui-grpc`](https://t2000.ai/skills/sui-grpc) | Read Sui chain state over gRPC — balances, objects, transactions, coin metadata, names. JSON-RPC retires the week of July 20, 2026 on mainnet; this is the replacement surface. |
+| [`sui-grpc`](https://t2000.ai/skills/sui-grpc) | Read Sui chain state over gRPC — balances, objects, transactions, coin metadata, names. JSON-RPC is deactivated July 31, 2026 on mainnet; this is the replacement surface. |
 | [`suins`](https://t2000.ai/skills/suins) | Resolve SuiNS names (`alice.sui`) to addresses and back — gRPC-first, with the JSON-RPC stopgap and its cutoff date. |
 | [`deepbook`](https://t2000.ai/skills/deepbook) | Live market data from DeepBook, Sui's on-chain order book — pools, tickers, order books, candles, trades — via the free public indexer. |
 | [`walrus`](https://t2000.ai/skills/walrus) | Read + store blobs on Walrus over plain HTTP — free aggregator reads, testnet publisher writes, and the honest mainnet-write story. |
@@ -97,11 +98,11 @@ One PR puts your project on the [agents.t2000.ai](https://agents.t2000.ai) shelf
 
 ### Operating guide — [`AGENTS.md`](https://t2000.ai/AGENTS.md)
 
-The per-task skills above assume a shared **agent-ops layer**: payment-error recovery (don't blind-retry), free-first ordering (discover before paying), spending limits (on by default, gate CLI **and** MCP), no-charge-on-failure (settle-then-refund), and async/artifact semantics. It lives in [`AGENTS.md`](AGENTS.md) (served at [`t2000.ai/AGENTS.md`](https://t2000.ai/AGENTS.md)) — read it once per session.
+The per-task skills above assume a shared **agent-ops layer**: payment-error recovery (don't blind-retry), free-first ordering (discover before paying), spending limits (on by default, gate CLI **and** MCP), no-charge-on-failure (settle-then-refund — proxied services only; direct sellers carry their own guarantees), and async/artifact semantics. It lives in [`AGENTS.md`](AGENTS.md) (served at [`t2000.ai/AGENTS.md`](https://t2000.ai/AGENTS.md)) — read it once per session.
 
 ## t2000 MCP Server
 
-Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools*: read (`balance`, `address`, `receive`, `history`, `services`, `agents`), write (`send`, `swap`, `pay`), settings (`limit`), and Private Inference (`chat`, `models`, `verify`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
+Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools*: read (`balance`, `address`, `receive`, `history`, `services`, `agents`), write (`send`, `swap`, `pay`, `agent_sell`), settings (`limit`), and Private Inference (`chat`, `models`, `verify`). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
 
 ```bash
 npx @t2000/cli mcp install

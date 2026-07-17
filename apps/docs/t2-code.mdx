@@ -62,7 +62,7 @@ Auth is self-contained (t2code reads the persisted key itself) and the repo's pr
 
 `t2code init` detects Sui repos (`Move.toml` or `@mysten/sui` in `package.json`) and:
 
-- writes a **Sui section into the scaffolded `AGENTS.md`** — gRPC-only (JSON-RPC shuts down the week of July 20, 2026 on mainnet), never hardcode decimals, floor-don't-round amounts;
+- writes a **Sui section into the scaffolded `AGENTS.md`** — gRPC-only (JSON-RPC is deactivated July 31, 2026 on mainnet), never hardcode decimals, floor-don't-round amounts;
 - points you at the **official Sui Agent Skills by Mysten Labs** (Move, PTBs, object model, dApp Kit, publish flow — maintained against [docs.sui.io](https://docs.sui.io/skills)):
 
 ```bash

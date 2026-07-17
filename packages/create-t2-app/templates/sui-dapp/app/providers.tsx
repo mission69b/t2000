@@ -9,7 +9,7 @@ import { useState } from "react";
 // migrated to gRPC yet). It exists here ONLY to satisfy wallet-connect
 // plumbing — every read THIS APP makes goes through SuiGrpcClient in
 // app/api/balance/route.ts. Don't add useSuiClientQuery reads; JSON-RPC
-// shuts down on mainnet the week of July 20, 2026.
+// is deactivated on mainnet July 31, 2026.
 const networks = {
   mainnet: { url: getJsonRpcFullnodeUrl("mainnet"), network: "mainnet" as const },
 };

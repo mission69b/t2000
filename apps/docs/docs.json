@@ -198,6 +198,14 @@
           {
             "label": "@t2000/id",
             "href": "https://www.npmjs.com/package/@t2000/id"
+          },
+          {
+            "label": "@t2000/code",
+            "href": "https://www.npmjs.com/package/@t2000/code"
+          },
+          {
+            "label": "create-t2-app",
+            "href": "https://www.npmjs.com/package/create-t2-app"
           }
         ]
       },

@@ -41,9 +41,9 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_send',
-    'Send USDC, USDsui, or SUI to a 0x Sui address, a SuiNS name (e.g. alex.sui), or a saved contact alias. Amount is in token units (1 USDC = $1). Asset is REQUIRED — there is no implicit USDC default. USDC + USDsui sends are gasless (Sui foundation sponsored); SUI sends require gas. Set dryRun: true to preview without signing. Mirrors `t2 send <amount> <ASSET> <recipient>`.',
+    'Send USDC, USDsui, or SUI to a 0x Sui address or a SuiNS name (e.g. alex.sui). Amount is in token units (1 USDC = $1). Asset is REQUIRED — there is no implicit USDC default. USDC + USDsui sends are gasless (Sui foundation sponsored); SUI sends require gas. Set dryRun: true to preview without signing. Mirrors `t2 send <amount> <ASSET> <recipient>`.',
     {
-      to: z.string().describe("Recipient: 0x Sui address, SuiNS name like 'alex.sui', or saved contact name."),
+      to: z.string().describe("Recipient: 0x Sui address or SuiNS name like 'alex.sui'."),
       amount: z.number().positive().describe('Amount in token units to send'),
       asset: z.enum(['USDC', 'USDsui', 'SUI']).describe('REQUIRED — one of USDC, USDsui, SUI. No default.'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),

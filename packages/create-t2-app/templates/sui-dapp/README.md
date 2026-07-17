@@ -10,7 +10,7 @@ npm run dev                  # localhost:3000
 ```
 
 - `app/api/balance/route.ts` — reads via `SuiGrpcClient` (**gRPC only** —
-  Sui JSON-RPC retires on mainnet the week of July 20, 2026), display
+  Sui JSON-RPC is deactivated on mainnet July 31, 2026), display
   amounts floored to never exceed on-chain balances.
 - `app/api/agent/route.ts` — the AI backend: relays chat + wallet context
   to `api.t2000.ai/v1` with `model: t2000/auto` and streams SSE back. No AI

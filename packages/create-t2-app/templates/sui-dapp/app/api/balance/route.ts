@@ -1,7 +1,7 @@
 /**
  * Balance reads via gRPC — the ONLY read path this app uses.
  *
- * Sui JSON-RPC shuts down on mainnet the week of July 20, 2026; all reads go
+ * Sui JSON-RPC is deactivated on mainnet July 31, 2026; all reads go
  * through SuiGrpcClient (`@mysten/sui/grpc`). Server-side so the fullnode
  * endpoint stays swappable in one place.
  */

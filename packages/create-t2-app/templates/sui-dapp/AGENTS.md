@@ -5,8 +5,8 @@ reads, and a streaming AI copilot on `t2000/auto` (`api.t2000.ai/v1`).
 
 ## Sui ground rules
 
-- **gRPC only for reads/writes.** Sui JSON-RPC shuts down on mainnet the
-  week of July 20, 2026. Every read goes through `SuiGrpcClient`
+- **gRPC only for reads/writes.** Sui JSON-RPC is deactivated on mainnet
+  July 31, 2026. Every read goes through `SuiGrpcClient`
   (`@mysten/sui/grpc`) in `app/api/balance/route.ts` — never add
   `SuiJsonRpcClient` code. (The JSON-RPC client inside `app/providers.tsx`
   is dapp-kit-internal wallet plumbing only; do not use it for app reads.)

@@ -25,7 +25,7 @@
         {
           "slug": "t2000-send",
           "name": "Send stablecoins",
-          "description": "Gasless USDC / USDsui sends (and SUI with gas) to addresses, SuiNS names, or @audric handles.",
+          "description": "Gasless USDC / USDsui sends (and SUI with gas) to 0x addresses or SuiNS names.",
           "tags": [
             "payments",
             "gasless",
@@ -94,6 +94,17 @@
             "setup"
           ],
           "skillUrl": "https://t2000.ai/skills/t2000-mcp"
+        },
+        {
+          "slug": "t2000-code-delegate",
+          "name": "Delegate coding tasks",
+          "description": "Delegate mechanical coding work to t2 code via headless `t2code exec` \u2014 open-model pricing, private by default, review the diff after.",
+          "tags": [
+            "coding",
+            "delegation",
+            "t2-code"
+          ],
+          "skillUrl": "https://t2000.ai/skills/t2000-code-delegate"
         }
       ]
     },
@@ -131,7 +142,7 @@
         {
           "slug": "sui-grpc",
           "name": "Read the chain over gRPC",
-          "description": "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient \u2014 the surface that replaces JSON-RPC (retired the week of July 20, 2026 on mainnet).",
+          "description": "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient \u2014 the surface that replaces JSON-RPC (deactivated July 31, 2026 on mainnet).",
           "tags": [
             "reads",
             "grpc",

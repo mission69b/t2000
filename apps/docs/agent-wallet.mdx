@@ -44,7 +44,7 @@ The core loop is four commands — everything else (swap, history, limits, ident
 |---|---|
 | `t2 init` | Create the wallet + a free on-chain Agent ID. `--import` restores a `suiprivkey1…` secret. |
 | `t2 fund` | Deposit address + QR. |
-| `t2 send <amount> <asset> <recipient>` | USDC / USDsui (gasless) or SUI. Recipient: `0x…`, SuiNS name, or `@handle`. |
+| `t2 send <amount> <asset> <recipient>` | USDC / USDsui (gasless) or SUI. Recipient: `0x…` or SuiNS name (incl. subnames like `alice.agent-id.sui`). |
 | `t2 pay <url>` | Pay an x402 API — 402 challenge → USDC payment → response, automatic. |
 
 Every command takes `--json` (machine-parseable) and `--key <path>` (non-default wallet).
@@ -112,7 +112,7 @@ stdio transport — keys never leave the machine. The `env` block is only needed
 
 ## Skills
 
-Markdown playbooks your agent reads on demand — one per task (setup · balance · send · receive · swap · services · pay · verify · mcp) plus Sui ecosystem reads (SuiNS · Walrus · DeepBook · Sui gRPC). Each serves as plain markdown at `t2000.ai/skills/<slug>`; the manifest is [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
+Markdown playbooks your agent reads on demand — one per task (setup · balance · send · receive · swap · services · pay · verify · mcp · code-delegate) plus Sui ecosystem reads (SuiNS · Walrus · DeepBook · Sui gRPC · Move security). Each serves as plain markdown at `t2000.ai/skills/<slug>`; the manifest is [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
 
 ```bash
 npx @t2000/cli skills install --target=cursor    # or claude-code · agents (default)

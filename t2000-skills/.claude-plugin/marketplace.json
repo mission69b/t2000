@@ -22,8 +22,9 @@
         "./skills/t2000-swap",
         "./skills/t2000-services",
         "./skills/t2000-pay",
-        "./skills/t2000-mcp",
-        "./skills/t2000-verify"
+    "./skills/t2000-mcp",
+    "./skills/t2000-verify",
+    "./skills/t2000-code-delegate"
       ]
     }
   ]

@@ -24,11 +24,11 @@ describe('parseSendArgs (v4)', () => {
       });
     });
 
-    it('parses SUI + @audric handle recipient', () => {
-      expect(parseSendArgs(['0.5', 'SUI', 'mission69b@audric'])).toEqual({
+    it('parses SUI + SuiNS subname recipient (parser passes it through; SDK resolves)', () => {
+      expect(parseSendArgs(['0.5', 'SUI', 'alice.audric.sui'])).toEqual({
         amount: 0.5,
         asset: 'SUI',
-        recipient: 'mission69b@audric',
+        recipient: 'alice.audric.sui',
       });
     });
 

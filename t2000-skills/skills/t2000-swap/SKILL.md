@@ -121,4 +121,4 @@ USDC, USDsui, USDT, USDe, SUI, vSUI, ETH, GOLD (XAUM), NAVX, WAL, and the long t
 
 - Don't auto-execute multi-leg flows ("swap A → B → C in three transactions"). If a multi-hop is needed, Cetus does it internally as one PTB.
 - Don't recommend swapping mid-position rebalance without first surfacing impermanent-loss risk if the user asked for advice.
-- Don't swap to a stable just to "park" funds with no plan — explain that the Agent Wallet is wallet-first; savings yield lives on audric.ai.
+- Don't swap to a stable just to "park" funds with no plan — the Agent Wallet is payments-first; there is no savings/yield surface.

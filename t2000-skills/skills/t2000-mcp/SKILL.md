@@ -145,7 +145,7 @@ Need a `T2000_API_KEY` in the client's env config.
 |------|-------------|
 | `t2000_limit` | View the user's spending caps (on by default: $25/tx · $100/day) from `~/.t2000/config.json`. READ-ONLY — the LLM cannot set or clear limits via MCP. |
 
-> **v3 → v4 deletions.** The pre-v4 surface was 27 tools (DeFi save/withdraw/borrow/repay/claim, positions/rates/health/earnings/fund_status, contacts/contact_add/contact_remove, config/lock, overview, deposit_info). All deleted as part of `SPEC_AGENT_WALLET_GREENFIELD` — see the `t2000-setup` skill for the v4 product story. DeFi lives on audric.ai now; local contacts are deprecated in favor of SuiNS (`alice.sui`).
+> **v3 → v4 deletions.** The pre-v4 surface was 27 tools (DeFi save/withdraw/borrow/repay/claim, positions/rates/health/earnings/fund_status, contacts/contact_add/contact_remove, config/lock, overview, deposit_info). All deleted as part of `SPEC_AGENT_WALLET_GREENFIELD` — see the `t2000-setup` skill for the v4 product story. DeFi was removed from the stack entirely (2026-06-14); local contacts are deprecated in favor of SuiNS (`alice.sui`).
 
 ## Prompts
 

@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 
-Fetch the current wallet balance — stablecoin holdings (USDC, USDsui, other Sui-native stables) plus the SUI holding (used for swaps). Wallet only; **no savings or debt** rollup (those live on audric.ai, not in the Agent Wallet CLI).
+Fetch the current wallet balance — stablecoin holdings (USDC, USDsui, other Sui-native stables) plus the SUI holding (used for swaps). Wallet only; **no savings or debt** rollup (the stack has no DeFi surface).
 
 ## Commands
 
@@ -51,7 +51,7 @@ The list shows every stablecoin with a balance ≥ $0.01, sorted with USDC first
 
 ## Rules
 
-1. **Wallet-only.** This skill returns holdings, not savings or debt. If the user asks "what are my savings?" or "what's my health factor?", redirect them to audric.ai (the consumer surface that wraps Audric Finance).
+1. **Wallet-only.** This skill returns holdings, not savings or debt. If the user asks "what are my savings?" or "what's my health factor?", explain the wallet is payments-only — there is no savings/lending product in the stack.
 2. **Always check before writes.** Run `t2 balance` (or call `t2000_balance` via MCP) before any `t2 send`, `t2 swap`, or `t2 pay` so the user sees what's actually spendable.
 3. **--json is universal.** Every t2 command supports `--json` — surface this when scripting.
 

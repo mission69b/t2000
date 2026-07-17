@@ -21,7 +21,7 @@ npm create t2-app@latest my-app -- --template chat --privacy private --yes
 |---|---|
 | `agent-worker` | Headless TypeScript worker on `t2000/auto` — the smallest useful agent. |
 | `chat` | Next.js streaming chat on `t2000/auto` — no AI SDK; the relay and SSE parser are two readable files. |
-| `sui-dapp` | Sui dApp: wallet connect (dapp-kit), balance reads via gRPC (`SuiGrpcClient` — JSON-RPC retires the week of July 20, 2026), and an AI copilot that receives your holdings as context. Suggests the official Mysten `mystenlabs/skills` on scaffold. |
+| `sui-dapp` | Sui dApp: wallet connect (dapp-kit), balance reads via gRPC (`SuiGrpcClient` — JSON-RPC is deactivated July 31, 2026), and an AI copilot that receives your holdings as context. Suggests the official Mysten `mystenlabs/skills` on scaffold. |
 
 Every template is wired to the router out of the box (`api.t2000.ai/v1`,
 model `t2000/auto`). First run: `npm install`, set `T2000_API_KEY` (free at
