@@ -103,9 +103,15 @@ function hexToBytes(hex: string): number[] {
   return out;
 }
 
-function bytesToHex(bytes: number[] | Uint8Array): string {
+/** gRPC's `json` include renders Move `vector<u8>` as a base64 STRING;
+ *  JSON-RPC (and tests) hand back number arrays. Accept both. */
+function bytesToHex(bytes: number[] | Uint8Array | string): string {
+  const arr =
+    typeof bytes === 'string'
+      ? Array.from(atob(bytes), (c) => c.charCodeAt(0))
+      : bytes;
   let s = '0x';
-  for (const b of bytes) s += b.toString(16).padStart(2, '0');
+  for (const b of arr) s += b.toString(16).padStart(2, '0');
   return s;
 }
 

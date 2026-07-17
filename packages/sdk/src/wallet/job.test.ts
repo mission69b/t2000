@@ -177,6 +177,24 @@ describe('getJob', () => {
     expect(job.deliveredAtMs).toBe(5000);
   });
 
+  it('parses base64 vector<u8> fields (live gRPC json shape)', async () => {
+    // gRPC's `json` include serializes vector<u8> as base64 — caught on the
+    // S.753 mainnet round-trip when the delivery hash printed as garbage.
+    const job = await getJob(
+      mockClient(
+        onChainJob({
+          state: 1,
+          spec_hash: Buffer.from([0xde, 0xad, 0xbe, 0xef]).toString('base64'),
+          delivery_hash: Buffer.from([0xab, 0xcd]).toString('base64'),
+          delivered_at_ms: '5000',
+        }),
+      ),
+      JOB_ID,
+    );
+    expect(job.specHash).toBe('0xdeadbeef');
+    expect(job.deliveryHash).toBe('0xabcd');
+  });
+
   it('rejects a non-Job object', async () => {
     await expect(
       getJob(mockClient(onChainJob(), '0x2::coin::Coin<0x2::sui::SUI>'), JOB_ID),
