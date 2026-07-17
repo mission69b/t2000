@@ -94,6 +94,18 @@ describe('gate 1 — url', () => {
     expect(res.gates[0]).toMatchObject({ gate: 'url', ok: false });
   });
 
+  it('rejects the gateway itself — proxied services are already cataloged', async () => {
+    const res = await ingestSellerByUrl('https://mpp.t2000.ai/deepseek/v1/chat/completions', {
+      probe: async () => {
+        throw new Error('should not be called');
+      },
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.gates[0]).toMatchObject({ gate: 'url', ok: false });
+    expect(res.gates[0].detail).toContain('gateway itself');
+  });
+
   it('passes a valid https URL — no account, no Agent ID, no signature', async () => {
     const res = await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
     expect(res.ok).toBe(true);

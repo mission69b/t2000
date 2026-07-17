@@ -292,6 +292,22 @@ export async function previewSeller(
       warnings: [],
     };
   }
+  // The gateway's own proxied endpoints answer a payable x402 402 too —
+  // without this, anyone could re-list the whole proxied catalog as one
+  // giant "direct seller" entry.
+  if (endpointUrl.hostname === 'mpp.t2000.ai' || endpointUrl.hostname.endsWith('.vercel.app')) {
+    return {
+      ok: false,
+      gates: [
+        {
+          gate: 'url',
+          ok: false,
+          detail: 'that is the gateway itself — its services are already in the catalog; submit your own origin',
+        },
+      ],
+      warnings: [],
+    };
+  }
   gates.push({ gate: 'url', ok: true, detail: endpointUrl.href });
 
   // Gate 2 — live 402 probe (the challenge is the listing's source of truth).
