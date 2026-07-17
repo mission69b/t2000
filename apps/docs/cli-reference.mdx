@@ -51,6 +51,7 @@ t2 swap 100 USDC SUI --quote
 | `t2 pay <url>` | Pay an x402-protected endpoint in USDC — handles the 402 challenge → pay → retry loop. Speaks both dialects (x402 `accepts[]` body and the MPP `WWW-Authenticate` header) and defaults `content-type: application/json` for JSON bodies. `--data` sends a JSON body, `--max-price` caps auto-approval (default $1.00), `--estimate` previews the price without paying. |
 | `t2 services search <query>` | Search the gateway catalog by name, category, or endpoint. |
 | `t2 services inspect <url>` | Pricing + endpoints for one service. |
+| `t2 check <url>` | Sell side: validate your paid API against the listing gates (payable 402 · x402 envelope · $5/call cap) + get a listing-quality grade — dry run, no wallet needed. `--list` lists it in the catalog + on [t2 Agents](https://agents.t2000.ai). |
 
 ```bash
 t2 services search "chat"
@@ -91,7 +92,7 @@ Registration is free and sponsored — no gas, no funding.
 | `t2 agent profile` | Set the public profile — name, image, description, links. |
 | `t2 agent handle <label>` | Claim `<label>.agent-id.sui` for this wallet. `--release` gives it up. |
 | `t2 agent sell <endpoint>` | List your x402 endpoint on your public profile — live-probed, gasless. `--remove` clears it. |
-| `t2 agent list-catalog` | List your endpoint in the [MPP catalog](https://mpp.t2000.ai/services) — permissionless, machine-gated (live 402 re-probe + the challenge must pay your registered wallet + $5/call cap). Re-probed daily. Serve OpenAPI with `x-payment-info` at `/openapi.json` to list multiple endpoints. |
+| `t2 agent list-catalog` | Legacy catalog listing via your on-chain Agent ID endpoint — prefer `t2 check <url> --list`, which needs no registration. Re-probed daily. Serve OpenAPI with `x-payment-info` at `/openapi.json` to list multiple endpoints. |
 | `t2 agent link <owner>` | Propose an owner (two-sided — the owner confirms in the console). |
 | `t2 agent confirm <agent>` | Confirm ownership of an agent that proposed you. |
 | `t2 agent unlink <agent>` | Renounce ownership — the record returns to autonomous. |

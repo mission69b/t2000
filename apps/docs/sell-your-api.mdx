@@ -4,7 +4,9 @@ sidebarTitle: "Sell your API"
 description: "Accept per-call USDC from any Sui agent — no accounts, no API keys for buyers, instant settlement."
 ---
 
-Return a `402` with an x402 envelope; the buyer signs a USDC payment; you settle it on-chain (~400ms) and serve the response. Buyers pay gasless — from a terminal or by prompting their agent:
+Return a `402` with an x402 envelope; the buyer signs a USDC payment; you settle it on-chain (~400ms) and serve the response. Listing is **account-free**: your API is the account — paste its URL at [agents.t2000.ai/sell](https://agents.t2000.ai/sell) and machines do the rest. (Agent doing the work? Hand it the executable twin of this page: [mpp.t2000.ai/sellers.md](https://mpp.t2000.ai/sellers.md).)
+
+Buyers pay gasless — from a terminal or by prompting their agent:
 
 <CodeGroup>
 
@@ -22,7 +24,7 @@ Use t2 services: pay https://api.example.com/v1/search with t2 pay (max price $0
 
 ## 1. Get a Sui address
 
-Sign in with Google at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) — your account is a Sui address, shown on the dashboard. Receiving is free.
+Any Sui wallet works — payment settles straight to the `payTo` address your 402 declares, and that wallet becomes your seller identity (your store page is `agents.t2000.ai/<wallet>`). No wallet yet? Sign in with Google at [agents.t2000.ai/manage](https://agents.t2000.ai/manage) (your account is a Sui address) or run `npm i -g @t2000/cli && t2 init`. Receiving is free.
 
 ---
 
@@ -160,71 +162,66 @@ await check("https://api.example.com");   // .ok · .discovery · .probe
 
 ---
 
-## 5. Register and get listed
+## 5. List it — no account, no sign-up
 
-Tap **Create your Agent ID** on your [dashboard](https://agents.t2000.ai/manage). Free, gasless, on-chain — it registers your address in the [agent directory](https://agents.t2000.ai), and you manage the listing (name, description, links, deactivate) in the browser.
-
-Then list your endpoint — it's probed live (402 + valid Sui challenge) and one gasless signature puts it on your public profile, served as JSON at `api.t2000.ai/v1/agents/{address}`:
+Submit your endpoint URL. Machines check it and list it — no human review, no waiting, nothing to sign. Your listing lands in the [MPP catalog](https://mpp.t2000.ai/services) (what every installed agent queries: `/api/services`, `llms.txt`, the `t2000_services` MCP tool) and gets a store page on [t2 Agents](https://agents.t2000.ai) at `agents.t2000.ai/<your-payTo-wallet>`:
 
 <CodeGroup>
 
-```text Console
-Edit agent → Sell your API → paste your endpoint → Verify & list
+```text Browser
+agents.t2000.ai/sell → paste your endpoint URL → preview → List it
 ```
 
 ```bash CLI
-t2 agent sell https://api.example.com/v1/search
+t2 check https://api.example.com/v1/search          # dry run — gates + listing-quality grade
+t2 check https://api.example.com/v1/search --list   # same checks, then list it
+```
+
+```bash curl
+curl -X POST https://mpp.t2000.ai/api/catalog/submit \
+  -H 'content-type: application/json' \
+  -d '{"url":"https://api.example.com/v1/search"}'
 ```
 
 ```text Paste into your agent
-Run `t2 agent register`, then `t2 agent sell https://api.example.com/v1/search` and show me the probe result and my profile link.
-```
-
-```json MCP
-// @t2000/mcp — the t2000_agent_sell tool
-{ "endpoint": "https://api.example.com/v1/search" }
+Fetch https://mpp.t2000.ai/sellers.md and follow it to list my API at https://api.example.com/v1/search. Show me every gate result and my store page link.
 ```
 
 </CodeGroup>
+
+Everything is derived from your API itself: `payTo` from your 402 challenge (that wallet is your identity), endpoints/prices/name from your OpenAPI. The gates, each failure names itself:
+
+1. **Live probe** — the URL answers 402 with a payable Sui challenge.
+2. **x402 dialect** — the 402 carries an x402 `accepts[]` envelope (`scheme: "exact"`, `network: "sui:mainnet"`). Header-only 402s are rejected: browser (zkLogin) buyers can't safely pay them, and everything in the catalog must be payable by every buyer.
+3. **Price cap** — every listed price ≤ $5 per call.
+
+The preview also grades your listing (missing OpenAPI, missing request schemas, unpriced endpoints) — every warning comes with a prompt you can paste straight into your coding agent to fix it.
+
+**Manage by managing your API.** Change your price → the daily re-probe updates the listing. Stop serving the 402 → suspended after 3 consecutive failed days (hidden, not deleted); restore it → relisted automatically. Change your payTo wallet → suspended immediately (that's an identity change — resubmit to list the new wallet fresh). Resubmit the URL any time to revalidate instantly.
 
 ---
 
-## 6. List in the MPP catalog (optional, self-serve)
+## 6. Claim your page (optional — never required to earn)
 
-Your profile listing makes you findable in the [agent directory](https://agents.t2000.ai). The [MPP catalog](https://mpp.t2000.ai/services) goes further — it's what every installed agent queries for services (`/api/services`, `llms.txt`, the `t2000_services` MCP tool). Listing is **permissionless and machine-gated** — no human review, no waiting:
+Your listing earns unclaimed. Claiming = registering an **Agent ID** on your payTo wallet: it adds a verified badge, a custom profile (name, avatar, links, description), browser management at [/manage](https://agents.t2000.ai/manage), and unlocks future job-class selling. Free, gasless, on-chain:
 
 <CodeGroup>
 
+```text Browser
+agents.t2000.ai/manage → sign in with the wallet that owns payTo → Create your Agent ID
+```
+
 ```bash CLI
-t2 agent list-catalog
-```
-
-```text Console
-Edit agent → Sell your API → List in MPP catalog
-```
-
-```json MCP
-// t2000_agent_sell — list on-chain AND in the catalog in one call
-{ "endpoint": "https://api.example.com/v1/search", "catalog": true }
+t2 agent register
 ```
 
 </CodeGroup>
 
-No signature needed: the gateway validates against your **on-chain** Agent ID record (which you signed when you ran `t2 agent sell`). Five gates run, each failure names itself:
-
-1. **Agent ID** — your address has a registered Agent ID with an https endpoint on-chain.
-2. **Live probe** — the endpoint answers 402 with a payable Sui challenge.
-3. **x402 dialect** — the 402 carries an x402 `accepts[]` envelope (`scheme: "exact"`, `network: "sui:mainnet"`). Header-only 402s are rejected: browser (zkLogin) buyers can't safely pay them, and everything in the catalog must be payable by every buyer.
-4. **payTo binding** — the challenge pays *your* registered wallet. Nobody can list your API with a hijacked payTo, or someone else's API under their ID.
-5. **Price cap** — every listed price ≤ $5 per call.
-
-Your entry is **re-probed daily**. Three consecutive failures suspend it (hidden, not deleted); a passing probe restores it automatically. To remove your entry, clear your on-chain listing (`t2 agent sell --remove`), then run `t2 agent list-catalog` once more to sync.
-
 ### Multiple endpoints
 
-Your Agent ID lists **one flagship endpoint** on its public profile — a pointer, not an allowlist. Payment is negotiated per-endpoint by the 402 itself, so buyers can `t2 pay` *any* of your endpoints (search, book, cancel, …) whether or not it's the one listed. Don't register multiple agents to cover multiple endpoints.
+Payment is negotiated per-endpoint by the 402 itself, so buyers can `t2 pay` *any* of your endpoints (search, book, cancel, …) whether or not it's the one you submitted.
 
-To get every endpoint into your catalog entry, **serve OpenAPI with `x-payment-info` extensions at `/openapi.json`** on your origin (the same doc `check()` validates). The catalog submit reads it and lists each priced endpoint individually, with your API's title and description. No spec → your single on-chain endpoint is listed from the probe alone.
+To get every endpoint into your catalog entry, **serve OpenAPI with `x-payment-info` extensions at `/openapi.json`** on your origin (the same doc `check()` validates). The catalog submit reads it and lists each priced endpoint individually, with your API's title and description. No spec → your submitted endpoint is listed from the probe alone, with a generic name.
 
 ### How a catalog listing works (direct sellers)
 
@@ -245,11 +242,11 @@ A skill routes whole intents to you — "find a 5-star hotel in Paris" loads you
 
 | Step | Verify with |
 |---|---|
-| Sui address | shown on your [dashboard](https://agents.t2000.ai/manage) |
+| Sui address | your 402's `payTo` — any Sui wallet |
 | Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` |
 | Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
-| Discovery | `check()` → `ok: true` |
-| Listed | console **Sell your API** → Verify & list (or `t2 agent sell <endpoint>`) → your profile on agents.t2000.ai |
-| Cataloged | `t2 agent list-catalog` → all 4 gates ✓ → your entry on [mpp.t2000.ai/services](https://mpp.t2000.ai/services) |
+| Gates + grade | `t2 check <endpoint>` → all gates ✓ |
+| Listed | `t2 check <endpoint> --list` (or [agents.t2000.ai/sell](https://agents.t2000.ai/sell)) → your entry on [mpp.t2000.ai/services](https://mpp.t2000.ai/services) + store page at `agents.t2000.ai/<payTo>` |
+| Claimed (optional) | `t2 agent register` with the payTo wallet → verified badge on your store page |
 
 **Links:** [suimpp.dev/spec](https://suimpp.dev/spec) · [`@suimpp/mpp`](https://www.npmjs.com/package/@suimpp/mpp) · [`@suimpp/discovery`](https://www.npmjs.com/package/@suimpp/discovery) · [Agent Payments](/pay-any-api) · [Agent ID](/agent-id) · [live envelope](https://mpp.t2000.ai/.well-known/x402.json)
