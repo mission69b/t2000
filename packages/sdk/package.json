@@ -52,18 +52,18 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@cetusprotocol/aggregator-sdk": "^1.4.8",
-    "@mysten/payment-kit": "^0.1.6",
-    "@mysten/sui": "^2.17.0",
-    "@mysten/suins": "^1.1.1",
+    "@cetusprotocol/aggregator-sdk": "^1.6.6",
+    "@mysten/payment-kit": "^0.2.8",
+    "@mysten/sui": "^2.22.0",
+    "@mysten/suins": "^1.2.8",
     "@mysten/zklogin": "^0.8.1",
     "@noble/curves": "^1.9.0",
     "@noble/hashes": "^1.8.0",
     "@phala/dcap-qvl": "^0.5.2",
     "@suimpp/mpp": "^0.8.1",
-    "bn.js": "^5.2.1",
+    "bn.js": "^5.2.5",
     "eventemitter3": "^5",
-    "mppx": "^0.4.9"
+    "mppx": "^0.8.12"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",
@@ -71,7 +71,7 @@
     "eslint": "^9",
     "tsup": "^8",
     "typescript": "^5",
-    "typescript-eslint": "^8.58.0",
+    "typescript-eslint": "^8.64.0",
     "vitest": "^3"
   },
   "license": "MIT"
