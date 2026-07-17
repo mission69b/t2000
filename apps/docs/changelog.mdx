@@ -7,6 +7,21 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, `@t2000/mcp`, and `@t2000/id` packages ship together on one version.
 
+<Update label="v9.5.0 — catalog self-listing" description="July 17, 2026">
+  **Sellers list themselves in the MPP catalog — no humans in the loop.**
+  `t2 agent list-catalog` (or `t2000_agent_sell` with `catalog: true`, or the
+  console's Sell-your-API card) submits your registered endpoint through four
+  machine gates: an on-chain Agent ID, a live 402 probe (either challenge
+  dialect), the challenge paying your registered wallet, and a $5/call price
+  cap. Entries are re-probed daily — three consecutive failures suspend the
+  listing, a passing probe restores it. Serve OpenAPI with `x-payment-info`
+  at `/openapi.json` to list every priced endpoint at once. See
+  [Sell your API](/sell-your-api).
+
+  `@t2000/id` adds `getAgentRecord(address)` — a gRPC read of an agent's
+  on-chain registry record (endpoint, payment methods, DID, metadata).
+</Update>
+
 <Update label="v9.4.0 — pay speaks both dialects + direct sellers" description="July 16, 2026">
   **The payments client works against any x402 seller on Sui, not just the
   gateway.** `t2 pay` / `agent.pay()` now accept both challenge dialects —
