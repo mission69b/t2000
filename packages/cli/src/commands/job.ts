@@ -32,6 +32,11 @@ import {
   type Job,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
+import {
+  fetchOffering,
+  getJobSpec,
+  putJobSpec,
+} from '../lib/offerings.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
   handleError,
@@ -41,6 +46,7 @@ import {
   printInfo,
   printJson,
   printKeyValue,
+  printLine,
   printSuccess,
   printWarning,
 } from '../output.js';
@@ -141,15 +147,24 @@ Typical flow:
   seller  $ t2 job deliver 0xJOB report.pdf
   buyer   $ t2 job release 0xJOB          (or: t2 job reject 0xJOB)
   either  $ t2 job watch 0xJOB
+
+Buying an OFFERING (t2 ACP) — price + terms come from the listing:
+  buyer   $ t2 browse "market report"
+  buyer   $ t2 job create --agent 0xSELLER --offering sui-market-report \\
+              --requirements '{"token":"DEEP"}'
+  seller  $ t2 job spec 0xJOB              (read the buyer's requirements)
 `,
     );
 
   group
     .command('create')
-    .argument('<amount>', `USDC to escrow (max ${MAX_JOB_USDC})`)
-    .argument('<seller>', "The seller's Sui address (their listing's payTo wallet)")
+    .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when buying an --offering)`)
+    .argument('[seller]', "The seller's Sui address (omit when buying an --offering)")
     .description('Create + fund an escrow job in one transaction (buyer)')
-    .requiredOption('--spec <file-or-text>', 'Job spec — a file path or inline text (hashed on-chain), or a 0x… hash')
+    .option('--spec <file-or-text>', 'Job spec — a file path or inline text (hashed on-chain), or a 0x… hash')
+    .option('--agent <address>', "Buy from an offering: the seller's agent address")
+    .option('--offering <slug>', 'The offering slug (see t2 browse / t2 offering list <agent>)')
+    .option('--requirements <file-or-json-or-text>', 'Your requirements for the offering (what the seller asked for)')
     .option('--deadline <duration>', 'Time the seller has to deliver (e.g. 30m, 24h, 7d)', '24h')
     .option('--review <duration>', 'Your accept/reject window after delivery', '24h')
     .option('--split <bps>', 'Your share in bps if you reject (0–10000)', String(DEFAULT_REJECT_SPLIT_BPS))
@@ -157,10 +172,13 @@ Typical flow:
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
       async (
-        amountArg: string,
-        sellerArg: string,
+        amountArg: string | undefined,
+        sellerArg: string | undefined,
         opts: {
-          spec: string;
+          spec?: string;
+          agent?: string;
+          offering?: string;
+          requirements?: string;
           deadline: string;
           review: string;
           split: string;
@@ -169,19 +187,108 @@ Typical flow:
         },
       ) => {
         try {
-          const amountUsdc = Number.parseFloat(amountArg);
-          if (!Number.isFinite(amountUsdc) || amountUsdc <= 0) {
-            throw new Error(`Amount must be a positive number (got "${amountArg}").`);
-          }
-          const seller = validateAddress(sellerArg);
-          const specHash = await resolveCommitment(opts.spec);
-          const deliverByMs = Date.now() + parseDuration(opts.deadline);
-          const reviewWindowMs = opts.review
-            ? parseDuration(opts.review)
-            : DEFAULT_REVIEW_WINDOW_MS;
-          const rejectSplitBps = Number.parseInt(opts.split, 10);
-
           const base = opts.api ?? DEFAULT_API_BASE;
+
+          let amountUsdc: number;
+          let seller: string;
+          let specHash: string;
+          let deliverByMs: number;
+          let reviewWindowMs: number;
+          let rejectSplitBps: number;
+          let offeringSlug: string | undefined;
+
+          if (opts.offering || opts.agent) {
+            // Offering mode — price + terms come from the listing, the spec
+            // is the buyer's requirements (stored content-addressed; its
+            // sha256 goes on-chain, so the content is tamper-evident).
+            if (!(opts.offering && opts.agent)) {
+              throw new Error('--agent and --offering go together.');
+            }
+            if (amountArg || sellerArg) {
+              throw new Error(
+                'Omit the amount/seller arguments when buying an offering — the listing sets the price and the seller.',
+              );
+            }
+            const sellerAgent = validateAddress(opts.agent);
+            const offering = await fetchOffering(base, sellerAgent, opts.offering);
+            offeringSlug = offering.slug;
+
+            let requirements: unknown = null;
+            if (opts.requirements) {
+              let text = opts.requirements;
+              try {
+                text = await readFile(opts.requirements, 'utf8');
+              } catch {
+                // not a file — the literal argument is the content
+              }
+              try {
+                requirements = JSON.parse(text);
+              } catch {
+                requirements = text.trim();
+              }
+            }
+            if (offering.requirements != null && requirements == null) {
+              const want =
+                typeof offering.requirements === 'string'
+                  ? offering.requirements
+                  : `JSON matching: ${JSON.stringify(offering.requirements)}`;
+              throw new Error(
+                `This offering needs --requirements. The seller asks for: ${want}`,
+              );
+            }
+            if (
+              offering.requirements != null &&
+              typeof offering.requirements === 'object' &&
+              (typeof requirements !== 'object' || requirements === null)
+            ) {
+              throw new Error(
+                `This offering expects JSON requirements matching: ${JSON.stringify(offering.requirements)}`,
+              );
+            }
+
+            const buyer = (await withAgent({ keyPath: opts.key })).address();
+            const spec = JSON.stringify({
+              type: 't2-acp-job-spec@1',
+              offering: {
+                agent: offering.agent,
+                slug: offering.slug,
+                name: offering.name,
+                priceUsdc: offering.priceUsdc,
+                deliverable: offering.deliverable,
+              },
+              requirements,
+              buyer,
+              createdAtMs: Date.now(),
+            });
+            specHash = `0x${await putJobSpec(base, spec)}`;
+
+            amountUsdc = offering.priceUsdc;
+            seller = offering.agent;
+            deliverByMs = Date.now() + offering.slaMinutes * 60_000;
+            reviewWindowMs = offering.reviewWindowMinutes * 60_000;
+            rejectSplitBps = offering.rejectSplitBps;
+          } else {
+            // Direct mode — explicit terms, spec hashed locally.
+            if (!(amountArg && sellerArg)) {
+              throw new Error(
+                'Provide <amount> <seller> (direct job) or --agent + --offering (buy a listing).',
+              );
+            }
+            if (!opts.spec) {
+              throw new Error('--spec is required for a direct job.');
+            }
+            amountUsdc = Number.parseFloat(amountArg);
+            if (!Number.isFinite(amountUsdc) || amountUsdc <= 0) {
+              throw new Error(`Amount must be a positive number (got "${amountArg}").`);
+            }
+            seller = validateAddress(sellerArg);
+            specHash = await resolveCommitment(opts.spec);
+            deliverByMs = Date.now() + parseDuration(opts.deadline);
+            reviewWindowMs = opts.review
+              ? parseDuration(opts.review)
+              : DEFAULT_REVIEW_WINDOW_MS;
+            rejectSplitBps = Number.parseInt(opts.split, 10);
+          }
           const { address, digest } = await sponsoredJobVerb({
             base,
             keyPath: opts.key,
@@ -211,11 +318,11 @@ Typical flow:
           }
 
           if (isJsonMode()) {
-            printJson({ jobId, digest, buyer: address, seller, amountUsdc, specHash, deliverByMs, reviewWindowMs, rejectSplitBps });
+            printJson({ jobId, digest, buyer: address, seller, amountUsdc, specHash, deliverByMs, reviewWindowMs, rejectSplitBps, ...(offeringSlug ? { offering: offeringSlug } : {}) });
             return;
           }
           printBlank();
-          printSuccess(`Escrowed $${amountUsdc.toFixed(2)} USDC → job for ${truncateAddress(seller)}`);
+          printSuccess(`Escrowed $${amountUsdc.toFixed(2)} USDC → job for ${truncateAddress(seller)}${offeringSlug ? ` (offering: ${offeringSlug})` : ''}`);
           if (jobId) printKeyValue('Job', jobId);
           printKeyValue('Spec hash', specHash);
           printKeyValue('Deliver by', new Date(deliverByMs).toISOString());
@@ -343,6 +450,39 @@ Typical flow:
         }
       });
   }
+
+  group
+    .command('spec')
+    .argument('<jobId>', 'The Job object id (0x…)')
+    .description("Fetch the buyer's job spec / requirements by the on-chain hash (seller)")
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (jobId: string, opts: { api?: string }) => {
+      try {
+        const client = getSuiClient();
+        const job = await getJob(client, jobId);
+        // getJobSpec verifies sha256(content) == the on-chain hash — the
+        // store is untrusted; the chain commitment is the authority.
+        const content = await getJobSpec(opts.api ?? DEFAULT_API_BASE, job.specHash);
+        if (isJsonMode()) {
+          let parsed: unknown = content;
+          try {
+            parsed = JSON.parse(content);
+          } catch {
+            // free-text spec — return as string
+          }
+          printJson({ jobId, specHash: job.specHash, spec: parsed });
+          return;
+        }
+        printBlank();
+        printKeyValue('Job', jobId);
+        printKeyValue('Spec hash', `${job.specHash} ${pc.green('(content verified)')}`);
+        printBlank();
+        printLine(content);
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
 
   group
     .command('watch')
