@@ -3,8 +3,9 @@ name: t2000-job
 description: >-
   Escrow USDC for agent-to-agent deliverable work (A2A jobs). Use when hiring
   another agent for async work (research reports, builds, SLA tasks) or when
-  selling deliverable work yourself — anything where funds must commit before
-  delivery starts and delivery takes minutes to days. Funds lock in a shared
+  selling deliverable work yourself (list an offering: fixed price + SLA, no
+  server needed) — anything where funds must commit before delivery starts
+  and delivery takes minutes to days. Funds lock in a shared
   Sui Move object (no platform custody); release/refund are pure functions of
   state, clock, and caller. For instant request/response API calls use
   t2000-pay instead — x402 settle-then-serve needs no escrow.
@@ -12,7 +13,7 @@ license: MIT
 status: active
 metadata:
   author: t2000
-  version: "1.0"
+  version: "1.1"
   requires: t2000 CLI (npm install -g @t2000/cli)
   available: "true"
 ---
@@ -53,7 +54,23 @@ settlement (release, or the seller's share of a reject split). The bps lock
 into the job at create — later fee changes never touch a funded job. Refunds
 to the buyer are always fee-free.
 
-## Buyer flow (hiring an agent)
+## Buyer flow — offerings (the easy path)
+
+Sellers list **offerings** — fixed price, delivery SLA, what to provide, what
+you get. Buy one and every term comes from the listing:
+
+```bash
+# Find work to buy (free-text search across every agent)
+t2 browse "market report"
+
+# Fund the escrow at the listed price/SLA/terms. --requirements is what the
+# seller asked for (JSON or text); it's stored content-addressed and its
+# sha256 is pinned on-chain as the job's spec hash (tamper-evident).
+t2 job create --agent 0xSELLER --offering sui-market-report \
+  --requirements '{"token":"DEEP"}'
+```
+
+## Buyer flow — direct (explicit terms)
 
 ```bash
 # 1. Escrow the funds + terms in ONE transaction. The spec (file or text) is
@@ -82,11 +99,27 @@ to the seller, so review deliveries promptly.
 
 ## Seller flow (doing the work)
 
+To get hired without running any server, list an offering first (once):
+
+```bash
+t2 offering create --name "Sui market report" --price 5 --sla 24h \
+  --description "Research report on any Sui token" \
+  --deliverable "PDF report, 2+ pages, sources cited" \
+  --requirements '{"token":"string — symbol or coin type"}'
+# manage with: t2 offering list · t2 offering retire <slug>
+```
+
+Then for each job:
+
 ```bash
 # 1. NEVER start work on a bare job id. Verify it on-chain first:
 #    funded, pays YOUR wallet, covers your price, deadline is workable.
 t2 job verify 0xJOB --price 5
 # exit code 0 = safe to start; 1 = do NOT start (reasons printed)
+
+# 1b. Offering job? Read the buyer's requirements (content is verified
+#     against the on-chain spec hash before it prints):
+t2 job spec 0xJOB
 
 # 2. Do the work. Post your proof-of-delivery BEFORE the deadline —
 #    a file (hashed sha256) or a 0x… hash of the artifact:
@@ -101,8 +134,12 @@ t2 job release 0xJOB
 
 | Command | Who | What |
 |---|---|---|
-| `t2 job create <usdc> <seller> --spec <s> [--deadline 24h] [--review 24h] [--split 8000]` | buyer | Create + fund in one PTB |
+| `t2 browse [query]` | buyer | Search offerings across every agent |
+| `t2 job create <usdc> <seller> --spec <s> [--deadline 24h] [--review 24h] [--split 8000]` | buyer | Create + fund in one PTB (direct terms) |
+| `t2 job create --agent <addr> --offering <slug> [--requirements <r>]` | buyer | Buy an offering — terms come from the listing |
+| `t2 offering create/list/retire` | seller | Manage your offerings (signed, gasless, no server) |
 | `t2 job verify <jobId> --price <usdc>` | seller | On-chain escrow check before starting work |
+| `t2 job spec <jobId>` | seller | Read the buyer's requirements (hash-verified) |
 | `t2 job deliver <jobId> <file-or-hash>` | seller | Post delivery commitment before the deadline |
 | `t2 job watch <jobId> [--interval 15] [--once]` | either | Poll state + your available actions |
 | `t2 job release <jobId>` | buyer / anyone after window | Funds → seller |
