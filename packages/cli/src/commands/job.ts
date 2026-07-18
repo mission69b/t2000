@@ -33,6 +33,7 @@ import {
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
 import {
+  fetchJson,
   fetchOffering,
   getJobSpec,
   putJobSpec,
@@ -108,6 +109,47 @@ function printJob(job: Job, me?: string) {
   printKeyValue('Reject split', `${job.rejectSplitBps / 100}% buyer / ${(10_000 - job.rejectSplitBps) / 100}% seller`);
 }
 
+/** One row from GET /v1/jobs — the indexed read-model of on-chain Jobs. */
+export interface IndexedJob {
+  jobId: string;
+  buyer: string;
+  seller: string;
+  amountUsdc: number;
+  state: 'funded' | 'delivered' | 'released' | 'rejected' | 'refunded';
+  deliverByMs: number;
+  reviewWindowMs: number;
+  deliveryHash: string | null;
+  createdAtMs: number;
+  updatedAtMs: number;
+}
+
+export async function fetchSellerJobs(base: string, seller: string): Promise<IndexedJob[]> {
+  const json = await fetchJson(`${base}/jobs?seller=${encodeURIComponent(seller)}&limit=100`);
+  return (json.jobs ?? []) as IndexedJob[];
+}
+
+const TERMINAL_STATES = new Set(['released', 'rejected', 'refunded']);
+
+function inboxHint(job: IndexedJob): string {
+  if (job.state === 'funded') {
+    return `t2 job spec ${truncateAddress(job.jobId)} → do the work → t2 job deliver ${truncateAddress(job.jobId)} <file>`;
+  }
+  if (job.state === 'delivered') {
+    return `waiting on the buyer's review — anyone can \`t2 job release\` once it lapses`;
+  }
+  return '';
+}
+
+function printInboxRow(job: IndexedJob) {
+  const deadline = job.state === 'funded' ? ` · deliver by ${new Date(job.deliverByMs).toISOString()}` : '';
+  printLine(
+    `  ${stateColor(job.state as Job['state'])}  $${job.amountUsdc.toFixed(2)} USDC · from ${truncateAddress(job.buyer)}${deadline}`,
+  );
+  printLine(`  ${pc.dim(job.jobId)}`);
+  const hint = inboxHint(job);
+  if (hint) printLine(`  ${pc.dim('→')} ${hint}`);
+}
+
 async function sponsoredJobVerb(opts: {
   base: string;
   keyPath?: string;
@@ -147,6 +189,7 @@ Typical flow:
   seller  $ t2 job deliver 0xJOB report.pdf
   buyer   $ t2 job release 0xJOB          (or: t2 job reject 0xJOB)
   either  $ t2 job watch 0xJOB
+  seller  $ t2 job watch --mine           (the provider inbox — all your jobs)
 
 Buying an OFFERING (t2 ACP) — price + terms come from the listing:
   buyer   $ t2 browse "market report"
@@ -486,17 +529,77 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
 
   group
     .command('watch')
-    .argument('<jobId>', 'The Job object id (0x…)')
-    .description('Poll the job — state, timers, and what YOU can do right now')
+    .argument('[jobId]', 'The Job object id (0x…) — omit with --mine')
+    .description('Poll a job — or, with --mine, the provider inbox (every job selling to you)')
+    .option('--mine', 'Watch ALL jobs where this wallet is the seller (the provider inbox)')
     .option('--interval <seconds>', 'Poll interval', '15')
     .option('--once', 'Print the current state and exit')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .action(async (jobId: string, opts: { interval: string; once?: boolean; key?: string }) => {
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (jobId: string | undefined, opts: { mine?: boolean; interval: string; once?: boolean; key?: string; api?: string }) => {
       try {
         const agent = await withAgent({ keyPath: opts.key });
         const me = agent.address();
-        const client = getSuiClient();
         const intervalMs = Math.max(5, Number.parseInt(opts.interval, 10) || 15) * 1000;
+
+        // ── The provider inbox: sell with NO server. The event indexer
+        //    (api.t2000.ai /v1/jobs) surfaces every job funding this wallet;
+        //    this loop announces new jobs + state changes and prints the
+        //    seller's next verb at each step.
+        if (opts.mine) {
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const seen = new Map<string, string>(); // jobId → last printed state
+
+          const jobs = await fetchSellerJobs(base, me);
+          if (isJsonMode()) {
+            printJson({ seller: me, jobs });
+            return;
+          }
+          const open = jobs.filter((j) => !TERMINAL_STATES.has(j.state));
+          printBlank();
+          printInfo(`Provider inbox for ${truncateAddress(me)} — ${jobs.length} job(s), ${open.length} open.`);
+          printBlank();
+          for (const job of open) {
+            printInboxRow(job);
+            printBlank();
+          }
+          if (open.length === 0) {
+            printInfo('No open jobs. New hires appear here the moment the escrow funds.');
+            printBlank();
+          }
+          for (const job of jobs) seen.set(job.jobId, job.state);
+          if (opts.once) return;
+
+          for (;;) {
+            await new Promise((r) => setTimeout(r, intervalMs));
+            let latest: IndexedJob[];
+            try {
+              latest = await fetchSellerJobs(base, me);
+            } catch {
+              continue; // transient API blip — keep watching
+            }
+            for (const job of latest) {
+              const prev = seen.get(job.jobId);
+              if (prev === job.state) continue;
+              seen.set(job.jobId, job.state);
+              printBlank();
+              if (prev === undefined && job.state === 'funded') {
+                printSuccess(`New job — $${job.amountUsdc.toFixed(2)} USDC escrowed for you.`);
+              } else {
+                printInfo(`Job ${truncateAddress(job.jobId)}: ${prev ?? 'new'} → ${job.state}`);
+              }
+              printInboxRow(job);
+              printBlank();
+            }
+          }
+        }
+
+        if (!jobId) {
+          printError('Provide a job id — or use --mine for the provider inbox.');
+          process.exitCode = 1;
+          return;
+        }
+        const client = getSuiClient();
 
         for (;;) {
           const job = await getJob(client, jobId);

@@ -79,6 +79,7 @@ Instant request/response calls don't need this — that's `t2 pay`.
 | `t2 job spec <jobId>` | seller | Fetch the buyer's spec/requirements by the on-chain hash — content is verified against the commitment before it prints. |
 | `t2 job deliver <jobId> <file-or-hash>` | seller | Post the proof-of-delivery commitment before the deadline. |
 | `t2 job watch <jobId>` | either | Poll state + what you can do right now; exits when the job settles. |
+| `t2 job watch --mine` | seller | The provider inbox — every job where you're the seller, announced live (new hires + state changes) with your next verb. `--once` prints a snapshot and exits. |
 | `t2 job release <jobId>` | buyer — or anyone once the review window lapses | Funds → seller. |
 | `t2 job reject <jobId>` | buyer, within the review window | Funds split per the ratio agreed at create. |
 | `t2 job refund <jobId>` | anyone, after the deadline with no delivery | Funds → buyer. |
@@ -122,7 +123,8 @@ t2 browse "market report"
 t2 job create --agent 0xSELLER --offering sui-market-report \
   --requirements '{"token":"DEEP"}'
 
-# seller — read the requirements, do the work, deliver
+# seller — get notified, read the requirements, do the work, deliver
+t2 job watch --mine
 t2 job spec 0xJOB
 t2 job deliver 0xJOB report.pdf
 ```

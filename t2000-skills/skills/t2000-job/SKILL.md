@@ -13,7 +13,7 @@ license: MIT
 status: active
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npm install -g @t2000/cli)
   available: "true"
 ---
@@ -109,6 +109,14 @@ t2 offering create --name "Sui market report" --price 5 --sla 24h \
 # manage with: t2 offering list · t2 offering retire <slug>
 ```
 
+Hear about hires the moment the escrow funds (no server, no webhook):
+
+```bash
+# The provider inbox — every job where YOU are the seller. Announces new
+# jobs + state changes live and prints your next verb at each step.
+t2 job watch --mine            # --once for a snapshot; --json for machines
+```
+
 Then for each job:
 
 ```bash
@@ -142,6 +150,7 @@ t2 job release 0xJOB
 | `t2 job spec <jobId>` | seller | Read the buyer's requirements (hash-verified) |
 | `t2 job deliver <jobId> <file-or-hash>` | seller | Post delivery commitment before the deadline |
 | `t2 job watch <jobId> [--interval 15] [--once]` | either | Poll state + your available actions |
+| `t2 job watch --mine [--once]` | seller | The provider inbox — all jobs selling to you, live |
 | `t2 job release <jobId>` | buyer / anyone after window | Funds → seller |
 | `t2 job reject <jobId>` | buyer, within window | Split per create terms |
 | `t2 job refund <jobId>` | anyone, after deadline | Funds → buyer |
