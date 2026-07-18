@@ -24,21 +24,49 @@ import { selectAndSplitCoin } from './coinSelection.js';
  * Browser-safe (no fs / keyManager imports) so store surfaces can build the
  * buyer-side legs on a zkLogin session key.
  *
- * Deployed on Sui mainnet 2026-07-17. Override via env for testnet/dev.
+ * v2 deployed FRESH on Sui mainnet 2026-07-18 (fix-and-redeploy over upgrade —
+ * v1 had no users). v2 adds the 2.5% in-contract protocol fee (D-1,
+ * SPEC_ACP_SUI §7) snapshotted onto the Job at create, FeeConfig versioning,
+ * and bounded windows. Override via env for testnet/dev.
  */
 
-/** The published `a2a_escrow` package id (mainnet). */
+/** The published `a2a_escrow` package id (mainnet, v2). */
 export const A2A_ESCROW_PACKAGE_ID =
   process.env.A2A_ESCROW_PACKAGE_ID ??
-  '0x9e67c380fb7079d793d6d15ff916b24d82779d7119bfa4631863102ed485c0a0';
+  '0x88de0d2a5f36691c0b198637350b9cedfa9ba300ed322851b184bda97859508b';
+
+/** The shared `FeeConfig` object every escrow entry reads (mainnet, v2). */
+export const A2A_ESCROW_FEE_CONFIG_ID =
+  process.env.A2A_ESCROW_FEE_CONFIG_ID ??
+  '0x2800f55a924c408ecdebfd20bafa03257f0830426720e5ad5cb26294e82f038f';
+
+/** `initial_shared_version` of the FeeConfig — lets builders reference the
+ *  shared object without a resolution round-trip (browser + PTB friendly). */
+export const A2A_ESCROW_FEE_CONFIG_VERSION = Number(
+  process.env.A2A_ESCROW_FEE_CONFIG_VERSION ?? 790540335,
+);
 
 const CLOCK_ID = '0x6';
 const MODULE = 'escrow';
+
+/** Immutable reference to the shared FeeConfig for the five escrow verbs. */
+function feeConfigArg(tx: Transaction) {
+  return tx.sharedObjectRef({
+    objectId: A2A_ESCROW_FEE_CONFIG_ID,
+    initialSharedVersion: A2A_ESCROW_FEE_CONFIG_VERSION,
+    mutable: false,
+  });
+}
 
 /** v1 job-value cap in USDC — same instinct as the catalog price cap: the
  *  no-arbitration reject-split is only fair at sizes where neither side is
  *  incentivized to game it (SPEC_A2A_ESCROW §2). */
 export const MAX_JOB_USDC = 50;
+
+/** Contract-enforced create bounds (mirror `escrow.move` v2 — the caps that
+ *  close the v1 unbounded-window overflow lock). */
+export const MAX_REVIEW_WINDOW_MS = 2_592_000_000; // 30 days
+export const MAX_DELIVER_HORIZON_MS = 31_536_000_000; // 365 days
 
 /** Job lifecycle states, mirroring the Move constants. */
 export const JOB_STATES = [
@@ -74,6 +102,9 @@ export interface Job {
   amountUsdc: number;
   /** What's still in the object — 0 after settlement. */
   escrowUsdc: number;
+  /** Protocol fee bps snapshotted at create (taken from seller-bound funds
+   *  at settlement; refunds are fee-free). */
+  feeBps: number;
   specHash: string;
   deliverByMs: number;
   reviewWindowMs: number;
@@ -138,8 +169,11 @@ export function preflightCreateJob(terms: JobTerms): PreflightResult {
   if (terms.deliverByMs <= Date.now()) {
     return preflightFail('INVALID_AMOUNT', 'deliverByMs must be in the future.');
   }
-  if (terms.reviewWindowMs < 0) {
-    return preflightFail('INVALID_AMOUNT', 'reviewWindowMs must be ≥ 0.');
+  if (terms.deliverByMs > Date.now() + MAX_DELIVER_HORIZON_MS) {
+    return preflightFail('INVALID_AMOUNT', 'deliverByMs is more than 365 days out.');
+  }
+  if (terms.reviewWindowMs < 0 || terms.reviewWindowMs > MAX_REVIEW_WINDOW_MS) {
+    return preflightFail('INVALID_AMOUNT', 'reviewWindowMs must be 0–30 days.');
   }
   if (
     !Number.isInteger(terms.rejectSplitBps) ||
@@ -198,6 +232,7 @@ export async function buildCreateJobTx({
       tx.pure.u64(terms.deliverByMs),
       tx.pure.u64(terms.reviewWindowMs),
       tx.pure.u64(terms.rejectSplitBps),
+      feeConfigArg(tx),
       tx.object(CLOCK_ID),
     ],
   });
@@ -209,7 +244,7 @@ function jobCall(jobId: string, fn: 'release' | 'refund' | 'reject'): Transactio
   tx.moveCall({
     target: `${A2A_ESCROW_PACKAGE_ID}::${MODULE}::${fn}`,
     typeArguments: [USDC_TYPE],
-    arguments: [tx.object(jobId), tx.object(CLOCK_ID)],
+    arguments: [tx.object(jobId), feeConfigArg(tx), tx.object(CLOCK_ID)],
   });
   return tx;
 }
@@ -223,6 +258,7 @@ export function buildDeliverJobTx(jobId: string, deliveryHash: string): Transact
     arguments: [
       tx.object(jobId),
       tx.pure.vector('u8', hexToBytes(deliveryHash)),
+      feeConfigArg(tx),
       tx.object(CLOCK_ID),
     ],
   });
@@ -278,6 +314,7 @@ export async function getJob(client: SuiCoreClient, jobId: string): Promise<Job>
     seller: String(json.seller),
     amountUsdc: Number(json.amount) / 10 ** USDC_DECIMALS,
     escrowUsdc: Number(json.escrow) / 10 ** USDC_DECIMALS,
+    feeBps: Number(json.fee_bps ?? 0),
     specHash: bytesToHex((json.spec_hash ?? []) as number[] | Uint8Array),
     deliverByMs: Number(json.deliver_by_ms),
     reviewWindowMs: Number(json.review_window_ms),

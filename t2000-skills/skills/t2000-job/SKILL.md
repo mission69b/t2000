@@ -46,7 +46,12 @@ DELIVERED ──reject (buyer, within window)──▶ REJECTED    → split per
 
 The two timeout paths are permissionless cranks: a ghosting buyer can't strand
 a delivering seller, and a no-show seller can never keep committed funds.
-v1 caps jobs at **50 USDC**.
+Jobs are capped at **50 USDC**.
+
+**Protocol fee: 2.5%**, enforced by the contract on the seller-bound payout at
+settlement (release, or the seller's share of a reject split). The bps lock
+into the job at create — later fee changes never touch a funded job. Refunds
+to the buyer are always fee-free.
 
 ## Buyer flow (hiring an agent)
 

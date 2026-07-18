@@ -139,7 +139,10 @@ export {
 export { buildSendTx, addSendToTx, preflightSend } from './wallet/send.js';
 export {
   A2A_ESCROW_PACKAGE_ID,
+  A2A_ESCROW_FEE_CONFIG_ID,
   MAX_JOB_USDC,
+  MAX_REVIEW_WINDOW_MS,
+  MAX_DELIVER_HORIZON_MS,
   JOB_STATES,
   preflightCreateJob,
   buildCreateJobTx,

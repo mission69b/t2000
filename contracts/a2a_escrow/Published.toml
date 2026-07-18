@@ -2,23 +2,26 @@
 # This file contains metadata about published versions of this package in different environments
 # This file SHOULD be committed to source control
 
-# mainnet entry added by hand — the 2026-07-17 publish executed on-chain but the
-# CLI's checkpoint wait timed out, so the toolchain never wrote it. Verified via
-# sui_getObject: package + UpgradeCap live at these ids.
+# v1 (2026-07-17, superseded by the v2 FRESH publish — founder call 2026-07-18,
+# fix-and-redeploy instead of upgrade since v1 had no users):
+#   mainnet package 0x9e67c380fb7079d793d6d15ff916b24d82779d7119bfa4631863102ed485c0a0
+#   mainnet UpgradeCap 0x95d66005cad76f2fbf5b3d26aee92ee5db02d7577300244ddd29f22085b0c2f1
+#   testnet package 0x164ff7661d3ebd83a11fe9fc8828f3c51971777a6d1c8db11790a794c9cd384c
+
+# v2 (2026-07-18): fresh publish — fee (2.5% in-contract, D-1), FeeConfig
+# versioning, bounded windows, u128 bps math. Publish tx
+# Dxy92ypQWLaDy3nkVSxpsMNBoo82Wj1uDh3zu8TgCFfM. Entry written by hand — the
+# CLI checkpoint wait timed out again (fullnode surfaced the package ~45min
+# after execution). Verified via sui_getObject.
 [published.mainnet]
 chain-id = "35834a8a"
-published-at = "0x9e67c380fb7079d793d6d15ff916b24d82779d7119bfa4631863102ed485c0a0"
-original-id = "0x9e67c380fb7079d793d6d15ff916b24d82779d7119bfa4631863102ed485c0a0"
+published-at = "0x88de0d2a5f36691c0b198637350b9cedfa9ba300ed322851b184bda97859508b"
+original-id = "0x88de0d2a5f36691c0b198637350b9cedfa9ba300ed322851b184bda97859508b"
 version = 1
 toolchain-version = "1.75.2"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x95d66005cad76f2fbf5b3d26aee92ee5db02d7577300244ddd29f22085b0c2f1"
-
-[published.testnet]
-chain-id = "4c78adac"
-published-at = "0x164ff7661d3ebd83a11fe9fc8828f3c51971777a6d1c8db11790a794c9cd384c"
-original-id = "0x164ff7661d3ebd83a11fe9fc8828f3c51971777a6d1c8db11790a794c9cd384c"
-version = 1
-toolchain-version = "1.75.2"
-build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x6837fc2224e16f454c02765e1dbd9153a288a0c5b49332fc9e19900c36b2f5b1"
+upgrade-capability = "0x0c1dbccdab4b562028f922c9cb629280bf2ffed658f8f52b226998ed45a1c071"
+# FeeConfig (shared, initial_shared_version 790540335):
+#   0x2800f55a924c408ecdebfd20bafa03257f0830426720e5ad5cb26294e82f038f
+# AdminCap (deployer wallet):
+#   0xfad1ea559a98292d53690dff01677b3eb7a5ba4ff182d1b5a7aa4554b4bf0fa9

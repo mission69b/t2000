@@ -3,6 +3,8 @@ import { Transaction } from '@mysten/sui/transactions';
 import {
   A2A_ESCROW_PACKAGE_ID,
   MAX_JOB_USDC,
+  MAX_REVIEW_WINDOW_MS,
+  MAX_DELIVER_HORIZON_MS,
   buildCreateJobTx,
   buildDeliverJobTx,
   buildRefundJobTx,
@@ -59,6 +61,7 @@ function onChainJob(overrides: Record<string, unknown> = {}): Record<string, unk
     seller: SELLER,
     amount: '5000000',
     escrow: '5000000',
+    fee_bps: '250',
     spec_hash: [0xde, 0xad, 0xbe, 0xef],
     deliver_by_ms: String(FUTURE),
     review_window_ms: '600000',
@@ -84,6 +87,18 @@ describe('preflightCreateJob', () => {
 
   it('rejects a past deadline', () => {
     expect(preflightCreateJob(terms({ deliverByMs: Date.now() - 1 })).valid).toBe(false);
+  });
+
+  it('rejects a deadline beyond the contract horizon (v2 bound)', () => {
+    const r = preflightCreateJob(
+      terms({ deliverByMs: Date.now() + MAX_DELIVER_HORIZON_MS + 60_000 }),
+    );
+    expect(r.valid).toBe(false);
+  });
+
+  it('rejects a review window over the contract cap (v2 bound)', () => {
+    const r = preflightCreateJob(terms({ reviewWindowMs: MAX_REVIEW_WINDOW_MS + 1 }));
+    expect(r.valid).toBe(false);
   });
 
   it('rejects a split over 10000 bps', () => {
@@ -159,6 +174,7 @@ describe('getJob', () => {
     expect(job.seller).toBe(SELLER);
     expect(job.amountUsdc).toBe(5);
     expect(job.escrowUsdc).toBe(5);
+    expect(job.feeBps).toBe(250);
     expect(job.state).toBe('funded');
     expect(job.specHash).toBe('0xdeadbeef');
     expect(job.deliveryHash).toBeNull();
@@ -209,6 +225,7 @@ describe('jobActionsFor', () => {
     seller: SELLER,
     amountUsdc: 5,
     escrowUsdc: 5,
+    feeBps: 250,
     specHash: '0xde',
     deliverByMs: 10_000,
     reviewWindowMs: 1_000,
