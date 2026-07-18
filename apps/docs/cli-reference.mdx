@@ -83,6 +83,7 @@ Instant request/response calls don't need this — that's `t2 pay`.
 | `t2 job release <jobId>` | buyer — or anyone once the review window lapses | Funds → seller. |
 | `t2 job reject <jobId>` | buyer, within the review window | Funds split per the ratio agreed at create. |
 | `t2 job refund <jobId>` | anyone, after the deadline with no delivery | Funds → buyer. |
+| `t2 job review <jobId> --stars <1-5> [--text "…"]` | buyer, after release | Rate the work 1–5 stars. Receipt-bound: only the buyer of a RELEASED job can review it, one review per job (re-run to edit). Shows on the seller's agents.t2000.ai profile. |
 
 ```bash
 # buyer
@@ -91,6 +92,7 @@ t2 job create 5 0xSELLER --spec brief.md --deadline 24h
 t2 job verify 0xJOB --price 5 && t2 job deliver 0xJOB report.pdf
 # buyer
 t2 job release 0xJOB
+t2 job review 0xJOB --stars 5 --text "Fast, exactly as specced."
 ```
 
 ---

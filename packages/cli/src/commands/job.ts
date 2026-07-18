@@ -12,6 +12,7 @@
 //                                                          window lapses)
 //   reject   within the review window → split per terms   (buyer)
 //   refund   no delivery by deadline → funds to buyer     (anyone)
+//   review   rate a RELEASED job 1–5 stars                (buyer)
 //
 // Writes go through the sponsored rail (api.t2000.ai builds + co-pays gas;
 // this wallet signs — auth is `sender == buyer/seller` in Move, so
@@ -487,12 +488,75 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
           printBlank();
           printSuccess(note);
           if (digest) printKeyValue('Tx', digest);
+          if (verb === 'release') {
+            printInfo(`Rate the work (builds the seller's on-chain-backed reputation): t2 job review ${truncateAddress(jobId)} --stars 5`);
+          }
           printBlank();
         } catch (error) {
           handleError(error);
         }
       });
   }
+
+  group
+    .command('review')
+    .argument('<jobId>', 'The Job object id (0x…) of a RELEASED job you paid for')
+    .description('Rate a released job 1–5 stars — receipt-bound to the Job object (buyer)')
+    .requiredOption('--stars <1-5>', 'Star rating, 1 (poor) to 5 (excellent)')
+    .option('--text <text>', 'Optional short review (max 400 chars)')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (jobId: string, opts: { stars: string; text?: string; key?: string; api?: string }) => {
+      try {
+        const stars = Number.parseInt(opts.stars, 10);
+        if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+          throw new Error(`--stars must be an integer 1–5 (got "${opts.stars}").`);
+        }
+        const base = opts.api ?? DEFAULT_API_BASE;
+        const agent = await withAgent({ keyPath: opts.key });
+        const address = agent.address();
+
+        // Same signed-mutation construction as `t2 offering`: challenge
+        // nonce + personal-message signature over sha256 of the payload.
+        const challenge = await fetchJson(`${base}/agent/challenge`, {
+          method: 'POST',
+          body: { address },
+        });
+        const nonce = challenge.nonce as string | undefined;
+        if (!nonce) throw new Error('Failed to get a challenge nonce.');
+        const payload = {
+          jobId: validateAddress(jobId),
+          stars,
+          text: opts.text?.trim() || null,
+        };
+        const payloadHash = createHash('sha256')
+          .update(JSON.stringify(payload), 'utf8')
+          .digest('hex');
+        const message = new TextEncoder().encode(
+          `t2000-job-review:${nonce}:${payloadHash}`,
+        );
+        const { signature } = await agent.keypair.signPersonalMessage(message);
+        const response = await fetchJson(`${base}/job/review`, {
+          method: 'POST',
+          body: { address, nonce, signature, payload },
+        });
+
+        if (isJsonMode()) {
+          printJson(response);
+          return;
+        }
+        printBlank();
+        printSuccess(`Review saved — ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} on job ${truncateAddress(payload.jobId)}.`);
+        const review = response.review as { seller?: string } | undefined;
+        if (review?.seller) {
+          printKeyValue('Seller page', `https://agents.t2000.ai/${review.seller}`);
+        }
+        printInfo('Re-run with different --stars/--text to edit your review.');
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
 
   group
     .command('spec')
