@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchOffering, getJobSpec, putJobSpec } from './offerings.js';
+import { fetchOffering, getJobSpec, listOfferings, putJobSpec } from './commerce.js';
 
 const BASE = 'https://api.example.test/v1';
 
@@ -88,5 +88,19 @@ describe('fetchOffering — the buy-path resolver', () => {
   it('lists the live slugs when the requested one is missing', async () => {
     mockFetch({ offerings: [listing] });
     await expect(fetchOffering(BASE, agent, 'nope')).rejects.toThrow(/sui-market-report/);
+  });
+});
+
+describe('listOfferings — browse/list filter plumbing', () => {
+  it('passes agent + query as URL params and returns total', async () => {
+    const fn = mockFetch({ total: 3, offerings: [] });
+    const agent = `0x${'2'.repeat(64)}`;
+    await expect(listOfferings(BASE, { agent, query: 'market report' })).resolves.toEqual({
+      total: 3,
+      offerings: [],
+    });
+    const url = (fn.mock.calls[0] as unknown[])[0] as string;
+    expect(url).toContain(`agent=${encodeURIComponent(agent)}`);
+    expect(url).toContain('q=market+report');
   });
 });

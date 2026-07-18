@@ -119,6 +119,17 @@ export {
   verifyJobForSeller,
 } from './wallet/job.js';
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
+
+// Commerce API client (offerings + content-addressed job specs) — browser-safe
+// (WebCrypto hashing, fetch only). Console surfaces share the tamper-verify.
+export {
+  DEFAULT_COMMERCE_API_BASE,
+  fetchOffering,
+  getJobSpec,
+  listOfferings,
+  putJobSpec,
+} from './commerce.js';
+export type { OfferingListing } from './commerce.js';
 export {
   type PreflightResult,
   PREFLIGHT_MAX_AMOUNT,

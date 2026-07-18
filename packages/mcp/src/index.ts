@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createAgent } from './agent.js';
+import { registerCommerceTools } from './tools/commerce.js';
 import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
 import { registerLimitTool } from './tools/limit.js';
@@ -41,6 +42,7 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
 
   registerReadTools(server, agent);
   registerWriteTools(server, agent);
+  registerCommerceTools(server, agent);
   registerLimitTool(server);
   registerChatTools(server);
 

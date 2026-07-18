@@ -72,6 +72,33 @@ describe('buildSendTx — v4 gasless path (USDC)', () => {
       buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0.001, asset: 'USDsui' }),
     ).rejects.toThrow(/Minimum gasless transfer/);
   });
+
+  // The protocol validator rejects gasless withdrawals that leave a dust
+  // remainder (0 < remainder < 0.01). Verified live 2026-07-19: the raw node
+  // error is "Invalid withdraw reservation ... must either use the entire
+  // balance, or leave at least 10000". We surface a clear error pre-build.
+  it('rejects a send that leaves a dust remainder below the 0.01 floor', async () => {
+    const client = mockClient(146_250n); // 0.14625 USDC — the live e2e payout shape
+    await expect(
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0.14, asset: 'USDC' }),
+    ).rejects.toThrow(/entire balance or leave at least 0\.01/);
+  });
+
+  it('allows a send-all (remainder exactly zero)', async () => {
+    const client = mockClient(146_250n);
+    const tx = await buildSendTx({
+      client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0.14625, asset: 'USDC',
+    });
+    expect(tx).toBeInstanceOf(Transaction);
+  });
+
+  it('allows a send leaving exactly the 0.01 floor', async () => {
+    const client = mockClient(146_250n);
+    const tx = await buildSendTx({
+      client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 0.13625, asset: 'USDC',
+    });
+    expect(tx).toBeInstanceOf(Transaction);
+  });
 });
 
 describe('buildSendTx — SUI gas-native path', () => {

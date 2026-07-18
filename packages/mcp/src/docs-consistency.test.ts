@@ -7,6 +7,7 @@ import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
 import { registerLimitTool } from './tools/limit.js';
 import { registerChatTools } from './tools/chat.js';
+import { registerCommerceTools } from './tools/commerce.js';
 import { loadSkillsFromDisk } from './test-load-skills.js';
 import { toPromptName } from './skills-prompts.js';
 
@@ -75,6 +76,7 @@ function registeredToolNames(): Set<string> {
   registerWriteTools(server, agent);
   registerLimitTool(server);
   registerChatTools(server);
+  registerCommerceTools(server, agent);
   return names;
 }
 

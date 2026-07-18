@@ -156,6 +156,14 @@ export {
 } from './wallet/job.js';
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
 export {
+  DEFAULT_COMMERCE_API_BASE,
+  fetchOffering,
+  getJobSpec,
+  listOfferings,
+  putJobSpec,
+} from './commerce.js';
+export type { OfferingListing } from './commerce.js';
+export {
   fetchAllCoins,
   selectAndSplitCoin,
   selectSuiCoin,

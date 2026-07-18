@@ -124,6 +124,28 @@ export async function buildSendTx({
     });
   }
 
+  // Gasless dust floor — the protocol validator rejects a gasless stable
+  // withdrawal that leaves a remainder BELOW the 0.01 floor (it must either
+  // consume the entire balance or leave >= 0.01). Without this check the
+  // build surfaces a cryptic node error ("Invalid withdraw reservation" /
+  // "Unable to perform gas selection") — verified live 2026-07-19. Auto-clip
+  // is intentionally NOT done here: silently sending more than asked is
+  // worse than a clear error (financial-amounts discipline).
+  if (asset === 'USDC' || asset === 'USDsui') {
+    const rawFloor = displayToRaw(GASLESS_MIN_STABLE_AMOUNT, assetInfo.decimals);
+    const remainder = totalBalance - rawAmount;
+    if (remainder > 0n && remainder < rawFloor) {
+      const total = Number(totalBalance) / 10 ** assetInfo.decimals;
+      throw new T2000Error(
+        'INVALID_AMOUNT',
+        `Gasless ${asset} transfers must send the entire balance or leave at least ${GASLESS_MIN_STABLE_AMOUNT} ${asset}. ` +
+          `Sending ${amount} of ${total} leaves ${(total - amount).toFixed(assetInfo.decimals)}. ` +
+          `Send ${total} (everything) or at most ${(total - GASLESS_MIN_STABLE_AMOUNT).toFixed(assetInfo.decimals)}.`,
+        { available: total, required: amount },
+      );
+    }
+  }
+
   if (asset === 'SUI') {
     // Standard gas-native transfer — split from the gas coin, transfer
     // the resulting object. NOT gasless (SUI is not on the protocol
