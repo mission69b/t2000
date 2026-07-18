@@ -24,26 +24,26 @@ import { selectAndSplitCoin } from './coinSelection.js';
  * Browser-safe (no fs / keyManager imports) so store surfaces can build the
  * buyer-side legs on a zkLogin session key.
  *
- * v2 deployed FRESH on Sui mainnet 2026-07-18 (fix-and-redeploy over upgrade —
- * v1 had no users). v2 adds the 2.5% in-contract protocol fee (D-1,
- * SPEC_ACP_SUI §7) snapshotted onto the Job at create, FeeConfig versioning,
- * and bounded windows. Override via env for testnet/dev.
+ * Deployed on Sui mainnet 2026-07-18 (fresh publish after the contract
+ * review — 2.5% in-contract protocol fee (D-1, SPEC_ACP_SUI §7) snapshotted
+ * onto the Job at create, FeeConfig versioning, bounded windows). Override
+ * via env for testnet/dev.
  */
 
-/** The published `a2a_escrow` package id (mainnet, v2). */
+/** The published `a2a_escrow` package id (mainnet). */
 export const A2A_ESCROW_PACKAGE_ID =
   process.env.A2A_ESCROW_PACKAGE_ID ??
-  '0x88de0d2a5f36691c0b198637350b9cedfa9ba300ed322851b184bda97859508b';
+  '0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd';
 
-/** The shared `FeeConfig` object every escrow entry reads (mainnet, v2). */
+/** The shared `FeeConfig` object every escrow entry reads (mainnet). */
 export const A2A_ESCROW_FEE_CONFIG_ID =
   process.env.A2A_ESCROW_FEE_CONFIG_ID ??
-  '0x2800f55a924c408ecdebfd20bafa03257f0830426720e5ad5cb26294e82f038f';
+  '0xddaa25570950b7484dbf20797ebcf75707be9c87cd67bef2a06ed2e81d2c494b';
 
 /** `initial_shared_version` of the FeeConfig — lets builders reference the
  *  shared object without a resolution round-trip (browser + PTB friendly). */
 export const A2A_ESCROW_FEE_CONFIG_VERSION = Number(
-  process.env.A2A_ESCROW_FEE_CONFIG_VERSION ?? 790540335,
+  process.env.A2A_ESCROW_FEE_CONFIG_VERSION ?? 931861903,
 );
 
 const CLOCK_ID = '0x6';
@@ -63,7 +63,7 @@ function feeConfigArg(tx: Transaction) {
  *  incentivized to game it (SPEC_A2A_ESCROW §2). */
 export const MAX_JOB_USDC = 50;
 
-/** Contract-enforced create bounds (mirror `escrow.move` v2 — the caps that
+/** Contract-enforced create bounds (mirror `escrow.move` — the caps that
  *  close the v1 unbounded-window overflow lock). */
 export const MAX_REVIEW_WINDOW_MS = 2_592_000_000; // 30 days
 export const MAX_DELIVER_HORIZON_MS = 31_536_000_000; // 365 days

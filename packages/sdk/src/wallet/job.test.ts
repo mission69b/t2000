@@ -89,14 +89,14 @@ describe('preflightCreateJob', () => {
     expect(preflightCreateJob(terms({ deliverByMs: Date.now() - 1 })).valid).toBe(false);
   });
 
-  it('rejects a deadline beyond the contract horizon (v2 bound)', () => {
+  it('rejects a deadline beyond the contract horizon', () => {
     const r = preflightCreateJob(
       terms({ deliverByMs: Date.now() + MAX_DELIVER_HORIZON_MS + 60_000 }),
     );
     expect(r.valid).toBe(false);
   });
 
-  it('rejects a review window over the contract cap (v2 bound)', () => {
+  it('rejects a review window over the contract cap', () => {
     const r = preflightCreateJob(terms({ reviewWindowMs: MAX_REVIEW_WINDOW_MS + 1 }));
     expect(r.valid).toBe(false);
   });

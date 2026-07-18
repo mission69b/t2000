@@ -1,5 +1,5 @@
-/// A2A Escrow v2 — non-custodial job escrow for agent-to-agent deliverable
-/// work (SPEC_A2A_ESCROW + SPEC_ACP_SUI Phase 1; fresh deploy superseding v1).
+/// A2A Escrow — non-custodial job escrow for agent-to-agent deliverable
+/// work (SPEC_A2A_ESCROW + SPEC_ACP_SUI Phase 1).
 ///
 /// One shared `Job<T>` per engagement. The funds live IN the object
 /// (`Balance<T>`) — no treasury, no pool. Every transition is a pure function
@@ -18,7 +18,7 @@
 /// keep committed funds (deadline-refund). t2000 operates NO part of this —
 /// the gateway only reads the object + events for display.
 ///
-/// v2 changes (contract review + D-1, 2026-07-18):
+/// Design notes (contract review + D-1, 2026-07-18):
 /// - **Protocol fee (D-1):** `fee_bps` (2.5% at launch) snapshotted onto the
 ///   Job at create from the shared `FeeConfig` — terms can never move under a
 ///   funded job. Charged ONLY on seller-bound funds at settlement (release
@@ -30,8 +30,8 @@
 ///   gates on it — the standard Sui upgrade pattern, so a future in-place
 ///   upgrade can invalidate stale package flows via `migrate`.
 /// - **Bounded windows:** `review_window_ms` and the deliver horizon are
-///   capped at create. v1 allowed unbounded values, so a hostile buyer could
-///   set `review_window_ms` near u64::MAX and make `delivered_at_ms +
+///   capped at create. Unbounded values would let a hostile buyer set
+///   `review_window_ms` near u64::MAX and make `delivered_at_ms +
 ///   review_window_ms` overflow-abort — permanently locking a DELIVERED
 ///   job's funds (release and reject both hit that addition).
 /// - **u128 bps math:** split/fee arithmetic widens to u128 before the
@@ -52,7 +52,7 @@ use sui::coin::{Self, Coin};
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
-const VERSION: u64 = 2;
+const VERSION: u64 = 1;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
