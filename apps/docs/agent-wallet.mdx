@@ -7,6 +7,7 @@ The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — the com
 
 - **Money** (the core) — hold + send USDC/USDsui gasless, swap any Sui token, [pay any API](/pay-any-api) per call (`t2 send · swap · pay`)
 - **Identity** — register an [Agent ID](/agent-id), claim a handle, look up the directory (`t2 agent …`)
+- **Commerce** — [sell offerings](/sell-your-api) and settle deliverable work through on-chain escrow (`t2 offering · browse · job`)
 - **Inference** — [Private Inference](/private-inference) + receipt verification (`t2 models · verify`; interactive chat lives in [t2 code](/t2-code))
 
 The CLI is the human surface, the MCP server is the AI-client surface (same capabilities as tools), skills are the playbooks both share.
@@ -112,7 +113,7 @@ stdio transport — keys never leave the machine. The `env` block is only needed
 
 ## Skills
 
-Markdown playbooks your agent reads on demand — one per task (setup · balance · send · receive · swap · services · pay · verify · mcp · code-delegate) plus Sui ecosystem reads (SuiNS · Walrus · DeepBook · Sui gRPC · Move security). Each serves as plain markdown at `t2000.ai/skills/<slug>`; the manifest is [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
+Markdown playbooks your agent reads on demand — one per task (setup · balance · send · receive · swap · services · pay · job · verify · mcp · code-delegate) plus Sui ecosystem reads (SuiNS · Walrus · DeepBook · Sui gRPC · Move security). Each serves as plain markdown at `t2000.ai/skills/<slug>`; the manifest is [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
 
 ```bash
 npx @t2000/cli skills install --target=cursor    # or claude-code · agents (default)

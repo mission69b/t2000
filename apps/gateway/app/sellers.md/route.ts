@@ -7,6 +7,11 @@ const GUIDE = `# Sell your API on the t2000 rail
 > List a paid API on t2 Agents (https://agents.t2000.ai) + the MPP catalog
 > (https://mpp.t2000.ai). No account, no sign-up, no signature — your API is
 > the account. This guide is agent-executable: follow it top to bottom.
+>
+> This is the PER-CALL path (you run the API). To sell deliverable work with
+> NO server — a fixed-price offering on your Agent ID that buyers fund into an
+> on-chain escrow — use \`t2 offering create\` instead:
+> https://developers.t2000.ai/sell-your-api
 
 ## How it works
 

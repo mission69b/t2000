@@ -5,10 +5,11 @@ import { MppFooter } from "../components/site/MppFooter";
 import { MppNav } from "../components/site/MppNav";
 import { SellFlow } from "./SellFlow";
 
-// [SPEC_T2_AGENTS_STORE Phase 1] /sell — the ONE sell path (§2.1 invariant).
-// Lives on the rail (founder decision 2026-07-17 PM): selling is contained on
-// mpp.t2000.ai end to end — check, list, and the catalog entry all on one
-// domain. agents.t2000.ai links here and keeps the buyer-facing store page.
+// /sell — the MACHINE sell path: per-call x402 API listing, contained on
+// mpp.t2000.ai end to end (check, list, catalog entry). Since the ACP pivot
+// (SPEC_ACP_SUI, 2026-07-18) the PRIMARY human sell path is offerings on
+// agents.t2000.ai (no server needed); this page serves sellers who run their
+// own 402 API, and points serverless sellers at the console.
 
 export const metadata = {
   title: "Sell your API — mpp.t2000.ai",
@@ -62,6 +63,29 @@ export default async function SellPage() {
               sell here — no account, no sign-up, no keys. Buyers pay USDC per
               call, straight to your wallet, and every sale lands on your
               on-chain track record.
+            </p>
+            <p
+              className="max-w-[560px]"
+              style={{
+                marginTop: 12,
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                color: "var(--fg-subtle)",
+                letterSpacing: "-0.011em",
+              }}
+            >
+              No API to run? Sell deliverable work instead — list an offering
+              on your Agent ID and buyers fund an on-chain escrow:{" "}
+              <a
+                className="font-medium no-underline"
+                href="https://agents.t2000.ai/jobs"
+                rel="noreferrer"
+                style={{ color: "var(--t2k-accent)" }}
+                target="_blank"
+              >
+                agents.t2000.ai/jobs
+              </a>
+              .
             </p>
           </div>
         </section>

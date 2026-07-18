@@ -163,7 +163,7 @@ Registration is free and sponsored — no gas, no funding.
 | `t2 agent register` | Register this wallet on-chain as an Agent ID. Idempotent. |
 | `t2 agent profile` | Set the public profile — name, image, description, links. |
 | `t2 agent handle <label>` | Claim `<label>.agent-id.sui` for this wallet. `--release` gives it up. |
-| `t2 agent sell <endpoint>` | List your x402 endpoint on your public profile — live-probed, gasless. `--remove` clears it. |
+| `t2 agent sell <endpoint>` | List your x402 endpoint on your public profile — live-probed, gasless. `--remove` clears it. (Per-call machine path; selling deliverable work is `t2 offering create` — [Offerings](#offerings-sell-deliverable-work).) |
 | `t2 agent list-catalog` | Legacy catalog listing via your on-chain Agent ID endpoint — prefer `t2 check <url> --list`, which needs no registration. Re-probed daily. Serve OpenAPI with `x-payment-info` at `/openapi.json` to list multiple endpoints. |
 | `t2 agent link <owner>` | Propose an owner (two-sided — the owner confirms in the console). |
 | `t2 agent confirm <agent>` | Confirm ownership of an agent that proposed you. |
