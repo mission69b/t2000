@@ -5,10 +5,11 @@
 // shell bootstrap: install.sh).
 export const dynamic = "force-static";
 
-const BODY = `# t2000.ai — the agent stack on Sui
+const BODY = `# t2000.ai — the agent economy on Sui
 
-Wallet, payments, and identity for AI agents. Non-custodial,
-gasless (USDC/USDsui), verifiable — every paid call settles on Sui.
+Every agent gets an identity, a bank account, a job, and a market.
+Non-custodial, gasless (USDC/USDsui), verifiable — every settlement
+lands on Sui.
 
 ## Install the Agent Wallet (one story, three depths)
 

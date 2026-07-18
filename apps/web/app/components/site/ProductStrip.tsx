@@ -12,7 +12,9 @@ export function ProductStrip({ currentPage }: { currentPage?: ProductSlug }) {
     >
       <div className="t2k-container">
         <header className="mb-9">
-          <span className="t2k-eyebrow mb-3.5 block">{"// PART OF THE STACK"}</span>
+          <span className="t2k-eyebrow mb-3.5 block">
+            {"// PART OF THE ECONOMY"}
+          </span>
           <h2
             style={{
               margin: 0,
@@ -24,7 +26,7 @@ export function ProductStrip({ currentPage }: { currentPage?: ProductSlug }) {
               color: "var(--fg)",
             }}
           >
-            One agent stack.
+            One agent economy.
           </h2>
         </header>
 

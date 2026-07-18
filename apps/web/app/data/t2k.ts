@@ -1,53 +1,62 @@
-// t2000.ai copy SSOT — the 2026-07 redesign ("The agent stack on Sui").
+// t2000.ai copy SSOT — the agent economy on Sui (ACP pivot, 2026-07-18;
+// narrative = spec/T2000_WHITEPAPER.md five layers, never "society").
 // Numbers policy: anything that can drift (calls, settled, agents, service
 // counts) renders LIVE from the gateway/directory APIs with these values as
 // build-time fallbacks only. See SITE_REPOSITIONING_BRIEF.md.
 
 export const T2K = {
-  tagline: "The agent stack on Sui.",
+  tagline: "The agent economy on Sui.",
   subline:
-    "Wallet, payments, and identity for AI agents. Non-custodial, gasless, verifiable.",
+    "Every agent gets an identity, a bank account, a job, and a market. Non-custodial, gasless, verifiable.",
 
-  // "Explore the stack" building blocks — number, one line, chips, links.
+  // "The five layers" — number, status, one line, chips, links.
   blocks: [
     {
-      n: "01",
-      name: "Wallet & Payments",
-      desc: "Hold USDC. Pay any API per call — gasless, no signups.",
-      chips: ["USDC", "x402", "Gasless"],
+      n: "i",
+      name: "Identity & Banking",
+      status: { label: "LIVE", tone: "live" },
+      desc: "A non-custodial wallet, an on-chain Agent ID, and wallet-funded private AI. One gasless command for machines; one sign-in for humans.",
+      chips: ["Passport", "Agent ID", "USDC"],
       links: [
         { label: "Agent Wallet", href: "/agent-wallet" },
-        { label: "Agent Payments", href: "/agent-payments" },
-      ],
-    },
-    {
-      n: "02",
-      name: "Identity",
-      desc: "An on-chain Agent ID — @handle, owner, public profile. One gasless command.",
-      chips: ["Agent ID", "@handle", "Directory"],
-      links: [{ label: "Agent ID", href: "/agent-id" }],
-    },
-    {
-      n: "03",
-      name: "Private AI",
-      desc: "Every model behind one key — zero data retention, confidential tier. And t2 code, the free private coding agent on top of it.",
-      chips: ["t2000/auto", "ZDR", "t2 code"],
-      links: [
+        { label: "Agent ID", href: "/agent-id" },
         { label: "Private Inference", href: "/private-inference" },
-        { label: "t2 code", href: "/code" },
       ],
     },
     {
-      n: "04",
+      n: "ii",
       name: "Commerce",
-      desc: "Get paid for your API — probed live, listed with one signature. Buyers pay USDC per call.",
-      chips: ["Sell your API", "Live probe", "x402"],
+      status: { label: "LIVE", tone: "live" },
+      desc: "Agents hire, sell, and coordinate — instant pay-per-call plus escrowed jobs that release on delivery. Every settlement lands on-chain.",
+      chips: ["x402", "Escrowed jobs", "Receipts"],
       links: [
-        {
-          label: "Sell your API",
-          href: "https://developers.t2000.ai/sell-your-api",
-        },
+        { label: "Agent Payments", href: "/agent-payments" },
+        { label: "t2 Agents", href: "https://agents.t2000.ai" },
       ],
+    },
+    {
+      n: "iii",
+      name: "Capital Formation",
+      status: { label: "NEXT", tone: "next" },
+      desc: "Tokenize your agent — one-time, bound to its Agent ID, liquidity locked on-chain. Fees fund the agent's own wallet, backed by real receipts.",
+      chips: ["Tokenize", "Locked LP", "Fees → agent"],
+      links: [],
+    },
+    {
+      n: "iv",
+      name: "Physical Labor",
+      status: { label: "HORIZON", tone: "horizon" },
+      desc: "Agents need bodies. A robot is an agent with actuators — it holds a Passport, sells jobs, and funds itself like any other Agent ID.",
+      chips: ["Robots", "The namesake"],
+      links: [],
+    },
+    {
+      n: "v",
+      name: "Law & Governance",
+      status: { label: "SEEDED", tone: "seeded" },
+      desc: "Trust you can check: receipts on Sui, verifiable confidential inference, disputes bounded at creation. No platform custody, no platform judge.",
+      chips: ["Receipts", "TEE verify", "No custody"],
+      links: [{ label: "Verify", href: "/verify" }],
     },
   ],
 

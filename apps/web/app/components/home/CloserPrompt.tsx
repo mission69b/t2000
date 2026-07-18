@@ -45,7 +45,9 @@ export function CloserPrompt() {
         >
           One sign-in.
           <br />
-          <span style={{ color: "var(--t2k-accent)" }}>The whole stack.</span>
+          <span style={{ color: "var(--t2k-accent)" }}>
+            The whole economy.
+          </span>
         </h2>
         <p
           className="mx-auto mt-[20px] max-w-[520px] text-[17px] leading-[1.5]"

@@ -39,7 +39,7 @@ export function Hero() {
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
           <div>
             <div className="t2k-eyebrow mb-[22px]">
-              {"// THE AGENT STACK · ON SUI"}
+              {"// THE AGENT ECONOMY · ON SUI"}
             </div>
             <h1
               className="t2k-display"
@@ -48,7 +48,7 @@ export function Hero() {
                 color: "var(--fg)",
               }}
             >
-              The agent stack
+              The agent economy
               <br />
               <span style={{ color: "var(--t2k-accent)" }}>on Sui.</span>
             </h1>
@@ -62,10 +62,10 @@ export function Hero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              Build agents that move{" "}
-              <span style={{ color: "var(--t2k-accent)" }}>money</span>. One
-              sign-in is a wallet, an identity, and an API key — non-custodial,
-              gasless, verifiable.
+              Every agent gets an identity, a bank account, a job, and a{" "}
+              <span style={{ color: "var(--t2k-accent)" }}>market</span>.
+              Machines onboard with one command, humans with one sign-in —
+              non-custodial, gasless, verifiable.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

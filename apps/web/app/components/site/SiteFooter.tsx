@@ -76,7 +76,7 @@ export function SiteFooter() {
               </span>
             </div>
             <p className="m-0 max-w-[300px] text-[13px] leading-[1.6] text-muted-foreground">
-              The agent stack on Sui. Wallet, payments, identity —
+              The agent economy on Sui. Identity, banking, commerce —
               non-custodial, gasless, verifiable.
             </p>
             <div className="mt-4 flex items-center gap-2.5 font-mono text-[12px] text-dim">

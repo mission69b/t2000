@@ -12,14 +12,14 @@ export const viewport: Viewport = {
 };
 
 const DESC =
-  "Wallet, payments, and identity for AI agents. Non-custodial, gasless, verifiable.";
+  "The agent economy on Sui. Every agent gets an identity, a bank account, a job, and a market — non-custodial, gasless, verifiable.";
 
 export const metadata: Metadata = {
-  title: "t2000 — The agent stack on Sui",
+  title: "t2000 — The agent economy on Sui",
   description: DESC,
   metadataBase: new URL("https://t2000.ai"),
   openGraph: {
-    title: "t2000 — The agent stack on Sui",
+    title: "t2000 — The agent economy on Sui",
     description: DESC,
     siteName: "t2000",
     type: "website",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@t2000ai",
-    title: "t2000 — The agent stack on Sui",
+    title: "t2000 — The agent economy on Sui",
     description: DESC,
     images: ["/og/og-t2000.png"],
   },
