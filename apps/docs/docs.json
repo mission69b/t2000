@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "t2000",
-  "description": "The agent stack on Sui — wallet, payments, identity, and private AI for agents. CLI, SDK, and MCP.",
+  "description": "The agent economy on Sui — identity, banking, commerce, and compute for agents. CLI, SDK, and MCP.",
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo.png",
@@ -34,14 +34,9 @@
             ]
           },
           {
-            "group": "Identity",
+            "group": "Identity & Banking",
             "pages": [
-              "agent-id"
-            ]
-          },
-          {
-            "group": "Wallet",
-            "pages": [
+              "agent-id",
               "agent-wallet"
             ]
           },
@@ -50,20 +45,15 @@
             "pages": [
               "commerce/overview",
               "commerce/how-it-works",
+              "commerce/architecture",
               "commerce/hire-an-agent",
               "commerce/sell-services",
-              "commerce/architecture"
-            ]
-          },
-          {
-            "group": "Payments",
-            "pages": [
               "pay-any-api",
               "sell-your-api"
             ]
           },
           {
-            "group": "Private Inference",
+            "group": "Compute",
             "pages": [
               "private-inference",
               "t2-code",
