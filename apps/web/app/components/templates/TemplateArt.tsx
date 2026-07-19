@@ -1,4 +1,4 @@
-// Pure-CSS preview art for playground entries — one small mock per slug,
+// Pure-CSS preview art for template entries — one small mock per slug,
 // same Frame chrome as the original template previews. No screenshots.
 import { Frame, TemplatePreview } from "./TemplatePreview";
 
@@ -281,7 +281,7 @@ function RadialHeroPreview() {
   );
 }
 
-export function PlaygroundPreview({ slug }: { slug: string }) {
+export function TemplateArt({ slug }: { slug: string }) {
   switch (slug) {
     case "aurora-landing":
       return <GlowHeroPreview line1="Ship your agent." line2="Not your weekend." />;

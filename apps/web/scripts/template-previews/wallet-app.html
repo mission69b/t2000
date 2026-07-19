@@ -1,0 +1,79 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Ledgerline</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#101113;font:15px/1.5 -apple-system,'Inter',sans-serif;color:#fff}
+.stage{display:flex;gap:48px;justify-content:center;align-items:flex-start;padding:56px 40px 64px}
+.phone{width:375px;height:812px;transform:scale(.86);transform-origin:top center;background:#000;border:2px solid #2A2A2A;border-radius:54px;padding:12px;box-shadow:0 12px 24px rgba(0,0,0,.35);position:relative;flex-shrink:0}
+.screen{background:#0C0D0E;border-radius:42px;height:100%;overflow:hidden;position:relative;padding:14px 20px}
+.island{position:absolute;top:24px;left:50%;transform:translateX(-50%);width:126px;height:36px;background:#000;border-radius:18px;z-index:5}
+.homebar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:134px;height:5px;background:rgba(255,255,255,.3);border-radius:3px}
+.status{display:flex;justify-content:space-between;font-size:13px;font-weight:600;padding:8px 8px 0}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-top:44px}
+.hdr .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#34D399)}
+.hdr b{font-size:16px}
+.bell{color:#8A929A}
+.bal{text-align:center;margin:40px 0 8px;font-size:54px;font-weight:600;letter-spacing:-.02em}
+.sub{text-align:center;font-size:13px;color:#8A929A}
+.acts{display:flex;gap:12px;justify-content:center;margin:26px 0 30px}
+.b1{background:#fff;color:#000;border-radius:999px;padding:11px 34px;font-weight:600;font-size:14px}
+.b2{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:11px 30px;font-size:14px}
+.asset{display:flex;align-items:center;gap:12px;background:#16181A;border-radius:16px;padding:14px;margin-bottom:10px}
+.mono{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.asset .r{margin-left:auto;text-align:right;font-family:ui-monospace,monospace;font-size:14px}
+.asset .r small{display:block;color:#8A929A;font-size:11px}
+.tabs{position:absolute;bottom:44px;left:20px;right:20px;display:flex;justify-content:space-around;color:#5A6068;font-size:11px;text-align:center}
+.tabs .on{color:#fff}
+.title{font-size:22px;font-weight:600;margin-top:52px}
+.field{background:#16181A;border-radius:14px;padding:13px 15px;margin-top:16px;display:flex;justify-content:space-between;font-size:14px}
+.field .ok{color:#34D399}
+.amt{text-align:center;font-size:46px;font-weight:600;margin:32px 0 4px}
+.chip{display:block;width:fit-content;margin:0 auto 22px;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:4px 14px;font-size:12px;color:#8A929A}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.pad span{background:#16181A;border-radius:16px;height:58px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.fee{color:#34D399;font-size:12.5px;text-align:center;margin:16px 0 8px}
+.cta{background:#fff;color:#000;border-radius:16px;padding:15px 0;text-align:center;font-weight:600;font-size:15px}
+.month{color:#8A929A;font-size:13px;margin:22px 0 8px}
+.tx{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.tico{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px}
+.tx .l small{display:block;color:#8A929A;font-size:11.5px}
+.tx .v{margin-left:auto;font-family:ui-monospace,monospace;font-size:14px}
+.tx .v.g{color:#34D399}
+.rc{display:inline-block;border:1px solid rgba(255,255,255,.15);border-radius:6px;font-size:10px;color:#8A929A;padding:1px 6px;margin-left:6px}
+.cap{text-align:center;color:#8A929A;font-size:13px;margin-top:14px}
+</style></head><body>
+<div class="stage">
+<div><div class="phone"><div class="island"></div><div class="screen">
+<div class="status"><span>9:41</span><span>◧ ᯤ ▮</span></div>
+<div class="hdr"><div style="display:flex;gap:10px;align-items:center"><div class="av"></div><b>Hey, Ren</b></div><span class="bell">🔔</span></div>
+<div class="bal">$1,284.50</div><div class="sub">USDC on Sui · gasless</div>
+<div class="acts"><span class="b1">Send</span><span class="b2">Receive</span></div>
+<div class="asset"><div class="mono" style="background:#2775CA">$</div><div>USDC<br><small style="color:#8A929A;font-size:11.5px">USD Coin</small></div><div class="r">1,120.00<small>$1,120.00</small></div></div>
+<div class="asset"><div class="mono" style="background:#0BA5EC">S̶</div><div>USDsui<br><small style="color:#8A929A;font-size:11.5px">Sui stable</small></div><div class="r">140.20<small>$140.20</small></div></div>
+<div class="asset"><div class="mono" style="background:#4DA2FF">◎</div><div>SUI<br><small style="color:#8A929A;font-size:11.5px">Gas + swaps</small></div><div class="r">8.31<small>$24.30</small></div></div>
+<div class="tabs"><span class="on">●<br>Home</span><span>◷<br>Activity</span><span>▭<br>Card</span><span>⚙<br>Settings</span></div>
+<div class="homebar"></div></div></div><div class="cap">Balance</div></div>
+
+<div><div class="phone"><div class="island"></div><div class="screen">
+<div class="status"><span>9:41</span><span>◧ ᯤ ▮</span></div>
+<div class="title">Send USDC</div>
+<div class="field"><span>ren.sui → 0x7ce4…a1f2</span><span class="ok">✓</span></div>
+<div class="amt">$25.00</div>
+<span class="chip">Max $1,284</span>
+<div class="pad"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>.</span><span>0</span><span>⌫</span></div>
+<div class="fee">Network fee: $0.00 — sponsored</div>
+<div class="cta">Review send</div>
+<div class="homebar"></div></div></div><div class="cap">Send flow</div></div>
+
+<div><div class="phone"><div class="island"></div><div class="screen">
+<div class="status"><span>9:41</span><span>◧ ᯤ ▮</span></div>
+<div class="title">Activity</div>
+<div class="month">July</div>
+<div class="tx"><div class="tico" style="background:rgba(255,255,255,.08)">↑</div><div class="l">Sent to kai.sui<small>Jul 19 · 9:12 am</small></div><div class="v">−$25.00</div></div>
+<div class="tx"><div class="tico" style="background:rgba(52,211,153,.14);color:#34D399">↓</div><div class="l">Received from Job escrow<span class="rc">receipt ↗</span><small>Jul 18 · 4:40 pm</small></div><div class="v g">+$140.00</div></div>
+<div class="tx"><div class="tico" style="background:rgba(99,102,241,.16);color:#818CF8">⇄</div><div class="l">Swapped SUI → USDC<small>Jul 18 · 11:02 am</small></div><div class="v g">+$24.18</div></div>
+<div class="tx"><div class="tico" style="background:rgba(255,255,255,.08)">↑</div><div class="l">Sent to mia.sui<small>Jul 17 · 6:31 pm</small></div><div class="v">−$12.50</div></div>
+<div class="tx"><div class="tico" style="background:rgba(52,211,153,.14);color:#34D399">↓</div><div class="l">Received from t2 payout<small>Jul 16 · 8:00 am</small></div><div class="v g">+$60.00</div></div>
+<div class="tx"><div class="tico" style="background:rgba(255,255,255,.08)">↑</div><div class="l">Paid fal.ai via x402<small>Jul 15 · 2:22 pm</small></div><div class="v">−$0.04</div></div>
+<div class="homebar"></div></div></div><div class="cap">Activity</div></div>
+</div>
+</body></html>

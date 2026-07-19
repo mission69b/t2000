@@ -1,36 +1,43 @@
-// Playground SSOT — t2000.ai/playground (prompt-first development, founder
-// direction 2026-07-19: motionsites-style gallery, every card is a copyable
-// build prompt). Categories: Sites · Apps · Agents · Components. The three
-// create-t2-app templates live here too (their scaffold command is the
-// `extra`); everything else is prompt-only — paste into t2 code (or any
-// coding agent on t2000/auto) and build.
+// Templates SSOT — t2000.ai/templates (prompt-first, founder direction
+// 2026-07-19: motionsites-style gallery, every card is a copyable build
+// prompt). Categories: Sites · Apps · Agents · Components. The three
+// create-t2-app starters live here too (their scaffold command is the
+// `scaffold` field); everything else is prompt-only — paste into t2 code
+// (or any coding agent on t2000/auto) and build.
 
 export const CREATE_CMD = "npm create t2-app@latest";
 export const T2CODE_CMD = "npm i -g @t2000/code && t2code";
 
-export type PlaygroundCategory = "site" | "app" | "agent" | "component";
+export type TemplateCategory = "site" | "app" | "agent" | "component";
 
-export const CATEGORY_LABELS: Record<PlaygroundCategory, string> = {
+export const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   site: "Sites",
   app: "Apps",
   agent: "Agents",
   component: "Components",
 };
 
-export interface PlaygroundEntry {
+export interface TemplateEntry {
   slug: string;
   name: string;
-  category: PlaygroundCategory;
+  category: TemplateCategory;
   oneLiner: string;
   /** The full copyable build prompt. */
   prompt: string;
-  /** Optional scaffold command (the old templates path). */
+  /** Optional scaffold command (the create-t2-app starters). */
   scaffold?: string;
+  /**
+   * Full-page screenshot of the built result (public path). Cards show a
+   * top-crop; the modal shows the whole scrollable capture. Entries without
+   * one fall back to the CSS-art preview.
+   */
+  image?: string;
 }
 
-export const PLAYGROUND: PlaygroundEntry[] = [
+export const TEMPLATES: TemplateEntry[] = [
   {
     slug: "aurora-landing",
+    image: "/template-previews/aurora-landing.png",
     name: "Aurora Landing",
     category: "site",
     oneLiner:
@@ -82,6 +89,7 @@ react, react-dom, framer-motion, tailwindcss, vite, typescript. Mobile-first; he
   },
   {
     slug: "founder-portfolio",
+    image: "/template-previews/founder-portfolio.png",
     name: "Founder Portfolio",
     category: "site",
     oneLiner:
@@ -121,6 +129,7 @@ DEPENDENCIES: react, framer-motion, tailwindcss, vite, typescript. Fluid type wi
   },
   {
     slug: "wallet-app",
+    image: "/template-previews/wallet-app.png",
     name: "Wallet App Showcase",
     category: "app",
     oneLiner:
@@ -256,6 +265,7 @@ Dark theme (#0B0C0D), hairline borders, Inter; balance amounts font-mono. Empty 
   },
   {
     slug: "terminal-hero",
+    image: "/template-previews/terminal-hero.png",
     name: "Terminal Hero",
     category: "component",
     oneLiner:
@@ -277,6 +287,7 @@ Export the component with all copy overridable via props; include a usage exampl
   },
   {
     slug: "stack-cards",
+    image: "/template-previews/stack-cards.png",
     name: "Sticky-Stack Cards",
     category: "component",
     oneLiner:
@@ -297,6 +308,7 @@ DETAILS
   },
   {
     slug: "radial-hero",
+    image: "/template-previews/radial-hero.png",
     name: "Radial-Glow Hero",
     category: "component",
     oneLiner:

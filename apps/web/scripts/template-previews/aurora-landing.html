@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Aurora</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0A0B;color:#EDEDED;font:16px/1.5 -apple-system,'Inter',sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.glow-text{background:linear-gradient(180deg,#FFF 0%,#9BA3AF 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+nav{position:sticky;top:0;height:64px;display:flex;align-items:center;background:rgba(10,10,11,.75);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.08)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;width:100%}
+nav .links{display:flex;gap:28px;font-size:14px;color:#9BA3AF}
+.pill{border-radius:999px;padding:6px 16px;font-size:14px;font-weight:500}
+.pill.solid{background:#fff;color:#000}
+.pill.ghost{border:1px solid rgba(255,255,255,.14);color:#EDEDED}
+.hero{min-height:92vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden}
+.hero .glow{position:absolute;width:720px;height:460px;top:12%;left:50%;transform:translateX(-50%);background:radial-gradient(46% 46% at 50% 40%,rgba(99,102,241,.22) 0%,transparent 70%);filter:blur(24px)}
+.eyebrow{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:5px 14px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9BA3AF}
+.dot{width:6px;height:6px;border-radius:50%;background:#34D399}
+.hero h1{position:relative;font-size:84px;font-weight:800;line-height:1.02;letter-spacing:-.03em;margin:26px 0 18px}
+.hero p{position:relative;max-width:560px;color:#9BA3AF;font-size:18px}
+.hero .ctas{position:relative;display:flex;gap:12px;margin-top:28px}
+.install{position:relative;margin-top:26px;display:inline-flex;align-items:center;gap:14px;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 16px;font-family:ui-monospace,monospace;font-size:14px;color:#EDEDED}
+.install .copy{color:#6B7280;font-size:12px}
+.marquee{padding:56px 0;text-align:center}
+.marquee .label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6B7280;margin-bottom:24px}
+.marquee .logos{display:flex;gap:44px;justify-content:center;flex-wrap:wrap;font-weight:600;opacity:.45}
+.feature{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;padding:96px 0}
+.feature .eyebrow2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#818CF8;margin-bottom:12px}
+.feature h2{font-size:36px;font-weight:700;letter-spacing:-.02em;margin-bottom:14px}
+.feature p{color:#9BA3AF}
+.feature a{color:#EDEDED;font-size:14px;display:inline-block;margin-top:14px}
+.mock{border:1px solid rgba(255,255,255,.1);border-radius:12px;background:#101113;overflow:hidden}
+.mock .bar{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.mock .bar span{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.18)}
+.mock .body{padding:20px;font-family:ui-monospace,monospace;font-size:13px;line-height:1.9;color:#9BA3AF;min-height:200px}
+.mock .g{color:#34D399}.mock .cur{display:inline-block;width:7px;height:14px;background:#9BA3AF;vertical-align:-2px}
+.row{display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06);padding:9px 2px;font-size:13px}
+.row .b{color:#34D399;border:1px solid rgba(52,211,153,.4);border-radius:5px;padding:0 7px;font-size:11px}
+.row.hl{background:rgba(99,102,241,.08)}
+.metrics{border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);padding:56px 0}
+.metrics .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center}
+.metrics .n{font-family:ui-monospace,monospace;font-size:38px;color:#fff}
+.metrics .l{font-size:14px;color:#6B7280;margin-top:6px}
+.pricing{padding:96px 0}
+.pricing h2{text-align:center;font-size:44px;font-weight:700;letter-spacing:-.02em;margin-bottom:48px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{border:1px solid rgba(255,255,255,.1);border-radius:16px;background:#0F1011;padding:28px}
+.card.pop{border-color:#6366F1;position:relative}
+.card .chip{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#6366F1;color:#fff;font-size:11px;border-radius:999px;padding:3px 12px}
+.card h3{font-size:18px}.card .price{font-size:36px;font-weight:700;margin:10px 0 18px}
+.card li{list-style:none;display:flex;gap:9px;color:#9BA3AF;font-size:14px;padding:5px 0}
+.card li:before{content:"✓";color:#34D399}
+.card .cta{display:block;text-align:center;margin-top:22px;border-radius:999px;padding:9px 0;font-size:14px;font-weight:500}
+.closer{padding:110px 0 70px;text-align:center}
+.closer h2{font-size:52px;font-weight:800;letter-spacing:-.03em;margin-bottom:14px}
+.closer p{color:#9BA3AF;margin-bottom:26px}
+footer{border-top:1px solid rgba(255,255,255,.08);padding:48px 0 32px}
+footer .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;font-size:14px;color:#6B7280}
+footer .cols b{display:block;color:#EDEDED;margin-bottom:10px;font-weight:600}
+footer .bot{display:flex;justify-content:space-between;margin-top:40px;font-size:13px;color:#6B7280}
+.status{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:4px 12px}
+</style></head><body>
+<nav><div class="wrap"><b>aurora</b><div class="links"><span>Product</span><span>Pricing</span><span>Docs</span><span>Changelog</span></div><div style="display:flex;gap:10px;align-items:center"><span style="color:#9BA3AF;font-size:14px">Sign in</span><span class="pill solid">Get started</span></div></div></nav>
+<section class="hero"><div class="glow"></div>
+<span class="eyebrow"><span class="dot"></span>Now in public beta</span>
+<h1 class="glow-text">Ship your agent.<br>Not your weekend.</h1>
+<p>Deploy, observe, and scale autonomous agents from one command. Zero config, scale-to-zero pricing.</p>
+<div class="ctas"><span class="pill solid">Start building</span><span class="pill ghost">View docs →</span></div>
+<div class="install"><span style="color:#6B7280">$</span> npm create aurora@latest <span class="copy">⧉ copy</span></div>
+</section>
+<section class="marquee"><div class="label">Trusted by teams shipping on the edge</div>
+<div class="logos"><span>VECTORIA</span><span>northbeam</span><span>Kestrel</span><span>OPALINE</span><span>drift.co</span><span>Halcyon</span><span>PARSEC</span><span>mono</span><span>Fathom</span><span>quorra</span></div></section>
+<div class="wrap">
+<section class="feature"><div><div class="eyebrow2">Deploy</div><h2>Deploy in one command</h2><p>Push an agent to production with a single CLI call. Builds, provisions, and routes automatically — no YAML, no dashboard safari.</p><a>Learn more →</a></div>
+<div class="mock"><div class="bar"><span></span><span></span><span></span></div><div class="body">$ aurora deploy<br><span class="g">✓</span> built in 1.8s<br><span class="g">✓</span> live at agent.aurora.run <span class="cur"></span></div></div></section>
+<section class="feature"><div class="mock"><div class="bar"><span></span><span></span><span></span></div><div class="body">
+<div class="row"><span>run_9f31 · plan</span><span class="b">200</span></div>
+<div class="row hl"><span>run_9f32 · execute</span><span class="b">200</span></div>
+<div class="row"><span>run_9f33 · review</span><span class="b">200</span></div>
+<div class="row"><span>run_9f34 · deliver</span><span class="b">200</span></div></div></div>
+<div><div class="eyebrow2">Observe</div><h2>Observe every run</h2><p>Every step, token, and tool call is traced. Filter by outcome, replay any run, and see exactly where budgets go.</p><a>Learn more →</a></div></section>
+<section class="feature"><div><div class="eyebrow2">Scale</div><h2>Scale to zero</h2><p>Agents sleep when idle and wake in milliseconds. You pay for work done, not servers parked.</p><a>Learn more →</a></div>
+<div class="mock"><div class="bar"><span></span><span></span><span></span></div><div class="body"><svg width="100%" height="170" viewBox="0 0 400 170"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6366F1" stop-opacity=".5"/><stop offset="1" stop-color="#6366F1" stop-opacity="0"/></linearGradient></defs><path d="M0 150 C60 140 90 60 150 70 C210 80 240 20 300 30 C340 37 370 15 400 20 L400 170 L0 170 Z" fill="url(#g)"/><path d="M0 150 C60 140 90 60 150 70 C210 80 240 20 300 30 C340 37 370 15 400 20" fill="none" stroke="#818CF8" stroke-width="2"/></svg></div></div></section>
+</div>
+<section class="metrics"><div class="wrap"><div><div class="n">99.99%</div><div class="l">uptime</div></div><div><div class="n">40ms</div><div class="l">p50</div></div><div><div class="n">2M</div><div class="l">runs/day</div></div><div><div class="n">0</div><div class="l">config</div></div></div></section>
+<section class="pricing"><div class="wrap"><h2>Pricing</h2><div class="cards">
+<div class="card"><h3>Free</h3><div class="price">$0</div><ul><li>1 agent</li><li>10k runs/mo</li><li>Community support</li><li>7-day traces</li><li>Scale to zero</li></ul><span class="cta pill ghost">Start free</span></div>
+<div class="card pop"><span class="chip">Popular</span><h3>Pro</h3><div class="price">$20<span style="font-size:15px;color:#6B7280">/mo</span></div><ul><li>Unlimited agents</li><li>1M runs/mo</li><li>Priority support</li><li>90-day traces</li><li>Custom domains</li></ul><span class="cta pill solid">Get Pro</span></div>
+<div class="card"><h3>Enterprise</h3><div class="price">Custom</div><ul><li>SSO + audit log</li><li>Unlimited runs</li><li>Dedicated support</li><li>Unlimited traces</li><li>SLA 99.99%</li></ul><span class="cta pill ghost">Contact us</span></div>
+</div></div></section>
+<section class="closer"><h2 class="glow-text">Start shipping tonight.</h2><p>One command between you and a running agent.</p><span class="pill solid">Start building</span></section>
+<footer><div class="wrap"><div class="cols">
+<div><b>Product</b>Features<br>Pricing<br>Changelog</div>
+<div><b>Company</b>About<br>Blog<br>Careers</div>
+<div><b>Resources</b>Docs<br>API<br>Status</div>
+<div><b>Legal</b>Privacy<br>Terms<br>Security</div></div>
+<div class="bot"><span>© Aurora</span><span class="status"><span class="dot"></span>All systems normal</span></div></div></footer>
+</body></html>

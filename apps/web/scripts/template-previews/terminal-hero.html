@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>TerminalHero</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0A0B;color:#EDEDED;font:16px/1.5 -apple-system,'Inter',sans-serif}
+.hero{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;max-width:1120px;margin:0 auto;padding:60px 24px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:5px 14px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9BA3AF}
+.dot{width:6px;height:6px;border-radius:50%;background:#34D399}
+h1{font-size:60px;font-weight:800;line-height:1.05;letter-spacing:-.03em;margin:22px 0 16px;background:linear-gradient(180deg,#FFF 0%,#9BA3AF 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{color:#9BA3AF;font-size:17px;max-width:440px}
+.ctas{display:flex;gap:12px;margin-top:26px}
+.pill{border-radius:999px;padding:9px 22px;font-size:14px;font-weight:500}
+.pill.solid{background:#fff;color:#000}
+.pill.ghost{border:1px solid rgba(255,255,255,.14)}
+.term{border:1px solid rgba(255,255,255,.12);border-radius:14px;background:#0D0E10;overflow:hidden}
+.term .bar{display:flex;align-items:center;gap:6px;background:#121316;padding:11px 15px}
+.term .bar span{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.18)}
+.term .bar em{font-style:normal;font-family:ui-monospace,monospace;font-size:12px;color:#6B7280;margin-left:6px}
+.term .body{padding:22px;font-family:ui-monospace,monospace;font-size:13.5px;line-height:2;min-height:280px;color:#9BA3AF}
+.p{color:#EDEDED}.g{color:#34D399}
+.cur{display:inline-block;width:8px;height:15px;background:#EDEDED;vertical-align:-2px;animation:b 1s steps(1) infinite}
+@keyframes b{50%{opacity:0}}
+</style></head><body>
+<section class="hero">
+<div>
+<span class="eyebrow"><span class="dot"></span>Component · TerminalHero</span>
+<h1>Show, don't tell.<br>Type it live.</h1>
+<p class="sub">A hero section with a self-typing terminal — the dev-tool landing classic, as one reusable component.</p>
+<div class="ctas"><span class="pill solid">Get the component</span><span class="pill ghost">View props →</span></div>
+</div>
+<div class="term"><div class="bar"><span></span><span></span><span></span><em>~/demo</em></div>
+<div class="body">
+<div><span class="g">$</span> <span class="p">npm i -g @t2000/cli</span></div>
+<div>added 1 package in 2s</div>
+<div><span class="g">$</span> <span class="p">t2 init</span></div>
+<div class="g">✓ wallet created · agent id #241</div>
+<div><span class="g">$</span> <span class="p">t2 pay https://…/chat/completions</span></div>
+<div class="g">✓ paid $0.02 · 200 OK<span class="cur"></span></div>
+</div></div>
+</section>
+</body></html>

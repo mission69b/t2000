@@ -136,12 +136,12 @@ export function CodeHero() {
               </a>
             </div>
             <Link
-              href="/playground"
+              href="/templates"
               className="font-mono text-[12.5px] no-underline"
               style={{ color: "var(--fg-muted)" }}
             >
               Nothing to build yet? Copy a prompt from the{" "}
-              <span style={{ color: "var(--t2k-accent)" }}>Playground →</span>
+              <span style={{ color: "var(--t2k-accent)" }}>Templates →</span>
             </Link>
             <div className="flex flex-wrap gap-[22px]">
               {(

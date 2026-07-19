@@ -80,11 +80,11 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           </button>
 
           <Link
-            href="/playground"
+            href="/templates"
             onMouseEnter={() => setOpen(false)}
             className={linkBase}
           >
-            Playground
+            Templates
           </Link>
 
           <a
