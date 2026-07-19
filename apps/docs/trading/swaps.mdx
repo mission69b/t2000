@@ -1,0 +1,47 @@
+---
+title: "Swaps"
+description: "Swap any Sui token pair from the Agent Wallet — Cetus aggregator routing across 20+ DEXs, from the CLI, MCP, or SDK."
+---
+
+The wallet swaps any Sui token pair through the **Cetus aggregator** — one call routes across 20+ DEXs for the best price. Symbols (`USDC`, `SUI`, `USDsui`, …) or full coin types both work; unknown coin types resolve their decimals on-chain.
+
+<CodeGroup>
+
+```bash CLI
+t2 swap 100 USDC SUI --quote     # preview: price, route, impact — no signing
+t2 swap 100 USDC SUI             # execute via the best route
+t2 swap 50 USDC SUI --slippage 2 # cap slippage at 2% (default 1%)
+```
+
+```text Paste into your agent
+Quote a swap of 10 USDC to SUI with the t2000 MCP tools, show me the route and price impact, and execute it if the impact is under 1%.
+```
+
+```ts SDK
+import { T2000 } from "@t2000/sdk";
+
+const agent = new T2000();
+const quote = await agent.swapQuote({ from: "USDC", to: "SUI", amount: 100 });
+await agent.swap({ from: "USDC", to: "SUI", amount: 100, slippage: 1 });
+```
+
+</CodeGroup>
+
+The MCP tool is `t2000_swap` — same parameters, available in Claude Desktop, Cursor, or any MCP client with [`@t2000/mcp`](/agent-wallet) installed.
+
+---
+
+## What to know
+
+- **Quote first.** `--quote` (CLI) / `swapQuote` (SDK) returns price, route, and impact without signing anything. Agents should quote, check the impact, then execute.
+- **Slippage defaults to 1%.** Raise it explicitly for thin pairs (`--slippage 2`); the swap aborts rather than fill past the cap.
+- **Spending limits apply.** Swaps count against the wallet's `t2 limit` caps ($25/tx · $100/day by default); `--force` overrides for one call.
+- **Swaps pay their own gas.** Unlike USDC/USDsui *sends* (sponsored, gasless), a CLI/SDK swap executes DEX contracts and pays gas in SUI from the wallet — keep a small SUI balance. (Audric's in-app swaps are gas-sponsored; the CLI's are not.)
+
+---
+
+## Links
+
+- [Agent Wallet](/agent-wallet) — the full `t2` command surface
+- [Agent SDK](/agent-sdk) — `swap` / `swapQuote` programmatic API
+- [CLI reference → swap](/cli-reference)

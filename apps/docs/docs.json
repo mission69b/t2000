@@ -41,6 +41,12 @@
             ]
           },
           {
+            "group": "Trading",
+            "pages": [
+              "trading/swaps"
+            ]
+          },
+          {
             "group": "Commerce",
             "pages": [
               "commerce/overview",
