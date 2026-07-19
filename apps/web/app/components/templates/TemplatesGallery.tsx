@@ -9,17 +9,9 @@ import {
   CATEGORY_LABELS,
   T2CODE_CMD,
   TEMPLATES,
-  type TemplateCategory,
   type TemplateEntry,
 } from "../../data/templates";
 import { CopyButton } from "../ui/CopyButton";
-
-const FILTERS: Array<{ id: TemplateCategory | "all"; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "site", label: CATEGORY_LABELS.site },
-  { id: "app", label: CATEGORY_LABELS.app },
-  { id: "component", label: CATEGORY_LABELS.component },
-];
 
 function CardCopy({ payload }: { payload: string }) {
   const [copied, setCopied] = useState(false);
@@ -172,38 +164,14 @@ function PreviewModal({
 }
 
 export function TemplatesGallery() {
-  const [filter, setFilter] = useState<TemplateCategory | "all">("all");
   const [open, setOpen] = useState<TemplateEntry | null>(null);
 
-  const entries =
-    filter === "all" ? TEMPLATES : TEMPLATES.filter((e) => e.category === filter);
-
+  // Small curated set (founder pass 2026-07-20) — no filter pills until the
+  // catalog grows enough to need them.
   return (
     <>
-      <div className="mt-12 flex flex-wrap items-center justify-center gap-2">
-        {FILTERS.map((f) => {
-          const active = filter === f.id;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              className="cursor-pointer rounded-full border text-[13px] font-medium transition-colors"
-              style={{
-                padding: "6px 15px",
-                background: active ? "var(--fg)" : "transparent",
-                borderColor: active ? "var(--fg)" : "var(--ds-gray-alpha-400)",
-                color: active ? "var(--bg)" : "var(--fg-muted)",
-              }}
-            >
-              {f.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-9 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {entries.map((e) => (
+      <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {TEMPLATES.map((e) => (
           <div
             key={e.slug}
             role="button"

@@ -8,12 +8,11 @@
 
 export const T2CODE_CMD = "npm i -g @t2000/code && t2code";
 
-export type TemplateCategory = "site" | "app" | "component";
+export type TemplateCategory = "site" | "app";
 
 export const CATEGORY_LABELS: Record<TemplateCategory, string> = {
-  site: "Sites",
-  app: "Apps",
-  component: "Components",
+  site: "Site",
+  app: "App",
 };
 
 export interface TemplateEntry {
@@ -205,46 +204,6 @@ DEPENDENCIES
 react, react-dom, framer-motion, tailwindcss, vite, typescript. Mobile-first; heavy use of clamp() for fluid type; test at 375px, 768px, 1440px.`,
   },
   {
-    slug: "founder-portfolio",
-    image: "/template-previews/founder-portfolio.png",
-    name: "Founder Portfolio",
-    category: "site",
-    oneLiner:
-      "A bold typographic portfolio — gradient mega-headline, scroll-reveal about, sticky-stacking project cards.",
-    prompt: `Build a one-page portfolio for a fictional maker called "Ren" using React, TypeScript, Tailwind CSS, and Framer Motion. Dark theme (#0C0C0D background), font Space Grotesk (Google Fonts, 300–700). Page title: "Ren — builds things that ship".
-
-GLOBAL STYLES
-- .mega-text: gradient text linear-gradient(180deg, #6A7078 0%, #C9D4DC 100%), background-clip text, transparent fill.
-- Body text color #D3DCE3; muted #7C848C.
-- overflow-x: clip on the main wrapper.
-
-SECTION ORDER: Hero → Marquee strip → About → Work (sticky stack) → Contact.
-
-1. HERO (h-screen, flex column)
-- Top nav: justify-between row of 4 uppercase links (Work, About, Notes, Contact), tracking-wider, text-sm md:text-base, color #D3DCE3, hover opacity-70.
-- Mega headline h1: "REN BUILDS" — .mega-text, font-bold, uppercase, whitespace-nowrap, leading-none, text-[15vw], w-full, wrapped in overflow-hidden.
-- Bottom bar (justify-between, items-end, pb-10): left, a max-w-[240px] uppercase font-light paragraph "independent maker shipping agents, sites and tools since 2019"; right, a pill CTA "Say hi →" (rounded-full, border-2 #D3DCE3, uppercase, tracking-widest, hover bg-white/10).
-- FadeIn stagger: nav (delay 0, y -16), headline (0.15, y 40), left text (0.35, y 16), CTA (0.5, y 16).
-
-2. MARQUEE STRIP
-A single row of uppercase font-mono text items separated by "·" ("TYPESCRIPT · RUST · SUI · AGENTS · DESIGN SYSTEMS · CLI TOOLS ·"), duplicated for a seamless infinite CSS marquee (30s linear), border-y rgba(255,255,255,0.08), py-4, text #7C848C.
-
-3. ABOUT (min-h-screen, centered)
-- Heading "ABOUT" — .mega-text, clamp(3rem, 12vw, 150px), centered.
-- Scroll-driven paragraph: character-by-character opacity reveal using Framer Motion useScroll on the paragraph (offset ['start 0.8','end 0.25']); each char animates opacity 0.2 → 1 by its index. Text (~40 words) about shipping small sharp tools. max-w-[560px], centered, clamp(1rem, 2vw, 1.3rem).
-- Four decorative rotated squares (CSS only, border rgba(255,255,255,0.12), 80–140px) absolutely placed near the corners, each FadeIn from the nearest edge (x ±60, duration 0.9, staggered 0.1).
-
-4. WORK — STICKY-STACKING CARDS
-Heading "WORK" (.mega-text, same scale). Then 3 project cards that stack as you scroll: each card wrapped in an h-[85vh] container, the card itself sticky top-24, offset top: index*24px. Scale trick: targetScale = 1 − (total − 1 − index) * 0.04 via useScroll + useTransform on the section.
-Card: rounded-[36px], border-2 #2A2D31, background #101113, p-6 md:p-10. Inside: huge index number ("01") font-bold clamp(3rem, 9vw, 120px) opacity-20; project name (clamp(1.4rem, 3vw, 2.4rem), font-medium); one-line description (muted); a "Visit →" ghost pill. Right side: a pure-CSS abstract thumbnail — a 16:10 rounded-2xl panel with a unique CSS gradient per project (indigo/emerald/amber radial mixes), no images.
-Projects: 01 "Relay" (a streaming chat client) · 02 "Ledgerline" (a wallet dashboard) · 03 "Fieldnotes" (a markdown notes PWA).
-
-5. CONTACT
-Full-height centered closer: "LET'S BUILD" (.mega-text), a mailto pill CTA, and a tiny footer row (© year, GitHub / X links, uppercase, text-xs, muted).
-
-DEPENDENCIES: react, framer-motion, tailwindcss, vite, typescript. Fluid type with clamp() everywhere; graceful from 360px to ultrawide.`,
-  },
-  {
     slug: "wallet-app",
     image: "/template-previews/wallet-app.png",
     name: "Wallet App Showcase",
@@ -273,50 +232,5 @@ DETAILS
 - Add a small caption under each phone: screen name, 13px, #8A929A, centered.
 
 DEPENDENCIES: react, tailwindcss, vite, typescript. No external images, no icon fonts — inline SVGs only.`,
-  },
-  {
-    slug: "terminal-hero",
-    image: "/template-previews/terminal-hero.png",
-    name: "Terminal Hero",
-    category: "component",
-    oneLiner:
-      "A hero section with a live-typing terminal window — the dev-tool landing classic.",
-    prompt: `Build a reusable React + TypeScript + Tailwind hero section component <TerminalHero /> with a self-typing terminal.
-
-LAYOUT
-Two-column grid (lg:grid-cols-[1.05fr_0.95fr], gap-12, items-center, min-h-[80vh]) on a #0A0A0B background. Left: eyebrow pill, H1 with gradient text (linear-gradient(180deg,#FFF 0%,#9BA3AF 100%), background-clip text), a muted subline, two pill CTAs. Right: the terminal.
-
-TERMINAL WINDOW
-Rounded-xl, border rgba(255,255,255,0.12), background #0D0E10, header bar (#121316) with three 8px dots and a font-mono title ("~/demo"). Body: font-mono text-[13px], leading-7, p-5, min-h-[280px].
-
-TYPING ENGINE
-Props: lines: Array<{ text: string; kind: "cmd" | "out" | "ok" }>, speed (ms/char, default 24), startDelay. Behavior: types each "cmd" line char-by-char behind a "$ " prompt with a blinking block cursor (CSS steps() animation); "out" lines appear instantly after their command finishes; "ok" lines render green (#34D399) prefixed with "✓". Loop: after the last line, hold 3s, fade the body to empty (300ms), restart. Respect prefers-reduced-motion: render all lines statically.
-
-Default demo lines: "npm i -g @t2000/cli" → "added 1 package in 2s" → "t2 init" → "✓ wallet created · agent id #241" → "t2 pay https://…/chat/completions" → "✓ paid $0.02 · 200 OK".
-
-Export the component with all copy overridable via props; include a usage example in App.tsx.`,
-  },
-  {
-    slug: "radial-hero",
-    image: "/template-previews/radial-hero.png",
-    name: "Radial-Glow Hero",
-    category: "component",
-    oneLiner:
-      "A centered hero over a soft radial glow, with a copyable prompt strip — the t2 Agents pattern.",
-    prompt: `Build a reusable React + TypeScript + Tailwind hero component <RadialHero /> — centered text over a soft radial glow, with a copy-prompt strip.
-
-GLOW
-An absolutely-positioned, pointer-events-none div behind the content: 720x460px, centered horizontally (left-1/2 -translate-x-1/2, -top-24), background: radial-gradient(46% 46% at 50% 40%, rgba(0,114,245,0.16) 0%, transparent 70%), filter blur(20px). Accent color from a prop (default #0072F5).
-
-CONTENT (centered column, relative)
-- Eyebrow: inline-flex pill with a 6px pulsing dot + uppercase tracking-[0.14em] text-xs label.
-- H1: two lines from props, font-extrabold, clamp(2.6rem, 7vw, 4.8rem), tracking-tight, leading-[1.04].
-- Subline: max-w-[520px] mx-auto, muted (#9BA3AF), text-lg.
-- Two CTAs: primary solid pill + ghost pill, from props.
-
-PROMPT STRIP
-Beneath the CTAs: a max-w-[680px] rounded-[10px] dashed-border card (border rgba(255,255,255,0.15)), left-aligned. Inside: the prompt text (font-mono, text-[12.5px], leading-relaxed, muted) and a "Copy prompt" ghost button top-right that writes the prompt to the clipboard and swaps its label to "Copied ✓" for 1.6s. Below the prompt, a caption row (text-xs, subtler) from props.
-
-Entrance: stagger each block with a fade+rise (Framer Motion optional — CSS animation fine). Fully prop-driven; include a demo usage with realistic copy. Dark page assumed (#0A0A0B).`,
   },
 ];
