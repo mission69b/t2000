@@ -1,19 +1,18 @@
 // Templates SSOT — t2000.ai/templates (prompt-first, founder direction
 // 2026-07-19: motionsites-style gallery, every card is a copyable build
-// prompt). Categories: Sites · Apps · Agents · Components. The three
-// create-t2-app starters live here too (their scaffold command is the
-// `scaffold` field); everything else is prompt-only — paste into t2 code
-// (or any coding agent on t2000/auto) and build.
+// prompt). 2026-07-20 curation pass (founder): visual, provably-buildable
+// templates ONLY — every entry has a real full-page capture of what its
+// prompt builds. The agent/CLI-walkthrough entries and the create-t2-app
+// scaffold cards were cut (starters still live at /create-t2-app in the
+// docs); what this page becomes long-term is an open product question.
 
-export const CREATE_CMD = "npm create t2-app@latest";
 export const T2CODE_CMD = "npm i -g @t2000/code && t2code";
 
-export type TemplateCategory = "site" | "app" | "agent" | "component";
+export type TemplateCategory = "site" | "app" | "component";
 
 export const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   site: "Sites",
   app: "Apps",
-  agent: "Agents",
   component: "Components",
 };
 
@@ -24,17 +23,135 @@ export interface TemplateEntry {
   oneLiner: string;
   /** The full copyable build prompt. */
   prompt: string;
-  /** Optional scaffold command (the create-t2-app starters). */
-  scaffold?: string;
   /**
    * Full-page screenshot of the built result (public path). Cards show a
-   * top-crop; the modal shows the whole scrollable capture. Entries without
-   * one fall back to the CSS-art preview.
+   * top-crop; the modal shows the whole scrollable capture.
    */
-  image?: string;
+  image: string;
 }
 
 export const TEMPLATES: TemplateEntry[] = [
+  {
+    // Founder-built and validated 2026-07-20 — the prompt below produced the
+    // capture 1:1 (built with t2 code, running from ~/dev/test-agent).
+    slug: "modern-agency",
+    image: "/template-previews/modern-agency.png",
+    name: "Modern Agency",
+    category: "site",
+    oneLiner:
+      "A light agency landing page — animated shader hero, pill navbar with live clock, text-roll buttons, video case studies.",
+    prompt: `Build a React + Vite + Tailwind CSS landing page for "Axion Studio" - a design agency site. Use the \`shaders\` package (npm: \`shaders\`) for the hero background, \`lucide-react\` for icons. The page has 3 sections. Match every detail exactly:
+
+---
+
+## SECTION 1: HERO (Full viewport height)
+
+**Background:** Light gray \`#EFEFEF\` with a full-screen animated shader overlay (positioned absolute, inset-0, z-10, pointer-events-none). The shader stack uses components from \`shaders/react\`:
+- \`Swirl\` - colorA: \`#ffffff\`, colorB: \`#f0f0f0\`, detail: 1.7
+- \`ChromaFlow\` - baseColor: \`#ffffff\`, downColor/leftColor/rightColor/upColor: \`#ff5f03\`, momentum: 13, radius: 3.5
+- \`FlutedGlass\` - aberration: 0.61, angle: 31, frequency: 8, highlight: 0.12, highlightSoftness: 0, lightAngle: -90, refraction: 4, shape: "rounded", softness: 1, speed: 0.15
+- \`FilmGrain\` - strength: 0.05
+
+**Navigation (z-20, relative):** A pill-shaped white navbar (\`bg-white rounded-full\`) with 5px padding, inside a max-w-[1440px] container with p-2 sm:p-3.
+
+- LEFT: Dark circle logo (w-9 h-9 sm:w-10 sm:h-10, bg-gray-900, rounded-full) with white text "AX" (10px/11px, font-bold, tracking-tight). Next to it (hidden on mobile, shown md+): nav links "Projects", "Studio", "Journal", "Connect" - 14px, text-gray-900, hover:text-gray-500, transition-colors duration-300, gap-6.
+
+- RIGHT (hidden on mobile, shown md+):
+  - Text "Taking on projects for Q1 2026" (13px, text-gray-600, hidden below lg)
+  - Clock icon (lucide, size 14) + live London time "{HH:MM} in London" (13px, text-gray-600)
+  - CTA button: bg-gray-900, text-white, 13px font-medium, rounded-full, pl-5 pr-2 py-2. Text "Book a strategy call" with a HOVER TEXT ROLL animation: the text is duplicated inside a flex-col container with overflow-hidden h-[20px], on group-hover it translates -50% vertically (duration-500, ease cubic-bezier(0.25,0.1,0.25,1)). Arrow icon in a white circle (w-6 h-6) that rotates -45deg on hover (same easing).
+
+- MOBILE: A "Menu"/"Close" toggle button (md:hidden), bg-gray-900, rounded-full, with Menu/X icons from lucide-react.
+
+**Mobile Menu Overlay:** Fixed inset-0, z-50. Black/60 backdrop. A white bottom sheet (rounded-2xl, mx-3 mb-3) that slides up (translate-y-full to translate-y-0, duration-500, ease cubic-bezier(0.32,0.72,0,1)). Contains: time badge, nav links (28px/32px font-medium), and a "Start a project" button with arrow.
+
+**Hero Content (z-20):** Positioned at the bottom of the viewport using flexbox (flex-1 spacer above). Max-w-[1440px], px-5 sm:px-8 lg:px-12, pb-14 sm:pb-16 lg:pb-20.
+
+- Small label: "Axion Studio" (13px/14px, text-gray-900, tracking-wide, mb-5 sm:mb-8)
+- Headline h1: "We craft digital experiences / for brands ready to dominate / their category online." - clamp(1.75rem,7vw,4.2rem) on mobile, clamp(2.5rem,5vw,4.2rem) on sm+. font-medium, leading-[1.08], tracking-[-0.03em], text-gray-900. Line breaks hidden on mobile (uses \`<br className="hidden sm:block" />\` with \`<span className="sm:hidden"> </span>\` fallback spaces).
+- CTA row (mt-8 sm:mt-12, flex-col sm:flex-row, gap-4 sm:gap-5):
+  - Orange button: bg-[#F26522], hover:bg-[#e05a1a], text-white, 13px/14px, rounded-full, pl-5 sm:pl-6 pr-2 py-2. Same text-roll hover animation for "Start a project". White circle (w-7 h-7 sm:w-8 sm:h-8) with orange ArrowRight that rotates -45deg on hover.
+  - Partner badge: White pill with subtle shadow (0_2px_8px_rgba(0,0,0,0.08)), hover shadow (0_4px_16px_rgba(0,0,0,0.12)), rounded-[4px]. Contains an inline SVG icon (the starburst/compass shape below, w-5 h-5 sm:w-6 sm:h-6, fill-current text-[#E8704E]), text "Certified Partner" (13px/14px font-medium), and a dark badge "Featured" (10px/11px, bg-gray-900, text-white, px-1.5 sm:px-2 py-0.5, rounded).
+
+**SVG Icon for partner badge:**
+\`\`\`svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z"/></svg>
+\`\`\`
+
+---
+
+## SECTION 2: ABOUT (White background)
+
+\`bg-white\`, pt-16 sm:pt-20 lg:pt-32, pb-12 sm:pb-16 lg:pb-24, overflow-hidden. Max-w-[1440px] container.
+
+**Badge row:** px-5 sm:px-8 lg:px-12, flex items-center gap-3, mb-6 sm:mb-8.
+- Numbered circle: w-6 h-6 sm:w-7 sm:h-7, rounded-full, bg-gray-900, text-white, 11px/12px font-semibold. Shows "1".
+- Pill label: "Introducing Axion" - 12px/13px, font-medium, border border-gray-200, rounded-full, px-3 sm:px-4 py-1 sm:py-1.5.
+
+**Heading h2:** "Strategy-led creatives, delivering / results in digital and beyond." - clamp(1.5rem,4vw,3.2rem), font-medium, leading-[1.12], tracking-[-0.02em], text-gray-900, mb-12 sm:mb-16 lg:mb-28.
+
+**Content area (responsive):**
+
+- MOBILE/TABLET (lg:hidden): Stacked - paragraph + button, then images.
+  - Paragraph: "Through research, creative thinking and iteration we help growing brands realize their digital full potential." - 15px/17px, leading-[1.6], font-medium, text-gray-900.
+  - Button: "About our studio" - orange (#F26522), same text-roll animation, white arrow circle rotates -45deg.
+  - Two images: flex-col sm:flex-row, gap-4 sm:gap-5. First: sm:w-[45%] aspect-[438/346]. Second: sm:w-[55%] aspect-[900/600]. Both rounded-xl sm:rounded-2xl, object-cover.
+
+- DESKTOP (hidden lg:grid): \`grid-cols-[26%_1fr_48%] items-end gap-6 xl:gap-8\`.
+  - Left column (self-end): Small image, aspect-[438/346], rounded-2xl.
+  - Center column (self-start, flex justify-end): Paragraph (16px/18px, leading-[1.65], whitespace-nowrap, with \`<br/>\` between lines) + orange button.
+  - Right column (self-end): Large image, aspect-[3/2], rounded-2xl.
+
+**Image URLs:**
+- Small image: \`https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260516_090123_74be96d4-9c1b-40cf-932a-96f4f4babed3.png&w=1280&q=85\`
+- Large image: \`https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260516_090133_c157d30b-a99a-4477-bec1-a446149ec3f2.png&w=1280&q=85\`
+
+---
+
+## SECTION 3: CASE STUDIES (Light gray background)
+
+\`bg-[#F5F5F5]\`, pt-16 sm:pt-20 lg:pt-28, pb-16 sm:pb-20 lg:pb-28. Max-w-[1440px] container.
+
+**Badge row:** Same pattern as Section 2, but number is "2", label is "Featured client work", border-gray-300.
+
+**Heading h2:** "Our projects" - same clamp sizing as hero headline (clamp(1.75rem,7vw,4.2rem) / clamp(2.5rem,5vw,4.2rem)), font-medium, leading-[1.08], tracking-[-0.03em], mb-10 sm:mb-14 lg:mb-16.
+
+**Cards Grid:** \`grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 lg:gap-7\`, px-5 sm:px-8 lg:px-12.
+
+**Card 1 (Narrativ):**
+- Video container: aspect-[329/246], rounded-2xl, overflow-hidden, bg-[#1a1d2e], group, cursor-pointer.
+- Video: \`src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260516_122702_390f5305-8719-41d5-ae80-d23ab3796c28.mp4"\`, autoPlay, muted, loop, playsInline, w-full h-full object-cover.
+- Hover button (absolute bottom-4 left-4): A white circle (h-9 w-9) that expands to w-[148px] on group-hover (transition-all duration-300 ease-in-out). Contains "Learn more" text (13px, font-medium, opacity-0 to opacity-100 on hover with delay-100) and a link/chain SVG icon (14x14, -rotate-45 to rotate-0 on hover). The SVG is the lucide "link" icon drawn manually with two arc paths.
+- Description: "Winner of Site of the Month 2025 - an interactive 3D showcase driving record engagement" - 13px/14px, text-gray-600, mt-4, leading-relaxed.
+- Title: "Narrativ" - 14px/15px, font-semibold, text-gray-900, mt-1.
+
+**Card 2 (Luminar):**
+- Video container: aspect-square, rounded-2xl, overflow-hidden, bg-[#6b6b6b], group, cursor-pointer.
+- Video: \`src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260516_123323_f909c2b8-ff6c-4edf-882b-8ebcdbe389b5.mp4"\`, autoPlay, muted, loop, playsInline, w-full h-full object-cover.
+- Hover button (absolute bottom-4 left-4): A DARK circle (bg-gray-900, h-9 w-9) that expands to w-[168px] on group-hover. Contains "View case study" text (13px, font-medium, text-white) and a white ArrowRight icon (size 14) that transitions from -rotate-45 to rotate-0 on hover.
+- Description: "Transforming a dated platform into a conversion-focused brand experience" - 13px/14px, text-gray-600, mt-4, leading-relaxed.
+- Title: "Luminar" - 14px/15px, font-semibold, text-gray-900, mt-1.
+
+---
+
+## GLOBAL STYLES (index.css):
+
+Standard Tailwind directives plus two utility classes (not actively used in current layout but defined):
+- \`.liquid-glass\`: rgba(255,255,255,0.01) bg, backdrop-filter blur(4px), inset box-shadow, pseudo-element gradient border using mask-composite.
+- \`.liquid-glass-strong\`: Same but blur(50px), no pseudo-element.
+
+---
+
+## TECHNICAL DETAILS:
+- **Framework:** React 18 + TypeScript + Vite
+- **Styling:** Tailwind CSS 3.4 (default config, no custom theme extensions)
+- **Packages:** \`shaders\` (for Shader, ChromaFlow, FilmGrain, FlutedGlass, Swirl from \`shaders/react\`), \`lucide-react\` (ArrowRight, Clock, Menu, X)
+- **Font:** System default (no custom font loaded)
+- **All animations use:** \`duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]\` unless noted otherwise
+- **Max content width:** 1440px, centered with mx-auto
+- **Responsive breakpoints:** Default Tailwind (sm: 640px, md: 768px, lg: 1024px, xl: 1280px)
+- **Live clock:** Updates every second, shows London timezone in HH:MM format`,
+  },
   {
     slug: "aurora-landing",
     image: "/template-previews/aurora-landing.png",
@@ -158,112 +275,6 @@ DETAILS
 DEPENDENCIES: react, tailwindcss, vite, typescript. No external images, no icon fonts — inline SVGs only.`,
   },
   {
-    slug: "chat",
-    name: "AI Chat App",
-    category: "app",
-    oneLiner: "A streaming AI chat app in two files — no SDK, private by default.",
-    scaffold: `${CREATE_CMD} my-chat -- --template chat`,
-    prompt: `Build a streaming AI chat web app with Next.js (App Router) and TypeScript — no AI SDK, two files of wiring.
-
-1. RELAY ROUTE (app/api/chat/route.ts)
-POST handler that forwards { messages } (last 20 turns) to an OpenAI-compatible endpoint — base URL https://api.t2000.ai/v1, model "t2000/auto", key from process.env.T2000_API_KEY (server-side only; never expose it to the client). Request stream: true, then pipe the upstream SSE body straight through as the response with content-type text/event-stream. Surface the x-t2000-served-model response header by copying it onto the relay response.
-
-2. CHAT UI (app/page.tsx, "use client")
-- Message list: user bubbles right-aligned (accent background), assistant bubbles left (bordered card). Auto-scroll to bottom on new tokens.
-- A ~30-line SSE parser: read the fetch body with getReader(), split on double newlines, JSON.parse each "data:" line, append delta.content to the last assistant message; stop on [DONE].
-- Each assistant reply shows a small "served by <model>" badge underneath, read from the relay's served-model header.
-- Input row pinned to the bottom: textarea grows to 4 rows max, Enter sends / Shift+Enter newline, disabled while streaming, with a stop button that aborts the fetch via AbortController.
-- Dark theme: bg #0B0C0D, bubbles #131517, hairline borders rgba(255,255,255,0.08), Inter font.
-
-3. EXTRAS
-- Keep chat history in useState only (no DB). "New chat" button clears it.
-- Handle upstream errors by appending a red-tinted system bubble with the error text.
-- README with the two-line setup: set T2000_API_KEY, npm run dev.`,
-  },
-  {
-    slug: "agent-worker",
-    name: "Agent Worker",
-    category: "agent",
-    oneLiner: "The smallest useful agent — a headless worker on t2000/auto.",
-    scaffold: `${CREATE_CMD} my-worker -- --template agent-worker`,
-    prompt: `Build the smallest useful headless agent in one TypeScript file (Node 18+, no framework).
-
-- Read a task string from process.argv (default: "Summarize the latest Sui developer changelog in 5 bullets").
-- Call the OpenAI-compatible endpoint at https://api.t2000.ai/v1/chat/completions with model "t2000/auto", stream: true, key from T2000_API_KEY.
-- Stream tokens to stdout as they arrive (raw SSE parsing with fetch + getReader — no SDK).
-- After the stream ends, print a dim footer line with the served model (x-t2000-served-model response header) and the route reason if present.
-- Wrap the call in a run(task) function so the file can also be imported; add a package.json with "start": "tsx worker.ts".
-- Then extend it into a loop: accept a JSON array of tasks from tasks.json, run them sequentially, and write results to out/<index>.md. Keep the whole thing under ~120 lines.`,
-  },
-  {
-    slug: "market-brief-agent",
-    name: "Market Brief Agent",
-    category: "agent",
-    oneLiner:
-      "An agent that buys its own data — pays x402 APIs in USDC, then writes a morning brief.",
-    prompt: `Build a "morning market brief" agent as a Node 18+ TypeScript script that PAYS for its own data over x402 using the t2000 Agent Wallet.
-
-SETUP ASSUMPTIONS
-- @t2000/cli is installed and a funded wallet exists at ~/.t2000/wallet.key (if not, tell me to run: npm i -g @t2000/cli && t2 init && t2 fund).
-- Use the @t2000/sdk (import { T2000 } from "@t2000/sdk") for programmatic payments: agent.pay({ url, body, maxPrice }).
-
-PIPELINE (run() in src/brief.ts)
-1. Discover: fetch https://mpp.t2000.ai/api/services (free) and pick a crypto-prices service and a news/search service from the catalog.
-2. Pay: call each service via agent.pay with maxPrice 0.05 — one call for BTC/ETH/SUI prices + 24h change, one for the top 5 crypto headlines.
-3. Compose: send both payloads to https://api.t2000.ai/v1/chat/completions (model t2000/auto) with a system prompt: "You write a 150-word morning brief: 1 paragraph of market state, then 3 terse bullets of what matters today. No hype."
-4. Output: write brief-YYYY-MM-DD.md and print it, followed by a cost line: "Data cost: $0.0X across N paid calls" (sum the amounts from each pay receipt).
-
-GUARDRAILS
-- Hard-cap total spend at $0.25 per run; abort with a clear message if a challenge exceeds maxPrice.
-- If a paid call fails, continue with the remaining data and note the gap in the brief.
-- Keep it under ~150 lines; package.json script "brief": "tsx src/brief.ts".`,
-  },
-  {
-    slug: "selling-agent",
-    name: "Selling Agent",
-    category: "agent",
-    oneLiner:
-      "An agent that earns — registers an Agent ID, lists a service, watches its job inbox, delivers.",
-    prompt: `Set me up as a selling agent on t2 Agents (agents.t2000.ai) — an agent that earns USDC over on-chain escrow jobs. Use the @t2000/cli (npm i -g @t2000/cli).
-
-1. IDENTITY
-Run t2 init (free on-chain Agent ID, gasless) if there's no wallet yet, then t2 agent create --name "<ask me for a name>" --description "<one line on what I sell>". Show me the profile URL.
-
-2. LIST A SERVICE
-Ask me for: what I deliver, a fixed USDC price (≤ $50), and a delivery SLA. Then run:
-t2 service create --name "<name>" --price <usdc> --sla <e.g. 24h> --description "<desc>" --deliverable "<what the buyer receives>" --requirements '{"<field>":"<what the buyer must provide>"}'
-Confirm it's live with t2 service list and show where buyers see it (my profile + agents.t2000.ai/jobs + t2 browse).
-
-3. WORK THE INBOX
-Write a small Node script (or a shell loop) around t2 job watch --mine that alerts me when a job lands. For each funded job walk me through:
-- t2 job spec <jobId> — read the buyer's brief (hash-pinned on-chain)
-- do the work with me
-- t2 job deliver <jobId> <file-or-text> — post proof-of-delivery before the SLA
-
-4. EXPLAIN THE MONEY
-Funds release when the buyer accepts or their review window lapses (5% protocol fee at settlement; refunds are fee-free). After release, point me at my review score. Never move funds without showing me the command first.`,
-  },
-  {
-    slug: "sui-dapp",
-    name: "Sui dApp",
-    category: "app",
-    oneLiner:
-      "Wallet connect, gRPC reads, and an AI copilot that knows your holdings.",
-    scaffold: `${CREATE_CMD} my-dapp -- --template sui-dapp`,
-    prompt: `Build a Sui dApp with Next.js (App Router), TypeScript, and @mysten/dapp-kit.
-
-1. WALLET + READS
-- ConnectButton flow via dapp-kit providers (QueryClientProvider + SuiClientProvider + WalletProvider), mainnet.
-- After connect, read balances with SuiGrpcClient (@mysten/sui/grpc — do NOT use JSON-RPC; it retires July 2026) and render an asset list: coin symbol, human amount (respect on-chain decimals), USD value where known.
-
-2. AI COPILOT
-- A chat panel beside the balance list. Relay route posts to https://api.t2000.ai/v1/chat/completions (model t2000/auto, T2000_API_KEY server-side), streaming SSE back to the client.
-- Inject the connected wallet's holdings into the system prompt each turn ("The user holds: …") so answers are grounded — the copilot explains, the wallet signs; never build or submit transactions from the copilot.
-
-3. LOOK
-Dark theme (#0B0C0D), hairline borders, Inter; balance amounts font-mono. Empty state before connect: centered ConnectButton with one line of copy. README covering env setup and the gRPC-only constraint.`,
-  },
-  {
     slug: "terminal-hero",
     image: "/template-previews/terminal-hero.png",
     name: "Terminal Hero",
@@ -284,27 +295,6 @@ Props: lines: Array<{ text: string; kind: "cmd" | "out" | "ok" }>, speed (ms/cha
 Default demo lines: "npm i -g @t2000/cli" → "added 1 package in 2s" → "t2 init" → "✓ wallet created · agent id #241" → "t2 pay https://…/chat/completions" → "✓ paid $0.02 · 200 OK".
 
 Export the component with all copy overridable via props; include a usage example in App.tsx.`,
-  },
-  {
-    slug: "stack-cards",
-    image: "/template-previews/stack-cards.png",
-    name: "Sticky-Stack Cards",
-    category: "component",
-    oneLiner:
-      "Scroll-driven stacking cards — each card pins and scales as the next one arrives.",
-    prompt: `Build a reusable React + TypeScript + Tailwind + Framer Motion section component <StackCards items={...} /> implementing the sticky-stacking card effect.
-
-MECHANIC
-Each card sits in its own h-[90vh] wrapper; the card itself is sticky top-20, offset top: index * 24px. Using useScroll on the whole section and useTransform per card, scale each earlier card down as later ones arrive: targetScale = 1 − (total − 1 − index) * 0.04, animated over that card's scroll range. Cards never unpin until the section ends.
-
-CARD
-Rounded-[32px], border rgba(255,255,255,0.12), background #101113, p-8 md:p-12, min-h-[420px]. Contents from props: an index number rendered huge and low-opacity (clamp(3rem,8vw,110px), opacity 0.15) top-left; title (clamp(1.5rem,3vw,2.5rem)); body paragraph (muted #9BA3AF, max-w-xl); optional CTA pill. Give each card an accentColor prop that tints a radial gradient in its top-right corner (rgba(accent,0.16) → transparent).
-
-DETAILS
-- Section heading above the stack: props title + eyebrow.
-- prefers-reduced-motion: disable the scale transform, keep normal stacking.
-- Demo data: 3 cards ("Fund", "Deliver", "Settle") with indigo / emerald / amber accents.
-- Ship as one file with a usage example; no external CSS beyond Tailwind.`,
   },
   {
     slug: "radial-hero",

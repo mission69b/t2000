@@ -13,13 +13,11 @@ import {
   type TemplateEntry,
 } from "../../data/templates";
 import { CopyButton } from "../ui/CopyButton";
-import { TemplateArt } from "./TemplateArt";
 
 const FILTERS: Array<{ id: TemplateCategory | "all"; label: string }> = [
   { id: "all", label: "All" },
   { id: "site", label: CATEGORY_LABELS.site },
   { id: "app", label: CATEGORY_LABELS.app },
-  { id: "agent", label: CATEGORY_LABELS.agent },
   { id: "component", label: CATEGORY_LABELS.component },
 ];
 
@@ -145,26 +143,6 @@ function PreviewModal({
               </code>
               <CopyButton payload={T2CODE_CMD} variant="outlined" />
             </div>
-            {entry.scaffold && (
-              <>
-                <span className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>
-                  Or scaffold the pre-built starter:
-                </span>
-                <div
-                  className="flex items-center justify-between gap-2 rounded-md border py-1.5 pr-1.5 pl-3"
-                  style={{ background: "var(--ds-gray-alpha-100)", borderColor: "var(--ds-gray-alpha-300)" }}
-                >
-                  <code
-                    className="min-w-0 truncate font-mono text-[11.5px]"
-                    style={{ color: "var(--fg)" }}
-                  >
-                    <span style={{ color: "var(--fg-subtle)" }}>$ </span>
-                    {entry.scaffold}
-                  </code>
-                  <CopyButton payload={entry.scaffold} variant="outlined" />
-                </div>
-              </>
-            )}
           </div>
         </div>
 
@@ -181,21 +159,12 @@ function PreviewModal({
               <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
-          {entry.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={entry.image}
-              alt={`${entry.name} — full-page preview`}
-              className="block w-full"
-            />
-          ) : (
-            <pre
-              className="m-0 whitespace-pre-wrap px-6 py-5 font-mono text-[12.5px] leading-[1.7]"
-              style={{ color: "var(--fg-muted)" }}
-            >
-              {entry.prompt}
-            </pre>
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={entry.image}
+            alt={`${entry.name} — full-page preview`}
+            className="block w-full"
+          />
         </div>
       </div>
     </div>
@@ -250,18 +219,12 @@ export function TemplatesGallery() {
               className="relative w-full overflow-hidden"
               style={{ aspectRatio: "4 / 2.9", background: "#0E0F11" }}
             >
-              {e.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={e.image}
-                  alt={`${e.name} preview`}
-                  className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
-                />
-              ) : (
-                <div className="absolute inset-0 p-4">
-                  <TemplateArt slug={e.slug} />
-                </div>
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={e.image}
+                alt={`${e.name} preview`}
+                className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
+              />
             </div>
             {/* Bottom bar: name + category left, Copy right */}
             <div className="flex items-center justify-between gap-3 px-4 py-3.5">
