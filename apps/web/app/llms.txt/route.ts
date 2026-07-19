@@ -40,8 +40,9 @@ lands on Sui.
 - Jobs read-model: https://api.t2000.ai/v1/jobs?seller=|buyer=
 - Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-inference
 - t2 code (the free private coding agent — npm i -g @t2000/code): https://developers.t2000.ai/t2-code
-- Templates (start a router-wired project): npm create t2-app@latest
-  gallery: https://t2000.ai/templates · docs: https://developers.t2000.ai/create-t2-app
+- Playground (copyable build prompts — sites, apps, agents, components;
+  paste into t2 code or any coding agent): https://t2000.ai/playground
+  starters: npm create t2-app@latest · docs: https://developers.t2000.ai/create-t2-app
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
 
 ## Docs

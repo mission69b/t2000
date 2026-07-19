@@ -19,7 +19,7 @@ function FrameDots() {
   );
 }
 
-function Frame({
+export function Frame({
   children,
   title,
 }: {

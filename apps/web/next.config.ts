@@ -58,6 +58,19 @@ const nextConfig: NextConfig = {
         destination: "/private-inference",
         permanent: true,
       },
+      // Templates became the prompt-first Playground (2026-07-19). The three
+      // create-t2-app starters live on as playground entries with a
+      // scaffold command.
+      {
+        source: "/templates",
+        destination: "/playground",
+        permanent: false,
+      },
+      {
+        source: "/templates/:slug",
+        destination: "/playground",
+        permanent: false,
+      },
     ];
   },
   async headers() {

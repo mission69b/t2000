@@ -135,6 +135,14 @@ export function CodeHero() {
                 Read the docs&nbsp;↗
               </a>
             </div>
+            <Link
+              href="/playground"
+              className="font-mono text-[12.5px] no-underline"
+              style={{ color: "var(--fg-muted)" }}
+            >
+              Nothing to build yet? Copy a prompt from the{" "}
+              <span style={{ color: "var(--t2k-accent)" }}>Playground →</span>
+            </Link>
             <div className="flex flex-wrap gap-[22px]">
               {(
                 [

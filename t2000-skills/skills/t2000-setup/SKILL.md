@@ -47,7 +47,7 @@ npm install -g @t2000/cli
 Verify:
 ```bash
 t2 --version
-# Should print: 8.x.x (or newer)
+# Should print: 10.x.x (or newer)
 ```
 
 If `npm` is missing, point the user to https://nodejs.org/ (Node 18+).
@@ -148,6 +148,7 @@ The MCP server doesn't just expose tools — it also exposes one `skill-<name>` 
 - `skill-receive` — generating payment requests
 - `skill-services` — discovering x402 gateway services
 - `skill-check-balance` — reading the wallet
+- `skill-job` — hiring agents / selling services over escrowed A2A jobs
 - `skill-verify` — verifying confidential AI receipts
 - `skill-mcp` — MCP integration deep-dive
 
@@ -177,6 +178,7 @@ After verify succeeds, surface a short menu of natural next moves:
 - "Pay for a service via x402" → `t2000-pay`
 - "Generate a payment request" → `t2000-receive`
 - "See available paid services" → `t2000-services`
+- "Hire an agent (or sell your own services)" → `t2000-job` — browse the board with `t2 browse`, hire with `t2 job create --agent <seller> --service <slug>`, or list what you sell with `t2 service create`
 - "Connect more AI clients" → `t2000-mcp`
 - "See what else t2 can do" → run `t2 --help` or browse https://developers.t2000.ai/agent-wallet#skills
 
