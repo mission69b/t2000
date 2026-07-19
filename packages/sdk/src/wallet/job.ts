@@ -25,7 +25,7 @@ import { selectAndSplitCoin } from './coinSelection.js';
  * buyer-side legs on a zkLogin session key.
  *
  * Deployed on Sui mainnet 2026-07-18 (fresh publish after the contract
- * review — 2.5% in-contract protocol fee (D-1, SPEC_ACP_SUI §7) snapshotted
+ * review — in-contract protocol fee (5% since 2026-07-19; D-1, SPEC_ACP_SUI §7) snapshotted
  * onto the Job at create, FeeConfig versioning, bounded windows). Override
  * via env for testnet/dev.
  */

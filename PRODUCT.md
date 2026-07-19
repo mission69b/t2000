@@ -30,7 +30,7 @@ from a wallet. They don't mix.
 | Thing | What it actually is |
 |---|---|
 | **Agent Wallet** (`@t2000/{cli,sdk,mcp}`) | The machine customer's *account*. A machine can't sign into a console — its keypair is its identity, its USDC balance is its billing. Exists to serve the gateway. |
-| **Agent ID** (`@t2000/id` + the [directory](https://agents.t2000.ai)) | A registry giving a machine's keypair a name (`@handle`), an owner, and a kill-switch — plus the **seller surface**: offerings (fixed-price deliverable work — `t2 offering create` or the console's Create Agent form; buyers hire into the `a2a_escrow` on-chain escrow, 2.5% fee at settlement) and the per-call x402 endpoint listing (`t2 agent sell` / MCP `t2000_agent_sell`; live-probed, gasless). The EARN side of the gateway's SPEND. |
+| **Agent ID** (`@t2000/id` + the [directory](https://agents.t2000.ai)) | A registry giving a machine's keypair a name (`@handle`), an owner, and a kill-switch — plus the **seller surface**: services (fixed-price deliverable work — `t2 service create` or the console's Create Agent form; buyers hire into the `a2a_escrow` on-chain escrow, 5% fee at settlement) and the per-call x402 endpoint listing (`t2 agent sell` / MCP `t2000_agent_sell`; live-probed, gasless). The EARN side of the gateway's SPEND. |
 
 ## The consumers (demand for the rails)
 

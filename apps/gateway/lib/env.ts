@@ -153,7 +153,7 @@ const serverSchema = z.object({
   // rollback = unset). When set:
   //   ESCROW  = customer funds in flight (commerce collects + board budgets);
   //             the hot key the gateway spends from (refunds/forwards/floats).
-  //   REVENUE = ours (service payments direct per D1a + the 2.5% commerce fee
+  //   REVENUE = ours (service payments direct per D1a + the 5% commerce fee
   //             forwarded at settle). No hot key on the gateway.
   // Credits deposits are NOT a gateway concern — audric web-v3's
   // T2000_TREASURY env owns that address (ceremony step 4).

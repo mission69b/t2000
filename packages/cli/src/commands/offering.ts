@@ -1,14 +1,18 @@
-// `t2 offering` — the seller catalog (t2 ACP Phase 1, SPEC_ACP_SUI §4.1).
+// `t2 service` (alias: `t2 offering`) — the seller catalog (t2 ACP Phase 1,
+// SPEC_ACP_SUI §4.1).
 //
-// An offering is a structured, fixed-price unit of deliverable work attached
+// A service is a structured, fixed-price unit of deliverable work attached
 // to your Agent ID: name, price (USDC), delivery SLA, what the buyer must
-// provide, what they get back. Buyers browse offerings (`t2 browse`) and fund
-// an on-chain escrow Job against one (`t2 job create --agent … --offering …`)
+// provide, what they get back. Buyers browse services (`t2 browse`) and fund
+// an on-chain escrow Job against one (`t2 job create --agent … --service …`)
 // — no server, no endpoint, no 402 required to sell.
 //
-//   create   list (or update) an offering under your Agent ID
-//   list     your offerings (or any agent's)
+//   create   list (or update) a service under your Agent ID
+//   list     your services (or any agent's)
 //   retire   soft-delete — existing funded jobs keep settling on-chain
+//
+// The API/wire noun stays `offering` (endpoints, payloads, MCP tools) — only
+// the human-facing verb surface renamed (founder call, 2026-07-19).
 //
 // Mutations are signed: challenge nonce + personal-message signature bound to
 // sha256 of the exact payload (same construction as the services catalog).
@@ -124,40 +128,41 @@ function printOffering(o: OfferingListing) {
   }
   printKeyValue(
     'Buy',
-    `t2 job create --agent ${o.agent} --offering ${o.slug}`,
+    `t2 job create --agent ${o.agent} --service ${o.slug}`,
   );
 }
 
 export function registerOffering(program: Command) {
   const group = program
-    .command('offering')
+    .command('service')
+    .alias('offering')
     .description(
       'Sell deliverable work — list what you do, at what price, on what SLA (t2 ACP)',
     )
     .addHelpText(
       'after',
       `
-An offering needs NO server and NO endpoint: buyers fund an on-chain escrow
+A service needs NO server and NO endpoint: buyers fund an on-chain escrow
 Job against it, you deliver with \`t2 job deliver\`, the escrow settles. Your
 catalog lives on your Agent ID and shows on agents.t2000.ai.
 
 Examples:
-  $ t2 offering create --name "Sui market report" --price 5 --sla 24h \\
+  $ t2 service create --name "Sui market report" --price 5 --sla 24h \\
       --description "Daily research report on any Sui token" \\
       --deliverable "PDF report, 2+ pages, sources cited" \\
       --requirements "Token symbol or coin type to analyze"
-  $ t2 offering list
-  $ t2 offering retire sui-market-report
+  $ t2 service list
+  $ t2 service retire sui-market-report
 `,
     );
 
   group
     .command('create')
-    .description('List an offering under your Agent ID (re-run to update it)')
-    .requiredOption('--name <name>', 'Offering name (max 80 chars)')
+    .description('List a service under your Agent ID (re-run to update it)')
+    .requiredOption('--name <name>', 'Service name (max 80 chars)')
     .requiredOption('--price <usdc>', 'Fixed price in USDC (0.01–50)')
     .requiredOption('--sla <duration>', 'Delivery SLA — e.g. 30m, 24h, 7d')
-    .requiredOption('--description <text>', 'What this offering is (max 2000 chars)')
+    .requiredOption('--description <text>', 'What this service is (max 2000 chars)')
     .requiredOption('--deliverable <text>', 'What the buyer receives (max 1000 chars)')
     .option('--slug <slug>', 'Machine name (default: derived from --name)')
     .option(
@@ -222,7 +227,7 @@ Examples:
           printSuccess(`"${payload.name}" is listed — $${priceUsdc.toFixed(2)} USDC, delivery within ${formatSla(slaMinutes)}`);
           printKeyValue('Slug', slug);
           printKeyValue('Storefront', `https://agents.t2000.ai/${address}`);
-          printKeyValue('Buyers run', `t2 job create --agent ${address} --offering ${slug}`);
+          printKeyValue('Buyers run', `t2 job create --agent ${address} --service ${slug}`);
           printBlank();
           printInfo('Watch for incoming jobs with: t2 job watch <jobId>  (buyers hand you the job id)');
           printBlank();
@@ -235,7 +240,7 @@ Examples:
   group
     .command('list')
     .argument('[agent]', "Agent address (default: this wallet's)")
-    .description("An agent's offerings — yours by default, retired included")
+    .description("An agent's services — yours by default, retired included")
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (agentArg: string | undefined, opts: { key?: string; api?: string }) => {
@@ -254,7 +259,7 @@ Examples:
         }
         printBlank();
         if (rows.length === 0) {
-          printInfo(`No offerings for ${truncateAddress(agent)} — list one with: t2 offering create`);
+          printInfo(`No services for ${truncateAddress(agent)} — list one with: t2 service create`);
           printBlank();
           return;
         }
@@ -269,8 +274,8 @@ Examples:
 
   group
     .command('retire')
-    .argument('<slug>', 'The offering slug to retire')
-    .description('Take an offering off the board (funded jobs still settle on-chain)')
+    .argument('<slug>', 'The service slug to retire')
+    .description('Take a service off the board (funded jobs still settle on-chain)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (slug: string, opts: { key?: string; api?: string }) => {
@@ -287,7 +292,7 @@ Examples:
           return;
         }
         printBlank();
-        printSuccess(`Offering "${slug}" retired. Re-run t2 offering create with the same slug to relist.`);
+        printSuccess(`Service "${slug}" retired. Re-run t2 service create with the same slug to relist.`);
         printBlank();
       } catch (error) {
         handleError(error);
@@ -299,7 +304,7 @@ export function registerBrowse(program: Command) {
   program
     .command('browse')
     .argument('[query]', 'What you need — free-text search (empty = everything)')
-    .description('Browse offerings across every agent — find work to buy (t2 ACP)')
+    .description('Browse agent services — find work to buy (t2 ACP)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (query: string | undefined, opts: { api?: string }) => {
       try {
@@ -313,7 +318,7 @@ export function registerBrowse(program: Command) {
         }
         printBlank();
         if (rows.length === 0) {
-          printInfo(query ? `No offerings match "${query}".` : 'No offerings listed yet.');
+          printInfo(query ? `No services match "${query}".` : 'No services listed yet.');
           printBlank();
           return;
         }

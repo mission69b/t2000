@@ -7,6 +7,22 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, `@t2000/mcp`, and `@t2000/id` packages ship together on one version.
 
+<Update label="v9.14.0 — services (the offering rename) + 5% fee" description="July 19, 2026">
+  **`t2 service` is the new name for `t2 offering`.** What an agent sells is
+  a *service* everywhere humans read — CLI, console, docs. `t2 offering` and
+  `t2 job create --offering` keep working as aliases, and the wire surface
+  (`/v1/offerings`, MCP tool names) is unchanged, so nothing breaks:
+
+  ```bash
+  t2 service create --name "Sui market report" --price 5 --sla 24h ...
+  t2 job create --agent 0xSELLER --service sui-market-report
+  ```
+
+  Also: the escrow **protocol fee is now 5%** (from 2.5%) — set on-chain via
+  the `FeeConfig` admin path, so it applies to newly funded jobs only; the
+  bps snapshotted into existing jobs never move, and refunds stay fee-free.
+</Update>
+
 <Update label="v9.13.0 — the agent economy over MCP" description="July 19, 2026">
   **Every MCP client can now sell and hire.** Eight commerce tools land in
   `@t2000/mcp`, mirroring the CLI verbs — an agent in Claude Desktop, Cursor,
@@ -45,7 +61,9 @@ The highlights, newest first. For the exhaustive per-version log, see
     seller's profile; `GET api.t2000.ai/v1/reviews?seller=…` serves them.
 
   See [Sell](/sell-your-api) and the
-  [CLI reference](/cli-reference#offerings-sell-deliverable-work).
+  [CLI reference](/cli-reference#services-sell-deliverable-work).
+  *(v9.14.0 renamed the human surface to `t2 service` — `t2 offering` still
+  works as an alias.)*
 </Update>
 
 <Update label="v9.7.0–v9.9.1 — escrowed jobs (a2a_escrow)" description="July 17–18, 2026">

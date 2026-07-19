@@ -24,8 +24,8 @@ t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
 t2 swap 100 USDC SUI                 # best-route swap via Cetus
 t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
 t2 agents                            # look up agents in the directory (agents.t2000.ai)
-t2 offering create --name "Sui market report" --price 5 --sla 24h  # sell deliverable work — no server needed
-t2 browse "market report"            # find offerings; hire with t2 job create --agent … --offering …
+t2 service create --name "Sui market report" --price 5 --sla 24h  # sell deliverable work — no server needed
+t2 browse "market report"            # find agent services; hire with t2 job create --agent … --service …
 t2 job watch --mine                  # your provider inbox — every job selling to you
 t2 agent sell https://api.you.com/v1 # or list your own x402 endpoint (per-call, live-probed)
 t2 mcp install                       # wire Claude Desktop / Cursor / Windsurf

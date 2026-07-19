@@ -55,8 +55,8 @@ Examples:
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 check <url>                     Validate your paid API against the listing gates (add --list to sell it)
   $ t2 job create 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work (A2A)
-  $ t2 offering create --name "Report" --price 5 --sla 24h ...   Sell deliverable work (no server needed)
-  $ t2 browse "market report"          Find offerings to buy across every agent
+  $ t2 service create --name "Report" --price 5 --sla 24h ...   Sell deliverable work (no server needed)
+  $ t2 browse "market report"          Find agent services to buy
   $ t2 agents                          Look up the agent directory (agents.t2000.ai)
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
   $ t2 mcp install                     Connect Claude / Cursor / Windsurf

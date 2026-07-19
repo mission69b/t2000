@@ -192,9 +192,9 @@ Typical flow:
   either  $ t2 job watch 0xJOB
   seller  $ t2 job watch --mine           (the provider inbox — all your jobs)
 
-Buying an OFFERING (t2 ACP) — price + terms come from the listing:
+Buying a SERVICE (t2 ACP) — price + terms come from the listing:
   buyer   $ t2 browse "market report"
-  buyer   $ t2 job create --agent 0xSELLER --offering sui-market-report \\
+  buyer   $ t2 job create --agent 0xSELLER --service sui-market-report \\
               --requirements '{"token":"DEEP"}'
   seller  $ t2 job spec 0xJOB              (read the buyer's requirements)
 `,
@@ -202,13 +202,14 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
 
   group
     .command('create')
-    .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when buying an --offering)`)
-    .argument('[seller]', "The seller's Sui address (omit when buying an --offering)")
+    .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when buying a --service)`)
+    .argument('[seller]', "The seller's Sui address (omit when buying a --service)")
     .description('Create + fund an escrow job in one transaction (buyer)')
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (hashed on-chain), or a 0x… hash')
-    .option('--agent <address>', "Buy from an offering: the seller's agent address")
-    .option('--offering <slug>', 'The offering slug (see t2 browse / t2 offering list <agent>)')
-    .option('--requirements <file-or-json-or-text>', 'Your requirements for the offering (what the seller asked for)')
+    .option('--agent <address>', "Buy a service: the seller's agent address")
+    .option('--service <slug>', 'The service slug (see t2 browse / t2 service list <agent>)')
+    .option('--offering <slug>', 'Alias for --service (compat)')
+    .option('--requirements <file-or-json-or-text>', 'Your requirements for the service (what the seller asked for)')
     .option('--deadline <duration>', 'Time the seller has to deliver (e.g. 30m, 24h, 7d)', '24h')
     .option('--review <duration>', 'Your accept/reject window after delivery', '24h')
     .option('--split <bps>', 'Your share in bps if you reject (0–10000)', String(DEFAULT_REJECT_SPLIT_BPS))
@@ -221,6 +222,7 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
         opts: {
           spec?: string;
           agent?: string;
+          service?: string;
           offering?: string;
           requirements?: string;
           deadline: string;
@@ -241,20 +243,21 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
           let rejectSplitBps: number;
           let offeringSlug: string | undefined;
 
-          if (opts.offering || opts.agent) {
-            // Offering mode — price + terms come from the listing, the spec
+          const serviceSlugOpt = opts.service ?? opts.offering;
+          if (serviceSlugOpt || opts.agent) {
+            // Service mode — price + terms come from the listing, the spec
             // is the buyer's requirements (stored content-addressed; its
             // sha256 goes on-chain, so the content is tamper-evident).
-            if (!(opts.offering && opts.agent)) {
-              throw new Error('--agent and --offering go together.');
+            if (!(serviceSlugOpt && opts.agent)) {
+              throw new Error('--agent and --service go together.');
             }
             if (amountArg || sellerArg) {
               throw new Error(
-                'Omit the amount/seller arguments when buying an offering — the listing sets the price and the seller.',
+                'Omit the amount/seller arguments when buying a service — the listing sets the price and the seller.',
               );
             }
             const sellerAgent = validateAddress(opts.agent);
-            const offering = await fetchOffering(base, sellerAgent, opts.offering);
+            const offering = await fetchOffering(base, sellerAgent, serviceSlugOpt);
             offeringSlug = offering.slug;
 
             let requirements: unknown = null;
@@ -277,7 +280,7 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
                   ? offering.requirements
                   : `JSON matching: ${JSON.stringify(offering.requirements)}`;
               throw new Error(
-                `This offering needs --requirements. The seller asks for: ${want}`,
+                `This service needs --requirements. The seller asks for: ${want}`,
               );
             }
             if (
@@ -286,7 +289,7 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
               (typeof requirements !== 'object' || requirements === null)
             ) {
               throw new Error(
-                `This offering expects JSON requirements matching: ${JSON.stringify(offering.requirements)}`,
+                `This service expects JSON requirements matching: ${JSON.stringify(offering.requirements)}`,
               );
             }
 
@@ -315,7 +318,7 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
             // Direct mode — explicit terms, spec hashed locally.
             if (!(amountArg && sellerArg)) {
               throw new Error(
-                'Provide <amount> <seller> (direct job) or --agent + --offering (buy a listing).',
+                'Provide <amount> <seller> (direct job) or --agent + --service (buy a listing).',
               );
             }
             if (!opts.spec) {
@@ -366,7 +369,7 @@ Buying an OFFERING (t2 ACP) — price + terms come from the listing:
             return;
           }
           printBlank();
-          printSuccess(`Escrowed $${amountUsdc.toFixed(2)} USDC → job for ${truncateAddress(seller)}${offeringSlug ? ` (offering: ${offeringSlug})` : ''}`);
+          printSuccess(`Escrowed $${amountUsdc.toFixed(2)} USDC → job for ${truncateAddress(seller)}${offeringSlug ? ` (service: ${offeringSlug})` : ''}`);
           if (jobId) printKeyValue('Job', jobId);
           printKeyValue('Spec hash', specHash);
           printKeyValue('Deliver by', new Date(deliverByMs).toISOString());

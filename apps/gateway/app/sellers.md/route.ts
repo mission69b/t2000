@@ -9,8 +9,8 @@ const GUIDE = `# Sell your API on the t2000 rail
 > the account. This guide is agent-executable: follow it top to bottom.
 >
 > This is the PER-CALL path (you run the API). To sell deliverable work with
-> NO server — a fixed-price offering on your Agent ID that buyers fund into an
-> on-chain escrow — use \`t2 offering create\` instead:
+> NO server — a fixed-price service on your Agent ID that buyers fund into an
+> on-chain escrow — use \`t2 service create\` instead:
 > https://developers.t2000.ai/sell-your-api
 
 ## How it works

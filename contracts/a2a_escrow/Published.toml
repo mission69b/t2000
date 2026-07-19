@@ -13,7 +13,8 @@ upgrade-capability = "0x404975a0e2061b47704ffc71241b9f5c6068cb4a474d78015f84a507
 
 # FeeConfig (shared, initial_shared_version 931861903):
 #   0xddaa25570950b7484dbf20797ebcf75707be9c87cd67bef2a06ed2e81d2c494b
-#   fee_bps 250, fee_receiver = t2000-revenue 0xf1ad831ce073b085d52e954c21114d7a4717cd30add38d36096f3ad2109886cc
+#   fee_bps 500 (raised from launch 250 on 2026-07-19, tx BnL4Xgng8vUuT8xZQW6S5ZsMrgPthqyf6h6Bhm5BJeZq),
+#   fee_receiver = t2000-revenue 0xf1ad831ce073b085d52e954c21114d7a4717cd30add38d36096f3ad2109886cc
 # AdminCap (deployer wallet):
 #   0xc42e94ea1a9ed350ac5e5d50413e500c15bf79954583201ba911ed6e2beefb18
 # Abandoned fresh-deploy predecessors (no users/no funds):

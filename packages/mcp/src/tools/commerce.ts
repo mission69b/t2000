@@ -16,8 +16,10 @@ import {
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
-// t2 ACP commerce surface (SPEC_ACP_SUI) — the MCP mirror of `t2 offering`,
-// `t2 browse`, and `t2 job`. An OFFERING is a structured, fixed-price unit of
+// t2 ACP commerce surface (SPEC_ACP_SUI) — the MCP mirror of `t2 service`
+// (alias `t2 offering`), `t2 browse`, and `t2 job`. Tool names keep the
+// `offering` wire noun for client compat; the human surface says "service".
+// An OFFERING is a structured, fixed-price unit of
 // deliverable work attached to this wallet's Agent ID (no server, no endpoint
 // required to sell). A JOB is ONE shared Move object (`a2a_escrow::escrow::
 // Job<USDC>`) holding the funds itself — no platform custody. Writes go
@@ -159,7 +161,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_offering_create',
-    "List (or update) an OFFERING under this wallet's Agent ID — a structured, fixed-price unit of deliverable work (name, USDC price, delivery SLA, what the buyer provides, what they get back). Buyers browse offerings and fund an on-chain USDC escrow Job against one; you deliver with t2000_job_deliver and the escrow settles to you (2.5% protocol fee). NO server or endpoint needed to sell. Re-run with the same slug to update. Requires an on-chain Agent ID (`t2 agent register`). Free — one signed message, no funds spent. Mirrors `t2 offering create`.",
+    "List (or update) an OFFERING under this wallet's Agent ID — a structured, fixed-price unit of deliverable work (name, USDC price, delivery SLA, what the buyer provides, what they get back). Buyers browse offerings and fund an on-chain USDC escrow Job against one; you deliver with t2000_job_deliver and the escrow settles to you (5% protocol fee). NO server or endpoint needed to sell. Re-run with the same slug to update. Requires an on-chain Agent ID (`t2 agent register`). Free — one signed message, no funds spent. Mirrors `t2 service create`.",
     {
       name: z.string().max(80).describe('Offering name, e.g. "Sui market report" (max 80 chars)'),
       priceUsdc: z.number().min(0.01).max(50).describe('Fixed price in USDC (0.01–50)'),
@@ -198,7 +200,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
               ok: true,
               ...payload,
               storefront: `https://agents.t2000.ai/${agent.address()}`,
-              buyersRun: `t2 job create --agent ${agent.address()} --offering ${payload.slug}`,
+              buyersRun: `t2 job create --agent ${agent.address()} --service ${payload.slug}`,
               watchInbox: 'Use t2000_jobs (role: seller) to see incoming jobs.',
             }),
           }],
@@ -211,7 +213,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_offering_retire',
-    'Take one of your offerings off the board (soft-delete — already-funded jobs still settle on-chain). Re-create with the same slug to relist. Mirrors `t2 offering retire <slug>`.',
+    'Take one of your offerings off the board (soft-delete — already-funded jobs still settle on-chain). Re-create with the same slug to relist. Mirrors `t2 service retire <slug>`.',
     { slug: z.string().describe('The offering slug to retire (see t2000_offerings with your address)') },
     async ({ slug }) => {
       try {
@@ -232,7 +234,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_offerings',
-    "Browse OFFERINGS across the t2 agent economy — structured, fixed-price work other agents sell (hire them with t2000_job_create), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). Mirrors `t2 browse` / `t2 offering list`.",
+    "Browse OFFERINGS across the t2 agent economy — structured, fixed-price work other agents sell (hire them with t2000_job_create), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). Mirrors `t2 browse` / `t2 service list`.",
     {
       query: z.string().optional().describe('Free-text search across offering names/descriptions (omit for all)'),
       agent: z.string().optional().describe("One agent's Sui address — their catalog, retired included (e.g. your own to check your listings)"),

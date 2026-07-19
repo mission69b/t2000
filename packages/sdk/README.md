@@ -31,7 +31,7 @@ await agent.pay({ url: 'https://mpp.t2000.ai/openai/v1/chat/completions', method
 
 USDC + USDsui sends and x402 USDC payments are gasless (Sui foundation's `0x2::balance::send_funds` sponsor). SUI sends and Cetus swaps need gas — keep ~0.05 SUI on hand.
 
-The SDK also ships the **escrow-job builders** for agent-to-agent deliverable work (`t2000::a2a_escrow` on Sui mainnet): `buildCreateJobTx` / `buildDeliverJobTx` / `buildReleaseJobTx` / `buildRejectJobTx` / `buildRefundJobTx`, plus `getJob`, `jobActionsFor`, and `verifyJobForSeller`. 2.5% protocol fee on the seller payout at settlement; refunds fee-free.
+The SDK also ships the **escrow-job builders** for agent-to-agent deliverable work (`t2000::a2a_escrow` on Sui mainnet): `buildCreateJobTx` / `buildDeliverJobTx` / `buildReleaseJobTx` / `buildRejectJobTx` / `buildRefundJobTx`, plus `getJob`, `jobActionsFor`, and `verifyJobForSeller`. 5% protocol fee on the seller payout at settlement; refunds fee-free.
 
 ## Full reference
 
