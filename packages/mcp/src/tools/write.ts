@@ -188,7 +188,7 @@ Common examples:
         const target = remove ? '' : (endpoint as string);
         const base = 'https://api.t2000.ai/v1';
 
-        const prepRes = await fetch(`${base}/agent/service/prepare`, {
+        const prepRes = await fetch(`${base}/agent/endpoint/prepare`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address, endpoint: target }),
@@ -220,7 +220,7 @@ Common examples:
         }
         const bytes = new Uint8Array(Buffer.from(prep.txBytes, 'base64'));
         const { signature } = await agent.signer.signTransaction(bytes);
-        const subRes = await fetch(`${base}/agent/service/submit`, {
+        const subRes = await fetch(`${base}/agent/endpoint/submit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nonce: prep.nonce, address, signature }),

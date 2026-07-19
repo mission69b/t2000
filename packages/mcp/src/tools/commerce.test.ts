@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerCommerceTools } from './commerce.js';
 
-// t2 ACP commerce surface — offerings (sell) + escrow jobs (hire/deliver/
-// settle/review). Mirrors `t2 offering` / `t2 browse` / `t2 job`.
+// t2 ACP commerce surface — agent services (sell) + escrow jobs (hire/
+// deliver/settle/review). Mirrors `t2 service` / `t2 browse` / `t2 job`.
 
 const OWNER = `0x${'a'.repeat(64)}`;
 const SELLER = `0x${'b'.repeat(64)}`;
@@ -45,16 +45,16 @@ function stubApi(overrides: Record<string, unknown> = {}) {
     calls.push({ url, body });
     let json: unknown = {};
     if (url.includes('/agent/challenge')) json = { nonce: 'nonce-1' };
-    else if (url.includes('/agent/offering')) json = { ok: true };
+    else if (url.includes('/agent/service')) json = { ok: true };
     else if (url.includes('/job/spec')) json = { hash: 'ab'.repeat(32) };
     else if (url.includes('/job/prepare')) json = { nonce: 'nonce-2', txBytes: Buffer.from('tx').toString('base64') };
     else if (url.includes('/job/submit')) json = { digest: 'DIGEST123' };
     else if (url.includes('/job/review')) json = { review: { seller: SELLER } };
     else if (url.includes('/jobs?')) json = { jobs: [{ jobId: JOB_ID, buyer: SELLER, seller: OWNER, amountUsdc: 5, state: 'funded', deliverByMs: 1, deliveryHash: null }] };
-    else if (url.includes('/offerings')) {
+    else if (url.includes('/services')) {
       json = {
         total: 1,
-        offerings: [{
+        services: [{
           agent: SELLER,
           agentName: 'Bot',
           agentNumericId: 1,
@@ -102,9 +102,9 @@ describe('commerce tools (t2 ACP surface)', () => {
 
   it('registers the 8 commerce tools', () => {
     expect(tools.size).toBe(8);
-    expect(tools.has('t2000_offering_create')).toBe(true);
-    expect(tools.has('t2000_offering_retire')).toBe(true);
-    expect(tools.has('t2000_offerings')).toBe(true);
+    expect(tools.has('t2000_service_create')).toBe(true);
+    expect(tools.has('t2000_service_retire')).toBe(true);
+    expect(tools.has('t2000_browse')).toBe(true);
     expect(tools.has('t2000_job_create')).toBe(true);
     expect(tools.has('t2000_jobs')).toBe(true);
     expect(tools.has('t2000_job_deliver')).toBe(true);
@@ -112,10 +112,10 @@ describe('commerce tools (t2 ACP surface)', () => {
     expect(tools.has('t2000_job_review')).toBe(true);
   });
 
-  describe('t2000_offering_create', () => {
-    it('signs the challenge and upserts the offering payload', async () => {
+  describe('t2000_service_create', () => {
+    it('signs the challenge and upserts the service payload', async () => {
       const { calls } = stubApi();
-      const handler = tools.get('t2000_offering_create')!;
+      const handler = tools.get('t2000_service_create')!;
       const result = await handler({
         name: 'Sui market report',
         priceUsdc: 5,
@@ -127,7 +127,7 @@ describe('commerce tools (t2 ACP surface)', () => {
       expect(data.ok).toBe(true);
       expect(data.slug).toBe('sui-market-report');
       expect(agent.signer.signPersonalMessage).toHaveBeenCalled();
-      const upsert = calls.find((c) => c.url.includes('/agent/offering'));
+      const upsert = calls.find((c) => c.url.includes('/agent/service'));
       expect(upsert?.body).toMatchObject({ action: 'upsert', address: OWNER, nonce: 'nonce-1' });
       expect((upsert?.body as any).payload).toMatchObject({
         slug: 'sui-market-report',
@@ -138,11 +138,11 @@ describe('commerce tools (t2 ACP surface)', () => {
     });
   });
 
-  describe('t2000_job_create (offering mode)', () => {
+  describe('t2000_job_create (service mode)', () => {
     it('resolves the listing, stores the spec, and runs the sponsored create', async () => {
       const { calls } = stubApi();
       const handler = tools.get('t2000_job_create')!;
-      const result = await handler({ agent: SELLER, offering: 'report', requirements: '{"topic":"DEEP"}' });
+      const result = await handler({ agent: SELLER, service: 'report', requirements: '{"topic":"DEEP"}' });
       const data = JSON.parse(result.content[0].text);
       expect(data.ok).toBe(true);
       expect(data.digest).toBe('DIGEST123');
@@ -154,10 +154,10 @@ describe('commerce tools (t2 ACP surface)', () => {
       expect((prepare?.body as any).params.seller).toBe(SELLER);
     });
 
-    it('rejects offering mode without both agent and offering', async () => {
+    it('rejects service mode without both agent and service', async () => {
       stubApi();
       const handler = tools.get('t2000_job_create')!;
-      const result = await handler({ offering: 'report' });
+      const result = await handler({ service: 'report' });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toMatch(/go together/);
     });
@@ -228,14 +228,14 @@ describe('commerce tools (t2 ACP surface)', () => {
     });
   });
 
-  describe('t2000_offerings', () => {
+  describe('t2000_browse', () => {
     it('browses with a free-text query', async () => {
       const { calls } = stubApi();
-      const handler = tools.get('t2000_offerings')!;
+      const handler = tools.get('t2000_browse')!;
       const result = await handler({ query: 'report' });
       const data = JSON.parse(result.content[0].text);
       expect(data.total).toBe(1);
-      expect(data.offerings[0].slug).toBe('report');
+      expect(data.services[0].slug).toBe('report');
       expect(calls[0].url).toContain('q=report');
     });
   });

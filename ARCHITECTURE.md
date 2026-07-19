@@ -40,7 +40,7 @@ planned developer engine (`t2 connect` / `t2 code` — `spec/SPEC_INFERENCE_DEMA
 |---|---|---|---|---|
 | `api.t2000.ai` | `/v1` routes in audric web-v3 | audric | Vercel (shared project with audric.ai) | Private Inference: chat completions, models, ACI receipts/attestation |
 | `mpp.t2000.ai` | `apps/gateway` | t2000 | Vercel (isolated project + DB) | x402 gateway: catalog, 402 endpoints, explorer, activity |
-| `agents.t2000.ai` | `apps/console` | audric | Vercel | t2 Agents: Scan (economy dashboard) + agent store, offerings + jobs board, skills shelf, console (Create Agent · offerings · keys · billing · usage · ownership) |
+| `agents.t2000.ai` | `apps/console` | audric | Vercel | t2 Agents: Scan (economy dashboard) + agent store, services + jobs board, skills shelf, console (Create Agent · services · keys · billing · usage · ownership) |
 | `t2000.ai` | `apps/web` | t2000 | Vercel | Marketing site + skills served as markdown (`/skills/*`, `feed.json`) |
 | `developers.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |
 | `verify.t2000.ai` | `apps/verify` | t2000 | Vercel | Public confidential-receipt explorer + paste-to-verify |
@@ -58,7 +58,7 @@ is a product decision. The gateway is fully isolated (own project, DB, Redis, ke
 | Package | What it is | Why it exists |
 |---|---|---|
 | `@t2000/sdk` | TypeScript wallet core — send (gasless USDC/USDsui), swap (Cetus aggregator), pay (x402), history (GraphQL), balance, limits (`LimitEnforcer`), `verifyReceipt`. gRPC-only transport. | One tested money path shared by every consumer (CLI, MCP, Audric) — chain plumbing, gasless mechanics, and spend limits are implemented once, never per-host. |
-| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · verify · export · limit · services · skills · mcp · connect · agent (identity subcommands incl. `sell`) · offering · browse · job (a2a escrow lifecycle incl. `watch --mine`, `review`) · check | The terminal front door: humans, scripts, and CI drive the wallet without writing code. (Chat moved into `@t2000/code`.) |
+| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · verify · export · limit · services · skills · mcp · connect · agent (identity subcommands incl. `sell`) · service · browse · job (a2a escrow lifecycle incl. `watch --mine`, `review`) · check | The terminal front door: humans, scripts, and CI drive the wallet without writing code. (Chat moved into `@t2000/code`.) |
 | `@t2000/mcp` | MCP server (stdio) — 14 tools + one prompt per skill, skill bodies baked at build time | Puts the wallet *inside* AI clients (Claude, Cursor, Windsurf) over the open MCP standard — agents get money tools with zero custom integration. |
 | `@t2000/id` | `agent_id::registry` client — `buildRegisterTx`, `buildUpdateTx`, ownership txs; ids baked for mainnet | Lets third parties build against the identity registry without pulling in the whole wallet SDK. |
 | `@suimpp/mpp` | The x402/MPP Sui payment method (client + server verification) — suimpp repo | The payment method as a small open package so *any* server can accept x402-on-Sui — the standard is bigger than our gateway. |
@@ -286,8 +286,8 @@ the chain stays the source of truth.
   truth (custody-minted, unique on-chain, releasable by the current target only);
   deliberately OFF the registry object.
 - **Profile:** name/image/description/links — challenge-signed to the API, no gas.
-- **Sell (offerings — the primary path):** structured, fixed-price listings on the
-  Agent ID — `t2 service create` (alias `t2 offering create`) or the console's **Create Agent** one-form. No
+- **Sell (services — the primary path):** structured, fixed-price listings on the
+  Agent ID — `t2 service create` or the console's **Create Agent** one-form. No
   server needed: buyers hire from the profile / `t2 browse` and the USDC escrows
   in a `t2000::a2a_escrow` Job object (5% fee on the seller payout at
   settlement; refunds fee-free). Lifecycle: `t2 job watch --mine` → `deliver` →

@@ -35,10 +35,10 @@ import {
 import { runSponsoredTx } from '../lib/agent-register.js';
 import {
   fetchJson,
-  fetchOffering,
+  fetchService,
   getJobSpec,
   putJobSpec,
-} from '../lib/offerings.js';
+} from '../lib/services.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
   handleError,
@@ -208,7 +208,6 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (hashed on-chain), or a 0x… hash')
     .option('--agent <address>', "Buy a service: the seller's agent address")
     .option('--service <slug>', 'The service slug (see t2 browse / t2 service list <agent>)')
-    .option('--offering <slug>', 'Alias for --service (compat)')
     .option('--requirements <file-or-json-or-text>', 'Your requirements for the service (what the seller asked for)')
     .option('--deadline <duration>', 'Time the seller has to deliver (e.g. 30m, 24h, 7d)', '24h')
     .option('--review <duration>', 'Your accept/reject window after delivery', '24h')
@@ -223,7 +222,6 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
           spec?: string;
           agent?: string;
           service?: string;
-          offering?: string;
           requirements?: string;
           deadline: string;
           review: string;
@@ -241,9 +239,9 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
           let deliverByMs: number;
           let reviewWindowMs: number;
           let rejectSplitBps: number;
-          let offeringSlug: string | undefined;
+          let serviceSlug: string | undefined;
 
-          const serviceSlugOpt = opts.service ?? opts.offering;
+          const serviceSlugOpt = opts.service;
           if (serviceSlugOpt || opts.agent) {
             // Service mode — price + terms come from the listing, the spec
             // is the buyer's requirements (stored content-addressed; its
@@ -257,8 +255,8 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
               );
             }
             const sellerAgent = validateAddress(opts.agent);
-            const offering = await fetchOffering(base, sellerAgent, serviceSlugOpt);
-            offeringSlug = offering.slug;
+            const service = await fetchService(base, sellerAgent, serviceSlugOpt);
+            serviceSlug = service.slug;
 
             let requirements: unknown = null;
             if (opts.requirements) {
@@ -274,34 +272,34 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
                 requirements = text.trim();
               }
             }
-            if (offering.requirements != null && requirements == null) {
+            if (service.requirements != null && requirements == null) {
               const want =
-                typeof offering.requirements === 'string'
-                  ? offering.requirements
-                  : `JSON matching: ${JSON.stringify(offering.requirements)}`;
+                typeof service.requirements === 'string'
+                  ? service.requirements
+                  : `JSON matching: ${JSON.stringify(service.requirements)}`;
               throw new Error(
                 `This service needs --requirements. The seller asks for: ${want}`,
               );
             }
             if (
-              offering.requirements != null &&
-              typeof offering.requirements === 'object' &&
+              service.requirements != null &&
+              typeof service.requirements === 'object' &&
               (typeof requirements !== 'object' || requirements === null)
             ) {
               throw new Error(
-                `This service expects JSON requirements matching: ${JSON.stringify(offering.requirements)}`,
+                `This service expects JSON requirements matching: ${JSON.stringify(service.requirements)}`,
               );
             }
 
             const buyer = (await withAgent({ keyPath: opts.key })).address();
             const spec = JSON.stringify({
               type: 't2-acp-job-spec@1',
-              offering: {
-                agent: offering.agent,
-                slug: offering.slug,
-                name: offering.name,
-                priceUsdc: offering.priceUsdc,
-                deliverable: offering.deliverable,
+              service: {
+                agent: service.agent,
+                slug: service.slug,
+                name: service.name,
+                priceUsdc: service.priceUsdc,
+                deliverable: service.deliverable,
               },
               requirements,
               buyer,
@@ -309,11 +307,11 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
             });
             specHash = `0x${await putJobSpec(base, spec)}`;
 
-            amountUsdc = offering.priceUsdc;
-            seller = offering.agent;
-            deliverByMs = Date.now() + offering.slaMinutes * 60_000;
-            reviewWindowMs = offering.reviewWindowMinutes * 60_000;
-            rejectSplitBps = offering.rejectSplitBps;
+            amountUsdc = service.priceUsdc;
+            seller = service.agent;
+            deliverByMs = Date.now() + service.slaMinutes * 60_000;
+            reviewWindowMs = service.reviewWindowMinutes * 60_000;
+            rejectSplitBps = service.rejectSplitBps;
           } else {
             // Direct mode — explicit terms, spec hashed locally.
             if (!(amountArg && sellerArg)) {
@@ -365,11 +363,11 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
           }
 
           if (isJsonMode()) {
-            printJson({ jobId, digest, buyer: address, seller, amountUsdc, specHash, deliverByMs, reviewWindowMs, rejectSplitBps, ...(offeringSlug ? { offering: offeringSlug } : {}) });
+            printJson({ jobId, digest, buyer: address, seller, amountUsdc, specHash, deliverByMs, reviewWindowMs, rejectSplitBps, ...(serviceSlug ? { service: serviceSlug } : {}) });
             return;
           }
           printBlank();
-          printSuccess(`Escrowed $${amountUsdc.toFixed(2)} USDC → job for ${truncateAddress(seller)}${offeringSlug ? ` (service: ${offeringSlug})` : ''}`);
+          printSuccess(`Escrowed $${amountUsdc.toFixed(2)} USDC → job for ${truncateAddress(seller)}${serviceSlug ? ` (service: ${serviceSlug})` : ''}`);
           if (jobId) printKeyValue('Job', jobId);
           printKeyValue('Spec hash', specHash);
           printKeyValue('Deliver by', new Date(deliverByMs).toISOString());
@@ -519,7 +517,7 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
         const agent = await withAgent({ keyPath: opts.key });
         const address = agent.address();
 
-        // Same signed-mutation construction as `t2 offering`: challenge
+        // Same signed-mutation construction as `t2 service`: challenge
         // nonce + personal-message signature over sha256 of the payload.
         const challenge = await fetchJson(`${base}/agent/challenge`, {
           method: 'POST',

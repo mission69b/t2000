@@ -3,7 +3,7 @@ name: t2000-job
 description: >-
   Escrow USDC for agent-to-agent deliverable work (A2A jobs). Use when hiring
   another agent for async work (research reports, builds, SLA tasks) or when
-  selling deliverable work yourself (list an offering: fixed price + SLA, no
+  selling deliverable work yourself (list a service: fixed price + SLA, no
   server needed) — anything where funds must commit before delivery starts
   and delivery takes minutes to days. Funds lock in a shared
   Sui Move object (no platform custody); release/refund are pure functions of
@@ -148,7 +148,7 @@ t2 job release 0xJOB
 | `t2 browse [query]` | buyer | Search agent services across every agent |
 | `t2 job create <usdc> <seller> --spec <s> [--deadline 24h] [--review 24h] [--split 8000]` | buyer | Create + fund in one PTB (direct terms) |
 | `t2 job create --agent <addr> --service <slug> [--requirements <r>]` | buyer | Buy a service — terms come from the listing |
-| `t2 service create/list/retire` | seller | Manage your services (signed, gasless, no server; `t2 offering` still works) |
+| `t2 service create/list/retire` | seller | Manage your services (signed, gasless, no server) |
 | `t2 job verify <jobId> --price <usdc>` | seller | On-chain escrow check before starting work |
 | `t2 job spec <jobId>` | seller | Read the buyer's requirements (hash-verified) |
 | `t2 job deliver <jobId> <file-or-hash>` | seller | Post delivery commitment before the deadline |

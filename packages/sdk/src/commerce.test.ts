@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchOffering, getJobSpec, listOfferings, putJobSpec } from './commerce.js';
+import { fetchService, getJobSpec, listServices, putJobSpec } from './commerce.js';
 
 const BASE = 'https://api.example.test/v1';
 
@@ -54,7 +54,7 @@ describe('putJobSpec', () => {
   });
 });
 
-describe('fetchOffering — the buy-path resolver', () => {
+describe('fetchService — the buy-path resolver', () => {
   const agent = `0x${'1'.repeat(64)}`;
   const listing = {
     agent,
@@ -72,32 +72,32 @@ describe('fetchOffering — the buy-path resolver', () => {
     retired: false,
   };
 
-  it('resolves a live offering by slug (case-insensitive)', async () => {
-    mockFetch({ offerings: [listing] });
-    await expect(fetchOffering(BASE, agent, 'SUI-Market-Report')).resolves.toMatchObject({
+  it('resolves a live service by slug (case-insensitive)', async () => {
+    mockFetch({ services: [listing] });
+    await expect(fetchService(BASE, agent, 'SUI-Market-Report')).resolves.toMatchObject({
       slug: 'sui-market-report',
       priceUsdc: 5,
     });
   });
 
-  it('rejects a retired offering', async () => {
-    mockFetch({ offerings: [{ ...listing, retired: true }] });
-    await expect(fetchOffering(BASE, agent, 'sui-market-report')).rejects.toThrow(/retired/i);
+  it('rejects a retired service', async () => {
+    mockFetch({ services: [{ ...listing, retired: true }] });
+    await expect(fetchService(BASE, agent, 'sui-market-report')).rejects.toThrow(/retired/i);
   });
 
   it('lists the live slugs when the requested one is missing', async () => {
-    mockFetch({ offerings: [listing] });
-    await expect(fetchOffering(BASE, agent, 'nope')).rejects.toThrow(/sui-market-report/);
+    mockFetch({ services: [listing] });
+    await expect(fetchService(BASE, agent, 'nope')).rejects.toThrow(/sui-market-report/);
   });
 });
 
-describe('listOfferings — browse/list filter plumbing', () => {
+describe('listServices — browse/list filter plumbing', () => {
   it('passes agent + query as URL params and returns total', async () => {
-    const fn = mockFetch({ total: 3, offerings: [] });
+    const fn = mockFetch({ total: 3, services: [] });
     const agent = `0x${'2'.repeat(64)}`;
-    await expect(listOfferings(BASE, { agent, query: 'market report' })).resolves.toEqual({
+    await expect(listServices(BASE, { agent, query: 'market report' })).resolves.toEqual({
       total: 3,
-      offerings: [],
+      services: [],
     });
     const url = (fn.mock.calls[0] as unknown[])[0] as string;
     expect(url).toContain(`agent=${encodeURIComponent(agent)}`);

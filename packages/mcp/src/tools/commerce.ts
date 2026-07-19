@@ -2,12 +2,12 @@ import { createHash } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
-  fetchOffering,
+  fetchService,
   getJob,
   getJobSpec,
   getSuiClient,
   jobActionsFor,
-  listOfferings,
+  listServices,
   putJobSpec,
   validateAddress,
   MAX_JOB_USDC,
@@ -16,16 +16,14 @@ import {
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
-// t2 ACP commerce surface (SPEC_ACP_SUI) — the MCP mirror of `t2 service`
-// (alias `t2 offering`), `t2 browse`, and `t2 job`. Tool names keep the
-// `offering` wire noun for client compat; the human surface says "service".
-// An OFFERING is a structured, fixed-price unit of
+// t2 ACP commerce surface (SPEC_ACP_SUI) — the MCP mirror of `t2 service`,
+// `t2 browse`, and `t2 job`. A SERVICE is a structured, fixed-price unit of
 // deliverable work attached to this wallet's Agent ID (no server, no endpoint
 // required to sell). A JOB is ONE shared Move object (`a2a_escrow::escrow::
 // Job<USDC>`) holding the funds itself — no platform custody. Writes go
 // through the sponsored rail (api.t2000.ai builds + co-pays gas; this wallet
 // signs — Move enforces `sender == buyer/seller`, so sponsorship never
-// weakens auth). Catalog mutations (offerings, reviews) are signed
+// weakens auth). Catalog mutations (services, reviews) are signed
 // personal-message challenges, same construction as the CLI.
 
 const API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
@@ -33,7 +31,7 @@ const API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 /** Challenge → sign `t2000-<kind>:{nonce}:{sha256(payload)}` → POST. */
 async function signedMutation(opts: {
   agent: T2000;
-  kind: 'agent-offering' | 'job-review';
+  kind: 'agent-service' | 'job-review';
   url: string;
   body: (nonce: string, signature: string, payload: Record<string, unknown>) => Record<string, unknown>;
   payload: Record<string, unknown>;
@@ -160,13 +158,13 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
   // ── Selling ──────────────────────────────────────────────────────────
 
   server.tool(
-    't2000_offering_create',
-    "List (or update) an OFFERING under this wallet's Agent ID — a structured, fixed-price unit of deliverable work (name, USDC price, delivery SLA, what the buyer provides, what they get back). Buyers browse offerings and fund an on-chain USDC escrow Job against one; you deliver with t2000_job_deliver and the escrow settles to you (5% protocol fee). NO server or endpoint needed to sell. Re-run with the same slug to update. Requires an on-chain Agent ID (`t2 agent register`). Free — one signed message, no funds spent. Mirrors `t2 service create`.",
+    't2000_service_create',
+    "List (or update) a SERVICE under this wallet's Agent ID — a structured, fixed-price unit of deliverable work (name, USDC price, delivery SLA, what the buyer provides, what they get back). Buyers browse services and fund an on-chain USDC escrow Job against one; you deliver with t2000_job_deliver and the escrow settles to you (5% protocol fee). NO server or endpoint needed to sell. Re-run with the same slug to update. Requires an on-chain Agent ID (`t2 agent register`). Free — one signed message, no funds spent. Mirrors `t2 service create`.",
     {
-      name: z.string().max(80).describe('Offering name, e.g. "Sui market report" (max 80 chars)'),
+      name: z.string().max(80).describe('Service name, e.g. "Sui market report" (max 80 chars)'),
       priceUsdc: z.number().min(0.01).max(50).describe('Fixed price in USDC (0.01–50)'),
       slaMinutes: z.number().int().positive().describe('Delivery SLA in minutes (e.g. 1440 = 24h) — the escrow refunds the buyer if you miss it'),
-      description: z.string().max(2000).describe('What this offering is — buyers see it on your profile (max 2000 chars)'),
+      description: z.string().max(2000).describe('What this service is — buyers see it on your profile (max 2000 chars)'),
       deliverable: z.string().max(1000).describe('What the buyer receives, e.g. "Markdown report, sources cited" (max 1000 chars)'),
       slug: z.string().optional().describe('Machine name (default: derived from name)'),
       requirements: z.string().optional().describe('What the buyer must provide — free text or a JSON schema string'),
@@ -188,8 +186,8 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
         };
         await signedMutation({
           agent,
-          kind: 'agent-offering',
-          url: `${API_BASE}/agent/offering`,
+          kind: 'agent-service',
+          url: `${API_BASE}/agent/service`,
           payload,
           body: (nonce, signature, p) => ({ address: agent.address(), nonce, signature, action: 'upsert', payload: p }),
         });
@@ -212,16 +210,16 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
-    't2000_offering_retire',
-    'Take one of your offerings off the board (soft-delete — already-funded jobs still settle on-chain). Re-create with the same slug to relist. Mirrors `t2 service retire <slug>`.',
-    { slug: z.string().describe('The offering slug to retire (see t2000_offerings with your address)') },
+    't2000_service_retire',
+    'Take one of your services off the board (soft-delete — already-funded jobs still settle on-chain). Re-create with the same slug to relist. Mirrors `t2 service retire <slug>`.',
+    { slug: z.string().describe('The service slug to retire (see t2000_browse with your address)') },
     async ({ slug }) => {
       try {
         const payload = { slug: slug.trim().toLowerCase() };
         await signedMutation({
           agent,
-          kind: 'agent-offering',
-          url: `${API_BASE}/agent/offering`,
+          kind: 'agent-service',
+          url: `${API_BASE}/agent/service`,
           payload,
           body: (nonce, signature, p) => ({ address: agent.address(), nonce, signature, action: 'retire', payload: p }),
         });
@@ -233,15 +231,15 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
-    't2000_offerings',
-    "Browse OFFERINGS across the t2 agent economy — structured, fixed-price work other agents sell (hire them with t2000_job_create), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). Mirrors `t2 browse` / `t2 service list`.",
+    't2000_browse',
+    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (hire them with t2000_job_create), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). Mirrors `t2 browse` / `t2 service list`.",
     {
-      query: z.string().optional().describe('Free-text search across offering names/descriptions (omit for all)'),
+      query: z.string().optional().describe('Free-text search across service names/descriptions (omit for all)'),
       agent: z.string().optional().describe("One agent's Sui address — their catalog, retired included (e.g. your own to check your listings)"),
     },
     async ({ query, agent: agentAddr }) => {
       try {
-        const result = await listOfferings(API_BASE, {
+        const result = await listServices(API_BASE, {
           agent: agentAddr ? validateAddress(agentAddr) : undefined,
           query,
         });
@@ -257,13 +255,13 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
   server.tool(
     't2000_job_create',
     `HIRE an agent: create + fund an on-chain USDC escrow Job in one sponsored transaction (buyer side). THIS SPENDS FUNDS — the price is locked in the Job object until settlement. Two modes:
-1. OFFERING mode (preferred): pass agent + offering (a slug from t2000_offerings) + requirements. Price/SLA/terms come from the listing.
+1. SERVICE mode (preferred): pass agent + service (a slug from t2000_browse) + requirements. Price/SLA/terms come from the listing.
 2. DIRECT mode: pass seller + amountUsdc + spec (your brief; stored content-addressed, sha256 pinned on-chain) + optional deadline/review/split terms.
 The escrow protects both sides: no delivery by the deadline → anyone can refund the buyer; delivery + lapsed review window → anyone can release to the seller. Max ${MAX_JOB_USDC} USDC. Mirrors \`t2 job create\`.`,
     {
-      agent: z.string().optional().describe("OFFERING mode: the seller's agent address"),
-      offering: z.string().optional().describe('OFFERING mode: the offering slug'),
-      requirements: z.string().optional().describe('OFFERING mode: what the seller asked buyers to provide — JSON string or free text'),
+      agent: z.string().optional().describe("SERVICE mode: the seller's agent address"),
+      service: z.string().optional().describe('SERVICE mode: the service slug'),
+      requirements: z.string().optional().describe('SERVICE mode: what the seller asked buyers to provide — JSON string or free text'),
       seller: z.string().optional().describe("DIRECT mode: the seller's Sui address"),
       amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('DIRECT mode: USDC to escrow'),
       spec: z.string().optional().describe('DIRECT mode: the job brief (stored content-addressed; its sha256 goes on-chain)'),
@@ -275,46 +273,46 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
       try {
         const buyer = agent.address();
         let params: Record<string, unknown>;
-        let offeringSlug: string | undefined;
+        let serviceSlug: string | undefined;
 
-        if (input.offering || input.agent) {
-          if (!(input.offering && input.agent)) {
-            throw new Error('agent and offering go together (offering mode).');
+        if (input.service || input.agent) {
+          if (!(input.service && input.agent)) {
+            throw new Error('agent and service go together (service mode).');
           }
           const sellerAgent = validateAddress(input.agent);
-          const offering = await fetchOffering(API_BASE, sellerAgent, input.offering);
-          offeringSlug = offering.slug;
+          const service = await fetchService(API_BASE, sellerAgent, input.service);
+          serviceSlug = service.slug;
           const requirements = parseRequirements(input.requirements);
-          if (offering.requirements != null && requirements == null) {
-            const want = typeof offering.requirements === 'string'
-              ? offering.requirements
-              : `JSON matching: ${JSON.stringify(offering.requirements)}`;
-            throw new Error(`This offering needs requirements. The seller asks for: ${want}`);
+          if (service.requirements != null && requirements == null) {
+            const want = typeof service.requirements === 'string'
+              ? service.requirements
+              : `JSON matching: ${JSON.stringify(service.requirements)}`;
+            throw new Error(`This service needs requirements. The seller asks for: ${want}`);
           }
           const spec = JSON.stringify({
             type: 't2-acp-job-spec@1',
-            offering: {
-              agent: offering.agent,
-              slug: offering.slug,
-              name: offering.name,
-              priceUsdc: offering.priceUsdc,
-              deliverable: offering.deliverable,
+            service: {
+              agent: service.agent,
+              slug: service.slug,
+              name: service.name,
+              priceUsdc: service.priceUsdc,
+              deliverable: service.deliverable,
             },
             requirements,
             buyer,
             createdAtMs: Date.now(),
           });
           params = {
-            seller: offering.agent,
-            amountUsdc: offering.priceUsdc,
+            seller: service.agent,
+            amountUsdc: service.priceUsdc,
             specHash: `0x${await putJobSpec(API_BASE, spec)}`,
-            deliverByMs: Date.now() + offering.slaMinutes * 60_000,
-            reviewWindowMs: offering.reviewWindowMinutes * 60_000,
-            rejectSplitBps: offering.rejectSplitBps,
+            deliverByMs: Date.now() + service.slaMinutes * 60_000,
+            reviewWindowMs: service.reviewWindowMinutes * 60_000,
+            rejectSplitBps: service.rejectSplitBps,
           };
         } else {
           if (!(input.seller && input.amountUsdc && input.spec)) {
-            throw new Error('Provide seller + amountUsdc + spec (direct mode) or agent + offering (buy a listing).');
+            throw new Error('Provide seller + amountUsdc + spec (direct mode) or agent + service (buy a listing).');
           }
           params = {
             seller: validateAddress(input.seller),
@@ -337,7 +335,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
               digest,
               buyer,
               ...params,
-              ...(offeringSlug ? { offering: offeringSlug } : {}),
+              ...(serviceSlug ? { service: serviceSlug } : {}),
               next: 'Track it with t2000_jobs. When the seller delivers, accept with t2000_job_settle (release) or reject within the review window.',
             }),
           }],

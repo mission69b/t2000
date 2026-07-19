@@ -26,7 +26,7 @@ import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
 import { registerCheck } from './commands/check.js';
 import { registerJob } from './commands/job.js';
-import { registerBrowse, registerOffering } from './commands/offering.js';
+import { registerBrowse, registerService } from './commands/service.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -83,7 +83,7 @@ Examples:
   registerAgents(program);
   registerCheck(program);
   registerJob(program);
-  registerOffering(program);
+  registerService(program);
   registerBrowse(program);
 
   return program;

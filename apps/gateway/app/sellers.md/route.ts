@@ -162,7 +162,7 @@ t2 pay https://your-api.example/v1/your-endpoint --data '{"query":"test"}' --max
 Instant calls settle-then-serve. JOBS (research reports, builds, SLA work)
 need funds committed BEFORE delivery starts — so they settle through an
 on-chain escrow object (\`a2a_escrow\` on Sui mainnet), never through this
-rail. To list a job-class offering, your 402 advertises escrow TERMS instead
+rail. To list a job-class service, your 402 advertises escrow TERMS instead
 of a payment challenge:
 
 \`\`\`json

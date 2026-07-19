@@ -1,5 +1,4 @@
-// `t2 service` (alias: `t2 offering`) — the seller catalog (t2 ACP Phase 1,
-// SPEC_ACP_SUI §4.1).
+// `t2 service` — the seller catalog (t2 ACP Phase 1, SPEC_ACP_SUI §4.1).
 //
 // A service is a structured, fixed-price unit of deliverable work attached
 // to your Agent ID: name, price (USDC), delivery SLA, what the buyer must
@@ -11,9 +10,6 @@
 //   list     your services (or any agent's)
 //   retire   soft-delete — existing funded jobs keep settling on-chain
 //
-// The API/wire noun stays `offering` (endpoints, payloads, MCP tools) — only
-// the human-facing verb surface renamed (founder call, 2026-07-19).
-//
 // Mutations are signed: challenge nonce + personal-message signature bound to
 // sha256 of the exact payload (same construction as the services catalog).
 
@@ -22,7 +18,7 @@ import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { truncateAddress, validateAddress } from '@t2000/sdk';
-import { fetchJson, type OfferingListing } from '../lib/offerings.js';
+import { fetchJson, type ServiceListing } from '../lib/services.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
   handleError,
@@ -38,8 +34,8 @@ import { parseDuration } from './job.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 
-/** Signed offering mutation: challenge → sign nonce+payload-hash → POST. */
-async function signedOfferingAction(opts: {
+/** Signed service mutation: challenge → sign nonce+payload-hash → POST. */
+async function signedServiceAction(opts: {
   base: string;
   keyPath?: string;
   action: 'upsert' | 'retire';
@@ -59,10 +55,10 @@ async function signedOfferingAction(opts: {
     .update(JSON.stringify(opts.payload), 'utf8')
     .digest('hex');
   const message = new TextEncoder().encode(
-    `t2000-agent-offering:${nonce}:${payloadHash}`,
+    `t2000-agent-service:${nonce}:${payloadHash}`,
   );
   const { signature } = await agent.keypair.signPersonalMessage(message);
-  const response = await fetchJson(`${opts.base}/agent/offering`, {
+  const response = await fetchJson(`${opts.base}/agent/service`, {
     method: 'POST',
     body: {
       address,
@@ -108,7 +104,7 @@ function formatSla(minutes: number): string {
   return `${minutes}m`;
 }
 
-function printOffering(o: OfferingListing) {
+function printService(o: ServiceListing) {
   const flag = o.retired ? pc.dim(' (retired)') : '';
   printLine(`${pc.bold(o.name)} ${pc.dim(`· ${o.slug}`)}${flag}`);
   printKeyValue('Price', `$${o.priceUsdc.toFixed(2)} USDC`);
@@ -132,10 +128,9 @@ function printOffering(o: OfferingListing) {
   );
 }
 
-export function registerOffering(program: Command) {
+export function registerService(program: Command) {
   const group = program
     .command('service')
-    .alias('offering')
     .description(
       'Sell deliverable work — list what you do, at what price, on what SLA (t2 ACP)',
     )
@@ -212,7 +207,7 @@ Examples:
             deliverable: opts.deliverable.trim(),
           };
           const base = opts.api ?? DEFAULT_API_BASE;
-          const { address } = await signedOfferingAction({
+          const { address } = await signedServiceAction({
             base,
             keyPath: opts.key,
             action: 'upsert',
@@ -229,7 +224,7 @@ Examples:
           printKeyValue('Storefront', `https://agents.t2000.ai/${address}`);
           printKeyValue('Buyers run', `t2 job create --agent ${address} --service ${slug}`);
           printBlank();
-          printInfo('Watch for incoming jobs with: t2 job watch <jobId>  (buyers hand you the job id)');
+          printInfo('Watch for incoming jobs with: t2 job watch --mine');
           printBlank();
         } catch (error) {
           handleError(error);
@@ -250,11 +245,11 @@ Examples:
           ? validateAddress(agentArg)
           : (await withAgent({ keyPath: opts.key })).address();
         const json = await fetchJson(
-          `${base}/offerings?agent=${encodeURIComponent(agent)}`,
+          `${base}/services?agent=${encodeURIComponent(agent)}`,
         );
-        const rows = (json.offerings ?? []) as OfferingListing[];
+        const rows = (json.services ?? []) as ServiceListing[];
         if (isJsonMode()) {
-          printJson({ agent, offerings: rows });
+          printJson({ agent, services: rows });
           return;
         }
         printBlank();
@@ -264,7 +259,7 @@ Examples:
           return;
         }
         for (const o of rows) {
-          printOffering(o);
+          printService(o);
           printBlank();
         }
       } catch (error) {
@@ -281,7 +276,7 @@ Examples:
     .action(async (slug: string, opts: { key?: string; api?: string }) => {
       try {
         const base = opts.api ?? DEFAULT_API_BASE;
-        const { address } = await signedOfferingAction({
+        const { address } = await signedServiceAction({
           base,
           keyPath: opts.key,
           action: 'retire',
@@ -310,10 +305,10 @@ export function registerBrowse(program: Command) {
       try {
         const base = opts.api ?? DEFAULT_API_BASE;
         const params = query ? `?q=${encodeURIComponent(query)}` : '';
-        const json = await fetchJson(`${base}/offerings${params}`);
-        const rows = (json.offerings ?? []) as OfferingListing[];
+        const json = await fetchJson(`${base}/services${params}`);
+        const rows = (json.services ?? []) as ServiceListing[];
         if (isJsonMode()) {
-          printJson({ query: query ?? null, total: json.total ?? rows.length, offerings: rows });
+          printJson({ query: query ?? null, total: json.total ?? rows.length, services: rows });
           return;
         }
         printBlank();
@@ -323,7 +318,7 @@ export function registerBrowse(program: Command) {
           return;
         }
         for (const o of rows) {
-          printOffering(o);
+          printService(o);
           printBlank();
         }
       } catch (error) {

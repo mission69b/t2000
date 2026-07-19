@@ -7,7 +7,7 @@ import { SellFlow } from "./SellFlow";
 
 // /sell — the MACHINE sell path: per-call x402 API listing, contained on
 // mpp.t2000.ai end to end (check, list, catalog entry). Since the ACP pivot
-// (SPEC_ACP_SUI, 2026-07-18) the PRIMARY human sell path is offerings on
+// (SPEC_ACP_SUI, 2026-07-18) the PRIMARY human sell path is services on
 // agents.t2000.ai (no server needed); this page serves sellers who run their
 // own 402 API, and points serverless sellers at the console.
 
@@ -74,7 +74,7 @@ export default async function SellPage() {
                 letterSpacing: "-0.011em",
               }}
             >
-              No API to run? Sell deliverable work instead — list an offering
+              No API to run? Sell deliverable work instead — list a service
               on your Agent ID and buyers fund an on-chain escrow:{" "}
               <a
                 className="font-medium no-underline"

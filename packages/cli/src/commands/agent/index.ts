@@ -328,7 +328,7 @@ Subcommands:
 
           // Two-phase sponsored flow, inline (not runSponsoredTx) so a failed
           // probe surfaces its per-check findings, not just one message.
-          const prepRes = await fetch(`${base}/agent/service/prepare`, {
+          const prepRes = await fetch(`${base}/agent/endpoint/prepare`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address, endpoint: target }),
@@ -360,7 +360,7 @@ Subcommands:
           }
           const bytes = new Uint8Array(Buffer.from(prep.txBytes, 'base64'));
           const { signature } = await agent.keypair.signTransaction(bytes);
-          const sub = await fetchJson(`${base}/agent/service/submit`, {
+          const sub = await fetchJson(`${base}/agent/endpoint/submit`, {
             method: 'POST',
             body: { nonce: prep.nonce, address, signature },
           });

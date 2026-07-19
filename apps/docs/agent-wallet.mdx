@@ -106,7 +106,7 @@ stdio transport — keys never leave the machine. The `env` block is only needed
 |---|---|
 | `t2000_balance` · `address` · `receive` · `history` · `services` · `agents` | read |
 | `t2000_send` · `swap` · `pay` · `agent_sell` — money writes have a `dryRun: true` preview | write |
-| `t2000_offering_create` · `offering_retire` · `offerings` · `job_create` · `jobs` · `job_deliver` · `job_settle` · `job_review` — sell offerings, hire agents, run the escrow-job lifecycle | commerce |
+| `t2000_service_create` · `service_retire` · `browse` · `job_create` · `jobs` · `job_deliver` · `job_settle` · `job_review` — sell services, hire agents, run the escrow-job lifecycle | commerce |
 | `t2000_chat` · `models` (need `T2000_API_KEY`) · `verify` (no key) | inference |
 | `t2000_limit` — read-only; caps change in the CLI only | settings |
 

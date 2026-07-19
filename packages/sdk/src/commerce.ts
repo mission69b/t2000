@@ -1,7 +1,7 @@
-// Commerce API client (t2 ACP) — offerings + the content-addressed job-spec
-// store on api.t2000.ai. Shared by `@t2000/cli` (`t2 offering` / `t2 browse` /
-// `t2 job`) and `@t2000/mcp` (the t2000_offering_* / t2000_job_* tools) so the
-// tamper-verify logic exists exactly once.
+// Commerce API client (t2 ACP) — agent services + the content-addressed
+// job-spec store on api.t2000.ai. Shared by `@t2000/cli` (`t2 service` /
+// `t2 browse` / `t2 job`) and `@t2000/mcp` (the t2000_service_* / t2000_job_*
+// tools) so the tamper-verify logic exists exactly once.
 //
 // Browser-safe: hashing uses WebCrypto (`crypto.subtle`), available in every
 // browser and Node >= 18. No fs, no node:crypto.
@@ -31,8 +31,8 @@ async function commerceFetchJson(
   return json;
 }
 
-/** The shape the API returns from GET /v1/offerings. */
-export interface OfferingListing {
+/** The shape the API returns from GET /v1/services. */
+export interface ServiceListing {
   agent: string;
   agentName: string | null;
   agentNumericId: number | null;
@@ -48,39 +48,39 @@ export interface OfferingListing {
   retired: boolean;
 }
 
-/** Browse / list offerings — free-text `query` across every agent, or one
- *  agent's full catalog (retired included) via `agent`. */
-export async function listOfferings(
+/** Browse / list agent services — free-text `query` across every agent, or
+ *  one agent's full catalog (retired included) via `agent`. */
+export async function listServices(
   base: string,
   filter: { agent?: string; query?: string } = {},
-): Promise<{ total: number; offerings: OfferingListing[] }> {
+): Promise<{ total: number; services: ServiceListing[] }> {
   const params = new URLSearchParams();
   if (filter.agent) params.set('agent', filter.agent);
   if (filter.query) params.set('q', filter.query);
   const qs = params.size > 0 ? `?${params.toString()}` : '';
-  const json = await commerceFetchJson(`${base}/offerings${qs}`);
-  const offerings = (json.offerings ?? []) as OfferingListing[];
-  return { total: (json.total as number | undefined) ?? offerings.length, offerings };
+  const json = await commerceFetchJson(`${base}/services${qs}`);
+  const services = (json.services ?? []) as ServiceListing[];
+  return { total: (json.total as number | undefined) ?? services.length, services };
 }
 
-/** Fetch one agent's live offering by slug (the buy-path resolver). */
-export async function fetchOffering(
+/** Fetch one agent's live service by slug (the buy-path resolver). */
+export async function fetchService(
   base: string,
   agent: string,
   slug: string,
-): Promise<OfferingListing> {
-  const { offerings: rows } = await listOfferings(base, { agent });
+): Promise<ServiceListing> {
+  const { services: rows } = await listServices(base, { agent });
   const match = rows.find((o) => o.slug === slug.trim().toLowerCase());
   if (!match) {
     const live = rows.filter((o) => !o.retired).map((o) => o.slug);
     throw new Error(
-      `Agent ${truncateAddress(agent)} has no offering "${slug}".` +
-        (live.length > 0 ? ` Live offerings: ${live.join(', ')}` : ''),
+      `Agent ${truncateAddress(agent)} has no service "${slug}".` +
+        (live.length > 0 ? ` Live services: ${live.join(', ')}` : ''),
     );
   }
   if (match.retired) {
     throw new Error(
-      `Offering "${slug}" is retired — the seller no longer sells it.`,
+      `Service "${slug}" is retired — the seller no longer sells it.`,
     );
   }
   return match;

@@ -46,6 +46,16 @@
             ]
           },
           {
+            "group": "Commerce",
+            "pages": [
+              "commerce/overview",
+              "commerce/how-it-works",
+              "commerce/hire-an-agent",
+              "commerce/sell-services",
+              "commerce/architecture"
+            ]
+          },
+          {
             "group": "Payments",
             "pages": [
               "pay-any-api",
@@ -143,15 +153,15 @@
     },
     {
       "source": "/commerce/tasks",
-      "destination": "/agent-id"
+      "destination": "/commerce/hire-an-agent"
     },
     {
       "source": "/commerce/sell",
-      "destination": "/agent-id"
+      "destination": "/commerce/sell-services"
     },
     {
       "source": "/agent-commerce",
-      "destination": "/agent-id"
+      "destination": "/commerce/overview"
     },
     {
       "source": "/private-api",

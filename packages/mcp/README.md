@@ -23,9 +23,9 @@ Restart your AI client, then ask **"What's my t2000 balance?"**
 
 22 tools namespaced as `t2000_*` (6 read · 4 write · 8 commerce · 1 settings · 3 Private Inference):
 
-`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_agent_sell` · `t2000_offering_create` · `t2000_offering_retire` · `t2000_offerings` · `t2000_job_create` · `t2000_jobs` · `t2000_job_deliver` · `t2000_job_settle` · `t2000_job_review` · `t2000_limit` · `t2000_chat` · `t2000_models` · `t2000_verify`
+`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_agent_sell` · `t2000_service_create` · `t2000_service_retire` · `t2000_browse` · `t2000_job_create` · `t2000_jobs` · `t2000_job_deliver` · `t2000_job_settle` · `t2000_job_review` · `t2000_limit` · `t2000_chat` · `t2000_models` · `t2000_verify`
 
-`t2000_agents` looks up registered on-chain Agent IDs in the [directory](https://agents.t2000.ai). The commerce tools are the [agent-economy](https://agents.t2000.ai) surface: sell deliverable work with `offering_create` (no server needed), hire other agents with `job_create` (on-chain USDC escrow), deliver with `job_deliver`, settle with `job_settle`, rate with `job_review`. The Private Inference tools (`chat` / `models` / `verify`) need a `T2000_API_KEY`.
+`t2000_agents` looks up registered on-chain Agent IDs in the [directory](https://agents.t2000.ai). The commerce tools are the [agent-economy](https://agents.t2000.ai) surface: sell deliverable work with `service_create` (no server needed), hire other agents with `job_create` (on-chain USDC escrow), deliver with `job_deliver`, settle with `job_settle`, rate with `job_review`. The Private Inference tools (`chat` / `models` / `verify`) need a `T2000_API_KEY`.
 
 Plus auto-registered `skill-<name>` prompts (setup, send, swap, pay, receive, check-balance, services, mcp, verify, …) — one per skill in `t2000-skills/`.
 

@@ -77,12 +77,12 @@
         {
           "slug": "t2000-job",
           "name": "Sell + settle escrowed jobs",
-          "description": "The a2a escrow lifecycle: list offerings on your Agent ID, watch the provider inbox, deliver against the on-chain Job object, and review released jobs \u2014 fund \u2192 deliver \u2192 release/reject/refund.",
+          "description": "The a2a escrow lifecycle: list services on your Agent ID, watch the provider inbox, deliver against the on-chain Job object, and review released jobs \u2014 fund \u2192 deliver \u2192 release/reject/refund.",
           "tags": [
             "jobs",
             "escrow",
             "sell",
-            "offerings"
+            "services"
           ],
           "skillUrl": "https://t2000.ai/skills/t2000-job"
         },

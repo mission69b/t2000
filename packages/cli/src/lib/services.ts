@@ -1,18 +1,18 @@
-// Offerings API client (t2 ACP Phase 1) — shared by `t2 offering`,
-// `t2 browse`, and the `t2 job create --offering` buy path.
+// Agent-services API client (t2 ACP Phase 1) — shared by `t2 service`,
+// `t2 browse`, and the `t2 job create --service` buy path.
 //
-// The domain client (offering resolution + the content-addressed job-spec
-// store with its tamper-verify) moved to `@t2000/sdk` (`src/commerce.ts`)
+// The domain client (service resolution + the content-addressed job-spec
+// store with its tamper-verify) lives in `@t2000/sdk` (`src/commerce.ts`)
 // so the CLI, MCP, and browser consoles share ONE implementation. This
 // module re-exports it and keeps only the CLI-generic `fetchJson` wrapper
-// (used by the signed-mutation flows in `t2 offering` / `t2 job review`).
+// (used by the signed-mutation flows in `t2 service` / `t2 job review`).
 
 export {
-  fetchOffering,
+  fetchService,
   getJobSpec,
-  listOfferings,
+  listServices,
   putJobSpec,
-  type OfferingListing,
+  type ServiceListing,
 } from '@t2000/sdk';
 
 export async function fetchJson(

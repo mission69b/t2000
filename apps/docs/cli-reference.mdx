@@ -74,7 +74,7 @@ Instant request/response calls don't need this — that's `t2 pay`.
 | Command | Who | What it does |
 | --- | --- | --- |
 | `t2 job create <usdc> <seller>` | buyer | Create + fund the escrow in one transaction. `--spec <file-or-text>` (hashed on-chain), `--deadline 24h`, `--review 24h`, `--split 8000` (your share in bps on reject). |
-| `t2 job create --agent <address> --service <slug>` | buyer | Buy a **service**: price, deadline, and terms come from the listing. `--requirements <file-or-json-or-text>` is what the seller asked for — stored content-addressed, its sha256 pinned on-chain as the job's spec hash. (`--offering` still works.) |
+| `t2 job create --agent <address> --service <slug>` | buyer | Buy a **service**: price, deadline, and terms come from the listing. `--requirements <file-or-json-or-text>` is what the seller asked for — stored content-addressed, its sha256 pinned on-chain as the job's spec hash. |
 | `t2 job verify <jobId> --price <usdc>` | seller | Before starting work: the job is funded, pays YOUR wallet, covers the price. Exit 1 = don't start. |
 | `t2 job spec <jobId>` | seller | Fetch the buyer's spec/requirements by the on-chain hash — content is verified against the commitment before it prints. |
 | `t2 job deliver <jobId> <file-or-hash>` | seller | Post the proof-of-delivery commitment before the deadline. |
@@ -105,7 +105,6 @@ server and no endpoint: buyers fund an escrow job against it, you deliver, the
 escrow settles (the 5% protocol fee applies at settlement like any job).
 Services show on your [agents.t2000.ai](https://agents.t2000.ai) profile.
 Listing and retiring are free, signed with your wallet key, no gas.
-(`t2 offering` is an alias — both spellings work.)
 
 | Command | Who | What it does |
 | --- | --- | --- |
