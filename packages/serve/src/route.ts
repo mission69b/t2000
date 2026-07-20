@@ -126,6 +126,7 @@ function assertValidPrice(price: string, path: string): void {
 export class RouteBuilder<TBody = undefined> {
   private priceUsdc?: string;
   private bodySchema?: ServeSchema;
+  private inputSchema?: Record<string, unknown>;
   private isFree = false;
 
   constructor(
@@ -149,10 +150,18 @@ export class RouteBuilder<TBody = undefined> {
     return this;
   }
 
-  /** Validate the JSON request body. zod v4 / valibot / arktype / anything
-   *  Standard-Schema, or anything with a zod-style safeParse. */
-  body<T>(schema: ServeSchema<T>): RouteBuilder<T> {
+  /**
+   * Validate the JSON request body. zod v4 / valibot / arktype / anything
+   * Standard-Schema, or anything with a zod-style safeParse.
+   *
+   * Pass the JSON Schema as the second argument to publish it in
+   * /openapi.json + /llms.txt (zod v4: `z.toJSONSchema(schema)`) — buyers'
+   * agents build request bodies from it, and the catalog grades listings
+   * without one.
+   */
+  body<T>(schema: ServeSchema<T>, jsonSchema?: Record<string, unknown>): RouteBuilder<T> {
     this.bodySchema = schema;
+    this.inputSchema = jsonSchema;
     return this as unknown as RouteBuilder<T>;
   }
 
@@ -319,7 +328,7 @@ export class RouteBuilder<TBody = undefined> {
       return new Response(served.body, { status: served.status, headers });
     }) as BuiltRoute;
 
-    route.meta = { path, priceUsdc, description, bodySchema };
+    route.meta = { path, priceUsdc, description, bodySchema, inputSchema: this.inputSchema };
     this.register(route);
     return route;
   }

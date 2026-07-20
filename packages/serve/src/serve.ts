@@ -1,5 +1,6 @@
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { InMemoryDigestStore, USDC, USDC_TESTNET, type Currency } from '@suimpp/mpp/server';
+import { buildLlmsTxt, buildOpenApiDocument } from './discovery.js';
 import { RouteBuilder, type RouteOptions, type RouteRuntime } from './route.js';
 import { UpstashDigestStore } from './store.js';
 import type { BuiltRoute, ServeConfig, ServeNetwork } from './types.js';
@@ -47,6 +48,54 @@ export class Serve {
       this.routes.set(path, route);
     });
   }
+
+  /**
+   * Discovery: GET handler for /openapi.json. OpenAPI 3.1 with the
+   * `x-payment-info` pricing extension on every paid operation — the shape
+   * the mpp.t2000.ai catalog (and x402 tooling generally) indexes.
+   *
+   *   export const GET = serve.openapi();   // app/openapi.json/route.ts
+   */
+  openapi(): (req: Request) => Response {
+    return (req: Request) =>
+      new Response(JSON.stringify(buildOpenApiDocument(this, new URL(req.url).origin), null, 2), {
+        headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
+      });
+  }
+
+  /**
+   * Discovery: GET handler for /llms.txt — plain-text guidance agents read
+   * to understand what the API sells, what it costs, and how to pay.
+   *
+   *   export const GET = serve.llms();      // app/llms.txt/route.ts
+   */
+  llms(): (req: Request) => Response {
+    return (req: Request) =>
+      new Response(buildLlmsTxt(this, new URL(req.url).origin), {
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'access-control-allow-origin': '*' },
+      });
+  }
+
+  /**
+   * One fetch handler for the whole app — routes + discovery docs. For
+   * fetch-native runtimes (Bun.serve, Deno.serve, Hono, Cloudflare Workers):
+   *
+   *   Bun.serve({ fetch: serve.fetch });
+   *   app.all('*', (c) => serve.fetch(c.req.raw));   // Hono
+   *
+   * Next.js apps can skip this and export route handlers directly.
+   */
+  readonly fetch = async (req: Request): Promise<Response> => {
+    const pathname = new URL(req.url).pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+    if (pathname === 'openapi.json') return this.openapi()(req);
+    if (pathname === 'llms.txt') return this.llms()(req);
+    const route = this.routes.get(pathname);
+    if (route) return route(req);
+    return new Response(
+      JSON.stringify({ error: 'not found', discovery: ['/openapi.json', '/llms.txt'] }),
+      { status: 404, headers: { 'content-type': 'application/json' } },
+    );
+  };
 
   /**
    * The curl that lists this API on mpp.t2000.ai / agents.t2000.ai once it

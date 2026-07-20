@@ -85,8 +85,15 @@ export interface RouteMeta {
   /** Human-units USDC price string, e.g. "0.01". Undefined = free route. */
   priceUsdc?: string;
   description?: string;
-  /** The body schema, kept for discovery-doc generation (slice 2). */
+  /** The runtime validation schema. */
   bodySchema?: ServeSchema;
+  /**
+   * JSON Schema of the request body, emitted into /openapi.json + /llms.txt
+   * so buyers' agents can build request bodies without guessing (a wrong
+   * guess against a direct seller is a paid error). zod v4:
+   * `z.toJSONSchema(schema)`.
+   */
+  inputSchema?: Record<string, unknown>;
 }
 
 /** The built route — a fetch-compatible handler plus its metadata. */

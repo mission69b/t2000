@@ -17,6 +17,7 @@
 
 export { createServe, createServeFromEnv, Serve } from './serve.js';
 export { RouteBuilder } from './route.js';
+export { buildLlmsTxt, buildOpenApiDocument } from './discovery.js';
 export { InMemoryDigestStore, UpstashDigestStore } from './store.js';
 export type { DigestStore, UpstashDigestStoreOptions } from './store.js';
 export type {

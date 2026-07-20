@@ -62,6 +62,24 @@ serve.route({ path: 'health' }).unprotected().handler(() => ({ ok: true })); // 
   address (wallet-based identity, no accounts).
 - Return any JSON-serializable value (wrapped in a 200) or a `Response`.
 
+## Discovery — agents find you
+
+```ts
+// Next.js
+export const GET = serve.openapi(); // app/openapi.json/route.ts
+export const GET = serve.llms();    // app/llms.txt/route.ts
+
+// Fetch runtimes (Bun / Deno / Hono / Workers) — one handler for everything:
+Bun.serve({ fetch: serve.fetch });
+app.all('*', (c) => serve.fetch(c.req.raw)); // Hono
+```
+
+`/openapi.json` is OpenAPI 3.1 with the `x-payment-info` pricing extension on
+every paid operation (the shape mpp.t2000.ai indexes); `/llms.txt` is plain-text
+guidance for agents. Pass a JSON Schema as `.body(schema, jsonSchema)` (zod v4:
+`z.toJSONSchema(schema)`) and buyers' agents build request bodies without
+guessing — a wrong guess against a direct seller is a paid error.
+
 ## Get listed
 
 Deploy, then:
