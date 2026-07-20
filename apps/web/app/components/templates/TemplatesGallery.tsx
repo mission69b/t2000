@@ -117,25 +117,50 @@ function PreviewModal({
             {entry.oneLiner}
           </p>
           <CopyButton payload={entry.prompt} label="Copy full prompt" />
-          <div className="mt-auto flex flex-col gap-2.5">
-            <span className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>
-              Paste it into <span style={{ color: "var(--fg)" }}>t2 code</span> and it
-              builds:
-            </span>
-            <div
-              className="flex items-center justify-between gap-2 rounded-md border py-1.5 pr-1.5 pl-3"
-              style={{ background: "var(--ds-gray-alpha-100)", borderColor: "var(--ds-gray-alpha-300)" }}
-            >
-              <code
-                className="min-w-0 truncate font-mono text-[11.5px]"
-                style={{ color: "var(--fg)" }}
+          {entry.deployUrl ? (
+            <div className="mt-auto flex flex-col gap-2.5">
+              <span className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>
+                Paste it into your coding agent to wrap <span style={{ color: "var(--fg)" }}>your</span> API
+                — or start from the working template:
+              </span>
+              <a
+                href={entry.deployUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-[12.5px] font-medium no-underline transition-colors"
+                style={{
+                  borderColor: "var(--ds-gray-alpha-400)",
+                  color: "var(--fg)",
+                  background: "var(--ds-gray-alpha-100)",
+                }}
               >
-                <span style={{ color: "var(--fg-subtle)" }}>$ </span>
-                {T2CODE_CMD}
-              </code>
-              <CopyButton payload={T2CODE_CMD} variant="outlined" />
+                <svg width="11" height="11" viewBox="0 0 76 65" fill="currentColor" aria-hidden>
+                  <path d="M37.59.25l36.95 64H.64l36.95-64z" />
+                </svg>
+                Deploy with Vercel
+              </a>
             </div>
-          </div>
+          ) : (
+            <div className="mt-auto flex flex-col gap-2.5">
+              <span className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>
+                Paste it into <span style={{ color: "var(--fg)" }}>t2 code</span> and it
+                builds:
+              </span>
+              <div
+                className="flex items-center justify-between gap-2 rounded-md border py-1.5 pr-1.5 pl-3"
+                style={{ background: "var(--ds-gray-alpha-100)", borderColor: "var(--ds-gray-alpha-300)" }}
+              >
+                <code
+                  className="min-w-0 truncate font-mono text-[11.5px]"
+                  style={{ color: "var(--fg)" }}
+                >
+                  <span style={{ color: "var(--fg-subtle)" }}>$ </span>
+                  {T2CODE_CMD}
+                </code>
+                <CopyButton payload={T2CODE_CMD} variant="outlined" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: full-page capture (scrolls) or the prompt as fallback */}

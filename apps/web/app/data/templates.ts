@@ -8,11 +8,12 @@
 
 export const T2CODE_CMD = "npm i -g @t2000/code && t2code";
 
-export type TemplateCategory = "site" | "app";
+export type TemplateCategory = "site" | "app" | "api";
 
 export const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   site: "Site",
   app: "App",
+  api: "API",
 };
 
 export interface TemplateEntry {
@@ -27,9 +28,30 @@ export interface TemplateEntry {
    * top-crop; the modal shows the whole scrollable capture.
    */
   image: string;
+  /**
+   * Set when the template is also a real deployable repo (templates/ in the
+   * monorepo): the modal swaps the t2code footer for a Deploy-with-Vercel
+   * button, and the prompt targets the user's own coding agent instead.
+   */
+  deployUrl?: string;
 }
 
 export const TEMPLATES: TemplateEntry[] = [
+  {
+    // Not a t2code prompt build — this is the real deployable repo at
+    // templates/serve-vercel (the @t2000/serve Vercel target). The prompt is
+    // the canonical sellers.md one-prompt; the deploy button is the no-API path.
+    slug: "agent-payable-api",
+    image: "/template-previews/agent-payable-api.png",
+    name: "Agent-payable API",
+    category: "api",
+    oneLiner:
+      "An API agents discover and pay per call in USDC on Sui — one paid route, discovery docs, no keys, no gas. Wrap your own API with one prompt, or deploy the working template.",
+    prompt:
+      "Read https://mpp.t2000.ai/sellers.md and follow it to make my API discoverable and payable by agents. Only ask me questions if you need input you can't determine yourself.",
+    deployUrl:
+      "https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Ftemplates%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api",
+  },
   {
     // Founder-built and validated 2026-07-20 — the prompt below produced the
     // capture 1:1 (built with t2 code, running from ~/dev/test-agent).

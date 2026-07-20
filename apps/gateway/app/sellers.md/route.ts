@@ -78,7 +78,7 @@ export const POST = serve
 
 Starting from zero instead of wrapping an existing app? Clone the deployable
 template — one paid route, discovery docs, a Deploy-with-Vercel button:
-https://github.com/mission69b/t2000/tree/main/examples/serve-vercel
+https://github.com/mission69b/t2000/tree/main/templates/serve-vercel
 
 Not on Node? See "Hand-rolling the protocol (any language)" at the bottom.
 

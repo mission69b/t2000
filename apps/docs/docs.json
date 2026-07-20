@@ -56,7 +56,7 @@
       "commerce/sell-services",
       "pay-any-api",
       {
-       "group": "Sell to agents",
+       "group": "Sell your API",
        "pages": [
         "sell-to-agents/overview",
         "sell-to-agents/quickstart",
