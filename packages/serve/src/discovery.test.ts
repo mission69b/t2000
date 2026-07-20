@@ -13,6 +13,14 @@ const echoJsonSchema = {
   required: ['query'],
 };
 
+const resultJsonSchema = {
+  type: 'object',
+  properties: {
+    logoSvg: { type: 'string', contentMediaType: 'image/svg+xml' },
+    summary: { type: 'string', contentMediaType: 'text/markdown' },
+  },
+};
+
 function makeServe() {
   const serve = createServe({
     payTo: PAY_TO,
@@ -25,6 +33,7 @@ function makeServe() {
     .route({ path: 'search', description: 'Search the web' })
     .paid('0.01')
     .body(echoSchema, echoJsonSchema)
+    .response(resultJsonSchema)
     .handler(({ body }) => body);
   serve
     .route({ path: 'health' })
@@ -74,6 +83,14 @@ describe('openapi.json', () => {
     });
     expect(paid.requestBody?.content['application/json'].schema).toEqual(echoJsonSchema);
     expect(paid.responses['402']).toBeDefined();
+    // The declared deliverable contract rides the 200 response.
+    expect(
+      (
+        paid.responses['200'] as {
+          content?: Record<string, { schema: unknown }>;
+        }
+      ).content?.['application/json'].schema
+    ).toEqual(resultJsonSchema);
 
     // Free routes carry no pricing extension.
     expect(doc.paths['/health'].post['x-payment-info']).toBeUndefined();
@@ -99,6 +116,7 @@ describe('llms.txt', () => {
     expect(text).toContain('X-PAYMENT');
     expect(text).toContain('t2 pay');
     expect(text).toContain('"query"'); // the JSON schema is inlined
+    expect(text).toContain('"logoSvg"'); // the response schema is inlined too
     expect(text).toContain('https://api.example.com/openapi.json');
   });
 });

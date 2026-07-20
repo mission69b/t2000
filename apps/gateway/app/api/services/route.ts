@@ -35,6 +35,9 @@ export async function GET() {
       return {
         ...endpoint,
         ...(schema ? { schema: schema.requestBody } : {}),
+        // Deliverable type contract: static services from lib/schemas.ts,
+        // direct sellers carry theirs from ingest (already on the endpoint).
+        ...(schema?.response ? { responseSchema: schema.response } : {}),
         ...(sample && sample !== '{ }' && endpoint.method !== 'GET'
           ? { sampleBody: sample }
           : {}),

@@ -100,6 +100,15 @@ export interface RouteMeta {
    * `z.toJSONSchema(schema)`.
    */
   inputSchema?: Record<string, unknown>;
+  /**
+   * JSON Schema of the 200 response — the deliverable's TYPE contract.
+   * Annotate fields with standard JSON Schema media hints so buyer surfaces
+   * can render (and buyer agents can consume) the deliverable without
+   * sniffing: `contentMediaType: "image/svg+xml"` on an SVG string,
+   * `format: "color"` on a hex color, `contentMediaType: "text/markdown"`
+   * on prose. Declaration-only — serve never validates responses.
+   */
+  outputSchema?: Record<string, unknown>;
 }
 
 /** The built route — a fetch-compatible handler plus its metadata. */

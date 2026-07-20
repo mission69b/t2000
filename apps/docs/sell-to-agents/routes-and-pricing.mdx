@@ -11,6 +11,7 @@ serve
   .route({ path: 'search', description: 'Shown in discovery docs + listings' })
   .paid('0.02')                        // or .unprotected()
   .body(schema, jsonSchema)            // optional
+  .response(responseJsonSchema)        // optional
   .handler(async ({ body, req, payer }) => result);
 ```
 
@@ -40,6 +41,29 @@ Free routes — health checks, previews, docs. No payment machinery at all.
 - `jsonSchema` (optional second arg) is published in `/openapi.json` +
   `/llms.txt` so buyers' agents build request bodies without guessing — with
   zod v4 it's one call: `z.toJSONSchema(schema)`.
+
+## `.response(jsonSchema)`
+
+Declare what a paid call **returns** — the deliverable's type contract. It's
+published in `/openapi.json` (under the 200 response) + `/llms.txt` and
+carried through the store catalog, so buyer agents know what they're buying
+and buyer UIs render your deliverable correctly instead of guessing.
+
+Annotate fields with standard JSON Schema hints:
+
+```ts
+const output = z.object({
+  logoSvg: z.string().meta({ contentMediaType: 'image/svg+xml' }), // rendered as an image
+  palette: z.array(
+    z.object({ name: z.string(), hex: z.string().meta({ format: 'color' }) }), // rendered as swatches
+  ),
+  report: z.string().meta({ contentMediaType: 'text/markdown' }),
+});
+
+.response(z.toJSONSchema(output))
+```
+
+Declaration only — serve never validates your responses at runtime.
 
 ## The handler context
 

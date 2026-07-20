@@ -12,6 +12,13 @@ export interface Endpoint {
    * before validating, so a guessed body is a paid 422.
    */
   schema?: Record<string, unknown>;
+  /**
+   * 200-response JSON schema — the deliverable's TYPE contract. Direct
+   * sellers declare it in their OpenAPI doc (@t2000/serve `.response()`);
+   * ingest carries it here so buyer surfaces render deliverables by declared
+   * type (contentMediaType / format annotations) instead of sniffing.
+   */
+  responseSchema?: Record<string, unknown>;
 }
 
 export interface Service {

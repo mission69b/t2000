@@ -170,6 +170,27 @@ function derefSchema(
   return out;
 }
 
+/** The endpoint's declared 200-response application/json schema,
+ *  dereferenced — the deliverable's type contract (carries the seller's
+ *  contentMediaType / format annotations through to buyer surfaces). */
+function responseSchemaFor(
+  doc: Record<string, unknown>,
+  path: string,
+  method: string,
+): Record<string, unknown> | undefined {
+  const op = (doc.paths as Record<string, Record<string, unknown>> | undefined)?.[path]?.[
+    method.toLowerCase()
+  ] as
+    | { responses?: Record<string, { content?: Record<string, { schema?: unknown }> }> }
+    | undefined;
+  const schema = op?.responses?.['200']?.content?.['application/json']?.schema;
+  if (!schema || typeof schema !== 'object') return undefined;
+  const resolved = derefSchema(schema, doc);
+  return resolved && typeof resolved === 'object'
+    ? (resolved as Record<string, unknown>)
+    : undefined;
+}
+
 /** The endpoint's application/json request-body schema, dereferenced. */
 function requestSchemaFor(
   doc: Record<string, unknown>,
@@ -229,6 +250,11 @@ async function enumerateEndpoints(
         description: ep.summary ?? ep.operationId ?? '',
         price: parseFloat(raw).toString(),
         schema: requestSchemaFor(doc as unknown as Record<string, unknown>, ep.path, ep.method),
+        responseSchema: responseSchemaFor(
+          doc as unknown as Record<string, unknown>,
+          ep.path,
+          ep.method,
+        ),
       });
     }
     if (rows.length > 0) {

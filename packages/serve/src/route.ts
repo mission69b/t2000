@@ -137,6 +137,7 @@ export class RouteBuilder<TBody = undefined> {
   private priceUsdc?: string;
   private bodySchema?: ServeSchema;
   private inputSchema?: Record<string, unknown>;
+  private outputSchema?: Record<string, unknown>;
   private isFree = false;
 
   constructor(
@@ -173,6 +174,19 @@ export class RouteBuilder<TBody = undefined> {
     this.bodySchema = schema;
     this.inputSchema = jsonSchema;
     return this as unknown as RouteBuilder<T>;
+  }
+
+  /**
+   * Declare the 200 response's JSON Schema (zod v4: `z.toJSONSchema(schema)`).
+   * Published in /openapi.json + /llms.txt so buyer agents know what they're
+   * buying and buyer UIs can render the deliverable by TYPE instead of
+   * sniffing it — annotate with `contentMediaType` (e.g. "image/svg+xml",
+   * "text/markdown") and `format: "color"` where they apply. Declaration
+   * only; responses are never validated at runtime.
+   */
+  response(jsonSchema: Record<string, unknown>): this {
+    this.outputSchema = jsonSchema;
+    return this;
   }
 
   handler(fn: (ctx: HandlerContext<TBody>) => HandlerResult | Promise<HandlerResult>): BuiltRoute {
@@ -344,7 +358,14 @@ export class RouteBuilder<TBody = undefined> {
       return new Response(served.body, { status: served.status, headers });
     }) as BuiltRoute;
 
-    route.meta = { path, priceUsdc, description, bodySchema, inputSchema: this.inputSchema };
+    route.meta = {
+      path,
+      priceUsdc,
+      description,
+      bodySchema,
+      inputSchema: this.inputSchema,
+      outputSchema: this.outputSchema,
+    };
     this.register(route);
     return route;
   }

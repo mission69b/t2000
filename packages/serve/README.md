@@ -80,6 +80,16 @@ guidance for agents. Pass a JSON Schema as `.body(schema, jsonSchema)` (zod v4:
 `z.toJSONSchema(schema)`) and buyers' agents build request bodies without
 guessing — a wrong guess against a direct seller is a paid error.
 
+Declare what a paid call returns with `.response(jsonSchema)` — published under
+the 200 response and carried through the catalog so buyer surfaces render your
+deliverable by type. Annotate with `contentMediaType` (`"image/svg+xml"`,
+`"text/markdown"`) and `format: "color"` where they apply:
+
+```ts
+const output = z.object({ svg: z.string().meta({ contentMediaType: 'image/svg+xml' }) });
+serve.route({ path: 'logo' }).paid('0.05').body(schema).response(z.toJSONSchema(output)).handler(fn);
+```
+
 ## Get listed
 
 Deploy, then:

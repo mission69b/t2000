@@ -18,12 +18,17 @@ export function buildOpenApiDocument(serve: Serve, origin?: string): Record<stri
   const paths: Record<string, unknown> = {};
 
   for (const route of serve.routes.values()) {
-    const { path, priceUsdc, description, inputSchema } = route.meta;
+    const { path, priceUsdc, description, inputSchema, outputSchema } = route.meta;
     const operation: Record<string, unknown> = {
       operationId: path.replace(/[^a-zA-Z0-9]+/g, '_'),
       summary: description ?? path,
       responses: {
-        '200': { description: 'Success' },
+        '200': outputSchema
+          ? {
+              description: 'Success',
+              content: { 'application/json': { schema: outputSchema } },
+            }
+          : { description: 'Success' },
         ...(priceUsdc
           ? {
               '402': {
@@ -98,7 +103,7 @@ export function buildLlmsTxt(serve: Serve, origin?: string): string {
   lines.push('## Endpoints');
   lines.push('');
   for (const route of serve.routes.values()) {
-    const { path, priceUsdc, description, inputSchema } = route.meta;
+    const { path, priceUsdc, description, inputSchema, outputSchema } = route.meta;
     const price = priceUsdc ? `${priceUsdc} USDC per call` : 'free';
     lines.push(`### POST ${base}/${path} — ${price}`);
     if (description) lines.push(description);
@@ -106,6 +111,12 @@ export function buildLlmsTxt(serve: Serve, origin?: string): string {
       lines.push('Request body (JSON Schema):');
       lines.push('```json');
       lines.push(JSON.stringify(inputSchema, null, 2));
+      lines.push('```');
+    }
+    if (outputSchema) {
+      lines.push('Response (JSON Schema — contentMediaType/format annotations name the deliverable types):');
+      lines.push('```json');
+      lines.push(JSON.stringify(outputSchema, null, 2));
       lines.push('```');
     }
     lines.push('');

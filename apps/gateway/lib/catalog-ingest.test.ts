@@ -240,7 +240,17 @@ describe('entry construction (URL path)', () => {
                     },
                   },
                 },
-                responses: { '402': {} },
+                responses: {
+                  '402': {},
+                  // Declared deliverable contract (@t2000/serve .response()).
+                  '200': {
+                    content: {
+                      'application/json': {
+                        schema: { $ref: '#/components/schemas/QuoteResult' },
+                      },
+                    },
+                  },
+                },
               },
             },
             '/v1/book': {
@@ -260,6 +270,12 @@ describe('entry construction (URL path)', () => {
                 type: 'object',
                 properties: { city: { type: 'string', description: 'City. Required.' } },
               },
+              QuoteResult: {
+                type: 'object',
+                properties: {
+                  reportMd: { type: 'string', contentMediaType: 'text/markdown' },
+                },
+              },
             },
           },
         }) as never,
@@ -277,6 +293,15 @@ describe('entry construction (URL path)', () => {
         { type: 'null' },
       ],
     });
+    // Response schema extracted + dereferenced — the deliverable's type
+    // contract rides the catalog so buyer UIs render by declared type.
+    expect(quote?.responseSchema).toMatchObject({
+      type: 'object',
+      properties: {
+        reportMd: { type: 'string', contentMediaType: 'text/markdown' },
+      },
+    });
+    expect(entry?.service.endpoints[1].responseSchema).toBeUndefined();
   });
 
   it('resubmission keeps the slug and submittedAt, refreshes the rest', async () => {
