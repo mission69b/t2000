@@ -33,3 +33,62 @@ export function sampleBodyFor(svcName: string, path: string): string {
     return '{"city":"Tokyo","checkin_date":"2026-09-01","checkout_date":"2026-09-05","user_requirements":"ultra-luxury 5-star"}';
   return "{ }";
 }
+
+interface JsonSchemaProp {
+  type?: string | string[];
+  description?: string;
+  examples?: unknown[];
+  default?: unknown;
+  enum?: unknown[];
+  minimum?: number;
+}
+
+interface JsonSchemaObject {
+  type?: string;
+  properties?: Record<string, JsonSchemaProp>;
+  required?: string[];
+}
+
+function exampleValue(name: string, p: JsonSchemaProp): unknown {
+  if (Array.isArray(p.examples) && p.examples.length > 0) return p.examples[0];
+  if (p.default !== undefined) return p.default;
+  if (Array.isArray(p.enum) && p.enum.length > 0) return p.enum[0];
+  const t = Array.isArray(p.type) ? p.type[0] : p.type;
+  if (t === "string") {
+    // @t2000/serve schemas embed a usable value in the field description
+    // (`e.g. "calm, premium, technical"`) — lift it so the seeded body is
+    // payable as-is, not a placeholder the buyer has to rewrite.
+    const eg =
+      typeof p.description === "string"
+        ? p.description.match(/e\.g\.\s*[""]([^""]+)[""]/)
+        : null;
+    return eg ? eg[1] : `<${name}>`;
+  }
+  if (t === "number" || t === "integer") return p.minimum ?? 1;
+  if (t === "boolean") return true;
+  if (t === "array") return [];
+  if (t === "object") return {};
+  return `<${name}>`;
+}
+
+/**
+ * Synthesize an illustrative body from an endpoint's request-body JSON
+ * schema (required fields only). Covers self-listed direct sellers, whose
+ * schemas arrive via their own openapi.json at ingest — no hand-list entry
+ * to maintain. Returns undefined when the schema can't seed anything.
+ */
+export function sampleBodyFromSchema(schema: unknown): string | undefined {
+  if (!schema || typeof schema !== "object") return undefined;
+  const s = schema as JsonSchemaObject;
+  if (!s.properties) return undefined;
+  const keys =
+    Array.isArray(s.required) && s.required.length > 0
+      ? s.required
+      : Object.keys(s.properties).slice(0, 3);
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    const prop = s.properties[key];
+    if (prop) out[key] = exampleValue(key, prop);
+  }
+  return Object.keys(out).length > 0 ? JSON.stringify(out) : undefined;
+}

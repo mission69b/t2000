@@ -1,5 +1,5 @@
 import { getCatalog } from '@/lib/catalog-live';
-import { sampleBodyFor } from '@/lib/sample-body';
+import { sampleBodyFor, sampleBodyFromSchema } from '@/lib/sample-body';
 import { getEndpointSchema } from '@/lib/schemas';
 import { NextResponse } from 'next/server';
 
@@ -22,11 +22,20 @@ export async function GET() {
       const schema = getEndpointSchema(service.id, endpoint.path);
       // Known-good illustrative body (lib/sample-body.ts) — seeds try-it
       // forms so a first call isn't a guessed (and possibly paid) 4xx.
-      const sample = sampleBodyFor(service.name, endpoint.path);
+      // Hand-list first (curated for the static services), else synthesize
+      // from the endpoint's own request schema (self-listed direct sellers
+      // carry it from their openapi.json at ingest).
+      const curated = sampleBodyFor(service.name, endpoint.path);
+      const sample =
+        curated !== '{ }'
+          ? curated
+          : sampleBodyFromSchema(
+              (endpoint as { schema?: unknown }).schema ?? schema?.requestBody,
+            );
       return {
         ...endpoint,
         ...(schema ? { schema: schema.requestBody } : {}),
-        ...(sample !== '{ }' && endpoint.method !== 'GET'
+        ...(sample && sample !== '{ }' && endpoint.method !== 'GET'
           ? { sampleBody: sample }
           : {}),
       };
