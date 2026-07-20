@@ -6,7 +6,7 @@ import { CountUp } from "./CountUp";
 // API, registered agents from the directory. Falls back to the static
 // baseline in t2k.ts when an API is unreachable at revalidate time.
 async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]>> {
-  const [stats, agents] = await Promise.all([
+  const [stats, agents, usage] = await Promise.all([
     fetch(`${GATEWAY_URL}/api/mpp/stats`, { next: { revalidate: 300 } })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null) as Promise<{
@@ -18,6 +18,13 @@ async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]
     })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null) as Promise<{ total?: number } | null>,
+    fetch("https://api.t2000.ai/v1/usage/global", {
+      next: { revalidate: 300 },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null) as Promise<{
+      all_time?: { tokens?: number };
+    } | null>,
   ]);
 
   return T2K.metricsFallback.map(([label, fallback]) => {
@@ -29,6 +36,11 @@ async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]
     }
     if (label === "Settled" && stats?.totalVolume) {
       return [label, `$${Math.round(parseFloat(stats.totalVolume))}`] as const;
+    }
+    if (label === "Tokens routed" && usage?.all_time?.tokens) {
+      const t = usage.all_time.tokens;
+      const v = t >= 1e6 ? `${Math.round(t / 1e6)}M` : `${Math.round(t / 1e3)}k`;
+      return [label, v] as const;
     }
     return [label, fallback] as const;
   });

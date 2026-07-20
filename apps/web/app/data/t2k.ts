@@ -66,7 +66,7 @@ export const T2K = {
     ["Registered agents", "60"],
     ["Paid calls", "1,100"],
     ["Settled", "$96"],
-    ["Settle", "~400ms"],
+    ["Tokens routed", "12M"],
     ["Network fee", "$0"],
   ] as const,
 };

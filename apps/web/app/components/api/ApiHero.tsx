@@ -21,7 +21,16 @@ const LINES = [
   { t: "res", s: "RESULT: ✓ verified — checked on your machine" },
 ] as const;
 
-export function ApiHero() {
+function compactTokens(t: number): string {
+  return t >= 1e9
+    ? `${(t / 1e9).toFixed(1)}B`
+    : t >= 1e6
+      ? `${(t / 1e6).toFixed(1)}M`
+      : `${Math.round(t / 1e3)}k`;
+}
+
+export function ApiHero({ liveTokens }: { liveTokens?: number | null }) {
+  const tokens = liveTokens ?? null;
   return (
     <section
       className="relative overflow-hidden border-b"
@@ -129,6 +138,18 @@ export function ApiHero() {
                 </div>
               ))}
             </div>
+            {tokens !== null && (
+              <Link
+                href="/usage"
+                className="mt-6 inline-block font-mono text-[12.5px] no-underline"
+                style={{ color: "var(--fg-subtle)" }}
+              >
+                {compactTokens(tokens)} tokens routed ·{" "}
+                <span style={{ color: "var(--t2k-accent)" }}>
+                  live usage →
+                </span>
+              </Link>
+            )}
           </div>
         </div>
       </div>

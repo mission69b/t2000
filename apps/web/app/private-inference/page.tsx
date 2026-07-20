@@ -34,12 +34,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ApiPage() {
+async function getLiveTokens(): Promise<number | null> {
+  const usage = (await fetch("https://api.t2000.ai/v1/usage/global", {
+    next: { revalidate: 300 },
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)) as { all_time?: { tokens?: number } } | null;
+  const t = usage?.all_time?.tokens;
+  return typeof t === "number" && t > 0 ? t : null;
+}
+
+export default async function ApiPage() {
+  const liveTokens = await getLiveTokens();
   return (
     <>
       <Nav currentPage="api" />
       <main>
-        <ApiHero />
+        <ApiHero liveTokens={liveTokens} />
         <ApiRouter />
         <ApiModels />
         <ApiX402 />
