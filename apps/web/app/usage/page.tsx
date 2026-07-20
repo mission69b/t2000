@@ -25,6 +25,15 @@ export const revalidate = 300;
 const USAGE_URL =
   process.env.USAGE_URL_OVERRIDE || "https://api.t2000.ai/v1/usage/global";
 
+type ModelRow = {
+  model: string;
+  requests: number;
+  tokens: number;
+  share: number;
+};
+
+type UsageSlice = { requests: number; tokens: number };
+
 type GlobalUsage = {
   updated_at: string;
   counting_since: string | null;
@@ -36,17 +45,17 @@ type GlobalUsage = {
     output_tokens: number;
     compute_usd: number;
     models_served: number;
+    // Optional: tolerate a cached pre-v2 payload for one revalidate window
+    // after a deploy (page + endpoint ship separately).
+    models?: ModelRow[];
+    by_tier?: { private: UsageSlice; confidential: UsageSlice };
+    by_source?: { api: UsageSlice; chat: UsageSlice };
   };
   last_24h: {
     requests: number;
     tokens: number;
     hourly: Array<{ hour: string; requests: number; tokens: number }>;
-    models: Array<{
-      model: string;
-      requests: number;
-      tokens: number;
-      share: number;
-    }>;
+    models: ModelRow[];
   };
 };
 
@@ -80,6 +89,17 @@ export default async function UsagePage() {
     ? Math.max(1, ...usage.last_24h.hourly.map((h) => h.tokens))
     : 1;
 
+  const allModels = usage?.all_time.models ?? [];
+  const confidentialShare =
+    usage && usage.all_time.tokens > 0 && usage.all_time.by_tier
+      ? (usage.all_time.by_tier.confidential.tokens / usage.all_time.tokens) *
+        100
+      : 0;
+  const chatShare =
+    usage && usage.all_time.tokens > 0 && usage.all_time.by_source
+      ? (usage.all_time.by_source.chat.tokens / usage.all_time.tokens) * 100
+      : 0;
+
   const heroStats = usage
     ? [
         { label: "requests", value: compact(usage.all_time.requests) },
@@ -89,6 +109,11 @@ export default async function UsagePage() {
         },
         { label: "models", value: String(usage.all_time.models_served) },
         { label: "days live", value: String(usage.days_live) },
+        {
+          label: "confidential (TEE)",
+          value: `${confidentialShare.toFixed(1)}%`,
+        },
+        { label: "in-app chat", value: `${chatShare.toFixed(1)}%` },
       ]
     : [];
 
@@ -227,10 +252,10 @@ export default async function UsagePage() {
             <div className="t2k-container">
               <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
                 <div>
-                  <span className="t2k-eyebrow">{"// LAST 24 HOURS"}</span>
+                  <span className="t2k-eyebrow">{"// ACTIVITY"}</span>
                   <h2 className="t2k-section-title mt-3">
-                    {compact(usage.last_24h.tokens)} tokens across{" "}
-                    {usage.last_24h.requests.toLocaleString("en-US")} requests.
+                    {compact(usage.last_24h.tokens)} tokens in the last 24
+                    hours.
                   </h2>
                 </div>
                 <p
@@ -281,44 +306,45 @@ export default async function UsagePage() {
                   </div>
                 </div>
 
-                {/* Model leaderboard */}
+                {/* Model leaderboard — all-time, so models that served a burst
+                    last week don't vanish when the 24h window rolls past. */}
                 <div className="t2k-card" style={{ padding: "26px 28px" }}>
                   <div
                     className="flex items-baseline justify-between font-mono text-[11px] uppercase tracking-[0.12em]"
                     style={{ color: "var(--fg-subtle)" }}
                   >
                     <span>Model leaderboard</span>
-                    <span>by tokens</span>
+                    <span>all-time · by tokens</span>
                   </div>
                   <div className="mt-3 flex flex-col">
-                    {usage.last_24h.models.length === 0 && (
-                      <span
-                        className="py-6 text-[13.5px]"
-                        style={{ color: "var(--fg-muted)" }}
-                      >
-                        No traffic in the last 24 hours.
-                      </span>
-                    )}
-                    {usage.last_24h.models.map((m, i) => (
+                    {allModels.map((m, i) => (
                       <div
                         key={m.model}
                         className="py-3"
                         style={{
                           borderBottom:
-                            i < usage.last_24h.models.length - 1
+                            i < allModels.length - 1
                               ? "1px solid var(--border)"
                               : "none",
                         }}
                       >
                         <div className="flex items-baseline justify-between gap-3">
                           <span
-                            className="min-w-0 truncate font-mono text-[13px]"
+                            className="flex min-w-0 items-baseline gap-2 truncate font-mono text-[13px]"
                             style={{ color: "var(--fg)" }}
                           >
                             <span style={{ color: "var(--t2k-accent)" }}>
                               {String(i + 1).padStart(2, "0")}
                             </span>{" "}
                             {m.model}
+                            {m.model.startsWith("phala/") && (
+                              <span
+                                className="text-[10px] uppercase tracking-[0.1em]"
+                                style={{ color: "var(--t2k-success)" }}
+                              >
+                                TEE
+                              </span>
+                            )}
                           </span>
                           <span
                             className="shrink-0 font-mono text-[12px]"
@@ -335,7 +361,9 @@ export default async function UsagePage() {
                             className="h-full rounded-full"
                             style={{
                               width: `${Math.max(1, m.share * 100)}%`,
-                              background: "var(--t2k-accent)",
+                              background: m.model.startsWith("phala/")
+                                ? "var(--t2k-success)"
+                                : "var(--t2k-accent)",
                             }}
                           />
                         </div>
@@ -350,7 +378,7 @@ export default async function UsagePage() {
                 style={{ color: "var(--fg-subtle)" }}
               >
                 {
-                  "// Aggregates from t2000's own gateway-edge metering on api.t2000.ai/v1 — Private Inference API only (Audric in-app chat not counted). Prompts and completions are never stored."
+                  "// Aggregates from t2000's own gateway-edge metering — /v1 API traffic (private + confidential tiers) and Audric in-app chat (counted from Jul 20, 2026). Prompts and completions are never stored."
                 }
               </p>
             </div>
