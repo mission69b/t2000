@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@t2000/serve": "file:../../packages/serve",
+    "@t2000/serve": "^10.1.0",
     "next": "^15.4.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
