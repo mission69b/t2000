@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NAV_PRODUCTS, type ProductSlug } from "../../data/t2k";
+import { PRODUCT_PAGES, type ProductSlug } from "../../data/t2k";
 
 export function ProductStrip({ currentPage }: { currentPage?: ProductSlug }) {
   return (
@@ -31,8 +31,9 @@ export function ProductStrip({ currentPage }: { currentPage?: ProductSlug }) {
         </header>
 
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          {NAV_PRODUCTS.map((p) => {
+          {PRODUCT_PAGES.map((p) => {
             const active = p.slug === currentPage;
+            const external = !p.href.startsWith("/");
             const className =
               "group flex flex-col rounded-lg border p-[20px_18px] no-underline transition-colors";
 
@@ -102,14 +103,28 @@ export function ProductStrip({ currentPage }: { currentPage?: ProductSlug }) {
                 </div>
               );
             }
+            const linkClassName =
+              className +
+              " border-[color:var(--border)] hover:border-accent hover:bg-accent/[0.08]";
+            if (external) {
+              return (
+                <a
+                  key={p.slug}
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={linkClassName}
+                  style={{ color: "var(--fg)" }}
+                >
+                  {inner}
+                </a>
+              );
+            }
             return (
               <Link
                 key={p.slug}
                 href={p.href}
-                className={
-                  className +
-                  " border-[color:var(--border)] hover:border-accent hover:bg-accent/[0.08]"
-                }
+                className={linkClassName}
                 style={{ color: "var(--fg)" }}
               >
                 {inner}

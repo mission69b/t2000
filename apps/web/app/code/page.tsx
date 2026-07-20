@@ -4,7 +4,6 @@ import { CodeCloser } from "../components/code/CodeCloser";
 import { CodeHero } from "../components/code/CodeHero";
 import { CodePrivacy } from "../components/code/CodePrivacy";
 import { CodeScaffold } from "../components/code/CodeScaffold";
-import { CodeFeatures } from "../components/code/CodeSections";
 import { Nav } from "../components/site/Nav";
 import { ProductStrip } from "../components/site/ProductStrip";
 import { SiteFooter } from "../components/site/SiteFooter";
@@ -38,7 +37,6 @@ export default function CodePage() {
         <CodeHero />
         <CodeScaffold />
         <CodePrivacy />
-        <CodeFeatures />
         <ProductStrip currentPage="code" />
         <CodeCloser />
       </main>

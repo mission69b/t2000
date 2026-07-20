@@ -85,12 +85,11 @@ export function PaymentsProtocol() {
         <header className="mb-12 max-w-[720px]">
           <span className="t2k-eyebrow">{"// HOW IT WORKS · HTTP 402"}</span>
           <h2 className="t2k-section-title mt-[22px]">
-            No signup.{" "}
-            <span style={{ color: "var(--fg-muted)" }}>No API keys.</span>
+            Four steps.{" "}
+            <span style={{ color: "var(--fg-muted)" }}>Under two seconds.</span>
           </h2>
           <p className="t2k-section-sub">
-            Send. Get priced. Pay. Get the response. Under two seconds end to
-            end.
+            Send. Get priced. Pay. Get the response.
           </p>
         </header>
 

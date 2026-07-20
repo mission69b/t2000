@@ -6,7 +6,7 @@ import { SiteFooter } from "../components/site/SiteFooter";
 import { WalletCloser } from "../components/wallet/WalletCloser";
 import { WalletCommandSurface } from "../components/wallet/WalletCommandSurface";
 import { WalletHero } from "../components/wallet/WalletHero";
-import { WalletSurfaces } from "../components/wallet/WalletSurfaces";
+import { WalletSdk } from "../components/wallet/WalletSdk";
 import { WalletTrust } from "../components/wallet/WalletTrust";
 
 const DESC =
@@ -38,7 +38,7 @@ export default function AgentWalletPage() {
       <main>
         <WalletHero />
         <WalletCommandSurface />
-        <WalletSurfaces />
+        <WalletSdk />
         <WalletTrust />
         <ProductStrip currentPage="wallet" />
         <WalletCloser />

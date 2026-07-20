@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Nav } from "../components/site/Nav";
-import { ProductStrip } from "../components/site/ProductStrip";
 import { SiteFooter } from "../components/site/SiteFooter";
 
 const DESC =
@@ -365,7 +364,6 @@ export default async function UsagePage() {
           </section>
         )}
 
-        <ProductStrip currentPage="api" />
       </main>
       <SiteFooter />
     </>

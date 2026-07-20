@@ -172,7 +172,14 @@ export async function ApiModels() {
             style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
           >
             Metered per token from one credit balance — no subscription, no
-            per-provider account. Settled in USDC.
+            per-provider account. Settled in USDC. Agents without an account
+            pay per call over x402 —{" "}
+            <Link
+              href="/agent-payments"
+              style={{ color: "var(--t2k-accent)" }}
+            >
+              Agent Payments →
+            </Link>
           </span>
         </div>
       </div>
@@ -279,117 +286,20 @@ export function ApiRouter() {
         <div
           className="mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-lg border"
           style={{
-            padding: "18px 22px",
+            padding: "16px 22px",
             borderColor: "var(--border)",
             background: "var(--bg)",
           }}
         >
-          <div className="flex flex-col gap-1">
-            <span
-              className="text-[15px] font-semibold"
-              style={{ color: "var(--fg)", letterSpacing: "-0.014em" }}
-            >
-              t2 code — the free private coding agent.
-            </span>
-            <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
-              A terminal coding agent built on this API:{" "}
-              <code className="font-mono" style={{ color: "var(--fg)" }}>
-                npm i -g @t2000/code
-              </code>
-              . Router by default, per-repo privacy pinning, wallet tools in-session.
-            </span>
-          </div>
+          <span className="text-[14px]" style={{ color: "var(--fg-muted)" }}>
+            <span style={{ color: "var(--fg)", fontWeight: 600 }}>
+              t2 code
+            </span>{" "}
+            — a terminal coding agent built on this API.
+          </span>
           <Link href="/code" className="t2k-btn t2k-btn--ghost">
             Meet t2 code&nbsp;→
           </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export function ApiX402() {
-  return (
-    <section className="t2k-section">
-      <div className="t2k-container">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div>
-            <span className="t2k-eyebrow">{"// NO KEY · NO ACCOUNT"}</span>
-            <h2 className="t2k-section-title mt-3">
-              Or pay per call
-              <br />
-              over x402.
-            </h2>
-            <p
-              className="m-0 max-w-[440px]"
-              style={{
-                marginTop: 16,
-                fontSize: 15.5,
-                lineHeight: 1.65,
-                color: "var(--fg-muted)",
-                letterSpacing: "-0.011em",
-              }}
-            >
-              Agents can pay per call from their wallet&rsquo;s USDC — no key,
-              no account, gasless. The gateway handles{" "}
-              <code className="font-mono" style={{ color: "var(--fg)" }}>
-                402 → pay → retry
-              </code>{" "}
-              automatically.
-            </p>
-            <Link
-              href="/agent-payments"
-              className="mt-5 inline-flex items-center gap-1.5 pb-0.5 font-mono text-[12.5px] no-underline transition-colors hover:text-[var(--t2k-accent)]"
-              style={{
-                color: "var(--fg)",
-                borderBottom: "1px solid var(--ds-gray-alpha-500)",
-              }}
-            >
-              See Agent Payments →
-            </Link>
-          </div>
-          <div
-            className="t2k-card overflow-hidden p-0"
-            style={{ background: "var(--ds-background-200)" }}
-          >
-            <div
-              className="flex items-center gap-2 border-b px-3.5 py-2.5"
-              style={{
-                borderBottomColor: "var(--border)",
-                background: "var(--bg-elevated)",
-              }}
-            >
-              <span className="block h-[9px] w-[9px] rounded-full" style={{ background: "#ff5f57" }} />
-              <span className="block h-[9px] w-[9px] rounded-full" style={{ background: "#febc2e" }} />
-              <span className="block h-[9px] w-[9px] rounded-full" style={{ background: "#28c840" }} />
-              <span
-                className="ml-2 font-mono text-[11.5px]"
-                style={{ color: "var(--fg-subtle)" }}
-              >
-                ~ /agent
-              </span>
-            </div>
-            <pre
-              className="m-0 whitespace-pre-wrap break-words font-mono text-[12.5px]"
-              style={{ padding: "18px 20px", lineHeight: 1.8, color: "var(--fg)" }}
-            >
-              <span style={{ color: "var(--fg-subtle)" }}>$ </span>
-              <span style={{ color: "var(--t2k-accent)" }}>t2 pay</span>{" "}
-              https://x402.t2000.ai/t2000/v1/chat/completions{" "}
-              <span style={{ color: "var(--fg-subtle)" }}>\</span>
-              {"\n"}
-              {"  "}
-              <span style={{ color: "var(--fg-muted)" }}>--data</span>{" "}
-              <span style={{ color: "var(--ds-amber-700)" }}>
-                &apos;{"{"}&quot;model&quot;:&quot;zai/glm-5.2&quot;,&quot;messages&quot;:[…]{"}"}&apos;
-              </span>{" "}
-              <span style={{ color: "var(--fg-subtle)" }}>\</span>
-              {"\n"}
-              {"  "}
-              <span style={{ color: "var(--fg-muted)" }}>--max-price</span>{" "}
-              <span style={{ color: "var(--t2k-success)" }}>0.10</span>
-            </pre>
-          </div>
         </div>
       </div>
     </section>
@@ -409,13 +319,8 @@ const RUNGS = [
   },
   {
     k: "03",
-    name: "Signed, Sui-anchored receipts",
-    desc: "Every confidential response commits its hash on-chain — tamper-evident and publicly timestamped.",
-  },
-  {
-    k: "04",
-    name: "Verify it yourself",
-    desc: "t2 verify checks the Sui anchor, receipt signature, and TDX quote on your machine — no trust in our server required.",
+    name: "Receipts you can check",
+    desc: "Every confidential response commits its hash on Sui. Check it yourself — t2 verify or verify.t2000.ai — no trust in our server required.",
   },
 ] as const;
 
@@ -445,7 +350,7 @@ export function ApiPrivacy() {
             .
           </p>
         </header>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-3">
           {RUNGS.map((r) => (
             <div
               key={r.k}

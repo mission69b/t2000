@@ -30,18 +30,36 @@ const nextConfig: NextConfig = {
         destination: "https://developers.t2000.ai",
         permanent: true,
       },
+      // Dead-simple pass (2026-07-20): thin/duplicate pages retired. SDK
+      // folded into the wallet page; identity + commerce live where the
+      // directory/console is; the verify tool IS the page.
+      {
+        source: "/agent-sdk",
+        destination: "/agent-wallet",
+        permanent: true,
+      },
+      {
+        source: "/agent-id",
+        destination: "https://agents.t2000.ai",
+        permanent: false,
+      },
+      {
+        source: "/verify",
+        destination: "https://verify.t2000.ai",
+        permanent: false,
+      },
       // SPEC_HUB_V1 sweep (2026-07-10): the commerce product page was
       // retired — identity (which owns paid services now) absorbs it.
       {
         source: "/agent-commerce",
-        destination: "/agent-id",
+        destination: "https://agents.t2000.ai",
         permanent: false,
       },
       // The engine product was retired (S.442); the page died in the 2026-07
-      // redesign. Send old links to the SDK (its closest living successor).
+      // redesign. Send old links to the SDK's successor (the wallet page).
       {
         source: "/agent-engine",
-        destination: "/agent-sdk",
+        destination: "/agent-wallet",
         permanent: true,
       },
       // Product page moved 2026-07-06 — /api reads like an API root and the

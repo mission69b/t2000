@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { PaymentsArchitecture } from "../components/payments/PaymentsArchitecture";
 import { PaymentsCatalog } from "../components/payments/PaymentsCatalog";
 import { PaymentsCloser } from "../components/payments/PaymentsCloser";
 import { PaymentsExamples } from "../components/payments/PaymentsExamples";
@@ -40,7 +39,6 @@ export default function AgentPaymentsPage() {
         <PaymentsCatalog />
         <PaymentsExamples />
         <PaymentsProtocol />
-        <PaymentsArchitecture />
         <ProductStrip currentPage="payments" />
         <PaymentsCloser />
       </main>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { AGENTS_URL } from "../../data/t2k";
 
@@ -70,9 +69,14 @@ export function ApiCloser() {
           >
             Open the console&nbsp;↗
           </a>
-          <Link href="/verify" className="t2k-btn t2k-btn--ghost t2k-btn--lg">
-            Verify a receipt&nbsp;→
-          </Link>
+          <a
+            href="https://verify.t2000.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t2k-btn t2k-btn--ghost t2k-btn--lg"
+          >
+            Verify a receipt&nbsp;↗
+          </a>
         </div>
       </div>
     </section>

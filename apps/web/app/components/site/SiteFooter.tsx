@@ -8,6 +8,7 @@ import {
   AGENTS_URL,
   SUIMPP_URL,
   TWITTER_URL,
+  VERIFY_URL,
 } from "../../data/t2k";
 
 interface FooterLink {
@@ -18,20 +19,20 @@ interface FooterLink {
 }
 
 const PRODUCT_LINKS: FooterLink[] = [
-  { label: "Agent Wallet", href: "/agent-wallet" },
-  { label: "Agent Payments", href: "/agent-payments" },
-  { label: "Agent SDK", href: "/agent-sdk" },
-  { label: "Agent ID", href: "/agent-id" },
   { label: "Private Inference", href: "/private-inference" },
+  { label: "Agent Payments", href: "/agent-payments" },
+  { label: "t2 code", href: "/code" },
+  { label: "Agent Wallet", href: "/agent-wallet" },
+  { label: "Templates", href: "/templates" },
+  { label: "Usage", href: "/usage" },
 ];
 
 const FAMILY_LINKS: FooterLink[] = [
-  { label: "Verify", href: "/verify" },
-  { label: "Usage", href: "/usage" },
-  { label: "x402 Gateway", href: GATEWAY_URL, external: true },
   { label: "t2 Agents", href: AGENTS_URL, external: true },
-  { label: "suimpp.dev", href: SUIMPP_URL, external: true },
+  { label: "x402 Gateway", href: GATEWAY_URL, external: true },
+  { label: "Verify", href: VERIFY_URL, external: true },
   { label: "Audric", href: AUDRIC_URL, external: true },
+  { label: "suimpp.dev", href: SUIMPP_URL, external: true },
   { label: "Developers", href: DEVELOPERS_URL, external: true },
 ];
 

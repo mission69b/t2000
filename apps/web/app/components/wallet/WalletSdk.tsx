@@ -30,20 +30,20 @@ const STEPS: CompositionStep[] = [
   },
 ];
 
-export function SdkComposition() {
+export function WalletSdk() {
   return (
     <section className="t2k-section">
       <div className="t2k-container">
         <header className="mb-12 max-w-[720px]">
-          <span className="t2k-eyebrow">{"// COMPOSE"}</span>
+          <span className="t2k-eyebrow">{"// THE SDK"}</span>
           <h2 className="t2k-section-title mt-[22px]">
-            Chain the calls
+            Same wallet,
             <br />
-            <span style={{ color: "var(--fg-muted)" }}>into an agent loop.</span>
+            <span style={{ color: "var(--fg-muted)" }}>in TypeScript.</span>
           </h2>
           <p className="t2k-section-sub">
-            Swap to top up, pay for intelligence, send the payout — plain
-            sequential code, no framework.
+            <code className="font-mono">npm i @t2000/sdk</code> — every CLI
+            verb as a typed call.
           </p>
         </header>
 

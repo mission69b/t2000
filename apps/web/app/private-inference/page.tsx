@@ -10,7 +10,6 @@ import {
   ApiModels,
   ApiPrivacy,
   ApiRouter,
-  ApiX402,
 } from "../components/api/ApiSections";
 
 const DESC =
@@ -53,7 +52,6 @@ export default async function ApiPage() {
         <ApiHero liveTokens={liveTokens} />
         <ApiRouter />
         <ApiModels />
-        <ApiX402 />
         <ApiPrivacy />
         <ApiIntegrations />
         <ProductStrip currentPage="api" />

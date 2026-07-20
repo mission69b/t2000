@@ -19,7 +19,7 @@ export const T2K = {
       chips: ["Passport", "Agent ID", "USDC"],
       links: [
         { label: "Agent Wallet", href: "/agent-wallet" },
-        { label: "Agent ID", href: "/agent-id" },
+        { label: "Agent ID", href: "https://agents.t2000.ai" },
         { label: "Private Inference", href: "/private-inference" },
       ],
     },
@@ -56,7 +56,7 @@ export const T2K = {
       status: { label: "SEEDED", tone: "seeded" },
       desc: "Trust you can check: receipts on Sui, verifiable confidential inference, disputes bounded at creation. No platform custody, no platform judge.",
       chips: ["Receipts", "TEE verify", "No custody"],
-      links: [{ label: "Verify", href: "/verify" }],
+      links: [{ label: "Verify", href: "https://verify.t2000.ai" }],
     },
   ],
 
@@ -126,32 +126,26 @@ export const T2K_STORIES: StoryItem[] = [
   },
 ];
 
-// Nav + footer + product-strip product set (the seven product pages).
-export const NAV_PRODUCTS = [
-  { slug: "code", name: "t2 code", pkg: "@t2000/code", desc: "The free private coding agent.", href: "/code" },
-  { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The terminal Agent Wallet.", href: "/agent-wallet" },
-  { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
-  { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: "/agent-sdk" },
-  { slug: "id", name: "Agent ID", pkg: "@t2000/id", desc: "On-chain identity + @handles.", href: "/agent-id" },
+// Product pages (the survivors after the 2026-07-20 dead-simple pass) —
+// feeds the ProductStrip cross-links and the footer. The nav itself is flat
+// (NAV_LINKS below); everything else routes through the footer site map.
+export const PRODUCT_PAGES = [
   { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
-  { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "/verify" },
+  { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
+  { slug: "code", name: "t2 code", pkg: "@t2000/code", desc: "The free private coding agent.", href: "/code" },
+  { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "Wallet, identity, SDK — one terminal surface.", href: "/agent-wallet" },
+  { slug: "agents", name: "t2 Agents", pkg: "agents.t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://agents.t2000.ai", external: true },
+  { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "https://verify.t2000.ai", external: true },
 ] as const;
 
-export type ProductSlug = (typeof NAV_PRODUCTS)[number]["slug"];
+export type ProductSlug = (typeof PRODUCT_PAGES)[number]["slug"];
 
-export interface NavFamilyLink {
-  name: string;
-  desc: string;
-  href: string;
-  external?: boolean;
-}
-
-export const NAV_FAMILY: readonly NavFamilyLink[] = [
-  { name: "Verify", desc: "Check any confidential receipt. verify.t2000.ai", href: "/verify" },
-  { name: "x402 Gateway", desc: "Every paid API, gasless. mpp.t2000.ai", href: "https://mpp.t2000.ai", external: true },
-  { name: "t2 Agents", desc: "Skills, directory + console. agents.t2000.ai", href: "https://agents.t2000.ai", external: true },
-  { name: "suimpp.dev", desc: "The open x402 standard — Sui binding.", href: "https://suimpp.dev", external: true },
-  { name: "Audric", desc: "Private, decentralized AI — truly yours.", href: "https://audric.ai", external: true },
+// The flat top nav — four links, no dropdown.
+export const NAV_LINKS = [
+  { slug: "api", label: "Inference", href: "/private-inference" },
+  { slug: "payments", label: "Payments", href: "/agent-payments" },
+  { slug: "agents", label: "Agents", href: "https://agents.t2000.ai", external: true },
+  { slug: "templates", label: "Templates", href: "/templates" },
 ] as const;
 
 export const INSTALL_PROMPT =
