@@ -180,6 +180,10 @@
   "navbar": {
     "links": [
       {
+        "label": "llms.txt",
+        "href": "https://developers.t2000.ai/llms.txt"
+      },
+      {
         "label": "Changelog",
         "href": "https://github.com/mission69b/t2000/releases"
       },
@@ -217,6 +221,10 @@
           {
             "label": "@t2000/id",
             "href": "https://www.npmjs.com/package/@t2000/id"
+          },
+          {
+            "label": "@t2000/serve",
+            "href": "https://www.npmjs.com/package/@t2000/serve"
           },
           {
             "label": "@t2000/code",
