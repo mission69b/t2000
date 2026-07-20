@@ -106,6 +106,30 @@ describe('gate 1 — url', () => {
     expect(res.gates[0].detail).toContain('gateway itself');
   });
 
+  it('rejects a gateway-alias hostname by payTo identity, not hostname', async () => {
+    // A proxy/alias of the gateway on any hostname still pays a
+    // gateway-owned wallet — the identity check catches it post-probe.
+    const res = await ingestSellerByUrl('https://gateway-alias.example/deepseek/v1/chat', {
+      probe: passingProbe({
+        payTo: '0xb012ac774bee4ee6e4e571a13457eeb7a75c4f2319551bf9d436fd497d57aca1',
+      }),
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(false);
+    const probeGate = res.gates.find((g) => g.gate === 'probe');
+    expect(probeGate?.ok).toBe(false);
+    expect(probeGate?.detail).toContain('gateway itself');
+  });
+
+  it('passes a *.vercel.app seller — the serve-vercel template deploys there', async () => {
+    const res = await ingestSellerByUrl('https://my-agent-api.vercel.app/search', {
+      probe: passingProbe(),
+      fetchSpec: noSpec,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.payTo).toBe(SELLER);
+  });
+
   it('passes a valid https URL — no account, no Agent ID, no signature', async () => {
     const res = await ingestSellerByUrl(ENDPOINT, { probe: passingProbe(), fetchSpec: noSpec });
     expect(res.ok).toBe(true);

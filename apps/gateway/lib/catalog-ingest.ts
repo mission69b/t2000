@@ -44,7 +44,14 @@ import {
   type DynamicCatalogEntry,
 } from './catalog-store';
 import { probeSellerEndpoint, type SellerProbeResult } from './seller-probe';
+import { COLLECT_ADDRESS, SERVICE_PAY_ADDRESS, TREASURY_ADDRESS } from './constants';
 import { services, type Endpoint, type Service } from './services';
+
+/** Wallets the gateway's own 402s pay into. A submitted endpoint whose
+ *  challenge pays one of these is the gateway under another hostname. */
+const GATEWAY_OWNED_ADDRESSES = new Set(
+  [SERVICE_PAY_ADDRESS, COLLECT_ADDRESS, TREASURY_ADDRESS].map((a) => normalizeSuiAddress(a)),
+);
 
 export interface GateResult {
   gate: 'url' | 'agent-id' | 'probe' | 'dialect' | 'price-cap' | 'claim';
@@ -305,8 +312,13 @@ export async function previewSeller(
   }
   // The gateway's own proxied endpoints answer a payable x402 402 too —
   // without this, anyone could re-list the whole proxied catalog as one
-  // giant "direct seller" entry.
-  if (endpointUrl.hostname === 'mpp.t2000.ai' || endpointUrl.hostname.endsWith('.vercel.app')) {
+  // giant "direct seller" entry. The canonical hostname is rejected before
+  // probing; any other alias (e.g. the deployment's *.vercel.app URL) is
+  // caught by the payTo identity check after the probe. A blanket
+  // *.vercel.app hostname ban is WRONG — the serve-vercel template's
+  // Deploy button puts legitimate sellers on *.vercel.app (dogfood
+  // finding, 2026-07-20).
+  if (endpointUrl.hostname === 'mpp.t2000.ai') {
     return {
       ok: false,
       gates: [
@@ -325,6 +337,16 @@ export async function previewSeller(
   const probed = await probe(endpointUrl.href);
   if (!probed.ok || !probed.payTo || !probed.priceUsdc) {
     gates.push({ gate: 'probe', ok: false, detail: probed.issues.join('; ') || 'probe failed' });
+    return { ok: false, gates, warnings: [] };
+  }
+  // Self-identity check: a 402 that pays a gateway-owned wallet IS the
+  // gateway (or a proxy of it), whatever hostname it was submitted under.
+  if (GATEWAY_OWNED_ADDRESSES.has(normalizeSuiAddress(probed.payTo))) {
+    gates.push({
+      gate: 'probe',
+      ok: false,
+      detail: 'that is the gateway itself — its services are already in the catalog; submit your own origin',
+    });
     return { ok: false, gates, warnings: [] };
   }
   gates.push({
