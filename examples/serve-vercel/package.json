@@ -1,0 +1,23 @@
+{
+  "name": "t2000-serve-template",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deploy-to-Vercel template: an agent-payable API on Sui with @t2000/serve. One paid route, discovery docs, zero keys.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@t2000/serve": "file:../../packages/serve",
+    "next": "^15.4.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}
