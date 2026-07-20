@@ -56,7 +56,13 @@ export interface StandardSchemaLike<T = unknown> {
 
 export type StandardSchemaResult<T> =
   | { value: T; issues?: undefined }
-  | { issues: ReadonlyArray<{ message: string }> };
+  | {
+      issues: ReadonlyArray<{
+        message: string;
+        /** Standard Schema path segments (plain keys or `{ key }` objects). */
+        path?: ReadonlyArray<PropertyKey | { key: PropertyKey }>;
+      }>;
+    };
 
 export interface SafeParseSchemaLike<T = unknown> {
   safeParse: (value: unknown) =>

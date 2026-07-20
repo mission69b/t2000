@@ -175,6 +175,12 @@ describe('paid request lifecycle (sign-then-settle, handler-then-settle)', () =>
     );
     expect(res.status).toBe(422);
     expect(settleMock).not.toHaveBeenCalled(); // the buyer keeps their money
+    // Charge honesty + self-correctable error: names the failing field and
+    // states machine-readably that nothing was charged (founder × Funkii
+    // Studio, 2026-07-20: bare "Invalid input" ×3 read as a paid failure).
+    const body = (await res.json()) as { error: string; paid: boolean };
+    expect(body.paid).toBe(false);
+    expect(body.error).toMatch(/query/);
   });
 
   it('handler throws → 500, payment never settled (no-charge-on-failure)', async () => {

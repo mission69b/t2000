@@ -97,7 +97,17 @@ async function validateBody(
   if (isStandardSchema(schema)) {
     const result = await schema['~standard'].validate(value);
     if (result.issues) {
-      return { ok: false, message: result.issues.map((i) => i.message).join('; ') };
+      // Name the failing field — bare "Invalid input" ×N gives a paying
+      // buyer's agent nothing to self-correct with.
+      const message = result.issues
+        .map((i) => {
+          const path = (i.path ?? [])
+            .map((seg) => (typeof seg === 'object' ? String(seg.key) : String(seg)))
+            .join('.');
+          return path ? `${path}: ${i.message}` : i.message;
+        })
+        .join('; ');
+      return { ok: false, message };
     }
     return { ok: true, data: result.value };
   }
@@ -202,9 +212,15 @@ export class RouteBuilder<TBody = undefined> {
       const runHandler = async (payer?: string): Promise<Response> => {
         let validated: unknown = parsedBody;
         if (bodySchema) {
-          if (bodyParseError) return json(422, { error: bodyParseError });
+          // `paid: false` is machine-readable charge honesty — a 422 fires
+          // BEFORE settlement, so the buyer always keeps their money.
+          if (bodyParseError) {
+            return json(422, { error: bodyParseError, paid: false });
+          }
           const result = await validateBody(bodySchema, parsedBody ?? {});
-          if (!result.ok) return json(422, { error: result.message });
+          if (!result.ok) {
+            return json(422, { error: result.message, paid: false });
+          }
           validated = result.data;
         }
         const out = await fn({ body: validated as TBody, req, payer });
