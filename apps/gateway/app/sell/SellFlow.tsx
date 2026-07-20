@@ -238,7 +238,7 @@ export function SellFlow() {
               Fix the failing check and run it again. Building the endpoint?{" "}
               <a
                 className="font-medium no-underline"
-                href="https://developers.t2000.ai/sell-your-api"
+                href="https://developers.t2000.ai/sell-to-agents/overview"
                 rel="noreferrer"
                 style={{ color: "var(--t2k-accent)" }}
                 target="_blank"

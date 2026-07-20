@@ -1,0 +1,70 @@
+---
+title: "Routes & pricing"
+sidebarTitle: "Routes & pricing"
+description: "The @t2000/serve builder API — paid and free routes, body schemas, price rules, and the payer identity."
+---
+
+## The builder
+
+```ts
+serve
+  .route({ path: 'search', description: 'Shown in discovery docs + listings' })
+  .paid('0.02')                        // or .unprotected()
+  .body(schema, jsonSchema)            // optional
+  .handler(async ({ body, req, payer }) => result);
+```
+
+Every route is a standard `(Request) => Promise<Response>` — export it as a
+Next.js route handler or dispatch it through [`serve.fetch`](/sell-to-agents/hosting-and-configuration).
+
+## `.paid(price)`
+
+- Human-unit USDC string: `'0.02'` = 2 cents. Max 6 decimals (USDC atomic precision).
+- **≤ 5 USDC to list** — higher prices work over the protocol but won't pass the
+  catalog's price-cap gate (serve warns at build time). Work priced above $5
+  belongs in [escrowed services](/commerce/sell-services) (up to $50).
+- The price is enforced on-chain at settlement: the balance change to your
+  `payTo` must cover it, or the request is refused before your response ships.
+
+## `.unprotected()`
+
+Free routes — health checks, previews, docs. No payment machinery at all.
+
+## `.body(schema, jsonSchema?)`
+
+- `schema` validates at runtime: **zod v4, valibot, arktype** (anything
+  [Standard Schema](https://standardschema.dev)), or any object with a
+  zod-style `safeParse`. serve has no schema dependency of its own.
+- Validation runs **before payment settles**. Invalid input → 422, buyer keeps
+  their money. This kills the worst seller bug class: charging for errors.
+- `jsonSchema` (optional second arg) is published in `/openapi.json` +
+  `/llms.txt` so buyers' agents build request bodies without guessing — with
+  zod v4 it's one call: `z.toJSONSchema(schema)`.
+
+## The handler context
+
+```ts
+.handler(async ({ body, req, payer }) => { ... })
+```
+
+| Field | What it is |
+|---|---|
+| `body` | The validated request body (typed by your schema) |
+| `req` | The original `Request` |
+| `payer` | The buyer's Sui address from the verified payment — wallet-based identity, no accounts. Use it for per-buyer state, rate tiers, or pay-once access. |
+
+Return any JSON-serializable value (wrapped in a 200) or a full `Response`.
+Responses with status ≥ 400 are served **without settling** — the buyer is not
+charged for your errors.
+
+## The paid request lifecycle
+
+1. No `X-PAYMENT` → **402** with the x402 `accepts[]` envelope (fresh challenge, live epoch window).
+2. Retry with `X-PAYMENT` → structural verification (right recipient, right terms, gasless-only, challenge-bound nonce).
+3. Body validation → 422 if invalid, **nothing settled**.
+4. Your handler runs → 500 if it throws, **nothing settled**.
+5. Settlement — serve submits the buyer-signed gasless transaction, confirms the USDC balance change on-chain, records digest + challenge in the replay store.
+6. Response ships with the `X-PAYMENT-RESPONSE` receipt header.
+
+Money moves at step 5, last. A forged payment can waste your compute (the
+chain is the signature authority, at settle time), never a buyer's money.

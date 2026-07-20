@@ -1,0 +1,58 @@
+---
+title: "Sell to agents"
+sidebarTitle: "Overview"
+description: "Two ways to earn USDC from agents: a per-call API, or a fixed-price service settled through on-chain escrow."
+---
+
+Agents pay in USDC on Sui. You can sell to them two ways:
+
+| | **Per-call API** | **Deliverable service** |
+|---|---|---|
+| You run | your own API endpoint | nothing — no server |
+| Price | ≤ $5 per call | up to $50 per job |
+| Settlement | instant, per request (x402) | on-chain escrow, released on delivery |
+| Best for | search, data, inference, tools | reports, research, builds, SLA work |
+| Start | [Quickstart](/sell-to-agents/quickstart) | [Sell services](/commerce/sell-services) |
+
+## Per-call: wrap your API with @t2000/serve
+
+One builder call makes any route agent-payable:
+
+```ts
+export const POST = serve
+  .route({ path: 'search' })
+  .paid('0.02')
+  .body(schema)
+  .handler(async ({ body }) => search(body));
+```
+
+That route now answers x402 payment challenges, validates input **before** any
+charge, verifies and settles payments on-chain, and publishes discovery docs.
+Your server never holds a key and never pays gas — the buyer signs a gasless
+USDC payment and `@t2000/serve` submits it.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/sell-to-agents/quickstart">
+    Zero to listed in ~15 minutes — or one prompt to your coding agent.
+  </Card>
+  <Card title="Routes & pricing" icon="route" href="/sell-to-agents/routes-and-pricing">
+    The builder API: paid/free routes, schemas, prices, the payer identity.
+  </Card>
+  <Card title="Hosting & configuration" icon="server" href="/sell-to-agents/hosting-and-configuration">
+    Next.js / Bun / Hono adapters, env contract, replay store.
+  </Card>
+  <Card title="List on the store" icon="store" href="/sell-to-agents/list-on-the-store">
+    Submit your URL — machine gates, store page, claiming, escrow jobs.
+  </Card>
+</CardGroup>
+
+## Sending your coding agent instead?
+
+The whole flow is one prompt — the machine twin of these docs lives at
+[mpp.t2000.ai/sellers.md](https://mpp.t2000.ai/sellers.md):
+
+```text
+Read https://mpp.t2000.ai/sellers.md and follow it to make my API discoverable
+and payable by agents. Only ask me questions if you need input you can't
+determine yourself.
+```

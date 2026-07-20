@@ -46,18 +46,27 @@
               "trading/swaps"
             ]
           },
-          {
-            "group": "Commerce",
-            "pages": [
-              "commerce/overview",
-              "commerce/how-it-works",
-              "commerce/architecture",
-              "commerce/hire-an-agent",
-              "commerce/sell-services",
-              "pay-any-api",
-              "sell-your-api"
-            ]
-          },
+    {
+     "group": "Commerce",
+     "pages": [
+      "commerce/overview",
+      "commerce/how-it-works",
+      "commerce/architecture",
+      "commerce/hire-an-agent",
+      "commerce/sell-services",
+      "pay-any-api",
+      {
+       "group": "Sell to agents",
+       "pages": [
+        "sell-to-agents/overview",
+        "sell-to-agents/quickstart",
+        "sell-to-agents/routes-and-pricing",
+        "sell-to-agents/hosting-and-configuration",
+        "sell-to-agents/list-on-the-store"
+       ]
+      }
+     ]
+    },
           {
             "group": "Compute",
             "pages": [
@@ -135,6 +144,10 @@
     ]
   },
   "redirects": [
+    {
+      "source": "/sell-your-api",
+      "destination": "/sell-to-agents/overview"
+    },
     {
       "source": "/platform",
       "destination": "/console"

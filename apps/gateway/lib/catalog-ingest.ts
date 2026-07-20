@@ -345,7 +345,7 @@ export async function previewSeller(
       detail:
         'the 402 answers only the MPP header dialect — serve an x402 accepts[] envelope ' +
         '(scheme "exact", network "sui:mainnet") so every buyer, browser wallets included, ' +
-        'can pay; see developers.t2000.ai/sell-your-api',
+        'can pay; see developers.t2000.ai/sell-to-agents/overview',
     });
     return { ok: false, gates, payTo: probed.payTo, warnings: [] };
   }

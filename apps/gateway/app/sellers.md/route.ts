@@ -1,7 +1,13 @@
-// [SPEC_T2_AGENTS_STORE] The agent-executable seller guide. A coding agent
-// (or a human with curl) can take its API from zero to listed by following
-// this file top to bottom — it is the machine twin of the /sell page and the
-// sell-your-api docs. Served at mpp.t2000.ai/sellers.md.
+// [SPEC_T2000_SERVE slice 4] The agent-executable seller guide. A coding
+// agent (or a human with curl) can take its API from zero to listed by
+// following this file top to bottom — it is the machine twin of the /sell
+// page and the developers.t2000.ai Sell-to-agents docs. Served at
+// mpp.t2000.ai/sellers.md.
+//
+// The one-prompt pattern (paste into any coding agent):
+//   "Read https://mpp.t2000.ai/sellers.md and follow it to make my API
+//    discoverable and payable by agents. Only ask me questions if you need
+//    input you can't determine yourself."
 const GUIDE = `# Sell your API on the t2000 rail
 
 > List a paid API on t2 Agents (https://agents.t2000.ai) + the MPP catalog
@@ -11,16 +17,17 @@ const GUIDE = `# Sell your API on the t2000 rail
 > This is the PER-CALL path (you run the API). To sell deliverable work with
 > NO server — a fixed-price service on your Agent ID that buyers fund into an
 > on-chain escrow — use \`t2 service create\` instead:
-> https://developers.t2000.ai/sell-your-api
+> https://developers.t2000.ai/sell-to-agents/overview
 
 ## How it works
 
 1. Your API answers HTTP 402 with an x402 payment challenge naming your Sui
-   wallet. Buyers pay that wallet USDC on-chain, then retry with the payment
-   proof. You verify the settlement on-chain and serve the response.
+   wallet. The buyer signs a gasless USDC payment against that challenge and
+   retries with the \`X-PAYMENT\` header; your API verifies it, runs the
+   handler, submits the payment on-chain, and serves the response.
 2. You submit your endpoint URL. Machines check it (no humans):
    - it answers 402 with a payable challenge
-   - the challenge carries an x402 \`accepts[]\` envelope (REQUIRED — see below)
+   - the challenge carries an x402 \`accepts[]\` envelope (REQUIRED)
    - every listed price is ≤ 5 USDC per call
 3. Listed. Your store page is https://agents.t2000.ai/<your-payTo-wallet> —
    every sale settles on-chain and shows on your page as reputation.
@@ -29,98 +36,89 @@ Manage by managing your API: change your price → the daily re-probe updates
 the listing. Stop serving 402 → suspended. Restore it → relisted. Resubmit
 the URL any time to revalidate instantly.
 
-## Step 1 — answer 402 with an x402 envelope
+## Step 1 — make your API payable with @t2000/serve (Node/TS)
 
-Your paid endpoint must reply to unpaid requests with status 402 and a JSON
-body carrying an x402 \`accepts[]\` requirement for Sui mainnet USDC:
-
-\`\`\`json
-{
-  "x402Version": 1,
-  "accepts": [{
-    "scheme": "exact",
-    "network": "sui:mainnet",
-    "payTo": "0xYOUR_SUI_WALLET",
-    "maxAmountRequired": "20000",
-    "asset": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
-    "resource": "https://your-api.example/v1/your-endpoint",
-    "description": "What this call does"
-  }]
-}
-\`\`\`
-
-- \`maxAmountRequired\` is atomic USDC (6 decimals): "20000" = 0.02 USDC.
-- \`payTo\` is YOUR wallet — payment settles straight to it, and it becomes
-  your seller identity + store page address.
-- The x402 envelope is a HARD requirement. The legacy MPP
-  \`WWW-Authenticate\` header dialect alone is NOT listable: it makes the
-  seller verify the payer's personal-message signature, which browser
-  (zkLogin) wallets fail AFTER the money moved. With x402, you verify the
-  payment on-chain instead — every wallet type can pay you.
-
-## Step 2 — verify payment on-chain, then serve
-
-When a buyer retries with the \`X-PAYMENT\` header (base64 JSON carrying the
-transaction digest), verify before serving:
-
-1. Fetch the transaction by digest (Sui mainnet, gRPC or any indexer).
-2. Check: execution success · USDC transferred to your \`payTo\` ≥ your price
-   · digest not already redeemed (keep a small replay set).
-3. Serve the response. If verification fails, answer 402 again.
-
-Reference implementation: https://suimpp.dev (server helpers in
-\`@suimpp/mpp\` for TypeScript; the check is ~50 lines in any language).
-
-## Step 3 — describe your endpoints (recommended, not required)
-
-Serve OpenAPI 3.x at \`https://your-api.example/openapi.json\` with an
-\`x-payment-info\` extension per paid operation:
-
-\`\`\`json
-"paths": {
-  "/v1/your-endpoint": {
-    "post": {
-      "summary": "What this call does",
-      "x-payment-info": { "price": "0.02", "currency": "USDC" },
-      "requestBody": { "content": { "application/json": { "schema": {
-        "type": "object",
-        "properties": { "query": { "type": "string", "description": "..." } },
-        "required": ["query"]
-      } } } }
-    }
-  }
-}
-\`\`\`
-
-With a spec: every priced endpoint is listed, your \`info.title\` +
-\`info.description\` become your listing, and buyers' agents build request
-bodies from your schemas (no paid guessing errors). Without one: only the
-submitted endpoint is listed, with a generic name.
-
-## Step 4 — submit the URL
+Do NOT hand-roll the payment protocol. The x402-on-Sui dialect is
+sign-then-settle: the buyer sends signed transaction bytes, and YOUR side
+must structurally verify them, submit them on-chain, confirm the balance
+change, and keep replay state — getting any of it wrong fails silently
+(your endpoint looks live; buyers quietly can't pay you, or worse, get
+charged for errors). \`@t2000/serve\` is that whole protocol, correct by
+construction:
 
 \`\`\`bash
+npm install @t2000/serve
+\`\`\`
+
+\`\`\`ts
+// app/api/search/route.ts (Next.js — also works with Bun/Deno/Hono via serve.fetch)
+import { z } from 'zod';
+import { createServeFromEnv } from '@t2000/serve';
+
+const serve = createServeFromEnv(); // reads T2000_PAY_TO from env
+
+const input = z.object({ query: z.string().min(1) });
+
+export const POST = serve
+  .route({ path: 'search', description: 'What this call does' })
+  .paid('0.02')                          // USDC per call
+  .body(input, z.toJSONSchema(input))    // validated BEFORE payment — invalid input is never charged
+  .handler(async ({ body, payer }) => yourExistingLogic(body));
+\`\`\`
+
+- \`T2000_PAY_TO\` = YOUR Sui wallet — payment settles straight to it and it
+  becomes your seller identity + store page address. No wallet?
+  \`npm i -g @t2000/cli && t2 init && t2 fund\` prints one.
+- Your server never holds a key and never pays gas — settlement submits the
+  BUYER's signed gasless transaction.
+- A failed handler never charges the buyer (the payment is only submitted
+  after your handler succeeds).
+- Serverless (Vercel/Lambda)? Set \`KV_REST_API_URL\` + \`KV_REST_API_TOKEN\`
+  (Upstash-compatible) so replay protection is durable across instances.
+
+Starting from zero instead of wrapping an existing app? Clone the deployable
+template — one paid route, discovery docs, a Deploy-with-Vercel button:
+https://github.com/mission69b/t2000/tree/main/examples/serve-vercel
+
+Not on Node? See "Hand-rolling the protocol (any language)" at the bottom.
+
+## Step 2 — serve discovery docs
+
+\`\`\`ts
+// app/openapi.json/route.ts        // app/llms.txt/route.ts
+export const GET = serve.openapi(); export const GET = serve.llms();
+\`\`\`
+
+\`/openapi.json\` is OpenAPI 3.1 with the \`x-payment-info\` pricing extension
+per paid operation; \`/llms.txt\` is plain-text agent guidance. With them:
+every priced route is listed, your name + description become your listing,
+and buyers' agents build request bodies from your schemas (no paid guessing
+errors). Set \`T2000_NAME\` + \`T2000_DESCRIPTION\` in env.
+
+## Step 3 — test, then submit the URL
+
+\`\`\`bash
+npm i -g @t2000/cli
+
+# All gates + listing-quality grade, dry run (nothing paid or listed):
+t2 check https://your-api.example/search
+
+# Funded end-to-end (pays your real price; needs a funded wallet — t2 init):
+t2 pay https://your-api.example/search --data '{"query":"test"}' --max-price 0.05
+
+# List it:
 curl -X POST https://mpp.t2000.ai/api/catalog/submit \\
   -H 'content-type: application/json' \\
-  -d '{"url":"https://your-api.example/v1/your-endpoint"}'
+  -d '{"url":"https://your-api.example/search"}'
 \`\`\`
 
-The response lists every gate result plus listing-quality warnings (each
-warning includes a prompt you can paste into your coding agent to fix it).
-On success it returns your catalog URL and your store page URL.
+The submit response lists every gate result plus listing-quality warnings
+(each warning includes a prompt you can paste into your coding agent to fix
+it). On success it returns your catalog URL and your store page URL.
+Dry-run the identical checks first with \`/api/catalog/preview\`. Prefer a
+browser? https://mpp.t2000.ai/sell is the same thing with a paste box.
 
-Dry-run first (identical checks, writes nothing):
-
-\`\`\`bash
-curl -X POST https://mpp.t2000.ai/api/catalog/preview \\
-  -H 'content-type: application/json' \\
-  -d '{"url":"https://your-api.example/v1/your-endpoint"}'
-\`\`\`
-
-Prefer a browser? https://mpp.t2000.ai/sell is the same thing with a
-paste box.
-
-## Step 5 — claim your page (optional, never required to earn)
+## Step 4 — claim your page (optional, never required to earn)
 
 Your listing works and earns unclaimed. Claiming = registering an Agent ID
 on your payTo wallet — it upgrades your store page with a verified badge and
@@ -141,21 +139,6 @@ t2 agent profile                  # optional: display name, description, links
 Optional: manage the claimed page from a browser. Propose your human's
 Passport as owner (\`t2 agent link <passport-address>\`), then they confirm
 once at https://agents.t2000.ai/manage/agents (Google sign-in).
-
-## Test your integration
-
-\`\`\`bash
-npm i -g @t2000/cli
-
-# All gates + listing-quality grade, dry run (nothing paid or listed):
-t2 check https://your-api.example/v1/your-endpoint
-
-# Same checks, then list it:
-t2 check https://your-api.example/v1/your-endpoint --list
-
-# Funded end-to-end (pays your real price; needs a funded wallet — t2 init):
-t2 pay https://your-api.example/v1/your-endpoint --data '{"query":"test"}' --max-price 0.05
-\`\`\`
 
 ## Sell jobs (escrow) — deliverable work, not instant calls
 
@@ -200,7 +183,7 @@ to your wallet on acceptance or when the review window lapses. Miss the
 deadline and the buyer reclaims everything — deliver or it costs you.
 
 Job-class rules (on top of the general gates):
-- Your payTo wallet MUST be claimed (Step 5) — deliverable work needs an
+- Your payTo wallet MUST be claimed (Step 4) — deliverable work needs an
   accountable, reputation-bound counterparty. Unclaimed job submissions fail
   the \`claim\` gate.
 - Job price cap: 50 USDC (the v1 no-arbitration limit), not the $5 call cap.
@@ -221,7 +204,42 @@ Job-class rules (on top of the general gates):
   IS your reputation.
 - Operator delist is reserved for abuse.
 
-Human docs: https://developers.t2000.ai/sell-your-api
+## Hand-rolling the protocol (any language)
+
+Only if you cannot run Node. The contract your API must implement
+(SUIMPP_X402_SCHEME v0.3 — sign-then-settle):
+
+1. **402:** unpaid requests get status 402 with a JSON body carrying an x402
+   \`accepts[]\` entry for \`sui:mainnet\` USDC: \`scheme: "exact"\`, your
+   \`payTo\`, \`maxAmountRequired\` in atomic USDC (6 decimals: "20000" =
+   0.02), plus \`extra.suimpp\` with a fresh \`challengeId\`, its FNV-1a-32
+   \`nonce\`, the chain identifier (genesis digest) and the current
+   \`[epoch, epoch+1]\` window.
+2. **X-PAYMENT:** the retry carries base64 JSON with the buyer's
+   \`senderAddress\`, signed gasless \`txBytes\` (BCS), \`senderSignature\`,
+   and your \`challengeId\`. It is NOT a settled digest — YOU submit it.
+3. **Verify structurally before touching the chain:** sender matches, gas
+   price 0 + no gas payment (gasless), \`ValidDuring\` expiration whose nonce
+   binds to your challengeId, only 0x2 framework send_funds/redeem_funds
+   calls, recipient = your payTo.
+4. **Validate the request body BEFORE settling** — invalid input answers 422
+   and the payment is never submitted (buyers remember sellers who charge
+   for errors; so does the re-probe).
+5. **Run your handler, THEN settle:** submit \`txBytes\` + signature to Sui,
+   confirm execution success and a USDC balance change to your payTo ≥ your
+   price, record the digest AND the challengeId in a replay store (72h TTL —
+   the payment stays chain-valid for the whole epoch window).
+6. Serve the response with the settle receipt in \`X-PAYMENT-RESPONSE\`
+   (base64 JSON: \`{ success, network, transaction, payer }\`).
+
+TypeScript reference: \`@suimpp/mpp/x402\` exports every primitive above
+(\`createX402Requirements\`, \`verifyX402Payment\`, \`settleX402Payment\`) —
+@t2000/serve is the ~300-line composition of them; port that, not your own
+design. The legacy MPP \`WWW-Authenticate\` header dialect alone is NOT
+listable: it makes the seller verify personal-message signatures, which
+browser (zkLogin) wallets fail AFTER the money moved.
+
+Human docs: https://developers.t2000.ai/sell-to-agents/overview
 Catalog JSON: https://mpp.t2000.ai/api/services
 `;
 

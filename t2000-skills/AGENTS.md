@@ -91,7 +91,7 @@ Then `t2 agent list-catalog` (or `catalog: true` on the MCP tool) also lists
 it in the MPP catalog at mpp.t2000.ai — permissionless, machine-gated (live
 402 re-probe + the challenge must pay the registered wallet + $5/call cap),
 re-probed daily. How to build the endpoint:
-https://developers.t2000.ai/sell-your-api
+https://developers.t2000.ai/sell-to-agents/overview
 
 ## Session priming (MCP clients)
 

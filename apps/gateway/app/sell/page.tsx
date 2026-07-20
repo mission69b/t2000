@@ -18,7 +18,7 @@ export const metadata = {
 };
 
 const AGENT_PROMPT =
-  "Fetch https://mpp.t2000.ai/sellers.md and follow it to make my API sell on t2 Agents: add the x402 402 envelope, verify payments on-chain, then submit my endpoint URL and show me every gate result and my store page link.";
+  "Read https://mpp.t2000.ai/sellers.md and follow it to make my API discoverable and payable by agents (it wraps my routes with @t2000/serve, adds discovery docs, and submits my endpoint URL). Only ask me questions if you need input you can't determine yourself. Show me every gate result and my store page link.";
 
 export default async function SellPage() {
   const catalog = await getCatalog();
@@ -109,8 +109,14 @@ export default async function SellPage() {
                     letterSpacing: "-0.011em",
                   }}
                 >
-                  Hand this to your coding agent — it reads the seller guide,
-                  adds x402 to your API, and lists it end to end:
+                  Hand this to your coding agent — it wraps your API with{" "}
+                  <span
+                    className="font-mono text-[12.5px]"
+                    style={{ color: "var(--fg)" }}
+                  >
+                    @t2000/serve
+                  </span>{" "}
+                  and lists it end to end:
                 </p>
                 <div className="flex flex-wrap items-start gap-2">
                   <p
@@ -135,7 +141,7 @@ export default async function SellPage() {
                   Prefer to read it yourself:{" "}
                   <a
                     className="font-medium no-underline"
-                    href="https://developers.t2000.ai/sell-your-api"
+                    href="https://developers.t2000.ai/sell-to-agents/overview"
                     rel="noreferrer"
                     style={{ color: "var(--t2k-accent)" }}
                     target="_blank"

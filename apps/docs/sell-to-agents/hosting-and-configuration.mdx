@@ -1,0 +1,87 @@
+---
+title: "Hosting & configuration"
+sidebarTitle: "Hosting & configuration"
+description: "Run @t2000/serve on Next.js, Bun, Deno, Hono, or Workers. The env contract, the replay store, and the serverless caveat."
+---
+
+## Runtimes
+
+`@t2000/serve` is fetch-native — every route is `(Request) => Promise<Response>`.
+
+<CodeGroup>
+
+```ts Next.js (per-route)
+// app/api/search/route.ts
+export const POST = serve.route({ path: 'search' }).paid('0.02').handler(fn);
+
+// app/openapi.json/route.ts
+export const GET = serve.openapi();
+
+// app/llms.txt/route.ts
+export const GET = serve.llms();
+```
+
+```ts Bun / Deno
+// serve.fetch dispatches every registered route + /openapi.json + /llms.txt
+Bun.serve({ port: 3000, fetch: serve.fetch });
+Deno.serve(serve.fetch);
+```
+
+```ts Hono / Workers
+app.all('*', (c) => serve.fetch(c.req.raw));
+export default { fetch: serve.fetch }; // Cloudflare Workers
+```
+
+</CodeGroup>
+
+<Note>
+  With per-route Next.js exports, import every route file from your
+  `openapi.json`/`llms.txt` routes (`import '../search/route'`) so they
+  register before the discovery docs render. `serve.fetch` doesn't have this
+  concern — everything lives in one module graph.
+</Note>
+
+## Environment contract
+
+`createServeFromEnv()` reads (empty strings count as unset — the classic
+misconfig is caught, not masked):
+
+| Var | Required | What it is |
+|---|---|---|
+| `T2000_PAY_TO` | **yes** | Your Sui address — every payment settles here, and it's your store-page identity |
+| `T2000_NETWORK` | no | `mainnet` (default) or `testnet` |
+| `T2000_BASE_URL` | no | Public URL of the deployed app — used in 402 challenges and discovery docs (defaults to the per-request origin) |
+| `T2000_NAME` / `T2000_DESCRIPTION` | no | Listing name + description in `/openapi.json` and `/llms.txt` |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | serverless: **yes** | Upstash-compatible KV for the replay store |
+
+Prefer code over env? `createServe({ payTo, network, store, ... })` takes the
+same options directly.
+
+## The replay store
+
+Payments must be single-use. serve enforces **challenge-once** (a signed
+payment payload can't be replayed) and **digest-once** (a settled transaction
+can't unlock a second response) through a `DigestStore`:
+
+- **Default: in-memory.** Correct for a single long-lived process. **Wrong for
+  serverless** — every lambda instance gets its own memory, so a replayed
+  payment could land on a fresh instance.
+- **Production: Upstash KV.** Set both `KV_REST_API_*` vars (on Vercel:
+  Storage → Upstash for Redis injects them). Keys live 72 h — longer than the
+  payment's on-chain validity window, so expiry can never re-open a replay.
+- **Custom:** pass any `{ has(key), set(key) }` implementation as
+  `createServe({ store })` — `set` must be atomic set-if-absent and throw on
+  duplicates.
+
+## CORS
+
+Permissive CORS (`*`) is on by default, exposing the payment headers — so
+browser wallets (Audric Passport / zkLogin buyers) can pay your API directly.
+Return your own `Response` with CORS headers from a handler to override.
+
+## Sui connectivity
+
+All chain access is gRPC against the public fullnode (`fullnode.mainnet.sui.io`)
+— chain identifier cached forever, epoch cached 10 minutes. Override with
+`createServe({ rpcUrl })` if you run your own node. If chain info is
+unreachable, unpaid requests get a **503** (never an unpayable 402).

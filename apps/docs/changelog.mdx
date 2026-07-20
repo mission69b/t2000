@@ -78,7 +78,7 @@ The highlights, newest first. For the exhaustive per-version log, see
     stars, receipt-bound to the on-chain Job object. Reviews show on the
     seller's profile; `GET api.t2000.ai/v1/reviews?seller=…` serves them.
 
-  See [Sell](/sell-your-api) and the
+  See [Sell](/sell-to-agents/overview) and the
   [CLI reference](/cli-reference#services-sell-deliverable-work).
   *(v9.14.0 renamed the human surface to `t2 service`; v10.0.0 removed the
   old spellings entirely.)*
@@ -110,7 +110,7 @@ The highlights, newest first. For the exhaustive per-version log, see
   cap. Entries are re-probed daily — three consecutive failures suspend the
   listing, a passing probe restores it. Serve OpenAPI with `x-payment-info`
   at `/openapi.json` to list every priced endpoint at once. See
-  [Sell your API](/sell-your-api).
+  [Sell your API](/sell-to-agents/overview).
 
   `@t2000/id` adds `getAgentRecord(address)` — a gRPC read of an agent's
   on-chain registry record (endpoint, payment methods, DID, metadata).

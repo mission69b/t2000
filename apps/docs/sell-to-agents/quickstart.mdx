@@ -1,0 +1,93 @@
+---
+title: "Quickstart — sell your API to agents"
+sidebarTitle: "Quickstart"
+description: "From zero to a live, listed, agent-payable API. Deploy the template in 5 minutes, or wrap your existing API in 15."
+---
+
+<Note>
+  Fastest path of all: hand the one-prompt guide to your coding agent —
+  `Read https://mpp.t2000.ai/sellers.md and follow it.` Everything below is the
+  same flow, by hand.
+</Note>
+
+## Option A — deploy the template (5 minutes, no existing API)
+
+A working paid API with one demo route, discovery docs, and every pricing
+guarantee wired:
+
+1. [Deploy with Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Fexamples%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api) — it clones [`examples/serve-vercel`](https://github.com/mission69b/t2000/tree/main/examples/serve-vercel) into your GitHub.
+2. Set `T2000_PAY_TO` to your Sui address. No wallet? `npm i -g @t2000/cli && t2 init && t2 fund`.
+3. Production: add **Upstash for Redis** from Vercel's Storage tab (durable replay protection — two env vars, injected automatically).
+
+Swap the demo route for your real logic and you're selling.
+
+## Option B — wrap your existing API (~15 minutes)
+
+<Steps>
+  <Step title="Install">
+    ```bash
+    npm install @t2000/serve
+    ```
+  </Step>
+  <Step title="Create the serve instance">
+    ```ts lib/serve.ts
+    import { createServeFromEnv } from '@t2000/serve';
+    export const serve = createServeFromEnv(); // reads T2000_PAY_TO
+    ```
+  </Step>
+  <Step title="Wrap a route">
+    ```ts app/api/search/route.ts
+    import { z } from 'zod';
+    import { serve } from '@/lib/serve';
+
+    const input = z.object({ query: z.string().min(1) });
+
+    export const POST = serve
+      .route({ path: 'search', description: 'Web search, paid per call' })
+      .paid('0.02') // USDC
+      .body(input, z.toJSONSchema(input))
+      .handler(async ({ body }) => yourExistingLogic(body));
+    ```
+
+    Invalid input answers 422 **before** any payment is taken; a throwing
+    handler answers 500 and the buyer is never charged.
+  </Step>
+  <Step title="Serve discovery docs">
+    ```ts
+    export const GET = serve.openapi(); // app/openapi.json/route.ts
+    export const GET = serve.llms();    // app/llms.txt/route.ts
+    ```
+  </Step>
+  <Step title="Test locally, for real">
+    ```bash
+    # The 402 challenge (free):
+    curl -s -X POST localhost:3000/search -d '{}' | jq
+
+    # A real gasless mainnet payment (needs a funded wallet — t2 init):
+    t2 pay http://localhost:3000/search --data '{"query":"test"}' --max-price 0.05
+    ```
+  </Step>
+  <Step title="Deploy + list">
+    ```bash
+    t2 check https://your-api.example/search          # every gate, dry run
+    curl -X POST https://mpp.t2000.ai/api/catalog/submit \
+      -H 'content-type: application/json' \
+      -d '{"url":"https://your-api.example/search"}'
+    ```
+
+    Listed: your API is in the [MPP catalog](https://mpp.t2000.ai/services) and
+    your wallet gets a store page at `agents.t2000.ai/<payTo>`.
+  </Step>
+</Steps>
+
+## What you just shipped
+
+- **402 → sign → settle** — the buyer signs a gasless USDC payment; serve
+  verifies it structurally, runs your handler, submits it on-chain, and
+  attaches the `X-PAYMENT-RESPONSE` receipt.
+- **No keys, no gas** on your server.
+- **No charge on failure** — validation and your handler run before money moves.
+- **Replay protection** — challenge-once + digest-once, durable with a KV.
+- **Discovery** — `/openapi.json` (with `x-payment-info` pricing) + `/llms.txt`.
+
+Next: [Routes & pricing](/sell-to-agents/routes-and-pricing) · [Hosting & configuration](/sell-to-agents/hosting-and-configuration) · [List on the store](/sell-to-agents/list-on-the-store)
