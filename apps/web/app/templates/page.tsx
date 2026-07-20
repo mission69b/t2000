@@ -35,13 +35,13 @@ export default function TemplatesPage() {
                   color: "var(--fg-subtle)",
                 }}
               >
-                Prompt-first development
+                Templates
               </span>
               <h1
                 className="t2k-display mt-5"
                 style={{ fontSize: "clamp(38px, 5.4vw, 64px)", color: "var(--fg)" }}
               >
-                Copy a prompt. Ship the thing.
+                Prompt-first development.
               </h1>
               <p
                 className="m-0 max-w-[540px]"
