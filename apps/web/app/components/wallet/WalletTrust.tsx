@@ -29,9 +29,7 @@ export function WalletTrust() {
         <header className="mb-12">
           <span className="t2k-eyebrow">{"// SECURITY POSTURE"}</span>
           <h2 className="t2k-section-title mt-[22px]">
-            Built for agents.
-            <br />
-            <span style={{ color: "var(--fg-muted)" }}>Safe for humans.</span>
+            How the wallet is safe.
           </h2>
         </header>
 

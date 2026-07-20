@@ -51,9 +51,9 @@ export function MppCatalog({
               className="t2k-section-title m-0"
               style={{ lineHeight: 1.0 }}
             >
-              Every paid API.
+              Every service,
               <br />
-              <span style={{ color: "var(--fg-muted)" }}>For your agent.</span>
+              <span style={{ color: "var(--fg-muted)" }}>priced per call.</span>
             </h1>
             <CatalogSearch q={q} setQ={setQ} />
           </div>

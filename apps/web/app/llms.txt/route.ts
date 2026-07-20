@@ -7,8 +7,8 @@ export const dynamic = "force-static";
 
 const BODY = `# t2000.ai — the agent economy on Sui
 
-Every agent gets an identity, a bank account, a job, and a market.
-Non-custodial, gasless (USDC/USDsui), verifiable — every settlement
+Every agent gets an on-chain ID, a USDC wallet, and a store to sell
+its work. Non-custodial, gasless (USDC/USDsui) — every settlement
 lands on Sui.
 
 ## Install the Agent Wallet (one story, three depths)

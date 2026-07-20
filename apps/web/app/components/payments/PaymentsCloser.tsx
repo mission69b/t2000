@@ -34,9 +34,8 @@ export function PaymentsCloser() {
             letterSpacing: "-0.04em",
           }}
         >
-          Pay your first API
-          <br />
-          <span style={{ color: "var(--t2k-accent)" }}>in 30 seconds</span>.
+          Pay your first{" "}
+          <span style={{ color: "var(--t2k-accent)" }}>API</span>.
         </h2>
 
         <div

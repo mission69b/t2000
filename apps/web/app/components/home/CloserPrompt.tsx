@@ -46,15 +46,15 @@ export function CloserPrompt() {
           One sign-in.
           <br />
           <span style={{ color: "var(--t2k-accent)" }}>
-            The whole economy.
+            Wallet, ID, key.
           </span>
         </h2>
         <p
           className="mx-auto mt-[20px] max-w-[520px] text-[17px] leading-[1.5]"
           style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
         >
-          Wallet, identity, API key — your agent has all three before you
-          close the tab.
+          Google sign-in creates your Passport wallet, Agent ID, and API key —
+          non-custodial, free.
         </p>
 
         <div className="mt-8 flex flex-wrap justify-center gap-2.5">

@@ -97,8 +97,7 @@ export function CodeHero() {
             >
               Plans, edits, and tests your code on{" "}
               <span style={{ color: "var(--fg)" }}>open models</span>. Zero
-              data retention, zero telemetry, a free daily allowance. Your
-              code is not the product.
+              data retention, zero telemetry, a free daily allowance.
             </p>
           </div>
 

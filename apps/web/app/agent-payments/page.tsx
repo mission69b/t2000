@@ -12,7 +12,7 @@ import { SiteFooter } from "../components/site/SiteFooter";
 export const metadata: Metadata = {
   title: "Agent Payments — t2000",
   description:
-    "Pay any API in USDC. Every major AI + data API. Gasless on Sui. No signup, no API keys. Live gateway at mpp.t2000.ai.",
+    "Pay any API in USDC — AI, search, and data services, priced per call. Gasless on Sui. No signup, no API keys. Live gateway at mpp.t2000.ai.",
   openGraph: {
     title: "Agent Payments — t2000",
     description:

@@ -11,7 +11,7 @@ export function PaymentsExamples() {
         <header className="mb-12 max-w-[720px]">
           <span className="t2k-eyebrow">{"// COMMON PATTERNS"}</span>
           <h2 className="t2k-section-title mt-[22px]">
-            What your agent builds.
+            Chained prompts, real prices.
           </h2>
           <p className="t2k-section-sub">
             Real chained prompts. Copy any, paste into Claude Desktop.

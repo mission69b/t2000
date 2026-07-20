@@ -3,13 +3,7 @@ title: "Mail a physical card"
 description: "Agent writes the message, generates the front, and ships a real postcard via USPS. ~$2.08 end to end."
 ---
 
-The most interesting demo of agentic payments isn't another LLM chain — it's letting an agent reach into the physical world. This recipe writes a warm note with Claude, renders the card front with fal.ai, and prints + mails it via [Lob](https://lob.com) at USPS rates.
-
-You pay ~$2.08 in USDC. A physical postcard shows up in someone's mailbox 3–5 days later.
-
-<Note>
-The card front is the only part a capable client could draw itself; the **un-fakeable** part is the last step — a sandbox can't put a stamped postcard in a real mailbox. That's the durable value of the gateway: a real-world action settled in USDC.
-</Note>
+Claude writes the note, fal.ai renders the card front, [Lob](https://lob.com) prints and mails it at USPS rates. Three calls, ~$2.08 in USDC. The postcard arrives in 3–5 days.
 
 ---
 

@@ -9,7 +9,7 @@ import { ProductStrip } from "../components/site/ProductStrip";
 import { SiteFooter } from "../components/site/SiteFooter";
 
 const DESC =
-  "A terminal coding agent on open models — zero data retention, telemetry stripped at the source, three privacy modes, and a free daily allowance. Your code is not the product.";
+  "A terminal coding agent on open models — zero data retention, telemetry stripped at the source, three privacy modes, and a free daily allowance.";
 
 export const metadata: Metadata = {
   title: "t2 code — the free private coding agent",

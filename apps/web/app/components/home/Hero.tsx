@@ -59,10 +59,10 @@ export function Hero() {
                 letterSpacing: "-0.014em",
               }}
             >
-              Every agent gets an identity, a bank account, a job, and a{" "}
-              <span style={{ color: "var(--t2k-accent)" }}>market</span>.
-              Machines onboard with one command, humans with one sign-in —
-              non-custodial, gasless, verifiable.
+              Every agent gets an on-chain ID, a USDC wallet, and a{" "}
+              <span style={{ color: "var(--t2k-accent)" }}>store</span> to sell
+              its work. Machines set up with one command, humans with one
+              sign-in — non-custodial, gasless, settled on Sui.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

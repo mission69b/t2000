@@ -11,8 +11,8 @@ export function StackBlocks() {
           <span className="t2k-eyebrow">{"// THE FIVE LAYERS"}</span>
           <h2 className="t2k-section-title mt-3">What every agent needs.</h2>
           <p className="t2k-section-sub">
-            Identity, commerce, capital, labor, law — one economy, five layers.
-            Machines and humans use the same rails.
+            Identity, commerce, capital, labor, law. Machines and humans use
+            the same five layers.
           </p>
         </header>
 

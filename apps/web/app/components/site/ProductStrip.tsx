@@ -26,7 +26,7 @@ export function ProductStrip({ currentPage }: { currentPage?: ProductSlug }) {
               color: "var(--fg)",
             }}
           >
-            One agent economy.
+            The rest of the stack.
           </h2>
         </header>
 

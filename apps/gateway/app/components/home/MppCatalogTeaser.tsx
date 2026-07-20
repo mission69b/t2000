@@ -15,9 +15,9 @@ export function MppCatalogTeaser() {
               className="t2k-section-title"
               style={{ marginTop: 14, lineHeight: 1.0 }}
             >
-              Every paid API.
+              Every service,
               <br />
-              <span style={{ color: "var(--fg-faint)" }}>For your agent.</span>
+              <span style={{ color: "var(--fg-faint)" }}>priced per call.</span>
             </h2>
           </div>
           <div className="flex justify-end">

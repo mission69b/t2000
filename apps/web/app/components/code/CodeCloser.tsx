@@ -21,9 +21,9 @@ export function CodeCloser() {
           className="t2k-display mt-3.5"
           style={{ fontSize: "clamp(38px, 5vw, 62px)", color: "var(--fg)" }}
         >
-          Code privately.
+          Install t2 code.
           <br />
-          <span style={{ color: "var(--t2k-accent)" }}>Starting now.</span>
+          <span style={{ color: "var(--t2k-accent)" }}>Free to start.</span>
         </h2>
         <p
           className="mx-auto mb-0 mt-5 max-w-[520px]"

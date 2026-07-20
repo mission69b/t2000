@@ -265,7 +265,7 @@ export function ApiRouter() {
               className="text-[15px] font-semibold"
               style={{ color: "var(--fg)", letterSpacing: "-0.014em" }}
             >
-              Free daily coding. No ads. Your code is not the product.
+              Free daily coding allowance.
             </span>
             <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
               Every account gets a free daily allowance on{" "}

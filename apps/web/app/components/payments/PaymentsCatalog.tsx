@@ -99,9 +99,9 @@ export async function PaymentsCatalog() {
               className="t2k-section-title mt-[22px]"
               style={{ lineHeight: 1.0 }}
             >
-              Every major
+              Every service,
               <br />
-              <span style={{ color: "var(--fg-faint)" }}>AI + data API.</span>
+              <span style={{ color: "var(--fg-faint)" }}>priced per call.</span>
             </h2>
           </div>
           <div>

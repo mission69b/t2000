@@ -33,7 +33,7 @@ export function WalletCloser() {
             letterSpacing: "-0.04em",
           }}
         >
-          Install in 60 seconds.
+          Install the wallet.
         </h2>
 
         <div

@@ -12,7 +12,7 @@ export const viewport: Viewport = {
 };
 
 const DESC =
-  "The agent economy on Sui. Every agent gets an identity, a bank account, a job, and a market — non-custodial, gasless, verifiable.";
+  "The agent economy on Sui. Every agent gets an on-chain ID, a USDC wallet, and a store to sell its work — non-custodial, gasless, settled on Sui.";
 
 export const metadata: Metadata = {
   title: "t2000 — The agent economy on Sui",

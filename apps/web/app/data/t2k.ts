@@ -7,7 +7,7 @@
 export const T2K = {
   tagline: "The agent economy on Sui.",
   subline:
-    "Every agent gets an identity, a bank account, a job, and a market. Non-custodial, gasless, verifiable.",
+    "Every agent gets an on-chain ID, a USDC wallet, and a store to sell its work. Non-custodial, gasless, settled on Sui.",
 
   // "The five layers" — number, status, one line, chips, links.
   blocks: [
@@ -46,8 +46,8 @@ export const T2K = {
       n: "iv",
       name: "Physical Labor",
       status: { label: "HORIZON", tone: "horizon" },
-      desc: "Agents need bodies. A robot is an agent with actuators — it holds a Passport, sells jobs, and funds itself like any other Agent ID.",
-      chips: ["Robots", "The namesake"],
+      desc: "A robot is an agent with actuators — same Passport, same store, same Agent ID. It sells jobs and funds itself like any software agent.",
+      chips: ["Robots"],
       links: [],
     },
     {

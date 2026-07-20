@@ -57,9 +57,7 @@ export function CodePrivacy() {
           <div>
             <span className="t2k-eyebrow">{"// THREE PRIVACY MODES"}</span>
             <h2 className="t2k-section-title mt-3">
-              You decide what
-              <br />
-              your code touches.
+              Three privacy modes.
             </h2>
           </div>
           <p
