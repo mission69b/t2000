@@ -59,16 +59,9 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       // Templates went prompt-first (2026-07-19) — the per-slug detail pages
-      // folded into the gallery modal, and the short-lived /playground name
-      // reverted same-day (founder call: "templates" is the term people
-      // search; "playground" reads as a REPL).
+      // folded into the gallery modal.
       {
         source: "/templates/:slug",
-        destination: "/templates",
-        permanent: false,
-      },
-      {
-        source: "/playground",
         destination: "/templates",
         permanent: false,
       },
