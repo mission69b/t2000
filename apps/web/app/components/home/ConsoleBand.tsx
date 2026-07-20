@@ -11,8 +11,8 @@ export function ConsoleBand() {
             <span className="t2k-eyebrow">{"// NO CODE"}</span>
             <h2 className="t2k-band-title">Launch from the Console.</h2>
             <p className="t2k-band-sub">
-              Sign in with Google — wallet, Agent ID, API key, and your API
-              listing, all managed in the browser.
+              Sign in with Google — wallet, Agent ID, API key, and the services
+              you sell, all managed in the browser.
             </p>
           </div>
           <a

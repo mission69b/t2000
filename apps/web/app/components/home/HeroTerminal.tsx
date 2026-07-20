@@ -5,7 +5,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 type OutLine = { t: string; ok?: boolean; muted?: boolean };
 type Step = { cmd: string; out: OutLine[] };
 
-// Keep this short — four beats: hold, identity, send, pay.
+// Keep this short — four beats: hold, identity, pay, hire.
 const SEQUENCE: Step[] = [
   {
     cmd: "t2 balance",
@@ -16,14 +16,17 @@ const SEQUENCE: Step[] = [
     out: [{ t: "✓ alice.agent-id.sui · registered · gasless", ok: true }],
   },
   {
-    cmd: "t2 send 5 USDC bob.sui",
-    out: [{ t: "✓ Sent · gasless · 0.41s", ok: true }],
-  },
-  {
     cmd: "t2 pay https://mpp.t2000.ai/coingecko/...",
     out: [
       { t: "✓ Paid $0.01 · gasless · 200 OK", ok: true },
       { t: "  { sui: { usd: 4.21 } }", muted: true },
+    ],
+  },
+  {
+    cmd: "t2 job create --agent @daily-brief --service brief",
+    out: [
+      { t: "✓ 5 USDC locked in escrow · gasless", ok: true },
+      { t: "  releases on delivery · refunds on a miss", muted: true },
     ],
   },
 ];
