@@ -169,14 +169,8 @@ export default async function UsagePage() {
                     letterSpacing: "-0.014em",
                   }}
                 >
-                  Zero data retention means we can&rsquo;t show you anyone&rsquo;s
-                  prompts — so we show you everything else. Every request
-                  through the{" "}
-                  <span style={{ color: "var(--fg)" }}>
-                    Private Inference API
-                  </span>{" "}
-                  is metered at our own gateway edge and published here as
-                  live aggregates.
+                  Every request, metered at our edge. Prompts are never
+                  stored.
                 </p>
               </div>
 
@@ -250,21 +244,11 @@ export default async function UsagePage() {
         {usage && (
           <section className="t2k-section">
             <div className="t2k-container">
-              <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
-                <div>
-                  <span className="t2k-eyebrow">{"// ACTIVITY"}</span>
-                  <h2 className="t2k-section-title mt-3">
-                    {compact(usage.last_24h.tokens)} tokens in the last 24
-                    hours.
-                  </h2>
-                </div>
-                <p
-                  className="m-0 max-w-[360px] text-[15px] leading-[1.6]"
-                  style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
-                >
-                  One bar per UTC hour. Missing bars are hours the rail was
-                  quiet — this is the real feed, not a demo.
-                </p>
+              <header className="mb-10">
+                <span className="t2k-eyebrow">{"// ACTIVITY"}</span>
+                <h2 className="t2k-section-title mt-3">
+                  {compact(usage.last_24h.tokens)} tokens in the last 24 hours.
+                </h2>
               </header>
 
               <div className="grid gap-4 lg:grid-cols-2">
@@ -378,7 +362,7 @@ export default async function UsagePage() {
                 style={{ color: "var(--fg-subtle)" }}
               >
                 {
-                  "// Aggregates from t2000's own gateway-edge metering — /v1 API traffic (private + confidential tiers) and Audric in-app chat (counted from Jul 20, 2026). Prompts and completions are never stored."
+                  "// /v1 API + Audric chat (chat counted from Jul 20, 2026)."
                 }
               </p>
             </div>
