@@ -27,6 +27,7 @@ const PRODUCT_LINKS: FooterLink[] = [
 
 const FAMILY_LINKS: FooterLink[] = [
   { label: "Verify", href: "/verify" },
+  { label: "Usage", href: "/usage" },
   { label: "x402 Gateway", href: GATEWAY_URL, external: true },
   { label: "t2 Agents", href: AGENTS_URL, external: true },
   { label: "suimpp.dev", href: SUIMPP_URL, external: true },
