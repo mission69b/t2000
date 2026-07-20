@@ -24,15 +24,18 @@ jobs:
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/id build
+      - run: pnpm --filter @t2000/serve build
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/cli typecheck
       - run: pnpm --filter @t2000/id typecheck
+      - run: pnpm --filter @t2000/serve typecheck
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/cli test
       - run: pnpm --filter @t2000/id test
+      - run: pnpm --filter @t2000/serve test
 
   publish:
     name: Publish to npm
@@ -54,9 +57,10 @@ jobs:
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/id build
+      - run: pnpm --filter @t2000/serve build
 
       # SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15): npm provenance
-      # adopted on all 4 publish steps. Requires `id-token: write` on this
+      # adopted on all publish steps. Requires `id-token: write` on this
       # job (already set above). Provenance attestations are visible at
       # https://www.npmjs.com/package/@t2000/sdk?activeTab=provenance and
       # provide cryptographic linkage from the published tarball back to
@@ -81,6 +85,12 @@ jobs:
 
       - name: Publish @t2000/id
         run: pnpm --filter @t2000/id publish --no-git-checks --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish @t2000/serve
+        run: pnpm --filter @t2000/serve publish --no-git-checks --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true

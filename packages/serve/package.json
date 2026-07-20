@@ -1,0 +1,58 @@
+{
+  "name": "@t2000/serve",
+  "version": "10.0.0",
+  "description": "Merchant-side x402 router for Sui — wrap any API so agents can discover it and pay per call in USDC. One builder: .paid().body().handler(). Sign-then-settle, no seller key, no seller gas.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "x402",
+    "sui",
+    "usdc",
+    "agent",
+    "payments",
+    "mpp",
+    "402",
+    "api-monetization"
+  ],
+  "author": "t2000",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mission69b/t2000.git",
+    "directory": "packages/serve"
+  },
+  "homepage": "https://developers.t2000.ai/sell-to-agents",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mysten/sui": "^2.17.0",
+    "@suimpp/mpp": "^0.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "eslint": "^9",
+    "tsup": "^8",
+    "typescript": "^5",
+    "typescript-eslint": "^8.58.0",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}

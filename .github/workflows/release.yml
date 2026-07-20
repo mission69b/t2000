@@ -60,7 +60,7 @@ jobs:
           VERSION="$major.$minor.$patch"
           echo "Bumping all packages: $CURRENT → $VERSION"
 
-          for pkg in packages/sdk packages/cli packages/mcp packages/id; do
+          for pkg in packages/sdk packages/cli packages/mcp packages/id packages/serve; do
             node -e "
               const fs = require('fs');
               const p = JSON.parse(fs.readFileSync('./$pkg/package.json', 'utf8'));

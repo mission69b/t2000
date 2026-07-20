@@ -25,7 +25,8 @@ t2000/
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/mcp     ← @t2000/mcp (npm)   # (@t2000/engine RETIRED + deleted 2026-06-14)
-├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29; stack is 4 packages)
+├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29)
+├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router — wrap any API for agent payments (added 2026-07-20; stack is 5 packages)
 ├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
 ├── packages/models  ← @t2000/models (PLANNED, H2 — Agent Models: OpenAI-compatible gateway to self-hosted Qwen + resold frontier)
 ├── t2000-skills/    ← Agent skill definitions
@@ -143,6 +144,7 @@ npm --prefix packages/sdk version X.Y.Z --no-git-tag-version
 npm --prefix packages/cli version X.Y.Z --no-git-tag-version
 npm --prefix packages/mcp version X.Y.Z --no-git-tag-version
 npm --prefix packages/id version X.Y.Z --no-git-tag-version
+npm --prefix packages/serve version X.Y.Z --no-git-tag-version
 git add packages/*/package.json
 git commit -m "📦 build: vX.Y.Z"
 git push origin main
@@ -152,7 +154,7 @@ git push origin vX.Y.Z
 ```
 
 This runs `.github/workflows/release.yml`, which:
-1. Bumps all 4 package versions together (`sdk`, `cli`, `mcp`, `id`) to the same version
+1. Bumps all 5 package versions together (`sdk`, `cli`, `mcp`, `id`, `serve`) to the same version
 2. Commits `📦 build: vX.Y.Z` to main
 3. Creates and pushes the `vX.Y.Z` annotated tag
 4. Explicitly triggers `.github/workflows/publish.yml` via `workflow_dispatch`
@@ -161,7 +163,7 @@ This runs `.github/workflows/release.yml`, which:
 
 `.github/workflows/publish.yml` (triggered by Step 1):
 1. **CI** — lint + typecheck + test + build all packages
-2. **Publish** — `pnpm publish` for each of the 4 packages (`continue-on-error: true` — safe if version already exists)
+2. **Publish** — `pnpm publish` for each of the 5 packages (`continue-on-error: true` — safe if version already exists)
 3. **GitHub Release** — `gh release create vX.Y.Z --generate-notes`
 4. **Discord** — posts release notification to `#releases` channel
 
@@ -194,7 +196,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 - **Never** push multiple tags in the same session to fix failures — fix the code and re-run the workflow
 
 **Key details:**
-- All 4 packages (`sdk`, `cli`, `mcp`, `id`) are always at the same version number (currently `5.x` — `@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x`, frozen on npm for legacy audric/web-v2.)
+- All 5 packages (`sdk`, `cli`, `mcp`, `id`, `serve`) are always at the same version number (`@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29; `@t2000/serve` at `10.1.0`, 2026-07-20) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x`, frozen on npm for legacy audric/web-v2.)
 - `continue-on-error: true` on publish steps — idempotent if a version already exists
 - `workflow_dispatch` on `publish.yml` serves as a manual fallback if needed
 
