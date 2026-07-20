@@ -144,7 +144,7 @@ export default async function UsagePage() {
             <div className="grid items-center gap-y-9 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] lg:gap-x-14">
               <div>
                 <div className="t2k-eyebrow mb-[22px]">
-                  {"// GLOBAL USAGE · LIVE"}
+                  {"// PRIVATE INFERENCE · LIVE"}
                 </div>
                 <h1
                   className="t2k-display"
@@ -153,11 +153,7 @@ export default async function UsagePage() {
                     color: "var(--fg)",
                   }}
                 >
-                  Private prompts.
-                  <br />
-                  <span style={{ color: "var(--t2k-accent)" }}>
-                    Public numbers.
-                  </span>
+                  Global usage.
                 </h1>
                 <p
                   className="m-0 max-w-[560px]"
