@@ -238,6 +238,22 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     ).rejects.toThrow(/insufficient/i);
   });
 
+  it('refuses a self-payment (payTo == payer) before signing anything', async () => {
+    const selfAccepts = x402Accepts('20000');
+    selfAccepts.accepts[0].payTo = '0xsender'; // the signer's own address
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: selfAccepts }));
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      }),
+    ).rejects.toThrow(/your own wallet/i);
+    expect(buildX402Mock).not.toHaveBeenCalled();
+    expect(executeTxMock).not.toHaveBeenCalled();
+  });
+
   it('throws when a 402 carries neither an x402 envelope nor an MPP sui challenge', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: { detail: 'Payment required' } }));
 

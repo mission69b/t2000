@@ -1,5 +1,5 @@
 import type { SuiGrpcClient } from '@mysten/sui/grpc';
-import { fromBase64 } from '@mysten/sui/utils';
+import { fromBase64, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { X402Requirements } from '@suimpp/mpp/x402';
 import type { TransactionSigner } from '../signer.js';
 import type { PayOptions, PayResult } from '../types.js';
@@ -137,6 +137,11 @@ export async function payWithMpp(args: {
         { payTo: requirements.payTo, priceUsdc: price, escrow },
       );
     }
+    // Self-payment guard: a transfer to yourself executes but nets a ZERO
+    // balance change, so the seller's settle check refuses to serve AFTER
+    // the on-chain leg ran (founder buying from his own seller wallet,
+    // 2026-07-20). Fail closed before anything is signed.
+    assertNotSelfPayment(signer.getAddress(), requirements.payTo);
     const result = await payViaX402({ signer, client, options, reqInit, requirements });
     await reportDirectPayment(result, options.url);
     return result;
@@ -163,6 +168,7 @@ export async function payWithMpp(args: {
         { dialect: 'mpp-header', signerKind: 'zklogin' },
       );
     }
+    assertNotSelfPayment(signer.getAddress(), headerChallenge.recipient);
     const result = await payViaMppHeader({ signer, client, options });
     await reportDirectPayment(result, options.url);
     return result;
@@ -397,6 +403,23 @@ async function payViaMppHeader(args: {
       ? { reference: paymentDigest, timestamp: new Date().toISOString() }
       : undefined,
   };
+}
+
+/** Throw when the 402's payTo IS the payer — a self-transfer executes but
+ * nets a zero balance change, so an x402 seller's settle check refuses to
+ * serve after the on-chain leg already ran (and a header-dialect seller
+ * charges without serving). Sellers testing their own endpoint must use a
+ * different wallet. */
+function assertNotSelfPayment(payer: string, payTo: string): void {
+  if (normalizeSuiAddress(payer) === normalizeSuiAddress(payTo)) {
+    throw new T2000Error(
+      'FACILITATOR_REJECTION',
+      'This endpoint pays YOUR OWN wallet — a self-payment nets a zero balance change, ' +
+        'so the seller will not serve it. Nothing was paid. Test your endpoint from a ' +
+        'different wallet (e.g. the t2 CLI wallet).',
+      { payer, payTo },
+    );
+  }
 }
 
 /** Throw `PRICE_EXCEEDS_LIMIT` when the challenge price exceeds the caller's
