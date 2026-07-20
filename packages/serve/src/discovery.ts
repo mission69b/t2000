@@ -91,7 +91,7 @@ export function buildLlmsTxt(serve: Serve, origin?: string): string {
     'HTTP 402 with an `accepts[]` envelope; sign it and retry with the `X-PAYMENT` header.',
     'Invalid input returns 422 before any payment is taken. A failed call is never charged.',
     '',
-    'Easiest client: `npm i -g @t2000/cli` then `t2 pay <url> --method POST --body \'{...}\'`,',
+    'Easiest client: `npm i -g @t2000/cli` then `t2 pay <url> --data \'{...}\'`,',
     'or the t2000 MCP server (`t2000_pay`), or `@t2000/sdk` `pay()`.',
     '',
   );

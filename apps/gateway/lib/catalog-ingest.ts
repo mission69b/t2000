@@ -114,12 +114,31 @@ function priceCap(): number {
  *  one deliverable, not a per-call price. */
 const JOB_MAX_PRICE_USDC = 50;
 
+/** Multi-tenant hosting suffixes where the SLD names the PLATFORM, not the
+ *  seller — the subdomain is the seller's label (funkii-ai.vercel.app →
+ *  "funkii-ai", not "vercel"). Without this, every serve-vercel template
+ *  deployer collides on one slug. */
+const PLATFORM_SUFFIXES = [
+  '.vercel.app',
+  '.netlify.app',
+  '.pages.dev',
+  '.workers.dev',
+  '.fly.dev',
+  '.onrender.com',
+  '.railway.app',
+  '.herokuapp.com',
+  '.github.io',
+];
+
 /** Deterministic catalog slug from the seller origin (agent.jmpr.world →
- *  "jmpr"); suffixed with the wallet head when a static row owns the slug. */
+ *  "jmpr", funkii-ai.vercel.app → "funkii-ai"); suffixed with the wallet
+ *  head when a static row owns the slug. */
 export function slugForSeller(origin: string, address: string): string {
   const host = new URL(origin).hostname;
-  const parts = host.split('.');
-  const label = (parts.length >= 2 ? parts[parts.length - 2] : parts[0])
+  const suffix = PLATFORM_SUFFIXES.find((s) => host.endsWith(s));
+  const meaningful = suffix ? host.slice(0, -suffix.length) : host;
+  const parts = meaningful.split('.');
+  const label = (suffix ? parts[parts.length - 1] : parts.length >= 2 ? parts[parts.length - 2] : parts[0])
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '');
   const base = label || 'seller';

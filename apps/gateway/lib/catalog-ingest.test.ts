@@ -502,6 +502,11 @@ describe('slugForSeller', () => {
       `openai-${SELLER.slice(2, 8)}`,
     );
   });
+
+  it('uses the subdomain on multi-tenant hosting — vercel.app names the platform, not the seller', () => {
+    expect(slugForSeller('https://funkii-ai.vercel.app', SELLER)).toBe('funkii-ai');
+    expect(slugForSeller('https://my-shop.pages.dev', SELLER)).toBe('my-shop');
+  });
 });
 
 describe('reprobeAll', () => {

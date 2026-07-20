@@ -31,7 +31,7 @@ demo handler for your real API and you're selling.
 curl -s -X POST https://<your-app>/haiku -H 'content-type: application/json' -d '{}' | jq
 
 # Pay it for real (needs a funded wallet — `t2 receive` prints your address):
-t2 pay https://<your-app>/haiku --method POST --body '{"topic":"sui"}'
+t2 pay https://<your-app>/haiku --data '{"topic":"sui"}'
 ```
 
 ## Get listed

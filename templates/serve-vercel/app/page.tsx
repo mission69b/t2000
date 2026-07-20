@@ -197,7 +197,7 @@ export default function Home() {
           {'\n\n'}
           <span style={{ color: '#666' }}># pay the route — 402 → sign → settle → response</span>
           {'\n'}
-          <span style={{ color: '#666' }}>$ </span>t2 pay &lt;this-url&gt;/haiku --method POST --body{' '}
+          <span style={{ color: '#666' }}>$ </span>t2 pay &lt;this-url&gt;/haiku --data{' '}
           {`'{"topic":"sui"}'`}
         </pre>
         <p style={{ color: '#666', fontSize: 13, margin: '16px 0 0' }}>
