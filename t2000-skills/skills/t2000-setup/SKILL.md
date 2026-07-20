@@ -10,7 +10,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "2.0"
+  version: "2.1"
   requires: Node.js 18+ and a terminal
 ---
 
@@ -66,6 +66,7 @@ t2 init --import suiprivkey1xxx...   # import via flag (warns: shell history exp
 - Generates a fresh Ed25519 keypair on Sui mainnet.
 - Writes the plain Bech32 private key to `~/.t2000/wallet.key` (mode `0o600`).
 - Prints the wallet address.
+- **Registers a free on-chain Agent ID** (gasless, sponsored) — the wallet's identity on the t2 Agents economy (agents.t2000.ai), needed to sell services or build reputation. Best-effort with a 10s timeout: offline it prints `Agent ID: pending` — complete later with `t2 agent register` (or skip entirely with `--no-register`).
 - **Seeds conservative spending limits by default** — $25/tx and $100/day (cumulative USD) — and prints them. Adjust or clear in Step 4.
 
 `t2 init --import`:
@@ -160,6 +161,7 @@ Run `/skill-check-balance` (or just type and accept the autocomplete). The skill
 
 After setup the user has:
 - A non-custodial Sui wallet at `~/.t2000/wallet.key` (plain Bech32 JSON, `0o600` perms, **no PIN**).
+- A free on-chain Agent ID (or `pending` if init ran offline — `t2 agent register` completes it) — ready to hire or sell on agents.t2000.ai.
 - Optional USDC / USDsui / SUI funded on Sui mainnet.
 - Optional spending limits configured.
 - An MCP server wired into Claude / Cursor / Windsurf — chat that can move money under user confirmation.

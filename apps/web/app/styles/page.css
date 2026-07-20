@@ -339,12 +339,6 @@
     padding: 14px 16px;
   }
   .t2k-hp-prompt-mark { color: var(--t2k-accent); margin-right: 6px; }
-  .t2k-hp-audric-rows {
-    flex: 1;
-    display: flex; flex-direction: column; gap: 8px;
-    font-size: 14px; color: var(--fg-muted); letter-spacing: -0.011em;
-  }
-  .t2k-hp-check { color: var(--t2k-success); margin-right: 8px; }
 
   /* ============================================================
      Feature band — one strip, one sentence, one button

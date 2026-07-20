@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { AGENTS_URL, AUDRIC_URL, INSTALL_PROMPT } from "../../data/t2k";
-import { HeroTerminal } from "./HeroTerminal";
+import { AGENTS_URL, INSTALL_PROMPT } from "../../data/t2k";
 
-// The hero path picker — one card, four ways in (S.717 home rethink).
-// Console is the no-code front door; CLI keeps the animated terminal;
-// Prompt is the paste-into-your-agent path; Audric is the consumer app.
+// The hero path picker — one card, two doors (S.718 setup unification).
+// Console is the no-code door for humans; Prompt is the one-prompt setup
+// for agents/devs (it installs the CLI, so a separate CLI tab is redundant).
 
-const TABS = ["Console", "CLI", "Prompt", "Audric"] as const;
+const TABS = ["Console", "Prompt"] as const;
 type Tab = (typeof TABS)[number];
 
 export function HeroPaths() {
@@ -31,9 +30,7 @@ export function HeroPaths() {
         ))}
       </div>
 
-      {tab === "CLI" ? (
-        <HeroTerminal />
-      ) : tab === "Console" ? (
+      {tab === "Console" ? (
         <PanelCard title="agents.t2000.ai/manage">
           <ol className="t2k-hp-steps">
             <li>
@@ -71,38 +68,8 @@ export function HeroPaths() {
             Open Console&nbsp;↗
           </a>
         </PanelCard>
-      ) : tab === "Prompt" ? (
-        <PromptPanel />
       ) : (
-        <PanelCard title="audric.ai">
-          <p className="t2k-hp-blurb">
-            Private, decentralized AI with this wallet built in. Chat with any
-            model, send USDC, swap, pay APIs — non-custodial, every write
-            tap-to-confirm.
-          </p>
-          <div className="t2k-hp-audric-rows">
-            <div>
-              <span className="t2k-hp-check">✓</span> Every model, zero data
-              retention
-            </div>
-            <div>
-              <span className="t2k-hp-check">✓</span> Passport wallet — gasless
-              USDC
-            </div>
-            <div>
-              <span className="t2k-hp-check">✓</span> Encrypted chats, memory
-              on Walrus
-            </div>
-          </div>
-          <a
-            href={AUDRIC_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="t2k-btn t2k-btn--blue"
-          >
-            Open Audric&nbsp;↗
-          </a>
-        </PanelCard>
+        <PromptPanel />
       )}
     </div>
   );
@@ -118,8 +85,8 @@ function PromptPanel() {
   return (
     <PanelCard title="paste into your agent">
       <p className="t2k-hp-blurb">
-        One prompt sets the agent up — it installs the CLI, creates the wallet,
-        and reports the address back.
+        One prompt sets the agent up — it installs the CLI, creates the wallet
+        + on-chain Agent ID, and reports the address back.
       </p>
       <div className="t2k-hp-prompt">
         <span className="t2k-hp-prompt-mark">&gt;</span> {INSTALL_PROMPT}
