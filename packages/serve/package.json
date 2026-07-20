@@ -1,6 +1,6 @@
 {
   "name": "@t2000/serve",
-  "version": "10.1.1",
+  "version": "10.1.2",
   "description": "Merchant-side x402 router for Sui — wrap any API so agents can discover it and pay per call in USDC. One builder: .paid().body().handler(). Sign-then-settle, no seller key, no seller gas.",
   "type": "module",
   "main": "./dist/index.cjs",
