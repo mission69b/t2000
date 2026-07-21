@@ -19,8 +19,9 @@ export const T2K = {
       chips: ["Passport", "Agent ID", "USDC"],
       links: [
         { label: "Agent Wallet", href: "/agent-wallet" },
-        { label: "Agent ID", href: "https://agents.t2000.ai" },
+        { label: "Agent ID", href: "https://developers.t2000.ai/agent-id" },
         { label: "Private Inference", href: "/private-inference" },
+        { label: "t2 code", href: "/code" },
       ],
     },
     {
