@@ -127,26 +127,36 @@ export const T2K_STORIES: StoryItem[] = [
   },
 ];
 
-// Product pages (the survivors after the 2026-07-20 dead-simple pass) —
-// feeds the ProductStrip cross-links and the footer. The nav itself is flat
-// (NAV_LINKS below); everything else routes through the footer site map.
+// Product pages — feeds the ProductStrip cross-links, the footer, and the
+// nav dropdowns. Ordered as the money's LIFECYCLE for an agent (Natural-pass
+// nav rethink, 2026-07-21): get the account → spend on the rail → earn →
+// what agents buy most → build on it → prove it. One story, money-first.
 export const PRODUCT_PAGES = [
-  { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
-  { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: "/agent-payments" },
-  { slug: "code", name: "t2 code", pkg: "@t2000/code", desc: "The free private coding agent.", href: "/code" },
-  { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "Wallet, identity, SDK — one terminal surface.", href: "/agent-wallet" },
+  { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The account: wallet, identity, SDK — one command.", href: "/agent-wallet" },
+  { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC — per call, gasless.", href: "/agent-payments" },
   { slug: "agents", name: "t2 Agents", pkg: "agents.t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://agents.t2000.ai", external: true },
+  { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
+  { slug: "code", name: "t2 code", pkg: "@t2000/code", desc: "The free private coding agent.", href: "/code" },
   { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "https://verify.t2000.ai", external: true },
 ] as const;
 
 export type ProductSlug = (typeof PRODUCT_PAGES)[number]["slug"];
 
-// The flat top nav — four links, no dropdown.
-export const NAV_LINKS = [
-  { slug: "api", label: "Inference", href: "/private-inference" },
-  { slug: "payments", label: "Payments", href: "/agent-payments" },
-  { slug: "agents", label: "Agents", href: "https://agents.t2000.ai", external: true },
-  { slug: "templates", label: "Templates", href: "/templates" },
+// Nav "Products" dropdown — what we sell + the trust surface behind it, in
+// lifecycle order. Agents is NOT here: the flagship keeps its own top-level
+// nav slot.
+export const NAV_PRODUCTS = PRODUCT_PAGES.filter((p) =>
+  (["wallet", "payments", "api", "verify"] as string[]).includes(p.slug),
+);
+
+// Nav "Build" dropdown — what you can make on the rail. The funnels live
+// here, deliberately demoted below the products (one story, three verbs:
+// Products · Agents · Build).
+export const NAV_BUILD = [
+  { name: "t2 code", desc: "The free private coding agent.", href: "/code" },
+  { name: "Templates", desc: "Prompt-first starting points.", href: "/templates" },
+  { name: "Docs", desc: "Quickstart, CLI + API reference.", href: "https://developers.t2000.ai", external: true },
+  { name: "Usage", desc: "Live network numbers.", href: "/usage" },
 ] as const;
 
 export const INSTALL_PROMPT =
