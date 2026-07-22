@@ -98,7 +98,7 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
         </a>
 
         {open === "products" && (
-          <Dropdown eyebrow="THE MONEY, IN ORDER" left={24}>
+          <Dropdown left={24}>
             {NAV_PRODUCTS.map((p) => (
               <MenuItem
                 key={p.name}
@@ -112,7 +112,7 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           </Dropdown>
         )}
         {open === "build" && (
-          <Dropdown eyebrow="BUILT ON THE RAIL" left={150}>
+          <Dropdown left={150}>
             {NAV_BUILD.map((b) => (
               <MenuItem
                 key={b.name}
@@ -190,11 +190,9 @@ function Chevron({ open }: { open: boolean }) {
 }
 
 function Dropdown({
-  eyebrow,
   left,
   children,
 }: {
-  eyebrow: string;
   left: number;
   children: React.ReactNode;
 }) {
@@ -211,9 +209,6 @@ function Dropdown({
         animation: "fadeInUp 120ms cubic-bezier(0.16,1,0.3,1)",
       }}
     >
-      <div className="t2k-eyebrow px-3 pb-1 pt-2" style={{ fontSize: 10 }}>
-        {eyebrow}
-      </div>
       <div className="grid grid-cols-2 gap-0.5">{children}</div>
     </div>
   );
