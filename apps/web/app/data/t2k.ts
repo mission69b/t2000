@@ -142,22 +142,25 @@ export const PRODUCT_PAGES = [
 
 export type ProductSlug = (typeof PRODUCT_PAGES)[number]["slug"];
 
-// Nav "Products" dropdown — what we sell + the trust surface behind it, in
-// lifecycle order. Agents is NOT here: the flagship keeps its own top-level
-// nav slot.
-export const NAV_PRODUCTS = PRODUCT_PAGES.filter((p) =>
-  (["wallet", "payments", "api", "verify"] as string[]).includes(p.slug),
-);
-
-// Nav "Build" dropdown — what you can make on the rail. The funnels live
-// here, deliberately demoted below the products (one story, three verbs:
-// Products · Agents · Build).
-export const NAV_BUILD = [
-  { name: "t2 code", desc: "The free private coding agent.", href: "/code" },
+// Nav "Products" dropdown — everything except the two top-level slots
+// (Agents = the flagship, Developers = docs). Lifecycle order first, then
+// the build surfaces.
+export const NAV_PRODUCTS: {
+  slug?: string;
+  name: string;
+  pkg?: string;
+  desc: string;
+  href: string;
+  external?: boolean;
+}[] = [
+  ...PRODUCT_PAGES.filter((p) =>
+    (["wallet", "payments", "api", "code", "verify"] as string[]).includes(
+      p.slug,
+    ),
+  ),
   { name: "Templates", desc: "Prompt-first starting points.", href: "/templates" },
-  { name: "Docs", desc: "Quickstart, CLI + API reference.", href: "https://developers.t2000.ai", external: true },
   { name: "Usage", desc: "Live network numbers.", href: "/usage" },
-] as const;
+];
 
 export const INSTALL_PROMPT =
   "Run `curl -sL https://t2000.ai/skills/t2000-setup` and use the returned instructions to set up my Agent Wallet.";

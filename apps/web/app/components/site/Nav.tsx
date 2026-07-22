@@ -4,34 +4,31 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   AGENTS_URL,
-  NAV_BUILD,
+  DEVELOPERS_URL,
   NAV_PRODUCTS,
   type ProductSlug,
 } from "../../data/t2k";
 
-// Nav = the story in three verbs (Natural-pass rethink, 2026-07-21):
-// Products ▾ (lifecycle order: wallet → payments → inference → verify) ·
-// Agents (the flagship, undropped) · Build ▾ (the funnels, demoted).
-// Dropdown pattern restored from the pre-flat nav (9cfddd9c~1).
+// Nav = one dropdown + two links (2026-07-22 simplification): Products ▾
+// (everything we make, lifecycle order) · Agents (the flagship, undropped) ·
+// Developers (docs). Console stays the right-side action.
 type CurrentPage = ProductSlug | null;
-type Menu = "products" | "build" | null;
 
 const linkBase =
   "inline-flex items-center gap-1 text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors cursor-pointer no-underline text-muted-foreground hover:text-foreground";
 
-const PRODUCT_SLUGS = NAV_PRODUCTS.map((p) => p.slug as string);
+const PRODUCT_SLUGS = NAV_PRODUCTS.flatMap((p) => (p.slug ? [p.slug] : []));
 
 export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
-  const [open, setOpen] = useState<Menu>(null);
+  const [open, setOpen] = useState(false);
 
   const inProducts = currentPage
     ? PRODUCT_SLUGS.includes(currentPage)
     : false;
-  const inBuild = currentPage === "code";
 
   return (
     <nav
-      onMouseLeave={() => setOpen(null)}
+      onMouseLeave={() => setOpen(false)}
       className="sticky top-0 z-30 border-b backdrop-blur-md backdrop-saturate-150"
       style={{
         background: "rgba(10,10,10,0.72)",
@@ -57,32 +54,43 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
         </Link>
 
         <div className="ml-2 flex items-center gap-[18px]">
-          <MenuButton
-            label="Products"
-            menu="products"
-            open={open}
-            setOpen={setOpen}
-            active={inProducts}
-          />
+          <button
+            type="button"
+            onMouseEnter={() => setOpen(true)}
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className={linkBase}
+            style={{
+              color: open || inProducts ? "var(--fg)" : "var(--fg-muted)",
+              background: "transparent",
+              border: 0,
+              padding: 0,
+            }}
+          >
+            Products
+            <Chevron open={open} />
+          </button>
 
           <a
             href={AGENTS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onMouseEnter={() => setOpen(null)}
+            onMouseEnter={() => setOpen(false)}
             className={linkBase}
             style={currentPage === "agents" ? { color: "var(--fg)" } : undefined}
           >
             Agents
           </a>
 
-          <MenuButton
-            label="Build"
-            menu="build"
-            open={open}
-            setOpen={setOpen}
-            active={inBuild}
-          />
+          <a
+            href={DEVELOPERS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onMouseEnter={() => setOpen(false)}
+            className={linkBase}
+          >
+            Developers
+          </a>
         </div>
 
         <span className="flex-1" />
@@ -91,13 +99,13 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
           href={`${AGENTS_URL}/manage`}
           target="_blank"
           rel="noopener noreferrer"
-          onMouseEnter={() => setOpen(null)}
+          onMouseEnter={() => setOpen(false)}
           className="t2k-btn t2k-btn--blue t2k-btn--sm whitespace-nowrap"
         >
           Console&nbsp;→
         </a>
 
-        {open === "products" && (
+        {open && (
           <Dropdown left={24}>
             {NAV_PRODUCTS.map((p) => (
               <MenuItem
@@ -106,61 +114,14 @@ export function Nav({ currentPage = null }: { currentPage?: CurrentPage }) {
                 desc={p.desc}
                 pkg={p.pkg}
                 href={p.href}
-                active={p.slug === currentPage}
-              />
-            ))}
-          </Dropdown>
-        )}
-        {open === "build" && (
-          <Dropdown left={150}>
-            {NAV_BUILD.map((b) => (
-              <MenuItem
-                key={b.name}
-                name={b.name}
-                desc={b.desc}
-                href={b.href}
-                external={"external" in b ? b.external : undefined}
-                active={b.href === "/code" && currentPage === "code"}
+                external={p.external}
+                active={p.slug !== undefined && p.slug === currentPage}
               />
             ))}
           </Dropdown>
         )}
       </div>
     </nav>
-  );
-}
-
-function MenuButton({
-  label,
-  menu,
-  open,
-  setOpen,
-  active,
-}: {
-  label: string;
-  menu: Exclude<Menu, null>;
-  open: Menu;
-  setOpen: (m: Menu) => void;
-  active: boolean;
-}) {
-  const isOpen = open === menu;
-  return (
-    <button
-      type="button"
-      onMouseEnter={() => setOpen(menu)}
-      onClick={() => setOpen(isOpen ? null : menu)}
-      aria-expanded={isOpen}
-      className={linkBase}
-      style={{
-        color: isOpen || active ? "var(--fg)" : "var(--fg-muted)",
-        background: "transparent",
-        border: 0,
-        padding: 0,
-      }}
-    >
-      {label}
-      <Chevron open={isOpen} />
-    </button>
   );
 }
 
