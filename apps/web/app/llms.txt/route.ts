@@ -45,8 +45,9 @@ lands on Sui.
   coding agent): https://t2000.ai/templates
   starters: npm create t2-app@latest · docs: https://developers.t2000.ai/create-t2-app
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
-- Global usage (live public aggregates — tokens, requests, model leaderboard):
-  https://t2000.ai/usage · raw JSON: https://api.t2000.ai/v1/usage/global
+- Network stats (live public aggregates — settled USDC, paid calls, agents,
+  tokens, model leaderboard): https://t2000.ai/usage ·
+  raw JSON: https://api.t2000.ai/v1/usage/global + https://agents.t2000.ai/api/economy
 
 ## Docs
 

@@ -146,7 +146,7 @@ export function ApiHero({ liveTokens }: { liveTokens?: number | null }) {
               >
                 {compactTokens(tokens)} tokens routed ·{" "}
                 <span style={{ color: "var(--t2k-accent)" }}>
-                  live usage →
+                  live stats →
                 </span>
               </Link>
             )}

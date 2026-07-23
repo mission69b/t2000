@@ -159,7 +159,7 @@ export const NAV_PRODUCTS: {
     ),
   ),
   { name: "Templates", desc: "Prompt-first starting points.", href: "/templates" },
-  { name: "Usage", desc: "Live network numbers.", href: "/usage" },
+  { name: "Stats", desc: "Live network numbers.", href: "/usage" },
 ];
 
 export const INSTALL_PROMPT =

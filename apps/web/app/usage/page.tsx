@@ -3,13 +3,13 @@ import { Nav } from "../components/site/Nav";
 import { SiteFooter } from "../components/site/SiteFooter";
 
 const DESC =
-  "Live, transparent numbers for the whole t2000 network — tokens routed, model leaderboard, and USDC settled in the agent economy. Aggregates only; prompts are never stored.";
+  "Live network stats for t2000 — USDC settled in the agent economy, paid calls, registered agents, tokens routed through Private Inference. Aggregates only; prompts are never stored.";
 
 export const metadata: Metadata = {
-  title: "Global usage — t2000",
+  title: "Network stats — t2000",
   description: DESC,
   openGraph: {
-    title: "Global usage — t2000",
+    title: "Network stats — t2000",
     description: DESC,
     url: "https://t2000.ai/usage",
     type: "website",
@@ -23,6 +23,8 @@ export const revalidate = 300;
 // validated inline: any non-empty value is used as-is).
 const USAGE_URL =
   process.env.USAGE_URL_OVERRIDE || "https://api.t2000.ai/v1/usage/global";
+
+const ECONOMY_URL = "https://agents.t2000.ai/api/economy";
 
 type ModelRow = {
   model: string;
@@ -75,30 +77,20 @@ function compact(n: number): string {
   return String(n);
 }
 
-function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 export default async function UsagePage() {
-  let usage: GlobalUsage | null = null;
-  try {
-    const res = await fetch(USAGE_URL, { next: { revalidate: 300 } });
-    if (res.ok) {
-      usage = (await res.json()) as GlobalUsage;
-    }
-  } catch {
-    // Render the unavailable state below.
-  }
-
-  const economy = (await fetch("https://agents.t2000.ai/api/economy", {
-    next: { revalidate: 300 },
-  })
-    .then((r) => (r.ok ? r.json() : null))
-    .catch(() => null)) as EconomyStats | null;
+  const [usage, economy, agents] = await Promise.all([
+    fetch(USAGE_URL, { next: { revalidate: 300 } })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null) as Promise<GlobalUsage | null>,
+    fetch(ECONOMY_URL, { next: { revalidate: 300 } })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null) as Promise<EconomyStats | null>,
+    fetch("https://api.t2000.ai/v1/agents?limit=1", {
+      next: { revalidate: 300 },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null) as Promise<{ total?: number } | null>,
+  ]);
 
   const peakTokens = usage
     ? Math.max(1, ...usage.last_24h.hourly.map((h) => h.tokens))
@@ -115,7 +107,20 @@ export default async function UsagePage() {
       ? (usage.all_time.by_source.chat.tokens / usage.all_time.tokens) * 100
       : 0;
 
-  const heroStats = usage
+  // Hero card — the agent economy (t2 Agents / x402 first; inference below).
+  const economyStats = economy
+    ? [
+        { label: "paid calls", value: economy.railPayments.toLocaleString("en-US") },
+        { label: "escrowed jobs", value: economy.totalJobs.toLocaleString("en-US") },
+        { label: "active wallets", value: economy.distinctWallets.toLocaleString("en-US") },
+        {
+          label: "registered agents",
+          value: agents?.total ? String(agents.total) : "—",
+        },
+      ]
+    : [];
+
+  const inferenceStats = usage
     ? [
         { label: "requests", value: compact(usage.all_time.requests) },
         {
@@ -136,8 +141,8 @@ export default async function UsagePage() {
     <>
       <Nav />
       <main>
-        {/* Hero — same bones as /verify: eyebrow, display headline, glow,
-            artifact card on the right (here: the live all-time counter). */}
+        {/* Hero — the agent economy first: settled USDC is the network's
+            headline number (same SSOT as agents.t2000.ai + homepage band). */}
         <section
           className="relative overflow-hidden border-b"
           style={{ padding: "92px 0 72px", borderBottomColor: "var(--border)" }}
@@ -168,7 +173,7 @@ export default async function UsagePage() {
                     color: "var(--fg)",
                   }}
                 >
-                  Global usage.
+                  Network stats.
                 </h1>
                 <p
                   className="m-0 max-w-[560px]"
@@ -180,14 +185,16 @@ export default async function UsagePage() {
                     letterSpacing: "-0.014em",
                   }}
                 >
-                  Every request and every settlement. Prompts are never
+                  Every settlement and every request. Prompts are never
                   stored.
                 </p>
               </div>
 
               <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
                 <div className="t2k-card" style={{ padding: "28px 30px" }}>
-                  <div className="t2k-eyebrow">{"// TOKENS ROUTED · ALL-TIME"}</div>
+                  <div className="t2k-eyebrow">
+                    {"// SETTLED USDC · ALL-TIME"}
+                  </div>
                   <div
                     className="mt-4 font-mono font-bold tracking-tight"
                     style={{
@@ -196,13 +203,13 @@ export default async function UsagePage() {
                       color: "var(--fg)",
                     }}
                   >
-                    {usage ? usage.all_time.tokens.toLocaleString("en-US") : "—"}
+                    {economy ? `$${economy.totalSettledUsd.toFixed(2)}` : "—"}
                   </div>
                   <div
                     className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5"
                     style={{ borderTopColor: "var(--border)" }}
                   >
-                    {heroStats.map((s) => (
+                    {economyStats.map((s) => (
                       <div key={s.label}>
                         <div
                           className="font-mono text-[18px] font-semibold"
@@ -223,9 +230,20 @@ export default async function UsagePage() {
                     className="m-0 mt-5 font-mono text-[11.5px]"
                     style={{ color: "var(--fg-subtle)" }}
                   >
-                    {usage?.counting_since
-                      ? `// counting since ${shortDate(usage.counting_since)} · refreshed every 5 min`
-                      : "// usage feed unavailable — try the raw endpoint"}
+                    {economy
+                      ? "// escrow releases + per-call payments · receipts on Sui · "
+                      : "// economy feed unavailable — try the raw endpoint"}
+                    {economy && (
+                      <a
+                        href="https://agents.t2000.ai/activity"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="no-underline transition-colors hover:text-foreground"
+                        style={{ color: "var(--fg-muted)" }}
+                      >
+                        every settlement&nbsp;↗
+                      </a>
+                    )}
                   </p>
                 </div>
               </div>
@@ -233,13 +251,15 @@ export default async function UsagePage() {
               <div className="lg:col-start-1">
                 <div className="flex flex-wrap gap-2.5">
                   <a
-                    href="/private-inference"
+                    href="https://agents.t2000.ai"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="t2k-btn t2k-btn--blue t2k-btn--lg"
                   >
-                    Use the API
+                    Browse the agents&nbsp;→
                   </a>
                   <a
-                    href={USAGE_URL}
+                    href={ECONOMY_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="t2k-btn t2k-btn--ghost t2k-btn--lg"
@@ -252,15 +272,39 @@ export default async function UsagePage() {
           </div>
         </section>
 
+        {/* Private Inference — tokens routed, second billing. */}
         {usage && (
           <section className="t2k-section">
             <div className="t2k-container">
               <header className="mb-10">
-                <span className="t2k-eyebrow">{"// ACTIVITY"}</span>
+                <span className="t2k-eyebrow">{"// PRIVATE INFERENCE"}</span>
                 <h2 className="t2k-section-title mt-3">
-                  {compact(usage.last_24h.tokens)} tokens in the last 24 hours.
+                  {compact(usage.all_time.tokens)} tokens routed.
                 </h2>
               </header>
+
+              <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                {inferenceStats.map((s) => (
+                  <div
+                    key={s.label}
+                    className="t2k-card"
+                    style={{ padding: "18px 20px" }}
+                  >
+                    <div
+                      className="font-mono text-[20px] font-semibold tracking-tight"
+                      style={{ color: "var(--fg)" }}
+                    >
+                      {s.value}
+                    </div>
+                    <div
+                      className="mt-1 font-mono text-[10.5px] uppercase tracking-[0.12em]"
+                      style={{ color: "var(--fg-subtle)" }}
+                    >
+                      {s.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
                 {/* Hourly activity */}
@@ -269,7 +313,9 @@ export default async function UsagePage() {
                     className="flex items-baseline justify-between font-mono text-[11px] uppercase tracking-[0.12em]"
                     style={{ color: "var(--fg-subtle)" }}
                   >
-                    <span>Tokens per hour</span>
+                    <span>
+                      Tokens per hour · {compact(usage.last_24h.tokens)} in 24h
+                    </span>
                     <span>peak {compact(peakTokens)}</span>
                   </div>
                   <div
@@ -369,78 +415,22 @@ export default async function UsagePage() {
               </div>
 
               <p
-                className="mt-5 font-mono text-[12.5px]"
+                className="mt-5 flex flex-wrap gap-x-2 font-mono text-[12.5px]"
                 style={{ color: "var(--fg-subtle)" }}
               >
-                {
-                  "// /v1 API + Audric chat (chat counted from Jul 20, 2026)."
-                }
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* Agent economy — the OTHER half of the network. Same Settled-USDC
-            SSOT as agents.t2000.ai and the homepage band. */}
-        {economy && (
-          <section
-            className="t2k-section border-t"
-            style={{ borderTopColor: "var(--border)" }}
-          >
-            <div className="t2k-container">
-              <header className="mb-10">
-                <span className="t2k-eyebrow">{"// AGENT ECONOMY"}</span>
-                <h2 className="t2k-section-title mt-3">
-                  ${economy.totalSettledUsd.toFixed(2)} settled on Sui.
-                </h2>
-              </header>
-
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {(
-                  [
-                    ["Settled USDC", `$${economy.totalSettledUsd.toFixed(2)}`],
-                    ["Paid calls", economy.railPayments.toLocaleString("en-US")],
-                    ["Escrowed jobs", economy.totalJobs.toLocaleString("en-US")],
-                    [
-                      "Active wallets",
-                      economy.distinctWallets.toLocaleString("en-US"),
-                    ],
-                  ] as const
-                ).map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="t2k-card"
-                    style={{ padding: "22px 24px" }}
-                  >
-                    <div
-                      className="font-mono text-[26px] font-semibold tracking-tight"
-                      style={{ color: "var(--fg)" }}
-                    >
-                      {value}
-                    </div>
-                    <div
-                      className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em]"
-                      style={{ color: "var(--fg-subtle)" }}
-                    >
-                      {label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <p
-                className="mt-5 font-mono text-[12.5px]"
-                style={{ color: "var(--fg-subtle)" }}
-              >
-                {"// escrow releases + per-call payments, receipts on Sui · "}
+                <span>
+                  {
+                    "// /v1 API + Audric chat (chat counted from Jul 20, 2026) · "
+                  }
+                </span>
                 <a
-                  href="https://agents.t2000.ai/activity"
+                  href={USAGE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="no-underline transition-colors hover:text-foreground"
                   style={{ color: "var(--fg-muted)" }}
                 >
-                  every settlement&nbsp;↗
+                  raw JSON&nbsp;↗
                 </a>
               </p>
             </div>
