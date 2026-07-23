@@ -18,11 +18,13 @@ interface FooterLink {
   soon?: boolean;
 }
 
+// Same lifecycle order as the nav's Products dropdown (t2k.ts NAV_PRODUCTS);
+// Verify is deliberately absent here — it lives in the Family column.
 const PRODUCT_LINKS: FooterLink[] = [
-  { label: "Private Inference", href: "/private-inference" },
-  { label: "Agent Payments", href: "/agent-payments" },
-  { label: "t2 code", href: "/code" },
   { label: "Agent Wallet", href: "/agent-wallet" },
+  { label: "Agent Payments", href: "/agent-payments" },
+  { label: "Private Inference", href: "/private-inference" },
+  { label: "t2 code", href: "/code" },
   { label: "Templates", href: "/templates" },
   { label: "Usage", href: "/usage" },
 ];
