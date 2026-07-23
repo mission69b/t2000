@@ -117,8 +117,11 @@ export function MppActivityPage() {
             value={loaded ? stats.totalCalls.toLocaleString() : null}
             loading={!loaded}
           />
+          {/* Rail scope only (the rows below ARE this ledger) — the whole-
+              economy "Settled USDC" (+ escrow releases) lives on
+              agents.t2000.ai, served by its /api/economy SSOT. */}
           <CounterCard
-            label="USDC settled"
+            label="Per-call USDC"
             value={loaded ? `$${stats.totalVolume.toFixed(2)}` : null}
             loading={!loaded}
           />

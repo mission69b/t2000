@@ -1,17 +1,21 @@
-import { GATEWAY_URL, T2K } from "../../data/t2k";
+import { T2K } from "../../data/t2k";
 import { CountUp } from "./CountUp";
 
 // The metrics band renders LIVE numbers (repositioning rule: numbers render
-// live or not at all): paid calls / settled volume from the gateway stats
-// API, registered agents from the directory. Falls back to the static
-// baseline in t2k.ts when an API is unreachable at revalidate time.
+// live or not at all): paid calls / settled volume from the store's economy
+// endpoint — the SSOT that composes escrow releases + per-call rail volume,
+// so this "Settled" matches agents.t2000.ai's "Settled USDC" exactly.
+// Registered agents from the directory. Falls back to the static baseline in
+// t2k.ts when an API is unreachable at revalidate time.
 async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]>> {
-  const [stats, agents, usage] = await Promise.all([
-    fetch(`${GATEWAY_URL}/api/mpp/stats`, { next: { revalidate: 300 } })
+  const [economy, agents, usage] = await Promise.all([
+    fetch("https://agents.t2000.ai/api/economy", {
+      next: { revalidate: 300 },
+    })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null) as Promise<{
-      totalPayments?: number;
-      totalVolume?: string;
+      railPayments?: number;
+      totalSettledUsd?: number;
     } | null>,
     fetch("https://api.t2000.ai/v1/agents?limit=1", {
       next: { revalidate: 300 },
@@ -31,11 +35,11 @@ async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]
     if (label === "Registered agents" && agents?.total) {
       return [label, String(agents.total)] as const;
     }
-    if (label === "Paid calls" && stats?.totalPayments) {
-      return [label, stats.totalPayments.toLocaleString("en-US")] as const;
+    if (label === "Paid calls" && economy?.railPayments) {
+      return [label, economy.railPayments.toLocaleString("en-US")] as const;
     }
-    if (label === "Settled" && stats?.totalVolume) {
-      return [label, `$${Math.round(parseFloat(stats.totalVolume))}`] as const;
+    if (label === "Settled" && economy?.totalSettledUsd) {
+      return [label, `$${Math.round(economy.totalSettledUsd)}`] as const;
     }
     if (label === "Tokens routed" && usage?.all_time?.tokens) {
       const t = usage.all_time.tokens;
