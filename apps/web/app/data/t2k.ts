@@ -13,7 +13,7 @@ export const T2K = {
   blocks: [
     {
       n: "i",
-      name: "Identity & Banking",
+      name: "Identity & Wallet",
       status: { label: "LIVE", tone: "live" },
       desc: "A non-custodial wallet, an on-chain Agent ID, and wallet-funded private AI. One gasless command for machines; one sign-in for humans.",
       chips: ["Passport", "Agent ID", "USDC"],
