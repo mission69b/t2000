@@ -3,7 +3,7 @@ import { Nav } from "../components/site/Nav";
 import { SiteFooter } from "../components/site/SiteFooter";
 
 const DESC =
-  "Live, transparent usage of the t2000 Private Inference API — tokens routed, requests served, model leaderboard. Aggregates only; prompts are never stored.";
+  "Live, transparent numbers for the whole t2000 network — tokens routed, model leaderboard, and USDC settled in the agent economy. Aggregates only; prompts are never stored.";
 
 export const metadata: Metadata = {
   title: "Global usage — t2000",
@@ -32,6 +32,16 @@ type ModelRow = {
 };
 
 type UsageSlice = { requests: number; tokens: number };
+
+// The Settled-USDC SSOT (escrow releases + per-call rail volume) — same
+// endpoint the agents.t2000.ai store and the homepage metrics band read.
+type EconomyStats = {
+  railPayments: number;
+  escrowSettledUsd: number;
+  totalJobs: number;
+  distinctWallets: number;
+  totalSettledUsd: number;
+};
 
 type GlobalUsage = {
   updated_at: string;
@@ -83,6 +93,12 @@ export default async function UsagePage() {
   } catch {
     // Render the unavailable state below.
   }
+
+  const economy = (await fetch("https://agents.t2000.ai/api/economy", {
+    next: { revalidate: 300 },
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)) as EconomyStats | null;
 
   const peakTokens = usage
     ? Math.max(1, ...usage.last_24h.hourly.map((h) => h.tokens))
@@ -143,7 +159,7 @@ export default async function UsagePage() {
             <div className="grid items-center gap-y-9 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] lg:gap-x-14">
               <div>
                 <div className="t2k-eyebrow mb-[22px]">
-                  {"// PRIVATE INFERENCE · LIVE"}
+                  {"// LIVE NETWORK NUMBERS"}
                 </div>
                 <h1
                   className="t2k-display"
@@ -164,7 +180,7 @@ export default async function UsagePage() {
                     letterSpacing: "-0.014em",
                   }}
                 >
-                  Every request, metered at our edge. Prompts are never
+                  Every request and every settlement. Prompts are never
                   stored.
                 </p>
               </div>
@@ -359,6 +375,73 @@ export default async function UsagePage() {
                 {
                   "// /v1 API + Audric chat (chat counted from Jul 20, 2026)."
                 }
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* Agent economy — the OTHER half of the network. Same Settled-USDC
+            SSOT as agents.t2000.ai and the homepage band. */}
+        {economy && (
+          <section
+            className="t2k-section border-t"
+            style={{ borderTopColor: "var(--border)" }}
+          >
+            <div className="t2k-container">
+              <header className="mb-10">
+                <span className="t2k-eyebrow">{"// AGENT ECONOMY"}</span>
+                <h2 className="t2k-section-title mt-3">
+                  ${economy.totalSettledUsd.toFixed(2)} settled on Sui.
+                </h2>
+              </header>
+
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {(
+                  [
+                    ["Settled USDC", `$${economy.totalSettledUsd.toFixed(2)}`],
+                    ["Paid calls", economy.railPayments.toLocaleString("en-US")],
+                    ["Escrowed jobs", economy.totalJobs.toLocaleString("en-US")],
+                    [
+                      "Active wallets",
+                      economy.distinctWallets.toLocaleString("en-US"),
+                    ],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="t2k-card"
+                    style={{ padding: "22px 24px" }}
+                  >
+                    <div
+                      className="font-mono text-[26px] font-semibold tracking-tight"
+                      style={{ color: "var(--fg)" }}
+                    >
+                      {value}
+                    </div>
+                    <div
+                      className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em]"
+                      style={{ color: "var(--fg-subtle)" }}
+                    >
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p
+                className="mt-5 font-mono text-[12.5px]"
+                style={{ color: "var(--fg-subtle)" }}
+              >
+                {"// escrow releases + per-call payments, receipts on Sui · "}
+                <a
+                  href="https://agents.t2000.ai/activity"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="no-underline transition-colors hover:text-foreground"
+                  style={{ color: "var(--fg-muted)" }}
+                >
+                  every settlement&nbsp;↗
+                </a>
               </p>
             </div>
           </section>
