@@ -11,6 +11,7 @@ import {
   ApiPrivacy,
   ApiRouter,
 } from "../components/api/ApiSections";
+import { ApiUsage } from "../components/api/ApiUsage";
 
 const DESC =
   "An OpenAI-compatible endpoint — every model private by default (zero data retention), verifiably confidential on the phala/* tier with signed receipts anchored on Sui.";
@@ -54,6 +55,7 @@ export default async function ApiPage() {
         <ApiModels />
         <ApiPrivacy />
         <ApiIntegrations />
+        <ApiUsage />
         <ProductStrip currentPage="api" />
         <ApiCloser />
       </main>

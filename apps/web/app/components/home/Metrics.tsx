@@ -50,6 +50,15 @@ async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]
   });
 }
 
+// The band is the teaser; the real pages carry the detail (stats
+// consolidation 2026-07-23: no standalone stats page).
+const METRIC_HREFS: Record<string, string> = {
+  "Registered agents": "https://agents.t2000.ai/agents",
+  "Paid calls": "https://agents.t2000.ai/activity",
+  Settled: "https://agents.t2000.ai/activity",
+  "Tokens routed": "/private-inference#usage",
+};
+
 export async function Metrics() {
   const metrics = await getLiveMetrics();
 
@@ -65,34 +74,51 @@ export async function Metrics() {
         className="mx-auto grid grid-cols-2 md:grid-cols-5"
         style={{ maxWidth: "var(--t2k-page-max)" }}
       >
-        {metrics.map(([label, value], i) => (
-          <div
-            key={label}
-            className="px-6 py-4 md:py-0"
-            style={{
-              borderRight:
-                i < metrics.length - 1 ? "1px solid var(--border)" : "none",
-            }}
-          >
-            <div className="t2k-eyebrow" style={{ fontSize: 11 }}>
-              {label}
-            </div>
-            <div
-              className="mt-2.5"
-              style={{
-                fontFamily: "var(--font-display)",
-                fontWeight: 600,
-                fontSize: 44,
-                lineHeight: 1.05,
-                letterSpacing: "-0.04em",
-                color: "var(--fg)",
-                fontVariantNumeric: "tabular-nums",
-              }}
+        {metrics.map(([label, value], i) => {
+          const href = METRIC_HREFS[label];
+          const inner = (
+            <>
+              <div className="t2k-eyebrow" style={{ fontSize: 11 }}>
+                {label}
+              </div>
+              <div
+                className="mt-2.5"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 600,
+                  fontSize: 44,
+                  lineHeight: 1.05,
+                  letterSpacing: "-0.04em",
+                  color: "var(--fg)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                <CountUp value={value} />
+              </div>
+            </>
+          );
+          const cellStyle = {
+            borderRight:
+              i < metrics.length - 1 ? "1px solid var(--border)" : "none",
+          };
+          return href ? (
+            <a
+              key={label}
+              href={href}
+              className="px-6 py-4 no-underline transition-opacity hover:opacity-80 md:py-0"
+              style={cellStyle}
+              {...(href.startsWith("http")
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
             >
-              <CountUp value={value} />
+              {inner}
+            </a>
+          ) : (
+            <div key={label} className="px-6 py-4 md:py-0" style={cellStyle}>
+              {inner}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

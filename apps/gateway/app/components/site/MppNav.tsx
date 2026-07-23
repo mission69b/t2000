@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-type CurrentPage = "services" | "activity" | "sell" | null;
+// /activity 301s to agents.t2000.ai/activity (stats consolidation
+// 2026-07-23: ONE settlement feed) — the footer keeps the outbound link.
+type CurrentPage = "services" | "sell" | null;
 
 const LINKS: Array<{ id: NonNullable<CurrentPage>; label: string; href: string }> = [
   { id: "services", label: "Services", href: "/services" },
-  { id: "activity", label: "Activity", href: "/activity" },
   { id: "sell", label: "Sell", href: "/sell" },
 ];
 

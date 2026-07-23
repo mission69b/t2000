@@ -139,16 +139,16 @@ export function ApiHero({ liveTokens }: { liveTokens?: number | null }) {
               ))}
             </div>
             {tokens !== null && (
-              <Link
-                href="/usage"
+              <a
+                href="#usage"
                 className="mt-6 inline-block font-mono text-[12.5px] no-underline"
                 style={{ color: "var(--fg-subtle)" }}
               >
                 {compactTokens(tokens)} tokens routed ·{" "}
                 <span style={{ color: "var(--t2k-accent)" }}>
-                  live stats →
+                  live usage →
                 </span>
-              </Link>
+              </a>
             )}
           </div>
         </div>

@@ -6,7 +6,11 @@ interface FooterLink {
 
 const GATEWAY_LINKS: FooterLink[] = [
   { l: "Services", href: "/services" },
-  { l: "Activity", href: "/activity" },
+  {
+    l: "Activity",
+    href: "https://agents.t2000.ai/activity",
+    external: true,
+  },
   { l: "Sell your API", href: "/sell" },
   { l: "GitHub", href: "https://github.com/mission69b/t2000", external: true },
 ];

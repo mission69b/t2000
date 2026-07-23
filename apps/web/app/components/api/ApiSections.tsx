@@ -344,8 +344,8 @@ export function ApiPrivacy() {
             The proof is anchored on Sui and read from a public fullnode — we
             can&rsquo;t forge it, and you don&rsquo;t have to trust our server.
             Usage is public too —{" "}
-            <a href="/usage" style={{ color: "var(--t2k-accent)" }}>
-              live network stats
+            <a href="#usage" style={{ color: "var(--t2k-accent)" }}>
+              live usage
             </a>
             .
           </p>

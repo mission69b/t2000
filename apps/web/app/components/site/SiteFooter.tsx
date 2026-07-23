@@ -26,7 +26,6 @@ const PRODUCT_LINKS: FooterLink[] = [
   { label: "Private Inference", href: "/private-inference" },
   { label: "t2 code", href: "/code" },
   { label: "Templates", href: "/templates" },
-  { label: "Stats", href: "/usage" },
 ];
 
 const FAMILY_LINKS: FooterLink[] = [

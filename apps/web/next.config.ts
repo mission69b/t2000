@@ -69,6 +69,14 @@ const nextConfig: NextConfig = {
         destination: "/private-inference",
         permanent: true,
       },
+      // Stats consolidation (2026-07-23): the standalone /usage page retired.
+      // Inference usage lives on the product page (#usage); the economy feed
+      // lives at agents.t2000.ai/activity.
+      {
+        source: "/usage",
+        destination: "/private-inference#usage",
+        permanent: true,
+      },
       // Slug matched to the product name (2026-07-14): the page sells
       // Private Inference, so the URL says so.
       {
