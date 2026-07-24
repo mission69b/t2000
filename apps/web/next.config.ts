@@ -84,22 +84,6 @@ const nextConfig: NextConfig = {
         destination: "/private-inference",
         permanent: true,
       },
-      // Retired product pages — point at Private Inference.
-      {
-        source: "/code",
-        destination: "/private-inference",
-        permanent: true,
-      },
-      {
-        source: "/templates",
-        destination: "/private-inference",
-        permanent: true,
-      },
-      {
-        source: "/templates/:slug",
-        destination: "/private-inference",
-        permanent: true,
-      },
     ];
   },
   async headers() {

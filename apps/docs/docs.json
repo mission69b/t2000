@@ -173,14 +173,6 @@
     {
       "source": "/private-api",
       "destination": "/private-inference"
-    },
-    {
-      "source": "/t2-code",
-      "destination": "/use-with-your-tools"
-    },
-    {
-      "source": "/create-t2-app",
-      "destination": "/use-with-your-tools"
     }
   ],
   "navbar": {

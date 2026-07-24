@@ -53,7 +53,7 @@
 - **`t2 code` (`@t2000/code`) + `create-t2-app` + templates gallery** — removed
   2026-07-24. Not our market (another coding agent). Private Inference demand =
   Audric + `t2 connect` into tools people already use (Claude Code, Codex, …;
-  Hermes later). `/code` and `/templates` 301 → `/private-inference`.
+  Hermes later). Old `/code` and `/templates` URLs are gone (no redirect).
 - **`t2 agent onboard` + `t2 agent topup`** (wallet → credit → key) — removed
   2026-07-13 (shipped in v8). Keys come from the console, period;
   machines making one-off inference calls use keyless x402 on the gateway.
