@@ -1,6 +1,6 @@
 ---
-description: Savings is USDC-or-USDsui only — engine tools and prompts must enforce this. USDsui is a strategic exception; USDC remains the canonical default.
-alwaysApply: true
+description: HISTORICAL — savings USDC/USDsui allow-list (DeFi removed 2026-06-14). Moot for live SDK write surface.
+alwaysApply: false
 ---
 
 # Savings = USDC or USDsui (Engine)

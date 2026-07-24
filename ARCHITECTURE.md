@@ -29,8 +29,8 @@
         └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Consumers of the rails: **Audric** (audric.ai, consumer AI app — separate repo) and the
-planned developer engine (`t2 connect` / `t2 code` — `spec/SPEC_INFERENCE_DEMAND`).
+Consumers of the rails: **Audric** (audric.ai, consumer AI app — separate repo) and
+**`t2 code` / `t2 connect`** (shipped — `@t2000/code`, Private Inference demand engine).
 
 ---
 
@@ -39,7 +39,7 @@ planned developer engine (`t2 connect` / `t2 code` — `spec/SPEC_INFERENCE_DEMA
 | Domain | App | Repo | Hosting | What it serves |
 |---|---|---|---|---|
 | `api.t2000.ai` | `/v1` routes in audric web-v3 | audric | Vercel (shared project with audric.ai) | Private Inference: chat completions, models, ACI receipts/attestation |
-| `mpp.t2000.ai` | `apps/gateway` | t2000 | Vercel (isolated project + DB) | x402 gateway: catalog, 402 endpoints, explorer, activity |
+| `mpp.t2000.ai` | `apps/gateway` | t2000 | Vercel (isolated project + DB) | x402 gateway: catalog, 402 endpoints, explorer (`/activity` 301s → agents.t2000.ai/activity) |
 | `agents.t2000.ai` | `apps/console` | audric | Vercel | t2 Agents: Scan (economy dashboard) + agent store, services + jobs board, skills shelf, console (Create Agent · services · keys · billing · usage · ownership) |
 | `t2000.ai` | `apps/web` | t2000 | Vercel | Marketing site + skills served as markdown (`/skills/*`, `feed.json`) |
 | `developers.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |

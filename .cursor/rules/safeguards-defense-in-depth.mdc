@@ -1,6 +1,6 @@
 ---
-description: Engine-side safeguards — preflight, guards, USD-aware permission resolver, fail-closed
-alwaysApply: true
+description: HISTORICAL — engine-side guards/permissions (engine retired 2026-06-14). Rationale only; Audric v3 host owns tap-to-confirm.
+alwaysApply: false
 ---
 
 # Safeguards — Engine-Side (Defense in Depth)

@@ -1,6 +1,6 @@
 ---
-description: Single source of truth for portfolio data — one canonical fetcher per domain, all consumers are thin adapters
-alwaysApply: true
+description: HISTORICAL — portfolio canonical-fetcher rule for audric/web-v2 + engine era. Read only if touching frozen legacy portfolio paths.
+alwaysApply: false
 ---
 
 # Single Source of Truth: Portfolio Data

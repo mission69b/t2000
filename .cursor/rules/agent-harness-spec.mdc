@@ -1,6 +1,6 @@
 ---
-description: Agent harness contract — Spec 1 (Correctness) + Spec 2 (Intelligence). attemptId, TurnMetrics, EngineConfig.onAutoExecuted, modifiableFields
-alwaysApply: true
+description: HISTORICAL — engine↔host harness contract (engine retired 2026-06-14). Rationale only; do not apply to live t2000 code.
+alwaysApply: false
 ---
 
 > **⚠️ HISTORICAL (2026-06-14): `@t2000/engine` was retired/deleted from the monorepo and BlockVision removed from t2000. This rule documented the engine/BlockVision era (the engine↔host harness contract) and is kept for rationale only — it no longer describes live code. The published `@t2000/engine@4.x` lives on for the frozen legacy Audric app.**

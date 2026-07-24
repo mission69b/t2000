@@ -50,11 +50,11 @@ t2000/
 
 **What changed from v2 (2026-06-14):** DeFi (NAVI save/borrow) removed and `@t2000/engine` retired — v3 composes the AI SDK directly over `@t2000/sdk` (on **AI SDK 7** as of 2026-06-25). The SDK write surface is now **send · swap (Cetus) · pay (x402)**.
 
-For Audric product detail, see **`audric/CLAUDE.md`** + **`SPEC_AUDRIC_V3.md`** (the canon). The legacy v2 app — engine + NAVI, and the "five products / Audric Intelligence" framing — is **frozen** at `legacy.audric.ai` on `@t2000/*@4.x`. It's history, not live truth; don't reintroduce its concepts here.
+For Audric product detail, see **`audric/CLAUDE.md`** + **`SPEC_AUDRIC_V3.md`** (the canon). The legacy v2 app (engine + NAVI) was **deleted from the audric repo 2026-07-24** — do not reintroduce its concepts. Published `@t2000/engine@4.x` remains on npm for historical consumers only.
 
 ### DeFi integration — REMOVED from t2000 (2026-06-14, S.444)
 
-> **NAVI/DeFi was removed from `@t2000/sdk`** (save/withdraw/borrow/repay/claim/harvest builders + the `@naviprotocol/lending` dep + the lending-adapter framework all deleted). The SDK's write surface is now **send (gasless USDC/USDsui) · swap (Cetus) · pay (x402)**. Frozen audric/web-v2 keeps DeFi via the published `@t2000/*@4.x`. The historical approach was: NAVI MCP for reads + thin `@mysten/sui` tx builders for writes; **do NOT re-import** `@naviprotocol/lending` / `@suilend/sdk` if DeFi is ever reintroduced — use MCP reads + thin builders.
+> **NAVI/DeFi was removed from `@t2000/sdk`** (save/withdraw/borrow/repay/claim/harvest builders + the `@naviprotocol/lending` dep + the lending-adapter framework all deleted). The SDK's write surface is now **send (gasless USDC/USDsui) · swap (Cetus) · pay (x402)**. The historical approach was: NAVI MCP for reads + thin `@mysten/sui` tx builders for writes; **do NOT re-import** `@naviprotocol/lending` / `@suilend/sdk` if DeFi is ever reintroduced — use MCP reads + thin builders. (`@t2000/engine@4.x` on npm is historical only — the audric web-v2 consumer was deleted 2026-07-24.)
 
 **Exception:** `@cetusprotocol/aggregator-sdk` is allowed for swap execution — multi-DEX routing across 20+ DEXs cannot be feasibly replaced by thin tx builders. All usage is isolated to `packages/sdk/src/protocols/cetus-swap.ts`.
 
@@ -100,7 +100,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
 | `.cursor/rules/single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement | Portfolio/wallet/positions reads |
 | `.cursor/rules/agent-harness-spec.mdc` | **HISTORICAL** — engine↔host contract (engine retired 2026-06-14) | Rationale only — no live engine |
-| `.cursor/rules/blockvision-resilience.mdc` | **HISTORICAL** — BlockVision left t2000 with the engine | Rationale only — audric/web-v2 (frozen) keeps it |
+| `.cursor/rules/blockvision-resilience.mdc` | **HISTORICAL** — BlockVision left t2000 with the engine | Rationale only |
 | `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources | Adding tokens, fixing decimal/display bugs |
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — every env var goes through Zod schema | Adding env vars / wiring a new app |
 | `audric/apps/web-v3/lib/env.ts` | Canonical Zod env-validation template | Adding env vars, copying the pattern |
@@ -196,7 +196,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 - **Never** push multiple tags in the same session to fix failures — fix the code and re-run the workflow
 
 **Key details:**
-- All 5 packages (`sdk`, `cli`, `mcp`, `id`, `serve`) are always at the same version number (`@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29; `@t2000/serve` at `10.1.0`, 2026-07-20) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x`, frozen on npm for legacy audric/web-v2.)
+- All 5 packages (`sdk`, `cli`, `mcp`, `id`, `serve`) are always at the same version number (`@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29; `@t2000/serve` at `10.1.0`, 2026-07-20) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x` on npm — historical only; the audric web-v2 consumer was deleted 2026-07-24.)
 - `continue-on-error: true` on publish steps — idempotent if a version already exists
 - `workflow_dispatch` on `publish.yml` serves as a manual fallback if needed
 
@@ -204,7 +204,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 
 ## Engine (`@t2000/engine`) — RETIRED (2026-06-14, S.442)
 
-> **The `@t2000/engine` package was retired and DELETED from the monorepo.** Nothing in the monorepo imported it; it was a harness library whose only runtime consumer was Audric. Audric v3 composes the AI SDK (`Experimental_Agent`) directly over `@t2000/sdk` — the transaction-safety guards are agent-loop guards that live in the v3 host, not the SDK (the published `@t2000/engine@4.x` on npm still carries the old guard logic for the frozen legacy audric/web-v2). **The package stack is now 4: `@t2000/{sdk,cli,mcp,id}`** (id added 2026-06-29). Engine removed from the release/CI workflows. Do not add a new engine package — host apps compose the AI SDK over the SDK directly. (Historical engine API + tool/guard catalogue: `git log` + `@t2000/engine@4.x` on npm.)
+> **The `@t2000/engine` package was retired and DELETED from the monorepo.** Nothing in the monorepo imported it; it was a harness library whose only runtime consumer was Audric web-v2 (itself deleted 2026-07-24). Audric v3 composes the AI SDK (`Experimental_Agent`) directly over `@t2000/sdk` — the transaction-safety guards are agent-loop guards that live in the v3 host, not the SDK (the published `@t2000/engine@4.x` on npm remains for historical pin only). **The package stack is now 5: `@t2000/{sdk,cli,mcp,id,serve}`**. Engine removed from the release/CI workflows. Do not add a new engine package — host apps compose the AI SDK over the SDK directly. (Historical engine API + tool/guard catalogue: `git log` + `@t2000/engine@4.x` on npm.)
 
 ---
 
