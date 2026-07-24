@@ -29,7 +29,7 @@ const coin = () => ({
 
 describe('buildPublishAgentCoinTx', () => {
   it('builds a publish + make_immutable PTB', async () => {
-    const { tx, moduleName, otw } = launch.buildPublishAgentCoinTx({
+    const { tx, moduleName, otw } = await launch.buildPublishAgentCoinTx({
       coin: coin(),
       launcher: LAUNCHER,
     });
@@ -42,13 +42,13 @@ describe('buildPublishAgentCoinTx', () => {
     expect(JSON.stringify(immutable)).toContain('make_immutable');
   });
 
-  it('refuses a recipient that is not the launcher (no third-party supply)', () => {
-    expect(() =>
+  it('refuses a recipient that is not the launcher (no third-party supply)', async () => {
+    await expect(
       launch.buildPublishAgentCoinTx({
         coin: { ...coin(), recipient: AGENT },
         launcher: LAUNCHER,
       }),
-    ).toThrow(T2000Error);
+    ).rejects.toThrow(T2000Error);
   });
 });
 

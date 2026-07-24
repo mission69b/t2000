@@ -68,8 +68,8 @@ describe('validateAgentCoinParams', () => {
 });
 
 describe('buildAgentCoinModule', () => {
-  it('rewrites identifiers + constants into valid bytecode', () => {
-    const mod = buildAgentCoinModule(good());
+  it('rewrites identifiers + constants into valid bytecode', async () => {
+    const mod = await buildAgentCoinModule(good());
     expect(mod.moduleName).toBe('funkii');
     expect(mod.otw).toBe('FUNKII');
     expect(mod.dependencies).toEqual([
@@ -87,14 +87,14 @@ describe('buildAgentCoinModule', () => {
     expect(text).toContain('Funkii Studio');
   });
 
-  it('is deterministic — same params, same bytes', () => {
-    const a = buildAgentCoinModule(good());
-    const b = buildAgentCoinModule(good());
+  it('is deterministic — same params, same bytes', async () => {
+    const a = await buildAgentCoinModule(good());
+    const b = await buildAgentCoinModule(good());
     expect(Buffer.from(a.modules[0]).equals(Buffer.from(b.modules[0]))).toBe(true);
   });
 
-  it('lowercases the module and uppercases the OTW (Move OTW rule)', () => {
-    const mod = buildAgentCoinModule({ ...good(), symbol: 'FnKi2' });
+  it('lowercases the module and uppercases the OTW (Move OTW rule)', async () => {
+    const mod = await buildAgentCoinModule({ ...good(), symbol: 'FnKi2' });
     expect(mod.moduleName).toBe('fnki2');
     expect(mod.otw).toBe('FNKI2');
   });

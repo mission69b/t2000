@@ -1,9 +1,3 @@
-import {
-  deserialize,
-  serialize,
-  update_constants,
-  update_identifiers,
-} from '@mysten/move-bytecode-template';
 import { bcs } from '@mysten/sui/bcs';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { T2000Error } from '../errors.js';
@@ -113,10 +107,17 @@ export interface AgentCoinModule {
 }
 
 /**
- * Rewrite the compiled template for one agent's launch. Pure function of its
- * inputs — same params, same bytes.
+ * Rewrite the compiled template for one agent's launch. Deterministic — same
+ * params, same bytes. Async because `@mysten/move-bytecode-template` (WASM)
+ * is loaded lazily HERE, not at module top level: a top-level import makes
+ * every SDK consumer's bundler ship/locate the .wasm at startup, which broke
+ * the CLI bundle in CI — only the launch path may pay that cost.
  */
-export function buildAgentCoinModule(params: AgentCoinParams): AgentCoinModule {
+export async function buildAgentCoinModule(
+  params: AgentCoinParams,
+): Promise<AgentCoinModule> {
+  const { deserialize, serialize, update_constants, update_identifiers } =
+    await import('@mysten/move-bytecode-template');
   validateAgentCoinParams(params);
   const symbol = params.symbol.toUpperCase();
   const moduleName = symbol.toLowerCase();

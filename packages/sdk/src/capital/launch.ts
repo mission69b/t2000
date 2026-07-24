@@ -94,8 +94,11 @@ export interface PublishAgentCoinResult {
   otw: string;
 }
 
-/** PTB 1 — publish the agent coin package, burn upgradability in-tx. */
-export function buildPublishAgentCoinTx(args: PublishAgentCoinArgs): PublishAgentCoinResult {
+/** PTB 1 — publish the agent coin package, burn upgradability in-tx.
+ *  Async: the bytecode-template WASM loads lazily on first use. */
+export async function buildPublishAgentCoinTx(
+  args: PublishAgentCoinArgs,
+): Promise<PublishAgentCoinResult> {
   if (!isValidSuiAddress(args.launcher)) {
     throw new T2000Error('INVALID_ADDRESS', `bad launcher: ${args.launcher}`);
   }
@@ -107,7 +110,7 @@ export function buildPublishAgentCoinTx(args: PublishAgentCoinArgs): PublishAgen
       'coin.recipient must equal launcher — the full supply lands with the launch signer, never a third party',
     );
   }
-  const mod = buildAgentCoinModule(args.coin);
+  const mod = await buildAgentCoinModule(args.coin);
 
   const tx = new Transaction();
   tx.setSender(args.launcher);
