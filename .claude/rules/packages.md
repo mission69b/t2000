@@ -57,5 +57,5 @@ Local build for development only: `pnpm --filter @t2000/<pkg> build`.
 ## Retired
 
 `@t2000/engine` was deleted from the monorepo 2026-06-14 (S.442) — see
-`CLAUDE.md § Engine — RETIRED` for the do-not-reintroduce guard. Historical API
+`CLAUDE.md § Critical Rules` #1 for the do-not-reintroduce guard. Historical API
 detail: `git log` + `@t2000/engine@4.x` on npm.
