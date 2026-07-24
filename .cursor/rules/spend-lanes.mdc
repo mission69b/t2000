@@ -1,0 +1,43 @@
+---
+description: Spend lanes — Cursor Think only; Claude Code Build; zero/t2 Grind. Stops frontier token burn on implementation in Cursor.
+alwaysApply: true
+---
+
+# Spend lanes (founder 2026-07-24)
+
+Burning Cursor frontier tokens (especially `claude-fable-*-thinking-high`) on
+implementation is the failure mode this rule stops. Founder pays Cursor Max +
+Anthropic Max; **all multi-file code work goes to Claude Code on the Max
+subscription** (browser OAuth login — never an Anthropic API key in Cursor).
+
+## The three lanes
+
+| Lane | Tool | Use for |
+|---|---|---|
+| **Think** | This Cursor chat (default model = Auto; escalate to Fable only for hard architecture / debugging) | Specs, plans, review, acceptance criteria, handoff prompts to Claude Code |
+| **Build** | Claude Code (`claude`) on Anthropic Max | Features, refactors, multi-file implementation, long agentic loops |
+| **Grind** | `zero exec` / `t2 code` on `t2000/auto` | Sweeps, renames, make-tests-pass, boilerplate — see `t2000-delegate.mdc` |
+
+## What this chat MUST do
+
+When the user asks for code / implementation / “build X” / “fix the tests”:
+
+1. Write a short plan + **acceptance criteria** (verifiable).
+2. Emit a **paste-ready Claude Code prompt** (context paths, constraints, verify steps).
+3. **Stop.** Do not open a large edit loop in Cursor.
+
+Exceptions (OK to implement here): single-file typo, one-line config, or the
+user explicitly says “do it in this chat.”
+
+## What this chat MUST NOT do
+
+- Multi-hour agentic coding sessions in Cursor on Fable / thinking-high.
+- Re-open or continue a months-long mega-thread for a new task — **one task = one chat**.
+- Put an Anthropic API key into Cursor “to use Max” — Max does not cover API keys;
+  that double-bills. Claude Code = subscription login.
+- Burn frontier on work that qualifies for Grind (`t2000-delegate.mdc`).
+
+## After Claude Code finishes
+
+User (or this chat on request) reviews the diff (`git diff` / PR). Commits stay
+on the normal review path — Claude Code should not be told to push blindly.

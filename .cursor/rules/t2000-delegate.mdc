@@ -22,7 +22,9 @@ acceptance criteria in two sentences:
 
 Do NOT delegate: ambiguous or architectural work, security-sensitive changes,
 anything touching money paths (`packages/sdk` send/swap/pay logic), or tasks
-where the spec IS the hard part. Those stay here.
+where the spec IS the hard part. Those stay in the **Think** lane (Cursor) or
+**Build** lane (Claude Code on Anthropic Max) — see `spend-lanes.mdc`. This
+rule only covers Grind.
 
 ## How
 
