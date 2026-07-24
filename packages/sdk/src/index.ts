@@ -280,3 +280,37 @@ export {
   checkPositiveAmount,
   checkSuiAddress,
 } from './preflight.js';
+// Agent Capital — tokenize-your-agent launch orchestration (SPEC_ACP_SUI §6).
+// Server/CLI surface only (the bytecode-template WASM is not exported from
+// browser.ts); console API routes build these PTBs, the launcher signs.
+export {
+  AGENT_CAPITAL_PACKAGE_ID,
+  CAPITAL_REGISTRY_ID,
+  CAPITAL_REGISTRY_VERSION,
+  MIN_LP_SUI,
+  SUI_COIN_METADATA_ID,
+  buildPublishAgentCoinTx,
+  buildTokenizeTx,
+} from './capital/launch.js';
+export type {
+  PublishAgentCoinArgs,
+  PublishAgentCoinResult,
+  TokenizeArgs,
+} from './capital/launch.js';
+export {
+  AGENT_TOKEN_DECIMALS,
+  AGENT_TOKEN_TOTAL_SUPPLY,
+  AGENT_TOKEN_LP_ALLOCATION,
+  AGENT_TOKEN_TREASURY_ALLOCATION,
+  SYMBOL_BLOCKLIST,
+  buildAgentCoinModule,
+  validateAgentCoinParams,
+} from './capital/template.js';
+export type { AgentCoinParams, AgentCoinModule } from './capital/template.js';
+export {
+  CETUS_CLMM_PACKAGE_ID,
+  CETUS_GLOBAL_CONFIG_ID,
+  CETUS_POOLS_ID,
+  CETUS_POSITION_TYPE,
+  AGENT_POOL_TICK_SPACING,
+} from './protocols/cetus-clmm.js';

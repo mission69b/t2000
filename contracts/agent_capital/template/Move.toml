@@ -1,0 +1,8 @@
+[package]
+name = "agent_coin"
+edition = "2024.beta"
+
+[dependencies]
+
+[addresses]
+agent_coin = "0x0"

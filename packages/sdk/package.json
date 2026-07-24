@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@cetusprotocol/aggregator-sdk": "^1.4.8",
+    "@mysten/move-bytecode-template": "^0.4.0",
     "@mysten/payment-kit": "^0.1.6",
     "@mysten/sui": "^2.17.0",
     "@mysten/suins": "^1.1.1",

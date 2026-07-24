@@ -1,0 +1,14 @@
+[package]
+name = "agent_capital"
+edition = "2024.beta"
+
+[dependencies]
+agent_id = { local = "../agent_id" }
+CetusClmm = { git = "https://github.com/CetusProtocol/cetus-clmm-interface.git", subdir = "sui/cetus_clmm", rev = "mainnet-v1.52.3" }
+
+[addresses]
+agent_capital = "0x0"
+
+[dev-dependencies]
+
+[dev-addresses]
