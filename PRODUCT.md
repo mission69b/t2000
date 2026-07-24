@@ -43,7 +43,7 @@
 
 ## The consumers (demand for the rails)
 
-- **[Audric](https://audric.ai)** — the consumer AI app; buys inference + gateway calls. **Audric Computer** (in-chat escrow hire) is Phase 5 after Capital.
+- **[Audric](https://audric.ai)** — the consumer AI app; buys inference + gateway calls. In-chat escrow hire (Phase 5, after Capital) — not “Butler” (Virtuals) and not Audric Computer (separate durable-agent product).
 - **`t2 code` / `t2 connect`** (shipped — `@t2000/code`, [t2000.ai/code](https://t2000.ai/code)) —
   the developer engine: a terminal coding agent on Private Inference via the
   `t2000/auto` router; `t2 connect` points existing tools (claude-code, codex,
