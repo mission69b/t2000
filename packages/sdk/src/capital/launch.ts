@@ -1,7 +1,9 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { isValidSuiAddress } from '@mysten/sui/utils';
 import { T2000Error } from '../errors.js';
-import { SUI_TYPE } from '../token-registry.js';
+import { USDC_TYPE } from '../token-registry.js';
+import type { SuiCoreClient } from '../utils/sui.js';
+import { selectAndSplitCoin } from '../wallet/coinSelection.js';
 import {
   CETUS_POSITION_TYPE,
   createPoolV2,
@@ -25,8 +27,8 @@ import {
  *   freezes CoinMetadata + TreasuryCap (the can't-rug set).
  *
  *   PTB 2 — `buildTokenizeTx`: bind the coin type to the Agent ID → split the
- *   supply 50/50 → create the Cetus AGENT/SUI pool seeded with the LP half +
- *   launcher-supplied SUI → wrap the position in a 10-year `LpLock` whose sole
+ *   supply 50/50 → create the Cetus AGENT/USDC pool seeded with the LP half +
+ *   launcher-supplied USDC → wrap the position in a 10-year `LpLock` whose sole
  *   beneficiary is the agent wallet → finalize the registry record. Atomic:
  *   either the agent ends tokenized-with-locked-LP or nothing is recorded.
  *
@@ -35,10 +37,10 @@ import {
  * leaves a published-but-unbound coin (launcher's gas, nobody's harm) and
  * PTB 2 is simply retried.
  *
- * NO GAS SPONSORSHIP on either PTB: PTB 2 seeds SUI liquidity from `tx.gas`,
- * and under Enoki sponsorship `tx.gas` is the SPONSOR's coin — t2000 must
- * never seed LP (SPEC_AGENT_CAPITAL guards). The launcher holds SUI by
- * construction (they're supplying the liquidity).
+ * The quote side is USDC (L3 override 2026-07-25) — selected from the
+ * launcher's own coins, so gas sponsorship is now PERMITTED (sponsor gas can
+ * no longer become LP). v1 ships unsponsored; wire the job/register sponsor
+ * pattern if SUI-less launchers appear.
  *
  * These builders construct UNSIGNED transactions; auth lives in the Move
  * layer (`registry::bind/finalize` re-check agent-or-confirmed-owner on
@@ -72,9 +74,10 @@ function assertDeployed(): void {
   }
 }
 
-/** Minimum SUI the launcher must seed the pool with — enough that the pool
- *  opens with real two-sided liquidity rather than dust. Floor, no rounding. */
-export const MIN_LP_SUI = 1_000_000_000n; // 1 SUI
+/** Minimum USDC the launcher must seed the pool with (L3 override 2026-07-25:
+ *  the quote side is USDC, the settlement stable — never SUI). Enough that the
+ *  pool opens with real two-sided liquidity rather than dust. */
+export const MIN_LP_USDC = 5_000_000n; // 5 USDC
 
 const REGISTRY_MODULE = 'registry';
 const LP_LOCK_MODULE = 'lp_lock';
@@ -136,27 +139,29 @@ export interface TokenizeArgs {
   supplyCoinId: string;
   /** The published coin's CoinMetadata object id (frozen, from PTB 1). */
   coinMetadataId: string;
-  /** SUI CoinMetadata object id (constant on mainnet, arg for testnet). */
-  suiMetadataId?: string;
-  /** Raw MIST the launcher seeds the pool with (≥ MIN_LP_SUI). Split from
-   *  gas — the launcher's own SUI, definitionally. */
-  lpSuiAmount: bigint;
+  /** USDC CoinMetadata object id (constant on mainnet, arg for testnet). */
+  usdcMetadataId?: string;
+  /** Raw USDC (6dp) the launcher seeds the pool with (≥ MIN_LP_USDC) —
+   *  selected from the launcher's own coins, never platform funds. */
+  lpUsdcAmount: bigint;
   /** Pool display url — the agent icon; optional. */
   poolUrl?: string;
   /** Pair orientation — from `simulate`-then-flip (see cetus-clmm.ts note). */
-  suiFirst?: boolean;
+  usdcFirst?: boolean;
   /** The `agent_id::registry` shared object id. */
   agentRegistryId: string;
+  /** Client for USDC coin selection (gRPC). */
+  client: SuiCoreClient;
 }
 
-/** SUI CoinMetadata on mainnet (immutable, well-known). */
-export const SUI_COIN_METADATA_ID =
-  '0x9258181f5ceac8dbffb7030890243caed69a9599d2886d957a9cb7656af3bdb3';
+/** USDC CoinMetadata on mainnet (immutable, well-known). */
+export const USDC_COIN_METADATA_ID =
+  '0x75cfbbf8c962d542e99a1d15731e6069f60a00db895407785b15d14f606f2b4a';
 
 /**
  * PTB 2 — bind + split 50/50 + pool + 10y lock + finalize, atomically.
  */
-export function buildTokenizeTx(args: TokenizeArgs): Transaction {
+export async function buildTokenizeTx(args: TokenizeArgs): Promise<Transaction> {
   assertDeployed();
   if (!isValidSuiAddress(args.agent)) {
     throw new T2000Error('INVALID_ADDRESS', `bad agent: ${args.agent}`);
@@ -164,10 +169,10 @@ export function buildTokenizeTx(args: TokenizeArgs): Transaction {
   if (!isValidSuiAddress(args.launcher)) {
     throw new T2000Error('INVALID_ADDRESS', `bad launcher: ${args.launcher}`);
   }
-  if (args.lpSuiAmount < MIN_LP_SUI) {
+  if (args.lpUsdcAmount < MIN_LP_USDC) {
     throw new T2000Error(
       'INVALID_AMOUNT',
-      `lpSuiAmount ${args.lpSuiAmount} < minimum ${MIN_LP_SUI} MIST (1 SUI)`,
+      `lpUsdcAmount ${args.lpUsdcAmount} < minimum ${MIN_LP_USDC} raw (5 USDC)`,
     );
   }
 
@@ -199,24 +204,32 @@ export function buildTokenizeTx(args: TokenizeArgs): Transaction {
   ]);
   // (remainder in supplyCoin = AGENT_TOKEN_TREASURY_ALLOCATION)
 
-  // 3. Launcher's SUI for the other side of the pool.
-  const [lpSui] = tx.splitCoins(tx.gas, [tx.pure.u64(args.lpSuiAmount)]);
+  // 3. Launcher's USDC for the quote side of the pool — selected from their
+  //    own coins (address balance included), never from gas, never platform.
+  const { coin: lpUsdc } = await selectAndSplitCoin(
+    tx,
+    args.client,
+    args.launcher,
+    USDC_TYPE,
+    args.lpUsdcAmount,
+  );
 
   // 4. Create the pool + full-range position. Initial price = the seeded
   //    ratio; fix the AGENT side so exactly 50% of supply enters the pool.
-  const suiFirst = args.suiFirst ?? false;
-  const sqrtPrice = suiFirst
-    ? sqrtPriceX64FromAmounts(args.lpSuiAmount, AGENT_TOKEN_LP_ALLOCATION)
-    : sqrtPriceX64FromAmounts(AGENT_TOKEN_LP_ALLOCATION, args.lpSuiAmount);
+  const usdcFirst = args.usdcFirst ?? false;
+  const sqrtPrice = usdcFirst
+    ? sqrtPriceX64FromAmounts(args.lpUsdcAmount, AGENT_TOKEN_LP_ALLOCATION)
+    : sqrtPriceX64FromAmounts(AGENT_TOKEN_LP_ALLOCATION, args.lpUsdcAmount);
+  const usdcMeta = args.usdcMetadataId ?? USDC_COIN_METADATA_ID;
   const poolResult = createPoolV2(tx, {
-    coinTypeA: suiFirst ? SUI_TYPE : args.coinType,
-    coinTypeB: suiFirst ? args.coinType : SUI_TYPE,
-    metadataA: suiFirst ? (args.suiMetadataId ?? SUI_COIN_METADATA_ID) : args.coinMetadataId,
-    metadataB: suiFirst ? args.coinMetadataId : (args.suiMetadataId ?? SUI_COIN_METADATA_ID),
-    coinA: suiFirst ? lpSui : lpCoin,
-    coinB: suiFirst ? lpCoin : lpSui,
+    coinTypeA: usdcFirst ? USDC_TYPE : args.coinType,
+    coinTypeB: usdcFirst ? args.coinType : USDC_TYPE,
+    metadataA: usdcFirst ? usdcMeta : args.coinMetadataId,
+    metadataB: usdcFirst ? args.coinMetadataId : usdcMeta,
+    coinA: usdcFirst ? lpUsdc : lpCoin,
+    coinB: usdcFirst ? lpCoin : lpUsdc,
     sqrtPriceX64: sqrtPrice,
-    fixAmountA: !suiFirst, // always fix the AGENT side
+    fixAmountA: !usdcFirst, // always fix the AGENT side
     url: args.poolUrl,
   });
   const position = poolResult[0];
@@ -247,11 +260,11 @@ export function buildTokenizeTx(args: TokenizeArgs): Transaction {
   });
 
   // 7. Treasury half + any AGENT-side pool refund → the agent wallet;
-  //    SUI refund → back to the launcher.
-  const agentRefund = suiFirst ? refundB : refundA;
-  const suiRefund = suiFirst ? refundA : refundB;
+  //    USDC refund → back to the launcher.
+  const agentRefund = usdcFirst ? refundB : refundA;
+  const usdcRefund = usdcFirst ? refundA : refundB;
   tx.transferObjects([supplyCoin, agentRefund], tx.pure.address(args.agent));
-  tx.transferObjects([suiRefund], tx.pure.address(args.launcher));
+  tx.transferObjects([usdcRefund], tx.pure.address(args.launcher));
 
   return tx;
 }

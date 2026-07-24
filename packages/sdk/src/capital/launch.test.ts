@@ -53,18 +53,38 @@ describe('buildPublishAgentCoinTx', () => {
 });
 
 describe('buildTokenizeTx', () => {
+  // Coin selection is stubbed: the fake client returns one big owned USDC
+  // coin so selectAndSplitCoin picks the plain split path.
+  const fakeClient = {
+    core: {
+      getBalance: async () => ({ balance: { balance: 100_000_000n } }),
+      getCoins: async () => ({
+        objects: [
+          {
+            id: normalizeSuiAddress('0x61'),
+            version: '1',
+            digest: 'A'.repeat(44),
+            balance: 100_000_000n,
+          },
+        ],
+        hasNextPage: false,
+      }),
+    },
+  } as never;
+
   const args = () => ({
     agent: AGENT,
     launcher: LAUNCHER,
     coinType: `${PKG}::funkii::FUNKII`,
     supplyCoinId: normalizeSuiAddress('0x51'),
     coinMetadataId: normalizeSuiAddress('0x52'),
-    lpSuiAmount: 5_000_000_000n, // 5 SUI
+    lpUsdcAmount: 25_000_000n, // 25 USDC
     agentRegistryId: AGENT_REGISTRY,
+    client: fakeClient,
   });
 
-  it('assembles bind → split → pool → lock → finalize atomically, in order', () => {
-    const tx = launch.buildTokenizeTx(args());
+  it('assembles bind → split → pool → lock → finalize atomically, in order', async () => {
+    const tx = await launch.buildTokenizeTx(args());
     const calls = tx
       .getData()
       .commands.filter((c) => c.MoveCall)
@@ -79,8 +99,8 @@ describe('buildTokenizeTx', () => {
     ]);
   });
 
-  it('routes treasury+refund to the agent and SUI refund to the launcher', () => {
-    const tx = launch.buildTokenizeTx(args());
+  it('routes treasury+refund to the agent and USDC refund to the launcher', async () => {
+    const tx = await launch.buildTokenizeTx(args());
     const data = tx.getData();
     const transfers = data.commands.filter((c) => c.TransferObjects);
     expect(transfers).toHaveLength(2);
@@ -98,10 +118,10 @@ describe('buildTokenizeTx', () => {
     expect(transfers[1].TransferObjects!.objects).toHaveLength(1);
   });
 
-  it('enforces the LP SUI floor', () => {
-    expect(() =>
-      launch.buildTokenizeTx({ ...args(), lpSuiAmount: 999_999_999n }),
-    ).toThrow(T2000Error);
+  it('enforces the LP USDC floor', async () => {
+    await expect(
+      launch.buildTokenizeTx({ ...args(), lpUsdcAmount: 4_999_999n }),
+    ).rejects.toThrow(T2000Error);
   });
 
 });
@@ -120,9 +140,9 @@ describe('sqrt price math', () => {
   });
 
   it('sqrtPriceX64 scales with the ratio, floored never rounded up', () => {
-    // 500M AGENT (6dp) vs 5 SUI (9dp): price = 5e9/5e14 = 1e-5.
-    const p = sqrtPriceX64FromAmounts(500_000_000_000_000n, 5_000_000_000n);
-    const ideal = Math.sqrt(1e-5) * 2 ** 64;
+    // 500M AGENT (6dp) vs 25 USDC (6dp): price = 25e6/5e14 = 5e-8.
+    const p = sqrtPriceX64FromAmounts(500_000_000_000_000n, 25_000_000n);
+    const ideal = Math.sqrt(5e-8) * 2 ** 64;
     const got = Number(p);
     expect(got).toBeLessThanOrEqual(ideal);
     expect(got).toBeGreaterThan(ideal * 0.999999);

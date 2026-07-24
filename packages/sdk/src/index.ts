@@ -287,8 +287,8 @@ export {
   AGENT_CAPITAL_PACKAGE_ID,
   CAPITAL_REGISTRY_ID,
   CAPITAL_REGISTRY_VERSION,
-  MIN_LP_SUI,
-  SUI_COIN_METADATA_ID,
+  MIN_LP_USDC,
+  USDC_COIN_METADATA_ID,
   buildPublishAgentCoinTx,
   buildTokenizeTx,
 } from './capital/launch.js';
