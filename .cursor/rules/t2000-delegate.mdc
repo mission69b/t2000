@@ -1,16 +1,18 @@
 ---
-description: Delegate well-specified grunt tasks to zero on t2000/auto (Step-0 dogfood, SPEC_INFERENCE_DEMAND)
+description: Delegate well-specified grunt tasks to t2code exec on Private Inference (Grind lane, SPEC_INFERENCE_DEMAND)
 alwaysApply: true
 ---
 
-# Delegate grunt work to zero
+# Delegate grunt work to t2 code
 
-This machine has `zero` (terminal coding agent) configured with the `t2000`
-provider — `api.t2000.ai/v1`, model `t2000/auto` (bulk → GLM 5.2 at ~10–30×
-below frontier prices; auto-escalates hard steps). Burning frontier tokens on
+Grind lane = **`t2code exec`** (the `@t2000/code` coding agent on Private
+Inference / `t2000/auto`). This is dogfood for our own product — bulk steps
+route cheap, hard steps auto-escalate. Burning frontier Cursor tokens on
 mechanical work is the failure mode this rule exists to stop.
 
-## When to delegate
+**Not `zero`.** `zero` was the interim Step-0 executor; do not use it.
+
+## When to delegate (Grind)
 
 A task qualifies when it is WELL-SPECIFIED and MECHANICAL — you could write
 acceptance criteria in two sentences:
@@ -20,28 +22,27 @@ acceptance criteria in two sentences:
 - boilerplate generation from an existing pattern
 - doc/comment staleness sweeps with clear criteria
 
-Do NOT delegate: ambiguous or architectural work, security-sensitive changes,
+Do NOT Grind: ambiguous or architectural work, security-sensitive changes,
 anything touching money paths (`packages/sdk` send/swap/pay logic), or tasks
-where the spec IS the hard part. Those stay in the **Think** lane (Cursor) or
-**Build** lane (Claude Code on Anthropic Max) — see `spend-lanes.mdc`. This
-rule only covers Grind.
+where the spec IS the hard part. Those go to **Think** (Cursor) or **Build**
+(Claude Code on Anthropic Max) — see `spend-lanes.mdc`.
 
 ## How
 
-Run in the integrated terminal, same working tree:
+Same working tree (integrated terminal):
 
 ```bash
-zero exec "<task with explicit acceptance criteria>"
-zero exec --worktree "<risky/parallel task>"   # isolated git worktree
+t2code exec "<task with explicit acceptance criteria>"
+# noisy suites — keep output short so the agent transcript stays readable
+t2code exec "run CI=true pnpm --filter <pkg> test 2>&1 | tail -40 and fix until green: <criteria>"
 ```
 
-- Auth comes from the environment (`T2000_API_KEY`) — never put keys in the prompt.
-- Noisy TTY commands (test suites, builds, watchers): tell zero to run them
-  quiet — `CI=true … 2>&1 | tail -30` — raw spinner/ANSI output corrupts
-  `exec` rendering (dogfood finding, 2026-07-14).
-- Monitor the run; when it finishes, REVIEW THE DIFF yourself (git panel /
-  `git diff`) before reporting back. You own the result, not zero.
-- Never let zero commit. Commits happen through the normal review flow.
-- If zero's result is wrong twice, stop delegating that task and do it yourself
-  — and note the misroute (misroutes become eval cases in
+Prereq: `t2code login` with a console key (`T2000_API_KEY` / console mint) so
+inference bills the Private Inference account — never put keys in the prompt.
+
+- Monitor the run; when it finishes, REVIEW THE DIFF yourself (`git diff`)
+  before reporting back. You own the result, not t2code.
+- Never let t2code commit. Commits happen through the normal review flow.
+- If t2code's result is wrong twice, stop Grind for that task class and escalate
+  to Build (Claude Code) — note the misroute (eval fodder for
   `audric/apps/web-v3/scripts/api-router-eval.ts`).
