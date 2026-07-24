@@ -1,39 +1,23 @@
 ---
-description: Financial amount safety — floor vs round, on-chain precision, no rounding up
+description: Financial amount + token data safety — floor display amounts (never round up), decimals come from the SDK token registry. Full detail in .claude/skills/t2000-financial-amounts/.
 alwaysApply: true
 ---
 
-# Financial Amount Safety
+# Financial Amounts → `.claude/skills/t2000-financial-amounts/SKILL.md`
 
-## Floor display amounts — never round up
+**The invariants:**
 
-Any amount shown to users or passed to SDK transaction builders must be **<=** the actual on-chain balance. `Math.round` can round up, causing "Insufficient balance" errors.
+1. **Floor, never round.** Any amount shown to a user or passed to an SDK builder
+   must be **≤** the actual on-chain balance. `Math.round` can round up and produce
+   more raw units than the user holds → "Insufficient balance".
+2. **Decimals are registry data, never call-site literals.** Read them from
+   `COIN_REGISTRY` / `SUPPORTED_ASSETS` in `packages/sdk/src/token-registry.ts` +
+   `constants.ts`. Never create a second token map.
 
-```typescript
-// ❌ BAD — Math.round(1.1286 * 100) / 100 = 1.13 (more than on-chain!)
-const amount = Math.round(rawAmount * 100) / 100;
+**Read the full detail before touching amount math or token metadata:**
+`.claude/skills/t2000-financial-amounts/SKILL.md` — per-token display precision,
+chip/preset math for tiny balances, and the canonical-source table.
 
-// ✅ GOOD — Math.floor always produces amount <= actual
-const amount = Math.floor(rawAmount * 10000) / 10000;
-```
-
-## Token decimal precision
-
-Floor to the token's on-chain decimals (capped at 8):
-- SUI: 9 decimals → floor at 4dp for display
-- USDC: 6 decimals → floor at 2dp for display
-- GOLD (XAUM): 9 decimals → floor at 8dp for display
-- Other assets: `Math.min(decimals, 8)` dp
-
-## SDK transaction amounts
-
-When `sdk.swap()` (or any SDK builder that takes an amount) receives an amount, it converts to raw units via `amount * 10^decimals`. If the display amount was rounded UP, this produces more raw units than the user actually has → transaction fails. (`sdk.save()` was removed with DeFi, S.444 — the floor-not-round principle still applies to every surviving amount path: send, swap, pay.)
-
-## Preset amounts for chip flows
-
-For assets with tiny balances (< 0.01), use dynamic precision:
-
-```typescript
-const dp = held >= 1 ? 100 : held >= 0.01 ? 10000 : 100000000;
-const preset = Math.floor(held * fraction * dp) / dp;
-```
+*(Content moved there 2026-07-24, merged with the former `token-data-architecture`
+rule — do not re-inline it here; this file is a pointer so Cursor and Claude Code
+cannot drift.)*

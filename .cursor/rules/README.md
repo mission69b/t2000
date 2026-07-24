@@ -1,43 +1,70 @@
 # .cursor/rules
 
-Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, `globs`, `alwaysApply` front-matter). Each `.mdc` file describes cross-cutting engineering constraints that should apply regardless of which file you're editing.
+**These are pointers, not content.** As of 2026-07-24 the canonical agent context
+lives in `.claude/` (Claude Code is the Build lane — see `spend-lanes.mdc`). Files
+here exist so Cursor still gets the invariants and knows where to read the depth.
 
-## Always-applied (every task)
+**When a rule needs updating, edit the `.claude/` file — not this directory.**
 
-| File | What it covers |
-|------|---------|
-| `engineering-principles.mdc` | Trace the path, single source of truth, fix at the root, layer awareness |
-| `goal-driven-execution.mdc` | Verifiable goals, multi-step plans, ask vs proceed |
-| `coding-discipline.mdc` | Think before coding, simplicity first, surgical changes (Karpathy) |
-| `single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement |
-| `env-validation-gate.mdc` | Every env var goes through Zod schema, never raw `process.env` |
-| `safeguards-defense-in-depth.mdc` | Engine preflight + guards + USD permission resolver |
-| `agent-harness-spec.mdc` | Spec 1 + Spec 2 contracts (attemptId, TurnMetrics, modifiableFields) |
-| `financial-amounts.mdc` | Always floor display amounts, never round up |
-| `savings-usdc-only.mdc` | Saves/borrows are USDC-only |
-| `token-data-architecture.mdc` | Canonical token data sources (TOKEN_MAP, COIN_REGISTRY) |
+## What's here
 
-## Glob-scoped (apply when editing matching files)
+| File | `alwaysApply` | Points to |
+|---|---|---|
+| `engineering-discipline.mdc` | ✅ | `.claude/skills/t2000-engineering/` |
+| `spend-lanes.mdc` | ✅ | — (this is the routing rule itself) |
+| `env-validation-gate.mdc` | ✅ | `.claude/skills/t2000-env-gate/` |
+| `financial-amounts.mdc` | ✅ | `.claude/skills/t2000-financial-amounts/` |
+| `design-system.mdc` | glob: `design-tokens/**`, `apps/**` | `.claude/skills/t2000-design-system/` |
+| `sui-platform.mdc` | glob: `packages/sdk/**`, `apps/gateway/**`, `contracts/**` | `.claude/skills/t2000-sui-platform/` |
+| `confidential-ai-verify.mdc` | glob: verify + anchor paths | `.claude/skills/t2000-confidential-verify/` |
 
-| File | Scope |
-|------|---------|
-| `engine-tool-development.mdc` | **HISTORICAL** — `@t2000/engine` deleted S.442; kept for rationale only |
-| `blockvision-resilience.mdc` | **HISTORICAL** — BlockVision left with engine; kept for rationale only |
-| `metrics-and-monitoring.mdc` | Reference — TurnMetrics, SessionUsage, dashboards |
+`engineering-discipline.mdc` is the **one deliberate duplication**: it mirrors the
+short always-on block from `CLAUDE.md § Engineering Discipline`, because Cursor does
+not read `CLAUDE.md`. Those two copies must stay in sync. Everything else is a
+pointer with no duplicated body.
+
+## The 2026-07-24 migration
+
+Before: 21 `.mdc` files, 7 of them `alwaysApply: true` — **none of which Claude Code
+could read**, since it has no `.mdc` loader and no `alwaysApply` mechanism.
+
+Changes:
+- **10 rules deleted** — all described the retired `@t2000/engine`, BlockVision, the
+  removed DeFi surface, or metrics tables (`TurnMetrics`, `SessionUsage`) that don't
+  exist anywhere in t2000 source. Git history is the archive:
+  `git log --all -- .cursor/rules/<name>.mdc`. They were demoted to
+  `alwaysApply: false` one commit earlier (S.806) rather than removed — that
+  half-measure is what left them being half-read for months.
+- **4 always-apply behavioral rules merged** (`engineering-principles` +
+  `goal-driven-execution` + `coding-discipline` + `product-build-algorithm`) into
+  one skill plus the always-on block above.
+- **`token-data-architecture` folded into** `financial-amounts` (same subject).
+- **`geist-ds` → `design-system`**, **`sui-address-balances-and-gasless` →
+  `sui-platform`** (renamed to match their skills).
+
+The old "Always-applied" table in this README was also wrong — it listed five rules
+as always-applied whose own frontmatter said `alwaysApply: false`, and omitted two
+that were `true`. Don't reintroduce a hand-maintained table that can disagree with
+the frontmatter; keep the table above honest against the actual files.
+
+## Where everything lives now
+
+| Layer | File | Loaded |
+|---|---|---|
+| Always-on context | `CLAUDE.md` | every turn |
+| Subsystem depth | `.claude/skills/*/SKILL.md` | on task match |
+| Per-package notes | `.claude/rules/*.md` | project instructions |
+| Rituals | `.claude/commands/*.md` | on `/command` |
+| Cursor bridge | `.cursor/rules/*.mdc` | Cursor only |
 
 ## Skills are NOT mirrored here
 
-`t2000-skills/skills/<name>/SKILL.md` is the canonical source for the 8 user-facing skills (setup, mcp, check-balance, receive, send, swap, pay, services). They reach end users via two channels:
+`t2000-skills/skills/<name>/SKILL.md` is the canonical source for the user-facing
+product skills (setup, mcp, check-balance, receive, send, swap, pay, services,
+verify, job). Those are **consumer** content; `.claude/skills/` are **contributor**
+engineering constraints — different altitude, different audience. Don't merge them.
 
-1. **`@t2000/mcp`** — skill bodies are baked into the npm bundle at build time and exposed as `skill-<name>` MCP prompts in any MCP-compatible client (Claude Desktop, Cursor, Windsurf, claude-code CLI, etc.) after `t2 mcp install`.
-2. **`mission69b/t2000-skills`** — auto-synced from this repo via `.github/workflows/sync-skills.yml` for direct skill marketplace consumption.
-
-We don't mirror them into `.cursor/rules/` because (a) the skills are *consumer* content while these rules are *contributor* engineering constraints — different altitude, different audience — and (b) mirroring creates a drift class for zero gain inside the contributor repo. If you need skill content while editing this repo, read `t2000-skills/skills/<name>/SKILL.md` directly.
-
-## Relationship to `CLAUDE.md` and `.claude/rules/`
-
-- `CLAUDE.md` (repo root) is the primary spec for Claude Code sessions, auto-loaded every turn.
-- `.claude/rules/*.md` holds per-subsystem notes (packages, gateway) — not auto-loaded; reference material.
-- Files here are the IDE-layer rules auto-applied by Cursor.
-
-If a rule needs to apply in both Cursor and Claude Code, prefer putting it in `CLAUDE.md` and linking to the `.mdc` from there (the root `CLAUDE.md § Key Documents` section does this).
+Product skills reach end users via two channels:
+1. **`@t2000/mcp`** — skill bodies baked into the npm bundle at build time, exposed
+   as `skill-<name>` MCP prompts in any MCP client after `t2 mcp install`.
+2. **`mission69b/t2000-skills`** — auto-synced via `.github/workflows/sync-skills.yml`.

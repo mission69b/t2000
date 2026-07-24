@@ -1,9 +1,9 @@
 ---
-description: Spend lanes — Cursor Think; Claude Code Build. Stops frontier token burn on implementation in Cursor.
+description: Spend lanes — Cursor for review/specs, Claude Code for all implementation. Stops frontier token burn on multi-file code work in Cursor.
 alwaysApply: true
 ---
 
-# Spend lanes (founder 2026-07-24)
+# Spend lanes (founder 2026-07-24, revised)
 
 Burning Cursor frontier tokens (especially `claude-fable-*-thinking-high`) on
 implementation is the failure mode this rule stops. Founder pays Cursor Max +
@@ -14,27 +14,40 @@ subscription** (browser OAuth login — never an Anthropic API key in Cursor).
 
 | Lane | Tool | Use for |
 |---|---|---|
-| **Think** | This Cursor chat (default = Auto; Fable only for hard architecture / debugging) | Specs, plans, review, acceptance criteria, handoff prompts |
+| **Think / Review** | This Cursor chat (default = Auto; Fable only for hard architecture or debugging) | Specs, plans, diff review, acceptance criteria, handoff prompts |
 | **Build** | Claude Code (`claude`) on Anthropic Max | Features, refactors, multi-file implementation, long agentic loops, mechanical sweeps |
 
 ## What this chat MUST do
 
-When the user asks for code / implementation / “build X” / “fix the tests”:
+When the user asks for code / implementation / "build X" / "fix the tests":
 
 1. Write a short plan + **acceptance criteria** (verifiable).
-2. Emit a **paste-ready Claude Code prompt** (Build).
+2. Emit a **paste-ready Claude Code prompt** (Build lane).
 3. **Stop.** Do not open a large edit loop in Cursor.
 
-Exceptions (OK to implement here): single-file typo, one-line config, or the
-user explicitly says “do it in this chat.”
+Exceptions (OK to implement here): single-file typo, one-line config, or the user
+explicitly says "do it in this chat."
 
 ## What this chat MUST NOT do
 
 - Multi-hour agentic coding sessions in Cursor on Fable / thinking-high.
 - Re-open or continue a months-long mega-thread for a new task — **one task = one chat**.
-- Put an Anthropic API key into Cursor “to use Max” — Max does not cover API keys.
+- Put an Anthropic API key into Cursor "to use Max" — Max does not cover API keys.
+
+## Where the rules actually live (2026-07-24 migration)
+
+Claude Code is now the canonical agent surface. `.claude/` owns the content:
+
+- `CLAUDE.md` — auto-loaded every turn (architecture, critical rules, release process)
+- `.claude/skills/*/SKILL.md` — subsystem depth, auto-loaded on task match
+- `.claude/commands/*.md` — the repeatable rituals (`/release`, `/ship`, `/tracker`)
+
+Files in `.cursor/rules/` are **pointers into `.claude/`**, not copies — so the two
+tools cannot drift. When a rule needs updating, edit the `.claude/` file. The one
+deliberate exception is `engineering-discipline.mdc`, which mirrors the short
+always-on block from `CLAUDE.md` because Cursor does not read `CLAUDE.md`.
 
 ## After Build finishes
 
-Review the diff (`git diff`). Commits stay on the normal review path — do not
-tell Claude Code to push blindly.
+Review the diff (`git diff`). Commits stay on the normal review path — do not tell
+Claude Code to push blindly.

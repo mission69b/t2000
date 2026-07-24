@@ -56,8 +56,8 @@
  *
  * - Spec → `spec/SPEC_7_MULTI_WRITE_PTB.md` § "Layer 0: Canonical
  *   Write Architecture"
- * - Read-side companion → `t2000/.cursor/rules/single-source-of-truth.mdc`
- *   + `audric/.cursor/rules/audric-canonical-portfolio.mdc`
+ * - Read-side companion → `audric/.cursor/rules/audric-canonical-portfolio.mdc`
+ *   (the t2000-side portfolio rule was archived with the engine, 2026-07-24)
  * - Write-side rule → `audric/.cursor/rules/audric-canonical-write.mdc`
  */
 

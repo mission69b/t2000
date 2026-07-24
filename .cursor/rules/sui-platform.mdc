@@ -1,0 +1,26 @@
+---
+description: Sui platform patterns — Address Balances (SIP-58) make one address concurrent, gasless stablecoin transfers remove the SUI-for-gas wall, plus the eligibility gotchas that cause misleading failures. Full detail in .claude/skills/t2000-sui-platform/.
+globs: packages/sdk/src/**,apps/gateway/**,contracts/**
+alwaysApply: false
+---
+
+# Sui Platform → `.claude/skills/t2000-sui-platform/SKILL.md`
+
+**The two things people get wrong:**
+
+1. **"One Sui address can only do one tx at a time" is a myth** for a server payer.
+   Address Balances (SIP-58) turn fungible holdings into an accumulator (no
+   owned-object lock) and address-balance gas removes the gas-coin contention →
+   **a single settlement address scales.** A wallet fleet is a blast-radius lever,
+   never a scaling prerequisite.
+2. **"Gasless" is narrower than it sounds.** Only pure stablecoin transfers on the
+   allowlisted trio qualify — any custom Move call still needs gas. Plus: 0.01
+   minimum, a dust-remainder floor that surfaces as a misleading "insufficient SUI
+   balance" error, and auto-detect that only works on gRPC/GraphQL transports.
+
+**Read the full gotcha list before architecting a payer or debugging a send:**
+`.claude/skills/t2000-sui-platform/SKILL.md`.
+
+*(Content moved there 2026-07-24 from `sui-address-balances-and-gasless.mdc` — do
+not re-inline it here; this file is a pointer so Cursor and Claude Code cannot
+drift.)*

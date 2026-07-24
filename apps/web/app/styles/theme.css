@@ -1,23 +1,17 @@
 /* =====================================================================
-   @t2000/ui — Tailwind v4 @theme block
+   Tailwind v4 @theme block — owned by this app
    ---------------------------------------------------------------------
-   Maps Geist Design System CSS variables (from `./geist-ds.css`) into
-   Tailwind v4 theme tokens, so consumers can write shadcn-idiomatic
-   utility classes (`bg-background`, `text-foreground`, `bg-card`,
-   `ring-ring`, etc.) and have them resolve to Geist values.
+   Maps the semantic CSS variables from `./tokens.css` into Tailwind v4
+   theme tokens, so we can write shadcn-idiomatic utility classes
+   (`bg-background`, `text-foreground`, `bg-card`, `ring-ring`) and have
+   them resolve to house values.
 
-   Consumers (Tailwind v4):
+   Values are shared by COPY-IN from `design-tokens/tokens.css`, never by
+   package dependency — `@t2000/ui` was removed from the monorepo
+   2026-07-01 and must not be reintroduced. To re-sync, re-copy the
+   canonical file; to re-skin, set `--t2k-accent` in `globals.css`.
 
-     // app/globals.css
-     @import "tailwindcss";
-     @import "@t2000/ui/tokens";        / * --ds-* + --fg-* primitives * /
-     @import "@t2000/ui/tokens/page";   / * utility classes (optional) * /
-     @import "@t2000/ui/tokens/theme";  / * THIS file — @theme block * /
-
-     :root { --t2k-accent: var(--ds-blue-700); }  / * per-property accent * /
-
-   Consumers (Tailwind v3): use `@t2000/ui/tailwind-preset` instead of
-   this file. See packages/ui/README.md.
+   Full model: `.claude/skills/t2000-design-system/SKILL.md`
    ===================================================================== */
 
 @theme {

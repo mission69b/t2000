@@ -12,8 +12,7 @@
 // same primitive, so a CLI user can run
 // `t2000 send alex.sui 10 USDC` without looking up the hex address first.
 //
-// Single source of truth — see `.cursor/rules/single-source-of-truth.mdc`
-// and `.cursor/rules/engineering-principles.mdc` Principle 2.
+// Single source of truth — see `.claude/skills/t2000-engineering/SKILL.md` §2.
 // ---------------------------------------------------------------------------
 
 import { getSuiGraphQLClient } from './sui.js';
@@ -55,9 +54,9 @@ export const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{1,64}$/i;
 export const SUI_ADDRESS_STRICT_REGEX = /^0x[a-fA-F0-9]{64}$/i;
 
 /**
- * Mirrors the pattern in `audric/apps/web-v2/lib/suins-cache.ts` so the
- * host-side send executor and the engine-side read normalizer agree on
- * what counts as a SuiNS name. SuiNS allows nested labels (`team.alex.sui`)
+ * The single definition of what counts as a SuiNS name, so every caller
+ * (CLI send, host send executor, read normalizers) agrees.
+ * SuiNS allows nested labels (`team.alex.sui`)
  * but every label must use only `[a-z0-9-]`.
  */
 export const SUINS_NAME_REGEX = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/;

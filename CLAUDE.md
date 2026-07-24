@@ -74,6 +74,115 @@ For Audric product detail, see **`audric/CLAUDE.md`** + **`SPEC_AUDRIC_V3.md`** 
 
 ---
 
+## Engineering Discipline
+
+> Mirrored verbatim in `.cursor/rules/engineering-discipline.mdc` (Cursor doesn't read
+> this file) — keep the two in sync. Depth: `.claude/skills/t2000-engineering/SKILL.md`.
+
+**Trace before you fix.** Trace the ACTUAL execution path (user action → route →
+handler → SDK → chain → response → UI) and confirm which code actually runs before
+changing anything. Most multi-iteration fixes are one-iteration fixes that started
+in the wrong layer.
+
+**Verifiable goals, always.** Convert every task into a goal with a runnable check.
+State multi-step plans as `step → verify:` pairs. Never say "done" without running
+the verify step; never "should be fine" without re-reading the diff.
+
+**Single source of truth.** If data exists somewhere, import it. Never copy a token
+map, decimal, coin type, or config into a second file. Before hardcoding any list,
+ask whether someone will have to hand-update it later — if yes, the approach is wrong.
+
+**Fix at the root.** If a fix needs 3+ places or several attempts, the architecture
+is wrong. Find the single point of failure.
+
+**Simplicity first, surgically applied.** Minimum code that solves the problem;
+nothing speculative. No abstractions for single-use code — and none whose *shape* is
+shared but whose *logic* isn't. Touch only what the request requires; match existing
+style; mention unrelated dead code rather than deleting it.
+
+**Remove completely — no orphans.** When you delete a feature, sweep every layer in
+the same pass: source, types, error codes, tests, deps, patches, docs, rules, CI,
+export barrels, empty dirs. Dead remnants of your own removal are in scope; "keep it
+just in case" is not.
+
+**Run the product algorithm in order.** (1) Make the requirements less dumb —
+requirements are guilty until proven innocent. (2) Delete the part or step; if you
+aren't adding back ≥10%, you didn't delete enough. (3) Optimize what survived.
+(4) Accelerate. (5) Automate last. Default to deletion; name the fork rather than
+silently picking a constrained path.
+
+**Machines AND humans.** Every surface must work for an autonomous agent *and* a
+person. If a design serves only one, it's half-built.
+
+---
+
+## Claude Code setup
+
+Claude Code is the **Build lane** (`.cursor/rules/spend-lanes.mdc`) and `.claude/`
+is the canonical agent context. Migrated 2026-07-24 from `.cursor/rules/`, which
+Claude Code cannot read — those files are now pointers, not content.
+
+| Layer | Path | Loaded |
+|---|---|---|
+| Always-on | `CLAUDE.md` | every turn |
+| Rule depth | `.claude/skills/*/SKILL.md` | on task match |
+| Package notes | `.claude/rules/*.md` | as project instructions |
+| Rituals | `.claude/commands/*.md` | on `/command` |
+
+**Skills** (each auto-loads when its description matches the task — don't read them
+speculatively):
+
+| Skill | Covers |
+|---|---|
+| `t2000-engineering` | Trace-before-fix, verifiable goals, simplicity, complete removal, product algorithm, ESLint flat-config trap, test-file convention |
+| `t2000-env-gate` | The Zod boot-validation pattern behind Critical Rule 7 |
+| `t2000-financial-amounts` | Floor-never-round, per-token precision, the canonical token registry |
+| `t2000-sui-platform` | Address Balances (SIP-58) concurrency + gasless-transfer eligibility gotchas |
+| `t2000-design-system` | Copy-in tokens, per-app shadcn, house near-black theme |
+| `t2000-confidential-verify` | GPU-TEE inference: anchor-every, Redis receipts, trust-boundary honesty |
+
+**Vendored Sui skills** (10 of 20 from `MystenLabs/skills`, installed 2026-07-24 —
+`accessing-data` · `sui-sdks` · `ptbs` · `sui-object-model` · `sui-move` ·
+`modern-move-syntax` · `move-unit-testing` · `naming-conventions` ·
+`composable-move-functions` · `sui-publish`). Copied in, not symlinked, so they're
+committed and version-stable. Deliberately **not** installed: CLI setup/install,
+project scaffolding, frontend-apps, walrus-sites, sui-overview — irrelevant here and
+each one costs routing context.
+
+They agree with our constraints rather than fighting them — `accessing-data` leads
+with *"absolutely no JSON-RPC for new code"* and `sui-sdks` teaches
+`SuiGrpcClient` / `client.core.*`, matching § Sui Integration. `sui-sdks` also notes
+that every `@mysten/*` package ships `docs/llms-index.md` into `node_modules`,
+version-matched to what's installed — prefer that over any doc link.
+
+```bash
+npx skills add MystenLabs/skills -s <name> -a claude-code --copy -y
+```
+
+Re-run per skill to update. Eval fixtures (`evals/`, `grading.json`) are stripped on
+install — they're the upstream authors' CI, not consumer content.
+
+**Commands:** `/release <bump>` · `/ship <feature>` · `/tracker <title>` · `/next`
+
+**`/improve`** (shadcn/improve) is installed **globally**, not in this repo — a
+periodic nine-category auditor (correctness, security, perf, tests, debt, deps, DX,
+docs, features). It never edits source; it writes plans to `plans/`, which is
+gitignored here.
+
+> **`/improve` proposes; `HANDOFF_NEXT_AGENT.md` decides.** Its `plans/` output is
+> working material, never a second backlog — triage findings into the handoff table,
+> then delete the plan file. Two ranked backlogs that can disagree is the exact drift
+> class this setup exists to prevent.
+
+**Editing rules:** change the `.claude/` file. The only deliberate duplication is
+the Engineering Discipline block above ↔ `.cursor/rules/engineering-discipline.mdc`.
+
+Ten engine-era rules were **deleted** 2026-07-24 (they described the retired engine,
+BlockVision, removed DeFi, and metrics tables absent from this repo). Recover any of
+them with `git log --all -- .cursor/rules/<name>.mdc` — don't reintroduce them.
+
+---
+
 ## Repo Layout
 
 Read `REPO_LAYOUT.md` once at session start for "where does X go?"
@@ -97,12 +206,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 | `HANDOFF_NEXT_AGENT.md` (t2000 + `audric/`, local-only) | **Forward-backlog SSOT.** The `audric/HANDOFF_NEXT_AGENT.md` "Active backlog" table is canonical for product / agent-ownable tasks (ranked, with effort + notes) + founder ops; the t2000 one covers the infra forward window + cross-repo cleanup and defers the audric backlog to it. | Picking the next task; planning |
 | `audric-build-tracker.md` (local-only) | Reverse-chronological **execution log** — one `S.N` entry per shipped slice, newest on top (gitignored). This is the audit trail, **NOT** a forward backlog. To get the next SPEC number, read the latest `S.N` at the top of the file and increment. | Status checks; before assigning the next `S.N` |
 | `spec/**` (local-only, gitignored) | Internal SPECs, harness contracts, locked-decision references, operational runbooks — full tree available on the maintainer's machine; not part of the public repo | When the rule/agent context cites a specific SPEC by name |
-| `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
-| `.cursor/rules/single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement | Portfolio/wallet/positions reads |
-| `.cursor/rules/agent-harness-spec.mdc` | **HISTORICAL** — engine↔host contract (engine retired 2026-06-14) | Rationale only — no live engine |
-| `.cursor/rules/blockvision-resilience.mdc` | **HISTORICAL** — BlockVision left t2000 with the engine | Rationale only |
-| `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources | Adding tokens, fixing decimal/display bugs |
-| `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — every env var goes through Zod schema | Adding env vars / wiring a new app |
+| `.claude/skills/*/SKILL.md` | **The rule depth** — 6 skills, auto-loaded when the task matches (see § Claude Code setup) | Claude routes these itself |
 | `audric/apps/web-v3/lib/env.ts` | Canonical Zod env-validation template | Adding env vars, copying the pattern |
 | `audric/.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct (lives in audric repo) | Audric transaction/receipt bugs |
 
@@ -272,7 +376,7 @@ const client = new SuiGrpcClient({ baseUrl: 'https://fullnode.mainnet.sui.io', n
 
 ## Styling
 
-See `.cursor/rules/geist-ds.mdc` for the full model. In short:
+See the `t2000-design-system` skill for the full model. In short:
 
 - **Shared VALUES via copy-in, not a dependency.** `design-tokens/tokens.css` (pure CSS vars — Geist palette + semantic `--bg`/`--fg`/`--border` + radii/spacing/fonts) is the SSOT; each app copies it in and owns it. House look is the **seamless near-black** dark theme; per-app accent via `--t2k-accent`.
 - **Components: shadcn primitives owned per-app** (`components/ui/`), used where interaction/a11y justifies. Marketing/utility pages (t2000.ai, mpp, verify, suimpp) are largely raw JSX + tokens — don't force shadcn onto them. Only **audric web-v3** is a full shadcn app (and keeps its own theme).

@@ -1,0 +1,23 @@
+---
+description: t2000 design system — design-tokens/tokens.css is the copy-in SSOT for values; shadcn primitives owned per-app; near-black house theme + per-app accent; never reintroduce @t2000/ui. Full model in .claude/skills/t2000-design-system/.
+globs: design-tokens/**,apps/**
+alwaysApply: false
+---
+
+# Design System → `.claude/skills/t2000-design-system/SKILL.md`
+
+**The model in one line:** share VALUES by copy-in (`design-tokens/tokens.css`,
+pure CSS variables only), own COMPONENTS per-app (shadcn in `components/ui/`), and
+never ship a shared UI/token package again — `@t2000/ui` was removed 2026-07-01
+because it bundled a marketing global stylesheet and packaged primitives a
+consumer's Tailwind can't scan.
+
+House look is the seamless near-black dark theme (`--bg #08090a`); the one per-app
+knob is `--t2k-accent`. Read semantic tokens (`--bg`/`--bg-elevated`/`--border`),
+never the raw `--ds-gray-*` palette, and never hardcode hex outside `tokens.css`.
+
+**Read the full model — adoption table, theme values, and the five rules — before
+styling any app:** `.claude/skills/t2000-design-system/SKILL.md`.
+
+*(Content moved there 2026-07-24 from `geist-ds.mdc` — do not re-inline it here;
+this file is a pointer so Cursor and Claude Code cannot drift.)*

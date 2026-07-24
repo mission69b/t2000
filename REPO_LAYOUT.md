@@ -29,8 +29,14 @@ t2000/
 ├── contracts/                               ← Move sources (agent_id, confidential_anchor — live on mainnet)
 ├── scripts/                                 ← release tooling (release-notes.sh)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source + feed.json shelf)
+├── .claude/                                 ← agent context (canonical)
+│   ├── rules/                               (small always-on subsystem notes)
+│   ├── skills/                              (rule depth — loaded on task match)
+│   └── commands/                            (/release, /ship, /tracker, /next)
+├── .cursor/rules/                           ← pointers into .claude/ for Cursor (not content)
 └── tsconfig.base.json, turbo.json,          ← workspace config
-    package.json, pnpm-workspace.yaml
+    package.json, pnpm-workspace.yaml,
+    skills-lock.json                         (provenance + content hashes for vendored skills)
 ```
 
 > Internal product specs, design decisions, and runbooks live in a local-only `spec/` tree that is not part of the public repo. Ask the maintainers if you need access.
@@ -41,6 +47,10 @@ t2000/
 | Public developer docs page (setup, API ref, examples) | `apps/docs/<slug>.mdx` (Mintlify; deploys to `developers.t2000.ai`) |
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
+| A rule every task needs | `CLAUDE.md` (it loads every turn — keep it tight) |
+| A rule only some tasks need | `.claude/skills/<name>/SKILL.md` (write a trigger-rich `description`) |
+| A repeatable ritual | `.claude/commands/<name>.md` |
+| A Cursor-visible copy of a rule | `.cursor/rules/<name>.mdc` — **a pointer only**, never a second copy of the body |
 
 All public developer docs live in `apps/docs/` (Mintlify). There is no public `docs/` folder.
 
@@ -75,7 +85,7 @@ Plus founder-local truth source (gitignored, not visible publicly):
 
 See `audric/CLAUDE.md` for analogous layout. Key conventions:
 
-- `audric/apps/web-v2/docs/` — runbooks, post-mortems, security advisories, regression matrices
+- `audric/apps/web-v3/DEPLOY.md` — deploy, cutover, and rollback runbook for the live app
 - `audric/.cursor/rules/` — workspace rules (loaded every session)
 - `audric/.claude/rules/` — Claude Code rules
 - `audric/scripts/` — operational scripts (smoke, env-parity, dump-session)

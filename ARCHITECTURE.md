@@ -117,7 +117,7 @@ client-side verify                         t2 verify (full DCAP to Intel's root)
                                            verifyReceipt in the SDK · verify.t2000.ai
 ```
 
-Invariants (full detail: `.cursor/rules/confidential-ai-verify.mdc`):
+Invariants (full detail: `.claude/skills/t2000-confidential-verify/SKILL.md`):
 **confidential = pure completion** (no tools/search/memory — nothing leaves the
 enclave); **anchor-every**, not on-demand; receipts in **Redis, not Walrus**; honest
 trust boundary — TDX quote + signature + anchor are trustless, the gateway's plaintext

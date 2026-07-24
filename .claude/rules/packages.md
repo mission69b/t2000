@@ -1,35 +1,61 @@
 # Package Rules
 
-## @t2000/cli (packages/cli)
-
-- Entry: `src/index.ts` → Commander.js. Bin: `t2` (primary) + `t2000` (alias).
-- Post-v4 (S.336) the CLI is a **wallet + payments** surface: `send`, `swap`, `pay`, `balance`, `receive`, `history`, `services`, `limit`, `mcp`, `skills`, `init`. The DeFi commands (`save`/`withdraw`/`borrow`/`repay`/`claim`) and Volo `stake`/`unstake` were removed. **NAVI / DeFi has since left `@t2000/sdk` entirely (2026-06-14)** — the SDK write surface is now send (gasless USDC/USDsui), swap (Cetus), pay (x402); there are no DeFi builders to expose.
-- Keep command output consistent with the existing commands; test with `--help` / `--dry-run` where applicable.
-- Scope: `cli` in commit messages
+The stack is **5 packages**, always released together at the same version:
+`@t2000/{sdk,cli,mcp,id,serve}`.
 
 ## @t2000/sdk (packages/sdk)
 
 - Entry: `src/index.ts`
 - Exports: Agent class, account types, transaction builders
+- Write surface: **send** (gasless USDC/USDsui) · **swap** (Cetus) · **pay** (x402).
+  No DeFi builders — NAVI/lending left the SDK 2026-06-14.
 - All public functions need explicit return types
-- Scope: `sdk` in commit messages
+- Scope: `sdk`
 
-## @t2000/engine (packages/engine) — RETIRED
+## @t2000/cli (packages/cli)
 
-> **⚠️ HISTORICAL (2026-06-14):** `@t2000/engine` was retired and **deleted** from the monorepo. There is no `packages/engine` here anymore and no future engine releases. The already-published `@t2000/engine@4.x` remains on npm for the frozen legacy Audric app. New work composes the Vercel AI SDK directly over `@t2000/sdk`. The detail below is kept for lineage only and no longer describes anything in this repo.
->
-> Former exports / key files (historical): `AISDKEngine`, `getDefaultTools`, `TOOL_POLICY`, `McpClientManager`, sessions, cost tracking, memory store, permission resolver; `v2/*`, `mcp/client.ts`, `navi/`, `tools/*.ts` (26 tools: 18 read + 8 write).
+- Entry: `src/index.ts` → Commander.js. Bin: `t2` (primary) + `t2000` (alias).
+- A **wallet + payments** surface: `send`, `swap`, `pay`, `balance`, `receive`,
+  `history`, `services`, `limit`, `verify`, `connect`, `mcp`, `skills`, `init`.
+- Keep output consistent with existing commands; test with `--help` / `--dry-run`.
+- Scope: `cli`
 
 ## @t2000/mcp (packages/mcp)
 
-- Post-v4 (S.336) wraps the **SDK wallet** and exposes **9 MCP tools** (5 read + 3 write + 1 limit) — a wallet + payments surface, not the engine's 26 tools and not the legacy 27-tool DeFi MCP.
-- Uses `@modelcontextprotocol/sdk`
+- Wraps the **SDK wallet** — a wallet + payments surface, not a DeFi surface.
+- Uses `@modelcontextprotocol/sdk`.
+- Skill bodies from `t2000-skills/skills/` are baked into the bundle at build time
+  and exposed as `skill-<name>` MCP prompts.
 - Test with: `claude mcp add --transport stdio t2000 -- npx @t2000/mcp`
-- Scope: `mcp` in commit messages
+- Scope: `mcp`
+
+> Tool counts go stale — read `packages/mcp/src/tools/` for the live list rather
+> than quoting a number.
+
+## @t2000/id (packages/id)
+
+- Agent ID — `agent_id::registry` client. Joined the release lockstep at `5.7.0`.
+- Scope: `id`
+
+## @t2000/serve (packages/serve)
+
+- Merchant-side x402 router — wrap any API for agent payments. Joined at `10.1.0`.
+- Scope: `serve`
 
 ## Publishing
 
-- Bump version in package.json
-- Build: `pnpm --filter @t2000/<pkg> build`
-- Publish: `npm publish` (or via GitHub Actions `publish.yml`)
-- Tag: `git tag v<version>` → `git push --tags`
+**Use `/release`.** The process is mandatory and documented in
+`CLAUDE.md § Release process`: trigger `release.yml` via
+`gh workflow run release.yml --field bump=<patch|minor|major>`, which bumps all 5
+packages, commits, tags, and dispatches `publish.yml`.
+
+**Never** bump versions by hand, push a `vX.Y.Z` tag by hand, or run
+`pnpm publish` / `npm publish` locally.
+
+Local build for development only: `pnpm --filter @t2000/<pkg> build`.
+
+## Retired
+
+`@t2000/engine` was deleted from the monorepo 2026-06-14 (S.442) — see
+`CLAUDE.md § Engine — RETIRED` for the do-not-reintroduce guard. Historical API
+detail: `git log` + `@t2000/engine@4.x` on npm.

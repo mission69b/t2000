@@ -35,6 +35,12 @@ infra/.env.infra
 # spec/ — entire tree is local-only / not part of the public repo
 spec/
 
+# /improve audit output (shadcn/improve, installed globally). Working material
+# only — findings get triaged into HANDOFF_NEXT_AGENT.md, which stays the
+# canonical forward backlog. Never commit a second backlog. See CLAUDE.md.
+plans/
+advisor-plans/
+
 # marketing — wiped in S.20; ignore by default in case someone recreates locally
 marketing/
 

@@ -1,5 +1,13 @@
 {
   "permissions": {
+    "deny": [
+      "Read(./*.key)",
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.smoke-jwt)",
+      "Read(./.smoke-addr)",
+      "Read(./**/.env.local)"
+    ],
     "allow": [
       "Bash(pnpm *)",
       "Bash(npm *)",
@@ -7,8 +15,18 @@
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
+      "Bash(git show*)",
       "Bash(git branch*)",
       "Bash(git stash*)",
+      "Bash(gh run list*)",
+      "Bash(gh run view*)",
+      "Bash(gh run watch*)",
+      "Bash(gh workflow list*)",
+      "Bash(gh workflow view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr view*)",
+      "Bash(gh issue list*)",
+      "Bash(gh issue view*)",
       "Bash(turbo *)",
       "Bash(ls *)",
       "Bash(cat *)",
@@ -20,12 +38,18 @@
       "Bash(rg *)",
       "Edit(packages/**)",
       "Edit(apps/**)",
+      "Edit(contracts/**)",
       "Edit(spec/**)",
       "Edit(t2000-skills/**)",
+      "Edit(.claude/**)",
+      "Edit(.cursor/**)",
       "Write(packages/**)",
       "Write(apps/**)",
+      "Write(contracts/**)",
       "Write(spec/**)",
       "Write(t2000-skills/**)",
+      "Write(.claude/**)",
+      "Write(.cursor/**)",
       "Read(**)"
     ]
   }

@@ -1,0 +1,100 @@
+---
+name: t2000-confidential-verify
+description: >-
+  The Confidential AI (GPU-TEE) verifiable-inference architecture — attested
+  fail-closed upstream, TEE-signed receipts, anchor-every on Sui, durable
+  receipts in Redis (NOT Walrus), client-trustless verification, and the honest
+  trust boundary that must never be overclaimed. Use when touching the
+  confidential inference path, receipts, anchoring, the phala/* model catalog,
+  verifyReceipt / t2 verify / the t2000_verify MCP tool / verify.t2000.ai, or
+  when writing any copy that describes what confidential mode proves.
+---
+
+# Confidential AI — verifiable inference (anchor + receipts + verify)
+
+The **Confidential tier** (`phala/*` models) serves inference from a verified
+GPU-TEE and proves every response. Shipped end-to-end 2026-07-01 (tracker
+S.577–S.595). This is the map + the load-bearing invariants — get them wrong and
+you either break the trust promise or overclaim (worse than honest ZDR).
+
+## The chain (per confidential response)
+
+1. **Attested upstream (fail-closed).** The gateway verifies the upstream GPU-TEE
+   attestation + channel binding (`tls_spki_sha256`) BEFORE forwarding, and
+   **refuses (503) if it can't** — `verifyConfidentialUpstream` in
+   `audric/apps/web-v3/lib/api/attestation.ts` (cached per model). A model with no
+   TDX quote fails closed → it must NOT be in the confidential catalog (probe
+   `inference.phala.com/v1/attestation/report?model=<upstream>` before listing one).
+2. **Signed receipt.** Every confidential response returns `x-receipt-id`; the
+   receipt is TEE-signed (secp256k1, dstack ACI canonical bytes: JCS → sha256 →
+   r‖s‖v) with a key published in the attestation.
+3. **Anchor-every (Sui).** `anchorAndStore` (`web-v3/lib/api/anchor.ts`), fired via
+   `after()` post-response (zero added latency), emits a `ReceiptAnchored` event
+   over `wire_hash` + `workload_id` on the `confidential_anchor` package
+   (`0x2a109a…`, mainnet). The anchor tx pays gas from the signer's **SUI address
+   balance** (`setGasPayment([])`, SIP-58) → concurrent-safe under serverless
+   (coin-gas fallback if the balance isn't funded). Anchor **before** the store
+   step — the slow step must never starve the anchor.
+4. **Durable receipt.** `anchorAndStore` persists the signed receipt body to
+   **Redis (1y TTL)** so `GET /v1/aci/receipts/{id}` serves it after the upstream
+   gateway TTL lapses.
+5. **Verify (client-trustless).** `verifyReceipt` (`packages/sdk/src/verify.ts`)
+   checks: receipt soundness · upstream claims · **Sui anchor (trustless, read
+   from a fullnode)** · **receipt signature (trustless)** · **TDX quote via
+   `@phala/dcap-qvl` (trustless, chains to Intel's root)**. Fails closed:
+   `verified` requires NO trustless check in `fail`. Surfaces: `t2 verify` (CLI,
+   full DCAP), the Audric Verify modal, and `verify.t2000.ai` (server-side
+   `verifyReceipt` with `skipQuote:true` + a `t2 verify` CTA — **never present a
+   server checkmark as client-side proof**).
+
+## Invariants — do NOT violate
+
+- **Durable receipts = Redis, NOT Walrus.** The Walrus "pin & own" plan was
+  **reversed** (S.592): DB and Walrus are equally trustless (signature + anchor
+  prove authenticity anywhere); Walrus's only delta was sovereignty, not worth the
+  ~20s multi-tx pin's cost/fragility when the on-chain anchor already carries the
+  permanent decentralized proof. Do NOT reintroduce Walrus for receipts. (MemWal /
+  decentralized *memory* on Walrus is a separate, valid feature.)
+- **Confidential = PURE in-TEE completion.** `confidentialChatResponse`
+  (`web-v3/lib/api/confidential-chat.ts`) passes **no tools / web-search /
+  artifacts / memory** to the model — any of those would send data OUT of the
+  enclave and break the confidentiality the 🔒 badge promises. The full agentic
+  experience is the normal (Private/ZDR) mode. ("Open as document" is a
+  client-side re-render of already-in-TEE text — safe; NOT the `createDocument`
+  tool.)
+- **Anchor-every, not on-demand.** Every confidential response is auto-anchored.
+  `POST /v1/aci/anchor/{id}` survives only as an idempotent backfill — never frame
+  it as the primary flow.
+- **Honest framing (mandatory).** State exactly what's proven: genuine TDX +
+  signed receipt + Sui anchor = trustless; the gateway's plaintext leg = ZDR (not
+  E2E); full E2EE = the deferred v3.1 rung. Mirror
+  `/confidential-ai/trust-boundary`. Never label routed/frontier (`openai/*`, …)
+  responses "confidential".
+- **Catalog = attestable-only + reasoning-labeled.** Confidential models must
+  return a TDX quote (else they 503 for everyone). `reasoning: true` on glm/kimi
+  (deeper, slower). No default `max_tokens` cap — it would truncate deep reasoning
+  and break OpenAI compat.
+- **Gating.** Confidential is the paid **2.0×** tier; entitlement = credit OR
+  plan. UX = allow the toggle for all (tease → intent) + upgrade overlay at SEND
+  if un-entitled.
+
+## Where it lives
+
+| Piece | File |
+|---|---|
+| Attestation verify (fail-closed) | `audric/apps/web-v3/lib/api/attestation.ts` |
+| Anchor-every + Redis receipt store | `audric/apps/web-v3/lib/api/anchor.ts` (`anchorAndStore`, `getReceiptBody`) |
+| Confidential chat (pure completion) | `audric/apps/web-v3/lib/api/confidential-chat.ts` |
+| Confidential catalog + pricing | `audric/apps/web-v3/lib/api/{models,providers}.ts` |
+| API endpoints | `audric/apps/web-v3/app/v1/aci/{attestation,receipts,sessions,anchor}` + `/v1/chat/completions` |
+| Consumer UI | `web-v3/components/chat/{multimodal-input,message,confidential-badge}.tsx` + `/api/verify-receipt` |
+| Client verifier | `packages/sdk/src/verify.ts` · `packages/cli/src/commands/verify.ts` · `t2000_verify` MCP tool |
+| Move anchor contract | `contracts/confidential_anchor/` (`0x2a109a…` mainnet) |
+| Public explorer | `apps/verify` → `verify.t2000.ai` |
+
+## Related
+
+- The anchor signer's SIP-58 concurrency → `t2000-sui-platform` skill
+- `spec/active/SPEC_CONFIDENTIAL_API.md` (v3.0 build) ·
+  `spec/active/SPEC_CONFIDENTIAL_UI.md` (UI + the S.592 storage reversal)
+- Mintlify `confidential-ai/*` → developers.t2000.ai
