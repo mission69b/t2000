@@ -428,6 +428,9 @@ you pay the price of the model that actually served each request).`,
           printWarning('No API key found.');
           printInfo(`1. Sign in at ${CONSOLE_KEYS_URL} (Google) and create an API key`);
           printInfo(`2. Re-run: t2 connect ${slug} --key sk-...`);
+          printInfo(
+            'Prefer no key? Pay per call in USDC: t2 pay (x402) — see developers.t2000.ai/authentication',
+          );
           printBlank();
           process.exitCode = 1;
           return;

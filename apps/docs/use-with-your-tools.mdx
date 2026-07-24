@@ -28,6 +28,16 @@ t2 connect aider                   # also: continue · codex · grok · cline ·
 
 `--print` shows what would be written without touching anything. Clients whose config is GUI-managed (Cline, Cursor) get a paste-ready walkthrough instead of a file write. The manual setup for every client follows below.
 
+<Note>
+  **`t2 connect` needs a Private Inference key** (free at
+  [agents.t2000.ai/manage](https://agents.t2000.ai/manage)). That is the path
+  for Hermes, Claude Code, Cursor, and other OpenAI-compatible tools — see
+  [Authentication](/authentication). Prefer no key / pay in USDC only? Use
+  [x402 pay-per-call](/private-inference#pay-per-call-over-x402--no-key-no-account)
+  via `t2 pay` instead. Those clients do not speak the 402 challenge natively,
+  so that path is for agents and scripts — not a drop-in for Hermes config.
+</Note>
+
 ## Which model id to set
 
 - **`t2000/auto`** — the router default. Routine steps run on a cheap open model; long-context, planning, and retry-after-failure steps escalate to a frontier one. You pay the price of the model that served (`x-t2000-served-model` header names it).
