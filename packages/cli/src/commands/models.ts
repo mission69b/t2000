@@ -3,11 +3,9 @@ import pc from 'picocolors';
 import { listModels } from '@t2000/sdk';
 import { handleError, isJsonMode, printBlank, printJson, printLine } from '../output.js';
 
-// `t2 models` — the Private Inference catalog listing. Interactive/one-shot
-// inference in the CLI moved to `t2 code` (npm install -g @t2000/code); the
-// old `t2 chat` verb was absorbed there per SPEC_INFERENCE_DEMAND (one
-// inference surface). `t2 verify` stays separate — receipt verification, not
-// inference.
+// `t2 models` — the Private Inference catalog listing. Interactive CLI chat
+// (`t2 chat`) was removed — use `t2 connect` or any OpenAI-compatible client.
+// `t2 verify` stays separate — receipt verification, not inference.
 
 export function registerModels(program: Command): void {
   program
@@ -47,10 +45,10 @@ export function registerModels(program: Command): void {
     .allowUnknownOption(true)
     .argument('[message...]')
     .action(() => {
-      printLine('`t2 chat` moved into t2 code — the coding agent on the same rail.');
-      printLine('  npm install -g @t2000/code');
-      printLine('  t2code "your prompt"        # interactive');
-      printLine('  t2code exec "your task"     # one-shot, headless');
+      printLine('`t2 chat` was removed.');
+      printLine('  Use your own agent with `t2 connect` (Claude Code, Codex, Continue, …)');
+      printLine('  or call https://api.t2000.ai/v1 directly.');
+      printLine('  Docs: https://developers.t2000.ai/use-with-your-tools');
       process.exitCode = 1;
     });
 }

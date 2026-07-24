@@ -25,7 +25,7 @@ t2000/
 │   ├── sdk/                                 (@t2000/sdk)
 │   └── serve/                               (@t2000/serve — merchant-side x402 router)
 │   # design tokens live in design-tokens/tokens.css (copy-in, no package)
-├── templates/                               ← deployable starter templates (serve-vercel — Deploy-with-Vercel target; NOT workspace packages; the t2000.ai/templates gallery links here)
+├── templates/                               ← deployable starter templates (serve-vercel — Deploy-with-Vercel target; NOT workspace packages)
 ├── contracts/                               ← Move sources (agent_id, confidential_anchor — live on mainnet)
 ├── scripts/                                 ← release tooling (release-notes.sh)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source + feed.json shelf)

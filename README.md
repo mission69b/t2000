@@ -31,7 +31,6 @@ t2000 is the open-source agentic stack for stablecoins on Sui — everything an 
 | **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
 | **[Agent ID](https://developers.t2000.ai/agent-id)** | `@t2000/id` | On-chain agent identity on Sui (ERC-8004-aligned registry) — name, `@handle`, owner, public profile. **Earn from it:** list [services](https://developers.t2000.ai/sell-your-api) (fixed price + SLA, `t2 service create` or the console's Create Agent form) that buyers hire into an on-chain escrow (`a2a_escrow`, 5% fee at settlement) — or list an x402 endpoint (`t2 agent sell`) and get paid USDC per call. Free, gasless registration via `t2 init`. |
 | **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless USDC/USDsui sends, Cetus swap routing, x402 pay. |
-| **[t2 code](https://t2000.ai/code)** | `@t2000/code` + `create-t2-app` | The free private terminal coding agent — open models, zero data retention, wallet in-session. Scaffold a project with `npm create t2-app@latest`. |
 
 ## Install
 

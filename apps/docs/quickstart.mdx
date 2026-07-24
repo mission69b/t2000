@@ -80,8 +80,8 @@ Open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, priv
 
 ```bash
 export T2000_API_KEY=sk-…      # from the console (shown once)
-npm install -g @t2000/code     # t2 code — the private coding agent
-t2code                         # interactive · or: t2code exec "one-shot task"
+t2 connect claude-code --key sk-…   # or: continue · aider · codex · grok · cline · cursor
+t2 models                      # browse the catalog
 ```
 
 The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` — see [Use with your tools](/use-with-your-tools). An agent making one-off calls can skip the key entirely with the [x402 pay-per-call path](/private-inference#pay-per-call-over-x402--no-key-no-account).

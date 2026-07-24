@@ -6,11 +6,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: `${base}/`,                lastModified: now, changeFrequency: 'weekly', priority: 1.0 },
-    { url: `${base}/code`,            lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/agent-wallet`,    lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/agent-payments`,  lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/private-inference`,             lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${base}/templates`,       lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/usage`,           lastModified: now, changeFrequency: 'daily',  priority: 0.7 },
   ];
 }

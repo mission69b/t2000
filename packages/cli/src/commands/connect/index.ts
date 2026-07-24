@@ -1,7 +1,7 @@
 // [SPEC_INFERENCE_DEMAND Step 1 item 1 — un-HELD 2026-07-16]
 // `t2 connect [client]` — point a coding tool at Private Inference
-// (api.t2000.ai/v1) with a console key. The headline target is t2 code;
-// ccr / Continue / aider / Codex / Cline / Cursor ride along.
+// (api.t2000.ai/v1) with a console key. Clients: Hermes, claude-code (ccr),
+// Continue, aider, Codex, Grok Build, Cline, Cursor.
 //
 // The one key path (§1d): the key comes from the console
 // (agents.t2000.ai/manage), pasted here via --key (or already in
@@ -32,14 +32,13 @@ import {
   grokFreshConfigToml,
   grokHasModel,
   grokModelBlock,
+  hermesConfigPath,
+  hermesConfigYaml,
+  hermesHasT2000,
   resolveClientSlug,
-  t2codeCredentialsPath,
-  t2codeHasKey,
   withCcrProvider,
-  withT2codeKey,
   type CcrConfig,
   type ConnectClientSlug,
-  type T2codeCredentials,
 } from './clients.js';
 import {
   handleError,
@@ -121,30 +120,6 @@ interface ConnectResult {
   detail: string;
   /** Snippet/instruction text (also printed in human mode). */
   text?: string;
-}
-
-function connectT2code(key: string, print: boolean): ConnectResult {
-  const path = t2codeCredentialsPath();
-  const existing = readJson<T2codeCredentials>(path);
-  if (t2codeHasKey(existing, key)) {
-    return { client: 't2code', action: 'exists', path, detail: 'already connected with this key' };
-  }
-  if (print) {
-    return {
-      client: 't2code',
-      action: 'snippet',
-      path,
-      detail: 'would write the key into t2 code credentials',
-      text: `Would set default.authToken in ${path}`,
-    };
-  }
-  writeFileEnsuringDir(path, JSON.stringify(withT2codeKey(existing, key), null, 2), 0o600);
-  return {
-    client: 't2code',
-    action: 'written',
-    path,
-    detail: 'key saved — run `t2code` (or `npm i -g @t2000/code` first)',
-  };
 }
 
 function connectClaudeCode(key: string, print: boolean): ConnectResult {
@@ -301,6 +276,37 @@ function connectGrok(key: string, print: boolean): ConnectResult {
   };
 }
 
+function connectHermes(key: string, print: boolean): ConnectResult {
+  const path = hermesConfigPath();
+  const existing = existsSync(path) ? readFileSync(path, 'utf-8') : '';
+  if (hermesHasT2000(existing)) {
+    return {
+      client: 'hermes',
+      action: 'exists',
+      path,
+      detail: 't2000 custom endpoint already in config.yaml — run `hermes`',
+    };
+  }
+  if (print || existsSync(path)) {
+    return {
+      client: 'hermes',
+      action: 'snippet',
+      path,
+      detail: existsSync(path)
+        ? 'config.yaml exists — paste the model block (or run `hermes model` → Custom endpoint)'
+        : 'would create ~/.hermes/config.yaml',
+      text: hermesConfigYaml(key),
+    };
+  }
+  writeFileEnsuringDir(path, hermesConfigYaml(key), 0o600);
+  return {
+    client: 'hermes',
+    action: 'written',
+    path,
+    detail: 'config.yaml created — run `hermes` (Nous Agent on Private Inference)',
+  };
+}
+
 function connectCline(key: string): ConnectResult {
   return {
     client: 'cline',
@@ -326,7 +332,7 @@ function connectCursor(key: string): ConnectResult {
       `  2. Expand "Override OpenAI Base URL" and set: ${API_BASE}`,
       `  3. Under Models, add \`${DEFAULT_MODEL}\`, then Verify.`,
       `Note: Cursor's agent features are tuned for its own models — use this`,
-      `for private chat models; delegation runs through t2 code.`,
+      `for private chat models in any OpenAI-compatible workflow.`,
     ].join('\n'),
   };
 }
@@ -339,8 +345,8 @@ function maskKey(key: string): string {
 
 function runConnect(slug: ConnectClientSlug, key: string, print: boolean): ConnectResult {
   switch (slug) {
-    case 't2code':
-      return connectT2code(key, print);
+    case 'hermes':
+      return connectHermes(key, print);
     case 'claude-code':
       return connectClaudeCode(key, print);
     case 'continue':
@@ -362,7 +368,10 @@ export function registerConnect(program: Command): void {
   program
     .command('connect')
     .description('Point a coding tool at Private Inference (api.t2000.ai/v1) with your key')
-    .argument('[client]', 'client to connect: t2code | claude-code | continue | aider | codex | grok | cline | cursor')
+    .argument(
+      '[client]',
+      'client to connect: hermes | claude-code | continue | aider | codex | grok | cline | cursor',
+    )
     .option('--key <sk-key>', `Private Inference key (create one at ${CONSOLE_KEYS_URL})`)
     .option('--print', 'Show what would be written / the paste snippet, without writing')
     .addHelpText(
@@ -370,8 +379,8 @@ export function registerConnect(program: Command): void {
       `
 Examples:
   $ t2 connect                         List supported clients
-  $ t2 connect t2code --key sk-...     Save your key into t2 code
-  $ t2 connect claude-code             Add the t2000 provider to claude-code-router
+  $ t2 connect hermes --key sk-...     Point Hermes Agent at Private Inference
+  $ t2 connect claude-code --key sk-...     Add the t2000 provider to claude-code-router
   $ t2 connect aider --print           Show the aider config without writing it
 
 The key comes from the console: sign in at ${CONSOLE_KEYS_URL}

@@ -84,12 +84,21 @@ const nextConfig: NextConfig = {
         destination: "/private-inference",
         permanent: true,
       },
-      // Templates went prompt-first (2026-07-19) — the per-slug detail pages
-      // folded into the gallery modal.
+      // Retired product pages — point at Private Inference.
+      {
+        source: "/code",
+        destination: "/private-inference",
+        permanent: true,
+      },
+      {
+        source: "/templates",
+        destination: "/private-inference",
+        permanent: true,
+      },
       {
         source: "/templates/:slug",
-        destination: "/templates",
-        permanent: false,
+        destination: "/private-inference",
+        permanent: true,
       },
     ];
   },

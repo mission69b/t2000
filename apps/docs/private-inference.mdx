@@ -95,7 +95,7 @@ Beyond any OpenAI SDK, the t2000 toolchain wraps the API as first-class verbs �
 ```bash CLI
 export T2000_API_KEY=sk-...
 t2 models                        # list the catalog (id · privacy tier · pricing)
-t2code exec "Explain x402 in one sentence."   # t2 code — one-shot, headless
+t2 connect claude-code --key sk-…   # wire a coding tool to Private Inference
 ```
 
 ```typescript SDK

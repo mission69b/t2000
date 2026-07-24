@@ -293,13 +293,18 @@ export function ApiRouter() {
         >
           <span className="text-[14px]" style={{ color: "var(--fg-muted)" }}>
             <span style={{ color: "var(--fg)", fontWeight: 600 }}>
-              t2 code
+              Use with your tools
             </span>{" "}
-            — a terminal coding agent built on this API.
+            — point Claude Code, Codex, Continue, or any OpenAI-compatible client
+            at this API with{" "}
+            <code className="font-mono" style={{ color: "var(--fg)" }}>t2 connect</code>.
           </span>
-          <Link href="/code" className="t2k-btn t2k-btn--ghost">
-            Meet t2 code&nbsp;→
-          </Link>
+          <a
+            href="https://developers.t2000.ai/use-with-your-tools"
+            className="t2k-btn t2k-btn--ghost"
+          >
+            Setup guide&nbsp;↗
+          </a>
         </div>
       </div>
     </section>

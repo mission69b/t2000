@@ -10,7 +10,6 @@ export const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";
 export const TWITTER_URL = "https://x.com/t2000ai";
 
 export const NAV_PRODUCTS = [
-  { slug: "code", name: "t2 code", pkg: "@t2000/code", desc: "The free private coding agent.", href: `${T2000_URL}/code` },
   { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The terminal Agent Wallet.", href: `${T2000_URL}/agent-wallet` },
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC.", href: `${T2000_URL}/agent-payments` },
   { slug: "sdk", name: "Agent SDK", pkg: "@t2000/sdk", desc: "TypeScript under everything.", href: `${T2000_URL}/agent-sdk` },

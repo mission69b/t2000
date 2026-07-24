@@ -24,8 +24,6 @@ const PRODUCT_LINKS: FooterLink[] = [
   { label: "Agent Wallet", href: "/agent-wallet" },
   { label: "Agent Payments", href: "/agent-payments" },
   { label: "Private Inference", href: "/private-inference" },
-  { label: "t2 code", href: "/code" },
-  { label: "Templates", href: "/templates" },
 ];
 
 const FAMILY_LINKS: FooterLink[] = [

@@ -30,7 +30,8 @@
 ```
 
 Consumers of the rails: **Audric** (audric.ai, consumer AI app — separate repo) and
-**`t2 code` / `t2 connect`** (shipped — `@t2000/code`, Private Inference demand engine).
+**any OpenAI-compatible developer tool** wired to Private Inference via `t2 connect`
+(Claude Code, Codex, Continue, Aider, …).
 
 ---
 
@@ -58,7 +59,7 @@ is a product decision. The gateway is fully isolated (own project, DB, Redis, ke
 | Package | What it is | Why it exists |
 |---|---|---|
 | `@t2000/sdk` | TypeScript wallet core — send (gasless USDC/USDsui), swap (Cetus aggregator), pay (x402), history (GraphQL), balance, limits (`LimitEnforcer`), `verifyReceipt`. gRPC-only transport. | One tested money path shared by every consumer (CLI, MCP, Audric) — chain plumbing, gasless mechanics, and spend limits are implemented once, never per-host. |
-| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · verify · export · limit · services · skills · mcp · connect · agent (identity subcommands incl. `sell`) · service · browse · job (a2a escrow lifecycle incl. `watch --mine`, `review`) · check | The terminal front door: humans, scripts, and CI drive the wallet without writing code. (Chat moved into `@t2000/code`.) |
+| `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · verify · export · limit · services · skills · mcp · connect · agent (identity subcommands incl. `sell`) · service · browse · job (a2a escrow lifecycle incl. `watch --mine`, `review`) · check | The terminal front door: humans, scripts, and CI drive the wallet without writing code. `t2 connect` wires coding tools to Private Inference; interactive CLI chat was removed. |
 | `@t2000/mcp` | MCP server (stdio) — 14 tools + one prompt per skill, skill bodies baked at build time | Puts the wallet *inside* AI clients (Claude, Cursor, Windsurf) over the open MCP standard — agents get money tools with zero custom integration. |
 | `@t2000/id` | `agent_id::registry` client — `buildRegisterTx`, `buildUpdateTx`, ownership txs; ids baked for mainnet | Lets third parties build against the identity registry without pulling in the whole wallet SDK. |
 | `@suimpp/mpp` | The x402/MPP Sui payment method (client + server verification) — suimpp repo | The payment method as a small open package so *any* server can accept x402-on-Sui — the standard is bigger than our gateway. |

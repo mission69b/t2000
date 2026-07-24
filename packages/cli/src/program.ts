@@ -49,8 +49,8 @@ Examples:
   $ t2 balance                         Show USDC / USDsui / SUI holdings
   $ t2 send 5 USDC alice.sui           Send 5 USDC (gasless; asset required)
   $ t2 swap 100 USDC SUI               Swap 100 USDC for SUI via Cetus
-  $ t2 models                          List the Private Inference model catalog (chat lives in \`t2 code\`)
-  $ t2 connect t2code --key sk-...     Point a coding tool at Private Inference
+  $ t2 models                          List the Private Inference model catalog
+  $ t2 connect claude-code --key sk-...     Point a coding tool at Private Inference
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 check <url>                     Validate your paid API against the listing gates (add --list to sell it)

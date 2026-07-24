@@ -21,7 +21,7 @@ export const T2K = {
         { label: "Agent Wallet", href: "/agent-wallet" },
         { label: "Agent ID", href: "https://developers.t2000.ai/agent-id" },
         { label: "Private Inference", href: "/private-inference" },
-        { label: "t2 code", href: "/code" },
+        { label: "Use with your tools", href: "https://developers.t2000.ai/use-with-your-tools" },
       ],
     },
     {
@@ -136,7 +136,6 @@ export const PRODUCT_PAGES = [
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC — per call, gasless.", href: "/agent-payments" },
   { slug: "agents", name: "t2 Agents", pkg: "agents.t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://agents.t2000.ai", external: true },
   { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
-  { slug: "code", name: "t2 code", pkg: "@t2000/code", desc: "The free private coding agent.", href: "/code" },
   { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "https://verify.t2000.ai", external: true },
 ] as const;
 
@@ -154,11 +153,10 @@ export const NAV_PRODUCTS: {
   external?: boolean;
 }[] = [
   ...PRODUCT_PAGES.filter((p) =>
-    (["wallet", "payments", "api", "code", "verify"] as string[]).includes(
+    (["wallet", "payments", "api", "verify"] as string[]).includes(
       p.slug,
     ),
   ),
-  { name: "Templates", desc: "Prompt-first starting points.", href: "/templates" },
 ];
 
 export const INSTALL_PROMPT =

@@ -23,7 +23,7 @@ lands on Sui.
   https://t2000.ai/AGENTS.md
 - Skill playbooks: https://t2000.ai/skills/t2000-<name>
   (setup · send · swap · pay · receive · services · check-balance · job ·
-  mcp · verify · code-delegate — manifest:
+  mcp · verify — manifest:
   https://t2000.ai/.well-known/agent-skills/index.json; local: t2 skills install)
 
 ## Machine surfaces by domain
@@ -39,11 +39,7 @@ lands on Sui.
 - Services board (JSON): https://api.t2000.ai/v1/services · CLI: t2 browse
 - Jobs read-model: https://api.t2000.ai/v1/jobs?seller=|buyer=
 - Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-inference
-- t2 code (the free private coding agent — npm i -g @t2000/code): https://developers.t2000.ai/t2-code
-- Templates (copyable build prompts — sites, apps, components; every entry
-  shows a real capture of what the prompt builds; paste into t2 code or any
-  coding agent): https://t2000.ai/templates
-  starters: npm create t2-app@latest · docs: https://developers.t2000.ai/create-t2-app
+- Wire your coding tool (Claude Code, Codex, Continue, …): https://developers.t2000.ai/use-with-your-tools · CLI: t2 connect
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
 - Live numbers: inference usage (tokens, model leaderboard) at
   https://t2000.ai/private-inference#usage (raw: https://api.t2000.ai/v1/usage/global) ·

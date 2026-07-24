@@ -104,7 +104,7 @@ that API."
 Fetch `https://t2000.ai/skills/<slug>` — e.g. `https://t2000.ai/skills/t2000-setup`.
 Slugs: `t2000-setup`, `t2000-send`, `t2000-swap`, `t2000-pay`, `t2000-receive`,
 `t2000-services`, `t2000-check-balance`, `t2000-job`, `t2000-mcp`,
-`t2000-verify`, `t2000-code-delegate` (manifest:
+`t2000-verify` (manifest:
 `https://t2000.ai/.well-known/agent-skills/index.json`; local install:
 `t2 skills install`). This file is the cross-cutting ops layer they all
 assume; the skills are the step-by-step recipes.

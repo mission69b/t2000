@@ -71,8 +71,6 @@
             "group": "Compute",
             "pages": [
               "private-inference",
-              "t2-code",
-              "create-t2-app",
               "authentication",
               "models",
               "use-with-your-tools"
@@ -175,6 +173,14 @@
     {
       "source": "/private-api",
       "destination": "/private-inference"
+    },
+    {
+      "source": "/t2-code",
+      "destination": "/use-with-your-tools"
+    },
+    {
+      "source": "/create-t2-app",
+      "destination": "/use-with-your-tools"
     }
   ],
   "navbar": {
@@ -225,14 +231,6 @@
           {
             "label": "@t2000/serve",
             "href": "https://www.npmjs.com/package/@t2000/serve"
-          },
-          {
-            "label": "@t2000/code",
-            "href": "https://www.npmjs.com/package/@t2000/code"
-          },
-          {
-            "label": "create-t2-app",
-            "href": "https://www.npmjs.com/package/create-t2-app"
           }
         ]
       },

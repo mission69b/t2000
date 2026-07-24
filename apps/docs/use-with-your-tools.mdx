@@ -21,10 +21,9 @@ If you have the [t2 CLI](/cli-reference) installed, `t2 connect <client>` writes
 
 ```bash
 npm install -g @t2000/cli
-t2 connect t2code --key sk-...     # t2 code (the t2000 coding agent)
-t2 connect claude-code             # Claude Code, via claude-code-router
-t2 connect grok                    # Grok Build (BYOK custom-model block)
-t2 connect aider                   # also: continue · codex · cline · cursor
+t2 connect hermes --key sk-...         # Hermes Agent (Nous)
+t2 connect claude-code --key sk-...     # Claude Code, via claude-code-router
+t2 connect aider                   # also: continue · codex · grok · cline · cursor
 ```
 
 `--print` shows what would be written without touching anything. Clients whose config is GUI-managed (Cline, Cursor) get a paste-ready walkthrough instead of a file write. The manual setup for every client follows below.
@@ -129,6 +128,27 @@ codex --profile t2000
 
 ---
 
+## Hermes Agent (Nous)
+
+[Hermes](https://hermes-agent.nousresearch.com/) takes any OpenAI-compatible custom endpoint. `t2 connect hermes` writes `~/.hermes/config.yaml` (aliases: `hermies`, `nous`):
+
+```yaml
+model:
+  default: t2000/auto
+  provider: custom
+  base_url: https://api.t2000.ai/v1
+  api_key: sk-...
+```
+
+Hermes appends `/chat/completions` itself — keep `base_url` at `/v1`. If you already have a Hermes config, `t2 connect hermes` prints the block to paste (or use `hermes model` → Custom endpoint).
+
+```bash
+t2 connect hermes --key sk-...
+hermes
+```
+
+---
+
 ## Grok Build
 
 xAI's Grok Build TUI takes BYOK custom models in `~/.grok/config.toml` — the same pattern (`t2 connect grok` writes this for you):
@@ -151,7 +171,7 @@ Then (`export T2000_API_KEY=sk-…` first):
 grok -m t2000     # or /model t2000 in the TUI
 ```
 
-Note the trade-off plainly: routing Grok Build's *inference* through us covers the model side, but the binary itself is xAI's — auto-updating, closed development (no external contributions). If the client's own wire behavior matters to you, that's what [t2 code](/t2-code) is for.
+Note the trade-off plainly: routing Grok Build's *inference* through us covers the model side, but the binary itself is xAI's — auto-updating, closed development (no external contributions). For full control over the client, use an open-source coding CLI (Aider, Continue, Codex) with the same base URL + key.
 
 ---
 

@@ -68,7 +68,6 @@ Installs all ten wallet skills (the `t2000-agent-wallet` plugin) via Claude Code
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
 | [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the tool surface, and the most common "MCP doesn't load" failure modes. |
 | [`t2000-verify`](https://t2000.ai/skills/t2000-verify) | Check — don't trust — a confidential (GPU-TEE) AI response by its receipt id: `t2 verify <rcpt-…>` runs the trustless checks (signed receipt · attested upstream · on-chain Sui anchor · signature · Intel TDX quote) and fails closed. No key needed; also at verify.t2000.ai. |
-| [`t2000-code-delegate`](https://t2000.ai/skills/t2000-code-delegate) | Delegate mechanical coding work (sweeps, renames, test-fix loops) to t2 code via headless `t2code exec` — open-model pricing, private by default; the host agent specifies, supervises, and reviews the diff. |
 
 ### Sui ecosystem skills
 

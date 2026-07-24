@@ -1,48 +1,10 @@
 ---
-description: Delegate well-specified grunt tasks to t2code exec on Private Inference (Grind lane, SPEC_INFERENCE_DEMAND)
-alwaysApply: true
+description: RETIRED — Grind lane (t2code exec) removed with @t2000/code. Use Claude Code Build lane (spend-lanes.mdc).
+alwaysApply: false
 ---
 
-# Delegate grunt work to t2 code
+# t2000-delegate — retired
 
-Grind lane = **`t2code exec`** (the `@t2000/code` coding agent on Private
-Inference / `t2000/auto`). This is dogfood for our own product — bulk steps
-route cheap, hard steps auto-escalate. Burning frontier Cursor tokens on
-mechanical work is the failure mode this rule exists to stop.
-
-**Not `zero`.** `zero` was the interim Step-0 executor; do not use it.
-
-## When to delegate (Grind)
-
-A task qualifies when it is WELL-SPECIFIED and MECHANICAL — you could write
-acceptance criteria in two sentences:
-
-- sweeps (rename X→Y across files, update imports, fix lint warnings)
-- make-the-tests-pass loops on a known suite
-- boilerplate generation from an existing pattern
-- doc/comment staleness sweeps with clear criteria
-
-Do NOT Grind: ambiguous or architectural work, security-sensitive changes,
-anything touching money paths (`packages/sdk` send/swap/pay logic), or tasks
-where the spec IS the hard part. Those go to **Think** (Cursor) or **Build**
-(Claude Code on Anthropic Max) — see `spend-lanes.mdc`.
-
-## How
-
-Same working tree (integrated terminal):
-
-```bash
-t2code exec "<task with explicit acceptance criteria>"
-# noisy suites — keep output short so the agent transcript stays readable
-t2code exec "run CI=true pnpm --filter <pkg> test 2>&1 | tail -40 and fix until green: <criteria>"
-```
-
-Prereq: `t2code login` with a console key (`T2000_API_KEY` / console mint) so
-inference bills the Private Inference account — never put keys in the prompt.
-
-- Monitor the run; when it finishes, REVIEW THE DIFF yourself (`git diff`)
-  before reporting back. You own the result, not t2code.
-- Never let t2code commit. Commits happen through the normal review flow.
-- If t2code's result is wrong twice, stop Grind for that task class and escalate
-  to Build (Claude Code) — note the misroute (eval fodder for
-  `audric/apps/web-v3/scripts/api-router-eval.ts`).
+The `@t2000/code` product and `t2code exec` Grind lane were removed. Route
+mechanical multi-file work to **Claude Code on Anthropic Max** — see
+`spend-lanes.mdc`.

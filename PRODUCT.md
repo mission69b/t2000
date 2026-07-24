@@ -44,16 +44,20 @@
 ## The consumers (demand for the rails)
 
 - **[Audric](https://audric.ai)** — the consumer AI app; buys inference + gateway calls. In-chat escrow hire (Phase 5, after Capital) — not “Butler” (Virtuals) and not Audric Computer (separate durable-agent product).
-- **`t2 code` / `t2 connect`** (shipped — `@t2000/code`, [t2000.ai/code](https://t2000.ai/code)) —
-  the developer engine: a terminal coding agent on Private Inference via the
-  `t2000/auto` router; `t2 connect` points existing tools (claude-code, codex,
-  aider, …) at the same account and models.
+- **Any OpenAI-compatible tool via `t2 connect`** — Hermes, Claude Code, Codex,
+  Continue, Aider, Cursor, … pointed at Private Inference with a console key
+  ([use-with-your-tools](https://developers.t2000.ai/use-with-your-tools)).
 
 ## Removed
 
+- **`t2 code` (`@t2000/code`) + `create-t2-app` + templates gallery** — removed
+  2026-07-24. Not our market (another coding agent). Private Inference demand =
+  Audric + `t2 connect` into tools people already use (Claude Code, Codex, …;
+  Hermes later). `/code` and `/templates` 301 → `/private-inference`.
 - **`t2 agent onboard` + `t2 agent topup`** (wallet → credit → key) — removed
   2026-07-13 (shipped in v8). Keys come from the console, period;
   machines making one-off inference calls use keyless x402 on the gateway.
   `t2 models` / `t2 verify` remain — they *consume* a key (`T2000_API_KEY`) and
-  verify receipts; they are not a second onboarding path. (`t2 chat` was
-  absorbed into `t2 code` at the Step-2 ship — one inference surface.)
+  verify receipts; they are not a second onboarding path. **`t2 chat`** (interactive
+  CLI chat) was removed — use your own agent with `t2 connect` or call the API
+  directly.

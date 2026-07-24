@@ -4,8 +4,7 @@
 // platforms.ts pattern) so unit tests exercise the merge logic without disk.
 //
 // Write policy (the safety contract):
-//   - A config file we fully own the schema of (t2code credentials, fresh
-//     files) → write/merge it.
+//   - A config file we fully own the schema of (fresh files) → write/merge it.
 //   - A config file the USER owns that already exists (Continue YAML, aider
 //     conf) → never parse-and-mangle; print the paste-ready snippet instead.
 //   - GUI-managed config (Cline, Cursor, ccr's SQLite) → instructions only.
@@ -20,7 +19,7 @@ export const OPEN_MODEL = 't2000/auto-open';
 export const CONSOLE_KEYS_URL = 'https://agents.t2000.ai/manage';
 
 export type ConnectClientSlug =
-  | 't2code'
+  | 'hermes'
   | 'claude-code'
   | 'continue'
   | 'aider'
@@ -39,10 +38,10 @@ export interface ConnectClient {
 
 export const CONNECT_CLIENTS: ConnectClient[] = [
   {
-    slug: 't2code',
-    name: 't2 code',
-    aliases: ['code'],
-    blurb: 'the t2000 coding agent (npm i -g @t2000/code) — saves your key',
+    slug: 'hermes',
+    name: 'Hermes Agent (Nous)',
+    aliases: ['hermies', 'nous'],
+    blurb: 'custom endpoint in ~/.hermes/config.yaml',
   },
   {
     slug: 'claude-code',
@@ -96,34 +95,35 @@ export function resolveClientSlug(input: string): ConnectClientSlug | undefined 
   return undefined;
 }
 
-// ---------------------------------------------------------------- t2 code
+// ---------------------------------------------------------- Hermes Agent
+//
+// NousResearch Hermes — OpenAI-compatible custom endpoint via
+// ~/.hermes/config.yaml (`provider: custom`). Hermes appends
+// /chat/completions itself; base_url must end at /v1.
 
-export function t2codeCredentialsPath(home = homedir()): string {
-  return join(home, '.config', 't2code', 'credentials.json');
+export function hermesConfigPath(home = homedir()): string {
+  return join(home, '.hermes', 'config.yaml');
 }
 
-export interface T2codeCredentials {
-  default?: { name?: string; email?: string; authToken?: string };
-  [key: string]: unknown;
+/** Fresh-file body (and paste snippet when a config already exists). */
+export function hermesConfigYaml(key: string): string {
+  return [
+    `# t2000 Private Inference (written by \`t2 connect hermes\`)`,
+    `# https://hermes-agent.nousresearch.com/docs/integrations/providers`,
+    `model:`,
+    `  default: ${DEFAULT_MODEL}`,
+    `  provider: custom`,
+    `  base_url: ${API_BASE}`,
+    `  api_key: ${key}`,
+    ``,
+  ].join('\n');
 }
 
-/** Merge the key into t2code's credentials file shape (preserves email etc). */
-export function withT2codeKey(existing: T2codeCredentials, key: string): T2codeCredentials {
-  return {
-    ...existing,
-    default: {
-      name: 't2000',
-      email: '',
-      ...(typeof existing.default === 'object' && existing.default !== null
-        ? existing.default
-        : {}),
-      authToken: key,
-    },
-  };
-}
-
-export function t2codeHasKey(existing: T2codeCredentials, key: string): boolean {
-  return existing.default?.authToken === key;
+export function hermesHasT2000(existingYaml: string): boolean {
+  return (
+    existingYaml.includes('api.t2000.ai') &&
+    /provider:\s*custom/.test(existingYaml)
+  );
 }
 
 // ------------------------------------------------- claude-code-router (ccr)

@@ -1,5 +1,5 @@
 ---
-description: Spend lanes — Cursor Think; Claude Code Build; t2 code Grind. Stops frontier token burn on implementation in Cursor.
+description: Spend lanes — Cursor Think; Claude Code Build. Stops frontier token burn on implementation in Cursor.
 alwaysApply: true
 ---
 
@@ -10,24 +10,19 @@ implementation is the failure mode this rule stops. Founder pays Cursor Max +
 Anthropic Max; **all multi-file code work goes to Claude Code on the Max
 subscription** (browser OAuth login — never an Anthropic API key in Cursor).
 
-## The three lanes
+## The two lanes
 
 | Lane | Tool | Use for |
 |---|---|---|
 | **Think** | This Cursor chat (default = Auto; Fable only for hard architecture / debugging) | Specs, plans, review, acceptance criteria, handoff prompts |
-| **Build** | Claude Code (`claude`) on Anthropic Max | Features, refactors, multi-file implementation, long agentic loops |
-| **Grind** | **`t2code exec`** on Private Inference (`t2000/auto`) | Sweeps, renames, make-tests-pass, boilerplate — see `t2000-delegate.mdc` |
-
-**Grind is `t2 code` — not `zero`.** `zero` was the interim Step-0 executor before
-`@t2000/code` shipped. Do not route work to `zero`. Dogfood our own coding agent.
+| **Build** | Claude Code (`claude`) on Anthropic Max | Features, refactors, multi-file implementation, long agentic loops, mechanical sweeps |
 
 ## What this chat MUST do
 
 When the user asks for code / implementation / “build X” / “fix the tests”:
 
 1. Write a short plan + **acceptance criteria** (verifiable).
-2. Emit a **paste-ready Claude Code prompt** (Build) **or** a `t2code exec "…"`
-   command (Grind) — pick the lane.
+2. Emit a **paste-ready Claude Code prompt** (Build).
 3. **Stop.** Do not open a large edit loop in Cursor.
 
 Exceptions (OK to implement here): single-file typo, one-line config, or the
@@ -38,10 +33,8 @@ user explicitly says “do it in this chat.”
 - Multi-hour agentic coding sessions in Cursor on Fable / thinking-high.
 - Re-open or continue a months-long mega-thread for a new task — **one task = one chat**.
 - Put an Anthropic API key into Cursor “to use Max” — Max does not cover API keys.
-- Call `zero` / `zero exec` for Grind — use `t2code exec` only.
-- Burn frontier on work that qualifies for Grind (`t2000-delegate.mdc`).
 
-## After Build / Grind finishes
+## After Build finishes
 
 Review the diff (`git diff`). Commits stay on the normal review path — do not
-tell Claude Code or t2code to push blindly.
+tell Claude Code to push blindly.

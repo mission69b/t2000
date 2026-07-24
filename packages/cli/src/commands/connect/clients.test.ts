@@ -16,18 +16,19 @@ import {
   grokFreshConfigToml,
   grokHasModel,
   grokModelBlock,
+  hermesConfigYaml,
+  hermesHasT2000,
   resolveClientSlug,
-  t2codeHasKey,
   withCcrProvider,
-  withT2codeKey,
 } from './clients.js';
 
 const KEY = 'sk-test-key-123';
 
 describe('resolveClientSlug', () => {
   it('resolves slugs and aliases case-insensitively', () => {
-    expect(resolveClientSlug('t2code')).toBe('t2code');
-    expect(resolveClientSlug('code')).toBe('t2code');
+    expect(resolveClientSlug('hermes')).toBe('hermes');
+    expect(resolveClientSlug('hermies')).toBe('hermes');
+    expect(resolveClientSlug('nous')).toBe('hermes');
     expect(resolveClientSlug('CCR')).toBe('claude-code');
     expect(resolveClientSlug('claude')).toBe('claude-code');
     expect(resolveClientSlug('aider')).toBe('aider');
@@ -37,30 +38,25 @@ describe('resolveClientSlug', () => {
 
   it('returns undefined for unknown clients', () => {
     expect(resolveClientSlug('emacs')).toBeUndefined();
+    expect(resolveClientSlug('t2code')).toBeUndefined();
+    expect(resolveClientSlug('code')).toBeUndefined();
   });
 });
 
-describe('withT2codeKey', () => {
-  it('writes the key into default.authToken on an empty file', () => {
-    const next = withT2codeKey({}, KEY);
-    expect(next.default?.authToken).toBe(KEY);
-    expect(next.default?.name).toBe('t2000');
+describe('hermes config', () => {
+  it('writes provider custom + /v1 base (Hermes appends /chat/completions)', () => {
+    const yaml = hermesConfigYaml(KEY);
+    expect(yaml).toContain('provider: custom');
+    expect(yaml).toContain(`base_url: ${API_BASE}`);
+    expect(yaml).toContain(`default: ${DEFAULT_MODEL}`);
+    expect(yaml).toContain(`api_key: ${KEY}`);
+    expect(yaml).not.toContain('/chat/completions');
   });
 
-  it('preserves existing fields and replaces only the token', () => {
-    const next = withT2codeKey(
-      { default: { name: 'me', email: 'a@b.c', authToken: 'sk-old' }, other: 1 },
-      KEY,
-    );
-    expect(next.default?.authToken).toBe(KEY);
-    expect(next.default?.email).toBe('a@b.c');
-    expect(next.other).toBe(1);
-  });
-
-  it('t2codeHasKey detects an identical key (idempotency check)', () => {
-    expect(t2codeHasKey({ default: { authToken: KEY } }, KEY)).toBe(true);
-    expect(t2codeHasKey({ default: { authToken: 'sk-old' } }, KEY)).toBe(false);
-    expect(t2codeHasKey({}, KEY)).toBe(false);
+  it('hermesHasT2000 detects an existing t2000 custom endpoint', () => {
+    expect(hermesHasT2000(hermesConfigYaml(KEY))).toBe(true);
+    expect(hermesHasT2000('model:\n  provider: openai\n')).toBe(false);
+    expect(hermesHasT2000('')).toBe(false);
   });
 });
 

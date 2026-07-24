@@ -106,17 +106,6 @@
             "setup"
           ],
           "skillUrl": "https://t2000.ai/skills/t2000-mcp"
-        },
-        {
-          "slug": "t2000-code-delegate",
-          "name": "Delegate coding tasks",
-          "description": "Delegate mechanical coding work to t2 code via headless `t2code exec` \u2014 open-model pricing, private by default, review the diff after.",
-          "tags": [
-            "coding",
-            "delegation",
-            "t2-code"
-          ],
-          "skillUrl": "https://t2000.ai/skills/t2000-code-delegate"
         }
       ]
     },
