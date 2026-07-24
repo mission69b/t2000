@@ -30,7 +30,7 @@ t2 connect aider                   # also: continue · codex · grok · cline ·
 
 ## Which model id to set
 
-- **`t2000/auto`** — the default for coding agents. Routine steps run on a cheap open model; long-context, planning, and retry-after-failure steps escalate to a frontier one. You pay the price of the model that served (`x-t2000-served-model` header names it).
+- **`t2000/auto`** — the router default. Routine steps run on a cheap open model; long-context, planning, and retry-after-failure steps escalate to a frontier one. You pay the price of the model that served (`x-t2000-served-model` header names it).
 - **`t2000/auto-open`** — the same router, open models only. Your prompts never reach a closed-model provider.
 - **A pinned id** — any id from [`GET /v1/models`](/models), e.g. `phala/glm-5.2` for hardware-verified confidential inference.
 
@@ -214,7 +214,7 @@ print(llm.invoke("Hello from t2000").content)
 
 ## Other OpenAI-compatible clients
 
-The same base URL + key works in any tool that targets OpenAI Chat Completions — coding agents like **Kilo Code**, **Cline**, **Continue**, and **Aider** (`--openai-api-base`), frameworks like **LiteLLM** (`openai/<model>`) and **LlamaIndex**, and most "bring your own OpenAI key" apps and agents. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`, set the model to `t2000/auto` (or pick a pinned id from [`GET /v1/models`](/models)), and every call is private by default — billed from your one balance.
+The same base URL + key works in any tool that targets OpenAI Chat Completions — **Hermes**, **Claude Code**, **Cline**, **Continue**, **Aider**, **Codex** (`t2 connect` wires most of these), frameworks like **LiteLLM** (`openai/<model>`) and **LlamaIndex**, and most "bring your own OpenAI key" apps and agents. If a tool has an "OpenAI base URL" or "custom endpoint" field, point it at `https://api.t2000.ai/v1`, set the model to `t2000/auto` (or pick a pinned id from [`GET /v1/models`](/models)), and every call is private by default — billed from your one balance.
 
 ---
 

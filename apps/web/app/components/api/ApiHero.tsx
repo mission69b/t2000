@@ -83,7 +83,7 @@ export function ApiHero({ liveTokens }: { liveTokens?: number | null }) {
                 letterSpacing: "-0.014em",
               }}
             >
-              An OpenAI-compatible API for coding agents. Every model runs
+              An OpenAI-compatible API for agents and tools. Every model runs
               with <span style={{ color: "var(--fg)" }}>zero data retention</span>{" "}
               — prompts are never stored or trained on.{" "}
               <code className="font-mono" style={{ color: "var(--fg)" }}>
