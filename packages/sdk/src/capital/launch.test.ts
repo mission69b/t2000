@@ -77,7 +77,6 @@ describe('buildTokenizeTx', () => {
     launcher: LAUNCHER,
     coinType: `${PKG}::funkii::FUNKII`,
     supplyCoinId: normalizeSuiAddress('0x51'),
-    coinMetadataId: normalizeSuiAddress('0x52'),
     lpUsdcAmount: 25_000_000n, // 25 USDC
     agentRegistryId: AGENT_REGISTRY,
     client: fakeClient,
@@ -92,7 +91,7 @@ describe('buildTokenizeTx', () => {
     expect(calls).toEqual([
       'registry::bind',
       'pool_creator::full_range_tick_range',
-      'pool_creator::create_pool_v2',
+      'pool_creator::create_pool_v3',
       'position::pool_id',
       'lp_lock::lock',
       'registry::finalize',

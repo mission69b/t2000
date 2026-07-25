@@ -80,9 +80,6 @@ export interface CreatePoolArgs {
   /** Fully-qualified coin type of side A (must be Cetus-canonical order vs B). */
   coinTypeA: string;
   coinTypeB: string;
-  /** `CoinMetadata` object ids for both sides. */
-  metadataA: string;
-  metadataB: string;
   /** Coin<A> / Coin<B> PTB inputs to seed liquidity from. */
   coinA: TransactionArgument;
   coinB: TransactionArgument;
@@ -94,14 +91,20 @@ export interface CreatePoolArgs {
 }
 
 /**
- * `pool_creator::create_pool_v2` — permissionless pool + initial full-range
+ * `pool_creator::create_pool_v3` — permissionless pool + initial full-range
  * position in one call. Returns `[Position, Coin<A> refund, Coin<B> refund]`
  * as PTB results.
+ *
+ * v3, not v2 (2026-07-25 probe): Sui migrated major coins' metadata to
+ * `0x2::coin_registry::Currency` — USDC's object is no longer a legacy
+ * `coin::CoinMetadata`, so v2 (which takes `&CoinMetadata` for both sides)
+ * fails resolution with TypeMismatch. v3 is the registry-era entry: same
+ * shape, no metadata params. Verified by mainnet simulation both ways.
  */
-export function createPoolV2(tx: Transaction, args: CreatePoolArgs): TransactionResult {
+export function createPoolV3(tx: Transaction, args: CreatePoolArgs): TransactionResult {
   const [tickLower, tickUpper] = fullRangeTickRange(tx);
   return tx.moveCall({
-    target: `${CETUS_CLMM_PUBLISHED_AT}::pool_creator::create_pool_v2`,
+    target: `${CETUS_CLMM_PUBLISHED_AT}::pool_creator::create_pool_v3`,
     typeArguments: [args.coinTypeA, args.coinTypeB],
     arguments: [
       tx.object(CETUS_GLOBAL_CONFIG_ID),
@@ -113,8 +116,6 @@ export function createPoolV2(tx: Transaction, args: CreatePoolArgs): Transaction
       tickUpper,
       args.coinA,
       args.coinB,
-      tx.object(args.metadataA),
-      tx.object(args.metadataB),
       tx.pure.bool(args.fixAmountA),
       tx.object.clock(),
     ],

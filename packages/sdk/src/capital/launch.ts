@@ -6,7 +6,7 @@ import type { SuiCoreClient } from '../utils/sui.js';
 import { selectAndSplitCoin } from '../wallet/coinSelection.js';
 import {
   CETUS_POSITION_TYPE,
-  createPoolV2,
+  createPoolV3,
   positionPoolId,
   sqrtPriceX64FromAmounts,
 } from '../protocols/cetus-clmm.js';
@@ -47,22 +47,24 @@ import {
  * `ctx.sender()` every call).
  */
 
-/** The published `agent_capital` package id (mainnet, deployed 2026-07-24,
- *  tx `J1dxR72oFhoiZtnwZng9jnDtBev58K9Z8PdPBtMp5eBb`). Env-overridable for
+/** The published `agent_capital` package id (mainnet, FRESH deploy
+ *  2026-07-25 from the t2000 deployer `0xe7ac…`, tx `3FvSLERmmTLp396D…` —
+ *  supersedes the orphaned 2026-07-24 `0x33a04c67…` publish, which was cut
+ *  from the wrong wallet and never bound a token). Env-overridable for
  *  testnet/dev (same pattern as `A2A_ESCROW_PACKAGE_ID`). */
 export const AGENT_CAPITAL_PACKAGE_ID =
   process.env.AGENT_CAPITAL_PACKAGE_ID ??
-  '0x33a04c672381c1de7178f56221e4ebfc4712675feecc2a0b70c25efbb500fc25';
+  '0xa83ecc4e530594f8e184faf6a4c3da6791267f6791a653644d59e2e603c055b8';
 
 /** The shared `CapitalRegistry` object id (mainnet). */
 export const CAPITAL_REGISTRY_ID =
   process.env.CAPITAL_REGISTRY_ID ??
-  '0xd75a72e80c1a5181cc9bb095089cc236e3e20be11b5982ab21e76c54508bd2d7';
+  '0xef4057baac856d65b47f14a1ba14211299637955ea5bc15d7708f6eef27ee0df';
 
 /** `initial_shared_version` of the CapitalRegistry — lets builders reference
  *  the shared object without a resolution round-trip. */
 export const CAPITAL_REGISTRY_VERSION = Number(
-  process.env.CAPITAL_REGISTRY_VERSION ?? 951301211,
+  process.env.CAPITAL_REGISTRY_VERSION ?? 931861908,
 );
 
 function assertDeployed(): void {
@@ -137,10 +139,6 @@ export interface TokenizeArgs {
   coinType: string;
   /** The launcher-owned Coin object holding the full 1B supply (from PTB 1). */
   supplyCoinId: string;
-  /** The published coin's CoinMetadata object id (frozen, from PTB 1). */
-  coinMetadataId: string;
-  /** USDC CoinMetadata object id (constant on mainnet, arg for testnet). */
-  usdcMetadataId?: string;
   /** Raw USDC (6dp) the launcher seeds the pool with (≥ MIN_LP_USDC) —
    *  selected from the launcher's own coins, never platform funds. */
   lpUsdcAmount: bigint;
@@ -153,10 +151,6 @@ export interface TokenizeArgs {
   /** Client for USDC coin selection (gRPC). */
   client: SuiCoreClient;
 }
-
-/** USDC CoinMetadata on mainnet (immutable, well-known). */
-export const USDC_COIN_METADATA_ID =
-  '0x75cfbbf8c962d542e99a1d15731e6069f60a00db895407785b15d14f606f2b4a';
 
 /**
  * PTB 2 — bind + split 50/50 + pool + 10y lock + finalize, atomically.
@@ -220,12 +214,9 @@ export async function buildTokenizeTx(args: TokenizeArgs): Promise<Transaction> 
   const sqrtPrice = usdcFirst
     ? sqrtPriceX64FromAmounts(args.lpUsdcAmount, AGENT_TOKEN_LP_ALLOCATION)
     : sqrtPriceX64FromAmounts(AGENT_TOKEN_LP_ALLOCATION, args.lpUsdcAmount);
-  const usdcMeta = args.usdcMetadataId ?? USDC_COIN_METADATA_ID;
-  const poolResult = createPoolV2(tx, {
+  const poolResult = createPoolV3(tx, {
     coinTypeA: usdcFirst ? USDC_TYPE : args.coinType,
     coinTypeB: usdcFirst ? args.coinType : USDC_TYPE,
-    metadataA: usdcFirst ? usdcMeta : args.coinMetadataId,
-    metadataB: usdcFirst ? args.coinMetadataId : usdcMeta,
     coinA: usdcFirst ? lpUsdc : lpCoin,
     coinB: usdcFirst ? lpCoin : lpUsdc,
     sqrtPriceX64: sqrtPrice,
