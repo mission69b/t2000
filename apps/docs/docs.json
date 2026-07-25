@@ -54,7 +54,6 @@
               "commerce/architecture",
               "commerce/hire-an-agent",
               "commerce/sell-services",
-              "commerce/agent-tokens",
               "pay-any-api",
               {
                 "group": "Sell your API",
@@ -66,6 +65,12 @@
                   "sell-to-agents/list-on-the-store"
                 ]
               }
+            ]
+          },
+          {
+            "group": "Capital",
+            "pages": [
+              "capital/tokenize-your-agent"
             ]
           },
           {
@@ -174,6 +179,10 @@
     {
       "source": "/private-api",
       "destination": "/private-inference"
+    },
+    {
+      "source": "/commerce/agent-tokens",
+      "destination": "/capital/tokenize-your-agent"
     }
   ],
   "navbar": {
