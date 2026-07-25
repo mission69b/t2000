@@ -95,26 +95,30 @@ describe('buildTokenizeTx', () => {
       'position::pool_id',
       'lp_lock::lock',
       'registry::finalize',
+      'vesting::lock',
     ]);
   });
 
-  it('routes treasury+refund to the agent and USDC refund to the launcher', async () => {
+  it('vests the treasury half and returns only the USDC refund to the launcher', async () => {
     const tx = await launch.buildTokenizeTx(args());
     const data = tx.getData();
+    // Treasury no longer transfers to the agent directly — it enters
+    // vesting::lock; the ONLY TransferObjects is the launcher's USDC refund.
     const transfers = data.commands.filter((c) => c.TransferObjects);
-    expect(transfers).toHaveLength(2);
+    expect(transfers).toHaveLength(1);
     // Recipient pure inputs decode back to agent / launcher respectively.
     const addrOf = (t: (typeof transfers)[number]) => {
       const input = data.inputs[(t.TransferObjects!.address as { Input: number }).Input];
       const bytes = Buffer.from((input.Pure as { bytes: string }).bytes, 'base64');
       return `0x${bytes.toString('hex')}`;
     };
-    expect(addrOf(transfers[0])).toBe(AGENT);
-    expect(addrOf(transfers[1])).toBe(LAUNCHER);
-    // The agent-bound transfer carries TWO objects: the treasury half (the
-    // split remainder, input-referenced supply coin) + the AGENT-side refund.
-    expect(transfers[0].TransferObjects!.objects).toHaveLength(2);
-    expect(transfers[1].TransferObjects!.objects).toHaveLength(1);
+    expect(addrOf(transfers[0])).toBe(LAUNCHER);
+    expect(transfers[0].TransferObjects!.objects).toHaveLength(1);
+    // And the vesting lock is bound to the AGENT (pure address arg).
+    const vest = data.commands.find(
+      (c) => c.MoveCall?.function === 'lock' && c.MoveCall.module === 'vesting',
+    );
+    expect(vest).toBeTruthy();
   });
 
   it('enforces the LP USDC floor', async () => {

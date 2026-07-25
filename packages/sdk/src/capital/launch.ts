@@ -56,6 +56,13 @@ export const AGENT_CAPITAL_PACKAGE_ID =
   process.env.AGENT_CAPITAL_PACKAGE_ID ??
   '0xa83ecc4e530594f8e184faf6a4c3da6791267f6791a653644d59e2e603c055b8';
 
+/** Latest upgraded package id — moveCall targets MUST use this (v1 lacks
+ *  the `vesting` module; Sui routes calls by the id you name). Original id
+ *  above stays for type/event references. v3 = batch-safe vesting claim. */
+export const AGENT_CAPITAL_PUBLISHED_AT =
+  process.env.AGENT_CAPITAL_PUBLISHED_AT ??
+  '0x2974c16bda8f148ef5f8c3177d3d63eec060b1048648ae3b6c1fb495c2a602dd';
+
 /** The shared `CapitalRegistry` object id (mainnet). */
 export const CAPITAL_REGISTRY_ID =
   process.env.CAPITAL_REGISTRY_ID ??
@@ -83,6 +90,7 @@ export const MIN_LP_USDC = 5_000_000n; // 5 USDC
 
 const REGISTRY_MODULE = 'registry';
 const LP_LOCK_MODULE = 'lp_lock';
+const VESTING_MODULE = 'vesting';
 
 export interface PublishAgentCoinArgs {
   /** Coin branding; `recipient` MUST be the launcher (checked). */
@@ -181,7 +189,7 @@ export async function buildTokenizeTx(args: TokenizeArgs): Promise<Transaction> 
 
   // 1. Reserve the agent's one tokenization slot (aborts if taken).
   tx.moveCall({
-    target: `${AGENT_CAPITAL_PACKAGE_ID}::${REGISTRY_MODULE}::bind`,
+    target: `${AGENT_CAPITAL_PUBLISHED_AT}::${REGISTRY_MODULE}::bind`,
     typeArguments: [args.coinType],
     arguments: [
       registryArg(),
@@ -231,14 +239,14 @@ export async function buildTokenizeTx(args: TokenizeArgs): Promise<Transaction> 
   //    fees claimable by anyone, payable only to the agent.
   const poolId = positionPoolId(tx, position);
   const [lockId] = tx.moveCall({
-    target: `${AGENT_CAPITAL_PACKAGE_ID}::${LP_LOCK_MODULE}::lock`,
+    target: `${AGENT_CAPITAL_PUBLISHED_AT}::${LP_LOCK_MODULE}::lock`,
     typeArguments: [CETUS_POSITION_TYPE],
     arguments: [position, tx.pure.address(args.agent), tx.object.clock()],
   });
 
   // 6. Finalize the registry record in the same atomic tx.
   tx.moveCall({
-    target: `${AGENT_CAPITAL_PACKAGE_ID}::${REGISTRY_MODULE}::finalize`,
+    target: `${AGENT_CAPITAL_PUBLISHED_AT}::${REGISTRY_MODULE}::finalize`,
     typeArguments: [args.coinType],
     arguments: [
       registryArg(),
@@ -250,11 +258,18 @@ export async function buildTokenizeTx(args: TokenizeArgs): Promise<Transaction> 
     ],
   });
 
-  // 7. Treasury half + any AGENT-side pool refund → the agent wallet;
-  //    USDC refund → back to the launcher.
+  // 7. Treasury half (+ any AGENT-side pool refund, merged in) → a 6-month
+  //    LINEAR VestingLock whose sole beneficiary is the agent (founder
+  //    decision 2026-07-25 — no unlocked day-one treasury). USDC refund →
+  //    back to the launcher.
   const agentRefund = usdcFirst ? refundB : refundA;
   const usdcRefund = usdcFirst ? refundA : refundB;
-  tx.transferObjects([supplyCoin, agentRefund], tx.pure.address(args.agent));
+  tx.mergeCoins(supplyCoin, [agentRefund]);
+  tx.moveCall({
+    target: `${AGENT_CAPITAL_PUBLISHED_AT}::${VESTING_MODULE}::lock`,
+    typeArguments: [args.coinType],
+    arguments: [supplyCoin, tx.pure.address(args.agent), tx.object.clock()],
+  });
   tx.transferObjects([usdcRefund], tx.pure.address(args.launcher));
 
   return tx;

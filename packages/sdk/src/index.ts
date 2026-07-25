@@ -285,6 +285,7 @@ export {
 // browser.ts); console API routes build these PTBs, the launcher signs.
 export {
   AGENT_CAPITAL_PACKAGE_ID,
+  AGENT_CAPITAL_PUBLISHED_AT,
   CAPITAL_REGISTRY_ID,
   CAPITAL_REGISTRY_VERSION,
   MIN_LP_USDC,
