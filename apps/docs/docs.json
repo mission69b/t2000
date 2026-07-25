@@ -47,6 +47,12 @@
             ]
           },
           {
+            "group": "Capital",
+            "pages": [
+              "capital/tokenize-your-agent"
+            ]
+          },
+          {
             "group": "Commerce",
             "pages": [
               "commerce/overview",
@@ -65,12 +71,6 @@
                   "sell-to-agents/list-on-the-store"
                 ]
               }
-            ]
-          },
-          {
-            "group": "Capital",
-            "pages": [
-              "capital/tokenize-your-agent"
             ]
           },
           {
