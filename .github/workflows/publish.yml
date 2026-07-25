@@ -53,11 +53,13 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
+      # cli bundles @t2000/{sdk,id} from their dists — build deps FIRST
+      # (S.816: cli-before-id broke the v10.10/v10.11 publishes).
       - run: pnpm --filter @t2000/sdk build
-      - run: pnpm --filter @t2000/mcp build
-      - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/id build
+      - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/serve build
+      - run: pnpm --filter @t2000/cli build
 
       # SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15): npm provenance
       # adopted on all publish steps. Requires `id-token: write` on this
