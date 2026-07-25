@@ -15,6 +15,7 @@ import {
   buildPublishAgentCoinTx,
   buildTokenizeTx,
   getSuiClient,
+  validateAgentCoinParams,
 } from '@t2000/sdk';
 import type { Command } from 'commander';
 import { withAgent } from '../../lib/with-agent.js';
@@ -101,12 +102,30 @@ export function registerAgentTokenize(group: Command) {
         key?: string;
       }) => {
         try {
-          const agent = await withAgent({ keyPath: opts.key });
-          const address = agent.address();
-          const client = getSuiClient();
+          // Validate BEFORE any wallet or network side effect (house rule —
+          // same as `t2 agent create`): a bad ticker must fail identically
+          // on a machine with no wallet at all.
+          validateAgentCoinParams({
+            symbol: opts.symbol,
+            name: opts.name,
+            description: opts.description,
+            iconUrl: opts.icon,
+            // recipient is wallet-derived; validate with a placeholder that
+            // always passes the address check.
+            recipient: '0x' + '1'.repeat(64),
+          });
           // Floor, never round up — seeded amount ≤ what was typed.
           const usdcFloat = Number.parseFloat(opts.usdc);
           const lpUsdcAmount = BigInt(Math.floor(usdcFloat * 1e6));
+          if (!Number.isFinite(usdcFloat) || lpUsdcAmount < MIN_LP_USDC) {
+            throw new Error(
+              `--usdc must be at least ${Number(MIN_LP_USDC) / 1e6} USDC`,
+            );
+          }
+
+          const agent = await withAgent({ keyPath: opts.key });
+          const address = agent.address();
+          const client = getSuiClient();
 
           if (await isTokenized(address)) {
             throw new Error(

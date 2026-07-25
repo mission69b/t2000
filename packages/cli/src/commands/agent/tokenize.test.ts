@@ -3,15 +3,30 @@
 // or network side effect.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const CLI = fileURLToPath(new URL('../../../dist/index.js', import.meta.url));
 const describeOrSkip = existsSync(CLI) ? describe : describe.skip;
 
+// Hermetic HOME (no wallet): validation must fire BEFORE wallet load, so
+// these behave identically on CI and on a dev machine with a real wallet.
+let home = '';
+beforeAll(() => {
+  home = mkdtempSync(join(tmpdir(), 't2-tokenize-'));
+});
+afterAll(() => {
+  if (home) rmSync(home, { recursive: true, force: true });
+});
+
 function runCli(args: string[]): { out: string; code: number } {
-  const r = spawnSync('node', [CLI, ...args], { encoding: 'utf-8' });
+  const r = spawnSync('node', [CLI, ...args], {
+    encoding: 'utf-8',
+    env: { ...process.env, HOME: home },
+  });
   return { out: `${r.stdout}${r.stderr}`, code: r.status ?? 1 };
 }
 
