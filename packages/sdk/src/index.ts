@@ -314,3 +314,8 @@ export {
   CETUS_POSITION_TYPE,
   AGENT_POOL_TICK_SPACING,
 } from './protocols/cetus-clmm.js';
+export {
+  CETUS_INTEGRATE_PUBLISHED_AT,
+  buildDirectPoolSwapTx,
+} from './capital/swap.js';
+export type { DirectPoolSwapArgs } from './capital/swap.js';
