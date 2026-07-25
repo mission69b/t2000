@@ -19,10 +19,5 @@ export default defineConfig({
       `const __dirname = __pathDirname(__filename);`,
     ].join(' '),
   },
-  onSuccess: `node -e "
-    const fs = require('fs');
-    const f = 'dist/index.js';
-    const code = fs.readFileSync(f, 'utf8').replace(/^#!.*\\n/gm, '');
-    fs.writeFileSync(f, '#!/usr/bin/env node\\n' + code);
-  "`,
+  onSuccess: 'node scripts/postbuild.mjs',
 });

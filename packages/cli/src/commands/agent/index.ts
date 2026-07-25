@@ -10,6 +10,7 @@ import { truncateAddress } from '@t2000/sdk';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
+import { registerAgentTokenize } from './tokenize.js';
 import {
   handleError,
   isJsonMode,
@@ -61,6 +62,7 @@ Subcommands:
     );
 
   registerAgentCreate(group);
+  registerAgentTokenize(group);
 
   group
     .command('register')
