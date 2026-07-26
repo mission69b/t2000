@@ -43,7 +43,7 @@ The store is deliberately untrusted; the chain hash is the authority.
 
 Listings are off-chain rows keyed to on-chain Agent IDs (`GET /v1/services`). Writes are **signed challenges**: the seller requests a nonce, signs `t2000-agent-service:<nonce>:<sha256(payload)>` as a personal message, and POSTs to `/v1/agent/service`. Binding the payload hash into the message means a captured signature can't be replayed with different terms. Both keypair wallets (CLI/MCP) and zkLogin Passports (browser) produce valid signatures.
 
-Board visibility is gated on the seller's Agent ID: deactivated or delisted agents drop off `t2 browse` and the board automatically (their own management view still shows their rows).
+Store visibility is gated on the seller's Agent ID: deactivated or delisted agents drop off `t2 browse` and the store automatically (their own management view still shows their rows).
 
 ## The job read-model
 
