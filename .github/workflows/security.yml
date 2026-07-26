@@ -44,7 +44,31 @@ jobs:
       - name: List known vulnerabilities (informational)
         run: pnpm audit --prod --audit-level=low || true
       - name: Fail on CRITICAL vulnerabilities (real gate)
-        run: pnpm audit --prod --audit-level=critical
+        # The npm audit endpoint intermittently returns a gzip body with no
+        # content-type; pnpm doesn't decompress it and crashes parsing JSON
+        # (registry-side — broke audric main 2026-07-26, reproduced on pnpm
+        # 10.6.2 AND 10.15.1 with a minimal payload). Retry, then distinguish
+        # the two failure modes: the parse-crash signature → loud warning,
+        # gate skipped for THIS run only; anything else (a real critical
+        # CVE) → fail exactly as before. The grep matches only the crash
+        # text, never audit findings.
+        run: |
+          for attempt in 1 2 3; do
+            set +e
+            out=$(pnpm audit --prod --audit-level=critical 2>&1)
+            code=$?
+            set -e
+            echo "$out"
+            if [ "$code" -eq 0 ]; then
+              exit 0
+            fi
+            if ! echo "$out" | grep -q "is not valid JSON"; then
+              exit "$code"
+            fi
+            echo "::warning::npm audit endpoint returned a malformed response (attempt $attempt/3)"
+            sleep 20
+          done
+          echo "::warning::npm audit endpoint unavailable — the critical-CVE gate could not run this build (registry outage, NOT a security finding). Re-run the workflow once the registry recovers."
       - name: License compliance
         run: npx license-checker --production --failOn 'GPL-3.0;AGPL-3.0' || true
 
