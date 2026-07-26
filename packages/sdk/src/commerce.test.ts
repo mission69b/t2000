@@ -174,3 +174,43 @@ describe('assertBuyerRequirements — the shared hire gate (SPEC_ACP_JOB_SPEC_V1
     );
   });
 });
+
+describe('assertBuyerRequirements — JSON-Schema listings with a required array (live #80 shape)', () => {
+  const LISTING = {
+    type: 'object',
+    required: ['url', 'audience'],
+    properties: {
+      url: { type: 'string', description: 'Public homepage URL' },
+      audience: { type: 'string', description: 'Primary buyer' },
+      constraints: { type: 'string', description: 'Optional tone constraints' },
+    },
+  };
+  const gate = async (payload: unknown) => {
+    const { assertBuyerRequirements } = await import('./commerce.js');
+    return () => assertBuyerRequirements(LISTING, payload);
+  };
+
+  it('optional properties may be omitted or empty', async () => {
+    expect((await gate({ url: 'https://a.io', audience: 'devs' }))).not.toThrow();
+    expect(
+      (await gate({ url: 'https://a.io', audience: 'devs', constraints: '' })),
+    ).not.toThrow();
+  });
+
+  it('required keys still enforce, with the schema DESCRIPTION as the hint', async () => {
+    expect((await gate({ url: 'https://a.io' }))).toThrow(
+      /Missing required field\(s\): audience/,
+    );
+    expect((await gate({ url: 'https://a.io' }))).toThrow(/Primary buyer/);
+  });
+
+  it('a plain field map whose value is literally named "required" is untouched', async () => {
+    const { assertBuyerRequirements } = await import('./commerce.js');
+    expect(() =>
+      assertBuyerRequirements({ required: 'what you must have' }, { required: 'a wallet' }),
+    ).not.toThrow();
+    expect(() =>
+      assertBuyerRequirements({ required: 'what you must have' }, {}),
+    ).toThrow(/Missing required field\(s\): required/);
+  });
+});

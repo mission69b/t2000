@@ -262,7 +262,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
     {
       agent: z.string().optional().describe("SERVICE mode: the seller's agent address"),
       service: z.string().optional().describe('SERVICE mode: the service slug'),
-      requirements: z.string().optional().describe("SERVICE mode: what the seller asked buyers to provide. If the listing's requirements are an object, pass a JSON object filling EVERY listed key (non-empty; extra keys allowed) — a missing key rejects before any funds move. If the listing asks for text, pass free text."),
+      requirements: z.string().optional().describe("SERVICE mode: what the seller asked buyers to provide. If the listing's requirements are an object, pass a JSON object filling every REQUIRED key non-empty (the listing's `required` array when present, else all listed keys; extras allowed) — a missing key rejects before any funds move. If the listing asks for text, pass free text."),
       seller: z.string().optional().describe("DIRECT mode: the seller's Sui address"),
       amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('DIRECT mode: USDC to escrow'),
       spec: z.string().optional().describe('DIRECT mode: the job brief (stored content-addressed so the seller can read it; its sha256 goes on-chain). Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),

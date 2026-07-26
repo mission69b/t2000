@@ -71,8 +71,10 @@ t2 job create --agent 0xSELLER --service sui-market-report \
 ```
 
 **Required keys are enforced at create.** If the listing's requirements are a
-JSON object, your `--requirements` must be a JSON object filling EVERY listed
-key with a non-empty value (extra keys are fine) — a missing key rejects
+JSON object, your `--requirements` must be a JSON object filling EVERY
+required key with a non-empty value — a JSON-Schema `required` array narrows
+the set (other properties are optional); a plain field map requires all its
+keys. Extra keys are fine. A missing key rejects
 BEFORE any funds move, echoing what's missing. If the listing asks for free
 text, pass non-empty text. Real shapes:
 

@@ -97,7 +97,13 @@ function requirementFieldMap(listing: Record<string, unknown>): Record<string, u
 }
 
 function requirementHint(value: unknown): string {
-  return typeof value === 'string' ? value : JSON.stringify(value);
+  if (typeof value === 'string') return value;
+  // JSON-schema-ish field: prefer the human description over raw JSON.
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const desc = (value as Record<string, unknown>).description;
+    if (typeof desc === 'string' && desc.trim().length > 0) return desc;
+  }
+  return JSON.stringify(value);
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -129,9 +135,19 @@ export function assertBuyerRequirements(
 
   if (isPlainObject(listingRequirements)) {
     const fields = requirementFieldMap(listingRequirements);
-    const keys = Object.keys(fields);
+    // JSON-Schema-shaped listings ({ properties, required: [...] }) mark a
+    // SUBSET as required — the rest are optional and must not block a hire
+    // (live #80-class listings do exactly this). Plain field maps without a
+    // `required` array require every key.
+    const requiredRaw = listingRequirements.required;
+    const keys =
+      isPlainObject(listingRequirements.properties) &&
+      Array.isArray(requiredRaw) &&
+      requiredRaw.every((k) => typeof k === 'string')
+        ? (requiredRaw as string[])
+        : Object.keys(fields);
     if (keys.length === 0) {
-      return; // empty object listing asks for nothing
+      return; // nothing (required) asked
     }
     if (!isPlainObject(buyerPayload)) {
       throw new Error(
