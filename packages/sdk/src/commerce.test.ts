@@ -104,3 +104,73 @@ describe('listServices — browse/list filter plumbing', () => {
     expect(url).toContain('q=market+report');
   });
 });
+
+describe('assertBuyerRequirements — the shared hire gate (SPEC_ACP_JOB_SPEC_V1 §4.1)', () => {
+  const gate = async (listing: unknown, payload: unknown) => {
+    const { assertBuyerRequirements } = await import('./commerce.js');
+    return () => assertBuyerRequirements(listing, payload);
+  };
+
+  it('null listing → anything passes, including omission', async () => {
+    expect((await gate(null, undefined))).not.toThrow();
+    expect((await gate(undefined, null))).not.toThrow();
+    expect((await gate(null, { extra: 'fine' }))).not.toThrow();
+  });
+
+  it('object listing → every key present and trim-non-empty', async () => {
+    const listing = { url: 'https://… — the page to rewrite', audience: 'who reads it' };
+    expect((await gate(listing, { url: 'https://a.io', audience: 'devs' }))).not.toThrow();
+  });
+
+  it('object listing → missing key fails closed, echoing key + hint', async () => {
+    const listing = { url: 'the page to rewrite' };
+    expect((await gate(listing, {}))).toThrow(/Missing required field\(s\): url/);
+    expect((await gate(listing, {}))).toThrow(/the page to rewrite/);
+  });
+
+  it('object listing → present-but-empty (whitespace) key fails', async () => {
+    expect((await gate({ email: 'where we send it' }, { email: '   ' }))).toThrow(
+      /Missing required field\(s\): email/,
+    );
+  });
+
+  it('object listing → EXTRA buyer keys are allowed', async () => {
+    expect(
+      (await gate({ url: 'page' }, { url: 'https://a.io', tone: 'formal' })),
+    ).not.toThrow();
+  });
+
+  it('{ properties: {…} } wrapper unwraps to the field map', async () => {
+    const listing = { properties: { token: 'symbol to analyze' } };
+    expect((await gate(listing, { token: 'DEEP' }))).not.toThrow();
+    expect((await gate(listing, { other: 'x' }))).toThrow(
+      /Missing required field\(s\): token/,
+    );
+  });
+
+  it('object listing → non-object payload rejected with the expected keys', async () => {
+    expect((await gate({ url: 'page' }, 'just text'))).toThrow(/JSON requirements object/);
+    expect((await gate({ url: 'page' }, 'just text'))).toThrow(/url/);
+  });
+
+  it('empty-object listing asks for nothing', async () => {
+    expect((await gate({}, undefined))).not.toThrow();
+  });
+
+  it('string listing → non-empty string passes, empty/omitted fails', async () => {
+    expect((await gate('describe your token', 'DEEP, the whole book'))).not.toThrow();
+    expect((await gate('describe your token', ''))).toThrow(/needs requirements/);
+    expect((await gate('describe your token', undefined))).toThrow(/describe your token/);
+  });
+
+  it('string listing → scalar payloads stringify (the eager-JSON.parse case)', async () => {
+    expect((await gate('how many pages?', 123))).not.toThrow();
+    expect((await gate('yes or no?', true))).not.toThrow();
+  });
+
+  it('string listing → object payload is a shape mismatch', async () => {
+    expect((await gate('free text please', { url: 'https://a.io' }))).toThrow(
+      /free-text requirements, not JSON/,
+    );
+  });
+});

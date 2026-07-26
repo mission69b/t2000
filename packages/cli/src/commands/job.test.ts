@@ -1,9 +1,8 @@
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchSellerJobs, parseDuration, resolveCommitment } from './job.js';
+import { fetchSellerJobs, parseDuration, resolveSpecUpload } from './job.js';
 
 describe('parseDuration', () => {
   it('parses minutes, hours, days', () => {
@@ -23,22 +22,56 @@ describe('parseDuration', () => {
   });
 });
 
-describe('resolveCommitment', () => {
-  it('passes 0x hex hashes through untouched', async () => {
-    expect(await resolveCommitment('0xdeadbeef')).toBe('0xdeadbeef');
+describe('resolveSpecUpload (SPEC_ACP_JOB_SPEC_V1 §4.2 — upload by default)', () => {
+  const BASE = 'https://api.example.test/v1';
+  const HASH64 = `0x${'a'.repeat(64)}`;
+
+  function mockPutSpec(hash = 'b'.repeat(64)) {
+    const fn = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ hash }) }));
+    vi.stubGlobal('fetch', fn);
+    return { fn, hash };
+  }
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('passes a bare 0x… sha256 through WITHOUT uploading (confidential path)', async () => {
+    const { fn } = mockPutSpec();
+    const result = await resolveSpecUpload(BASE, HASH64);
+    expect(result).toEqual({ hash: HASH64, uploaded: false });
+    expect(fn).not.toHaveBeenCalled();
   });
 
-  it('hashes file contents when the arg is a readable path', async () => {
+  it('uploads file contents and pins the store hash', async () => {
+    const { fn, hash } = mockPutSpec();
     const dir = await mkdtemp(join(tmpdir(), 't2-job-'));
-    const file = join(dir, 'spec.md');
-    await writeFile(file, 'deliver a market report');
-    const expected = `0x${createHash('sha256').update('deliver a market report').digest('hex')}`;
-    expect(await resolveCommitment(file)).toBe(expected);
+    const file = join(dir, 'delivery.md');
+    await writeFile(file, '# The report\n\nDone.');
+    const result = await resolveSpecUpload(BASE, file);
+    expect(result).toEqual({ hash: `0x${hash}`, uploaded: true });
+    expect(fn).toHaveBeenCalledOnce();
   });
 
-  it('hashes literal text when the arg is not a file', async () => {
-    const expected = `0x${createHash('sha256').update('inline spec text').digest('hex')}`;
-    expect(await resolveCommitment('inline spec text')).toBe(expected);
+  it('uploads literal text when the arg is not a file', async () => {
+    const { hash } = mockPutSpec();
+    const result = await resolveSpecUpload(BASE, 'inline delivery text');
+    expect(result).toEqual({ hash: `0x${hash}`, uploaded: true });
+  });
+
+  it('rejects oversize content BEFORE any network call (16 KiB cap)', async () => {
+    const { fn } = mockPutSpec();
+    const dir = await mkdtemp(join(tmpdir(), 't2-job-'));
+    const file = join(dir, 'big.md');
+    await writeFile(file, 'x'.repeat(17 * 1024));
+    await expect(resolveSpecUpload(BASE, file)).rejects.toThrow(/16 KiB/);
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-UTF-8 (binary) content with the --hash-only pointer', async () => {
+    const { fn } = mockPutSpec();
+    const dir = await mkdtemp(join(tmpdir(), 't2-job-'));
+    const file = join(dir, 'artifact.bin');
+    await writeFile(file, Buffer.from([0xff, 0xfe, 0x00, 0xc3, 0x28]));
+    await expect(resolveSpecUpload(BASE, file)).rejects.toThrow(/not UTF-8/);
+    expect(fn).not.toHaveBeenCalled();
   });
 });
 

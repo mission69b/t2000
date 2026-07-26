@@ -8,6 +8,7 @@
 // (used by the signed-mutation flows in `t2 service` / `t2 job review`).
 
 export {
+  assertBuyerRequirements,
   fetchService,
   getJobSpec,
   listServices,

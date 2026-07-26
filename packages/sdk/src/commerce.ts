@@ -86,6 +86,88 @@ export async function fetchService(
   return match;
 }
 
+/** Field map of an object-shaped listing `requirements` — the object itself,
+ *  or its JSON-schema-ish `{ properties: {…} }` wrapper (sellers write both). */
+function requirementFieldMap(listing: Record<string, unknown>): Record<string, unknown> {
+  const props = listing.properties;
+  if (props && typeof props === 'object' && !Array.isArray(props)) {
+    return props as Record<string, unknown>;
+  }
+  return listing;
+}
+
+function requirementHint(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The buyer-requirements gate (SPEC_ACP_JOB_SPEC_V1 §4.1) — ONE implementation
+ * shared by `t2 job create`, MCP `t2000_job_create`, and the console's
+ * hire-prepare, so a hire can never fund with an unusable brief.
+ *
+ *   1. Listing has no `requirements` → the buyer may omit (anything passes).
+ *   2. String listing → any NON-object payload whose `String(v).trim()` is
+ *      non-empty (scalars fine; objects rejected — the seller asked for text).
+ *   3. Object listing (or `{ properties: {…} }`) → payload must be an object
+ *      and EVERY listing key present + trim-non-empty. EXTRA buyer keys are
+ *      allowed (forward-compatible; never required).
+ *
+ * Fails closed with the missing keys + the seller's own hints echoed, so an
+ * agent can self-correct without a human reading the listing.
+ */
+export function assertBuyerRequirements(
+  listingRequirements: unknown,
+  buyerPayload: unknown,
+): void {
+  if (listingRequirements == null) {
+    return; // rule 1 — nothing asked, nothing checked
+  }
+
+  if (isPlainObject(listingRequirements)) {
+    const fields = requirementFieldMap(listingRequirements);
+    const keys = Object.keys(fields);
+    if (keys.length === 0) {
+      return; // empty object listing asks for nothing
+    }
+    if (!isPlainObject(buyerPayload)) {
+      throw new Error(
+        `This service needs a JSON requirements object with: ${keys.join(', ')}. ` +
+          `The seller asks for: ${JSON.stringify(fields)}`,
+      );
+    }
+    const missing = keys.filter(
+      (key) => String(buyerPayload[key] ?? '').trim().length === 0,
+    );
+    if (missing.length > 0) {
+      const hints = missing
+        .map((key) => `${key} — ${requirementHint(fields[key])}`)
+        .join('; ');
+      throw new Error(
+        `Missing required field(s): ${missing.join(', ')}. The seller asks for: ${hints}`,
+      );
+    }
+    return;
+  }
+
+  // Rule 2 — string (or any other free-form) listing: the seller asked for
+  // text, so an object payload is a shape mismatch, not a fill.
+  const hint = requirementHint(listingRequirements);
+  if (typeof buyerPayload === 'object' && buyerPayload !== null) {
+    throw new Error(
+      `This service expects free-text requirements, not JSON. The seller asks for: ${hint}`,
+    );
+  }
+  if (String(buyerPayload ?? '').trim().length === 0) {
+    throw new Error(
+      `This service needs requirements. The seller asks for: ${hint}`,
+    );
+  }
+}
+
 async function sha256Hex(content: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     'SHA-256',

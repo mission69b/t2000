@@ -156,6 +156,7 @@ export {
 } from './wallet/job.js';
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
 export {
+  assertBuyerRequirements,
   DEFAULT_COMMERCE_API_BASE,
   fetchService,
   getJobSpec,

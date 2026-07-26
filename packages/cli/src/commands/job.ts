@@ -34,6 +34,7 @@ import {
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
 import {
+  assertBuyerRequirements,
   fetchJson,
   fetchService,
   getJobSpec,
@@ -72,18 +73,49 @@ export function parseDuration(input: string): number {
   return Math.round(ms);
 }
 
-/** Spec/delivery commitment: a `0x…` hex hash passes through; anything else
- *  is hashed — file contents when the arg is a readable path, else the
- *  literal text (sha256 → hex). */
-export async function resolveCommitment(input: string): Promise<string> {
-  if (/^0x[0-9a-fA-F]+$/.test(input) && input.length % 2 === 0) return input;
+const SHA256_HEX_RE = /^0x[0-9a-fA-F]{64}$/;
+/** The spec store's server-side cap — mirrored here so oversize content
+ *  fails with guidance BEFORE any network call. */
+const SPEC_STORE_MAX_BYTES = 16 * 1024;
+
+/** Spec/delivery commitment (SPEC_ACP_JOB_SPEC_V1 §4.2): the body UPLOADS by
+ *  default so the counterparty can actually read it — a bare `0x…` sha256
+ *  passes through untouched (the confidential path: nothing leaves your
+ *  machine). Anything else is read (file path, else literal text), guarded
+ *  to UTF-8 text under the store's 16 KiB cap, uploaded via `putJobSpec`,
+ *  and the store's hash pinned on-chain. */
+export async function resolveSpecUpload(
+  base: string,
+  input: string,
+): Promise<{ hash: string; uploaded: boolean }> {
+  const trimmed = input.trim();
+  if (SHA256_HEX_RE.test(trimmed)) {
+    return { hash: trimmed.toLowerCase(), uploaded: false };
+  }
   let bytes: Buffer;
   try {
     bytes = await readFile(input);
   } catch {
     bytes = Buffer.from(input, 'utf8');
   }
-  return `0x${createHash('sha256').update(bytes).digest('hex')}`;
+  if (bytes.length > SPEC_STORE_MAX_BYTES) {
+    throw new Error(
+      `Content is ${bytes.length} bytes — the job-spec store caps at 16 KiB. ` +
+        'Upload a short note that LINKS the artifact (URL / IPFS), or pin a ' +
+        'precomputed commitment with --hash-only 0x<sha256>.',
+    );
+  }
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error(
+      'Content is not UTF-8 text — the job-spec store holds text only. ' +
+        'Upload a short note that LINKS the artifact, or pin a precomputed ' +
+        'commitment with --hash-only 0x<sha256>.',
+    );
+  }
+  return { hash: `0x${await putJobSpec(base, text)}`, uploaded: true };
 }
 
 function stateColor(state: Job['state']): string {
@@ -187,7 +219,7 @@ deadline). v1 caps jobs at ${MAX_JOB_USDC} USDC.
 Typical flow:
   buyer   $ t2 job create 5 0xSELLER --spec brief.md --deadline 24h
   seller  $ t2 job verify 0xJOB --price 5
-  seller  $ t2 job deliver 0xJOB report.pdf
+  seller  $ t2 job deliver 0xJOB report.md
   buyer   $ t2 job release 0xJOB          (or: t2 job reject 0xJOB)
   either  $ t2 job watch 0xJOB
   seller  $ t2 job watch --mine           (the provider inbox — all your jobs)
@@ -205,10 +237,10 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
     .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when buying a --service)`)
     .argument('[seller]', "The seller's Sui address (omit when buying a --service)")
     .description('Create + fund an escrow job in one transaction (buyer)')
-    .option('--spec <file-or-text>', 'Job spec — a file path or inline text (hashed on-chain), or a 0x… hash')
+    .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED so the seller can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading)')
     .option('--agent <address>', "Buy a service: the seller's agent address")
     .option('--service <slug>', 'The service slug (see t2 browse / t2 service list <agent>)')
-    .option('--requirements <file-or-json-or-text>', 'Your requirements for the service (what the seller asked for)')
+    .option('--requirements <file-or-json-or-text>', 'What the seller asked buyers to provide — if the listing lists JSON keys, fill EVERY key (JSON object; extra keys OK)')
     .option('--deadline <duration>', 'Time the seller has to deliver (e.g. 30m, 24h, 7d)', '24h')
     .option('--review <duration>', 'Your accept/reject window after delivery', '24h')
     .option('--split <bps>', 'Your share in bps if you reject (0–10000)', String(DEFAULT_REJECT_SPLIT_BPS))
@@ -272,24 +304,10 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
                 requirements = text.trim();
               }
             }
-            if (service.requirements != null && requirements == null) {
-              const want =
-                typeof service.requirements === 'string'
-                  ? service.requirements
-                  : `JSON matching: ${JSON.stringify(service.requirements)}`;
-              throw new Error(
-                `This service needs --requirements. The seller asks for: ${want}`,
-              );
-            }
-            if (
-              service.requirements != null &&
-              typeof service.requirements === 'object' &&
-              (typeof requirements !== 'object' || requirements === null)
-            ) {
-              throw new Error(
-                `This service expects JSON requirements matching: ${JSON.stringify(service.requirements)}`,
-              );
-            }
+            // The shared hire gate (SPEC_ACP_JOB_SPEC_V1 §4.1) — same
+            // implementation as MCP + console hire-prepare, so a job can
+            // never fund with an unusable brief.
+            assertBuyerRequirements(service.requirements, requirements);
 
             const buyer = (await withAgent({ keyPath: opts.key })).address();
             const spec = JSON.stringify({
@@ -327,7 +345,9 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
               throw new Error(`Amount must be a positive number (got "${amountArg}").`);
             }
             seller = validateAddress(sellerArg);
-            specHash = await resolveCommitment(opts.spec);
+            // Uploads unless the input is already a 0x… sha256 — the bare
+            // hash stays the confidential path (nothing leaves the machine).
+            ({ hash: specHash } = await resolveSpecUpload(base, opts.spec));
             deliverByMs = Date.now() + parseDuration(opts.deadline);
             reviewWindowMs = opts.review
               ? parseDuration(opts.review)
@@ -423,27 +443,44 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
   group
     .command('deliver')
     .argument('<jobId>', 'The Job object id (0x…)')
-    .argument('<proof>', 'Delivery artifact — a file path or text (hashed on-chain), or a 0x… hash')
-    .description('Post your proof-of-delivery before the deadline (seller)')
+    .argument('<proof>', 'Delivery body — a file path or text (UPLOADED so the buyer can read it; sha256 pinned on-chain), or a bare 0x… sha256')
+    .description('Post your delivery before the deadline (seller) — the body uploads to the job-spec store so the buyer can read it, and its sha256 pins on-chain')
+    .option('--hash-only', "Pin <proof> as a precomputed 0x… sha256 WITHOUT uploading a body — the confidential / large-artifact path (the buyer can't read it on-platform; hand the artifact over out-of-band)")
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (jobId: string, proof: string, opts: { key?: string; api?: string }) => {
+    .action(async (jobId: string, proof: string, opts: { hashOnly?: boolean; key?: string; api?: string }) => {
       try {
-        const deliveryHash = await resolveCommitment(proof);
+        const base = opts.api ?? DEFAULT_API_BASE;
+        let deliveryHash: string;
+        let uploaded = false;
+        if (opts.hashOnly) {
+          const hash = proof.trim().toLowerCase();
+          if (!SHA256_HEX_RE.test(hash)) {
+            throw new Error('--hash-only expects a 0x… 64-char sha256 (e.g. from `shasum -a 256`).');
+          }
+          deliveryHash = hash;
+        } else {
+          ({ hash: deliveryHash, uploaded } = await resolveSpecUpload(base, proof));
+        }
         const { digest } = await sponsoredJobVerb({
-          base: opts.api ?? DEFAULT_API_BASE,
+          base,
           keyPath: opts.key,
           action: 'deliver',
           params: { jobId, deliveryHash },
         });
         if (isJsonMode()) {
-          printJson({ jobId, deliveryHash, digest });
+          printJson({ jobId, deliveryHash, uploaded, digest });
           return;
         }
         printBlank();
         printSuccess('Delivery posted — the buyer\'s review window is now open.');
         printKeyValue('Delivery hash', deliveryHash);
         if (digest) printKeyValue('Tx', digest);
+        if (uploaded) {
+          printInfo('Body uploaded — the buyer reads it content-addressed (tamper-evident against the on-chain hash).');
+        } else {
+          printInfo('Hash-only commitment — the buyer cannot read the body on-platform; hand the artifact over out-of-band.');
+        }
         printInfo('If the buyer neither accepts nor rejects before the window closes, anyone (including you) can run `t2 job release` to settle.');
         printBlank();
       } catch (error) {

@@ -167,7 +167,7 @@ Examples:
     .option('--slug <slug>', 'Machine name (default: derived from --name)')
     .option(
       '--requirements <file-or-json-or-text>',
-      'What the buyer must provide — free text or a JSON schema (file path ok)',
+      'What the buyer must provide — prefer a JSON object of required fields (keys enforced non-empty at hire); free text ok (file path ok)',
     )
     .option('--review <duration>', "Buyer's accept/reject window after delivery", '24h')
     .option('--split <bps>', "Buyer's share in bps if they reject (0–10000)", '8000')

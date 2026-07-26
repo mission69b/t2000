@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
+  assertBuyerRequirements,
   fetchService,
   getJob,
   getJobSpec,
@@ -167,7 +168,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
       description: z.string().max(2000).describe('What this service is — buyers see it on your profile (max 2000 chars)'),
       deliverable: z.string().max(1000).describe('What the buyer receives, e.g. "Markdown report, sources cited" (max 1000 chars)'),
       slug: z.string().optional().describe('Machine name (default: derived from name)'),
-      requirements: z.string().optional().describe('What the buyer must provide — free text or a JSON schema string'),
+      requirements: z.string().optional().describe('What the buyer must provide — PREFER a JSON object of required fields (keys = field names, values = human hints, e.g. {"url":"the page to rewrite"}); every key is enforced non-empty at hire. Free text also accepted for unstructured briefs.'),
       reviewWindowMinutes: z.number().int().positive().optional().describe("Buyer's accept/reject window after delivery (default 1440 = 24h)"),
       rejectSplitBps: z.number().int().min(0).max(10_000).optional().describe("Buyer's share in bps if they reject (default 8000 = 80/20 buyer-favored)"),
     },
@@ -261,10 +262,10 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
     {
       agent: z.string().optional().describe("SERVICE mode: the seller's agent address"),
       service: z.string().optional().describe('SERVICE mode: the service slug'),
-      requirements: z.string().optional().describe('SERVICE mode: what the seller asked buyers to provide — JSON string or free text'),
+      requirements: z.string().optional().describe("SERVICE mode: what the seller asked buyers to provide. If the listing's requirements are an object, pass a JSON object filling EVERY listed key (non-empty; extra keys allowed) — a missing key rejects before any funds move. If the listing asks for text, pass free text."),
       seller: z.string().optional().describe("DIRECT mode: the seller's Sui address"),
       amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('DIRECT mode: USDC to escrow'),
-      spec: z.string().optional().describe('DIRECT mode: the job brief (stored content-addressed; its sha256 goes on-chain)'),
+      spec: z.string().optional().describe('DIRECT mode: the job brief (stored content-addressed so the seller can read it; its sha256 goes on-chain). Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),
       deadlineMinutes: z.number().int().positive().optional().describe('DIRECT mode: time the seller has to deliver (default 1440 = 24h)'),
       reviewWindowMinutes: z.number().int().positive().optional().describe('DIRECT mode: your accept/reject window after delivery (default 1440)'),
       rejectSplitBps: z.number().int().min(0).max(10_000).optional().describe('DIRECT mode: your share in bps if you reject (default 8000)'),
@@ -283,12 +284,9 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
           const service = await fetchService(API_BASE, sellerAgent, input.service);
           serviceSlug = service.slug;
           const requirements = parseRequirements(input.requirements);
-          if (service.requirements != null && requirements == null) {
-            const want = typeof service.requirements === 'string'
-              ? service.requirements
-              : `JSON matching: ${JSON.stringify(service.requirements)}`;
-            throw new Error(`This service needs requirements. The seller asks for: ${want}`);
-          }
+          // The shared hire gate (SPEC_ACP_JOB_SPEC_V1 §4.1) — same
+          // implementation as `t2 job create` + console hire-prepare.
+          assertBuyerRequirements(service.requirements, requirements);
           const spec = JSON.stringify({
             type: 't2-acp-job-spec@1',
             service: {
@@ -317,7 +315,11 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
           params = {
             seller: validateAddress(input.seller),
             amountUsdc: input.amountUsdc,
-            specHash: `0x${await putJobSpec(API_BASE, input.spec)}`,
+            // A bare 0x… sha256 pins as-is (confidential path); anything else
+            // uploads so the seller can actually read the brief (CLI parity).
+            specHash: /^0x[0-9a-fA-F]{64}$/.test(input.spec.trim())
+              ? input.spec.trim().toLowerCase()
+              : `0x${await putJobSpec(API_BASE, input.spec)}`,
             deliverByMs: Date.now() + (input.deadlineMinutes ?? 1440) * 60_000,
             reviewWindowMs: (input.reviewWindowMinutes ?? 1440) * 60_000,
             rejectSplitBps: input.rejectSplitBps ?? 8000,
@@ -404,7 +406,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
     "Post your DELIVERY on a funded job you're selling (seller side, before the deadline). The delivery content is stored content-addressed and its sha256 is pinned to the Job object on-chain — the buyer verifies what they read is exactly what you delivered. Opens the buyer's review window. Sponsored (no gas). Mirrors `t2 job deliver`.",
     {
       jobId: z.string().describe('The Job object id (0x…) — see t2000_jobs (role: seller)'),
-      delivery: z.string().describe('The delivery content itself (e.g. the report markdown). Stored + hash-pinned on-chain.'),
+      delivery: z.string().describe('The delivery content itself (e.g. the report markdown). Stored + hash-pinned on-chain. Optionally a t2-acp-delivery@1 JSON envelope ({type, summary, artifacts, notes}) when the real product ships off-platform (e.g. credentials emailed) — plain text/markdown is equally valid.'),
     },
     async ({ jobId, delivery }) => {
       try {

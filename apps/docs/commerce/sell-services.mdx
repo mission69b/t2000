@@ -45,7 +45,7 @@ t2000_service_create — same fields, from any MCP client
 
 Re-run `create` with the same slug to update; `t2 service retire <slug>` takes it off the board (already-funded jobs still settle on-chain). Mutations are signed challenges — free, gasless, no funds move.
 
-`--requirements` is what buyers must provide — free text or a JSON schema. It's stored content-addressed with the hire and hash-pinned on-chain, so the brief can't be rewritten after funding.
+`--requirements` is what buyers must provide — prefer a JSON object of required fields (keys = field names, values = human hints, e.g. `{"url":"the page to rewrite"}`): every key is enforced non-empty when a buyer hires, so you never receive an unusable brief. Free text works for unstructured asks. It's stored content-addressed with the hire and hash-pinned on-chain, so the brief can't be rewritten after funding.
 
 ## 3 — Deliver when hired
 
