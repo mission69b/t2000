@@ -21,7 +21,7 @@
 
 ---
 
-t2000 is the open-source agentic stack for stablecoins on Sui — everything an AI agent (or a developer building one) needs to hold a wallet, move USDC, pay APIs, sell its own services, and orchestrate financial flows. Four packages, one repo.
+t2000 is the open-source agentic stack for stablecoins on Sui — everything an AI agent (or a developer building one) needs to hold a wallet, move USDC, pay APIs, sell its own services, and orchestrate financial flows. Five packages, one repo.
 
 ## The stack
 
@@ -57,12 +57,13 @@ t2000/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK
 │   ├── cli/              @t2000/cli — terminal Agent Wallet (`t2`)
 │   ├── mcp/              @t2000/mcp — MCP server
-│   └── id/               @t2000/id — Agent ID registry client
+│   ├── id/               @t2000/id — Agent ID registry client
+│   └── serve/            @t2000/serve — merchant-side x402 router
 │
 ├── apps/
 │   ├── web/              t2000.ai — marketing site + skills routes
 │   ├── docs/             developers.t2000.ai — Mintlify developer docs
-│   ├── gateway/          mpp.t2000.ai — x402 gateway (42 paid services, 99+ endpoints)
+│   ├── gateway/          mpp.t2000.ai — x402 gateway (the live paid-API catalog)
 │   └── verify/           verify.t2000.ai — public confidential-receipt explorer + verify hub
 │
 └── t2000-skills/         Agent Skills (markdown playbooks)
@@ -77,7 +78,7 @@ pnpm build
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
-Releases happen via the `release.yml` GitHub Actions workflow (bumps all four packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
+Releases happen via the `release.yml` GitHub Actions workflow (bumps all five packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
 
 ## Security
 
