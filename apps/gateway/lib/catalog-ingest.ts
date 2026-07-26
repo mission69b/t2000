@@ -512,6 +512,11 @@ export async function previewSeller(
       `Self-listed x402 seller at ${host}. Payment settles directly to the seller.`,
     chain: 'sui',
     currency: 'USDC',
+    // DELIBERATELY the flat 'commerce' bucket for ALL direct sellers
+    // (founder call 2026-07-26): the agent's directory category
+    // (agents.t2000.ai) is NOT mapped into the gateway catalog — a standing
+    // two-system sync isn't worth it for the rail's machine surface. Do not
+    // "fix" by deriving from /v1/agents/{payTo}.
     categories: ['commerce'],
     logo: '/logos/direct-seller.svg',
     endpoints: enumerated.endpoints,
