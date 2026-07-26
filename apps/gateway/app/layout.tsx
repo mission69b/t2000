@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
-import { totalServices, totalEndpoints } from "@/lib/catalog";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -12,7 +11,9 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
-const SHORT_DESC = `Pay-per-request APIs. ${totalServices()} services, ${totalEndpoints()} endpoints across AI, search, web, voice, and finance. No keys, no accounts. Settled in USDC on Sui.`;
+// No counts here — build-baked numbers drift from the live merged catalog
+// (the 41-vs-44 class); pages that show counts read getCatalog() live.
+const SHORT_DESC = `Pay-per-request APIs across AI, search, web, voice, and finance. No keys, no accounts. Settled in USDC on Sui.`;
 const SOCIAL_DESC = `Pay-per-request APIs. No API keys. Settled in USDC on Sui. Gasless.`;
 
 export const metadata: Metadata = {

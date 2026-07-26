@@ -62,8 +62,8 @@ export default async function ServiceDetailPage({
         <ServiceDetail service={service} related={related} />
       </main>
       <MppFooter
-        serviceCount={totalServices()}
-        endpointCount={totalEndpoints()}
+        serviceCount={totalServices(catalog)}
+        endpointCount={totalEndpoints(catalog)}
       />
     </>
   );

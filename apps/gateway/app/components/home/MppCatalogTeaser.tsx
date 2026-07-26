@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { allCards, totalServices, type ServiceCard } from "@/lib/catalog";
+import { allCards, type ServiceCard } from "@/lib/catalog";
 
-export function MppCatalogTeaser() {
+export function MppCatalogTeaser({ total }: { total: number }) {
   const cards = allCards().slice(0, 12);
-  const total = totalServices();
 
   return (
     <section className="t2k-section">

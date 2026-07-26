@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { totalServices, totalCategories } from "@/lib/catalog";
+import { totalCategories, totalServices } from "@/lib/catalog";
+import type { Service } from "@/lib/services";
 
 interface Step {
   n: string;
@@ -9,7 +10,7 @@ interface Step {
   cta: { label: string; href: string; external?: boolean };
 }
 
-export function MppCloser() {
+export function MppCloser({ catalog }: { catalog: Service[] }) {
   const steps: Step[] = [
     {
       n: "01",
@@ -22,7 +23,7 @@ export function MppCloser() {
       n: "02",
       tag: "BROWSE",
       title: "Browse the catalog.",
-      desc: `${totalServices()} services across ${totalCategories()} categories. Search, filter, and expand any service to see its endpoints.`,
+      desc: `${totalServices(catalog)} services across ${totalCategories(catalog)} categories. Search, filter, and expand any service to see its endpoints.`,
       cta: { label: "Browse services →", href: "/services" },
     },
     {

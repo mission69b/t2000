@@ -1,4 +1,5 @@
-import { totalServices, totalEndpoints, totalCategories } from "@/lib/catalog";
+import { totalCategories, totalEndpoints, totalServices } from "@/lib/catalog";
+import type { Service } from "@/lib/services";
 import { prisma } from "@/lib/prisma";
 
 async function getLifetimeStats() {
@@ -26,13 +27,13 @@ function fmtVolume(v: number): string {
   return `$${v.toFixed(2)}`;
 }
 
-export async function MppMetrics() {
+export async function MppMetrics({ catalog }: { catalog: Service[] }) {
   const { payments, volume } = await getLifetimeStats();
 
   const cells: Array<[string, string]> = [
-    ["Services", totalServices().toString()],
-    ["Endpoints", totalEndpoints().toString()],
-    ["Categories", totalCategories().toString()],
+    ["Services", totalServices(catalog).toString()],
+    ["Endpoints", totalEndpoints(catalog).toString()],
+    ["Categories", totalCategories(catalog).toString()],
     ["Requests settled", payments > 0 ? fmtCount(payments) : "—"],
     ["Volume", volume > 0 ? fmtVolume(volume) : "—"],
   ];

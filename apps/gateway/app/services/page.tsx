@@ -8,9 +8,13 @@ import { MppCatalog } from "../components/services/MppCatalog";
 // same 60s cadence as /api/services.
 export const revalidate = 60;
 
+// No counts in the meta description — build-baked numbers drift from the
+// live merged catalog (the 41-vs-44 class); the on-page header carries the
+// live figures.
 export const metadata = {
   title: "Services — mpp.t2000.ai",
-  description: `${totalServices()} services, ${totalEndpoints()} endpoints. Pay-per-request in USDC on Sui. Search and expand any service to see its endpoints.`,
+  description:
+    "Pay-per-request APIs in USDC on Sui. Search and expand any service to see its endpoints.",
 };
 
 export default async function ServicesPage() {
