@@ -15,6 +15,7 @@ import {
   setLimits,
   walletExists,
 } from '@t2000/sdk';
+import { AGENT_CATEGORIES, parseCategory } from '../../lib/agent-category.js';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import {
@@ -30,16 +31,6 @@ import {
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const STORE_BASE = 'https://agents.t2000.ai';
 
-// Mirrors the server-side allow-list — fails fast before signing.
-const AGENT_CATEGORIES = [
-  'ai-models',
-  'data-feeds',
-  'finance',
-  'research',
-  'dev-tools',
-  'creative',
-  'other',
-] as const;
 
 // Fresh wallets seed the same conservative defaults as `t2 init` (2.2 —
 // limits ON by default).
@@ -107,13 +98,7 @@ export function registerAgentCreate(group: Command) {
 
         let category: string | undefined;
         if (opts.category !== undefined) {
-          const c = opts.category.trim().toLowerCase();
-          if (!(AGENT_CATEGORIES as readonly string[]).includes(c)) {
-            throw new Error(
-              `--category must be one of: ${AGENT_CATEGORIES.join(', ')} (got "${opts.category}").`,
-            );
-          }
-          category = c;
+          category = parseCategory(opts.category);
         }
 
         let owner: string | undefined;

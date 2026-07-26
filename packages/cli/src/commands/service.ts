@@ -18,6 +18,11 @@ import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { truncateAddress, validateAddress } from '@t2000/sdk';
+import {
+  AGENT_CATEGORIES,
+  ensureSellerCategory,
+  parseCategory,
+} from '../lib/agent-category.js';
 import { fetchJson, type ServiceListing } from '../lib/services.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
@@ -166,6 +171,10 @@ Examples:
     )
     .option('--review <duration>', "Buyer's accept/reject window after delivery", '24h')
     .option('--split <bps>', "Buyer's share in bps if they reject (0–10000)", '8000')
+    .option(
+      '--category <category>',
+      `Directory category for your listing: ${AGENT_CATEGORIES.join(' | ')} (required unless already set on your profile)`,
+    )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -179,6 +188,7 @@ Examples:
         requirements?: string;
         review: string;
         split: string;
+        category?: string;
         key?: string;
         api?: string;
       }) => {
@@ -191,9 +201,22 @@ Examples:
           const reviewWindowMinutes = Math.round(parseDuration(opts.review) / 60_000);
           const rejectSplitBps = Number.parseInt(opts.split, 10);
           const slug = (opts.slug ?? slugify(opts.name)).trim().toLowerCase();
+          // Validate BEFORE wallet load (the S.816 CI lesson).
+          const category =
+            opts.category === undefined
+              ? undefined
+              : parseCategory(opts.category);
           const requirements = opts.requirements
             ? await resolveRequirements(opts.requirements)
             : null;
+
+          // Listings become browsable cards — a category is part of listing
+          // (the directory-drift guard; retire skips it).
+          await ensureSellerCategory({
+            base: opts.api ?? DEFAULT_API_BASE,
+            agent: await withAgent({ keyPath: opts.key }),
+            category,
+          });
 
           const payload = {
             slug,
