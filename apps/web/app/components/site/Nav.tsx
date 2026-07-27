@@ -158,19 +158,24 @@ function Dropdown({
   children: React.ReactNode;
 }) {
   return (
+    // Mobile (export responsive.css pattern): full width minus margins,
+    // single column — the fixed 520px panel overflowed a 375px viewport.
+    // Geometry lives in classes (inline width/left can't be overridden
+    // responsively); the desktop left offset rides in a CSS var.
     <div
-      className="absolute z-40 rounded-[10px] border p-[10px]"
-      style={{
-        top: 56,
-        left,
-        width: 520,
-        background: "var(--ds-background-100)",
-        borderColor: "var(--ds-gray-alpha-400)",
-        boxShadow: "var(--shadow-lg)",
-        animation: "fadeInUp 120ms cubic-bezier(0.16,1,0.3,1)",
-      }}
+      className="absolute z-40 rounded-[10px] border p-[10px] max-md:inset-x-3 md:left-[var(--dd-left)] md:w-[520px]"
+      style={
+        {
+          top: 56,
+          "--dd-left": `${left}px`,
+          background: "var(--ds-background-100)",
+          borderColor: "var(--ds-gray-alpha-400)",
+          boxShadow: "var(--shadow-lg)",
+          animation: "fadeInUp 120ms cubic-bezier(0.16,1,0.3,1)",
+        } as React.CSSProperties
+      }
     >
-      <div className="grid grid-cols-2 gap-0.5">{children}</div>
+      <div className="grid gap-0.5 md:grid-cols-2">{children}</div>
     </div>
   );
 }
