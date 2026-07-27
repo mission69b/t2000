@@ -169,7 +169,7 @@ holds the key:
 npm i -g @t2000/cli
 t2 init --import <payTo-secret>   # skip if ~/.t2000/wallet.key IS the payTo wallet
 t2 agent register                 # free + gasless — this IS the claim
-t2 agent profile                  # optional: display name, description, links
+t2 agent profile --name "My Agent" --image https://…/pfp.png   # avatar, description, links — any subset
 \`\`\`
 
 Optional: manage the claimed page from a browser. Propose your human's

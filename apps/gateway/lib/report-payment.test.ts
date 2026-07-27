@@ -99,6 +99,59 @@ describe('verifyAndLogDirectPayment', () => {
     });
   });
 
+  it('retries a not-yet-indexed digest and records once the fullnode catches up', async () => {
+    // The finality race (Privi, 2026-07-27): the report lands before the
+    // fullnode indexed the digest. The first reads throw; a later one finds
+    // the transaction — the row must be written, not dropped.
+    logPaymentMock.mockClear();
+    let calls = 0;
+    const client = {
+      core: {
+        getTransaction: vi.fn(async () => {
+          calls++;
+          if (calls < 3) throw new Error('not indexed yet');
+          return {
+            $kind: 'Transaction',
+            Transaction: {
+              balanceChanges: [
+                { coinType: SUI_USDC_TYPE, address: '0xbuyer', amount: '-20000' },
+                { coinType: SUI_USDC_TYPE, address: JMPR_PAY_TO, amount: '20000' },
+              ],
+            },
+          };
+        }),
+      },
+    } as unknown as SuiGrpcClient;
+
+    const outcome = await verifyAndLogDirectPayment({
+      digest: VALID_DIGEST,
+      url: 'https://agent.jmpr.world/v1/hotels/search',
+      client,
+      retryDelayMs: 0,
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    expect(calls).toBe(3);
+    expect(logPaymentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives up after the retry budget when the digest never appears', async () => {
+    logPaymentMock.mockClear();
+    const client = {
+      core: { getTransaction: vi.fn(async () => { throw new Error('nope'); }) },
+    } as unknown as SuiGrpcClient;
+
+    const outcome = await verifyAndLogDirectPayment({
+      digest: VALID_DIGEST,
+      url: 'https://agent.jmpr.world/v1/hotels/search',
+      client,
+      retryDelayMs: 0,
+    });
+
+    expect(outcome).toEqual({ ok: false, status: 422, error: 'transaction not found on-chain' });
+    expect(logPaymentMock).not.toHaveBeenCalled();
+  });
+
   it('rejects a digest whose USDC inflow goes to someone else', async () => {
     const client = clientWith([
       { coinType: SUI_USDC_TYPE, address: '0xbuyer', amount: '-20000' },
@@ -157,6 +210,7 @@ describe('verifyAndLogDirectPayment', () => {
       digest: VALID_DIGEST,
       url: 'https://agent.jmpr.world/v1/hotels/search',
       client,
+      retryDelayMs: 0, // a non-Transaction result retries like not-found
     });
     expect(outcome).toMatchObject({ ok: false, status: 422 });
   });

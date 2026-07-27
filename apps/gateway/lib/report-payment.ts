@@ -46,10 +46,20 @@ export async function findDirectServiceByUrl(url: string): Promise<{ service: Se
  * write the activity row. Amount + sender come from the chain's balance
  * changes, never from the reporter.
  */
+// Reports race finality by construction: the seller settles and the client
+// (or the relay's after() hook) reports within milliseconds — before the
+// fullnode we read from has indexed the digest. A single not-found read used
+// to drop the row forever (the 2026-07-27 Privi payments were lost exactly
+// this way); every other failure mode is final and never retried.
+const NOT_FOUND_ATTEMPTS = 4;
+const NOT_FOUND_RETRY_DELAY_MS = 2_500;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function verifyAndLogDirectPayment(input: {
   digest: string;
   url: string;
   client?: SuiGrpcClient; // injectable for tests
+  retryDelayMs?: number; // injectable for tests
 }): Promise<ReportOutcome> {
   const { digest, url } = input;
   if (typeof digest !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(digest)) {
@@ -66,16 +76,25 @@ export async function verifyAndLogDirectPayment(input: {
     input.client ??
     new SuiGrpcClient({ baseUrl: 'https://fullnode.mainnet.sui.io', network: 'mainnet' });
 
-  let changes: Array<{ coinType: string; address?: string | null; amount: string }>;
-  try {
-    const result = await client.core.getTransaction({
-      digest,
-      include: { balanceChanges: true },
-    });
-    const txn = result.$kind === 'Transaction' ? result.Transaction : undefined;
-    if (!txn) return { ok: false, status: 422, error: 'transaction not found or failed' };
-    changes = txn.balanceChanges ?? [];
-  } catch {
+  const retryDelayMs = input.retryDelayMs ?? NOT_FOUND_RETRY_DELAY_MS;
+  let changes: Array<{ coinType: string; address?: string | null; amount: string }> | undefined;
+  for (let attempt = 1; attempt <= NOT_FOUND_ATTEMPTS; attempt++) {
+    try {
+      const result = await client.core.getTransaction({
+        digest,
+        include: { balanceChanges: true },
+      });
+      const txn = result.$kind === 'Transaction' ? result.Transaction : undefined;
+      if (txn) {
+        changes = txn.balanceChanges ?? [];
+        break;
+      }
+    } catch {
+      // Not indexed yet (or genuinely nonexistent) — retry below.
+    }
+    if (attempt < NOT_FOUND_ATTEMPTS) await sleep(retryDelayMs);
+  }
+  if (!changes) {
     return { ok: false, status: 422, error: 'transaction not found on-chain' };
   }
 
