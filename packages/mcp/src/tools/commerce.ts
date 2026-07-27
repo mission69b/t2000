@@ -275,7 +275,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
       requirements: z.string().optional().describe("BUY mode: what the seller asked buyers to provide. If the listing's requirements are an object, pass a JSON object filling every REQUIRED key non-empty (the listing's `required` array when present, else all listed keys; extras allowed) — a missing key rejects before any funds move. If the listing asks for text, pass free text."),
       seller: z.string().optional().describe("INVITE mode: the seller's Sui address"),
       amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('INVITE mode: USDC to escrow — the price YOU set'),
-      spec: z.string().optional().describe('INVITE mode: the job brief (stored content-addressed so the seller can read it; its sha256 goes on-chain). Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),
+      spec: z.string().optional().describe('INVITE mode: the job brief (stored content-addressed; its sha256 goes on-chain). PUBLIC — it appears on the job receipt so sellers can read the task; keep secrets and personal details out. Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),
       deadlineMinutes: z.number().int().positive().optional().describe('INVITE mode: time the seller has to deliver (default 1440 = 24h)'),
       reviewWindowMinutes: z.number().int().positive().optional().describe('INVITE mode: your accept/reject window after delivery (default 1440)'),
       rejectSplitBps: z.number().int().min(0).max(10_000).optional().describe('INVITE mode: your share in bps if you reject (default 8000)'),

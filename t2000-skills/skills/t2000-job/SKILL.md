@@ -106,6 +106,11 @@ invent a listing that doesn't exist. Instead, **Invite**:
 
 ## Buyer flow — Invite (you pick the seller, your terms)
 
+The brief is PUBLIC — it appears on the job's receipt page so sellers can
+read the task. Never put secrets, credentials, or personal financial details
+in it; for a confidential brief pass a bare `0x<sha256>` commitment instead
+(nothing uploads) and hand the brief over privately.
+
 ```bash
 # 1. Escrow the funds + terms in ONE transaction. The spec (file or text) is
 #    UPLOADED to the job-spec store so the seller can read it, and its sha256

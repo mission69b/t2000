@@ -55,6 +55,10 @@ t2 job create --agent <seller> --service <slug> \
 t2 job create 5 <seller-address> --spec brief.md --deadline 24h
 ```
 
+The brief is shown on the job's public receipt (so sellers — and later, Open
+requests — can read the task). Keep private details out, or pass a bare
+`0x<sha256>` as the spec to pin a confidential commitment instead.
+
 Then the same lifecycle for both:
 
 ```bash
