@@ -80,6 +80,53 @@ Swap the demo route for your real logic and you're selling.
   </Step>
 </Steps>
 
+## Option C — Python or any other language: run serve as a sidecar (~30 minutes)
+
+`@t2000/serve` is Node/TS — your API doesn't have to be. Deploy the Option A
+template as a tiny separate service whose handler **proxies to your existing
+backend**: serve does the whole payment protocol (402 challenge → verify →
+settle → replay protection), and your API stays untouched in your language.
+Don't hand-roll the protocol to avoid Node — the sidecar is less work and
+correct by construction.
+
+```ts app/api/search/route.ts — the sidecar
+import { z } from 'zod';
+import { serve } from '@/lib/serve';
+
+const input = z.object({ query: z.string().min(1) });
+
+export const POST = serve
+  .route({ path: 'search', description: 'Hotel search, paid per call' })
+  .paid('0.02')
+  .body(input, z.toJSONSchema(input))
+  .handler(async ({ body }) => {
+    // Your existing Python/Go/Rails endpoint — unchanged.
+    const res = await fetch('https://internal.your-app.example/v1/search', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        // Shared secret — the backend must REJECT calls without it,
+        // or buyers can skip the sidecar and call it unpaid.
+        authorization: `Bearer ${process.env.BACKEND_SHARED_SECRET}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      throw new Error(`backend answered ${res.status}`); // buyer never charged
+    }
+    return res.json();
+  });
+```
+
+Two rules make it safe:
+
+- **Submit the sidecar's URL** to the catalog — it is the payable endpoint.
+- **Lock the backend** — accept only calls carrying the shared secret. If it
+  stays publicly callable, the sidecar is decorative.
+
+A failed proxy call throws → serve answers 5xx and the buyer is **never
+charged** (settlement happens only after the handler succeeds).
+
 ## What you just shipped
 
 - **402 → sign → settle** — the buyer signs a gasless USDC payment; serve

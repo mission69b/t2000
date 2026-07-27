@@ -84,7 +84,39 @@ Starting from zero instead of wrapping an existing app? Clone the deployable
 template — one paid route, discovery docs, a Deploy-with-Vercel button:
 https://github.com/mission69b/t2000/tree/main/templates/serve-vercel
 
-Not on Node? See "Hand-rolling the protocol (any language)" at the bottom.
+Not on Node (Python, Go, anything else)? Run serve as a SIDECAR — deploy
+the template above as a tiny separate Node service whose handler proxies to
+your existing backend. Serve does the whole payment protocol; your API stays
+untouched in your language:
+
+\`\`\`ts
+// The sidecar's paid route — payments in front, your backend behind.
+const input = z.object({ query: z.string().min(1) });
+
+export const POST = serve
+  .route({ path: 'search', description: 'What this call does' })
+  .paid('0.02')
+  .body(input, z.toJSONSchema(input))
+  .handler(async ({ body }) => {
+    const res = await fetch('https://internal.your-app.example/v1/search', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        // Shared secret — your backend must REJECT calls without it, or
+        // buyers can skip the sidecar and call it unpaid.
+        authorization: \`Bearer \${process.env.BACKEND_SHARED_SECRET}\`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(\`backend answered \${res.status}\`); // thrown = buyer never charged
+    return res.json();
+  });
+\`\`\`
+
+Submit the SIDECAR's URL to the catalog — it is the payable endpoint. Only
+if you truly cannot run Node anywhere, see "Hand-rolling the protocol (any
+language)" at the bottom — the sidecar is less work and correct by
+construction.
 
 ## Step 2 — serve discovery docs
 
