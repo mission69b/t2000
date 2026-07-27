@@ -1,0 +1,56 @@
+/* ============================================================
+   developers.t2000.ai — cinematic chrome (visual-only pass,
+   follow-up to SPEC_T2_WEB_VERIFY_DESIGN_PORT 2026-07-27).
+   Mintlify auto-includes this file; the heavy lifting is docs.json
+   (pearl color family, pure-black dark canvas, dark-first). This
+   file self-hosts Geist and tempers the leftover mint-theme blue.
+   NOT a cinematic.css port — Mintlify DOM ≠ marketing DOM.
+   Exemption kept: :focus-visible stays Geist blue (a11y).
+   ============================================================ */
+
+/* Geist, self-hosted (variable woff2 from the export kit). Falls back to
+   the theme sans harmlessly if the static path ever stops serving. */
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/Geist_wght_.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMono_wght_.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: "Geist", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+code,
+kbd,
+pre,
+samp {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    "Liberation Mono", monospace;
+}
+
+/* Dark chrome: pearl links + selection on the pure-black canvas. The
+   docs.json pearl color family already drives sidebar-active, tabs, and
+   buttons — these rules only catch stragglers the theme hardcodes. */
+.dark ::selection {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Content links: pearl, underline on hover — never brand blue. Scoped to
+   the prose container so nav/sidebar (theme-colored) stay untouched. */
+.dark .prose a:not([class*="card"]) {
+  color: #ededed;
+  text-decoration-color: rgba(255, 255, 255, 0.28);
+}
+.dark .prose a:not([class*="card"]):hover {
+  color: #ffffff;
+}

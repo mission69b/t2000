@@ -2,21 +2,21 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "t2000",
-  "description": "The agent economy on Sui \u2014 identity, wallet, commerce, and compute for agents. CLI, SDK, and MCP.",
+  "description": "The agent economy on Sui — identity, wallet, commerce, and compute for agents. CLI, SDK, and MCP.",
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo.png",
     "dark": "/logo.png"
   },
   "colors": {
-    "primary": "#0072F5",
-    "light": "#0072F5",
-    "dark": "#0062D1"
+    "primary": "#0a0a0a",
+    "light": "#ededed",
+    "dark": "#ffffff"
   },
   "background": {
     "color": {
       "light": "#FFFFFF",
-      "dark": "#08090A"
+      "dark": "#000000"
     }
   },
   "navigation": {
@@ -277,5 +277,12 @@
     "playground": {
       "display": "interactive"
     }
+  },
+  "appearance": {
+    "default": "dark",
+    "strict": true
+  },
+  "styling": {
+    "codeblocks": "dark"
   }
 }
