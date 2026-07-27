@@ -116,8 +116,9 @@ export async function payWithMpp(args: {
     return finalize(probe, { paid: false });
   }
 
-  const requirements = await pickSuiExactRequirements(probe, client.network);
-  if (requirements) {
+  const pick = await pickSuiExactRequirements(probe, client.network);
+  if (pick.kind === 'payable') {
+    const requirements = pick.requirements;
     // Job-class (escrow-intent) 402 — SPEC_A2A_ESCROW slice 2. The entry
     // advertises escrow TERMS, not an instant settlement challenge: paying
     // it with a signed transfer would move money with no delivery contract.
@@ -147,8 +148,9 @@ export async function payWithMpp(args: {
     return result;
   }
 
-  // No x402 envelope — fall back to the MPP header dialect when the 402
-  // advertises a `sui` method challenge.
+  // No PAYABLE x402 envelope (none, or a decorative exact entry with no
+  // usable challenge — JMPR class) — fall back to the MPP header dialect
+  // when the 402 advertises a `sui` method challenge.
   const headerChallenge = await parseMppSuiChallenge(probe);
   if (headerChallenge) {
     // Fail CLOSED before any money moves: the header dialect pays first and
@@ -174,6 +176,15 @@ export async function payWithMpp(args: {
     return result;
   }
 
+  if (pick.kind === 'incomplete') {
+    throw new T2000Error(
+      'FACILITATOR_REJECTION',
+      "Seller's x402 challenge is incomplete (missing extra.suimpp) — nothing was paid. " +
+        'The 402 advertises an exact/sui entry but carries no settlement challenge to bind ' +
+        'a payment to; the seller must emit the createX402Requirements shape to be x402-payable.',
+      { reason: 'incomplete-x402-accepts' },
+    );
+  }
   throw new T2000Error(
     'FACILITATOR_REJECTION',
     `Endpoint returned 402 without an x402 'exact' / sui:${client.network} requirement in the body ` +
@@ -243,16 +254,47 @@ export async function parseMppSuiChallenge(
 // x402 `sui-exact` — sign-then-settle
 // ---------------------------------------------------------------------------
 
-async function pickSuiExactRequirements(
-  response: Response,
-  network: string,
-): Promise<X402Requirements | undefined> {
+/** True when an `accepts[]` entry carries the COMPLETE instant-settlement
+ *  challenge — `extra.suimpp` exactly as `createX402Requirements` emits it.
+ *  A bare `exact`/`sui:mainnet` entry WITHOUT it is decorative: there is no
+ *  challenge to bind a payment to, and `buildX402SignedPayment` would crash
+ *  destructuring `extra.suimpp` (live: JMPR × Audric, 2026-07-27). */
+function hasCompleteSuimppChallenge(entry: X402Requirements): boolean {
+  const s = (entry as { extra?: { suimpp?: Record<string, unknown> } }).extra?.suimpp;
+  return (
+    !!s &&
+    typeof s.challengeId === 'string' &&
+    s.challengeId.length > 0 &&
+    typeof s.nonce === 'number' &&
+    typeof s.chain === 'string' &&
+    s.chain.length > 0 &&
+    typeof s.minEpoch === 'string' &&
+    typeof s.maxEpoch === 'string'
+  );
+}
+
+type SuiExactPick =
+  /** Complete instant challenge OR job-class escrow entry — safe to act on. */
+  | { kind: 'payable'; requirements: X402Requirements }
+  /** An `exact`/`sui:<network>` entry exists but is INCOMPLETE (no usable
+   *  `extra.suimpp`, no escrow terms) — never x402-payable; the caller falls
+   *  through to the header dialect or fails closed with a typed error. */
+  | { kind: 'incomplete' }
+  | { kind: 'none' };
+
+async function pickSuiExactRequirements(response: Response, network: string): Promise<SuiExactPick> {
   try {
     const body = (await response.clone().json()) as { accepts?: X402Requirements[] };
     const want = `sui:${network === 'testnet' ? 'testnet' : 'mainnet'}`;
-    return body.accepts?.find((a) => a.scheme === 'exact' && a.network === want);
+    const entry = body.accepts?.find((a) => a.scheme === 'exact' && a.network === want);
+    if (!entry) return { kind: 'none' };
+    const { isX402EscrowRequirements } = await import('@suimpp/mpp/x402');
+    if (hasCompleteSuimppChallenge(entry) || isX402EscrowRequirements(entry)) {
+      return { kind: 'payable', requirements: entry };
+    }
+    return { kind: 'incomplete' };
   } catch {
-    return undefined;
+    return { kind: 'none' };
   }
 }
 
@@ -264,6 +306,16 @@ async function payViaX402(args: {
   requirements: X402Requirements;
 }): Promise<PayResult> {
   const { signer, client, options, reqInit, requirements } = args;
+  // Belt to pickSuiExactRequirements' suspenders: buildX402SignedPayment
+  // destructures `requirements.extra.suimpp` — an incomplete entry reaching
+  // this far must fail as a typed error, never a raw TypeError in chat.
+  if (!hasCompleteSuimppChallenge(requirements)) {
+    throw new T2000Error(
+      'FACILITATOR_REJECTION',
+      "Seller's x402 challenge is incomplete (missing extra.suimpp) — nothing was paid.",
+      { reason: 'incomplete-x402-accepts' },
+    );
+  }
   const { buildX402SignedPayment, X402_PAYMENT_HEADER, X402_PAYMENT_RESPONSE_HEADER } = await import(
     '@suimpp/mpp/x402'
   );

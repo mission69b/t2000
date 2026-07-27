@@ -319,6 +319,120 @@ describe('payWithMpp — x402 sign-then-settle', () => {
   });
 });
 
+// The JMPR incident shape (live, 2026-07-27): a 402 whose accepts[] has a
+// decorative exact/sui:mainnet entry with NO extra.suimpp (no settlement
+// challenge to bind to) — plus the MPP header dialect alongside. Classifying
+// it as x402 crashed buildX402SignedPayment ("Cannot destructure property
+// 'suimpp' of ... undefined"). Doctrine: incomplete accepts[] is NEVER x402 —
+// treat as header-only (or fail closed with a typed error).
+function jmprShaped402(withHeader = true): Response {
+  const request = toBase64(
+    new TextEncoder().encode(JSON.stringify({ amount: '0.02', currency: USDC_TYPE, recipient: '0xseller' })),
+  );
+  return mockResponse({
+    status: 402,
+    body: {
+      accepts: [
+        {
+          scheme: 'exact',
+          network: 'sui:mainnet',
+          asset: USDC_TYPE,
+          maxAmountRequired: '20000',
+          payTo: '0xseller',
+          resource: 'https://agent.jmpr.world/v1/hotels/search',
+          maxTimeoutSeconds: 60,
+          // NO extra at all — the live JMPR body.
+        },
+      ],
+    },
+    headers: withHeader
+      ? {
+          'WWW-Authenticate': `Payment id="cid-sui", realm="jmpr", method="sui", intent="charge", request="${request}"`,
+        }
+      : {},
+  });
+}
+
+describe('payWithMpp — incomplete x402 accepts[] (JMPR shape) fails closed', () => {
+  it('keypair: never signs x402 off an incomplete entry — falls through to the header dialect', async () => {
+    mppxChallengeAmount = '0.02';
+    fetchMock.mockResolvedValueOnce(jmprShaped402());
+
+    const result = await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
+    });
+
+    expect(buildX402Mock).not.toHaveBeenCalled(); // the crash site is never reached
+    expect(result.paid).toBe(true);
+    expect(result.dialect).toBe('legacy');
+  });
+
+  it('zkLogin: typed DIALECT_UNSUPPORTED, never the raw destructure TypeError, no money moves', async () => {
+    fetchMock.mockResolvedValueOnce(jmprShaped402());
+
+    const zkSigner = { ...makeSigner(), kind: 'zklogin' } as TransactionSigner;
+    await expect(
+      payWithMpp({
+        signer: zkSigner,
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
+      }),
+    ).rejects.toMatchObject({ code: 'DIALECT_UNSUPPORTED' });
+    expect(buildX402Mock).not.toHaveBeenCalled();
+    expect(executeTxMock).not.toHaveBeenCalled();
+  });
+
+  it('incomplete entry with NO header dialect either → typed FACILITATOR_REJECTION naming extra.suimpp', async () => {
+    fetchMock.mockResolvedValueOnce(jmprShaped402(false));
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
+      }),
+    ).rejects.toMatchObject({
+      code: 'FACILITATOR_REJECTION',
+      message: expect.stringMatching(/incomplete.*extra\.suimpp.*nothing was paid/i),
+    });
+    expect(buildX402Mock).not.toHaveBeenCalled();
+    expect(executeTxMock).not.toHaveBeenCalled();
+  });
+
+  it('an empty extra object (extra: {}) is just as incomplete as no extra', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        status: 402,
+        body: {
+          accepts: [
+            {
+              scheme: 'exact',
+              network: 'sui:mainnet',
+              asset: USDC_TYPE,
+              maxAmountRequired: '20000',
+              payTo: '0xseller',
+              resource: 'https://seller.example/x',
+              maxTimeoutSeconds: 60,
+              extra: {},
+            },
+          ],
+        },
+      }),
+    );
+
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://seller.example/x', maxPrice: 0.05 },
+      }),
+    ).rejects.toMatchObject({ code: 'FACILITATOR_REJECTION' });
+    expect(buildX402Mock).not.toHaveBeenCalled();
+  });
+});
+
 // The MPP header dialect (WWW-Authenticate: Payment … method="sui") — the
 // restored pre-S.452 fallback for header-only external sellers (JMPR shape).
 function mppHeader402(amount = '0.02'): Response {

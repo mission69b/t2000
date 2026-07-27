@@ -410,13 +410,15 @@ export async function previewSeller(
       gate: 'dialect',
       ok: false,
       detail:
-        'the 402 answers only the MPP header dialect — serve an x402 accepts[] envelope ' +
-        '(scheme "exact", network "sui:mainnet") so every buyer, browser wallets included, ' +
-        'can pay; see developers.t2000.ai/sell-to-agents/overview',
+        'the 402 answers only the MPP header dialect — serve a COMPLETE x402 accepts[] envelope ' +
+        '(scheme "exact", network "sui:mainnet" PLUS the extra.suimpp challenge that ' +
+        'createX402Requirements emits, or extra.escrow terms for job-class) so every buyer, ' +
+        'browser wallets included, can pay; a bare exact entry without a settlement challenge ' +
+        'is not payable. See developers.t2000.ai/sell-to-agents/overview',
     });
     return { ok: false, gates, payTo: probed.payTo, warnings: [] };
   }
-  gates.push({ gate: 'dialect', ok: true, detail: 'x402 accepts[] envelope served' });
+  gates.push({ gate: 'dialect', ok: true, detail: 'complete x402 accepts[] envelope served' });
 
   const origin = endpointUrl.origin;
 

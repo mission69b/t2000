@@ -35,7 +35,26 @@ interface X402Accepts {
   network?: string;
   payTo?: string;
   maxAmountRequired?: string;
-  extra?: { escrow?: Partial<ProbedEscrowTerms> };
+  extra?: { escrow?: Partial<ProbedEscrowTerms>; suimpp?: Record<string, unknown> };
+}
+
+/** True when the entry carries a COMPLETE instant-settlement challenge —
+ *  `extra.suimpp` exactly as `createX402Requirements` emits it. A bare
+ *  exact/sui:mainnet entry without it is decorative: the payer SDK has no
+ *  challenge to bind a payment to, and stamping it dialect:x402 put an
+ *  unpayable seller in the Passport catalog (JMPR, live 2026-07-27). */
+function hasCompleteSuimppChallenge(extra: X402Accepts['extra']): boolean {
+  const s = extra?.suimpp;
+  return (
+    !!s &&
+    typeof s.challengeId === 'string' &&
+    s.challengeId.length > 0 &&
+    typeof s.nonce === 'number' &&
+    typeof s.chain === 'string' &&
+    s.chain.length > 0 &&
+    typeof s.minEpoch === 'string' &&
+    typeof s.maxEpoch === 'string'
+  );
 }
 
 /** Validate the advertised job terms — a job-class listing with nonsense
@@ -92,6 +111,11 @@ export async function probeSellerEndpoint(url: string): Promise<SellerProbeResul
   }
 
   // Dialect 1 — x402 body envelope (instant OR job-class escrow entry).
+  // "x402 accepts[]" means a COMPLETE entry: a usable extra.suimpp challenge
+  // (instant) or valid extra.escrow terms (job-class). A decorative
+  // exact+sui:mainnet with neither is NOT x402 — fall through to the header
+  // dialect so the payer contract and the catalog stamp agree.
+  let incompleteX402 = false;
   try {
     const body = (await response.clone().json()) as { accepts?: X402Accepts[] };
     const exact = body.accepts?.find((a) => a.scheme === 'exact' && a.network === 'sui:mainnet');
@@ -100,14 +124,17 @@ export async function probeSellerEndpoint(url: string): Promise<SellerProbeResul
       if (price) {
         const { terms, issue } = parseEscrowTerms(exact.extra);
         if (issue) return { ok: false, payTo: exact.payTo.toLowerCase(), issues: [issue] };
-        return {
-          ok: true,
-          payTo: exact.payTo.toLowerCase(),
-          priceUsdc: price,
-          dialect: 'x402',
-          escrow: terms,
-          issues: [],
-        };
+        if (terms || hasCompleteSuimppChallenge(exact.extra)) {
+          return {
+            ok: true,
+            payTo: exact.payTo.toLowerCase(),
+            priceUsdc: price,
+            dialect: 'x402',
+            escrow: terms,
+            issues: [],
+          };
+        }
+        incompleteX402 = true;
       }
     }
   } catch {
@@ -132,6 +159,16 @@ export async function probeSellerEndpoint(url: string): Promise<SellerProbeResul
     // No parseable header challenge either.
   }
 
+  if (incompleteX402) {
+    return {
+      ok: false,
+      issues: [
+        "the 402's x402 accepts[] entry is incomplete — instant x402 needs extra.suimpp " +
+          '(challengeId/nonce/chain/minEpoch/maxEpoch, the createX402Requirements shape) and ' +
+          'job-class needs extra.escrow terms; a bare exact+sui:mainnet entry is not payable',
+      ],
+    };
+  }
   return {
     ok: false,
     issues: [
