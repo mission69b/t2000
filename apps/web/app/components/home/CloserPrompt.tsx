@@ -114,9 +114,12 @@ export function CloserPrompt() {
             <button
               type="button"
               onClick={onCopy}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded border-0 px-2.5 py-1.5 text-[12px] font-medium tracking-tight text-white transition-colors"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded border-0 px-2.5 py-1.5 text-[12px] font-medium tracking-tight transition-colors"
               style={{
                 background: copied ? "var(--t2k-success)" : "var(--t2k-accent)",
+                // Paired foreground (§2b): accent is PEARL under cine — white
+                // text was 1.17:1 invisible. Falls back white on flat pages.
+                color: "var(--t2k-on-accent, #fff)",
               }}
             >
               {copied ? (

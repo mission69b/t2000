@@ -123,8 +123,8 @@ export function WalletCommandSurface() {
               className="m-0 text-[13.5px] leading-[1.6]"
               style={{ color: "var(--fg-muted)", letterSpacing: "-0.011em" }}
             >
-              <b style={{ color: "var(--fg)" }}>MCP server</b> exposes every verb
-              as a tool for Claude Desktop, Cursor &amp; Windsurf.{" "}
+              <b style={{ color: "var(--fg)" }}>MCP server</b>{" "}exposes every
+              verb as a tool for Claude Desktop, Cursor &amp; Windsurf.{" "}
               <b style={{ color: "var(--fg)" }}>Skills</b> are the playbooks your
               agent reads on demand.
             </p>

@@ -52,10 +52,13 @@ export function CopyButton({
       type="button"
       onClick={onCopy}
       aria-label={ariaLabel ?? (copied ? "Copied" : "Copy")}
-      className="inline-flex cursor-pointer items-center gap-1.5 rounded-[5px] border-0 text-[12px] font-medium tracking-tight text-white transition-colors"
+      className="inline-flex cursor-pointer items-center gap-1.5 rounded-[5px] border-0 text-[12px] font-medium tracking-tight transition-colors"
       style={{
         padding: "5px 10px 5px 8px",
         background: copied ? "var(--t2k-success)" : "var(--t2k-accent)",
+        // Paired foreground (§2b): accent is PEARL under cine — hardcoded
+        // white was invisible on it. Falls back white on flat pages.
+        color: "var(--t2k-on-accent, #fff)",
       }}
     >
       {copied ? (
