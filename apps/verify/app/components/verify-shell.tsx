@@ -57,7 +57,9 @@ export function VerifyHow() {
                   height: 26,
                   borderRadius: "50%",
                   background: "var(--t2k-accent)",
-                  color: "#fff",
+                  // Paired foreground (§2b) — accent is PEARL under cine;
+                  // hardcoded white was invisible on the step circles.
+                  color: "var(--t2k-on-accent, #fff)",
                   fontSize: 12,
                 }}
               >

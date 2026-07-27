@@ -4,13 +4,13 @@ import { useState } from "react";
 import {
   DEVELOPERS_URL,
   GITHUB_URL,
-  NAV_FAMILY,
   NAV_PRODUCTS,
   STORE_URL,
 } from "../data/site";
 
-// Family nav (designer's Nav.jsx for verify.t2000.ai) — same structure as
-// t2000.ai's nav, product links absolute, "Verify" is the current property.
+// Family nav — ALIGNED with t2000.ai's nav (founder 2026-07-27): Products ▾ ·
+// Agents · Developers · Console →. Product links absolute; "Verify" is the
+// current property. Brand mark keeps the `t2 | verify` subdomain identity.
 
 const linkBase =
   "inline-flex items-center gap-1 text-[13px] font-medium tracking-tight whitespace-nowrap transition-colors cursor-pointer no-underline text-muted hover:text-foreground";
@@ -71,6 +71,16 @@ export function SiteNav() {
           </button>
 
           <a
+            href={STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onMouseEnter={() => setOpen(false)}
+            className={linkBase}
+          >
+            Agents
+          </a>
+
+          <a
             href={DEVELOPERS_URL}
             target="_blank"
             rel="noopener noreferrer"
@@ -107,12 +117,12 @@ export function SiteNav() {
         </a>
 
         <a
-          href={STORE_URL}
+          href={`${STORE_URL}/manage`}
           target="_blank"
           rel="noopener noreferrer"
           className="t2k-btn t2k-btn--blue t2k-btn--sm whitespace-nowrap"
         >
-          List your agent&nbsp;→
+          Console&nbsp;→
         </a>
 
         {open && <ProductsMenu />}
@@ -148,39 +158,30 @@ function Chevron({ open }: { open: boolean }) {
 
 function ProductsMenu() {
   return (
+    // Same panel as t2000.ai's Nav: 520px two-column on md+, full width
+    // minus margins + one column on phone (the fixed panel overflowed 375px).
     <div
-      className="absolute z-40 rounded-[10px] border p-[10px]"
-      style={{
-        top: 56,
-        left: 24,
-        width: 580,
-        background: "var(--ds-background-100)",
-        borderColor: "var(--ds-gray-alpha-400)",
-        boxShadow: "var(--shadow-lg)",
-        animation: "fadeInUp 120ms cubic-bezier(0.16,1,0.3,1)",
-      }}
+      className="absolute z-40 rounded-[10px] border p-[10px] max-md:inset-x-3 md:left-[var(--dd-left)] md:w-[520px]"
+      style={
+        {
+          top: 56,
+          "--dd-left": "24px",
+          background: "var(--ds-background-100)",
+          borderColor: "var(--ds-gray-alpha-400)",
+          boxShadow: "var(--shadow-lg)",
+          animation: "fadeInUp 120ms cubic-bezier(0.16,1,0.3,1)",
+        } as React.CSSProperties
+      }
     >
-      <div className="t2k-eyebrow px-3 pb-1 pt-2" style={{ fontSize: 10 }}>
-        AGENT PRODUCTS
-      </div>
-      <div className="grid grid-cols-2 gap-0.5">
+      <div className="grid gap-0.5 md:grid-cols-2">
         {NAV_PRODUCTS.map((p) => (
-          <MenuItem key={p.name} name={p.name} desc={p.desc} pkg={p.pkg} href={p.href} />
-        ))}
-      </div>
-      <div className="my-2 h-px" style={{ background: "var(--ds-gray-alpha-300)" }} />
-      <div className="t2k-eyebrow px-3 py-1" style={{ fontSize: 10 }}>
-        FAMILY
-      </div>
-      <div className="grid grid-cols-2 gap-0.5">
-        {NAV_FAMILY.map((c) => (
           <MenuItem
-            key={c.name}
-            name={c.name}
-            desc={c.desc}
-            href={c.href}
-            external={c.external}
-            active={c.name === "Verify"}
+            active={p.slug === "verify"}
+            desc={p.desc}
+            href={p.href}
+            key={p.name}
+            name={p.name}
+            pkg={p.pkg}
           />
         ))}
       </div>
