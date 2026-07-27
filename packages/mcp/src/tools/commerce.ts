@@ -233,7 +233,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_browse',
-    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (hire them with t2000_job_create), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). Mirrors `t2 browse` / `t2 service list`.",
+    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (BUY them with t2000_job_create: agent + service), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). No listing fits? That is NOT a stop — INVITE a seller instead: pick one via t2000_agents, then t2000_job_create with seller + amountUsdc + spec (your brief, your terms). Mirrors `t2 browse`.",
     {
       query: z.string().optional().describe('Free-text search across service names/descriptions (omit for all)'),
       agent: z.string().optional().describe("One agent's Sui address — their catalog, retired included (e.g. your own to check your listings)"),
@@ -244,7 +244,17 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
           agent: agentAddr ? validateAddress(agentAddr) : undefined,
           query,
         });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+        // Empty board is not a dead end (SPEC_T2_AGENTS_BUYER_WORK Phase 1):
+        // steer the model to Invite instead of stopping or inventing a listing.
+        const services = (result as { services?: unknown[] })?.services;
+        const payload =
+          Array.isArray(services) && services.length === 0
+            ? {
+                ...result,
+                hint: 'No matching listed services — Invite instead: pick a capable seller with t2000_agents (or the agents.t2000.ai directory), agree a brief + USDC + deadline with your human, then t2000_job_create with seller + amountUsdc + spec. Never invent a listing.',
+              }
+            : result;
+        return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }] };
       } catch (err) {
         return errorResult(err);
       }
@@ -256,19 +266,19 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
   server.tool(
     't2000_job_create',
     `HIRE an agent: create + fund an on-chain USDC escrow Job in one sponsored transaction (buyer side). THIS SPENDS FUNDS — the price is locked in the Job object until settlement. Two modes:
-1. SERVICE mode (preferred): pass agent + service (a slug from t2000_browse) + requirements. Price/SLA/terms come from the listing.
-2. DIRECT mode: pass seller + amountUsdc + spec (your brief; stored content-addressed, sha256 pinned on-chain) + optional deadline/review/split terms.
+1. BUY (a listed service): pass agent + service (a slug from t2000_browse) + requirements. Price/SLA/terms come from the listing.
+2. INVITE (you picked the seller — no listing needed): pass seller + amountUsdc + spec (your brief; stored content-addressed, sha256 pinned on-chain) + optional deadline/review/split terms. Confirm seller, price, and brief with your human before funding.
 The escrow protects both sides: no delivery by the deadline → anyone can refund the buyer; delivery + lapsed review window → anyone can release to the seller. Max ${MAX_JOB_USDC} USDC. Mirrors \`t2 job create\`.`,
     {
-      agent: z.string().optional().describe("SERVICE mode: the seller's agent address"),
-      service: z.string().optional().describe('SERVICE mode: the service slug'),
-      requirements: z.string().optional().describe("SERVICE mode: what the seller asked buyers to provide. If the listing's requirements are an object, pass a JSON object filling every REQUIRED key non-empty (the listing's `required` array when present, else all listed keys; extras allowed) — a missing key rejects before any funds move. If the listing asks for text, pass free text."),
-      seller: z.string().optional().describe("DIRECT mode: the seller's Sui address"),
-      amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('DIRECT mode: USDC to escrow'),
-      spec: z.string().optional().describe('DIRECT mode: the job brief (stored content-addressed so the seller can read it; its sha256 goes on-chain). Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),
-      deadlineMinutes: z.number().int().positive().optional().describe('DIRECT mode: time the seller has to deliver (default 1440 = 24h)'),
-      reviewWindowMinutes: z.number().int().positive().optional().describe('DIRECT mode: your accept/reject window after delivery (default 1440)'),
-      rejectSplitBps: z.number().int().min(0).max(10_000).optional().describe('DIRECT mode: your share in bps if you reject (default 8000)'),
+      agent: z.string().optional().describe("BUY mode: the seller's agent address"),
+      service: z.string().optional().describe('BUY mode: the service slug'),
+      requirements: z.string().optional().describe("BUY mode: what the seller asked buyers to provide. If the listing's requirements are an object, pass a JSON object filling every REQUIRED key non-empty (the listing's `required` array when present, else all listed keys; extras allowed) — a missing key rejects before any funds move. If the listing asks for text, pass free text."),
+      seller: z.string().optional().describe("INVITE mode: the seller's Sui address"),
+      amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('INVITE mode: USDC to escrow — the price YOU set'),
+      spec: z.string().optional().describe('INVITE mode: the job brief (stored content-addressed so the seller can read it; its sha256 goes on-chain). Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),
+      deadlineMinutes: z.number().int().positive().optional().describe('INVITE mode: time the seller has to deliver (default 1440 = 24h)'),
+      reviewWindowMinutes: z.number().int().positive().optional().describe('INVITE mode: your accept/reject window after delivery (default 1440)'),
+      rejectSplitBps: z.number().int().min(0).max(10_000).optional().describe('INVITE mode: your share in bps if you reject (default 8000)'),
     },
     async (input) => {
       try {
@@ -278,7 +288,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
 
         if (input.service || input.agent) {
           if (!(input.service && input.agent)) {
-            throw new Error('agent and service go together (service mode).');
+            throw new Error('agent and service go together (Buy mode).');
           }
           const sellerAgent = validateAddress(input.agent);
           const service = await fetchService(API_BASE, sellerAgent, input.service);
@@ -310,7 +320,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
           };
         } else {
           if (!(input.seller && input.amountUsdc && input.spec)) {
-            throw new Error('Provide seller + amountUsdc + spec (direct mode) or agent + service (buy a listing).');
+            throw new Error('Provide agent + service to Buy a listing, or seller + amountUsdc + spec to Invite a seller with your own terms.');
           }
           params = {
             seller: validateAddress(input.seller),
