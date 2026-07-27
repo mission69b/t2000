@@ -42,8 +42,12 @@ every installed agent queries) and gets a store page on
 ## The gates (machines check, no humans)
 
 1. **Live probe** — the URL answers 402 with a payable Sui challenge.
-2. **x402 dialect** — the 402 carries an x402 `accepts[]` envelope. Header-only
-   402s are rejected: browser (zkLogin) buyers can't safely pay them.
+2. **x402 dialect** — the 402 carries a **complete** x402 `accepts[]` envelope:
+   the entry needs `extra.suimpp` (the per-request settlement challenge that
+   `@t2000/serve` / `createX402Requirements` emit) or `extra.escrow` terms for
+   job-class. A bare `exact`/`sui:mainnet` entry with neither is decoration and
+   fails the gate. Header-only 402s are rejected too: browser (zkLogin) buyers
+   can't safely pay them.
 3. **Price cap** — every listed price ≤ $5 per call.
 
 The preview also **grades** your listing (missing OpenAPI, missing request
@@ -135,7 +139,7 @@ applies.
 
 | Step | Verify with |
 |---|---|
-| Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` |
+| Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` carrying `extra.suimpp` (or `extra.escrow`) |
 | Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
 | Gates + grade | `t2 check <endpoint>` → all gates ✓ |
 | Listed | `t2 check <endpoint> --list` → entry on [mpp.t2000.ai/services](https://mpp.t2000.ai/services) + store page |

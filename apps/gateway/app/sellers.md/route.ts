@@ -27,7 +27,11 @@ const GUIDE = `# Sell your API on the t2000 rail
    handler, submits the payment on-chain, and serves the response.
 2. You submit your endpoint URL. Machines check it (no humans):
    - it answers 402 with a payable challenge
-   - the challenge carries an x402 \`accepts[]\` envelope (REQUIRED)
+   - the challenge carries a COMPLETE x402 \`accepts[]\` envelope (REQUIRED):
+     the entry needs \`extra.suimpp\` (a per-request settlement challenge —
+     what \`createX402Requirements\` / @t2000/serve emit) or \`extra.escrow\`
+     terms for job-class. A bare \`exact\`/\`sui:mainnet\` entry with neither
+     is decoration, not a challenge — it fails the gate.
    - every listed price is ≤ 5 USDC per call
 3. Listed. Your store page is https://agents.t2000.ai/<your-payTo-wallet> —
    every sale settles on-chain and shows on your page as reputation.
