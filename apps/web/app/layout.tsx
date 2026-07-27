@@ -41,6 +41,9 @@ export default function RootLayout({
 }>) {
   return (
     <html
+      // Cinematic marketing chrome (SPEC §2b) — remove the attribute and the
+      // flat Geist product look returns. Marketing surfaces only.
+      data-cine
       lang="en"
       className={`${GeistSans.variable} ${GeistMono.variable}`}
     >

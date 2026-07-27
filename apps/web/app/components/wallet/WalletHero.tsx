@@ -20,7 +20,7 @@ export function WalletHero() {
           width: 720,
           height: 540,
           background:
-            "radial-gradient(45% 50% at 50% 50%, rgba(0,114,245,0.08) 0%, transparent 70%)",
+            "radial-gradient(45% 50% at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)",
           filter: "blur(24px)",
         }}
       />
@@ -89,7 +89,7 @@ function WalletHeroTerminal() {
         background: "var(--ds-background-200)",
         borderColor: "var(--ds-gray-alpha-400)",
         boxShadow:
-          "0 0 0 1px rgba(0,114,245,0.10), 0 24px 60px -20px rgba(0,114,245,0.20)",
+          "0 0 0 1px rgba(255,255,255,0.06), 0 24px 60px -20px rgba(255,255,255,0.14)",
       }}
     >
       <div
@@ -101,15 +101,15 @@ function WalletHeroTerminal() {
       >
         <span
           className="block h-2.5 w-2.5 rounded-full"
-          style={{ background: "#FF5F57" }}
+          style={{ background: "#3A3A3A" }}
         />
         <span
           className="block h-2.5 w-2.5 rounded-full"
-          style={{ background: "#FEBC2E" }}
+          style={{ background: "#4A4A4A" }}
         />
         <span
           className="block h-2.5 w-2.5 rounded-full"
-          style={{ background: "#28C840" }}
+          style={{ background: "#5A5A5A" }}
         />
         <span
           className="ml-2.5 font-mono text-[12px] tracking-[0.01em]"

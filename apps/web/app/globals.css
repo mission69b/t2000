@@ -8,6 +8,9 @@
 @import "./styles/page.css";
 @import "./styles/responsive.css";
 @import "./styles/theme.css";
+/* Cinematic marketing layer — LAST so [data-cine] overrides brand styles.
+   Scoped: only applies under <html data-cine>. */
+@import "./styles/cinematic.css";
 
 :root {
   --t2k-accent: var(--ds-blue-700);

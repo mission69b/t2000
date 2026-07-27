@@ -38,7 +38,7 @@ export function PaymentsHero() {
           width: 720,
           height: 540,
           background:
-            "radial-gradient(45% 50% at 50% 50%, rgba(0,114,245,0.08) 0%, transparent 70%)",
+            "radial-gradient(45% 50% at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)",
           filter: "blur(24px)",
         }}
       />
@@ -149,7 +149,7 @@ function ActivityFeed({ entries }: { entries: Entry[] }) {
         background: "var(--ds-background-200)",
         borderColor: "var(--ds-gray-alpha-400)",
         boxShadow:
-          "0 0 0 1px rgba(0,114,245,0.10), 0 24px 60px -20px rgba(0,114,245,0.20)",
+          "0 0 0 1px rgba(255,255,255,0.06), 0 24px 60px -20px rgba(255,255,255,0.14)",
       }}
     >
       <div

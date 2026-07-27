@@ -61,7 +61,7 @@ type Block = (typeof T2K.blocks)[number];
 const STATUS_COLOR: Record<string, string> = {
   live: "var(--ds-green-700)",
   next: "var(--t2k-accent)",
-  horizon: "var(--ds-amber-700)",
+  horizon: "var(--fg-muted)", // monochrome cine — amber swept (green LIVE stays)
   seeded: "var(--fg-subtle)",
 };
 

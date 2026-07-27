@@ -45,7 +45,7 @@ export function ApiHero({ liveTokens }: { liveTokens?: number | null }) {
           width: 720,
           height: 520,
           background:
-            "radial-gradient(45% 50% at 50% 50%, rgba(0,114,245,0.10) 0%, transparent 70%)",
+            "radial-gradient(45% 50% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 70%)",
           filter: "blur(24px)",
         }}
       />
@@ -188,9 +188,9 @@ function ApiHeroTerminal() {
         className="flex items-center gap-2 border-b px-4 py-3"
         style={{ borderBottomColor: "var(--border)" }}
       >
-        <span className="block h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
-        <span className="block h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
-        <span className="block h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
+        <span className="block h-2.5 w-2.5 rounded-full" style={{ background: "#3A3A3A" }} />
+        <span className="block h-2.5 w-2.5 rounded-full" style={{ background: "#4A4A4A" }} />
+        <span className="block h-2.5 w-2.5 rounded-full" style={{ background: "#5A5A5A" }} />
         <span className="ml-2 font-mono text-[12px]" style={{ color: "var(--fg-subtle)" }}>
           ~ /agent
         </span>

@@ -27,7 +27,7 @@ const STEPS: Step[] = [
     accent: "amber",
     body: (
       <>
-        <span style={{ color: "var(--ds-amber-700)" }}>HTTP 402</span>
+        <span style={{ color: "var(--fg-muted)" }}>HTTP 402</span>
         {"\n"}
         <span style={{ color: "var(--fg-subtle)" }}>
           {"{ price: "}
@@ -145,7 +145,7 @@ export function PaymentsProtocol() {
 function FlowStep({ step, isActive }: { step: Step; isActive: boolean }) {
   const borderLeftColor =
     step.accent === "amber"
-      ? "var(--ds-amber-700)"
+      ? "var(--fg-muted)"
       : step.accent === "success"
         ? "var(--t2k-success)"
         : "var(--t2k-accent)";

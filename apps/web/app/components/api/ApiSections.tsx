@@ -445,13 +445,13 @@ export function ApiIntegrations() {
             >
               <span style={{ color: "var(--fg-subtle)" }}>export </span>
               OPENAI_BASE_URL=
-              <span style={{ color: "var(--ds-amber-700)" }}>
+              <span style={{ color: "var(--fg-muted)" }}>
                 &quot;https://api.t2000.ai/v1&quot;
               </span>
               {"\n"}
               <span style={{ color: "var(--fg-subtle)" }}>export </span>
               OPENAI_API_KEY=
-              <span style={{ color: "var(--ds-amber-700)" }}>&quot;sk-…&quot;</span>
+              <span style={{ color: "var(--fg-muted)" }}>&quot;sk-…&quot;</span>
             </pre>
             <div
               className="border-t text-[12.5px] leading-[1.55]"

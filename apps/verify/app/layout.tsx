@@ -31,7 +31,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html className={`${GeistSans.variable} ${GeistMono.variable}`} lang="en">
+    <html
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      // Cinematic marketing chrome (SPEC §2b) — verify is a marketing-shell
+      // page around the live verifier; product truth (VerifyLive) unchanged.
+      data-cine
+      lang="en"
+    >
       <body>{children}</body>
     </html>
   );

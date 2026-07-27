@@ -1,7 +1,8 @@
 import { NAV_PRODUCTS } from "../data/site";
 
-// "One agent stack." cross-sell strip (designer's ProductStrip) — links out
-// to the six t2000.ai product pages.
+// "The agent economy." cross-sell strip (designer's ProductStrip) — links out
+// to the t2000.ai product pages. ("agent stack" is banned copy — PRODUCT.md
+// tagline is the agent economy; SPEC_T2_WEB_VERIFY_DESIGN_PORT §3.)
 export function ProductStrip() {
   return (
     <section
@@ -22,7 +23,7 @@ export function ProductStrip() {
               color: "var(--fg)",
             }}
           >
-            One agent stack.
+            The agent economy.
           </h2>
         </header>
 

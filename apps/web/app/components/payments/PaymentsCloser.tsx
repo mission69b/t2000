@@ -21,7 +21,7 @@ export function PaymentsCloser() {
           width: 820,
           height: 360,
           background:
-            "radial-gradient(50% 50% at 50% 50%, rgba(0,114,245,0.10) 0%, transparent 70%)",
+            "radial-gradient(50% 50% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 70%)",
           filter: "blur(28px)",
         }}
       />
@@ -44,7 +44,7 @@ export function PaymentsCloser() {
             background: "var(--ds-background-200)",
             borderColor: "var(--ds-gray-alpha-400)",
             boxShadow:
-              "0 0 0 1px rgba(0,114,245,0.10), 0 24px 60px -20px rgba(0,114,245,0.20)",
+              "0 0 0 1px rgba(255,255,255,0.06), 0 24px 60px -20px rgba(255,255,255,0.14)",
           }}
         >
           <div
@@ -57,15 +57,15 @@ export function PaymentsCloser() {
             <div className="flex items-center gap-2">
               <span
                 className="block h-2.5 w-2.5 rounded-full"
-                style={{ background: "#FF5F57" }}
+                style={{ background: "#3A3A3A" }}
               />
               <span
                 className="block h-2.5 w-2.5 rounded-full"
-                style={{ background: "#FEBC2E" }}
+                style={{ background: "#4A4A4A" }}
               />
               <span
                 className="block h-2.5 w-2.5 rounded-full"
-                style={{ background: "#28C840" }}
+                style={{ background: "#5A5A5A" }}
               />
               <span
                 className="ml-2.5 font-mono text-[12px]"
@@ -92,7 +92,7 @@ export function PaymentsCloser() {
             <span style={{ color: "var(--fg-subtle)" }}>\</span>
             {"\n  "}
             <span style={{ color: "var(--fg-subtle)" }}>--data</span>{" "}
-            <span style={{ color: "var(--ds-amber-700)" }}>
+            <span style={{ color: "var(--fg-muted)" }}>
               &apos;{"{"}&quot;model&quot;:&quot;gpt-4o&quot;,&quot;messages&quot;:[{"{"}&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;Hello&quot;{"}"}]{"}"}&apos;
             </span>
           </pre>

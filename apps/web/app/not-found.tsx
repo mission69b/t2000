@@ -16,7 +16,7 @@ export default function NotFound() {
               width: 760,
               height: 360,
               background:
-                "radial-gradient(50% 50% at 50% 50%, rgba(0,114,245,0.10) 0%, transparent 70%)",
+                "radial-gradient(50% 50% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 70%)",
             }}
           />
 

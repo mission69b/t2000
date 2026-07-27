@@ -81,7 +81,7 @@ export function WalletSdk() {
               <span style={{ color: "var(--fg-subtle)", fontStyle: "italic" }}>
                 {"// 1 · top up USDC from SUI\n"}
               </span>
-              <span style={{ color: "var(--ds-blue-700)" }}>await</span>
+              <span style={{ color: "var(--fg)" }}>await</span>
               {" t."}
               <span style={{ color: "var(--ds-teal-700)" }}>swap</span>
               {"({ from: "}
@@ -89,14 +89,14 @@ export function WalletSdk() {
               {", to: "}
               <span style={{ color: "var(--t2k-success)" }}>{"'USDC'"}</span>
               {", amount: "}
-              <span style={{ color: "var(--ds-amber-700)" }}>5</span>
+              <span style={{ color: "var(--fg-muted)" }}>5</span>
               {" });\n\n"}
               <span style={{ color: "var(--fg-subtle)", fontStyle: "italic" }}>
                 {"// 2 · pay any API, gasless\n"}
               </span>
-              <span style={{ color: "var(--ds-blue-700)" }}>const</span>
+              <span style={{ color: "var(--fg)" }}>const</span>
               {" r = "}
-              <span style={{ color: "var(--ds-blue-700)" }}>await</span>
+              <span style={{ color: "var(--fg)" }}>await</span>
               {" t."}
               <span style={{ color: "var(--ds-teal-700)" }}>pay</span>
               {"({\n  url: "}
@@ -104,18 +104,18 @@ export function WalletSdk() {
                 {"'mpp.t2000.ai/openai/…'"}
               </span>
               {",\n  body,\n  maxPrice: "}
-              <span style={{ color: "var(--ds-amber-700)" }}>0.10</span>
+              <span style={{ color: "var(--fg-muted)" }}>0.10</span>
               {",\n});\n\n"}
               <span style={{ color: "var(--fg-subtle)", fontStyle: "italic" }}>
                 {"// 3 · forward the payout\n"}
               </span>
-              <span style={{ color: "var(--ds-blue-700)" }}>await</span>
+              <span style={{ color: "var(--fg)" }}>await</span>
               {" t."}
               <span style={{ color: "var(--ds-teal-700)" }}>send</span>
               {"({ to: "}
               <span style={{ color: "var(--t2k-success)" }}>{"'sam.sui'"}</span>
               {", amount: "}
-              <span style={{ color: "var(--ds-amber-700)" }}>20</span>
+              <span style={{ color: "var(--fg-muted)" }}>20</span>
               {", asset: "}
               <span style={{ color: "var(--t2k-success)" }}>{"'USDC'"}</span>
               {" });"}

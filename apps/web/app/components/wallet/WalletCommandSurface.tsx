@@ -55,7 +55,7 @@ export function WalletCommandSurface() {
               className="t2k-card relative flex flex-col gap-3.5"
               style={{
                 padding: "22px 22px 20px",
-                borderColor: l.core ? "rgba(0,114,245,0.35)" : undefined,
+                borderColor: l.core ? "rgba(255,255,255,0.28)" : undefined,
               }}
             >
               <div className="flex items-baseline justify-between">

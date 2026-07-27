@@ -1,5 +1,11 @@
+import { Fragment } from "react";
 import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
-import { HeroPaths } from "./HeroPaths";
+import { HeroPanel } from "./HeroPanel";
+
+// Cinematic hero (export Hero.jsx — SPEC_T2_WEB_VERIFY_DESIGN_PORT §2):
+// CENTERED stack — eyebrow / metallic H1 / lede / CTAs, then the tabbed
+// setup panel below. White bloom only; the pearl CTA color comes from the
+// [data-cine] .t2k-btn--blue override, never hardcoded.
 
 const WORKS_WITH = [
   { l: "Claude Desktop" },
@@ -11,81 +17,52 @@ const WORKS_WITH = [
 
 export function Hero() {
   return (
-    <section
-      className="relative overflow-hidden border-b"
-      style={{
-        padding: "96px 0 64px",
-        borderBottomColor: "var(--ds-gray-alpha-300)",
-      }}
-    >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute"
-        style={{
-          right: "-10%",
-          top: "10%",
-          width: 720,
-          height: 540,
-          background:
-            "radial-gradient(45% 50% at 50% 50%, rgba(0,114,245,0.10) 0%, transparent 70%)",
-          filter: "blur(24px)",
-        }}
-      />
+    <section className="cine-hero">
+      <div aria-hidden="true" className="cine-bloom cine-bloom--hero" />
 
-      <div className="t2k-container relative">
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
-          <div>
+      <div className="t2k-container relative z-[1]">
+        <div className="t2k-hero-grid">
+          <div className="t2k-hero-copy">
             <div className="t2k-eyebrow mb-[22px]">
               {"// THE AGENT ECONOMY · ON SUI"}
             </div>
-            <h1
-              className="t2k-display"
-              style={{
-                fontSize: "clamp(44px, 6.4vw, 84px)",
-                color: "var(--fg)",
-              }}
-            >
+
+            <h1 className="cine-headline cine-metal">
               The agent economy
               <br />
-              <span style={{ color: "var(--t2k-accent)" }}>on Sui.</span>
+              on Sui.
             </h1>
-            <p
-              className="m-0 max-w-[520px]"
-              style={{
-                marginTop: 26,
-                fontSize: 19,
-                lineHeight: 1.5,
-                color: "var(--fg-muted)",
-                letterSpacing: "-0.014em",
-              }}
-            >
+
+            <p className="cine-lede">
               Every agent gets an on-chain ID, a USDC wallet, and a{" "}
-              <span style={{ color: "var(--t2k-accent)" }}>store</span> to sell
-              its work. Machines set up with one command, humans with one
-              sign-in — non-custodial, gasless, settled on Sui.
+              <a className="t2k-inline-link" href={AGENTS_URL}>
+                store
+              </a>{" "}
+              to sell its work. Machines set up with one command, humans with
+              one sign-in — non-custodial, gasless, settled on Sui.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-2.5">
+            <div className="cine-cta">
               <a
-                href={`${AGENTS_URL}/manage`}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="t2k-btn t2k-btn--blue t2k-btn--lg"
+                href={`${AGENTS_URL}/manage`}
+                rel="noopener noreferrer"
+                target="_blank"
               >
                 Start free&nbsp;↗
               </a>
               <a
-                href={DEVELOPERS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="t2k-btn t2k-btn--ghost t2k-btn--lg"
+                href={DEVELOPERS_URL}
+                rel="noopener noreferrer"
+                target="_blank"
               >
                 Read the docs
               </a>
             </div>
           </div>
 
-          <HeroPaths />
+          <HeroPanel />
         </div>
 
         <div className="mt-[64px]">
@@ -98,40 +75,19 @@ export function Hero() {
 
 function WorksWith() {
   return (
-    <div
-      className="mx-auto flex flex-wrap items-center justify-center gap-x-[22px] gap-y-3 rounded-full border"
-      style={{
-        padding: "12px 24px",
-        borderColor: "var(--ds-gray-alpha-300)",
-        background: "var(--ds-gray-alpha-100)",
-        maxWidth: 820,
-      }}
-    >
-      <span className="t2k-eyebrow" style={{ fontSize: 10.5 }}>
-        WORKS WITH
-      </span>
-      {WORKS_WITH.map((c, i) => (
-        <span key={c.l} className="inline-flex items-center gap-x-[22px]">
-          {i > 0 && (
-            <span
-              className="rounded-full"
-              style={{
-                width: 3,
-                height: 3,
-                background: "var(--ds-gray-alpha-500)",
-              }}
-            />
-          )}
+    <div className="t2k-works">
+      <span className="t2k-works-label">WORKS WITH</span>
+      {WORKS_WITH.map((c) => (
+        <Fragment key={c.l}>
           <span
-            className="text-[14px] font-medium"
-            style={{
-              letterSpacing: "-0.011em",
-              color: c.muted ? "var(--fg-subtle)" : "var(--fg)",
-            }}
+            className={`t2k-works-item${c.muted ? " t2k-works-item--muted" : ""}`}
           >
             {c.l}
           </span>
-        </span>
+          <span aria-hidden="true" className="t2k-works-dot">
+            ·
+          </span>
+        </Fragment>
       ))}
     </div>
   );

@@ -7,6 +7,9 @@
 @import "./styles/type.css";
 @import "./styles/page.css";
 @import "./styles/responsive.css";
+/* Cinematic marketing layer — copy-in from apps/web (SPEC §2b; copy-in rule,
+   no shared UI package). LAST so [data-cine] overrides brand styles. */
+@import "./styles/cinematic.css";
 
 :root {
   /* Family accent — verify uses the house blue (per the designer's verify
