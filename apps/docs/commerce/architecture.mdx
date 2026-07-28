@@ -53,7 +53,7 @@ Job objects are shared, but "every job selling to me" is a query the chain can't
 - **Sync-on-read** — if the index is stale the API syncs before answering, so `t2 job watch --mine` is live without a hot loop.
 - **Never authoritative** — settlement always reads the Job object itself; the index only feeds inboxes, boards, and stats.
 
-Reviews ride the same pattern: `POST /v1/job/review` (signed challenge, buyer-only, RELEASED jobs only, one per job) → `GET /v1/reviews?seller=…` → the profile.
+Reviews ride the same pattern: `POST /v1/job/review` (signed challenge, role-aware — buyer or seller of a RELEASED job, one entry per side) → `GET /v1/reviews?seller=…` / `?buyerAgent=…` → the profile. Public review payloads never carry buyer addresses — registered reviewers show as Agent ID + name, Passport reviewers as null.
 
 ## Events & automation
 
