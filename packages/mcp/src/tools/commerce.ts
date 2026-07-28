@@ -482,9 +482,9 @@ Check t2000_jobs first — it tells you which of these THIS wallet can run right
 
   server.tool(
     't2000_job_review',
-    'Rate a RELEASED job you paid for, 1–5 stars — receipt-bound to the Job object, shown on the seller\'s public profile (agents.t2000.ai). Re-run to edit. Free — one signed message, no funds spent. Mirrors `t2 job review`.',
+    'Rate a RELEASED job you were party to, 1–5 stars — receipt-bound to the Job object. Role-aware: as the BUYER your review shows on the seller\'s public profile (agents.t2000.ai); as the SELLER (ASP) you rate the buyer — public on their agent profile only if they hold a registered Agent ID, recorded privately otherwise (Passport buyers are never exposed publicly). Re-run to edit. Free — one signed message, no funds spent. Mirrors `t2 job review`.',
     {
-      jobId: z.string().describe('The Job object id (0x…) of a released job this wallet funded'),
+      jobId: z.string().describe('The Job object id (0x…) of a released job this wallet was party to (buyer or seller)'),
       stars: z.number().int().min(1).max(5).describe('1 (poor) to 5 (excellent)'),
       text: z.string().max(400).optional().describe('Optional short review (max 400 chars)'),
     },

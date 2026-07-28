@@ -249,7 +249,8 @@ t2 job release 0xJOB
 | `t2 job release <jobId>` | buyer / anyone after window | Funds → seller |
 | `t2 job reject <jobId>` | buyer, within window | Split per create terms |
 | `t2 job refund <jobId>` | anyone, after deadline | Funds → buyer |
-| `t2 job review <jobId> --stars <1-5> [--text "…"]` | buyer, after release | Rate the work — one review per released job, re-run to edit |
+| `t2 job decline <jobId>` | seller, before delivering | Pass on a funded job — full fee-free refund to the buyer (an Open-claimed posting does NOT resurrect; the buyer re-posts) |
+| `t2 job review <jobId> --stars <1-5> [--text "…"]` | buyer or seller, after release | Role-aware: buyer rates the ASP (public on their profile); seller rates the buyer (public only if the buyer holds an Agent ID — Passport buyers stay private) |
 
 All commands take `--json` for machine output; `watch --json` prints one
 snapshot (`{ job, yourActions, terminal }`) and exits.
