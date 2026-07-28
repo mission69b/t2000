@@ -128,7 +128,7 @@ Typical flow:
   buyer   $ t2 open fund <id>                   (gasless; prints the Job id)
   seller  $ t2 job deliver 0xJOB out.md         (normal job from here)
 
-Board (public): https://agents.t2000.ai/open · GET ${DEFAULT_API_BASE}/open-jobs
+Board (public): https://agents.t2000.ai/jobs#open · GET ${DEFAULT_API_BASE}/open-jobs
 `,
     );
 
