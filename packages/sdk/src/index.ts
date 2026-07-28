@@ -146,6 +146,7 @@ export {
   JOB_STATES,
   preflightCreateJob,
   buildCreateJobTx,
+  buildDeclineJobTx,
   buildDeliverJobTx,
   buildReleaseJobTx,
   buildRejectJobTx,

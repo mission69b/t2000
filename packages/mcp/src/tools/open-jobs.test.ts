@@ -98,13 +98,14 @@ describe('open-job tools (escrow-at-post)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('registers the 4 open-job tools', () => {
-    expect(tools.size).toBe(4);
+  it('registers the 5 open-door + trust tools', () => {
+    expect(tools.size).toBe(5);
     for (const name of [
       't2000_job_board',
       't2000_job_open',
       't2000_job_claim',
       't2000_job_cancel',
+      't2000_job_decline',
     ]) {
       expect(tools.has(name)).toBe(true);
     }

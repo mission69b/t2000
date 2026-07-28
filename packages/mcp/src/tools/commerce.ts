@@ -70,7 +70,7 @@ async function signedMutation(opts: {
 /** Sponsored job verb: prepare (server builds tx) → sign → submit. */
 async function sponsoredJobVerb(
   agent: T2000,
-  action: 'create' | 'deliver' | 'release' | 'reject' | 'refund',
+  action: 'create' | 'decline' | 'deliver' | 'release' | 'reject' | 'refund',
   params: Record<string, unknown>,
 ): Promise<{ digest?: string }> {
   const address = agent.address();

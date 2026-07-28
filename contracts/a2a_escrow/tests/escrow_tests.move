@@ -606,3 +606,92 @@ fun migrate_same_version_fails() {
     clock::destroy_for_testing(clk);
     abort 99
 }
+
+// === Decline (SPEC_T2_AGENTS_TRUST §B — the seller's pre-delivery abort) ===
+
+#[test]
+fun seller_decline_refunds_buyer_in_full() {
+    let (mut sc, clk) = setup();
+    create_job(&mut sc, &clk); // Hire custom shape: direct terms
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(escrow::state(&job) == escrow::state_refunded(), 0);
+        assert!(escrow::escrow_value(&job) == 0, 1);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    // Full amount back, fee-free — the protocol never earns on a failed job.
+    assert_received(&mut sc, BUYER, AMOUNT);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::ENotAuthorized)]
+fun stranger_decline_fails() {
+    let (mut sc, clk) = setup();
+    create_job(&mut sc, &clk);
+    ts::next_tx(&mut sc, STRANGER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::ENotAuthorized)]
+fun buyer_decline_fails() {
+    let (mut sc, clk) = setup();
+    create_job(&mut sc, &clk);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EWrongState)]
+fun decline_after_deliver_fails() {
+    let (mut sc, clk) = setup();
+    create_job(&mut sc, &clk);
+    deliver(&mut sc, &clk);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EWrongState)]
+fun decline_after_release_fails() {
+    let (mut sc, clk) = setup();
+    create_job(&mut sc, &clk);
+    deliver(&mut sc, &clk);
+    release_as(&mut sc, BUYER, &clk);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}

@@ -24,11 +24,13 @@ import {
  * unchanged.
  */
 
-/** The latest published `a2a_escrow` package id (v2 upgrade 2026-07-28 —
- *  adds the `opening` module). Job-verb calls keep using the original id. */
+/** The LATEST published `a2a_escrow` package id (v3 upgrade 2026-07-28 —
+ *  adds `escrow::decline`; v2 added the `opening` module). New-verb calls
+ *  (opening + decline) target this; original-id verbs stay put, and older
+ *  package ids remain callable for published clients. */
 export const A2A_ESCROW_OPENING_PACKAGE_ID =
   process.env.A2A_ESCROW_OPENING_PACKAGE_ID ??
-  '0x860288d789dc617f6474a0a6801d6011e53bf30d5fb801cdad47b9bc6adb098b';
+  '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';

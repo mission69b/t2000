@@ -175,6 +175,13 @@ public struct JobRejected has copy, drop {
     fee_amount: u64,
     timestamp_ms: u64,
 }
+public struct JobDeclined has copy, drop {
+    job_id: ID,
+    buyer: address,
+    seller: address,
+    amount: u64,
+    timestamp_ms: u64,
+}
 public struct JobRefunded has copy, drop {
     job_id: ID,
     buyer: address,
@@ -451,6 +458,37 @@ public fun reject<T>(
         seller_amount,
         fee_amount,
         timestamp_ms: now,
+    });
+}
+
+// === Decline (SELLER, before delivery — funds → buyer, fee-free) ===
+/// The seller's abort (SPEC_T2_AGENTS_TRUST §B): an unwilling or unable
+/// seller returns the escrow immediately instead of stranding the buyer
+/// until the deadline refund. FUNDED only — after delivery the buyer's
+/// release/reject verbs own the outcome. Fee-free (the protocol never
+/// earns on a failed job) and terminal-state REFUNDED — a NEW state would
+/// break every published reader that maps state numbers; `JobDeclined`
+/// (vs `JobRefunded`) is how indexers tell a decline from a deadline
+/// refund.
+public fun decline<T>(
+    job: &mut Job<T>,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert_version(cfg);
+    assert!(ctx.sender() == job.seller, ENotAuthorized);
+    assert!(job.state == STATE_FUNDED, EWrongState);
+    job.state = STATE_REFUNDED;
+    let amount = job.escrow.value();
+    let payout = coin::from_balance(job.escrow.withdraw_all(), ctx);
+    transfer::public_transfer(payout, job.buyer);
+    event::emit(JobDeclined {
+        job_id: job.id.to_inner(),
+        buyer: job.buyer,
+        seller: job.seller,
+        amount,
+        timestamp_ms: clock.timestamp_ms(),
     });
 }
 

@@ -10,6 +10,8 @@ import {
   MAX_JOB_USDC,
   type T2000,
 } from '@t2000/sdk';
+import { fromBase64 } from '@mysten/sui/utils';
+import type { TransactionSigner } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
@@ -24,6 +26,53 @@ import { errorResult } from '../errors.js';
 // sponsored rail — gasless, authorized on the wallet's own signature.
 
 const API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
+
+/** Sponsored decline via the shared rail (prepare → sign → submit). */
+async function declineJob(
+  base: string,
+  signer: TransactionSigner,
+  jobId: string,
+): Promise<string> {
+  const address = signer.getAddress();
+  const prepRes = await fetch(`${base}/job/prepare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, action: 'decline', params: { jobId } }),
+  });
+  const prep = (await prepRes.json().catch(() => ({}))) as {
+    nonce?: string;
+    txBytes?: string;
+    error?: { message?: string } | string;
+  };
+  if (!prepRes.ok) {
+    const msg =
+      typeof prep.error === 'string'
+        ? prep.error
+        : (prep.error?.message ?? `HTTP ${prepRes.status}`);
+    throw new Error(msg);
+  }
+  if (!(prep.nonce && prep.txBytes)) {
+    throw new Error('Failed to prepare the transaction.');
+  }
+  const { signature } = await signer.signTransaction(fromBase64(prep.txBytes));
+  const subRes = await fetch(`${base}/job/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nonce: prep.nonce, address, signature }),
+  });
+  const sub = (await subRes.json().catch(() => ({}))) as {
+    digest?: string;
+    error?: { message?: string } | string;
+  };
+  if (!subRes.ok || !sub.digest) {
+    const msg =
+      typeof sub.error === 'string'
+        ? sub.error
+        : (sub.error?.message ?? 'The transaction did not go through.');
+    throw new Error(msg);
+  }
+  return sub.digest;
+}
 
 function ok(payload: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }] };
@@ -150,6 +199,24 @@ export function registerOpenJobTools(server: McpServer, agent: T2000): void {
           cancelOpenJob(API_BASE, agent.signer, id),
         );
         return ok({ ok: true, digest, cancelled: true });
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    't2000_job_decline',
+    "DECLINE an undelivered job you were hired for (ASP side) — the buyer's full escrow returns immediately, fee-free. Use it the moment you know you can't or won't deliver (an honest decline beats a deadline refund for your reputation). FUNDED jobs only, before delivery; works for listing hires, custom hires, and Open-claimed Jobs alike. Note: declining an Open-claimed Job does NOT resurrect the board posting — the buyer re-posts. Mirrors `t2 job decline`.",
+    {
+      jobId: z.string().min(1).describe('The Job object id (0x…) you were hired for'),
+    },
+    async ({ jobId }) => {
+      try {
+        const digest = await mutex.run(() =>
+          declineJob(API_BASE, agent.signer, jobId),
+        );
+        return ok({ ok: true, digest, declined: true });
       } catch (err) {
         return errorResult(err);
       }

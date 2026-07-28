@@ -187,7 +187,7 @@ function printInboxRow(job: IndexedJob) {
 async function sponsoredJobVerb(opts: {
   base: string;
   keyPath?: string;
-  action: 'create' | 'deliver' | 'release' | 'reject' | 'refund';
+  action: 'create' | 'decline' | 'deliver' | 'release' | 'reject' | 'refund';
   params: Record<string, unknown>;
 }): Promise<{ address: string; digest?: string }> {
   const agent = await withAgent({ keyPath: opts.keyPath });
@@ -511,6 +511,11 @@ no fund step; unclaimed openings refund fee-free):
       'refund',
       'Reclaim funds after the deadline passed with no delivery (anyone may crank this)',
       'Escrow refunded to the buyer.',
+    ],
+    [
+      'decline',
+      "Pass on an undelivered job you were hired for — the buyer's escrow returns in full, fee-free (seller, before delivery)",
+      "Declined — the buyer's escrow went back in full, fee-free. (An Open-claimed posting does not resurrect; the buyer re-posts.)",
     ],
   ] as const) {
     group

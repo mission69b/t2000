@@ -10,6 +10,7 @@ import {
 } from '../preflight.js';
 import { validateAddress, type SuiCoreClient } from '../utils/sui.js';
 import { selectAndSplitCoin } from './coinSelection.js';
+import { A2A_ESCROW_OPENING_PACKAGE_ID } from './opening.js';
 
 /**
  * A2A Escrow — client for the `a2a_escrow::escrow` Move package
@@ -235,6 +236,20 @@ export async function buildCreateJobTx({
       feeConfigArg(tx),
       tx.object(CLOCK_ID),
     ],
+  });
+  return tx;
+}
+
+/** Seller's pre-delivery abort (SPEC_T2_AGENTS_TRUST §B): FUNDED only →
+ *  full fee-free refund to the buyer, terminal state REFUNDED (the
+ *  JobDeclined event is what distinguishes a decline from a deadline
+ *  refund). Targets the latest package id — `decline` shipped in v3. */
+export function buildDeclineJobTx(jobId: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::decline`,
+    typeArguments: [USDC_TYPE],
+    arguments: [tx.object(jobId), feeConfigArg(tx), tx.object(CLOCK_ID)],
   });
   return tx;
 }

@@ -388,3 +388,28 @@ fun create_open_bad_split_aborts() {
     post_open_with(&mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, 10_001, POLICY_ANY);
     abort 0
 }
+
+// === Decline on an Open-claimed Job (SPEC_T2_AGENTS_TRUST §B.3) ===
+
+#[test]
+fun claimed_opening_job_can_be_declined() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    claim_as(&mut sc, ASP, &clk);
+    // The claiming ASP backs out pre-delivery — full fee-free refund. The
+    // Opening was consumed at claim, so the board posting does NOT
+    // resurrect; the buyer re-posts if they still want the work.
+    ts::next_tx(&mut sc, ASP);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(escrow::state(&job) == escrow::state_refunded(), 0);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    assert_received(&mut sc, BUYER, AMOUNT);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
