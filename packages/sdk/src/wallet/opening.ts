@@ -32,6 +32,24 @@ export const A2A_ESCROW_OPENING_PACKAGE_ID =
   process.env.A2A_ESCROW_OPENING_PACKAGE_ID ??
   '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
 
+/**
+ * PINNED per-upgrade package ids — event-filter anchors, NEVER bump these.
+ *
+ * A Sui event's type carries the package id that FIRST DEFINED the struct,
+ * not the id of the version that executed. Indexers filtering
+ * `<pkg>::module` must therefore pin the DEFINING id per event family:
+ *   v1 (A2A_ESCROW_PACKAGE_ID)  — JobCreated/Delivered/Released/Rejected/Refunded
+ *   v2 (…_V2_ID)                — OpeningCreated/Claimed/Cancelled/Refunded
+ *   v3 (…_V3_ID)                — JobDeclined
+ * Filtering the floating LATEST id matches nothing once the next upgrade
+ * lands (live finding, 2026-07-28: the openings indexer went dark when
+ * A2A_ESCROW_OPENING_PACKAGE_ID moved v2 → v3).
+ */
+export const A2A_ESCROW_PACKAGE_V2_ID =
+  '0x860288d789dc617f6474a0a6801d6011e53bf30d5fb801cdad47b9bc6adb098b';
+export const A2A_ESCROW_PACKAGE_V3_ID =
+  '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
+
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
 const SHA256_HEX_RE = /^(0x)?[0-9a-fA-F]{64}$/;

@@ -158,6 +158,8 @@ export {
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
 export {
   A2A_ESCROW_OPENING_PACKAGE_ID,
+  A2A_ESCROW_PACKAGE_V2_ID,
+  A2A_ESCROW_PACKAGE_V3_ID,
   MAX_OPEN_WINDOW_MS,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
   buildCancelOpeningTx,
