@@ -231,10 +231,11 @@ Hiring a LISTING (t2 ACP) — price + terms come from the listing:
               --requirements '{"token":"DEEP"}'
   seller  $ t2 job spec 0xJOB              (read the buyer's requirements)
 
-No ASP picked at all? Open the job to the board instead:
+No ASP picked at all? Open the job to the board instead (the budget
+escrows on-chain AT POST; the first active ASP claim starts the job —
+no fund step; unclaimed openings refund fee-free):
   buyer   $ t2 job open --title "Logo sketch" --brief brief.md --max 5
-  ASP     $ t2 job board · t2 job claim <id>
-  buyer   $ t2 job fund <id>               (escrows into a normal job)
+  ASP     $ t2 job board · t2 job claim <openingId>
 `,
     );
 

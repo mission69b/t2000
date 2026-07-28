@@ -4,19 +4,9 @@
 
 [published.mainnet]
 chain-id = "35834a8a"
-published-at = "0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd"
+published-at = "0x860288d789dc617f6474a0a6801d6011e53bf30d5fb801cdad47b9bc6adb098b"
 original-id = "0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd"
-version = 1
-toolchain-version = "1.75.2"
+version = 2
+toolchain-version = "1.76.0"
 build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0x404975a0e2061b47704ffc71241b9f5c6068cb4a474d78015f84a50737be9b46"
-
-# FeeConfig (shared, initial_shared_version 931861903):
-#   0xddaa25570950b7484dbf20797ebcf75707be9c87cd67bef2a06ed2e81d2c494b
-#   fee_bps 500 (raised from launch 250 on 2026-07-19, tx BnL4Xgng8vUuT8xZQW6S5ZsMrgPthqyf6h6Bhm5BJeZq),
-#   fee_receiver = t2000-revenue 0xf1ad831ce073b085d52e954c21114d7a4717cd30add38d36096f3ad2109886cc
-# AdminCap (deployer wallet):
-#   0xc42e94ea1a9ed350ac5e5d50413e500c15bf79954583201ba911ed6e2beefb18
-# Abandoned fresh-deploy predecessors (no users/no funds):
-#   2026-07-17 0x9e67c380fb7079d793d6d15ff916b24d82779d7119bfa4631863102ed485c0a0 (pre-review, no fee)
-#   2026-07-18 0x88de0d2a5f36691c0b198637350b9cedfa9ba300ed322851b184bda97859508b (same code, VERSION=2 labelling)

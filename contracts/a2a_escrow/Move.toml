@@ -3,6 +3,11 @@ name = "a2a_escrow"
 edition = "2024.beta"
 
 [dependencies]
+# Composed for opening::claim's who-may-claim gate (SPEC_T2_AGENTS_OPEN_ONCHAIN
+# §2): registered + active Agent IDs only. Read accessors are not
+# version-gated, so a future agent_id migrate cannot brick claims. The dep's
+# Move.lock pins the published mainnet ids (original 0x7669be20…, latest v2).
+agent_id = { local = "../agent_id" }
 
 [addresses]
 a2a_escrow = "0x0"

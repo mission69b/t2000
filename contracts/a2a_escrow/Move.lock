@@ -19,6 +19,12 @@ deps = { MoveStdlib = "MoveStdlib" }
 [pinned.mainnet.a2a_escrow]
 source = { root = true }
 use_environment = "mainnet"
+manifest_digest = "20CAA1C8125A8D8CAEA30C87112AA70B208E0F1E579AA99900F75A5086AC4FB3"
+deps = { agent_id = "agent_id", std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.agent_id]
+source = { local = "../agent_id" }
+use_environment = "mainnet"
 manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
 deps = { std = "MoveStdlib", sui = "Sui" }
 

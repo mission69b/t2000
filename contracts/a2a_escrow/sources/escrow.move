@@ -263,6 +263,82 @@ public fun create<T>(
     job_id
 }
 
+// === Create from a claimed Opening (SPEC_T2_AGENTS_OPEN_ONCHAIN §3a) ===
+
+/// Package-internal constructor for `opening::claim` — `create` cannot be
+/// reused there because it derives `buyer = ctx.sender()`, and at claim time
+/// the sender is the claiming ASP (wrong buyer + a self-trip on
+/// `EBuyerIsSeller`). Takes the Opening's escrow `Balance` and its
+/// **snapshotted** `fee_bps` (D-1: a fee change between post and claim must
+/// never move terms under committed money — do NOT re-read `cfg.fee_bps`).
+/// `cfg` is passed for the version gate only. Emits `JobCreated` exactly
+/// like `create` — the indexer / feed / inbox / `t2 job watch` all key on it.
+public(package) fun create_claimed<T>(
+    buyer: address,
+    seller: address,
+    escrow: Balance<T>,
+    fee_bps: u64,
+    spec_hash: vector<u8>,
+    deliver_by_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    assert_version(cfg);
+    assert!(buyer != seller, EBuyerIsSeller);
+    let amount = escrow.value();
+    assert!(amount > 0, EZeroAmount);
+    assert!(fee_bps <= MAX_FEE_BPS, EFeeTooHigh);
+    let now = clock.timestamp_ms();
+    assert!(deliver_by_ms > now, EDeadlineInPast);
+    assert!(deliver_by_ms <= now + MAX_DELIVER_HORIZON_MS, EDeadlineTooFar);
+    assert!(review_window_ms <= MAX_REVIEW_WINDOW_MS, EReviewWindowTooLong);
+    assert!(reject_split_bps <= BPS_DENOMINATOR, EBadSplit);
+    let job = Job<T> {
+        id: object::new(ctx),
+        buyer,
+        seller,
+        escrow,
+        amount,
+        fee_bps,
+        spec_hash,
+        deliver_by_ms,
+        review_window_ms,
+        reject_split_bps,
+        state: STATE_FUNDED,
+        delivery_hash: vector[],
+        delivered_at_ms: 0,
+        created_at_ms: now,
+    };
+    let job_id = job.id.to_inner();
+    event::emit(JobCreated {
+        job_id,
+        buyer,
+        seller,
+        amount,
+        fee_bps,
+        deliver_by_ms,
+        review_window_ms,
+        reject_split_bps,
+        timestamp_ms: now,
+    });
+    transfer::share_object(job);
+    job_id
+}
+
+// === Package-visible guards (shared with `opening` — single source for
+// === version gate + caps; no duplicated constants across modules) ===
+
+public(package) fun assert_version_pkg(cfg: &FeeConfig) { assert_version(cfg) }
+
+public(package) fun max_deliver_horizon_ms_pkg(): u64 { MAX_DELIVER_HORIZON_MS }
+
+public(package) fun max_review_window_ms_pkg(): u64 { MAX_REVIEW_WINDOW_MS }
+
+public(package) fun bps_denominator_pkg(): u64 { BPS_DENOMINATOR }
+
 // === Deliver (seller posts proof before the deadline) ===
 public fun deliver<T>(
     job: &mut Job<T>,

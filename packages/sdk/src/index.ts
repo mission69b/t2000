@@ -156,6 +156,18 @@ export {
 } from './wallet/job.js';
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
 export {
+  A2A_ESCROW_OPENING_PACKAGE_ID,
+  MAX_OPEN_WINDOW_MS,
+  OPENING_CLAIM_POLICY_ANY_ACTIVE,
+  buildCancelOpeningTx,
+  buildClaimOpeningTx,
+  buildCreateOpeningTx,
+  buildRefundUnclaimedTx,
+  getOpening,
+  preflightCreateOpening,
+} from './wallet/opening.js';
+export type { Opening, OpeningTerms } from './wallet/opening.js';
+export {
   assertBuyerRequirements,
   DEFAULT_COMMERCE_API_BASE,
   fetchService,
@@ -167,11 +179,10 @@ export type { ServiceListing } from './commerce.js';
 export {
   cancelOpenJob,
   claimOpenJob,
-  createOpenJob,
-  fundOpenJob,
   getOpenJob,
   listOpenJobs,
-  unclaimOpenJob,
+  postOpenJob,
+  refundOpenJob,
 } from './open-jobs.js';
 export type { OpenJobFilter, OpenJobRow } from './open-jobs.js';
 export {

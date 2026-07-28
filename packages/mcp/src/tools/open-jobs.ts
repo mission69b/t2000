@@ -3,24 +3,25 @@ import { z } from 'zod';
 import {
   cancelOpenJob,
   claimOpenJob,
-  createOpenJob,
-  fundOpenJob,
   getOpenJob,
+  getSuiClient,
   listOpenJobs,
-  unclaimOpenJob,
+  postOpenJob,
   MAX_JOB_USDC,
   type T2000,
 } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
-// Open jobs (SPEC_T2_AGENTS_OPEN) — the MCP mirror of the `t2 job` open verbs. ONE JOB,
-// TWO DOORS: Hire = you pick the seller (t2000_browse → t2000_job_hire);
-// Open = post the job with NO seller picked, the first claim wins, and
-// funding the claim creates a normal a2a_escrow Job (deliver/settle with
-// the t2000_job_* tools from there). Posting and claiming hold NO USDC;
-// only t2000_job_fund moves money. All flows share the SDK client, so the
-// challenge-signing logic exists exactly once.
+// Open jobs (SPEC_T2_AGENTS_OPEN_ONCHAIN — escrow-at-post) — the MCP
+// mirror of the `t2 job` open verbs. ONE JOB, TWO DOORS: Hire = you pick
+// the ASP (t2000_browse → t2000_job_hire); Open = post the job with NO ASP
+// picked — THE BUDGET ESCROWS ON-CHAIN AT POST. The first active
+// registered ASP to claim mints the funded a2a_escrow Job on the spot
+// (work starts immediately; deliver/settle with the t2000_job_* tools).
+// Unclaimed openings refund fee-free via t2000_job_cancel (buyer) or the
+// permissionless crank after the open window. All writes ride the
+// sponsored rail — gasless, authorized on the wallet's own signature.
 
 const API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 
@@ -28,16 +29,37 @@ function ok(payload: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }] };
 }
 
+/** Best-effort: created object id (Opening or Job) from a digest. */
+async function resolveCreated(
+  digest: string,
+  marker: '::opening::Opening<' | '::escrow::Job<',
+): Promise<string | undefined> {
+  try {
+    const client = getSuiClient();
+    const result = await client.core.waitForTransaction({
+      digest,
+      include: { objectTypes: true },
+      timeout: 15_000,
+    });
+    const txn =
+      result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
+    const types = txn.objectTypes ?? {};
+    return Object.keys(types).find((id) => types[id]?.includes(marker));
+  } catch {
+    return undefined;
+  }
+}
+
 export function registerOpenJobTools(server: McpServer, agent: T2000): void {
   const mutex = new TxMutex();
 
   server.tool(
     't2000_job_board',
-    'Browse the OPEN JOBS board — work buyers posted with no seller picked; the first agent to claim gets it. Read-only, free. Each row has the full public brief (read it before claiming), the USDC budget, and the delivery window once funded. This is how you FIND WORK TO DO; to sell standing services instead, use t2000_service_create. Mirrors `t2 job board`.',
+    'Browse the OPEN JOBS board — work buyers posted with no ASP picked, with the budget ALREADY escrowed on-chain; the first active agent to claim gets the funded job. Read-only, free. Each row has the full public brief (read it before claiming), the escrowed USDC budget, and the delivery window a claim starts. This is how you FIND WORK TO DO; to sell standing services instead, use t2000_service_create. Mirrors `t2 job board`.',
     {
       query: z.string().optional().describe('Free-text filter across titles + briefs (omit for all)'),
-      status: z.enum(['open', 'claimed', 'funded', 'expired', 'cancelled']).optional().describe('Board slice (default open — the claimable rows)'),
-      id: z.string().optional().describe('One opening by id (full detail)'),
+      status: z.enum(['open', 'claimed', 'cancelled', 'refunded']).optional().describe('Board slice (default open — the claimable rows)'),
+      id: z.string().optional().describe('One opening by object id (full detail)'),
     },
     async ({ query, status, id }) => {
       try {
@@ -64,21 +86,25 @@ export function registerOpenJobTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_job_open',
-    `Post an OPEN JOB to the board (buyer side) — no seller picked, NO USDC moves now. Sellers claim it; you then escrow the budget with t2000_job_fund. The title + brief are PUBLIC (every seller on the board reads them — keep secrets and personal details out) and become the funded Job's spec verbatim, so write exactly what "done" looks like. Budget caps at ${MAX_JOB_USDC} USDC. Confirm title, brief, and budget with your human before posting. Mirrors \`t2 job open\`.`,
+    `Post an OPEN JOB to the board (buyer side) — no ASP picked. THIS SPENDS FUNDS NOW: the full budget escrows on-chain in the posting itself (a shared Opening). The first active registered ASP to claim mints the funded Job immediately and work starts — there is no approve/fund step after posting, and no ASP veto. The title + brief are PUBLIC (every ASP reads them; they become the funded Job's spec verbatim), so write exactly what "done" looks like and keep secrets out. Nobody claims in openHours → full fee-free refund (t2000_job_cancel any time before a claim). Budget caps at ${MAX_JOB_USDC} USDC. Confirm title, brief, and budget with your human BEFORE posting. Mirrors \`t2 job open\`.`,
     {
       title: z.string().min(1).max(80).describe("The job's public name on the board"),
-      brief: z.string().min(1).describe('What you want delivered — PUBLIC; sellers read exactly this (up to 16 KiB)'),
-      maxUsdc: z.number().positive().max(MAX_JOB_USDC).describe('The budget escrowed at fund time (also the price — no bidding)'),
-      slaMinutes: z.number().int().positive().optional().describe('Delivery window once funded (default 1440 = 24h)'),
-      openHours: z.number().positive().optional().describe('How long the posting stays claimable (default 24, max 720)'),
+      brief: z.string().min(1).describe('What you want delivered — PUBLIC; ASPs read exactly this (up to 16 KiB)'),
+      maxUsdc: z.number().positive().max(MAX_JOB_USDC).describe('The budget — escrows ON-CHAIN at post (also the price; no bidding)'),
+      slaMinutes: z.number().int().positive().optional().describe('Delivery window once claimed (default 1440 = 24h)'),
+      openHours: z.number().positive().optional().describe('How long the posting stays claimable before auto-refund (default 24, max 720)'),
     },
     async (input) => {
       try {
-        const row = await createOpenJob(API_BASE, agent.signer, input);
+        const digest = await mutex.run(() =>
+          postOpenJob(API_BASE, agent.signer, input),
+        );
+        const openingId = await resolveCreated(digest, '::opening::Opening<');
         return ok({
           ok: true,
-          openJob: row,
-          next: 'When a seller claims it, fund with t2000_job_fund (that is when USDC escrows). Watch it with t2000_job_board (id).',
+          digest,
+          openingId,
+          next: 'The budget is escrowed. Watch for a claim with t2000_job_board (id) — the claim itself starts the funded Job (track with t2000_jobs). Changed your mind before a claim? t2000_job_cancel refunds in full.',
         });
       } catch (err) {
         return errorResult(err);
@@ -88,62 +114,40 @@ export function registerOpenJobTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_job_claim',
-    'CLAIM an open job (seller side) — first claim wins, atomically. Free: no USDC moves, but the claim reserves the job for 2 hours; if the buyer does not fund in that window it reopens. One live claim per seller — deliver, unclaim, or let it lapse before claiming another. Requires an active on-chain Agent ID. Read the brief with t2000_job_board FIRST and only claim work this agent can actually deliver. Mirrors `t2 job claim`.',
+    'CLAIM an open job (ASP side) — first claim wins ON-CHAIN and mints the funded escrow Job immediately: claiming IS starting the job, with the budget already escrowed and your delivery clock running (deliver-by = now + the posted SLA). Free to call (gasless), but it is a COMMITMENT — miss the deadline and the escrow refunds the buyer. Requires an active on-chain Agent ID. Read the brief with t2000_job_board FIRST and only claim work this agent can actually deliver. Mirrors `t2 job claim`.',
     {
-      id: z.string().min(1).describe('The open-job id (from t2000_job_board)'),
+      id: z.string().min(1).describe('The opening object id (0x…, from t2000_job_board)'),
     },
     async ({ id }) => {
       try {
-        const row = await claimOpenJob(API_BASE, agent.signer, id);
-        return ok({
-          ok: true,
-          openJob: row,
-          next: 'Once the buyer funds, the escrow Job lands in your inbox (t2000_jobs, role seller) — deliver with t2000_job_deliver before the deadline.',
-        });
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_job_unclaim',
-    'Hand back a claim you hold (seller side) — the open job goes straight back on the board and your one-live-claim slot frees up. Free. Use it the moment you know you cannot deliver; letting the 2h TTL lapse works too but wastes the buyer\'s time. Mirrors `t2 job unclaim`.',
-    {
-      id: z.string().min(1).describe('The open-job id you claimed'),
-    },
-    async ({ id }) => {
-      try {
-        await unclaimOpenJob(API_BASE, agent.signer, id);
-        return ok({ ok: true, unclaimed: true });
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_job_fund',
-    "FUND a claimed open job you posted (buyer side) — THIS SPENDS FUNDS: the full budget escrows into a normal on-chain Job bound to the claiming seller (gasless, one sponsored transaction; terms come from the opening itself — its title + brief become the spec, deliver-by = now + the posted SLA). From here it is a standard escrow job: track with t2000_jobs, settle with t2000_job_settle. Also the cancel path lives here: pass cancel=true to withdraw an UNCLAIMED posting instead (free, no funds involved). Mirrors `t2 job fund` / `t2 job cancel`.",
-    {
-      id: z.string().min(1).describe('Your open-job id'),
-      cancel: z.boolean().optional().describe('true = withdraw the posting instead of funding (only while still unclaimed)'),
-    },
-    async ({ id, cancel }) => {
-      try {
-        if (cancel) {
-          await cancelOpenJob(API_BASE, agent.signer, id);
-          return ok({ ok: true, cancelled: true });
-        }
-        const { digest, jobId } = await mutex.run(() =>
-          fundOpenJob(API_BASE, agent.signer, id),
+        const digest = await mutex.run(() =>
+          claimOpenJob(API_BASE, agent.signer, id),
         );
+        const jobId = await resolveCreated(digest, '::escrow::Job<');
         return ok({
           ok: true,
           digest,
           jobId,
-          next: 'Track it with t2000_jobs. When the seller delivers, accept with t2000_job_settle (release) or reject within the review window.',
+          next: 'The funded Job is yours — deliver with t2000_job_deliver before the deadline (track with t2000_jobs, role seller).',
         });
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    't2000_job_cancel',
+    'Withdraw an UNCLAIMED open job you posted (buyer side) — the full escrowed budget returns to this wallet, fee-free. Works any time before an ASP claims (after a claim the job is running; settle it with the normal job verbs). Mirrors `t2 job cancel`.',
+    {
+      id: z.string().min(1).describe('Your opening object id (0x…)'),
+    },
+    async ({ id }) => {
+      try {
+        const digest = await mutex.run(() =>
+          cancelOpenJob(API_BASE, agent.signer, id),
+        );
+        return ok({ ok: true, digest, cancelled: true });
       } catch (err) {
         return errorResult(err);
       }
