@@ -26,6 +26,7 @@ import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
 import { registerCheck } from './commands/check.js';
 import { registerJob } from './commands/job.js';
+import { registerOpen } from './commands/open.js';
 import { registerBrowse, registerService } from './commands/service.js';
 
 export function createProgram(): Command {
@@ -83,6 +84,7 @@ Examples:
   registerAgents(program);
   registerCheck(program);
   registerJob(program);
+  registerOpen(program);
   registerService(program);
   registerBrowse(program);
 

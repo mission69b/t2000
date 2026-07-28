@@ -233,7 +233,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_browse',
-    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (BUY them with t2000_job_create: agent + service), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). No listing fits? That is NOT a stop — INVITE a seller instead: pick one via t2000_agents, then t2000_job_create with seller + amountUsdc + spec (your brief, your terms). Mirrors `t2 browse`.",
+    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (hire one with t2000_job_create: agent + service), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). No listing fits? That is NOT a stop — HIRE CUSTOM instead: pick a seller via t2000_agents, then t2000_job_create with seller + amountUsdc + spec (your brief, your terms). Or post the job with no seller picked: t2000_open_create puts it on the Open board and the first claim wins. Mirrors `t2 browse`.",
     {
       query: z.string().optional().describe('Free-text search across service names/descriptions (omit for all)'),
       agent: z.string().optional().describe("One agent's Sui address — their catalog, retired included (e.g. your own to check your listings)"),
@@ -244,14 +244,15 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
           agent: agentAddr ? validateAddress(agentAddr) : undefined,
           query,
         });
-        // Empty board is not a dead end (SPEC_T2_AGENTS_BUYER_WORK Phase 1):
-        // steer the model to Invite instead of stopping or inventing a listing.
+        // Empty board is not a dead end (SPEC_T2_AGENTS_OPEN): steer the
+        // model to hire custom or go Open instead of stopping or inventing
+        // a listing.
         const services = (result as { services?: unknown[] })?.services;
         const payload =
           Array.isArray(services) && services.length === 0
             ? {
                 ...result,
-                hint: 'No matching listed services — Invite instead: pick a capable seller with t2000_agents (or the agents.t2000.ai directory), agree a brief + USDC + deadline with your human, then t2000_job_create with seller + amountUsdc + spec. Never invent a listing.',
+                hint: 'No matching listed services — hire custom instead: pick a capable seller with t2000_agents (or the agents.t2000.ai directory), agree a brief + USDC + deadline with your human, then t2000_job_create with seller + amountUsdc + spec. Or post it as an OPEN JOB (t2000_open_create) and let a seller claim it. Never invent a listing.',
               }
             : result;
         return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }] };
@@ -266,19 +267,20 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
   server.tool(
     't2000_job_create',
     `HIRE an agent: create + fund an on-chain USDC escrow Job in one sponsored transaction (buyer side). THIS SPENDS FUNDS — the price is locked in the Job object until settlement. Two modes:
-1. BUY (a listed service): pass agent + service (a slug from t2000_browse) + requirements. Price/SLA/terms come from the listing.
-2. INVITE (you picked the seller — no listing needed): pass seller + amountUsdc + spec (your brief; stored content-addressed, sha256 pinned on-chain) + optional deadline/review/split terms. Confirm seller, price, and brief with your human before funding.
+1. A LISTING: pass agent + service (a slug from t2000_browse) + requirements. Price/SLA/terms come from the listing.
+2. CUSTOM (you picked the seller — no listing needed): pass seller + amountUsdc + spec (your brief; stored content-addressed, sha256 pinned on-chain) + optional deadline/review/split terms. Confirm seller, price, and brief with your human before funding.
+(No seller in mind at all? Post an OPEN JOB with t2000_open_create instead — the first claim wins.)
 The escrow protects both sides: no delivery by the deadline → anyone can refund the buyer; delivery + lapsed review window → anyone can release to the seller. Max ${MAX_JOB_USDC} USDC. Mirrors \`t2 job create\`.`,
     {
       agent: z.string().optional().describe("BUY mode: the seller's agent address"),
       service: z.string().optional().describe('BUY mode: the service slug'),
       requirements: z.string().optional().describe("BUY mode: what the seller asked buyers to provide. If the listing's requirements are an object, pass a JSON object filling every REQUIRED key non-empty (the listing's `required` array when present, else all listed keys; extras allowed) — a missing key rejects before any funds move. If the listing asks for text, pass free text."),
-      seller: z.string().optional().describe("INVITE mode: the seller's Sui address"),
-      amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('INVITE mode: USDC to escrow — the price YOU set'),
-      spec: z.string().optional().describe('INVITE mode: the job brief (stored content-addressed; its sha256 goes on-chain). PUBLIC — it appears on the job receipt so sellers can read the task; keep secrets and personal details out. Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),
-      deadlineMinutes: z.number().int().positive().optional().describe('INVITE mode: time the seller has to deliver (default 1440 = 24h)'),
-      reviewWindowMinutes: z.number().int().positive().optional().describe('INVITE mode: your accept/reject window after delivery (default 1440)'),
-      rejectSplitBps: z.number().int().min(0).max(10_000).optional().describe('INVITE mode: your share in bps if you reject (default 8000)'),
+      seller: z.string().optional().describe("CUSTOM mode: the seller's Sui address"),
+      amountUsdc: z.number().positive().max(MAX_JOB_USDC).optional().describe('CUSTOM mode: USDC to escrow — the price YOU set'),
+      spec: z.string().optional().describe('CUSTOM mode: the job brief (stored content-addressed; its sha256 goes on-chain). PUBLIC — it appears on the job receipt so sellers can read the task; keep secrets and personal details out. Pass a bare 0x… sha256 instead to pin a private commitment without uploading (confidential path).'),
+      deadlineMinutes: z.number().int().positive().optional().describe('CUSTOM mode: time the seller has to deliver (default 1440 = 24h)'),
+      reviewWindowMinutes: z.number().int().positive().optional().describe('CUSTOM mode: your accept/reject window after delivery (default 1440)'),
+      rejectSplitBps: z.number().int().min(0).max(10_000).optional().describe('CUSTOM mode: your share in bps if you reject (default 8000)'),
     },
     async (input) => {
       try {
@@ -320,7 +322,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
           };
         } else {
           if (!(input.seller && input.amountUsdc && input.spec)) {
-            throw new Error('Provide agent + service to Buy a listing, or seller + amountUsdc + spec to Invite a seller with your own terms.');
+            throw new Error('Provide agent + service to hire a listing, or seller + amountUsdc + spec to hire a seller custom with your own terms.');
           }
           params = {
             seller: validateAddress(input.seller),

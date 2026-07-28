@@ -165,6 +165,16 @@ export {
 } from './commerce.js';
 export type { ServiceListing } from './commerce.js';
 export {
+  cancelOpenJob,
+  claimOpenJob,
+  createOpenJob,
+  fundOpenJob,
+  getOpenJob,
+  listOpenJobs,
+  unclaimOpenJob,
+} from './open-jobs.js';
+export type { OpenJobFilter, OpenJobRow } from './open-jobs.js';
+export {
   fetchAllCoins,
   selectAndSplitCoin,
   selectSuiCoin,
