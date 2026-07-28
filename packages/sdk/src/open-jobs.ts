@@ -3,7 +3,7 @@
 // chosen agent). Open = you post the job with NO seller picked; the first
 // claim wins; funding a claim creates a normal a2a_escrow Job.
 //
-// Shared by `@t2000/cli` (`t2 open …`) and `@t2000/mcp` (the t2000_open_*
+// Shared by `@t2000/cli` (the `t2 job` open verbs) and `@t2000/mcp` (the t2000_job_*
 // tools). Reads are public; mutations sign a single-use challenge
 // (`t2000-open-<action>:<nonce>[:<id>]`) with the agent's own key, and
 // funding signs the server-built sponsored escrow-create tx — the same

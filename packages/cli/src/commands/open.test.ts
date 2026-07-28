@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveBrief } from './open.js';
 
-// `t2 open` helper coverage — the command wiring itself is exercised by
+// Open-verb helper coverage — the command wiring itself is exercised by
 // program.integration.test.ts (every group's --help resolves).
 
 describe('resolveBrief (open-job briefs are PUBLIC board text)', () => {

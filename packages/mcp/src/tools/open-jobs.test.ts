@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerOpenJobTools } from './open-jobs.js';
 
-// Open jobs surface (SPEC_T2_AGENTS_OPEN) — the MCP mirror of `t2 open`:
+// Open jobs surface (SPEC_T2_AGENTS_OPEN) — the MCP mirror of the `t2 job` open verbs:
 // browse the board, post an opening, claim/unclaim as a seller, fund (or
 // cancel) as the buyer. Only fund moves money.
 
@@ -59,7 +59,7 @@ function stubApi(overrides: Record<string, unknown> = {}) {
   return { fn, calls };
 }
 
-describe('open-job tools (t2 open surface)', () => {
+describe('open-job tools (the t2 job open verbs)', () => {
   let tools: Map<string, Function>;
   let agent: ReturnType<typeof createMockAgent>;
 
@@ -84,20 +84,20 @@ describe('open-job tools (t2 open surface)', () => {
   it('registers the 5 open-job tools', () => {
     expect(tools.size).toBe(5);
     for (const name of [
-      't2000_open_browse',
-      't2000_open_create',
-      't2000_open_claim',
-      't2000_open_unclaim',
-      't2000_open_fund',
+      't2000_job_board',
+      't2000_job_open',
+      't2000_job_claim',
+      't2000_job_unclaim',
+      't2000_job_fund',
     ]) {
       expect(tools.has(name)).toBe(true);
     }
   });
 
-  describe('t2000_open_browse', () => {
+  describe('t2000_job_board', () => {
     it('lists the board (default open) and hints when empty', async () => {
       stubApi();
-      const handler = tools.get('t2000_open_browse')!;
+      const handler = tools.get('t2000_job_board')!;
       const data = JSON.parse((await handler({})).content[0].text);
       expect(data.total).toBe(1);
       expect(data.openJobs[0].id).toBe(OPEN_ID);
@@ -110,19 +110,19 @@ describe('open-job tools (t2 open surface)', () => {
 
     it('fetches one opening by id', async () => {
       const { calls } = stubApi();
-      const handler = tools.get('t2000_open_browse')!;
+      const handler = tools.get('t2000_job_board')!;
       const data = JSON.parse((await handler({ id: OPEN_ID })).content[0].text);
       expect(data.openJob.id).toBe(OPEN_ID);
       expect(calls[0]?.url).toContain(`/open-jobs/${OPEN_ID}`);
     });
   });
 
-  describe('t2000_open_create', () => {
+  describe('t2000_job_open', () => {
     it('signs the create challenge and posts the opening', async () => {
       const { calls } = stubApi({
         'https://api.t2000.ai/v1/open-jobs': { openJob: ROW },
       });
-      const handler = tools.get('t2000_open_create')!;
+      const handler = tools.get('t2000_job_open')!;
       const data = JSON.parse(
         (
           await handler({ title: 'Logo sketch', brief: 'Three concepts', maxUsdc: 5 })
@@ -130,7 +130,7 @@ describe('open-job tools (t2 open surface)', () => {
       );
       expect(data.ok).toBe(true);
       expect(data.openJob.id).toBe(OPEN_ID);
-      expect(data.next).toMatch(/t2000_open_fund/);
+      expect(data.next).toMatch(/t2000_job_fund/);
       expect(agent.signer.signPersonalMessage).toHaveBeenCalled();
       const post = calls.find((c) => c.url.endsWith('/open-jobs'));
       expect(post?.body).toMatchObject({
@@ -143,10 +143,10 @@ describe('open-job tools (t2 open surface)', () => {
     });
   });
 
-  describe('t2000_open_claim / unclaim', () => {
+  describe('t2000_job_claim / unclaim', () => {
     it('claim returns the claimed row + delivery guidance', async () => {
       stubApi();
-      const handler = tools.get('t2000_open_claim')!;
+      const handler = tools.get('t2000_job_claim')!;
       const data = JSON.parse((await handler({ id: OPEN_ID })).content[0].text);
       expect(data.ok).toBe(true);
       expect(data.openJob.status).toBe('claimed');
@@ -155,7 +155,7 @@ describe('open-job tools (t2 open surface)', () => {
 
     it('unclaim succeeds quietly', async () => {
       stubApi();
-      const handler = tools.get('t2000_open_unclaim')!;
+      const handler = tools.get('t2000_job_unclaim')!;
       const data = JSON.parse((await handler({ id: OPEN_ID })).content[0].text);
       expect(data).toEqual({ ok: true, unclaimed: true });
     });
@@ -175,17 +175,17 @@ describe('open-job tools (t2 open surface)', () => {
           };
         }),
       );
-      const handler = tools.get('t2000_open_claim')!;
+      const handler = tools.get('t2000_job_claim')!;
       const result = await handler({ id: OPEN_ID });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toMatch(/no longer claimable/i);
     });
   });
 
-  describe('t2000_open_fund', () => {
+  describe('t2000_job_fund', () => {
     it('prepare → sign → submit, returning digest + jobId', async () => {
       const { calls } = stubApi();
-      const handler = tools.get('t2000_open_fund')!;
+      const handler = tools.get('t2000_job_fund')!;
       const data = JSON.parse((await handler({ id: OPEN_ID })).content[0].text);
       expect(data.ok).toBe(true);
       expect(data.digest).toBe('DIGEST123');
@@ -197,7 +197,7 @@ describe('open-job tools (t2 open surface)', () => {
 
     it('cancel=true withdraws instead of funding (no tx signed)', async () => {
       stubApi();
-      const handler = tools.get('t2000_open_fund')!;
+      const handler = tools.get('t2000_job_fund')!;
       const data = JSON.parse(
         (await handler({ id: OPEN_ID, cancel: true })).content[0].text,
       );

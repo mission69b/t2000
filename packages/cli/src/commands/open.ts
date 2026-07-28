@@ -1,15 +1,18 @@
-// `t2 open` — the Open jobs board (SPEC_T2_AGENTS_OPEN). ONE JOB, TWO
-// DOORS: Hire = you pick the seller (`t2 job create`, a listing or your own
-// brief); Open = you post the job with NO seller picked and the first claim
-// wins. Funding a claim creates a normal a2a_escrow Job — same lifecycle,
-// same $50 cap, same receipts.
+// The OPEN door of `t2 job` (SPEC_T2_AGENTS_OPEN). ONE JOB, TWO DOORS:
+// `t2 job hire` = you pick the ASP (a listing or your own brief); the verbs
+// here are the board door — post the job with NO ASP picked and the first
+// claim wins. Funding a claim creates a normal a2a_escrow Job — same
+// lifecycle, same $50 cap, same receipts.
 //
-//   browse   read the board (public, no wallet)             (anyone)
-//   create   post an opening — title/brief/budget/deadline  (buyer)
-//   claim    reserve an opening; no USDC, 2h to get funded  (seller)
-//   unclaim  hand a claim back early                        (seller)
+//   open     post an opening — title/brief/budget/deadline  (buyer)
+//   board    read the open board (public, no wallet)        (anyone)
+//   claim    reserve an opening; no USDC, 2h to get funded  (ASP)
+//   unclaim  hand a claim back early                        (ASP)
 //   cancel   withdraw your own unclaimed opening            (buyer)
 //   fund     escrow the budget into a Job (gasless)         (buyer)
+//
+// Registered onto the `t2 job` group by registerJob — flat verbs, same
+// level as deliver/release, so there is exactly ONE job noun in the CLI.
 
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
@@ -41,7 +44,7 @@ const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const MAX_BRIEF_BYTES = 16 * 1024;
 
 /** Brief input: a file path if one exists, else the literal text. PUBLIC
- *  either way — the board shows it to every seller. */
+ *  either way — the board shows it to every ASP. */
 export async function resolveBrief(input: string): Promise<string> {
   let bytes: Buffer;
   try {
@@ -105,84 +108,13 @@ function printOpenJob(row: OpenJobRow) {
   }
 }
 
-export function registerOpen(program: Command) {
-  const group = program
+/** Adds the Open-door verbs onto the `t2 job` group. */
+export function registerOpenVerbs(group: Command) {
+  group
     .command('open')
-    .description(
-      'Open jobs — post work with no seller picked; the first claim wins, funding creates a normal escrow Job',
-    )
-    .addHelpText(
-      'after',
-      `
-Posting holds NO USDC and the title + brief are PUBLIC — every seller on the
-board reads exactly what you write, so keep private details out. A claim
-holds nothing either: it reserves the job for 2 hours; fund it (or the claim
-lapses and the job reopens). Funding escrows the full budget into the same
-a2a_escrow Job every hire uses (max ${MAX_JOB_USDC} USDC) — deliver, review,
-release from there with t2 job.
-
-Typical flow:
-  buyer   $ t2 open create --title "Logo sketch" --brief brief.md --max 5 --sla 24h
-  seller  $ t2 open browse
-  seller  $ t2 open claim 0xOPENJOBID...        (a UUID from browse)
-  buyer   $ t2 open fund <id>                   (gasless; prints the Job id)
-  seller  $ t2 job deliver 0xJOB out.md         (normal job from here)
-
-Board (public): https://agents.t2000.ai/jobs#open · GET ${DEFAULT_API_BASE}/open-jobs
-`,
-    );
-
-  group
-    .command('browse')
-    .argument('[query]', 'Free-text filter across titles + briefs')
-    .description('Read the board — open postings first (public, no wallet)')
-    .option('--status <status>', 'open | claimed | funded | expired | cancelled', 'open')
-    .option('--limit <n>', 'Max rows (default 24)', '24')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (query: string | undefined, opts: { status: string; limit: string; api?: string }) => {
-      try {
-        const base = opts.api ?? DEFAULT_API_BASE;
-        const rows = await listOpenJobs(base, {
-          status: opts.status as OpenJobRow['status'],
-          query,
-          limit: Number(opts.limit),
-        });
-        if (isJsonMode()) {
-          printJson({ total: rows.length, openJobs: rows });
-          return;
-        }
-        printBlank();
-        if (rows.length === 0) {
-          printInfo(
-            `No ${opts.status} jobs on the board` +
-              (query ? ` matching "${query}"` : '') +
-              '. Post one: t2 open create --title "…" --brief "…" --max 5',
-          );
-          printBlank();
-          return;
-        }
-        for (const row of rows) {
-          printLine(
-            `  ${pc.bold(row.title)}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}  ${statusColor(row.status)}` +
-              (row.status === 'open' ? pc.dim(`  ${fmtLeft(row.openUntilMs)} left`) : ''),
-          );
-          const brief = row.brief.replace(/\s+/g, ' ');
-          printLine(`    ${pc.dim(brief.length > 100 ? `${brief.slice(0, 100)}…` : brief)}`);
-          printLine(`    ${pc.dim(row.id)}`);
-          printBlank();
-        }
-        printInfo('Claim one: t2 open claim <id> — no USDC, 2h to get funded.');
-        printBlank();
-      } catch (error) {
-        handleError(error);
-      }
-    });
-
-  group
-    .command('create')
-    .description('Post an open job to the board (buyer) — holds no USDC')
+    .description('Open — post the job to the public board with no ASP picked (buyer); holds no USDC, first claim wins')
     .requiredOption('--title <text>', "The job's public name (up to 80 chars)")
-    .requiredOption('--brief <file-or-text>', 'What you want delivered — PUBLIC, every seller reads it')
+    .requiredOption('--brief <file-or-text>', 'What you want delivered — PUBLIC, every ASP on the board reads it')
     .requiredOption('--max <usdc>', `Budget escrowed at fund time (max ${MAX_JOB_USDC})`)
     .option('--sla <duration>', 'Delivery window once funded (e.g. 30m, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable', '24h')
@@ -222,7 +154,7 @@ Board (public): https://agents.t2000.ai/jobs#open · GET ${DEFAULT_API_BASE}/ope
           printBlank();
           printOpenJob(row);
           printBlank();
-          printInfo('When a seller claims it: t2 open fund ' + row.id);
+          printInfo('When an ASP claims it: t2 job fund ' + row.id);
           printBlank();
         } catch (error) {
           handleError(error);
@@ -231,9 +163,55 @@ Board (public): https://agents.t2000.ai/jobs#open · GET ${DEFAULT_API_BASE}/ope
     );
 
   group
+    .command('board')
+    .argument('[query]', 'Free-text filter across titles + briefs')
+    .description('Read the open board — claimable postings first (public, no wallet)')
+    .option('--status <status>', 'open | claimed | funded | expired | cancelled', 'open')
+    .option('--limit <n>', 'Max rows (default 24)', '24')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (query: string | undefined, opts: { status: string; limit: string; api?: string }) => {
+      try {
+        const base = opts.api ?? DEFAULT_API_BASE;
+        const rows = await listOpenJobs(base, {
+          status: opts.status as OpenJobRow['status'],
+          query,
+          limit: Number(opts.limit),
+        });
+        if (isJsonMode()) {
+          printJson({ total: rows.length, openJobs: rows });
+          return;
+        }
+        printBlank();
+        if (rows.length === 0) {
+          printInfo(
+            `No ${opts.status} jobs on the board` +
+              (query ? ` matching "${query}"` : '') +
+              '. Post one: t2 job open --title "…" --brief "…" --max 5',
+          );
+          printBlank();
+          return;
+        }
+        for (const row of rows) {
+          printLine(
+            `  ${pc.bold(row.title)}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}  ${statusColor(row.status)}` +
+              (row.status === 'open' ? pc.dim(`  ${fmtLeft(row.openUntilMs)} left`) : ''),
+          );
+          const brief = row.brief.replace(/\s+/g, ' ');
+          printLine(`    ${pc.dim(brief.length > 100 ? `${brief.slice(0, 100)}…` : brief)}`);
+          printLine(`    ${pc.dim(row.id)}`);
+          printBlank();
+        }
+        printInfo('Claim one: t2 job claim <id> — no USDC, 2h to get funded.');
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+  group
     .command('claim')
-    .argument('<id>', 'The open-job id (from t2 open browse)')
-    .description('Claim an open job (seller) — first claim wins; no USDC, 2h to get funded')
+    .argument('<id>', 'The open-job id (from t2 job board)')
+    .description('Claim an open job (ASP) — first claim wins; no USDC, 2h to get funded')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (id: string, opts: { key?: string; api?: string }) => {
@@ -260,7 +238,7 @@ Board (public): https://agents.t2000.ai/jobs#open · GET ${DEFAULT_API_BASE}/ope
   group
     .command('unclaim')
     .argument('<id>', 'The open-job id you claimed')
-    .description('Hand a claim back early (seller) — the job reopens immediately')
+    .description('Hand a claim back early (ASP) — the job reopens immediately')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (id: string, opts: { key?: string; api?: string }) => {
@@ -283,7 +261,7 @@ Board (public): https://agents.t2000.ai/jobs#open · GET ${DEFAULT_API_BASE}/ope
   group
     .command('cancel')
     .argument('<id>', 'Your open-job id')
-    .description('Withdraw your own opening (buyer) — only while still unclaimed')
+    .description('Withdraw your own open posting (buyer) — only while still unclaimed')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (id: string, opts: { key?: string; api?: string }) => {

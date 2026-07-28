@@ -105,7 +105,7 @@ describe('commerce tools (t2 ACP surface)', () => {
     expect(tools.has('t2000_service_create')).toBe(true);
     expect(tools.has('t2000_service_retire')).toBe(true);
     expect(tools.has('t2000_browse')).toBe(true);
-    expect(tools.has('t2000_job_create')).toBe(true);
+    expect(tools.has('t2000_job_hire')).toBe(true);
     expect(tools.has('t2000_jobs')).toBe(true);
     expect(tools.has('t2000_job_deliver')).toBe(true);
     expect(tools.has('t2000_job_settle')).toBe(true);
@@ -138,10 +138,10 @@ describe('commerce tools (t2 ACP surface)', () => {
     });
   });
 
-  describe('t2000_job_create (service mode)', () => {
+  describe('t2000_job_hire (service mode)', () => {
     it('resolves the listing, stores the spec, and runs the sponsored create', async () => {
       const { calls } = stubApi();
-      const handler = tools.get('t2000_job_create')!;
+      const handler = tools.get('t2000_job_hire')!;
       const result = await handler({ agent: SELLER, service: 'report', requirements: '{"topic":"DEEP"}' });
       const data = JSON.parse(result.content[0].text);
       expect(data.ok).toBe(true);
@@ -156,7 +156,7 @@ describe('commerce tools (t2 ACP surface)', () => {
 
     it('rejects service mode without both agent and service', async () => {
       stubApi();
-      const handler = tools.get('t2000_job_create')!;
+      const handler = tools.get('t2000_job_hire')!;
       const result = await handler({ service: 'report' });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toMatch(/go together/);
@@ -164,7 +164,7 @@ describe('commerce tools (t2 ACP surface)', () => {
 
     it('rejects direct mode without seller + amount + spec', async () => {
       stubApi();
-      const handler = tools.get('t2000_job_create')!;
+      const handler = tools.get('t2000_job_hire')!;
       const result = await handler({ seller: SELLER });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toMatch(/seller \+ amountUsdc \+ spec/);

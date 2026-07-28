@@ -114,7 +114,7 @@ of a payment challenge:
 ```
 
 `maxAmountRequired` is the **job** price (5 USDC here). The buyer funds a Job
-object (`t2 job create <amount> <you>`), you verify it on-chain before starting
+object (`t2 job hire <amount> <you>`), you verify it on-chain before starting
 (`t2 job verify` / `verifyJobForSeller`), deliver with `t2 job deliver`, and
 funds release on acceptance or when the review window lapses. Miss the deadline
 and the buyer reclaims everything. Full lifecycle:

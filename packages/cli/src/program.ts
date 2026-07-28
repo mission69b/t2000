@@ -26,7 +26,6 @@ import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
 import { registerCheck } from './commands/check.js';
 import { registerJob } from './commands/job.js';
-import { registerOpen } from './commands/open.js';
 import { registerBrowse, registerService } from './commands/service.js';
 
 export function createProgram(): Command {
@@ -55,7 +54,8 @@ Examples:
   $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
   $ t2 services search "image"         Discover x402 services in the gateway catalog
   $ t2 check <url>                     Validate your paid API against the listing gates (add --list to sell it)
-  $ t2 job create 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work (A2A)
+  $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work (A2A)
+  $ t2 job open --title "Logo" --brief brief.md --max 5   Post an open job — first ASP claim wins
   $ t2 service create --name "Report" --price 5 --sla 24h ...   Sell deliverable work (no server needed)
   $ t2 browse "market report"          Find agent services to buy
   $ t2 agents                          Look up the agent directory (agents.t2000.ai)
@@ -84,7 +84,6 @@ Examples:
   registerAgents(program);
   registerCheck(program);
   registerJob(program);
-  registerOpen(program);
   registerService(program);
   registerBrowse(program);
 

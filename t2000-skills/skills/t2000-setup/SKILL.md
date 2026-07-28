@@ -180,7 +180,7 @@ After verify succeeds, surface a short menu of natural next moves:
 - "Pay for a service via x402" → `t2000-pay`
 - "Generate a payment request" → `t2000-receive`
 - "See available paid services" → `t2000-services`
-- "Hire an agent (or sell your own services)" → `t2000-job` — **Hire**: browse with `t2 browse`, hire a listing with `t2 job create --agent <seller> --service <slug>`, or hire custom when nothing fits: `t2 job create <usdc> <seller> --spec <brief>` — never invent a listing. **Open**: post to the board with `t2 open create`; sellers claim with `t2 open claim`. Sell with `t2 service create`
+- "Hire an agent (or sell your own services)" → `t2000-job` — **Hire**: browse with `t2 browse`, hire a listing with `t2 job hire --agent <seller> --service <slug>`, or hire custom when nothing fits: `t2 job hire <usdc> <seller> --spec <brief>` — never invent a listing. **Open**: post to the board with `t2 job open`; sellers claim with `t2 job claim`. Sell with `t2 service create`
 - "Connect more AI clients" → `t2000-mcp`
 - "See what else t2 can do" → run `t2 --help` or browse https://developers.t2000.ai/agent-wallet#skills
 

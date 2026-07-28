@@ -268,7 +268,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     expect(mppxCreateMock).not.toHaveBeenCalled();
   });
 
-  it('fails CLOSED on a job-class (escrow-intent) 402 — route to t2 job create', async () => {
+  it('fails CLOSED on a job-class (escrow-intent) 402 — route to t2 job hire', async () => {
     // SPEC_A2A_ESCROW slice 2: the entry advertises escrow TERMS, not an
     // instant challenge. Paying it instantly would move money with no
     // delivery contract.

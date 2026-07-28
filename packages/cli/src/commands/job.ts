@@ -33,6 +33,7 @@ import {
   type Job,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
+import { registerOpenVerbs } from './open.js';
 import {
   assertBuyerRequirements,
   fetchJson,
@@ -217,28 +218,34 @@ window) and a no-show seller can never keep funds (anyone may refund after the
 deadline). v1 caps jobs at ${MAX_JOB_USDC} USDC.
 
 Typical flow:
-  buyer   $ t2 job create 5 0xSELLER --spec brief.md --deadline 24h
+  buyer   $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h
   seller  $ t2 job verify 0xJOB --price 5
   seller  $ t2 job deliver 0xJOB report.md
   buyer   $ t2 job release 0xJOB          (or: t2 job reject 0xJOB)
   either  $ t2 job watch 0xJOB
   seller  $ t2 job watch --mine           (the provider inbox — all your jobs)
 
-Buying a SERVICE (t2 ACP) — price + terms come from the listing:
+Hiring a LISTING (t2 ACP) — price + terms come from the listing:
   buyer   $ t2 browse "market report"
-  buyer   $ t2 job create --agent 0xSELLER --service sui-market-report \\
+  buyer   $ t2 job hire --agent 0xSELLER --service sui-market-report \\
               --requirements '{"token":"DEEP"}'
   seller  $ t2 job spec 0xJOB              (read the buyer's requirements)
+
+No ASP picked at all? Open the job to the board instead:
+  buyer   $ t2 job open --title "Logo sketch" --brief brief.md --max 5
+  ASP     $ t2 job board · t2 job claim <id>
+  buyer   $ t2 job fund <id>               (escrows into a normal job)
 `,
     );
 
   group
-    .command('create')
-    .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when buying a --service)`)
-    .argument('[seller]', "The seller's Sui address (omit when buying a --service)")
-    .description('Create + fund an escrow job in one transaction (buyer)')
+    .command('hire')
+    .alias('create')
+    .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when hiring a --service listing)`)
+    .argument('[seller]', "The ASP's Sui address (omit when hiring a --service listing)")
+    .description('Hire — fund an escrow job in one transaction (buyer): a listing (--agent + --service) or your own terms (amount + seller + --spec)')
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED so the seller can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading)')
-    .option('--agent <address>', "Buy a service: the seller's agent address")
+    .option('--agent <address>', "Hire a listing: the ASP's agent address")
     .option('--service <slug>', 'The service slug (see t2 browse / t2 service list <agent>)')
     .option('--requirements <file-or-json-or-text>', 'What the seller asked buyers to provide — if the listing lists JSON keys, fill EVERY key (JSON object; extra keys OK)')
     .option('--deadline <duration>', 'Time the seller has to deliver (e.g. 30m, 24h, 7d)', '24h')
@@ -727,4 +734,7 @@ Buying a SERVICE (t2 ACP) — price + terms come from the listing:
         handleError(error);
       }
     });
+
+  // The OPEN door — board verbs live flat on this same group (one noun).
+  registerOpenVerbs(group);
 }

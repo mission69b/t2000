@@ -1,5 +1,5 @@
 // Agent-services API client (t2 ACP Phase 1) — shared by `t2 service`,
-// `t2 browse`, and the `t2 job create --service` buy path.
+// `t2 browse`, and the `t2 job hire --service` path.
 //
 // The domain client (service resolution + the content-addressed job-spec
 // store with its tamper-verify) lives in `@t2000/sdk` (`src/commerce.ts`)

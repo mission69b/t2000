@@ -199,7 +199,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
               ok: true,
               ...payload,
               storefront: `https://agents.t2000.ai/${agent.address()}`,
-              buyersRun: `t2 job create --agent ${agent.address()} --service ${payload.slug}`,
+              buyersRun: `t2 job hire --agent ${agent.address()} --service ${payload.slug}`,
               watchInbox: 'Use t2000_jobs (role: seller) to see incoming jobs.',
             }),
           }],
@@ -233,7 +233,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_browse',
-    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (hire one with t2000_job_create: agent + service), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). No listing fits? That is NOT a stop — HIRE CUSTOM instead: pick a seller via t2000_agents, then t2000_job_create with seller + amountUsdc + spec (your brief, your terms). Or post the job with no seller picked: t2000_open_create puts it on the Open board and the first claim wins. Mirrors `t2 browse`.",
+    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (hire one with t2000_job_hire: agent + service), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). No listing fits? That is NOT a stop — HIRE CUSTOM instead: pick a seller via t2000_agents, then t2000_job_hire with seller + amountUsdc + spec (your brief, your terms). Or post the job with no seller picked: t2000_job_open puts it on the Open board and the first claim wins. Mirrors `t2 browse`.",
     {
       query: z.string().optional().describe('Free-text search across service names/descriptions (omit for all)'),
       agent: z.string().optional().describe("One agent's Sui address — their catalog, retired included (e.g. your own to check your listings)"),
@@ -252,7 +252,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
           Array.isArray(services) && services.length === 0
             ? {
                 ...result,
-                hint: 'No matching listed services — hire custom instead: pick a capable seller with t2000_agents (or the agents.t2000.ai directory), agree a brief + USDC + deadline with your human, then t2000_job_create with seller + amountUsdc + spec. Or post it as an OPEN JOB (t2000_open_create) and let a seller claim it. Never invent a listing.',
+                hint: 'No matching listed services — hire custom instead: pick a capable seller with t2000_agents (or the agents.t2000.ai directory), agree a brief + USDC + deadline with your human, then t2000_job_hire with seller + amountUsdc + spec. Or post it as an OPEN JOB (t2000_job_open) and let a seller claim it. Never invent a listing.',
               }
             : result;
         return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }] };
@@ -265,12 +265,12 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
   // ── Jobs (buying + the escrow lifecycle) ─────────────────────────────
 
   server.tool(
-    't2000_job_create',
+    't2000_job_hire',
     `HIRE an agent: create + fund an on-chain USDC escrow Job in one sponsored transaction (buyer side). THIS SPENDS FUNDS — the price is locked in the Job object until settlement. Two modes:
 1. A LISTING: pass agent + service (a slug from t2000_browse) + requirements. Price/SLA/terms come from the listing.
 2. CUSTOM (you picked the seller — no listing needed): pass seller + amountUsdc + spec (your brief; stored content-addressed, sha256 pinned on-chain) + optional deadline/review/split terms. Confirm seller, price, and brief with your human before funding.
-(No seller in mind at all? Post an OPEN JOB with t2000_open_create instead — the first claim wins.)
-The escrow protects both sides: no delivery by the deadline → anyone can refund the buyer; delivery + lapsed review window → anyone can release to the seller. Max ${MAX_JOB_USDC} USDC. Mirrors \`t2 job create\`.`,
+(No seller in mind at all? Post an OPEN JOB with t2000_job_open instead — the first claim wins.)
+The escrow protects both sides: no delivery by the deadline → anyone can refund the buyer; delivery + lapsed review window → anyone can release to the seller. Max ${MAX_JOB_USDC} USDC. Mirrors \`t2 job hire\`.`,
     {
       agent: z.string().optional().describe("BUY mode: the seller's agent address"),
       service: z.string().optional().describe('BUY mode: the service slug'),
@@ -297,7 +297,7 @@ The escrow protects both sides: no delivery by the deadline → anyone can refun
           serviceSlug = service.slug;
           const requirements = parseRequirements(input.requirements);
           // The shared hire gate (SPEC_ACP_JOB_SPEC_V1 §4.1) — same
-          // implementation as `t2 job create` + console hire-prepare.
+          // implementation as `t2 job hire` + console hire-prepare.
           assertBuyerRequirements(service.requirements, requirements);
           const spec = JSON.stringify({
             type: 't2-acp-job-spec@1',

@@ -3,7 +3,7 @@
 // A service is a structured, fixed-price unit of deliverable work attached
 // to your Agent ID: name, price (USDC), delivery SLA, what the buyer must
 // provide, what they get back. Buyers browse services (`t2 browse`) and fund
-// an on-chain escrow Job against one (`t2 job create --agent … --service …`)
+// an on-chain escrow Job against one (`t2 job hire --agent … --service …`)
 // — no server, no endpoint, no 402 required to sell.
 //
 //   create   list (or update) a service under your Agent ID
@@ -129,7 +129,7 @@ function printService(o: ServiceListing) {
   }
   printKeyValue(
     'Buy',
-    `t2 job create --agent ${o.agent} --service ${o.slug}`,
+    `t2 job hire --agent ${o.agent} --service ${o.slug}`,
   );
 }
 
@@ -245,7 +245,7 @@ Examples:
           printSuccess(`"${payload.name}" is listed — $${priceUsdc.toFixed(2)} USDC, delivery within ${formatSla(slaMinutes)}`);
           printKeyValue('Slug', slug);
           printKeyValue('Storefront', `https://agents.t2000.ai/${address}`);
-          printKeyValue('Buyers run', `t2 job create --agent ${address} --service ${slug}`);
+          printKeyValue('Buyers run', `t2 job hire --agent ${address} --service ${slug}`);
           printBlank();
           printInfo('Watch for incoming jobs with: t2 job watch --mine');
           printBlank();

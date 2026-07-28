@@ -112,7 +112,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * The buyer-requirements gate (SPEC_ACP_JOB_SPEC_V1 §4.1) — ONE implementation
- * shared by `t2 job create`, MCP `t2000_job_create`, and the console's
+ * shared by `t2 job hire`, MCP `t2000_job_hire`, and the console's
  * hire-prepare, so a hire can never fund with an unusable brief.
  *
  *   1. Listing has no `requirements` → the buyer may omit (anything passes).
