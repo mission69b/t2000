@@ -711,8 +711,28 @@ no fund step; unclaimed openings refund fee-free):
         }
         const client = getSuiClient();
 
+        // An OPENING id resolves to its Job (the claim consumed the Opening
+        // and minted the Job — one job, two objects; same as the web
+        // redirect). Unclaimed openings have no Job yet.
+        let watchId = jobId;
+        try {
+          await getJob(client, watchId);
+        } catch {
+          const opening = await fetchJson(
+            `${(opts.api ?? DEFAULT_API_BASE)}/open-jobs/${encodeURIComponent(watchId)}`,
+          ).catch(() => null);
+          const row = opening?.openJob as { jobId?: string | null; status?: string } | undefined;
+          if (row?.jobId) {
+            printInfo(`Opening ${truncateAddress(watchId)} became Job ${truncateAddress(row.jobId)} at claim — watching the Job.`);
+            watchId = row.jobId;
+          } else if (row) {
+            printInfo(`This is an opening (status: ${row.status}) — no Job exists until an ASP claims it. Board: t2 job board`);
+            return;
+          }
+        }
+
         for (;;) {
-          const job = await getJob(client, jobId);
+          const job = await getJob(client, watchId);
           const actions = jobActionsFor(job, me);
           const terminal = job.state === 'released' || job.state === 'refunded' || job.state === 'rejected';
 
@@ -722,7 +742,7 @@ no fund step; unclaimed openings refund fee-free):
             printBlank();
             printJob(job, me);
             if (actions.length > 0) {
-              printInfo(`You can now: ${actions.map((a) => `t2 job ${a} ${truncateAddress(jobId)}`).join('  ·  ')}`);
+              printInfo(`You can now: ${actions.map((a) => `t2 job ${a} ${truncateAddress(watchId)}`).join('  ·  ')}`);
             } else if (!terminal) {
               printInfo('Nothing for you to do yet — waiting on the counterparty / clock.');
             }

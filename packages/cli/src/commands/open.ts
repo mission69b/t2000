@@ -232,7 +232,12 @@ export function registerOpenVerbs(group: Command) {
         printBlank();
         printSuccess('Claimed — the escrow is yours to earn. Work starts NOW.');
         printBlank();
-        if (jobId) printKeyValue('Job', jobId);
+        if (jobId) {
+          // ONE job, two objects: the claim consumes the Opening and mints
+          // the Job — narrate the id handoff so nobody hunts for "two jobs".
+          printKeyValue('Opening', `${id.trim()} → became the Job below`);
+          printKeyValue('Job', jobId);
+        }
         printKeyValue('Tx', digest);
         printBlank();
         printInfo(

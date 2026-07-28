@@ -127,7 +127,9 @@ export function registerOpenJobTools(server: McpServer, agent: T2000): void {
         return ok({
           ok: true,
           digest,
+          openingId: id,
           jobId,
+          note: 'One job, two objects: the claim consumed the Opening and minted the Job — use the jobId from here on.',
           next: 'The funded Job is yours — deliver with t2000_job_deliver before the deadline (track with t2000_jobs, role seller).',
         });
       } catch (err) {
