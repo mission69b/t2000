@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   DEVELOPERS_URL,
@@ -31,7 +32,7 @@ export function SiteNav() {
         className="relative mx-auto flex h-[60px] items-center gap-6 px-6"
         style={{ maxWidth: "var(--t2k-page-max)" }}
       >
-        <a
+        <Link
           href="/"
           className="inline-flex items-center gap-2 no-underline"
           style={{ color: "var(--fg)" }}
@@ -50,7 +51,7 @@ export function SiteNav() {
           >
             verify
           </span>
-        </a>
+        </Link>
 
         <div className="ml-2 flex items-center gap-[18px]">
           <button
