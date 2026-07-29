@@ -30,14 +30,10 @@ const nextConfig: NextConfig = {
         destination: "https://developers.t2000.ai",
         permanent: true,
       },
-      // Dead-simple pass (2026-07-20): thin/duplicate pages retired. SDK
-      // folded into the wallet page; identity + commerce live where the
-      // directory/console is; the verify tool IS the page.
-      {
-        source: "/agent-sdk",
-        destination: "/agent-wallet",
-        permanent: true,
-      },
+      // Dead-simple pass (2026-07-20): thin/duplicate pages retired.
+      // identity + commerce live where the directory/console is; the verify
+      // tool IS the page. (/agent-sdk redirect removed 2026-07-29 — Five
+      // Layers links straight to developers.t2000.ai/agent-sdk.)
       {
         source: "/agent-id",
         destination: "https://agents.t2000.ai",

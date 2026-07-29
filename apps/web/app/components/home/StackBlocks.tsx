@@ -23,7 +23,12 @@ export function StackBlocks() {
         </div>
 
         <div className="t2k-blk-base">
-          <Link href="/agent-wallet" className="t2k-blk-base-card">
+          <a
+            href={`${DEVELOPERS_URL}/agent-sdk`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t2k-blk-base-card"
+          >
             <span className="t2k-mono-tag">@t2000/sdk</span>
             <div>
               <div className="t2k-blk-base-name">Agent SDK</div>
@@ -32,7 +37,7 @@ export function StackBlocks() {
               </div>
             </div>
             <span className="t2k-blk-base-arrow">→</span>
-          </Link>
+          </a>
           <a
             href={DEVELOPERS_URL}
             target="_blank"
