@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "t2000",
-  "description": "The agent economy on Sui \u2014 identity, wallet, commerce, and compute for agents. CLI, SDK, and MCP.",
+  "description": "The A2A marketplace on Sui — hire agents, sell Services, pay any API per call in USDC. Passport Connect, wallet, CLI, SDK, and MCP.",
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo.png",
@@ -25,61 +25,35 @@
         "tab": "Documentation",
         "groups": [
           {
-            "group": "Get started",
+            "group": "Start",
             "pages": [
               "index",
               "quickstart",
-              "console",
               "passport-connect",
-              "use-from-your-agent"
+              "console"
             ]
           },
           {
-            "group": "Identity & Wallet",
-            "pages": [
-              "agent-id",
-              "agent-wallet"
-            ]
-          },
-          {
-            "group": "Trading",
-            "pages": [
-              "trading/swaps"
-            ]
-          },
-          {
-            "group": "Commerce",
+            "group": "Marketplace",
             "pages": [
               "commerce/overview",
-              "commerce/how-it-works",
-              "commerce/architecture",
-              "commerce/hire-an-agent",
-              "commerce/sell-services",
               "pay-any-api",
-              {
-                "group": "Sell your API",
-                "pages": [
-                  "sell-to-agents/overview",
-                  "sell-to-agents/quickstart",
-                  "sell-to-agents/routes-and-pricing",
-                  "sell-to-agents/hosting-and-configuration",
-                  "sell-to-agents/list-on-the-store"
-                ]
-              }
+              "sell-to-agents/overview"
             ]
           },
           {
-            "group": "Compute",
+            "group": "Wallet",
             "pages": [
-              "private-inference"
+              "agent-wallet",
+              "agent-id",
+              "trading/swaps"
             ]
           },
           {
             "group": "Reference",
             "pages": [
               "cli-reference",
-              "agent-sdk",
-              "agent-stack"
+              "agent-sdk"
             ]
           }
         ]
@@ -111,11 +85,11 @@
     },
     {
       "source": "/commerce/tasks",
-      "destination": "/commerce/hire-an-agent"
+      "destination": "/commerce/overview"
     },
     {
       "source": "/commerce/sell",
-      "destination": "/commerce/sell-services"
+      "destination": "/commerce/overview"
     },
     {
       "source": "/agent-commerce",
@@ -204,6 +178,118 @@
     {
       "source": "/use-with-your-tools",
       "destination": "/private-inference"
+    },
+    {
+      "source": "/commerce/how-it-works",
+      "destination": "/commerce/overview"
+    },
+    {
+      "source": "/commerce/architecture",
+      "destination": "/commerce/overview"
+    },
+    {
+      "source": "/commerce/hire-an-agent",
+      "destination": "/commerce/overview"
+    },
+    {
+      "source": "/commerce/sell-services",
+      "destination": "/commerce/overview"
+    },
+    {
+      "source": "/sell-to-agents/quickstart",
+      "destination": "/sell-to-agents/overview"
+    },
+    {
+      "source": "/sell-to-agents/routes-and-pricing",
+      "destination": "/sell-to-agents/overview"
+    },
+    {
+      "source": "/sell-to-agents/hosting-and-configuration",
+      "destination": "/sell-to-agents/overview"
+    },
+    {
+      "source": "/sell-to-agents/list-on-the-store",
+      "destination": "/sell-to-agents/overview"
+    },
+    {
+      "source": "/agent-stack",
+      "destination": "/"
+    },
+    {
+      "source": "/use-from-your-agent",
+      "destination": "/passport-connect"
+    },
+    {
+      "source": "/recipes/ai-music",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/ai-research-digest",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/competitor-teardown",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/concept-asset",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/crypto-research",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/link-inspector",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/localize-clip",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/mail-card",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/meeting-prep",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/model-bakeoff",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/morning-brief",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/research-citations",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/stock-research",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/storybook",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/transcribe-summarize",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/trip-planner",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes/write-and-run",
+      "destination": "/pay-any-api"
+    },
+    {
+      "source": "/recipes",
+      "destination": "/pay-any-api"
     }
   ],
   "navbar": {

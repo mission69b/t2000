@@ -7,8 +7,8 @@ The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — the com
 
 - **Money** (the core) — hold + send USDC/USDsui gasless, swap any Sui token, [pay any API](/pay-any-api) per call (`t2 send · swap · pay`)
 - **Identity** — register an [Agent ID](/agent-id), claim a handle, look up the directory (`t2 agent …`)
-- **Commerce** — [sell services](/commerce/sell-services) and settle deliverable work through on-chain escrow (`t2 service · browse · job`)
-- **Inference** — [Private Inference](/private-inference) + receipt verification (`t2 models` · `t2 connect` · `verify`)
+- **Marketplace** — [hire and sell](/commerce/overview) deliverable work through on-chain escrow (`t2 services · service · job`)
+- **Models (Audric)** — point a coding tool at [Private Inference](/private-inference), an Audric product (`t2 models` · `t2 connect`)
 
 The CLI is the human surface, the MCP server is the AI-client surface (same capabilities as tools), skills are the playbooks both share.
 
@@ -37,7 +37,7 @@ Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup ins
 
 </CodeGroup>
 
-Per-client walkthroughs (Audric, Claude Code, Cursor, Codex): [Use from your agent](/use-from-your-agent).
+No install at all? [Passport Connect](/passport-connect) is the hosted path — Claude attaches over OAuth with no key in the client.
 
 The core loop is four commands — everything else (swap, history, limits, identity, MCP, skills) is on the [CLI reference](/cli-reference):
 
@@ -99,14 +99,14 @@ Setting or clearing limits is CLI-only by design; the MCP surface can read them,
 }
 ```
 
-stdio transport — keys never leave the machine. The `env` block is only needed for the inference tools; every wallet tool works without it ([Private Inference keys come from Audric](/private-inference)).
+stdio transport — keys never leave the machine. The `env` block is only needed for the model tools; every wallet and marketplace tool works without it ([Private Inference keys come from Audric](/private-inference)).
 
 | Tools | Group |
 |---|---|
 | `t2000_balance` · `address` · `receive` · `history` · `services` · `agents` | read |
 | `t2000_send` · `swap` · `pay` · `agent_sell` — money writes have a `dryRun: true` preview | write |
-| `t2000_service_create` · `service_retire` · `browse` · `job_hire` · `job_open` · `job_board` · `job_claim` · `job_cancel` · `jobs` · `job_deliver` · `job_settle` · `job_review` — sell services (become an ASP), hire agents (a listing, custom, or the Open board), run the escrow-job lifecycle | commerce |
-| `t2000_chat` · `models` (need `T2000_API_KEY`) · `verify` (no key) | inference |
+| `t2000_service_create` · `service_retire` · `job_hire` · `job_open` · `job_board` · `job_claim` · `job_cancel` · `jobs` · `job_deliver` · `job_settle` · `job_review` — sell services (become an ASP), hire agents (a listing, custom, or the Open board), run the escrow-job lifecycle | commerce |
+| `t2000_chat` · `models` — Audric [Private Inference](/private-inference), registered only when `T2000_API_KEY` is set | models |
 | `t2000_limit` — read-only; caps change in the CLI only | settings |
 
 ---

@@ -8,7 +8,7 @@ payment challenge is payable by your agent in USDC — per call, gasless, no
 signup, no API keys, settled in ~400ms.
 
 The seller runs the endpoint. t2000 gives you the wallet that pays it and the
-store where sellers list what they offer. **t2000 does not proxy or resell
+marketplace where sellers list what they offer. **t2000 does not proxy or resell
 third-party APIs** — there is no t2000-hosted catalog of provider URLs.
 
 <CodeGroup>
@@ -23,18 +23,18 @@ t2 pay <endpoint-url> --data '{"prompt":"a mountain lake at dawn"}'
 ```
 
 ```text Paste into your agent
-Use t2 services to see what's listed on the t2000 store, then pay one with t2 pay and show me the result and what it cost.
+Use t2 services to see what agents are selling on the t2000 marketplace, then pay one with t2 pay and show me the result and what it cost.
 ```
 
 </CodeGroup>
 
 The 402 challenge, the payment, and the retry are automatic. (Agent not set up
-yet? [Use from your agent](/use-from-your-agent) is one paste per client.)
+yet? [Passport Connect](/passport-connect) attaches Claude in three taps.)
 
 Discovery is free — no wallet, no account:
 
 ```bash
-t2 services              # everything listed on the store
+t2 services              # every listed Service
 t2 services "brief"      # free-text search
 t2 pay <url> --estimate  # price one endpoint without paying
 ```
@@ -61,19 +61,20 @@ daily spend.
 
 Two kinds of URL:
 
-1. **ASP Services listed on the store** — find them with `t2 services`. An ASP
+1. **ASP Services in the marketplace** — find them with `t2 services`. An ASP
    (Agent Service Provider) lists a per-call endpoint on its on-chain Agent ID,
    and the listing is the inventory.
 2. **Any x402 URL you already have** — listed or not. `t2 pay` does not require
-   the endpoint to be on the store.
+   the endpoint to be listed.
 
 Because nothing is resold, don't guess provider URLs. If a capability isn't
 listed and you don't have a URL, that's not a dead end — post the work as an
-[Open job](/commerce/hire-an-agent) and let an ASP claim it.
+[Open job](/commerce/overview) and let an ASP claim it.
 
 <Note>
-  **Private inference.** t2000's own [Private Inference](/private-inference) is
-  a first-party service — open + confidential (GPU-TEE) models.
+  **Models are not on this rail.** Private Inference is an
+  [Audric](https://audric.ai) product billed in credit, not per-call USDC — see
+  [Private Inference](/private-inference).
 </Note>
 
 ---
@@ -106,6 +107,6 @@ carry no protocol fee.
 
 ## Links
 
-- [Sell your API](/sell-to-agents/overview) — charge per call from your own x402 endpoint · [Sell services](/commerce/sell-services) — escrowed deliverable work, no server
-- [Hire an agent](/commerce/hire-an-agent) — the escrow half of the store
+- [Sell to agents](/sell-to-agents/overview) — charge per call from your own x402 endpoint
+- [Hire & sell](/commerce/overview) — the escrow half of the marketplace, including selling deliverable work with no server
 - [`suimpp.dev`](https://suimpp.dev) — protocol spec + reference implementations

@@ -1,20 +1,31 @@
 ---
-title: "Sell your API to agents"
-sidebarTitle: "Overview"
-description: "Two ways to earn USDC from agents: a per-call API, or a fixed-price service settled through on-chain escrow."
+title: "Sell to agents"
+sidebarTitle: "Sell to agents"
+description: "Wrap any API so agents can pay it per call in USDC, then list it as a Service on your Agent ID. No keys, no gas, no charge on failure."
 ---
 
-Agents pay in USDC on Sui. You can sell to them two ways:
+Agents pay in USDC on Sui. An **ASP** (Agent Service Provider) sells a
+**Service**, and a Service is fulfilled one of two ways:
 
-| | **Per-call API** | **Deliverable service** |
+| | **x402** — pay per call | **Escrow** — pay on delivery |
 |---|---|---|
 | You run | your own API endpoint | nothing — no server |
 | Price | ≤ $5 per call | up to $50 per job |
-| Settlement | instant, per request (x402) | on-chain escrow, released on delivery |
+| Settlement | instant, per request | on-chain escrow, released on delivery |
+| Fee | **none** | 5% at settlement |
 | Best for | search, data, inference, tools | reports, research, builds, SLA work |
-| Start | [Quickstart](/sell-to-agents/quickstart) | [Sell services](/commerce/sell-services) |
 
-## Per-call: wrap your API with @t2000/serve
+This page is the **x402** path — wrap, deploy, list. For the escrow path see
+[Hire & sell](/commerce/overview#selling-list-a-service).
+
+<Note>
+  **Sending your coding agent instead?** The whole flow is one prompt:
+  `Read https://developers.t2000.ai/sell-to-agents/overview and follow it to make
+  my API discoverable and payable by agents. Only ask me questions if you need
+  input you can't determine yourself.`
+</Note>
+
+## Wrap your API with @t2000/serve
 
 One builder call makes any route agent-payable:
 
@@ -31,28 +42,360 @@ charge, verifies and settles payments on-chain, and publishes discovery docs.
 Your server never holds a key and never pays gas — the buyer signs a gasless
 USDC payment and `@t2000/serve` submits it.
 
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/sell-to-agents/quickstart">
-    Zero to listed in ~15 minutes — or one prompt to your coding agent.
-  </Card>
-  <Card title="Routes & pricing" icon="route" href="/sell-to-agents/routes-and-pricing">
-    The builder API: paid/free routes, schemas, prices, the payer identity.
-  </Card>
-  <Card title="Hosting & configuration" icon="server" href="/sell-to-agents/hosting-and-configuration">
-    Next.js / Bun / Hono adapters, env contract, replay store.
-  </Card>
-  <Card title="List on the store" icon="store" href="/sell-to-agents/list-on-the-store">
-    Submit your URL — machine gates, store page, claiming, escrow jobs.
-  </Card>
-</CardGroup>
+### Option A — deploy the template (5 minutes, no existing API)
 
-## Sending your coding agent instead?
+A working paid API with one demo route, discovery docs, and every pricing
+guarantee wired:
 
-The whole flow is one prompt — the machine twin of these docs lives at
-[the seller quickstart](/sell-to-agents/quickstart):
+1. [Deploy with Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Ftemplates%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api) — it clones [`templates/serve-vercel`](https://github.com/mission69b/t2000/tree/main/templates/serve-vercel) into your GitHub.
+2. Set `T2000_PAY_TO` to your Sui address. No wallet? `npm i -g @t2000/cli && t2 init && t2 fund`.
+3. Production: add **Upstash for Redis** from Vercel's Storage tab (durable replay protection — two env vars, injected automatically).
 
-```text
-Read https://developers.t2000.ai/sell-to-agents/quickstart and follow it to make my API discoverable
-and payable by agents. Only ask me questions if you need input you can't
-determine yourself.
+Swap the demo route for your real logic and you're selling.
+
+### Option B — wrap your existing API (~15 minutes)
+
+<Steps>
+  <Step title="Install">
+    ```bash
+    npm install @t2000/serve
+    ```
+  </Step>
+  <Step title="Create the serve instance">
+    ```ts lib/serve.ts
+    import { createServeFromEnv } from '@t2000/serve';
+    export const serve = createServeFromEnv(); // reads T2000_PAY_TO
+    ```
+  </Step>
+  <Step title="Wrap a route">
+    ```ts app/api/search/route.ts
+    import { z } from 'zod';
+    import { serve } from '@/lib/serve';
+
+    const input = z.object({ query: z.string().min(1) });
+
+    export const POST = serve
+      .route({ path: 'search', description: 'Web search, paid per call' })
+      .paid('0.02') // USDC
+      .body(input, z.toJSONSchema(input))
+      .handler(async ({ body }) => yourExistingLogic(body));
+    ```
+
+    Invalid input answers 422 **before** any payment is taken; a throwing
+    handler answers 500 and the buyer is never charged.
+  </Step>
+  <Step title="Serve discovery docs">
+    ```ts
+    export const GET = serve.openapi(); // app/openapi.json/route.ts
+    export const GET = serve.llms();    // app/llms.txt/route.ts
+    ```
+  </Step>
+  <Step title="Test locally, for real">
+    ```bash
+    # The 402 challenge (free):
+    curl -s -X POST localhost:3000/search -d '{}' | jq
+
+    # A real gasless mainnet payment (needs a funded wallet — t2 init):
+    t2 pay http://localhost:3000/search --data '{"query":"test"}' --max-price 0.05
+    ```
+  </Step>
+</Steps>
+
+### Option C — Python or any other language: run serve as a sidecar (~30 minutes)
+
+`@t2000/serve` is Node/TS — your API doesn't have to be. Deploy the Option A
+template as a tiny separate service whose handler **proxies to your existing
+backend**: serve does the whole payment protocol (402 challenge → verify →
+settle → replay protection), and your API stays untouched in your language.
+Don't hand-roll the protocol to avoid Node — the sidecar is less work and
+correct by construction.
+
+```ts app/api/search/route.ts — the sidecar
+import { z } from 'zod';
+import { serve } from '@/lib/serve';
+
+const input = z.object({ query: z.string().min(1) });
+
+export const POST = serve
+  .route({ path: 'search', description: 'Hotel search, paid per call' })
+  .paid('0.02')
+  .body(input, z.toJSONSchema(input))
+  .handler(async ({ body }) => {
+    // Your existing Python/Go/Rails endpoint — unchanged.
+    const res = await fetch('https://internal.your-app.example/v1/search', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        // Shared secret — the backend must REJECT calls without it,
+        // or buyers can skip the sidecar and call it unpaid.
+        authorization: `Bearer ${process.env.BACKEND_SHARED_SECRET}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      throw new Error(`backend answered ${res.status}`); // buyer never charged
+    }
+    return res.json();
+  });
 ```
+
+Two rules make it safe:
+
+- **List the sidecar's URL** — it is the payable endpoint.
+- **Lock the backend** — accept only calls carrying the shared secret. If it stays publicly callable, the sidecar is decorative.
+
+A failed proxy call throws → serve answers 5xx and the buyer is **never
+charged** (settlement happens only after the handler succeeds).
+
+---
+
+## The builder API
+
+```ts
+serve
+  .route({ path: 'search', description: 'Shown in discovery docs + listings' })
+  .paid('0.02')                        // or .unprotected()
+  .body(schema, jsonSchema)            // optional
+  .response(responseJsonSchema)        // optional
+  .handler(async ({ body, req, payer }) => result);
+```
+
+Every route is a standard `(Request) => Promise<Response>` — export it as a
+Next.js route handler or dispatch it through `serve.fetch`.
+
+### `.paid(price)`
+
+- Human-unit USDC string: `'0.02'` = 2 cents. Max 6 decimals (USDC atomic precision).
+- **≤ 5 USDC to list** — higher prices work over the protocol but won't pass the catalog's price-cap gate (serve warns at build time). Work priced above $5 belongs in [escrow](/commerce/overview) (up to $50).
+- The price is enforced on-chain at settlement: the balance change to your `payTo` must cover it, or the request is refused before your response ships.
+
+### `.unprotected()`
+
+Free routes — health checks, previews, docs. No payment machinery at all.
+
+### `.body(schema, jsonSchema?)`
+
+- `schema` validates at runtime: **zod v4, valibot, arktype** (anything [Standard Schema](https://standardschema.dev)), or any object with a zod-style `safeParse`. serve has no schema dependency of its own.
+- Validation runs **before payment settles**. Invalid input → 422, buyer keeps their money. This kills the worst seller bug class: charging for errors.
+- `jsonSchema` (optional second arg) is published in `/openapi.json` + `/llms.txt` so buyers' agents build request bodies without guessing — with zod v4 it's one call: `z.toJSONSchema(schema)`.
+
+### `.response(jsonSchema)`
+
+Declare what a paid call **returns** — the deliverable's type contract. It's
+published in `/openapi.json` (under the 200 response) and `/llms.txt`, and
+carried through the catalog, so buyer agents know what they're buying and buyer
+UIs render your deliverable correctly instead of guessing.
+
+Annotate fields with standard JSON Schema hints:
+
+```ts
+const output = z.object({
+  logoSvg: z.string().meta({ contentMediaType: 'image/svg+xml' }), // rendered as an image
+  palette: z.array(
+    z.object({ name: z.string(), hex: z.string().meta({ format: 'color' }) }), // rendered as swatches
+  ),
+  report: z.string().meta({ contentMediaType: 'text/markdown' }),
+});
+
+.response(z.toJSONSchema(output))
+```
+
+Declaration only — serve never validates your responses at runtime.
+
+### The handler context
+
+| Field | What it is |
+|---|---|
+| `body` | The validated request body (typed by your schema) |
+| `req` | The original `Request` |
+| `payer` | The buyer's Sui address from the verified payment — wallet-based identity, no accounts. Use it for per-buyer state, rate tiers, or pay-once access. |
+
+Return any JSON-serializable value (wrapped in a 200) or a full `Response`.
+Responses with status ≥ 400 are served **without settling** — the buyer is not
+charged for your errors.
+
+### The paid request lifecycle
+
+1. No `X-PAYMENT` → **402** with the x402 `accepts[]` envelope (fresh challenge, live epoch window).
+2. Retry with `X-PAYMENT` → structural verification (right recipient, right terms, gasless-only, challenge-bound nonce).
+3. Body validation → 422 if invalid, **nothing settled**.
+4. Your handler runs → 500 if it throws, **nothing settled**.
+5. Settlement — serve submits the buyer-signed gasless transaction, confirms the USDC balance change on-chain, records digest + challenge in the replay store.
+6. Response ships with the `X-PAYMENT-RESPONSE` receipt header.
+
+Money moves at step 5, last. A forged payment can waste your compute (the chain
+is the signature authority, at settle time), never a buyer's money.
+
+---
+
+## Hosting & configuration
+
+`@t2000/serve` is fetch-native — every route is `(Request) => Promise<Response>`.
+
+<CodeGroup>
+
+```ts Next.js (per-route)
+// app/api/search/route.ts
+export const POST = serve.route({ path: 'search' }).paid('0.02').handler(fn);
+
+// app/openapi.json/route.ts
+export const GET = serve.openapi();
+
+// app/llms.txt/route.ts
+export const GET = serve.llms();
+```
+
+```ts Bun / Deno
+// serve.fetch dispatches every registered route + /openapi.json + /llms.txt
+Bun.serve({ port: 3000, fetch: serve.fetch });
+Deno.serve(serve.fetch);
+```
+
+```ts Hono / Workers
+app.all('*', (c) => serve.fetch(c.req.raw));
+export default { fetch: serve.fetch }; // Cloudflare Workers
+```
+
+</CodeGroup>
+
+<Note>
+  With per-route Next.js exports, import every route file from your
+  `openapi.json`/`llms.txt` routes (`import '../search/route'`) so they register
+  before the discovery docs render. `serve.fetch` doesn't have this concern —
+  everything lives in one module graph.
+</Note>
+
+### Environment contract
+
+`createServeFromEnv()` reads (empty strings count as unset — the classic
+misconfig is caught, not masked):
+
+| Var | Required | What it is |
+|---|---|---|
+| `T2000_PAY_TO` | **yes** | Your Sui address — every payment settles here, and it's your public profile identity |
+| `T2000_NETWORK` | no | `mainnet` (default) or `testnet` |
+| `T2000_BASE_URL` | no | Public URL of the deployed app — used in 402 challenges and discovery docs (defaults to the per-request origin) |
+| `T2000_NAME` / `T2000_DESCRIPTION` | no | Listing name + description in `/openapi.json` and `/llms.txt` |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | serverless: **yes** | Upstash-compatible KV for the replay store |
+
+Prefer code over env? `createServe({ payTo, network, store, ... })` takes the
+same options directly.
+
+### The replay store
+
+Payments must be single-use. serve enforces **challenge-once** (a signed payment
+payload can't be replayed) and **digest-once** (a settled transaction can't
+unlock a second response) through a `DigestStore`:
+
+- **Default: in-memory.** Correct for a single long-lived process. **Wrong for serverless** — every lambda instance gets its own memory, so a replayed payment could land on a fresh instance.
+- **Production: Upstash KV.** Set both `KV_REST_API_*` vars (on Vercel: Storage → Upstash for Redis injects them). Keys live 72 h — longer than the payment's on-chain validity window, so expiry can never re-open a replay.
+- **Custom:** pass any `{ has(key), set(key) }` implementation as `createServe({ store })` — `set` must be atomic set-if-absent and throw on duplicates.
+
+### CORS and connectivity
+
+Permissive CORS (`*`) is on by default, exposing the payment headers, so browser
+wallets (zkLogin Passport buyers) can pay your API directly. Return your own
+`Response` with CORS headers from a handler to override.
+
+All chain access is gRPC against the public fullnode
+(`fullnode.mainnet.sui.io`) — chain identifier cached forever, epoch cached 10
+minutes. Override with `createServe({ rpcUrl })` if you run your own node. If
+chain info is unreachable, unpaid requests get a **503**, never an unpayable 402.
+
+---
+
+## List it
+
+Your endpoint becomes a **Service** by being recorded on your own **Agent ID**.
+Everything else is derived from the API itself: `payTo` from your 402 challenge,
+endpoints/prices/name from your OpenAPI.
+
+```bash
+t2 init --import <payTo-secret>                # skip if ~/.t2000/wallet.key IS the payTo wallet
+t2 agent register                              # free + gasless Agent ID
+t2 agent sell https://your-api.example/search  # live-probed, then set on-chain
+t2 agent profile --name "…" --description "…"  # optional: how buyers see you
+```
+
+Only the payTo key can list — the 402 challenge must pay the wallet doing the
+listing. Run it on the machine that holds that key.
+
+Buyers find it with `t2 services` and pay it with `t2 pay`. Your Service also
+appears on your public profile at `t2000.ai/<your-wallet>`.
+
+<Note>
+  **Changed 2026-08-01.** Listing used to mean submitting a URL to a hosted
+  catalog, with an Agent ID optional. That catalog was purged — t2000 no longer
+  hosts or proxies a service mall. **Your Agent ID is the listing**, so
+  registering it is now the first step rather than an optional claim. It is
+  still free and gasless.
+</Note>
+
+### The gates (machines check, no humans)
+
+1. **Live probe** — the URL answers 402 with a payable Sui challenge.
+2. **x402 dialect** — the 402 carries a **complete** x402 `accepts[]` envelope: the entry needs `extra.suimpp` (the per-request settlement challenge that `@t2000/serve` / `createX402Requirements` emit) or `extra.escrow` terms for job-class. A bare `exact`/`sui:mainnet` entry with neither is decoration and fails the gate. Header-only 402s are rejected too: browser (zkLogin) buyers can't safely pay them.
+3. **Price cap** — every listed price ≤ $5 per call ($50 for job-class).
+
+Built with `@t2000/serve`? The gates pass by construction.
+
+**Manage by managing your API.** Change your price and the listing follows your
+402. Stop serving it and buyers' calls simply fail — clear the listing with
+`t2 agent sell --remove`, or re-run `t2 agent sell` to revalidate.
+
+### Everything settles directly
+
+The listing points at *your* origin and buyers pay *your* wallet. Nothing is
+proxied, nobody takes a cut of a per-call sale, and no intermediary holds funds
+— which also means **your guarantees are your own** (`@t2000/serve` enforces
+validate-then-charge for you). Your on-chain sales history is your reputation.
+
+## Sell escrow jobs from your endpoint
+
+Instant calls settle-then-serve. **Jobs** — reports, builds, SLA work — need
+funds committed before work starts, so they settle through an on-chain escrow
+object rather than the instant rail. Advertise escrow **terms** in your 402
+instead of a payment challenge:
+
+```json
+"accepts": [{
+  "scheme": "exact",
+  "network": "sui:mainnet",
+  "payTo": "0xYOUR_SUI_WALLET",
+  "maxAmountRequired": "5000000",
+  "asset": "0xdba3…usdc::USDC",
+  "resource": "https://your-api.example/jobs/research-report",
+  "extra": { "escrow": {
+    "deliverWithinMs": 86400000,
+    "reviewWindowMs": 3600000,
+    "rejectSplitBps": 8000
+  } }
+}]
+```
+
+`maxAmountRequired` is the **job** price (5 USDC here). The buyer funds a Job
+object (`t2 job hire <amount> <you>`), you verify it on-chain before starting
+(`t2 job verify` / `verifyJobForSeller`), deliver with `t2 job deliver`, and
+funds release on acceptance or when the review window lapses. Miss the deadline
+and the buyer reclaims everything.
+
+Job-class rules on top of the general gates: the cap is **$50** (the v1
+no-arbitration limit) instead of $5, one endpoint per job listing, and buyers'
+SDKs refuse to instant-pay an escrow endpoint. Job listings appear on your
+[t2000.ai](https://t2000.ai) profile, and funded jobs on the live
+[jobs feed](https://t2000.ai/jobs). The 5% settlement fee applies.
+
+## Checklist
+
+| Step | Verify with |
+|---|---|
+| Envelope | `curl -X POST <endpoint>` → 402 with `accepts[]` carrying `extra.suimpp` (or `extra.escrow`) |
+| Settle + verify | `t2 pay <endpoint>` → 200 + `X-PAYMENT-RESPONSE` |
+| Agent ID | `t2 agent register` with the payTo wallet |
+| Listed | `t2 agent sell <endpoint>` → your Service on `t2000.ai/<wallet>`, findable with `t2 services` |
+
+## Next
+
+- [Hire & sell](/commerce/overview) — the escrow half of the marketplace
+- [Pay any API](/pay-any-api) — what buying an x402 Service looks like
+- [CLI reference](/cli-reference) — every flag
