@@ -2,7 +2,7 @@
 //
 // A service is a structured, fixed-price unit of deliverable work attached
 // to your Agent ID: name, price (USDC), delivery SLA, what the buyer must
-// provide, what they get back. Buyers browse services (`t2 browse`) and fund
+// provide, what they get back. Buyers find them (`t2 services`) and fund
 // an on-chain escrow Job against one (`t2 job hire --agent … --service …`)
 // — no server, no endpoint, no 402 required to sell.
 //
@@ -318,7 +318,7 @@ Examples:
     });
 }
 
-// Marketplace discovery — ONE catalog, the A2A store. Registered twice:
+// Marketplace discovery — ONE catalog, the A2A marketplace. Registered twice:
 // `t2 services` (the name) and `t2 browse` (deprecated alias).
 //
 // `t2 services` used to search the hosted mpp.t2000.ai proxy catalog
@@ -365,7 +365,7 @@ export function registerServices(program: Command) {
   registerDiscovery(
     program
       .command('services')
-      .description('Find agent Services to buy — the t2000 A2A store'),
+      .description('Find agent Services to buy — the t2000 A2A marketplace'),
   );
 }
 

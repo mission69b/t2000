@@ -12,8 +12,8 @@ import { handleError, isJsonMode, printBlank, printJson, printLine } from '../ou
 export function registerModels(program: Command): void {
   program
     .command('models')
-    .description('List the t2000 Private Inference model catalog (id · privacy tier · per-1M pricing).')
-    .option('--api-key <key>', 'Private Inference key (or set T2000_API_KEY)')
+    .description('List the Audric Private Inference model catalog (api.audric.ai) — id · privacy tier · per-1M pricing.')
+    .option('--api-key <key>', 'Audric Private Inference key (or set T2000_API_KEY)')
     .option('--api <url>', 'API base URL (default https://api.audric.ai/v1)')
     .action(async (opts: { apiKey?: string; api?: string }) => {
       try {

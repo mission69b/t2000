@@ -113,7 +113,7 @@ export function hermesConfigPath(home = homedir()): string {
 /** Fresh-file body (and paste snippet when a config already exists). */
 export function hermesConfigYaml(key: string): string {
   return [
-    `# t2000 Private Inference (written by \`t2 connect hermes\`)`,
+    `# Audric Private Inference (written by \`t2 connect hermes\`)`,
     `# https://hermes-agent.nousresearch.com/docs/integrations/providers`,
     `model:`,
     `  default: ${DEFAULT_MODEL}`,
@@ -212,7 +212,7 @@ export function continueModelYaml(key: string): string {
 
 export function continueFreshConfigYaml(key: string): string {
   return [
-    `name: t2000 Private Inference`,
+    `name: Audric Private Inference`,
     `version: 0.0.1`,
     `schema: v1`,
     ``,
@@ -230,7 +230,7 @@ export function aiderConfPath(home = homedir()): string {
 
 export function aiderConfYaml(key: string): string {
   return [
-    `# t2000 Private Inference (written by \`t2 connect aider\`)`,
+    `# Audric Private Inference (written by \`t2 connect aider\`)`,
     `openai-api-base: ${API_BASE}`,
     `openai-api-key: ${key}`,
     `model: openai/${DEFAULT_MODEL}`,
@@ -248,7 +248,7 @@ export function codexConfigPath(home = homedir()): string {
 export function codexTomlBlock(): string {
   return [
     ``,
-    `# t2000 Private Inference (written by \`t2 connect codex\`)`,
+    `# Audric Private Inference (written by \`t2 connect codex\`)`,
     `[model_providers.t2000]`,
     `name = "t2000"`,
     `base_url = "${API_BASE}"`,
@@ -280,11 +280,11 @@ export function grokConfigPath(home = homedir()): string {
 export function grokModelBlock(): string {
   return [
     ``,
-    `# t2000 Private Inference (written by \`t2 connect grok\`)`,
+    `# Audric Private Inference (written by \`t2 connect grok\`)`,
     `[model.t2000]`,
     `model = "${DEFAULT_MODEL}"`,
     `base_url = "${API_BASE}"`,
-    `name = "t2000 auto (Private Inference)"`,
+    `name = "t2000 auto (Audric Private Inference)"`,
     `env_key = "T2000_API_KEY"`,
     `api_backend = "chat_completions"`,
     ``,

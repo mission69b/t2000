@@ -42,25 +42,41 @@ export function createProgram(): Command {
       if (opts.json) setJsonMode(true);
     })
     .addHelpText('after', `
-Examples:
+Setup:
   $ t2 init                            Create a new Agent Wallet
   $ t2 init --import                   Import an existing Bech32 secret (interactive)
   $ t2 fund                            Show address + QR to fund the wallet
   $ t2 status                          Health check: wallet, balances, limits, MCP
   $ t2 balance                         Show USDC / USDsui / SUI holdings
+
+A2A Marketplace — earn:
+  $ t2 job board                       Open jobs anyone can claim (claiming costs $0)
+  $ t2 job claim <openingId>           First claim wins — the funded Job starts now
+  $ t2 service create --name "Report" --price 5 --sla 24h ...   Sell deliverable work (no server needed)
+  $ t2 job watch --mine                Your inbox — deliver, get paid
+
+A2A Marketplace — spend:
+  $ t2 services "market report"        Find agent Services to buy (escrow or x402)
+  $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work
+  $ t2 job open --title "Logo" --brief brief.md --max 5   Post an open job — first ASP claim wins
+  $ t2 pay <url> --estimate            Preview an x402 Service's price + input schema (no payment)
+  $ t2 agents                          Look up the agent directory (t2000.ai)
+
+Wallet:
   $ t2 send 5 USDC alice.sui           Send 5 USDC (gasless; asset required)
   $ t2 swap 100 USDC SUI               Swap 100 USDC for SUI via Cetus
-  $ t2 models                          List the Private Inference model catalog
-  $ t2 connect claude-code --key sk-...     Point a coding tool at Private Inference
-  $ t2 pay <url> --estimate            Preview an x402 service's price + input schema (no payment)
-  $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work (A2A)
-  $ t2 job open --title "Logo" --brief brief.md --max 5   Post an open job — first ASP claim wins
-  $ t2 service create --name "Report" --price 5 --sla 24h ...   Sell deliverable work (no server needed)
-  $ t2 services "market report"        Find agent Services to buy (escrow or x402)
-  $ t2 agents                          Look up the agent directory (t2000.ai)
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
-  $ t2 mcp install                     Connect Claude / Cursor / Windsurf
-  $ t2 skills install                  Install skills as local SKILL.md files`);
+
+Connect an AI client:
+  Hosted (recommended)                 Add https://mcp.t2000.ai/mcp as a custom connector
+                                       in Claude, then approve with Google — no install,
+                                       no key in the client, spend limits you set.
+  $ t2 mcp install                     Local stdio server (advanced) — for a keypair you hold
+  $ t2 skills install                  Install skills as local SKILL.md files
+
+Models (Audric — a separate product, billed in credit):
+  $ t2 models                          List the Audric Private Inference model catalog
+  $ t2 connect claude-code --key sk-...     Point a coding tool at api.audric.ai`);
 
   registerInit(program);
   registerExport(program);

@@ -119,7 +119,12 @@ export function registerStatus(program: Command) {
           .join('  ·  ');
         printKeyValue('MCP wired', mcpSummary);
         if (!mcpClients.some((c) => c.wired)) {
-          printLine(pc.dim('  Run `t2 mcp install` to connect Claude / Cursor / Windsurf.'));
+          printLine(
+            pc.dim('  Hosted: add https://mcp.t2000.ai/mcp as a custom connector in Claude.')
+          );
+          printLine(
+            pc.dim('  Local:  `t2 mcp install` wires the stdio server (advanced — keypair you hold).')
+          );
         }
         printBlank();
       } catch (err) {

@@ -8,11 +8,11 @@
 //     prints price + asset + recipient + resource, and exits 0 without
 //     paying. SPEC verification gate ("t2 pay <url> --estimate" → prints
 //     price + service info, returns exit 0 without executing).
-//     x402-only (SUIMPP_X402_SCHEME): the gateway always advertises the
-//     x402 envelope; the legacy mppx challenge parser was retired here.
-//   - Surfaces the SDK's gasless badge (`gasCostSui === 0`) — when an
-//     MPP payment hits the Sui gasless stablecoin allowlist, the
-//     receipt renders `gasless ⚡` instead of a SUI cost.
+//     x402-only (SUIMPP_X402_SCHEME): sellers advertise the x402 envelope
+//     on every 402; the legacy mppx challenge parser was retired here.
+//   - Surfaces the SDK's gasless badge (`gasCostSui === 0`) — when a
+//     payment hits the Sui gasless stablecoin allowlist, the receipt
+//     renders `gasless ⚡` instead of a SUI cost.
 //
 // `--data` + `--method` + `--header` + `--max-price` semantics
 // preserved from the legacy command.
@@ -44,7 +44,7 @@ interface PayOptions {
 export function registerPay(program: Command) {
   program
     .command('pay <url>')
-    .description('Pay an MPP / x402 service (USDC on Sui)')
+    .description('Pay an x402 Service (USDC on Sui) — the seller\'s own endpoint')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--method <method>', 'HTTP method (GET, POST, PUT)', 'GET')
     .option('--data <json>', 'Request body for POST/PUT (auto-promotes --method to POST)')
@@ -206,9 +206,9 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
     return;
   }
 
-  // Read the x402 `accepts[]` envelope from the 402 body (preferred — the
-  // gateway advertises it on every 402 per SUIMPP_X402_SCHEME). Header-only
-  // sellers (MPP `WWW-Authenticate` dialect) are handled below as a fallback.
+  // Read the x402 `accepts[]` envelope from the 402 body (preferred — sellers
+  // advertise it on every 402 per SUIMPP_X402_SCHEME). Header-only sellers
+  // (the MPP `WWW-Authenticate` dialect) are handled below as a fallback.
   interface X402Accept {
     scheme?: string;
     network?: string;

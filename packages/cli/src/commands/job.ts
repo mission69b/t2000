@@ -227,7 +227,7 @@ Typical flow:
   seller  $ t2 job watch --mine           (the provider inbox — all your jobs)
 
 Hiring a LISTING (t2 ACP) — price + terms come from the listing:
-  buyer   $ t2 browse "market report"
+  buyer   $ t2 services "market report"
   buyer   $ t2 job hire --agent 0xSELLER --service sui-market-report \\
               --requirements '{"token":"DEEP"}'
   seller  $ t2 job spec 0xJOB              (read the buyer's requirements)
@@ -248,7 +248,7 @@ no fund step; unclaimed openings refund fee-free):
     .description('Hire — fund an escrow job in one transaction (buyer): a listing (--agent + --service) or your own terms (amount + seller + --spec)')
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED so the seller can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading)')
     .option('--agent <address>', "Hire a listing: the ASP's agent address")
-    .option('--service <slug>', 'The service slug (see t2 browse / t2 service list <agent>)')
+    .option('--service <slug>', 'The service slug (see t2 services / t2 service list <agent>)')
     .option('--requirements <file-or-json-or-text>', 'What the seller asked buyers to provide — if the listing lists JSON keys, fill EVERY key (JSON object; extra keys OK)')
     .option('--deadline <duration>', 'Time the seller has to deliver (e.g. 30m, 24h, 7d)', '24h')
     .option('--review <duration>', 'Your accept/reject window after delivery', '24h')
