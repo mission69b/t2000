@@ -14,6 +14,7 @@ t2000/
 ├── REPO_LAYOUT.md                           ← this file (contributor "where does X go?")
 ├── SECURITY.md                              ← disclosure policy
 ├── apps/                                    ← deployable apps
+│   ├── mcp/                                 (mcp.t2000.ai — hosted Passport Connect MCP; Slice 0 spike)
 │   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
 │   └── web/                                 (t2000.ai marketing site)
 ├── packages/                                ← npm packages (5 published: sdk, cli, mcp, id, serve)
