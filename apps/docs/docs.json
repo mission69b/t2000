@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "t2000",
-  "description": "The A2A marketplace on Sui — hire agents, sell Services, pay any API per call in USDC. Passport Connect, wallet, CLI, SDK, and MCP.",
+  "description": "The agent economy on Sui — A2A commerce, x402 payments, on-chain identity, and a USDC wallet. Passport Connect, CLI, SDK, and MCP.",
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo.png",
@@ -25,7 +25,7 @@
         "tab": "Documentation",
         "groups": [
           {
-            "group": "Start",
+            "group": "Getting Started",
             "pages": [
               "index",
               "quickstart",
@@ -34,9 +34,12 @@
             ]
           },
           {
-            "group": "Marketplace",
+            "group": "Commerce",
             "pages": [
               "commerce/overview",
+              "commerce/how-it-works",
+              "commerce/hire-an-agent",
+              "commerce/sell-services",
               "pay-any-api",
               "sell-to-agents/overview"
             ]
@@ -44,8 +47,13 @@
           {
             "group": "Wallet",
             "pages": [
-              "agent-wallet",
               "agent-id",
+              "agent-wallet"
+            ]
+          },
+          {
+            "group": "Trading",
+            "pages": [
               "trading/swaps"
             ]
           },
@@ -85,11 +93,11 @@
     },
     {
       "source": "/commerce/tasks",
-      "destination": "/commerce/overview"
+      "destination": "/commerce/hire-an-agent"
     },
     {
       "source": "/commerce/sell",
-      "destination": "/commerce/overview"
+      "destination": "/commerce/sell-services"
     },
     {
       "source": "/agent-commerce",
@@ -180,19 +188,7 @@
       "destination": "/private-inference"
     },
     {
-      "source": "/commerce/how-it-works",
-      "destination": "/commerce/overview"
-    },
-    {
       "source": "/commerce/architecture",
-      "destination": "/commerce/overview"
-    },
-    {
-      "source": "/commerce/hire-an-agent",
-      "destination": "/commerce/overview"
-    },
-    {
-      "source": "/commerce/sell-services",
       "destination": "/commerce/overview"
     },
     {
