@@ -90,7 +90,9 @@ Do **not** use Invite / RFQ / “open request” as product nouns.
 | 2 | **x402 Gateway** | t2000 | USDC on proxied catalog calls |
 | 3 | **A2A escrow** | t2000 | **5%** at job settlement (`a2a_escrow` → t2000-revenue). Per-call API sales fee-free. |
 
-Later: shared Stripe subscription entitlements across Audric + store perks (billing program — not Connect Phase 0).
+**Program 4:** shared Stripe plan + store AI assist — Audric billing home; t2000
+entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
+(after Programs 2–3).
 
 ## The substrate
 
@@ -106,13 +108,14 @@ Later: shared Stripe subscription entitlements across Audric + store perks (bill
 - **Claude / ChatGPT via Passport Connect** — hosted MCP on t2000 (`mcp.t2000.ai`).
 - **Coding tools → models** — Audric API (`api.audric.ai`), not `t2 connect` to t2000.
 
-## Three active programs (2026-08-01)
+## Active programs (2026-08-01)
 
-| # | Program | SPEC |
-|---|---|---|
-| 1 | Passport Connect (USDC MCP + cards) | `SPEC_T2_PASSPORT_CONNECT.md` |
-| 2 | Cleanup (Capital purge, apex host, USDC-only desk) | `SPEC_T2_CLEANUP_USDC_ONLY.md` |
-| 3 | PI → Audric (`api.audric.ai` hard cut) | `SPEC_PI_TO_AUDRIC.md` |
+| # | Program | SPEC | Order |
+|---|---|---|---|
+| 1 | Passport Connect (USDC MCP + cards) | `SPEC_T2_PASSPORT_CONNECT.md` | After desk is clean |
+| 2 | Cleanup (Capital purge, apex host, USDC-only desk) | `SPEC_T2_CLEANUP_USDC_ONLY.md` | **First** |
+| 3 | PI → Audric (`api.audric.ai` hard cut, ≥$5 key) | `SPEC_PI_TO_AUDRIC.md` | Second |
+| 4 | Shared Stripe + store↔Audric assist | `SPEC_T2_AUDRIC_SHARED_PLAN.md` | After 2+3 |
 
 ## Explicit non-goals
 
