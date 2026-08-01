@@ -76,7 +76,7 @@ export interface VerifyResult {
 }
 
 export interface VerifyOptions {
-  /** Override the API base (default `api.t2000.ai/v1`). */
+  /** Override the API base (default `api.audric.ai/v1`). */
   apiBase?: string;
   /** Sui network for the trustless anchor read (default `mainnet`). */
   network?: 'mainnet' | 'testnet';

@@ -39,11 +39,6 @@ const nextConfig: NextConfig = {
         destination: "https://t2000.ai",
         permanent: false,
       },
-      {
-        source: "/verify",
-        destination: "https://verify.t2000.ai",
-        permanent: false,
-      },
       // SPEC_HUB_V1 sweep (2026-07-10): the commerce product page was
       // retired — identity (which owns paid services now) absorbs it.
       {

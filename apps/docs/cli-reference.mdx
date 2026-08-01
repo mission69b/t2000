@@ -164,20 +164,18 @@ t2 job deliver 0xJOB report.md
 
 ## Private AI
 
-Needs an API key — mint one at [t2000.ai/manage](https://t2000.ai/manage), then pass `--api-key` or set `T2000_API_KEY`.
+Needs an Audric API key — mint one at [audric.ai](https://audric.ai) (requires $5 of credit), then pass `--api-key` or set `T2000_API_KEY`.
 
 | Command | What it does |
 | --- | --- |
 | `t2 models` | The model catalog — id, privacy tier, per-1M pricing. |
-| `t2 connect [client]` | Point a coding tool at Private Inference: writes the client's own provider config for `api.t2000.ai/v1` + `t2000/auto`. Clients: `hermes` (Nous Agent) · `claude-code` (via claude-code-router) · `continue` · `aider` · `codex` · `grok` (Grok Build) · `cline` · `cursor`. Pass the key once with `--key` (saved to `~/.t2000/config.json` and reused); `--print` shows the config without writing. GUI-managed clients get a paste-ready walkthrough instead of a file write. |
-| `t2 verify <receipt-id>` | Verify a confidential response: checks the signed receipt against its on-chain Sui anchor. Fails closed on any mismatch. |
+| `t2 connect [client]` | Point a coding tool at Private Inference: writes the client's own provider config for `api.audric.ai/v1` + `t2000/auto`. Clients: `hermes` (Nous Agent) · `claude-code` (via claude-code-router) · `continue` · `aider` · `codex` · `grok` (Grok Build) · `cline` · `cursor`. Pass the key once with `--key` (saved to `~/.t2000/config.json` and reused); `--print` shows the config without writing. GUI-managed clients get a paste-ready walkthrough instead of a file write. |
 
-Use any OpenAI-compatible coding client with Private Inference — see [Use with your tools](/use-with-your-tools). Interactive CLI chat (`t2 chat`) was removed.
+Use any OpenAI-compatible coding client with [Private Inference](/private-inference) (an Audric product). Interactive CLI chat was removed, and receipt verification left the CLI on 2026-08-01 — confidential verify is in-app on Audric.
 
 ```bash
 t2 models
 t2 connect claude-code --key sk-...
-t2 verify rcpt_abc123
 ```
 
 ---

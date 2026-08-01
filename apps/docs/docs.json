@@ -70,23 +70,7 @@
           {
             "group": "Compute",
             "pages": [
-              "private-inference",
-              "authentication",
-              "models",
-              "use-with-your-tools"
-            ]
-          },
-          {
-            "group": "Confidential AI",
-            "pages": [
-              "confidential-ai/how-it-works",
-              "confidential-ai/attestation",
-              "confidential-ai/receipts",
-              "confidential-ai/attested-sessions",
-              "confidential-ai/verify",
-              "confidential-ai/trust-boundary",
-              "confidential-ai/providers",
-              "confidential-ai/faqs"
+              "private-inference"
             ]
           },
           {
@@ -96,41 +80,7 @@
               "agent-sdk",
               "agent-stack"
             ]
-          },
-          {
-            "group": "API reference",
-            "pages": [
-              "api-reference/overview",
-              "api-reference/chat-completions",
-              "api-reference/models",
-              "api-reference/attestation",
-              "api-reference/receipts",
-              "api-reference/sessions",
-              "api-reference/anchor"
-            ]
           }
-        ]
-      },
-      {
-        "tab": "Recipes",
-        "pages": [
-          "recipes/morning-brief",
-          "recipes/concept-asset",
-          "recipes/mail-card",
-          "recipes/write-and-run",
-          "recipes/ai-music",
-          "recipes/storybook",
-          "recipes/stock-research",
-          "recipes/crypto-research",
-          "recipes/transcribe-summarize",
-          "recipes/research-citations",
-          "recipes/meeting-prep",
-          "recipes/ai-research-digest",
-          "recipes/trip-planner",
-          "recipes/localize-clip",
-          "recipes/competitor-teardown",
-          "recipes/link-inspector",
-          "recipes/model-bakeoff"
         ]
       },
       {
@@ -181,6 +131,78 @@
     {
       "source": "/capital/tokenize-your-agent",
       "destination": "/commerce/overview"
+    },
+    {
+      "source": "/api-reference/anchor",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/api-reference/attestation",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/api-reference/chat-completions",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/api-reference/models",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/api-reference/overview",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/api-reference/receipts",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/api-reference/sessions",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/authentication",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/attestation",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/attested-sessions",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/faqs",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/how-it-works",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/providers",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/receipts",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/trust-boundary",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/confidential-ai/verify",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/models",
+      "destination": "/private-inference"
+    },
+    {
+      "source": "/use-with-your-tools",
+      "destination": "/private-inference"
     }
   ],
   "navbar": {
@@ -260,12 +282,6 @@
       "og:site_name": "developers.t2000.ai",
       "twitter:card": "summary_large_image",
       "twitter:image": "https://t2000.ai/og/og-t2000.png"
-    }
-  },
-  "api": {
-    "openapi": "openapi.json",
-    "playground": {
-      "display": "interactive"
     }
   },
   "appearance": {

@@ -57,7 +57,7 @@ export const T2K = {
       status: { label: "SEEDED", tone: "seeded" },
       desc: "Trust you can check: receipts on Sui, verifiable confidential inference, disputes bounded at creation. No platform custody, no platform judge.",
       chips: ["Receipts", "TEE verify", "No custody"],
-      links: [{ label: "Verify", href: "https://verify.t2000.ai" }],
+      links: [],
     },
   ],
 
@@ -136,7 +136,6 @@ export const PRODUCT_PAGES = [
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC — per call, gasless.", href: "/agent-payments" },
   { slug: "agents", name: "t2 Agents", pkg: "t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://t2000.ai", external: true },
   { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
-  { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "https://verify.t2000.ai", external: true },
 ] as const;
 
 export type ProductSlug = (typeof PRODUCT_PAGES)[number]["slug"];
@@ -166,7 +165,6 @@ export const GITHUB_URL = "https://github.com/mission69b/t2000";
 export const DEVELOPERS_URL = "https://developers.t2000.ai";
 export const AUDRIC_URL = "https://audric.ai";
 export const AGENTS_URL = "https://t2000.ai";
-export const VERIFY_URL = "https://verify.t2000.ai";
 export const SUIMPP_URL = "https://suimpp.dev";
 export const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";
 export const TWITTER_URL = "https://x.com/t2000ai";

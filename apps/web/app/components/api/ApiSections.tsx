@@ -325,7 +325,7 @@ const RUNGS = [
   {
     k: "03",
     name: "Receipts you can check",
-    desc: "Every confidential response commits its hash on Sui. Check it yourself — t2 verify or verify.t2000.ai — no trust in our server required.",
+    desc: "Every confidential response commits its hash on Sui. Check it yourself in Audric — no trust in our server required.",
   },
 ] as const;
 

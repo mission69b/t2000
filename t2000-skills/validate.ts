@@ -200,7 +200,6 @@ function main() {
     't2000-services',
     't2000-setup',
     't2000-swap',
-    't2000-verify',
     'walrus',
   ];
 

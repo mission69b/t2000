@@ -2,11 +2,11 @@ import { T2000Error } from './errors.js';
 
 // Private Inference API client (SPEC_AUDRIC_API — agent-native layer, S.575).
 // Key-based access to t2000 Private Inference (OpenAI-compatible) at
-// `api.t2000.ai/v1`. The x402 pay-per-call (no-key) path is a later add; this
+// `api.audric.ai/v1`. The x402 pay-per-call (no-key) path is a later add; this
 // is the key-based distribution surface used by `t2 chat` + the MCP `t2000_chat`
 // tool. Browser-safe (fetch + ReadableStream only — no wallet/Node deps).
 
-export const DEFAULT_API_BASE = 'https://api.t2000.ai/v1';
+export const DEFAULT_API_BASE = 'https://api.audric.ai/v1';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -18,7 +18,7 @@ export interface ChatParams {
   messages: ChatMessage[];
   /** Private Inference key (`sk-…`). Falls back to `T2000_API_KEY` env. */
   apiKey?: string;
-  /** Override the API base (default `api.t2000.ai/v1`; e.g. for testing). */
+  /** Override the API base (default `api.audric.ai/v1`; e.g. for testing). */
   apiBase?: string;
   maxTokens?: number;
   temperature?: number;
@@ -62,7 +62,7 @@ function resolveApiKey(apiKey?: string): string {
   if (!key) {
     throw new T2000Error(
       'INVALID_KEY',
-      'No Private Inference key. Pass `apiKey` or set T2000_API_KEY. Generate one at t2000.ai/manage.',
+      'No Private Inference key. Pass `apiKey` or set T2000_API_KEY. Generate one at audric.ai (minting requires $5 of credit).',
     );
   }
   return key;

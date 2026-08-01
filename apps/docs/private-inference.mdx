@@ -1,220 +1,45 @@
 ---
 title: "Private Inference"
-description: "api.t2000.ai — an OpenAI-compatible inference API. Private by default (zero data retention); verifiably confidential (GPU-TEE + Sui-anchored signed receipts) when it matters. Every model behind one key, pay-as-you-go."
+description: "Private Inference is an Audric product — models, keys, credit and confidential receipts live at audric.ai."
 ---
-
-**Private Inference** is an OpenAI-compatible endpoint at `api.t2000.ai`. Point any OpenAI SDK at it and call frontier + open models through **one key**, in two privacy tiers:
-
-- **Private** (default, every model) — **zero data retention**: providers are contractually bound not to store or train on your prompts.
-- **Confidential** (`phala/*` models) — inference runs in a **verified GPU-TEE** (hardware enclave), and every response carries a **signed receipt anchored on Sui** that you can **check yourself** with `t2 verify` — the only Sui-native *verifiable* confidential inference.
-
-Metered per token from a single credit balance. Manage everything — keys, credit, usage, the model catalog — at the developer console: **[t2000.ai/manage](https://t2000.ai/manage)**. Sign in with Google (zkLogin); it's the same Passport identity + credit balance as [Audric](https://audric.ai), so one account spans the app and the API.
-
-Your edge over a raw provider: **private by default, verifiably confidential when it matters, every model behind one key, and pay-as-you-go with no per-provider accounts.**
-
----
-
-## Base URL
-
-```text
-https://api.t2000.ai/v1
-```
-
----
-
-## Get a key
-
-1. Sign in at **[t2000.ai/manage](https://t2000.ai/manage)** with Google.
-2. **API keys → Create API key** — free, no deposit. The secret (`sk-…`) is shown **once**, so store it safely.
-3. **Add credit** for paid models — card, **USDC / USDsui** from your Passport (gasless, Billing → Pay with stablecoin), or an Audric Pro/Max plan's included credit.
-
-Agents skip the browser (and the key) entirely with [x402 pay-per-call](#pay-per-call-over-x402--no-key-no-account) — see [Authentication](/authentication) for the two paths.
-
-**Free tier:** every account gets a **daily allowance on `moonshotai/kimi-k2.7-code`** (resets daily, UTC) — so a fresh key works at a $0 balance. Every other model is metered per token from your credit balance and fails closed at $0.
 
 <Note>
-  Keep keys server-side; rotate (revoke + recreate) if one leaks.
+  **Moved 2026-08-01.** Private Inference — the OpenAI-compatible API, the model
+  catalog, API keys, credit, and confidential (GPU-TEE) receipts — is an
+  **[Audric](https://audric.ai)** product. It is no longer served from
+  `api.t2000.ai`, and there is **no redirect**: those paths return `410 Gone`.
 </Note>
 
----
+## Where things went
 
-## Quick start
-
-<CodeGroup>
-
-```bash curl
-curl https://api.t2000.ai/v1/chat/completions \
-  -H "Authorization: Bearer $T2000_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "zai/glm-5.2",
-    "messages": [{ "role": "user", "content": "Explain x402 in one sentence." }]
-  }'
-```
-
-```python python
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="https://api.t2000.ai/v1",
-    api_key="sk-...",  # from Settings → API keys
-)
-
-resp = client.chat.completions.create(
-    model="zai/glm-5.2",
-    messages=[{"role": "user", "content": "Explain x402 in one sentence."}],
-)
-print(resp.choices[0].message.content)
-```
-
-```typescript typescript
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  baseURL: "https://api.t2000.ai/v1",
-  apiKey: process.env.T2000_API_KEY, // from Settings → API keys
-});
-
-const resp = await client.chat.completions.create({
-  model: "zai/glm-5.2",
-  messages: [{ role: "user", content: "Explain x402 in one sentence." }],
-});
-console.log(resp.choices[0].message.content);
-```
-
-</CodeGroup>
-
----
-
-## From the t2000 CLI, MCP, or SDK
-
-Beyond any OpenAI SDK, the t2000 toolchain wraps the API as first-class verbs — same key via `T2000_API_KEY`:
-
-<CodeGroup>
-
-```bash CLI
-export T2000_API_KEY=sk-...
-t2 models                        # list the catalog (id · privacy tier · pricing)
-t2 connect claude-code --key sk-…   # wire a coding tool to Private Inference
-```
-
-```typescript SDK
-import { T2000 } from "@t2000/sdk";
-
-const agent = await T2000.create();
-const { content } = await agent.chat({
-  model: "zai/glm-5.2",
-  messages: [{ role: "user", content: "Explain x402 in one sentence." }],
-  apiKey: process.env.T2000_API_KEY,
-});
-// or stream: for await (const d of agent.chatStream({ … })) process.stdout.write(d);
-```
-
-```json MCP
-// Any MCP client (Cursor, Claude Desktop) with T2000_API_KEY in the server env:
-{ "name": "t2000_chat",   "arguments": { "prompt": "Explain x402 in one sentence." } }
-{ "name": "t2000_models", "arguments": {} }
-```
-
-</CodeGroup>
-
-Get the key at [t2000.ai/manage](https://t2000.ai/manage) and set it as `T2000_API_KEY` (CLI/SDK) or in the MCP server env.
-
----
-
-## Pay-per-call over x402 — no key, no account
-
-Agents can pay **per call in USDC** with **no API key** — Private Inference is a first-party [x402](/pay-any-api) service on the gateway. Call it with the existing `t2 pay` / `t2000_pay` (the gateway handles `402` → pay → retry):
-
-```bash
-t2 pay https://x402.t2000.ai/t2000/v1/chat/completions \
-  --data '{"model":"zai/glm-5.2","messages":[{"role":"user","content":"Explain x402 in one sentence."}]}' \
-  --max-price 0.10
-```
-
-- **No key / no account** — pay from your wallet's USDC, gasless. The agent-native path (vs the key-based one above).
-- **Models:** the **open + confidential** set (`zai/glm-5.2`, `deepseek/deepseek-v3.2`, `openai/gpt-oss-120b`, and the `phala/*` confidential models) — browse the live list at `GET /t2000/v1/models` (free). Frontier + large contexts use a **key** (above).
-- **Capped** — flat per-call price with an output + context cap (what keeps no-key pricing predictable). For uncapped/per-token precision, use a key, or watch for the **max-hold settlement** tier (next).
-
----
-
-## Streaming
-
-Set `"stream": true` for server-sent `chat.completion.chunk` events (OpenAI-compatible), terminated by `data: [DONE]`. Pass `"stream_options": { "include_usage": true }` to receive a final token-usage chunk.
-
-```typescript
-const stream = await client.chat.completions.create({
-  model: "zai/glm-5.2",
-  messages: [{ role: "user", content: "Write a haiku about Sui." }],
-  stream: true,
-});
-for await (const chunk of stream) {
-  process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
-}
-```
-
----
-
-## Models
-
-`GET /v1/models` returns the live, **public** catalog — per-model pricing (the charged rate), context window, and a `privacy` field (`private` or `confidential`) so you can choose your posture programmatically. The set is curated (open · frontier · confidential), not a 250-model dump.
-
-```bash
-curl https://api.t2000.ai/v1/models
-```
-
-See **[Models](/models)** for the full catalog and how pricing works.
-
----
-
-## Confidential tier — verifiable, not just private
-
-`phala/*` models run in a **verified GPU-TEE** and return a **signed receipt** that's **automatically anchored on Sui** and durably stored — so you can **check yourself** with `t2 verify` (or at [verify.t2000.ai](https://verify.t2000.ai)) **any time** — the only Sui-native *verifiable* confidential inference. The gateway verifies the upstream attestation before forwarding and **fails closed** if it can't. The confidential tier carries a premium over the private tier (the verifiable-privacy guarantee — the on-chain anchor cost is negligible).
-
-```bash
-curl https://api.t2000.ai/v1/chat/completions \
-  -H "Authorization: Bearer $T2000_API_KEY" \
-  -d '{"model":"phala/glm-5.2","messages":[{"role":"user","content":"hello"}]}' \
-  -i | grep -i x-receipt-id                 # → x-receipt-id: rcpt-…
-t2 verify rcpt-…                            # → ✓ verified (Sui anchor + receipt signature, trustless)
-```
-
-<CardGroup cols={2}>
-  <Card title="How it works" icon="microchip" href="/confidential-ai/how-it-works">
-    Attestation + signed receipts + the Sui anchor.
-  </Card>
-  <Card title="Verify a response" icon="circle-check" href="/confidential-ai/verify">
-    `t2 verify` — trustless anchor + signature checks.
-  </Card>
-</CardGroup>
-
-The full **[Confidential AI](/confidential-ai/how-it-works)** section covers [attestation](/confidential-ai/attestation), [receipts](/confidential-ai/receipts), [attested sessions & claims](/confidential-ai/attested-sessions), and the honest [trust boundary](/confidential-ai/trust-boundary).
-
----
-
-## Pricing
-
-One price per model, billed per token from your credit balance — the same rate shown in `GET /v1/models`. There's no separate price book and no per-provider account: one key, one balance, every model.
-
----
-
-## Rate limits
-
-Each key is capped at **120 requests/minute** (an abuse guard). Exceeding it returns `429`. Spending is bounded by your balance plus, if enabled, your auto-recharge threshold/amount (Billing → Auto-recharge).
-
----
-
-## Errors
-
-Errors use the standard OpenAI envelope, so existing SDKs surface them correctly:
-
-```json
-{ "error": { "message": "Invalid API key.", "type": "invalid_request_error", "code": "invalid_api_key", "param": null } }
-```
-
-| Status | When |
+| What | Where it lives now |
 |---|---|
-| `401` | Missing or invalid API key |
-| `402` | Insufficient credit — add credit at [t2000.ai/manage](https://t2000.ai/manage) |
-| `404` | Unknown model — see `GET /v1/models` |
-| `429` | Rate limit exceeded (120 req/min per key) |
+| OpenAI-compatible API | `https://api.audric.ai/v1` |
+| Model catalog + pricing | `GET https://api.audric.ai/v1/models` |
+| API keys + credit | [audric.ai](https://audric.ai) — minting a key requires **$5** of credit |
+| Confidential receipts + verify | Audric, in-app |
+
+```bash
+curl https://api.audric.ai/v1/models
+
+curl https://api.audric.ai/v1/chat/completions \
+  -H "Authorization: Bearer $AUDRIC_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"model":"openai/gpt-oss-120b","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+Point a coding tool at it with [`t2 connect`](/cli-reference) — it writes
+`api.audric.ai/v1` and prompts for your Audric key. A config written before the
+cutover still names `api.t2000.ai`; re-run `t2 connect` to rewrite it.
+
+## What stayed on t2000
+
+`developers.t2000.ai` documents the **wallet, the A2A store, x402, and the
+commerce API** — all still on `api.t2000.ai`:
+
+- [Agent ID](/agent-id) · [Agent Wallet](/agent-wallet)
+- [Commerce](/commerce/overview) — services, escrowed jobs, reviews
+- [Pay any API](/pay-any-api) · [Sell your API](/sell-to-agents/overview)
+
+Two brands, two money stories, one Passport: the same Google sign-in gives you
+the same Sui address on both.

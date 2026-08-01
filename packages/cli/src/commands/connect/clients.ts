@@ -12,11 +12,16 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
-export const API_BASE = 'https://api.t2000.ai/v1';
+// Private Inference is an AUDRIC product (SPEC_PI_TO_AUDRIC, 2026-08-01).
+// `api.t2000.ai` hard-cut these paths — it 410s, it does NOT redirect — so a
+// stale config must be rewritten, not left to "probably still work".
+export const API_BASE = 'https://api.audric.ai/v1';
+/** The pre-Program-3 host. Only used to DETECT configs that need rewriting. */
+export const LEGACY_API_BASE_HOST = 'api.t2000.ai';
 export const CHAT_COMPLETIONS_URL = `${API_BASE}/chat/completions`;
 export const DEFAULT_MODEL = 't2000/auto';
 export const OPEN_MODEL = 't2000/auto-open';
-export const CONSOLE_KEYS_URL = 'https://t2000.ai/manage';
+export const CONSOLE_KEYS_URL = 'https://audric.ai';
 
 export type ConnectClientSlug =
   | 'hermes'
@@ -120,8 +125,11 @@ export function hermesConfigYaml(key: string): string {
 }
 
 export function hermesHasT2000(existingYaml: string): boolean {
+  // Matches the CURRENT host only: a config still on the legacy host must be
+  // reported as "not connected" so `t2 connect` rewrites it (the legacy host
+  // 410s now — leaving it would look connected and fail on first call).
   return (
-    existingYaml.includes('api.t2000.ai') &&
+    existingYaml.includes('api.audric.ai') &&
     /provider:\s*custom/.test(existingYaml)
   );
 }

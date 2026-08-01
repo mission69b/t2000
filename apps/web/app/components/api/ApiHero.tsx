@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AGENTS_URL, DEVELOPERS_URL } from "../../data/t2k";
 
-// Confidential path demo: a phala/* call returns a receipt; t2 verify
+// Confidential path demo: a phala/* call returns a receipt; Audric's Verify
 // checks the Sui anchor + receipt signature + TDX quote client-side.
 const LINES = [
   { t: "cmd", s: 'curl api.t2000.ai/v1/chat/completions \\' },
@@ -14,7 +14,7 @@ const LINES = [
   { t: "out", s: '"Here\u2019s the summary you asked for …"' },
   { t: "rcpt", s: "x-receipt-id: rcpt-9f4c…a21e" },
   { t: "gap", s: "" },
-  { t: "cmd", s: "t2 verify rcpt-9f4c…a21e" },
+  { t: "cmd", s: "receipt rcpt-9f4c…a21e · anchored on Sui" },
   { t: "ok", s: "✓ Sui anchor (trustless)        matches" },
   { t: "ok", s: "✓ Receipt signature (trustless) attested key" },
   { t: "ok", s: "✓ TDX quote (DCAP)              genuine Intel TDX" },

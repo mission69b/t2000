@@ -87,17 +87,6 @@
           "skillUrl": "https://t2000.ai/skills/t2000-job"
         },
         {
-          "slug": "t2000-verify",
-          "name": "Verify confidential AI",
-          "description": "Trustlessly verify a confidential (GPU-TEE) inference receipt against its on-chain Sui anchor.",
-          "tags": [
-            "confidential",
-            "verify",
-            "receipts"
-          ],
-          "skillUrl": "https://t2000.ai/skills/t2000-verify"
-        },
-        {
           "slug": "t2000-mcp",
           "name": "Wire up MCP",
           "description": "Connect the wallet to Claude Desktop, Cursor, Windsurf, or any MCP client \u2014 every wallet capability as tools, plus one prompt per skill.",

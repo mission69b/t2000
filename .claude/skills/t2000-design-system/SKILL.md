@@ -54,7 +54,6 @@ description: >-
 
 | Surface | State |
 |---|---|
-| verify.t2000.ai (`apps/verify`) | ✅ copies `tokens.css`, house theme, emerald accent |
 | t2000.ai (`apps/web`) | ✅ copy-in `tokens.css` + the 2026-07 designer chrome (`app/styles/{tokens,type,page,responsive,theme}.css`); legacy `geist-ds.css` deleted; a temporary raw-primitive shim in each `globals.css` covers pre-redesign components until their port |
 | agents.t2000.ai (`audric/apps/console`) | ⏳ flips to the near-black house theme (founder decision 2026-07-06) by setting the console's shadcn slots to house values; Tailwind + shadcn architecture unchanged |
 | suimpp.dev (separate repo) | ⏳ still on published npm `@t2000/ui` until it migrates to copy-in |

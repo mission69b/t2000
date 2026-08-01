@@ -17,7 +17,6 @@ import { registerSwap } from './commands/swap.js';
 import { registerPay } from './commands/pay.js';
 import { registerModels } from './commands/models.js';
 import { registerConnect } from './commands/connect/index.js';
-import { registerVerify } from './commands/verify.js';
 import { registerLimit } from './commands/limit/index.js';
 import { registerMcp } from './commands/mcp/index.js';
 import { registerSkills } from './commands/skills/index.js';
@@ -75,7 +74,6 @@ Examples:
   registerPay(program);
   registerModels(program);
   registerConnect(program);
-  registerVerify(program);
   registerServices(program);
   registerLimit(program);
   registerMcp(program);

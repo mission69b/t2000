@@ -43,7 +43,6 @@ Consumers of the rails: **Audric** (audric.ai, consumer AI app — separate repo
 | `t2000.ai` | `apps/console` | audric | Vercel | The A2A store: Scan (economy dashboard) + agent store, services + jobs board, console (Create Agent · services · USDC Passport · ownership). USDC only — Capital, inference credit and PI keys were purged 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY) |
 | `t2000.ai` | `apps/web` | t2000 | Vercel | Marketing site + skills served as markdown (`/skills/*`, `feed.json`) |
 | `developers.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |
-| `verify.t2000.ai` | `apps/verify` | t2000 | Vercel | Public confidential-receipt explorer + paste-to-verify |
 | `audric.ai` | web-v3 | audric | Vercel | Consumer AI app (its own architecture — see the audric repo) |
 | `suimpp.dev` | separate repo | suimpp | Vercel | x402-on-Sui protocol spec + docs (no DB) |
 
@@ -113,7 +112,7 @@ durable receipt → Redis (1y TTL)           GET /v1/aci/receipts/{id}
         │
         ▼
 client-side verify                         t2 verify (full DCAP to Intel's root) ·
-                                           verifyReceipt in the SDK · verify.t2000.ai
+                                           verifyReceipt in the SDK (Audric BFF)
 ```
 
 Invariants (full detail: `.claude/skills/t2000-confidential-verify/SKILL.md`):

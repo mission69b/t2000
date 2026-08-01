@@ -1,16 +1,16 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import {
-  type ChatMessage,
-  chatCompletion,
-  listModels,
-  verifyReceipt,
-} from '@t2000/sdk';
+import { type ChatMessage, chatCompletion, listModels } from '@t2000/sdk';
 import { errorResult } from '../errors.js';
 
-// `t2000_chat` + `t2000_models` — private inference on t2000 Private Inference
-// (SPEC_AUDRIC_API, S.575). Key-based: the server reads T2000_API_KEY from its
-// env (set it in the MCP client config). The x402 no-key path is a later add.
+// `t2000_chat` + `t2000_models` — Private Inference, an AUDRIC product served
+// from `api.audric.ai` (SPEC_PI_TO_AUDRIC, 2026-08-01). Key-based: the server
+// reads T2000_API_KEY from its env (set it in the MCP client config); mint the
+// key at audric.ai. These tools are only registered when a key is present.
+//
+// `t2000_verify` was REMOVED here 2026-08-01: confidential receipt verification
+// is Audric's in-app Verify, not a t2000 product path. `verifyReceipt` remains
+// in @t2000/sdk as the library Audric's BFF calls.
 
 // Fast non-reasoning default — matches the CLI's `t2 chat` default (reasoning
 // models like glm-5.2 are deeper but noticeably slower; opt in via `model`).
@@ -19,7 +19,7 @@ const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 export function registerChatTools(server: McpServer): void {
   server.tool(
     't2000_chat',
-    "Run private inference on t2000 Private Inference (OpenAI-compatible; ZDR by default, a `phala/*` tier is GPU-TEE confidential), billed to the user's t2000 credit. Requires T2000_API_KEY in the server env (mint one at t2000.ai/manage). Pass a single `prompt`, or a full `messages` list. Discover model ids with t2000_models; defaults to the fast gpt-oss-120b.",
+    "Run private inference on Audric Private Inference at api.audric.ai (OpenAI-compatible; ZDR by default, a `phala/*` tier is GPU-TEE confidential), billed to the user's Audric credit. Requires T2000_API_KEY in the server env — mint one at audric.ai (minting requires $5 of credit). Pass a single `prompt`, or a full `messages` list. Discover model ids with t2000_models; defaults to the fast gpt-oss-120b.",
     {
       prompt: z
         .string()
@@ -89,21 +89,4 @@ export function registerChatTools(server: McpServer): void {
     },
   );
 
-  server.tool(
-    't2000_verify',
-    "Verify a confidential response by its receipt id (the `receiptId` from a confidential t2000_chat). Checks the signed receipt + its trustless on-chain Sui anchor (reads the ReceiptAnchored event straight from a fullnode) and returns a per-check result that's `verified:false` on any forgery/mismatch. No key required.",
-    {
-      receiptId: z.string().describe('A confidential receipt id (rcpt-…)'),
-    },
-    async ({ receiptId }) => {
-      try {
-        const result = await verifyReceipt(receiptId);
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result) }],
-        };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
 }

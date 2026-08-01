@@ -20,7 +20,6 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 t2000/
 ├── apps/docs        ← Mintlify developer docs (developers.t2000.ai)
 ├── apps/web         ← t2000.ai marketing website
-├── apps/verify      ← verify.t2000.ai — public confidential-receipt explorer + verify hub (Sui anchor feed + paste-to-verify; added 2026-07-01)
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/mcp     ← @t2000/mcp (npm)   # (@t2000/engine RETIRED + deleted 2026-06-14)
@@ -422,7 +421,6 @@ emoji type(scope): subject
 | t2000 (infra) | `t2000.ai` |
 | Audric (consumer) | `audric.ai` |
 | suimpp (protocol) | `suimpp.dev` |
-| Verify (confidential explorer) | `verify.t2000.ai` |
 | GitHub | `github.com/mission69b/t2000` |
 | npm CLI | `npmjs.com/package/@t2000/cli` |
 

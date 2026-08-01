@@ -7,7 +7,6 @@ import {
   AGENTS_URL,
   SUIMPP_URL,
   TWITTER_URL,
-  VERIFY_URL,
 } from "../../data/t2k";
 
 interface FooterLink {
@@ -27,7 +26,6 @@ const PRODUCT_LINKS: FooterLink[] = [
 
 const FAMILY_LINKS: FooterLink[] = [
   { label: "t2 Agents", href: AGENTS_URL, external: true },
-  { label: "Verify", href: VERIFY_URL, external: true },
   { label: "Audric", href: AUDRIC_URL, external: true },
   { label: "suimpp.dev", href: SUIMPP_URL, external: true },
   { label: "Developers", href: DEVELOPERS_URL, external: true },

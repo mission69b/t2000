@@ -1,12 +1,13 @@
 // [SPEC_INFERENCE_DEMAND Step 1 item 1 — un-HELD 2026-07-16]
 // `t2 connect [client]` — point a coding tool at Private Inference
-// (api.t2000.ai/v1) with a console key. Clients: Hermes, claude-code (ccr),
+// (api.audric.ai/v1) with an Audric key. Clients: Hermes, claude-code (ccr),
 // Continue, aider, Codex, Grok Build, Cline, Cursor.
 //
-// The one key path (§1d): the key comes from the console
-// (t2000.ai/manage), pasted here via --key (or already in
-// T2000_API_KEY / a prior save). We persist it to ~/.t2000/config.json so
-// subsequent connects don't re-ask.
+// PI MOVED TO AUDRIC 2026-08-01 (SPEC_PI_TO_AUDRIC): the key comes from
+// audric.ai (minting needs >= $5 credit), pasted here via --key (or already in
+// T2000_API_KEY / a prior save), and configs are written against
+// `api.audric.ai/v1`. The old `api.t2000.ai` PI paths 410 — there is no
+// redirect — so re-run `t2 connect` to rewrite a pre-cutover config.
 
 import type { Command } from 'commander';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, appendFileSync } from 'node:fs';
@@ -367,7 +368,7 @@ function runConnect(slug: ConnectClientSlug, key: string, print: boolean): Conne
 export function registerConnect(program: Command): void {
   program
     .command('connect')
-    .description('Point a coding tool at Private Inference (api.t2000.ai/v1) with your key')
+    .description('Point a coding tool at Audric Private Inference (api.audric.ai/v1) with your key')
     .argument(
       '[client]',
       'client to connect: hermes | claude-code | continue | aider | codex | grok | cline | cursor',

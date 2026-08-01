@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://t2000.ai">t2 Agents</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://t2000.ai">t2 Agents</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -63,7 +63,6 @@ t2000/
 ├── apps/
 │   ├── web/              t2000.ai — marketing site + skills routes
 │   ├── docs/             developers.t2000.ai — Mintlify developer docs
-│   └── verify/           verify.t2000.ai — public confidential-receipt explorer + verify hub
 │
 └── t2000-skills/         Agent Skills (markdown playbooks)
 ```

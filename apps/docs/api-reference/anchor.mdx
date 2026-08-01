@@ -1,6 +1,0 @@
----
-title: "Anchor receipt"
-openapi: "POST /aci/anchor/{id}"
----
-
-Concepts: [Verify a response](/confidential-ai/verify). **Every confidential response is auto-anchored on Sui** — you rarely call this. **GET** looks up the stored anchor digest; **POST** is an idempotent backfill (returns the existing tx if already anchored). Then run [`t2 verify {id}`](/confidential-ai/verify) or browse [verify.t2000.ai](https://verify.t2000.ai).

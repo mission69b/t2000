@@ -135,9 +135,8 @@ Need a `T2000_API_KEY` in the client's env config.
 
 | Tool | Description |
 |------|-------------|
-| `t2000_chat` | Private (zero-retention) or confidential (GPU-TEE) inference. |
+| `t2000_chat` | Private (zero-retention) or confidential (GPU-TEE) inference — Audric, `api.audric.ai`. |
 | `t2000_models` | The Private Inference model catalog. |
-| `t2000_verify` | Trustlessly verify a confidential receipt (`rcpt-…`). |
 
 ### Settings (1)
 
@@ -163,7 +162,6 @@ The current set of skill prompts mirrors `t2000-skills/skills/`:
 | `skill-pay` | `t2000-pay` |
 | `skill-services` | `t2000-services` |
 | `skill-mcp` | `t2000-mcp` (this skill) |
-| `skill-verify` | `t2000-verify` |
 
 Invoking the prompt loads the full skill markdown as the user message — equivalent to the agent reading the skill from `t2000.ai/skills/<slug>`. Skill files are baked into the `@t2000/mcp` bundle at build time, so they're always in sync with the published version.
 

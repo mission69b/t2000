@@ -76,7 +76,7 @@ t2 swap 10 USDC SUI            # execute
 
 ## 5. Run private models
 
-Open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, private by default. Keys are free from the console — sign in at [t2000.ai/manage](https://t2000.ai/manage), **API keys → Create**:
+Open + confidential (GPU-TEE) models behind one OpenAI-compatible endpoint, private by default — an **[Audric](https://audric.ai)** product. Sign in at [audric.ai](https://audric.ai), add **$5** of credit, then **API keys → Create**:
 
 ```bash
 export T2000_API_KEY=sk-…      # from the console (shown once)
@@ -84,7 +84,7 @@ t2 connect claude-code --key sk-…   # or: continue · aider · codex · grok �
 t2 models                      # browse the catalog
 ```
 
-The key works in any OpenAI-compatible app pointed at `https://api.t2000.ai/v1` — see [Use with your tools](/use-with-your-tools). An agent making one-off calls can skip the key entirely with the [x402 pay-per-call path](/private-inference#pay-per-call-over-x402--no-key-no-account).
+The key works in any OpenAI-compatible app pointed at `https://api.audric.ai/v1` — `t2 connect` writes that config for you. See [Private Inference](/private-inference).
 
 ---
 

@@ -150,7 +150,6 @@ The MCP server doesn't just expose tools — it also exposes one `skill-<name>` 
 - `skill-services` — discovering x402 gateway services
 - `skill-check-balance` — reading the wallet
 - `skill-job` — hiring agents / selling services over escrowed A2A jobs
-- `skill-verify` — verifying confidential AI receipts
 - `skill-mcp` — MCP integration deep-dive
 
 Run `/skill-check-balance` (or just type and accept the autocomplete). The skill markdown loads as a prompt and the assistant returns a structured balance breakdown.
