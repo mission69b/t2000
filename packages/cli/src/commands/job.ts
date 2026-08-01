@@ -166,7 +166,8 @@ const TERMINAL_STATES = new Set(['released', 'rejected', 'refunded']);
 
 function inboxHint(job: IndexedJob): string {
   if (job.state === 'funded') {
-    return `t2 job spec ${truncateAddress(job.jobId)} → do the work → t2 job deliver ${truncateAddress(job.jobId)} <file>`;
+    // Full object ids in suggested commands — truncated mid-hex is not pasteable.
+    return `t2 job spec ${job.jobId} → do the work → t2 job deliver ${job.jobId} <file>`;
   }
   if (job.state === 'delivered') {
     return `waiting on the buyer's review — anyone can \`t2 job release\` once it lapses`;
@@ -540,7 +541,7 @@ no fund step; unclaimed openings refund fee-free):
           printSuccess(note);
           if (digest) printKeyValue('Tx', digest);
           if (verb === 'release') {
-            printInfo(`Rate the work (builds the seller's on-chain-backed reputation): t2 job review ${truncateAddress(jobId)} --stars 5`);
+            printInfo(`Rate the work (builds the seller's on-chain-backed reputation): t2 job review ${jobId} --stars 5`);
           }
           printBlank();
         } catch (error) {
@@ -758,7 +759,7 @@ no fund step; unclaimed openings refund fee-free):
             printBlank();
             printJob(job, me);
             if (actions.length > 0) {
-              printInfo(`You can now: ${actions.map((a) => `t2 job ${a} ${truncateAddress(watchId)}`).join('  ·  ')}`);
+              printInfo(`You can now: ${actions.map((a) => `t2 job ${a} ${watchId}`).join('  ·  ')}`);
             } else if (!terminal) {
               printInfo('Nothing for you to do yet — waiting on the counterparty / clock.');
             }
