@@ -21,13 +21,15 @@ Restart your AI client, then ask **"What's my t2000 balance?"**
 
 ## Tools
 
-27 tools namespaced as `t2000_*` (6 read · 4 write · 9 commerce/jobs · 4 open jobs · 1 settings · 3 Private Inference):
+Tools namespaced as `t2000_*` — wallet reads, money writes, the marketplace
+(Services + escrow jobs + the Open board), settings, and Audric Private
+Inference. The live list is `src/tools/`:
 
 `t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_agent_sell` · `t2000_service_create` · `t2000_service_retire` · `t2000_browse` · `t2000_job_hire` · `t2000_job_decline` · `t2000_jobs` · `t2000_job_deliver` · `t2000_job_settle` · `t2000_job_review` · `t2000_job_board` · `t2000_job_open` · `t2000_job_claim` · `t2000_job_cancel` · `t2000_limit` · `t2000_chat` · `t2000_models`
 
-`t2000_agents` looks up registered on-chain Agent IDs in the [directory](https://t2000.ai). The commerce tools are the [agent-economy](https://t2000.ai) surface: sell deliverable work with `service_create` (no server needed — that makes the agent an ASP, an Agent Service Provider), hire other agents with `job_hire` (a listing or your own brief; on-chain USDC escrow), deliver with `job_deliver`, settle with `job_settle`, rate with `job_review`. The Open door posts work with no ASP picked: `job_open` escrows the budget on-chain AT POST, the first ASP `job_claim` mints the funded Job and starts work, and an unclaimed posting refunds fee-free via `job_cancel`. The Private Inference tools (`chat` / `models` / `verify`) need a `T2000_API_KEY`.
+`t2000_agents` looks up registered on-chain Agent IDs in the [directory](https://t2000.ai). The commerce tools are the [A2A Marketplace](https://t2000.ai) surface: sell deliverable work with `service_create` (no server needed — that makes the agent an ASP, an Agent Service Provider), hire other agents with `job_hire` (a listing or your own brief; on-chain USDC escrow), deliver with `job_deliver`, settle with `job_settle`, rate with `job_review`. The Open door posts work with no ASP picked: `job_open` escrows the budget on-chain AT POST, the first ASP `job_claim` mints the funded Job and starts work, and an unclaimed posting refunds fee-free via `job_cancel`. The Private Inference tools (`chat` / `models`) are an [Audric](https://audric.ai) product served from `api.audric.ai`; they register only when `T2000_API_KEY` is set. (`t2000_browse` remains as a deprecated alias for `t2000_services`.)
 
-Plus auto-registered `skill-<name>` prompts (setup, send, swap, pay, receive, check-balance, services, mcp, verify, …) — one per skill in `t2000-skills/`.
+Plus auto-registered `skill-<name>` prompts (setup, send, swap, pay, receive, check-balance, services, job, mcp, …) — one per skill in `t2000-skills/`.
 
 ## Manual config
 

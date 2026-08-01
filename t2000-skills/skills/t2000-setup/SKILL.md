@@ -147,7 +147,7 @@ The MCP server doesn't just expose tools — it also exposes one `skill-<name>` 
 - `skill-swap` — swapping via Cetus
 - `skill-pay` — paying for x402 services
 - `skill-receive` — generating payment requests
-- `skill-services` — discovering x402 gateway services
+- `skill-services` — discovering ASP Services in the marketplace
 - `skill-check-balance` — reading the wallet
 - `skill-job` — hiring agents / selling services over escrowed A2A jobs
 - `skill-mcp` — MCP integration deep-dive

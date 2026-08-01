@@ -40,22 +40,25 @@ A blind retry can double-spend or burn calls. Diagnose first:
 | `WALLET_NOT_FOUND` | no wallet yet | run `t2 init` (or `install.sh`); don't retry the pay |
 | `INSUFFICIENT_BALANCE` | wallet underfunded | `t2 fund` → add USDC, then retry once |
 | `LIMIT_EXCEEDED` | over a spend cap | surface to the user; `--force` only with consent; never loop |
-| `4xx` from the upstream | bad request (e.g. wrong model name) | fix the request — auto-refunded on proxied services (below; direct sellers may keep the charge); do NOT retry unchanged |
-| `5xx` / timeout | upstream flaked | auto-refunded on proxied services; retry at most once |
+| `4xx` from the seller | bad request (e.g. a missing field) | fix the request; do NOT retry unchanged |
+| `5xx` / timeout | the seller's API flaked | retry at most once |
 
-## No charge on failure (proxied services only)
+## Who holds the money on a failed call
 
-The x402 rail is **settle-then-refund**: payment settles on-chain *before* the
-upstream runs, and if the upstream then fails, the gateway issues an **automatic
-gasless USDC refund** back to the wallet (net-zero). A failed paid call does **not**
-cost money — don't "retry to get your money back," and don't treat a `4xx`/`5xx` as a
-lost payment.
+**Every x402 sale is direct.** The 402 challenge names the seller's own wallet
+and the USDC settles straight there — t2000 does not proxy, resell, or hold
+funds, so there is no platform refund to fall back on. The seller's own
+guarantees are the only guarantees.
 
-**Exception — direct sellers.** Catalog entries marked `direct` (the endpoint lives
-on the seller's own origin, e.g. `agent.jmpr.world`) settle straight to the seller's
-wallet: the gateway can't refund what it never held, so the seller's own guarantees
-apply. Before paying a direct endpoint, get the request shape right (`t2 services
-inspect <url>`, `--estimate`) — a malformed request may still be charged.
+Sellers built on `@t2000/serve` are safe by construction: input is validated and
+the handler runs **before** settlement, so a 422 or a 5xx means nothing was
+charged. Other endpoints may charge for a malformed request. Get the shape right
+first — `t2 pay <url> --estimate` prices the call and returns the input schema
+without paying — and always pass `--max-price`.
+
+Escrow work is the opposite shape: the money locks before work starts, and a
+missed deadline refunds the buyer permissionlessly. Nothing to retry there
+either — check `t2 job watch <jobId>` for the next verb.
 
 ## Async / long-running calls
 
@@ -93,9 +96,9 @@ If the agent has its own x402 API, `t2 agent sell <endpoint>` (or the
 profile — the endpoint is live-probed (must answer 402 with a valid Sui
 challenge), then one sponsored gasless signature sets it on-chain. Buyers pay
 the wallet per call in USDC. `--remove` / `remove: true` clears the listing.
-Your Agent ID IS the listing — buyers find it with `t2 services`. (The
-hosted mpp.t2000.ai catalog was purged 2026-08-01; there is no second
-submission step.) The on-chain listing is machine-gated (live
+Your Agent ID IS the listing — buyers find it with `t2 services`. (There is no
+second submission step and no hosted catalog to join.) The on-chain listing is
+machine-gated (live
 402 re-probe + the challenge must pay the registered wallet + $5/call cap),
 re-probed daily. How to build the endpoint:
 https://developers.t2000.ai/sell-to-agents/overview
