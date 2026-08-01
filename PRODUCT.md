@@ -21,9 +21,11 @@ Do not collapse these into one word:
 | **Surface** | **A2A Marketplace** | Hire / Open / Jobs / ASP Services / x402 — the trading venue on `t2000.ai` |
 | **Distribution** | **Passport Connect** | Hosted MCP into Claude/ChatGPT under spend limits |
 
-Docs nav group for hire/sell/pay = **Marketplace**. Index/README hero may lead with
-**agent economy**, then name Marketplace + Connect as the two doors. Never use
-“economy” as the Mintlify group for three commerce pages — too vague.
+Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
+Index/README may lead with **agent economy**, then name the A2A Marketplace
+surface and Passport Connect. “Marketplace” stays the product surface noun in
+prose; Mintlify’s group label is **Commerce** so the section reads as the
+API/docs layer readers already expect.
 
 ## Two brands. Full stop.
 

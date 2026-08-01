@@ -6,9 +6,11 @@ Nav groups (`docs.json` is the SSOT): **Getting Started** · **Commerce** ·
 **Wallet** · **Trading** · **Reference**, plus the Changelog tab.
 
 Models are not documented here. Private Inference and Confidential AI are
-[Audric](https://audric.ai) products (SPEC_PI_TO_AUDRIC, 2026-08-01); old
-`/private-inference`, `/confidential-ai/*` and `/api-reference/*` URLs redirect
-out to `audric.ai`.
+[Audric](https://audric.ai) products (SPEC_PI_TO_AUDRIC, 2026-08-01).
+
+**No redirects.** `docs.json` has no `redirects` block — retired URLs 404 rather
+than forward. Every link inside the docs must therefore point at a page that
+actually exists; there is nothing to catch a stale one.
 
 ## Local development
 
@@ -34,12 +36,10 @@ Opens `http://localhost:3000` with live reload.
 > # every nav page exists, and no redirect shadows a live page:
 > jq -r '.navigation.tabs[].groups[]?.pages[]?, .navigation.tabs[].pages[]?' apps/docs/docs.json |
 >   while read p; do test -f "apps/docs/$p.mdx" || echo "✗ MISSING $p.mdx"; done
-> jq -r '.redirects[].source' apps/docs/docs.json |
->   while read s; do test -f "apps/docs/${s#/}.mdx" && echo "✗ SHADOWED $s"; done
+> # no internal link points at a page that doesn't exist:
+> grep -rhoE '\]\(/[a-z0-9/-]+' apps/docs --include='*.mdx' | cut -c3- | sort -u |
+>   while read l; do test -f "apps/docs${l}.mdx" || echo "✗ DEAD LINK $l"; done
 > ```
->
-> A redirect whose `source` is also a live page silently hides that page — the
-> jq check above is the guard.
 
 ## Source of truth
 
