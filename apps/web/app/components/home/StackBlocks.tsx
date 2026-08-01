@@ -45,7 +45,7 @@ export function StackBlocks() {
             className="t2k-blk-base-card"
           >
             <span className="t2k-mono-tag t2k-mono-tag--blue">
-              developers.t2000.ai
+              docs.t2000.ai
             </span>
             <div>
               <div className="t2k-blk-base-name">Docs</div>

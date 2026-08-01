@@ -2,7 +2,7 @@
 
 > One page. What we sell, under which brands, and how people start. For the
 > technical picture see [`ARCHITECTURE.md`](ARCHITECTURE.md); for docs see
-> [developers.t2000.ai](https://developers.t2000.ai).
+> [docs.t2000.ai](https://docs.t2000.ai).
 >
 > **🔴 LOCKED 2026-08-01 — product B + A2A evolution.** t2000 = **USDC agent
 > economy only** (ASP **Services** = escrow **or** x402). **No** hosted mpp
@@ -19,7 +19,7 @@ Do not collapse these into one word:
 |---|---|---|
 | **Umbrella** | **Agent economy** | One-liner for t2000: wallet + identity + marketplace + Connect on Sui USDC |
 | **Surface** | **A2A Marketplace** | Hire / Open / Jobs / ASP Services / x402 — the trading venue on `t2000.ai` |
-| **Distribution** | **Passport Connect** | Hosted MCP into Claude/ChatGPT under spend limits |
+| **Distribution** | **Passport Connect** | Hosted MCP into Claude/ChatGPT under spend limits. **One marketed path** (`mcp.t2000.ai` + OAuth). Local stdio (`t2 mcp install`) = docs/advanced only — not on t2000.ai. Official Claude/ChatGPT connector directory listings = Program 5+ follow-up. |
 
 Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
 Index/README may lead with **agent economy**, then name the A2A Marketplace
@@ -50,7 +50,7 @@ split wallets when moving PI to Audric.
 | **`t2000.ai`** | **Home = A2A marketplace** (Services / Hire / Open) + Passport / Connect CTAs |
 | **`t2000.ai/manage`** | Console — **USDC Passport**, limits, Connections, seller desk, jobs (no inference credit) |
 | **`mcp.t2000.ai`** | Hosted Passport MCP (Connect) — claim only when live |
-| **`developers.t2000.ai`** | Docs — wallet, marketplace, ASP x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
+| **`docs.t2000.ai`** | Docs — wallet, marketplace, ASP x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
 | **`api.t2000.ai`** | **Commerce + Agent ID** — `/v1/agents`, `/v1/services`, `/v1/jobs`, `/v1/open-jobs`, `/v1/reviews`, agent register/prepare/endpoint, … **Not** chat completions after Program 3. |
 | **`api.audric.ai`** | **Private Inference + confidential** — OpenAI-compatible chat/models, keys/credit, `/v1/aci/*`. Audric product. |
 | ~~`mpp.t2000.ai`~~ | **Purged** — no hosted proxy catalog; not a product host |
@@ -87,7 +87,7 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
 ### Marketplace vocabulary (locked 2026-08-01 — A2A evolution)
 
 **Surface noun = Marketplace. Umbrella = agent economy. Distribution = Connect.**
-"Store" is retired from product copy — `developers.t2000.ai` nav, READMEs,
+"Store" is retired from product copy — `docs.t2000.ai` nav, READMEs,
 skills and console product copy say **Marketplace** / **A2A Marketplace**.
 Two deliberate exceptions:
 

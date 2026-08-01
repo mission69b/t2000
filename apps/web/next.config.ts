@@ -21,19 +21,19 @@ const nextConfig: NextConfig = {
     "/AGENTS.md": ["../../t2000-skills/AGENTS.md"],
   },
   // The hand-rolled /docs hub drifted badly (retired engine card, wrong tool
-  // names/counts) — deleted 2026-07-06. developers.t2000.ai is the docs SSOT
+  // names/counts) — deleted 2026-07-06. docs.t2000.ai is the docs SSOT
   // (auto-deployed, always current); never rebuild a duplicate here.
   async redirects() {
     return [
       {
         source: "/docs",
-        destination: "https://developers.t2000.ai",
+        destination: "https://docs.t2000.ai",
         permanent: true,
       },
       // Dead-simple pass (2026-07-20): thin/duplicate pages retired.
       // identity + commerce live where the directory/console is; the verify
       // tool IS the page. (/agent-sdk redirect removed 2026-07-29 — Five
-      // Layers links straight to developers.t2000.ai/agent-sdk.)
+      // Layers links straight to docs.t2000.ai/agent-sdk.)
       {
         source: "/agent-id",
         destination: "https://t2000.ai",

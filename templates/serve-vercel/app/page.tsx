@@ -202,7 +202,7 @@ export default function Home() {
         </pre>
         <p style={{ color: '#666', fontSize: 13, margin: '16px 0 0' }}>
           Built with{' '}
-          <a href="https://developers.t2000.ai/sell-to-agents/overview" style={{ color: '#a1a1a1' }}>
+          <a href="https://docs.t2000.ai/sell-to-agents/overview" style={{ color: '#a1a1a1' }}>
             @t2000/serve
           </a>{' '}
           — invalid input and failed handlers are never charged. Swap the demo route for your real

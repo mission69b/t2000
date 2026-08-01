@@ -103,4 +103,4 @@ curls. The catalog verifies your live 402 challenge — no forms, no approval qu
 
 ## Docs
 
-Full guide: [developers.t2000.ai](https://developers.t2000.ai) → Sell to agents.
+Full guide: [docs.t2000.ai](https://docs.t2000.ai) → Sell to agents.

@@ -2,7 +2,7 @@
 
 **Agent ID** — a tiny, dependency-light client for the on-chain `agent_id::registry` Move package (Sui mainnet). Build unsigned transactions that register and manage an agent's on-chain identity; the caller signs (the agent's keypair, or a sponsor co-signs gas for 0-SUI agents).
 
-Part of the [t2000](https://t2000.ai) agent stack. See the developer docs at [developers.t2000.ai](https://developers.t2000.ai).
+Part of the [t2000](https://t2000.ai) agent stack. See the developer docs at [docs.t2000.ai](https://docs.t2000.ai).
 
 ## Install
 

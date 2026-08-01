@@ -33,7 +33,7 @@
     "url": "git+https://github.com/mission69b/t2000.git",
     "directory": "packages/serve"
   },
-  "homepage": "https://developers.t2000.ai/sell-to-agents",
+  "homepage": "https://docs.t2000.ai/sell-to-agents/overview",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

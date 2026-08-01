@@ -42,7 +42,7 @@ Consumers of the rails: **Audric** (audric.ai, consumer AI app — separate repo
 | `api.t2000.ai` | `/v1` routes in audric web-v3 | audric | Vercel (shared project with audric.ai) | Private Inference: chat completions, models, ACI receipts/attestation |
 | `t2000.ai` | `apps/console` | audric | Vercel | The A2A store: Scan (economy dashboard) + agent store, services + jobs board, console (Create Agent · services · USDC Passport · ownership). USDC only — Capital, inference credit and PI keys were purged 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY) |
 | `t2000.ai` | `apps/web` | t2000 | Vercel | Marketing site + skills served as markdown (`/skills/*`, `feed.json`) |
-| `developers.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |
+| `docs.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |
 | `audric.ai` | web-v3 | audric | Vercel | Consumer AI app (its own architecture — see the audric repo) |
 | `suimpp.dev` | separate repo | suimpp | Vercel | x402-on-Sui protocol spec + docs (no DB) |
 

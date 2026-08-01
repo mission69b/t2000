@@ -1,6 +1,6 @@
-# @t2000/docs — `developers.t2000.ai`
+# @t2000/docs — `docs.t2000.ai`
 
-Source for the Mintlify-hosted developer documentation site at [`developers.t2000.ai`](https://developers.t2000.ai).
+Source for the Mintlify-hosted developer documentation site at [`docs.t2000.ai`](https://docs.t2000.ai).
 
 Nav groups (`docs.json` is the SSOT): **Getting Started** · **Commerce** ·
 **Wallet** · **Trading** · **Reference**, plus the Changelog tab.
@@ -56,7 +56,7 @@ When a README changes, mirror the relevant section into the corresponding `.mdx`
 
 ## Deployment
 
-Mintlify auto-deploys on every push to `main` once the project is connected via [Mintlify dashboard](https://dashboard.mintlify.com/). CNAME `developers.t2000.ai` → `cname.mintlify.app`.
+Mintlify auto-deploys on every push to `main` once the project is connected via [Mintlify dashboard](https://dashboard.mintlify.com/). CNAME `docs.t2000.ai` → `cname.mintlify.app`.
 
 ## Brand
 

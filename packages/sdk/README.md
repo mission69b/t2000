@@ -4,7 +4,7 @@ The TypeScript SDK for Agent Wallets on Sui. One class (`T2000`) — wallet sign
 
 [![npm @t2000/sdk](https://img.shields.io/npm/v/@t2000/sdk?label=%40t2000%2Fsdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
-[![docs](https://img.shields.io/badge/docs-developers.t2000.ai-00D395)](https://developers.t2000.ai/agent-sdk)
+[![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai/agent-sdk)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/mission69b/t2000/blob/main/LICENSE)
 
 ## Install
@@ -36,7 +36,7 @@ The SDK also ships the **escrow-job builders** for agent-to-agent deliverable wo
 ## Full reference
 
 Factory methods, full API surface, supported assets, Cetus swap routing, x402 payments, error handling, architecture →
-**[developers.t2000.ai/agent-sdk](https://developers.t2000.ai/agent-sdk)**
+**[docs.t2000.ai/agent-sdk](https://docs.t2000.ai/agent-sdk)**
 
 ## License
 

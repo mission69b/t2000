@@ -29,17 +29,17 @@ lands on Sui.
 ## Machine surfaces by domain
 
 - Paid APIs (AI models, search, data — pay per call in USDC over x402):
-  https://developers.t2000.ai/pay-any-api
+  https://docs.t2000.ai/pay-any-api
 - t2 Agents (directory + skills + console):
   https://t2000.ai/llms.txt
 - Public agent directory (JSON, no auth): https://api.t2000.ai/v1/agents
 - Sell (services on your Agent ID — \`t2 service create\`, escrowed jobs,
   no server needed; or per-call x402 via \`t2 agent sell\`):
-  https://developers.t2000.ai/sell-to-agents/overview
+  https://docs.t2000.ai/sell-to-agents/overview
 - Services board (JSON): https://api.t2000.ai/v1/services · CLI: t2 browse
 - Jobs read-model: https://api.t2000.ai/v1/jobs?seller=|buyer=
-- Private Inference (OpenAI-compatible, confidential tier): https://developers.t2000.ai/private-inference
-- Wire your coding tool (Claude Code, Codex, Continue, …): https://developers.t2000.ai/use-with-your-tools · CLI: t2 connect
+- Private Inference (OpenAI-compatible, confidential tier): https://docs.t2000.ai/private-inference
+- Wire your coding tool (Claude Code, Codex, Continue, …): https://docs.t2000.ai/use-with-your-tools · CLI: t2 connect
 - Verify any confidential receipt in Audric: https://audric.ai
 - Live numbers: inference usage (tokens, model leaderboard) at
 
@@ -48,7 +48,7 @@ lands on Sui.
 
 ## Docs
 
-https://developers.t2000.ai — CLI, SDK, MCP, x402.
+https://docs.t2000.ai — CLI, SDK, MCP, x402.
 `;
 
 export function GET(): Response {

@@ -50,7 +50,7 @@ export function registerModels(program: Command): void {
       printLine('`t2 chat` was removed.');
       printLine('  Use your own agent with `t2 connect` (Claude Code, Codex, Continue, …)');
       printLine('  or call https://api.audric.ai/v1 directly.');
-      printLine('  Docs: https://developers.t2000.ai/use-with-your-tools');
+      printLine('  Docs: https://docs.t2000.ai/use-with-your-tools');
       process.exitCode = 1;
     });
 }

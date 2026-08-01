@@ -18,7 +18,7 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 
 ```
 t2000/
-├── apps/docs        ← Mintlify developer docs (developers.t2000.ai)
+├── apps/docs        ← Mintlify developer docs (docs.t2000.ai)
 ├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
@@ -67,7 +67,7 @@ if it ever returns, use MCP reads + thin `@mysten/sui` builders, never
 2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP / thin `@mysten/sui` tx builders instead.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in `@t2000/sdk` or the host agent loop.
-5. **Always check `developers.t2000.ai`** before writing documentation or marketing copy. Mintlify is the live docs SSOT (auto-deployed from `apps/docs/`) — covers product naming, CLI surface, SDK API, MCP tools. For code-level truth (fees, decimals, allowed-asset lists, error codes), read `packages/sdk/src/constants.ts` + `packages/sdk/src/token-registry.ts` directly.
+5. **Always check `docs.t2000.ai`** before writing documentation or marketing copy. Mintlify is the live docs SSOT (auto-deployed from `apps/docs/`) — covers product naming, CLI surface, SDK API, MCP tools. For code-level truth (fees, decimals, allowed-asset lists, error codes), read `packages/sdk/src/constants.ts` + `packages/sdk/src/token-registry.ts` directly.
 6. **Always use `token-registry.ts`** for token metadata (`COIN_REGISTRY`, `resolveTokenType`, `getDecimalsForCoinType`, `resolveSymbol`, the `*_TYPE` constants). Never hardcode decimals or coin types. (There is no token "tier" gate — USDC is the settlement stable; everything else is holdable/swappable.)
 7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web-v3/lib/env.ts` — schema + `instrumentation.ts` boot-time validation (audric enforces the no-raw-`process.env` convention via Biome/ultracite + code review, not an ESLint rule). The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
 8. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design — **with one carve-out: the `t2000::a2a_escrow` protocol fee (2026-07-18, v9.9.x).** Escrowed-job settlement carries a 5% fee (raised from 2.5% on 2026-07-19 via AdminCap `set_fee_bps`) enforced by the Move contract itself on the seller-bound payout (bps locked into the Job at funding; refunds fee-free; receiver = t2000-revenue, rotatable via AdminCap). That fee lives on-chain, not in the SDK/CLI code paths — send/swap/pay remain fee-free. Audric is the only fee owner: it passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps (the Cetus aggregator takes the overlay fee from swap output and transfers it to the wallet). The deprecated `t2000::treasury::collect_fee` Move call + `addCollectFeeToTx` helper were removed; the `addFeeTransfer`/`protocolFee` helper (only ever used for the now-removed save/borrow fees) was deleted with the DeFi surface. New consumer apps that want non-swap fees split + transfer to a wallet inside the same PTB; the indexer detects USDC inflows and writes `ProtocolFeeLedger` rows. See S.43 in `audric-build-tracker.md`.
@@ -200,7 +200,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
 | `PRODUCT.md` | **The product map SSOT** — 2 products (Private Inference · x402 gateway), one customer + one path each; wallet/Agent ID = substrate, not products; `t2 agent onboard` deprecated | Any product/positioning/onboarding work |
-| [`developers.t2000.ai`](https://developers.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
+| [`docs.t2000.ai`](https://docs.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
 | `ARCHITECTURE.md` | Current-state technical map — the two rails' request lifecycles, wallet/gas/limits, Agent ID, MCP/skills, auth, data stores, CI (rewritten 2026-07-13) | API or integration work |
 | `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
 | `PRODUCT_ROADMAP.md` (local-only) | Whole-product master roadmap — 5 Audric products + t2000 infra + the 3 strategic threads (Store, Agent Models, Agent Deploy) + revenue model (gitignored) | Feature planning |
@@ -434,13 +434,13 @@ When shipping a feature, update these files:
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
 - [ ] MCP tool/prompt + tests (`packages/mcp/src/`)
 - [ ] Agent Skill (`t2000-skills/skills/`)
-- [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to `developers.t2000.ai`
+- [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to `docs.t2000.ai`
 - [ ] Root README (`README.md`)
 - [ ] Package READMEs (`packages/*/README.md`)
 - [ ] Version bump + build all packages
-- [ ] **Feature/benefit capture** — append the slice's feature + proof point to `SITE_REPOSITIONING_BRIEF.md` §6 (positioning SSOT), and land the `developers.t2000.ai` factual delta when the dev-facing contract changed (CLI/SDK/MCP surface, version, or behavior)
+- [ ] **Feature/benefit capture** — append the slice's feature + proof point to `SITE_REPOSITIONING_BRIEF.md` §6 (positioning SSOT), and land the `docs.t2000.ai` factual delta when the dev-facing contract changed (CLI/SDK/MCP surface, version, or behavior)
 
 **Docs cadence (two tiers, not "dump as you go"):**
-- **Per-slice** — keep `developers.t2000.ai` *factually correct* only (version, command surface, behavior like limits-on / no-charge-on-failure). Cheap; prevents the staleness class.
+- **Per-slice** — keep `docs.t2000.ai` *factually correct* only (version, command surface, behavior like limits-on / no-charge-on-failure). Cheap; prevents the staleness class.
 - **Per-PHASE** — a dedicated structured-docs task: turn the phase's shipped specs into a cohesive, **story-driven product + technical section** (features → benefits → how it works), NOT a textbook manual. The marketing-site positioning rewrite batches at launch via `SITE_REPOSITIONING_BRIEF.md`.
 - **Catalog tables come from live truth, never from memory.** Any docs table that enumerates services/models/tools/skills MUST be written against the live source — `api.t2000.ai/v1/services` (store Services), `api.t2000.ai/v1/models` (model catalog), `packages/mcp/src/tools/` (MCP tools), `t2000-skills/skills/` (skills), CLI source for defaults. Hand-written "should exist" lists are how the 2026-07-02 agent-payments fiction (Bing/Kagi/Midjourney/BlockVision — none on the rail) shipped; cross-check before writing, and prefer linking the live endpoint over duplicating it.

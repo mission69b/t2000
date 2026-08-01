@@ -4,7 +4,7 @@ The **local stdio** MCP server for the t2000 Agent Wallet on Sui. Connects Claud
 
 [![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
-[![docs](https://img.shields.io/badge/docs-developers.t2000.ai-00D395)](https://developers.t2000.ai/agent-wallet)
+[![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai/agent-wallet)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/mission69b/t2000/blob/main/LICENSE)
 
 ## Quick start
@@ -19,7 +19,7 @@ Restart your AI client, then ask **"What's my t2000 balance?"**
 
 `t2 mcp install` is idempotent — re-run any time. Remove with `t2 mcp uninstall`.
 
-> **Just want Claude connected?** [**Passport Connect**](https://developers.t2000.ai/passport-connect)
+> **Just want Claude connected?** [**Passport Connect**](https://docs.t2000.ai/passport-connect)
 > is the hosted path and the one most people want: add `https://mcp.t2000.ai/mcp`
 > as a custom connector, approve with Google, done — no install, no key in the
 > client, spend limits you set. This package is the **advanced** alternative,
@@ -55,7 +55,7 @@ For any MCP client that isn't auto-wired by `t2 mcp install`:
 ## Full reference
 
 Tool surface, client setup, security model, skills →
-**[developers.t2000.ai/agent-wallet#mcp-integration](https://developers.t2000.ai/agent-wallet#mcp-integration)**
+**[docs.t2000.ai/agent-wallet#mcp-integration](https://docs.t2000.ai/agent-wallet#mcp-integration)**
 
 ## License
 

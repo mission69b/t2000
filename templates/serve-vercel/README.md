@@ -67,4 +67,4 @@ export const POST = serve
 Then add `import '../your-route/route'` to `app/openapi.json/route.ts` and
 `app/llms.txt/route.ts` so it appears in the discovery docs.
 
-Full guide: [developers.t2000.ai](https://developers.t2000.ai)
+Full guide: [docs.t2000.ai](https://docs.t2000.ai)

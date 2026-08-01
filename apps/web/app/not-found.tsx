@@ -61,7 +61,7 @@ export default function NotFound() {
                 Back home
               </Link>
               <a
-                href="https://developers.t2000.ai"
+                href="https://docs.t2000.ai"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="t2k-btn t2k-btn--ghost t2k-btn--lg"

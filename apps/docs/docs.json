@@ -78,7 +78,7 @@
     "links": [
       {
         "label": "llms.txt",
-        "href": "https://developers.t2000.ai/llms.txt"
+        "href": "https://docs.t2000.ai/llms.txt"
       },
       {
         "label": "Changelog",
@@ -148,7 +148,7 @@
     "indexing": "all",
     "metatags": {
       "og:image": "https://t2000.ai/og/og-t2000.png",
-      "og:site_name": "developers.t2000.ai",
+      "og:site_name": "docs.t2000.ai",
       "twitter:card": "summary_large_image",
       "twitter:image": "https://t2000.ai/og/og-t2000.png"
     }

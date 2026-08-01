@@ -14,7 +14,7 @@ t2000/
 ├── REPO_LAYOUT.md                           ← this file (contributor "where does X go?")
 ├── SECURITY.md                              ← disclosure policy
 ├── apps/                                    ← deployable apps
-│   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
+│   ├── docs/                                (docs.t2000.ai — Mintlify docs site)
 │   └── web/                                 (t2000.ai marketing site)
 ├── packages/                                ← npm packages (5 published: sdk, cli, mcp, id, serve)
 │   ├── cli/                                 (@t2000/cli)
@@ -42,7 +42,7 @@ t2000/
 
 | If X is a... | Put it in... |
 |---|---|
-| Public developer docs page (setup, API ref, examples) | `apps/docs/<slug>.mdx` (Mintlify; deploys to `developers.t2000.ai`) |
+| Public developer docs page (setup, API ref, examples) | `apps/docs/<slug>.mdx` (Mintlify; deploys to `docs.t2000.ai`) |
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
 | A rule every task needs | `CLAUDE.md` (it loads every turn — keep it tight) |

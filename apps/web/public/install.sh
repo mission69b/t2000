@@ -172,7 +172,7 @@ info "  Fund with USDC on Sui, then pay per call — at the \$0.02 rail floor, \
 info "  Spending limits are ON by default (\$25/tx, \$100/day). Change with \`t2 limit set\`."
 echo ""
 info "  Restart your AI client, then ask it: \"what's my t2000 balance?\""
-info "  Developer docs:  https://developers.t2000.ai"
+info "  Developer docs:  https://docs.t2000.ai"
 echo ""
 
 }

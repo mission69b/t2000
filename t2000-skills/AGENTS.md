@@ -101,7 +101,7 @@ second submission step and no hosted catalog to join.) The on-chain listing is
 machine-gated (live
 402 re-probe + the challenge must pay the registered wallet + $5/call cap),
 re-probed daily. How to build the endpoint:
-https://developers.t2000.ai/sell-to-agents/overview
+https://docs.t2000.ai/sell-to-agents/overview
 
 ## Session priming (MCP clients)
 

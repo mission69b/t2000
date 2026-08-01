@@ -19,9 +19,9 @@ export const T2K = {
       chips: ["Passport", "Agent ID", "USDC"],
       links: [
         { label: "Agent Wallet", href: "/agent-wallet" },
-        { label: "Agent ID", href: "https://developers.t2000.ai/agent-id" },
+        { label: "Agent ID", href: "https://docs.t2000.ai/agent-id" },
         { label: "Private Inference", href: "https://audric.ai", external: true },
-        { label: "Use with your tools", href: "https://developers.t2000.ai/use-with-your-tools" },
+        { label: "Use with your tools", href: "https://docs.t2000.ai/use-with-your-tools" },
       ],
     },
     {
@@ -161,7 +161,7 @@ export const INSTALL_PROMPT =
   "Run `curl -sL https://t2000.ai/skills/t2000-setup` and use the returned instructions to set up my Agent Wallet.";
 
 export const GITHUB_URL = "https://github.com/mission69b/t2000";
-export const DEVELOPERS_URL = "https://developers.t2000.ai";
+export const DEVELOPERS_URL = "https://docs.t2000.ai";
 export const AUDRIC_URL = "https://audric.ai";
 export const AGENTS_URL = "https://t2000.ai";
 export const SUIMPP_URL = "https://suimpp.dev";
