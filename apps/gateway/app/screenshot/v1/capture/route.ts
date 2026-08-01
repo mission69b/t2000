@@ -1,8 +1,0 @@
-import { chargeProxy } from '@/lib/gateway';
-import { env } from '@/lib/env';
-
-export const POST = chargeProxy(
-  `https://api.screenshotone.com/take?access_key=${env.SCREENSHOTONE_API_KEY}`,
-  { accept: 'image/png' },
-  { upstreamMethod: 'GET', bodyToQuery: true },
-);

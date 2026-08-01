@@ -144,7 +144,6 @@ export async function payWithMpp(args: {
     // 2026-07-20). Fail closed before anything is signed.
     assertNotSelfPayment(signer.getAddress(), requirements.payTo);
     const result = await payViaX402({ signer, client, options, reqInit, requirements });
-    await reportDirectPayment(result, options.url);
     return result;
   }
 
@@ -172,7 +171,6 @@ export async function payWithMpp(args: {
     }
     assertNotSelfPayment(signer.getAddress(), headerChallenge.recipient);
     const result = await payViaMppHeader({ signer, client, options });
-    await reportDirectPayment(result, options.url);
     return result;
   }
 
@@ -190,36 +188,6 @@ export async function payWithMpp(args: {
     `Endpoint returned 402 without an x402 'exact' / sui:${client.network} requirement in the body ` +
       `or an MPP 'sui' challenge in WWW-Authenticate. Nothing this SDK can pay.`,
   );
-}
-
-// ---------------------------------------------------------------------------
-// Direct-seller activity reporting (S.743). Gateway-proxied payments are
-// logged server-side by the gateway itself; DIRECT payments (catalog
-// federation — seller's own origin) never touch it, leaving the activity
-// feed blind. After a paid call to a non-gateway origin, tell the gateway
-// "look at this digest for this url" — it verifies on-chain (USDC inflow to
-// the cataloged seller's pinned payTo) before recording, so the report
-// carries no trusted data. Best-effort by construction: timeout-capped and
-// error-swallowed, a lost report never fails or delays the payment. Awaited
-// (not fire-and-forget) so short-lived CLI processes don't drop it on exit.
-// ---------------------------------------------------------------------------
-
-const MPP_REPORT_URL = 'https://mpp.t2000.ai/api/mpp/report';
-const REPORT_TIMEOUT_MS = 2_000;
-
-async function reportDirectPayment(result: PayResult, url: string): Promise<void> {
-  if (!result.paid || !result.receipt?.reference) return;
-  try {
-    if (new URL(url).origin === new URL(MPP_REPORT_URL).origin) return;
-    await fetch(MPP_REPORT_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ digest: result.receipt.reference, url }),
-      signal: AbortSignal.timeout(REPORT_TIMEOUT_MS),
-    });
-  } catch {
-    // Best-effort: the payment already succeeded; the feed row is analytics.
-  }
 }
 
 /**

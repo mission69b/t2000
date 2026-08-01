@@ -2,8 +2,8 @@ import Link from "next/link";
 import { DEVELOPERS_URL } from "../../data/t2k";
 import { CopyButton } from "../ui/CopyButton";
 
-const CMD = `t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \\
-  --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}]}'`;
+const CMD = `t2 services "chat"
+t2 pay <endpoint-url> --data '{"messages":[{"role":"user","content":"Hello"}]}'`;
 
 export function PaymentsCloser() {
   return (
@@ -88,7 +88,7 @@ export function PaymentsCloser() {
           >
             <span style={{ color: "var(--fg-subtle)" }}>$ </span>
             <span style={{ color: "var(--t2k-accent)" }}>t2 pay</span>{" "}
-            https://mpp.t2000.ai/openai/v1/chat/completions{" "}
+            &lt;endpoint-url&gt;{" "}
             <span style={{ color: "var(--fg-subtle)" }}>\</span>
             {"\n  "}
             <span style={{ color: "var(--fg-subtle)" }}>--data</span>{" "}

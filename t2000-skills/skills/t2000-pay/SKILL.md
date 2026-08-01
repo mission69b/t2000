@@ -1,16 +1,15 @@
 ---
 name: t2000-pay
 description: >-
-  Pay for an x402-protected API service using the t2000 wallet. Use when asked
-  to call an AI model, search the web, generate images, send email, buy gift
-  cards, send physical mail, check weather, execute code, or any task that
-  requires a paid API. Handles the full x402 402 challenge automatically.
-  Use t2000_services to discover all available services first.
+  Pay any x402-protected API endpoint with the t2000 wallet — an ASP Service
+  listed on the t2000 store, or any URL that answers 402 with a Sui challenge.
+  Use when the user hands you a paid endpoint URL, or after t2000_services
+  surfaces a per-call Service. Handles the full 402 challenge automatically.
 license: MIT
 status: active
 metadata:
   author: t2000
-  version: "3.0"
+  version: "4.0"
   requires: t2000 CLI (npm install -g @t2000/cli)
   available: "true"
 ---
@@ -26,23 +25,24 @@ Active — bundled with `@t2000/cli` (no separate install).
 Make a paid HTTP request to any x402-protected endpoint. Handles the 402
 challenge, pays via Sui USDC, and returns the API response.
 
-## Service Discovery
-Before calling `t2 pay`, discover available services:
+## What this pays
+
+Any endpoint that answers **402 with a Sui x402 challenge**:
+
+- an **ASP Service** listed on the t2000 store (find one with `t2 services` /
+  `t2000_services`) — the seller runs the endpoint on their own origin and the
+  payment settles straight to their wallet; or
+- **any URL the user gives you**, listed or not.
+
+There is no t2000-hosted catalog of third-party provider URLs. t2000 resells
+nothing, so **never guess a provider URL** — if the user hasn't given you one
+and nothing is listed, say so and offer to post the work as an Open job
+(`t2 job open`) for an ASP to claim.
+
 ```bash
-# CLI — search by name / category / endpoint
-t2 services search "image"           # find image-gen services
-t2 services search "chat"            # find chat/completion endpoints
-t2 services search ""                # list everything
-
-# CLI — inspect a service or endpoint
-t2 services inspect https://mpp.t2000.ai/openai
-t2 services inspect https://mpp.t2000.ai/openai/v1/chat/completions
-
-# MCP — full catalog JSON
-t2000_services
+t2 services "image"       # what's actually listed
+t2 pay <url> --estimate   # price a specific endpoint without paying
 ```
-
-Most services are hosted at `https://mpp.t2000.ai/`; the catalog also federates **direct sellers** (marked `direct` — e.g. JMPR Travel at `agent.jmpr.world`) whose endpoints live on their own origin and settle straight to their wallet. `t2 pay` works identically for both; note the gateway's no-charge-on-failure guarantee covers proxied services only. See the `t2000-services` skill for the full discovery workflow.
 
 ## Command
 ```bash
@@ -59,208 +59,19 @@ t2 pay <url> [options]
 | `--estimate` | Show the price without paying (no funds spent) | — |
 | `--force` | Override spending limits for this call (see `t2 limit`) | — |
 
-## Available Services
+## Price discovery
 
-> **The live catalog is the only source of truth for what's available and what it costs.**
-> Discover services and current per-endpoint prices with `t2000_services` (MCP) or
-> `GET https://mpp.t2000.ai/api/services`. Inspect one with `t2 services inspect <url>`.
-> Prices are NOT listed here on purpose — they would drift from the catalog. Resolve the
-> real price at call time (the `--max-price` ceiling guards against overpaying), or run
-> `t2 pay <url> --estimate` to see what would be charged before paying.
+The seller's own 402 challenge is the source of truth for price. Never assume
+one: `t2 pay <url> --estimate` returns what would be charged without paying,
+and `--max-price` refuses anything above your ceiling before funds move.
 
-The catalog spans every major AI + data API, grouped roughly as:
+## Example
 
-- **AI models & reasoning** — OpenAI, Anthropic (Claude), Google Gemini, DeepSeek, Groq, Together AI, Perplexity, Mistral, Cohere (chat, embeddings, rerank).
-- **Media & generation** — OpenAI (images, text-to-speech), fal.ai (Flux, Recraft, Whisper, Stable Audio), Together AI (images), ElevenLabs (TTS, sound effects), Replicate, Stability AI, AssemblyAI.
-- **Search** — Brave, Exa, Serper, SerpAPI, NewsAPI.
-- **Web & documents** — Firecrawl (scrape / crawl / map / extract), Jina Reader, ScreenshotOne, PDFShift, QR Code.
-- **Data & finance** — OpenWeather, Google Maps (geocode / places / directions), CoinGecko, Alpha Vantage, ExchangeRate.
-- **Translation** — DeepL, Google Translate.
-- **Intelligence & security** — Hunter.io, IPinfo, VirusTotal.
-- **Tools & utility** — Judge0 (code exec), Resend (email), Pushover (push), Short.io (URL shortener), TinyPNG (image compression & resize).
-- **Commerce** — Lob (postcards, letters, address verification).
-
-This list is a capability map, not the exhaustive endpoint set — always discover via the catalog before calling.
-
-## Example Commands
-
-### Ask an AI model
 ```bash
-t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
-  --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Explain quantum computing in 3 sentences"}]}'
-```
-
-### Search the web
-```bash
-t2 pay https://mpp.t2000.ai/brave/v1/web/search \
-  --data '{"q":"latest Sui blockchain news"}'
-```
-
-### Generate an image
-```bash
-t2 pay https://mpp.t2000.ai/fal/fal-ai/flux/dev \
-  --data '{"prompt":"a futuristic city at sunset, cyberpunk style"}'
-```
-
-### Check weather
-```bash
-t2 pay https://mpp.t2000.ai/openweather/v1/weather \
-  --data '{"q":"Tokyo"}'
-```
-
-### Send an email
-```bash
-t2 pay https://mpp.t2000.ai/resend/v1/emails \
-  --data '{"from":"agent@t2000.ai","to":"user@example.com","subject":"Hello","text":"Sent by an AI agent"}'
-```
-
-### Execute code
-```bash
-t2 pay https://mpp.t2000.ai/judge0/v1/submissions \
-  --data '{"source_code":"print(42)","language_id":71}'
-```
-
-### Send physical mail
-```bash
-# Send a postcard
-t2 pay https://mpp.t2000.ai/lob/v1/postcards \
-  --max-price 2 \
-  --data '{
-    "to":{"name":"Jane Doe","address_line1":"123 Main St","address_city":"San Francisco","address_state":"CA","address_zip":"94105"},
-    "from":{"name":"AI Agent","address_line1":"456 Oak Ave","address_city":"Palo Alto","address_state":"CA","address_zip":"94301"},
-    "front":"https://example.com/front.png",
-    "back":"https://example.com/back.png",
-    "use_type":"operational"
-  }'
-
-# Send a letter
-t2 pay https://mpp.t2000.ai/lob/v1/letters \
-  --max-price 2 \
-  --data '{
-    "to":{"name":"Jane Doe","address_line1":"123 Main St","address_city":"San Francisco","address_state":"CA","address_zip":"94105"},
-    "from":{"name":"AI Agent","address_line1":"456 Oak Ave","address_city":"Palo Alto","address_state":"CA","address_zip":"94301"},
-    "file":"https://example.com/letter.pdf",
-    "use_type":"operational",
-    "color":false
-  }'
-
-# Verify a US address
-t2 pay https://mpp.t2000.ai/lob/v1/verify \
-  --data '{"primary_line":"123 Main St","city":"San Francisco","state":"CA","zip_code":"94105"}'
-```
-
-### Get directions
-```bash
-t2 pay https://mpp.t2000.ai/googlemaps/v1/directions \
-  --data '{"origin":"San Francisco, CA","destination":"Palo Alto, CA"}'
-```
-
-### Get crypto prices
-```bash
-t2 pay https://mpp.t2000.ai/coingecko/v1/price \
-  --data '{"ids":"sui,bitcoin,ethereum","vs_currencies":"usd"}'
-```
-
-### Get a stock quote
-```bash
-t2 pay https://mpp.t2000.ai/alphavantage/v1/quote \
-  --data '{"symbol":"AAPL"}'
-```
-
-### Get breaking news
-```bash
-t2 pay https://mpp.t2000.ai/newsapi/v1/headlines \
-  --data '{"country":"us","category":"technology"}'
-```
-
-### Translate text
-```bash
-t2 pay https://mpp.t2000.ai/deepl/v1/translate \
-  --data '{"text":["Hello, how are you?"],"target_lang":"ES"}'
-```
-
-### Semantic search
-```bash
-t2 pay https://mpp.t2000.ai/exa/v1/search \
-  --data '{"query":"best practices for AI agent payments","numResults":5}'
-```
-
-### Read a URL as markdown
-```bash
-t2 pay https://mpp.t2000.ai/jina/v1/read \
-  --data '{"url":"https://docs.sui.io/concepts/tokenomics"}'
-```
-
-### Google search (structured)
-```bash
-t2 pay https://mpp.t2000.ai/serper/v1/search \
-  --data '{"q":"Sui blockchain TVL 2026"}'
-```
-
-### Screenshot a webpage
-```bash
-t2 pay https://mpp.t2000.ai/screenshot/v1/capture \
-  --data '{"url":"https://example.com","format":"png","viewport_width":"1280"}'
-```
-
-### Generate a QR code
-```bash
-t2 pay https://mpp.t2000.ai/qrcode/v1/generate \
-  --data '{"data":"https://t2000.ai","size":"400x400"}'
-```
-
-### Convert HTML to PDF
-```bash
-t2 pay https://mpp.t2000.ai/pdfshift/v1/convert \
-  --data '{"source":"https://t2000.ai/docs"}'
-```
-
-### Run a Replicate model
-```bash
-t2 pay https://mpp.t2000.ai/replicate/v1/predictions \
-  --data '{"model":"meta/llama-3-70b-instruct","input":{"prompt":"Explain DeFi in 3 sentences"}}'
-```
-
-### Find emails for a domain
-```bash
-t2 pay https://mpp.t2000.ai/hunter/v1/search \
-  --data '{"domain":"mystenlabs.com"}'
-```
-
-### Look up an IP address
-```bash
-t2 pay https://mpp.t2000.ai/ipinfo/v1/lookup \
-  --data '{"ip":"8.8.8.8"}'
-```
-
-### Search for flights
-```bash
-t2 pay https://mpp.t2000.ai/serpapi/v1/flights \
-  --data '{"departure_id":"LAX","arrival_id":"NRT","outbound_date":"2026-05-01","type":"2"}'
-```
-
-### Convert currency
-```bash
-t2 pay https://mpp.t2000.ai/exchangerate/v1/convert \
-  --data '{"from":"USD","to":"EUR","amount":100}'
-```
-
-### Scan a URL for malware
-```bash
-t2 pay https://mpp.t2000.ai/virustotal/v1/scan \
-  --data '{"url":"https://suspicious-site.com"}'
-```
-
-### Shorten a URL
-```bash
-t2 pay https://mpp.t2000.ai/shortio/v1/shorten \
-  --data '{"url":"https://example.com/very/long/url/path"}'
-```
-
-### Send a push notification
-```bash
-t2 pay https://mpp.t2000.ai/pushover/v1/push \
-  --data '{"user":"USER_KEY","message":"Your agent has a message!"}'
+# An ASP's per-call Service (the URL comes from `t2 services`, or the user)
+t2 pay https://api.example-asp.com/v1/brief \
+  --data '{"ticker":"SUI","window":"7d"}' \
+  --max-price 0.25
 ```
 
 ## Flow (automatic)
@@ -284,4 +95,10 @@ t2 pay https://mpp.t2000.ai/pushover/v1/push \
 - `DUPLICATE_PAYMENT`: nonce already used on-chain
 
 ## MCP
-Via MCP: use `t2000_services` to discover services, then `t2000_pay` to call them.
+Via MCP: `t2000_services` to see what is listed, then `t2000_pay` against the
+seller's endpoint URL.
+
+**History:** this skill used to list dozens of `mpp.t2000.ai/<provider>/…`
+example URLs against a t2000-hosted proxy catalog. That mall was purged
+2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY) — those URLs are dead, and t2000 does
+not resell third-party APIs.

@@ -36,7 +36,7 @@ Tests live **inline next to source** (`Foo.ts` + `Foo.test.ts`) — never add a 
 Any docs table enumerating services / models / tools / skills MUST be written
 against the live source:
 
-- Gateway catalog → `mpp.t2000.ai/api/services`
+- Store Services → `api.t2000.ai/v1/services`
 - Model catalog → `api.t2000.ai/v1/models`
 - MCP tools → `packages/mcp/src/tools/`
 - Skills → `t2000-skills/skills/`

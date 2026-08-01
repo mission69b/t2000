@@ -15,7 +15,6 @@ t2000/
 ├── SECURITY.md                              ← disclosure policy
 ├── apps/                                    ← deployable apps
 │   ├── docs/                                (developers.t2000.ai — Mintlify docs site)
-│   ├── gateway/                             (MPP API gateway — mpp.t2000.ai)
 │   ├── verify/                              (verify.t2000.ai — public confidential-receipt explorer + paste-to-verify)
 │   └── web/                                 (t2000.ai marketing site)
 ├── packages/                                ← npm packages (5 published: sdk, cli, mcp, id, serve)

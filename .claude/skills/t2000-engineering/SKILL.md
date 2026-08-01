@@ -72,7 +72,6 @@ Fixes in the wrong layer waste time. Identify the owning layer before coding:
 |-------|-----------|-----------|
 | `@t2000/sdk` | Server, or client via the sponsored flow | npm release |
 | `@t2000/cli` · `@t2000/mcp` · `@t2000/id` · `@t2000/serve` | User machine / MCP client | npm release |
-| `apps/gateway` (mpp.t2000.ai) | Vercel | deploy |
 | Audric `web-v3` client components | Browser | Vercel deploy |
 | Audric API routes | Vercel serverless | Vercel deploy |
 
@@ -212,7 +211,7 @@ If you need different selectors per file glob, scope the WHOLE block with `files
 rg "no-restricted-syntax|no-restricted-imports|no-restricted-properties" --glob 'eslint.config.mjs'
 ```
 
-Live ESLint configs in this repo: `apps/gateway/eslint.config.mjs`,
+Live ESLint configs in this repo:
 `apps/web/eslint.config.mjs`. Audric's `web-v3` uses Biome, not ESLint.
 
 ### Test file location — inline, next to source

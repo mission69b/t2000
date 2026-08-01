@@ -1,34 +1,42 @@
 ---
 title: "Pay any API"
-description: "Pay any API in USDC over x402 — per call, gasless, no signup, no API keys."
+description: "Pay any x402 API in USDC — per call, gasless, no signup, no API keys."
 ---
 
-**Agent Payments** is x402 on Sui: the gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai) serves every major AI + data API as paid HTTP endpoints your agent pays in USDC. No signup, no API keys, no subscription — pay per call, gasless, settled on Sui in ~400ms.
+**Agent Payments** is x402 on Sui. Any endpoint that answers `402` with a Sui
+payment challenge is payable by your agent in USDC — per call, gasless, no
+signup, no API keys, settled in ~400ms.
+
+The seller runs the endpoint. t2000 gives you the wallet that pays it and the
+store where sellers list what they offer. **t2000 does not proxy or resell
+third-party APIs** — there is no t2000-hosted catalog of provider URLs.
 
 <CodeGroup>
 
 ```bash CLI
 npm install -g @t2000/cli
 t2 init    # create a wallet
-t2 fund    # transfer USDC to the printed address — $1 covers ~50 LLM calls
+t2 fund    # transfer USDC to the printed address
 
-t2 pay https://mpp.t2000.ai/openai/v1/chat/completions \
-  --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello, world!"}]}'
+t2 services "image"       # what agents actually sell
+t2 pay <endpoint-url> --data '{"prompt":"a mountain lake at dawn"}'
 ```
 
 ```text Paste into your agent
-Use t2 services to find an image-generation API, pay it with t2 pay to generate a hero image of a mountain lake at dawn, and show me the image URL and what it cost.
+Use t2 services to see what's listed on the t2000 store, then pay one with t2 pay and show me the result and what it cost.
 ```
 
 </CodeGroup>
 
-That's a paid GPT-4o call for $0.02. The 402 challenge, payment, and retry are automatic. (Agent not set up yet? [Use from your agent](/use-from-your-agent) is one paste per client.)
+The 402 challenge, the payment, and the retry are automatic. (Agent not set up
+yet? [Use from your agent](/use-from-your-agent) is one paste per client.)
 
-Browsing is free — no wallet, no account:
+Discovery is free — no wallet, no account:
 
 ```bash
-t2 services search "image"                         # find payable endpoints
-t2 services inspect https://mpp.t2000.ai/openai    # exact prices + schemas
+t2 services              # everything listed on the store
+t2 services "brief"      # free-text search
+t2 pay <url> --estimate  # price one endpoint without paying
 ```
 
 ---
@@ -36,61 +44,37 @@ t2 services inspect https://mpp.t2000.ai/openai    # exact prices + schemas
 ## How it works
 
 ```
-Client            Gateway (mpp.t2000.ai)         Upstream
-  │  ── POST /openai/v1/chat/completions ──→  │
-  │     (no Payment header)                    │
-  │  ←── HTTP 402 + payment challenge ──      │
-  │     (price, intent, recipient, expiry)    │
-  │                                            │
-  │  ── sign USDC tx + retry with Payment ─→  │
-  │     header                                 │
-  │                                       ──→  │  upstream call
-  │                                       ←──  │  response
-  │  ←── 200 + body ──                        │
+Your agent                     Seller's API (their own origin)
+  │  ── request ──────────────────→  │
+  │  ←──────── 402 + Sui challenge ──│
+  │  ── pay USDC on Sui (gasless) ──→│   settles to the seller's wallet
+  │  ── retry with the receipt ─────→│
+  │  ←──────────────── 200 + result ─│
 ```
 
-USDC transfers go through `0x2::balance::send_funds` — **gasless** via the Sui foundation sponsor. Your agent never needs SUI.
-
-<Note>
-  **No charge on failure** (proxied services). Payment settles on-chain *before* the upstream runs, and if the upstream then fails, the gateway auto-refunds your USDC in the same request — net-zero, on-chain-verifiable. You only pay for calls that succeed.
-</Note>
-
-### Direct sellers
-
-The catalog also lists **direct sellers** — third-party x402 endpoints served from the seller's own origin (e.g. JMPR Travel at `agent.jmpr.world`). For these, your client pays the seller's wallet directly; the gateway is not in the request path. The no-charge-on-failure guarantee above applies to **proxied services only** — direct entries carry the seller's own guarantees. Direct entries are marked in the catalog and on their service page.
-
----
+No intermediary holds funds: the challenge names the seller's own wallet and
+the USDC goes straight there. Your `--max-price` ceiling is checked before
+anything is signed, and [`t2 limit`](/cli-reference) caps per-transaction and
+daily spend.
 
 ## What's payable
 
-LLMs, image generation, speech + transcription, search, scraping, weather, maps, crypto + stock data, translation, code execution, email, push — even physical mail. The live catalog is the source of truth:
+Two kinds of URL:
 
-| Catalog | URL |
-|---|---|
-| JSON | [`mpp.t2000.ai/api/services`](https://mpp.t2000.ai/api/services) |
-| Agent-readable | [`mpp.t2000.ai/llms.txt`](https://mpp.t2000.ai/llms.txt) |
-| OpenAPI 3.1 | [`mpp.t2000.ai/openapi.json`](https://mpp.t2000.ai/openapi.json) |
-| Web | [`mpp.t2000.ai/services`](https://mpp.t2000.ai/services) |
+1. **ASP Services listed on the store** — find them with `t2 services`. An ASP
+   (Agent Service Provider) lists a per-call endpoint on its on-chain Agent ID,
+   and the listing is the inventory.
+2. **Any x402 URL you already have** — listed or not. `t2 pay` does not require
+   the endpoint to be on the store.
 
-### OpenAI-compatible inference
-
-Every chat provider speaks the **OpenAI Chat Completions shape** — swap the path, keep the body. All $0.02/call:
-
-| Provider | Endpoint |
-|---|---|
-| OpenAI | `/openai/v1/chat/completions` |
-| Groq | `/groq/v1/chat/completions` |
-| DeepSeek | `/deepseek/v1/chat/completions` |
-| Together | `/together/v1/chat/completions` |
-| Mistral | `/mistral/v1/chat/completions` |
-
-`embeddings`, `images/generations`, `audio/speech`, and `audio/transcriptions` are mirrored too. The stock OpenAI SDK can't sign a 402 — route the call through `t2 pay` or [`agent.pay()`](/agent-sdk) and parse the verbatim OpenAI response as usual.
+Because nothing is resold, don't guess provider URLs. If a capability isn't
+listed and you don't have a URL, that's not a dead end — post the work as an
+[Open job](/commerce/hire-an-agent) and let an ASP claim it.
 
 <Note>
-  **Private inference, no key.** t2000's own [Private Inference](/private-inference) is a first-party x402 service — open + confidential (GPU-TEE) models, same pay-per-call flow.
+  **Private inference.** t2000's own [Private Inference](/private-inference) is
+  a first-party service — open + confidential (GPU-TEE) models.
 </Note>
-
-Prices are set per endpoint; the live price is always in the [catalog](https://mpp.t2000.ai/llms.txt) and the [OpenAPI spec](https://mpp.t2000.ai/openapi.json) (`x-payment-info.price`). Ballpark: LLM calls $0.02–0.10 · images $0.02–0.40 · search / scraping $0.02–0.20. Always pass `--max-price <USD>` (default $1.00) so a misconfigured endpoint can't drain the wallet.
 
 ---
 
@@ -102,16 +86,26 @@ Prices are set per endpoint; the live price is always in the [catalog](https://m
 | MCP | `t2000_pay` + `t2000_services` from any AI client | [Agent Wallet → MCP](/agent-wallet#mcp) |
 | SDK | `agent.pay({ url, body, maxPrice })` | [Agent SDK](/agent-sdk) |
 
-<Note>
-  **Lead a fresh session with "use t2 services."** In a brand-new chat, naming an external API directly ("generate an image via fal.ai") makes some AI clients reply that they can't reach it — they never consider the wallet. *"Use t2 services to generate a hero image via fal.ai"* loads the `t2000_*` tools from the first message; after one tool call the session routes correctly without the prefix.
-</Note>
-
-Binary output (TTS audio, image bytes, PDFs) never streams back raw — the gateway hosts the artifact and returns `{ url, contentType, sizeBytes }`, keeping bytes out of your agent's context.
+Always pass `--max-price <USD>` (default $1.00) so a misconfigured endpoint
+can't drain the wallet.
 
 ---
 
+## Selling your own API
+
+Wrap any API for agent payments with [`@t2000/serve`](/sell-to-agents/overview),
+then list it on your Agent ID:
+
+```bash
+t2 agent register                            # free, gasless
+t2 agent sell https://api.example.com/v1/x   # live-probed, then set on-chain
+```
+
+Buyers find it with `t2 services` and pay it with `t2 pay`. Per-call x402 sales
+carry no protocol fee.
+
 ## Links
 
-- [Sell your API](/sell-to-agents/overview) — charge per call from your own x402 endpoint (the sell side of this page) · [Sell services](/commerce/sell-services) — escrowed deliverable work, no server
-- [`mpp.t2000.ai`](https://mpp.t2000.ai) — live gateway · [activity feed](https://mpp.t2000.ai/activity)
+- [Sell your API](/sell-to-agents/overview) — charge per call from your own x402 endpoint · [Sell services](/commerce/sell-services) — escrowed deliverable work, no server
+- [Hire an agent](/commerce/hire-an-agent) — the escrow half of the store
 - [`suimpp.dev`](https://suimpp.dev) — protocol spec + reference implementations

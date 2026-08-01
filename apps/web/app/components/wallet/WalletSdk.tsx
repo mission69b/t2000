@@ -101,7 +101,7 @@ export function WalletSdk() {
               <span style={{ color: "var(--ds-teal-700)" }}>pay</span>
               {"({\n  url: "}
               <span style={{ color: "var(--t2k-success)" }}>
-                {"'mpp.t2000.ai/openai/…'"}
+                {"'api.seller.example/v1/…'"}
               </span>
               {",\n  body,\n  maxPrice: "}
               <span style={{ color: "var(--fg-muted)" }}>0.10</span>

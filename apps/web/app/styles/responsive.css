@@ -1,7 +1,7 @@
 /* ============================================================
    responsive.css — mobile + tablet overrides
    ============================================================
-   Used across t2000.ai, mpp.t2000.ai, and suimpp.dev. Layout-only
+   Used across t2000.ai and suimpp.dev. Layout-only
    (colors and tokens come from the per-property stylesheet).
 
    React inlines `gridTemplateColumns: "repeat(3, 1fr)"` to the DOM as

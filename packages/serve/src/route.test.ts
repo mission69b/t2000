@@ -63,7 +63,7 @@ async function signPayment(
 function makeRoute(
   handler: (ctx: { body: unknown; payer?: string }) => unknown = () => ({ ok: true }),
 ) {
-  const serve = createServe({ payTo: PAY_TO, baseUrl: 'https://seller.example', report: false });
+  const serve = createServe({ payTo: PAY_TO, baseUrl: 'https://seller.example' });
   return serve
     .route({ path: 'search' })
     .paid('0.01')
@@ -100,7 +100,7 @@ describe('402 challenge (unpaid)', () => {
         resource: string;
       }>;
     };
-    // Exactly what apps/gateway/lib/seller-probe.ts requires to list:
+    // Exactly what the `t2 agent sell` listing probe requires:
     const entry = body.accepts.find((a) => a.scheme === 'exact' && a.network === 'sui:mainnet');
     expect(entry).toBeDefined();
     expect(entry?.payTo).toBe(PAY_TO);
@@ -132,7 +132,6 @@ describe('402 challenge (unpaid)', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const serve = createServe({
       payTo: PAY_TO,
-      report: false,
       rpcUrl: 'http://127.0.0.1:1', // unreachable on purpose
     });
     const route = serve
@@ -268,7 +267,7 @@ describe('paid request lifecycle (sign-then-settle, handler-then-settle)', () =>
 
 describe('unprotected routes', () => {
   it('serves without any payment machinery', async () => {
-    const serve = createServe({ payTo: PAY_TO, report: false });
+    const serve = createServe({ payTo: PAY_TO });
     const route = serve
       .route({ path: 'health' })
       .unprotected()
@@ -285,7 +284,7 @@ describe('builder validation', () => {
   });
 
   it('rejects malformed prices', () => {
-    const serve = createServe({ payTo: PAY_TO, report: false });
+    const serve = createServe({ payTo: PAY_TO });
     expect(() => serve.route({ path: 'a' }).paid('0')).toThrow(/positive decimal/);
     expect(() => serve.route({ path: 'a' }).paid('-1')).toThrow(/positive decimal/);
     expect(() => serve.route({ path: 'a' }).paid('0.0000001')).toThrow(/positive decimal/); // 7dp > USDC 6dp
@@ -294,18 +293,18 @@ describe('builder validation', () => {
 
   it('warns (but allows) prices above the $5 catalog listing cap', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const serve = createServe({ payTo: PAY_TO, report: false });
+    const serve = createServe({ payTo: PAY_TO });
     serve.route({ path: 'expensive' }).paid('10');
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('listing cap'));
   });
 
   it('requires .paid() or .unprotected() before .handler()', () => {
-    const serve = createServe({ payTo: PAY_TO, report: false });
+    const serve = createServe({ payTo: PAY_TO });
     expect(() => serve.route({ path: 'a' }).handler(() => ({}))).toThrow(/\.paid\(/);
   });
 
   it('registers built routes on the serve instance', () => {
-    const serve = createServe({ payTo: PAY_TO, report: false });
+    const serve = createServe({ payTo: PAY_TO });
     serve.route({ path: '/search/' }).paid('0.01').handler(() => ({}));
     expect(serve.routes.has('search')).toBe(true);
     expect(serve.routes.get('search')?.meta.priceUsdc).toBe('0.01');
@@ -333,34 +332,3 @@ describe('createServeFromEnv', () => {
   });
 });
 
-describe('activity-feed reporting', () => {
-  it('fires a best-effort report to mpp.t2000.ai after settle', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response('{}', { status: 200 }));
-
-    const serve = createServe({ payTo: PAY_TO, baseUrl: 'https://seller.example' }); // report defaults ON
-    const route = serve
-      .route({ path: 'search' })
-      .paid('0.01')
-      .handler(() => ({ ok: true }));
-
-    const requirements = await get402Requirements(route);
-    const { header } = await signPayment(requirements);
-    const res = await route(
-      post('https://seller.example/search', {}, { [X402_PAYMENT_HEADER]: header }),
-    );
-    expect(res.status).toBe(200);
-
-    const reportCall = fetchSpy.mock.calls.find(
-      (c) => String(c[0]) === 'https://mpp.t2000.ai/api/mpp/report',
-    );
-    expect(reportCall).toBeDefined();
-    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit).body)) as {
-      digest: string;
-      url: string;
-    };
-    expect(reportBody.digest).toBe('MOCKDIGEST123');
-    expect(reportBody.url).toBe('https://seller.example/search');
-  });
-});

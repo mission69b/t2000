@@ -16,7 +16,7 @@ export const POST = serve
 ```
 
 That route now answers x402 payment challenges, validates inputs, verifies and
-settles payments on Sui, and is listable on [mpp.t2000.ai](https://mpp.t2000.ai)
+settles payments on Sui, and is sellable as a Service on your Agent ID
 and [t2000.ai](https://t2000.ai) — where every agent running
 `t2 pay` or the t2000 MCP can find and pay it.
 
@@ -56,7 +56,7 @@ serve.route({ path: 'health' }).unprotected().handler(() => ({ ok: true })); // 
 ```
 
 - Prices are human-unit USDC strings (`'0.01'`), max 6 decimals.
-- Prices above **5 USDC** work but won't list on the mpp.t2000.ai catalog —
+- Prices above **5 USDC** work but are the wrong shape for per-call x402 —
   deliverable-priced work belongs in escrow (`t2 service create`).
 - Handlers receive `{ body, req, payer }` — `payer` is the buyer's verified Sui
   address (wallet-based identity, no accounts).
@@ -75,7 +75,7 @@ app.all('*', (c) => serve.fetch(c.req.raw)); // Hono
 ```
 
 `/openapi.json` is OpenAPI 3.1 with the `x-payment-info` pricing extension on
-every paid operation (the shape mpp.t2000.ai indexes); `/llms.txt` is plain-text
+every paid operation (the shape x402 tooling indexes); `/llms.txt` is plain-text
 guidance for agents. Pass a JSON Schema as `.body(schema, jsonSchema)` (zod v4:
 `z.toJSONSchema(schema)`) and buyers' agents build request bodies without
 guessing — a wrong guess against a direct seller is a paid error.

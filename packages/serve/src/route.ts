@@ -50,7 +50,6 @@ export interface RouteRuntime {
   store: DigestStore;
   baseUrl?: string;
   rpcUrl?: string;
-  report: boolean;
 }
 
 export interface RouteOptions {
@@ -58,10 +57,8 @@ export interface RouteOptions {
   description?: string;
 }
 
-const MPP_REPORT_URL = 'https://mpp.t2000.ai/api/mpp/report';
-const REPORT_TIMEOUT_MS = 2_000;
-
-/** Listing cap on mpp.t2000.ai (catalog-ingest price-cap gate). */
+/** Sanity cap on a per-call price — above this, the work is job-shaped
+ *  (escrow) rather than a per-call x402 Service. */
 const CATALOG_PRICE_CAP_USDC = 5;
 
 const CORS_HEADERS: Record<string, string> = {
@@ -128,7 +125,7 @@ function assertValidPrice(price: string, path: string): void {
   if (Number(price) > CATALOG_PRICE_CAP_USDC) {
     console.warn(
       `[serve] Route "${path}": price ${price} USDC is above the ${CATALOG_PRICE_CAP_USDC} USDC listing cap — ` +
-        'the route works, but it will not list on mpp.t2000.ai. Job-class work belongs in `t2 service create` (escrow).',
+        'the route works, but per-call x402 is the wrong shape for it. Job-class work belongs in `t2 service create` (escrow).',
     );
   }
 }
@@ -349,10 +346,6 @@ export class RouteBuilder<TBody = undefined> {
         // Digest-once already holds; challenge-once is defense in depth.
       }
 
-      if (runtime.report) {
-        reportPayment(settle.transaction, resource);
-      }
-
       const headers = new Headers(served.headers);
       headers.set(X402_PAYMENT_RESPONSE_HEADER, encodeX402Response(settle));
       return new Response(served.body, { status: served.status, headers });
@@ -400,16 +393,3 @@ async function respond402(
   }
 }
 
-/**
- * Best-effort activity-feed report (mpp.t2000.ai). The gateway verifies the
- * digest on-chain before recording anything, so this carries no trusted
- * data — a lost or duplicate report is harmless.
- */
-function reportPayment(digest: string, url: string): void {
-  void fetch(MPP_REPORT_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ digest, url }),
-    signal: AbortSignal.timeout(REPORT_TIMEOUT_MS),
-  }).catch(() => {});
-}

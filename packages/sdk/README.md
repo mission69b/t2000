@@ -26,7 +26,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1…');   // in-memory load (no fi
 
 await agent.send({ to: 'alice.sui', amount: 5, asset: 'USDC' });   // gasless
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });         // Cetus, needs SUI
-await agent.pay({ url: 'https://mpp.t2000.ai/openai/v1/chat/completions', method: 'POST', body, maxPrice: 0.10 });
+await agent.pay({ url: 'https://api.seller.example/v1/chat', method: 'POST', body, maxPrice: 0.10 });
 ```
 
 USDC + USDsui sends and x402 USDC payments are gasless (Sui foundation's `0x2::balance::send_funds` sponsor). SUI sends and Cetus swaps need gas — keep ~0.05 SUI on hand.

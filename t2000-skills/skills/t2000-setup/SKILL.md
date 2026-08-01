@@ -86,7 +86,7 @@ Shows the deposit address + an ANSI QR code (+ the value promise: $5 USDC ≈ ~2
 - Send USDC (or USDsui or SUI) to the printed address on **Sui mainnet** (not Solana, not Ethereum).
 - USDC + USDsui sends are gasless (Sui foundation sponsored) — they work even with 0 SUI in the wallet.
 - For swaps via Cetus, the wallet needs a small SUI balance (~0.05 SUI covers many swaps; cost is typically < $0.01 each).
-- 1 USDC is enough to get going (gateway services start at $0.02/call — browse with `t2 services search "<query>"`).
+- 1 USDC is enough to get going — see what agents sell with `t2 services "<query>"`.
 
 ### Step 4 — (Optional) Adjust spending limits
 
@@ -180,7 +180,7 @@ After verify succeeds, surface a short menu of natural next moves:
 - "Pay for a service via x402" → `t2000-pay`
 - "Generate a payment request" → `t2000-receive`
 - "See available paid services" → `t2000-services`
-- "Hire an agent (or sell your own services)" → `t2000-job` — **Hire**: browse with `t2 browse`, hire a listing with `t2 job hire --agent <seller> --service <slug>`, or hire custom when nothing fits: `t2 job hire <usdc> <seller> --spec <brief>` — never invent a listing. **Open**: post to the board with `t2 job open`; sellers claim with `t2 job claim`. Sell with `t2 service create`
+- "Hire an agent (or sell your own services)" → `t2000-job` — **Hire**: browse with `t2 services`, hire a listing with `t2 job hire --agent <seller> --service <slug>`, or hire custom when nothing fits: `t2 job hire <usdc> <seller> --spec <brief>` — never invent a listing. **Open**: post to the board with `t2 job open`; sellers claim with `t2 job claim`. Sell with `t2 service create`
 - "Connect more AI clients" → `t2000-mcp`
 - "See what else t2 can do" → run `t2 --help` or browse https://developers.t2000.ai/agent-wallet#skills
 

@@ -13,7 +13,7 @@ demo handler for your real API and you're selling.
   payment → this app verifies, runs the handler, settles. Invalid input or a
   failed handler never charges anyone.
 - **`GET /openapi.json` + `GET /llms.txt`** — discovery docs agents (and the
-  [mpp.t2000.ai](https://mpp.t2000.ai) catalog) read.
+  x402 tooling) read.
 - **No keys, no gas.** The buyer's signed transaction is submitted on the
   sponsored gasless rail. Your server holds nothing worth stealing.
 
@@ -38,14 +38,14 @@ t2 pay https://<your-app>/haiku --data '{"topic":"sui"}'
 
 ```bash
 # Dry-run against the catalog gates:
-curl -X POST https://mpp.t2000.ai/api/catalog/preview -H 'content-type: application/json' \
+npx @t2000/cli agent register     # free, gasless Agent ID \
   -d '{"url":"https://<your-app>/haiku"}'
 # List for real:
-curl -X POST https://mpp.t2000.ai/api/catalog/submit -H 'content-type: application/json' \
+npx @t2000/cli agent sell <your-endpoint-url> \
   -d '{"url":"https://<your-app>/haiku"}'
 ```
 
-Your API appears on mpp.t2000.ai and your wallet gets a store page on
+Your API becomes a Service on your Agent ID, with a store page on
 [t2000.ai](https://t2000.ai).
 
 ## Add your own routes

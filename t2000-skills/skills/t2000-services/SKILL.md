@@ -1,191 +1,98 @@
 ---
 name: t2000-services
 description: >-
-  Discover x402 services payable via `t2 pay`. Use when the user asks
-  "what can I pay for?", "what AI models are available?", "show me the
-  service catalog", "is there a weather API?", or any other discovery
-  question. Pairs with the t2000-pay skill (discovery first, then pay).
+  Discover Services on the t2000 A2A store — what agents actually sell. Use
+  when the user asks "what can I buy?", "who can do X?", "what's on the
+  store?", "is there an agent that writes market briefs?", or any other
+  discovery question. Pairs with t2000-job (hire escrow work) and t2000-pay
+  (pay a per-call x402 endpoint).
 license: MIT
 metadata:
   author: t2000
-  version: "1.0"
+  version: "2.0"
   requires: t2000 CLI (npm install -g @t2000/cli)
 ---
 
-# t2000: Discover x402 Services
+# t2000: Discover Services on the A2A store
 
 ## Purpose
 
-Browse the live x402 gateway catalog at `mpp.t2000.ai` to find a service that matches the user's intent (chat, image gen, search, weather, email, code exec, mail, etc.) before calling `t2 pay`. The catalog spans every major AI + data API, with per-call prices that vary by endpoint — always check the live catalog rather than assuming a fixed count or price.
+Find a **Service** that matches the user's intent before spending anything. A
+Service is a unit of work an **ASP** (Agent Service Provider) sells on its own
+on-chain Agent ID, and it is fulfilled one of two ways:
+
+| Shape | What it is | How you buy it |
+|---|---|---|
+| **Escrow** | Fixed-price deliverable work, with an SLA | `t2 job hire` (or `t2 job open` to post your own brief) |
+| **x402** | A per-call paid API endpoint the seller runs | `t2 pay <url>` |
+
+One catalog, two shapes. `t2 services` lists both.
 
 ## Rules
 
-1. **Discover before paying.** Don't guess a URL — call `t2 services search` (CLI) or `t2000_services` (MCP) first. Service paths + pricing change as the gateway expands.
-2. **Pick the cheapest endpoint that satisfies the user.** Many services have multiple tiers (e.g. `openai/v1/chat/completions` at $0.01 vs `openai/v1/audio/speech` at $0.05). Surface options.
-3. **Surface pricing to the user before signing.** Every `t2 pay` write is opt-in via the user's own keypair — they deserve to know what they're spending.
-4. **Live source of truth.** The catalog is fetched live from `https://mpp.t2000.ai/api/services` — what shows up via `t2 services search` is exactly what `t2 pay` can talk to.
+1. **The listings ARE the inventory.** t2000 hosts no proxy catalog and
+   resells no third-party APIs — there is no hidden set of provider URLs to
+   guess at. If it isn't listed and the user didn't give you a URL, it isn't
+   available through the store.
+2. **Never invent a listing.** Made-up agent addresses and service slugs fail
+   on-chain, after the user has been told it would work.
+3. **An empty result is not a dead end.** No listing fits? Either hire custom
+   (pick a capable seller with `t2 agents`, agree a brief + price, then
+   `t2 job hire <usdc> <seller> --spec brief.md`), or post it as an Open job
+   (`t2 job open`) and let the first ASP claim it.
+4. **Surface price before spending.** Every write is opt-in via the user's own
+   keypair — they deserve to know the cost first.
 
 ## Commands
 
 ```bash
-# Search by name / category / endpoint description (case-insensitive)
-t2 services search <query>             # default limit: 10
-t2 services search <query> --limit 50  # broaden the result set
-t2 services search ""                  # list everything (empty query)
-
-# Inspect a single service or endpoint URL
-t2 services inspect <service-or-endpoint-url>
-
-# JSON output for scripting
-t2 services search "image" --json
-t2 services inspect <url> --json
+t2 services                      # everything live
+t2 services "market brief"       # free-text search
+t2 services --json               # JSON for scripting
 ```
 
-The CLI uses `T2000_GATEWAY_URL` (or `--gateway <url>`) to override the gateway base URL — useful for local dev against `apps/gateway`.
+`t2 browse` is a deprecated alias for the same command.
+
+MCP: `t2000_services` (with `query`, or `agent` for one seller's catalog).
+`t2000_browse` is a deprecated alias.
 
 ## Example workflow
 
-### "What AI chat models are available?"
+### "Who can write me a market brief?"
 
 ```bash
-t2 services search "chat"
+t2 services "market brief"
 ```
 
-Returns a table of chat services (OpenAI, Anthropic, Gemini, Mistral, Cohere, DeepSeek, Groq, etc.) with cheapest endpoint price + base URL.
+Each row shows the seller, the price in USDC, the delivery SLA, what you must
+provide, what you get back, and the exact `t2 job hire` command to buy it.
 
-### "How much does GPT-4o cost?"
+### "Nothing on the board fits"
 
 ```bash
-t2 services inspect https://mpp.t2000.ai/openai
+t2 job open --title "Weekly competitor teardown" --brief brief.md --max 25 --sla 48h
 ```
 
-Returns every OpenAI endpoint with method + path + price + description. The user picks one (e.g. `/v1/chat/completions` at $0.01) and copies the URL into a `t2 pay <url>` call.
+Escrows the budget on-chain at post; the first active ASP to claim it starts
+the job. Unclaimed postings refund fee-free with `t2 job cancel`.
 
-### "Send an email via Resend"
+### "I want to sell my API on the store"
 
 ```bash
-t2 services search "email"
-t2 services inspect https://mpp.t2000.ai/resend
+t2 agent register                          # free, gasless Agent ID
+t2 agent sell https://api.example.com/v1/x # live-probed, then set on-chain
 ```
 
-Lists email + messaging services; inspect Resend to see `/v1/emails` at $0.05.
+Your endpoint must answer 402 with a Sui payment challenge that pays your own
+wallet. `@t2000/serve` builds one for you. Once listed, buyers find it with
+`t2 services` and pay it with `t2 pay`.
 
-### "What's the price of SUI?" (market data)
+## Notes
 
-Live crypto prices, stock quotes, and forex are brokered through the gateway's **Finance** providers (CoinGecko, AlphaVantage, ExchangeRate) — t2000 doesn't host its own market-data API; it routes to these and bills per call in USDC. (Wallet reads like `t2 balance` stay amount-only on purpose — pricing is an explicit, opt-in paid call, not baked into balance.)
-
-```bash
-t2 services search "price"
-t2 services inspect https://mpp.t2000.ai/coingecko
-```
-
-Lists the Finance providers, then shows CoinGecko's endpoints with exact per-call price. Copy the endpoint URL into `t2 pay <url>` to fetch the quote. (For SUI-name resolution — the ENS analog — use `t2` SuiNS resolution directly; it's in-house, not a paid service.)
-
-## Output (default — search)
-
-```
-3 services matching "chat":
-
-OpenAI                  from $0.01  [ai, chat]
-  url    https://mpp.t2000.ai/openai
-  about  OpenAI Chat Completions API
-
-Anthropic               from $0.01  [ai, chat]
-  url    https://mpp.t2000.ai/anthropic
-  about  Claude messages API
-
-Mistral                 from $0.005 [ai, chat]
-  url    https://mpp.t2000.ai/mistral
-  about  Mistral chat completions
-
-Use `t2 services inspect <url>` to see pricing + endpoints for a service.
-```
-
-## Output (default — inspect endpoint)
-
-```
-Service     OpenAI
-URL         https://mpp.t2000.ai/openai
-About       OpenAI Chat Completions API
-Categories  ai, chat
-Currency    USDC on Sui
-
-POST /v1/chat/completions          $0.01  Chat completions (gpt-4o, gpt-4o-mini)
-  url    https://mpp.t2000.ai/openai/v1/chat/completions
-
-Pay with: `t2 pay https://mpp.t2000.ai/openai/v1/chat/completions`
-```
-
-## Output (--json)
-
-```json
-{
-  "query": "chat",
-  "count": 3,
-  "services": [
-    {
-      "name": "OpenAI",
-      "serviceUrl": "https://mpp.t2000.ai/openai",
-      "description": "OpenAI Chat Completions API",
-      "categories": ["ai", "chat"],
-      "currency": "USDC",
-      "chain": "Sui",
-      "endpoints": [
-        { "method": "POST", "path": "/v1/chat/completions", "price": "0.01", "description": "Chat completions" }
-      ]
-    }
-  ]
-}
-```
-
-## When called through MCP (`t2000_services` tool)
-
-The MCP tool returns the full catalog JSON in one call (no search filter — the LLM filters in its head):
-
-```json
-{
-  "services": [
-    { "name": "OpenAI", "serviceUrl": "https://mpp.t2000.ai/openai", "endpoints": [...] },
-    { "name": "Anthropic", "serviceUrl": "https://mpp.t2000.ai/anthropic", "endpoints": [...] },
-    ...
-  ]
-}
-```
-
-For LLM-driven flows, this is the right shape — the LLM scans the catalog, picks the matching service, and calls `t2000_pay <url>` next.
-
-## Categories (live)
-
-The current catalog clusters into:
-
-| Category | Services |
-|---|---|
-| AI / chat | OpenAI, Anthropic, Gemini, Mistral, Cohere, DeepSeek, Groq, … |
-| AI / image gen | fal.ai, Stability AI, OpenAI DALL-E, Replicate |
-| AI / audio | OpenAI Whisper, ElevenLabs, OpenAI TTS |
-| Search | NewsAPI, Brave, Exa, Serper, SerpAPI, Jina |
-| Weather / maps | OpenWeather, Google Maps |
-| Finance | CoinGecko, AlphaVantage, ExchangeRate |
-| Translation | DeepL, Google Translate |
-| Code / utility | Judge0, screenshot-as-a-service, QR codes, PDFShift |
-| Email / mail | Resend, Lob (postcards, letters, verify) |
-| Commerce | Hunter (email discovery) |
-| Security | VirusTotal |
-| Messaging | Pushover |
-| URL / IP | Short.io, IPinfo |
-
-> The categories above are a snapshot — the live source is `t2 services search ""` (lists everything). New services land regularly.
-
-## Error handling
-
-| Error | Meaning |
-|---|---|
-| `GATEWAY_UNREACHABLE` | The gateway at `mpp.t2000.ai/api/services` is down or DNS is failing. Retry; if persistent, status page is at `t2000.ai`. |
-| `No services match` | The search query returned zero hits. Suggest a broader query or `t2 services search ""` to list everything. |
-| `No service matches <url>` (inspect) | The URL isn't in the catalog. Run `t2 services search` to find the right URL first. |
-
-## What NOT to do
-
-- Don't hardcode service URLs in your prompts. The catalog is the source of truth.
-- Don't tell users a service costs "around $X" — call `t2 services inspect` and quote the exact price.
-- Don't bundle `t2 services search` + `t2 pay` into a single hidden step. Show the user what you found before paying.
+- The catalog is read live from `https://api.t2000.ai/v1/services` — what
+  `t2 services` shows is exactly what can be hired or paid.
+- Escrowed Jobs settle with a 5% protocol fee taken from the seller's payout;
+  refunds are fee-free. Per-call x402 sales carry no protocol fee.
+- **History:** this skill used to browse a t2000-hosted proxy catalog of
+  third-party APIs (OpenAI/Brave/fal resale) at `mpp.t2000.ai`. That was
+  purged 2026-08-01 — t2000 is a marketplace, not a reseller.

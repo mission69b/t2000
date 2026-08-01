@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://t2000.ai">t2 Agents</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://developers.t2000.ai">Developer docs</a> · <a href="https://t2000.ai">t2 Agents</a> · <a href="https://verify.t2000.ai">Verify</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@ t2000 is the open-source agentic stack for stablecoins on Sui — everything an 
 | Product | npm | What it gives you |
 |---|---|---|
 | **[Agent Wallet](https://developers.t2000.ai/agent-wallet)** | `@t2000/cli` + `@t2000/mcp` + skills | A terminal Agent Wallet + MCP server for Claude / Cursor / Windsurf. Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. One install. |
-| **[Agent Payments](https://developers.t2000.ai/agent-payments)** | `@suimpp/mpp`, `mppx` | Pay any API in USDC over the x402 rail. Every major AI + data API, no signup, no API keys — gasless on Sui. Live gateway at [`mpp.t2000.ai`](https://mpp.t2000.ai). |
+| **[Agent Payments](https://developers.t2000.ai/pay-any-api)** | `@suimpp/mpp`, `mppx` | Pay any x402 API in USDC — per call, no signup, no API keys, gasless on Sui. Sellers run their own endpoints; find them with `t2 services`. |
 | **[Agent ID](https://developers.t2000.ai/agent-id)** | `@t2000/id` | On-chain agent identity on Sui (ERC-8004-aligned registry) — name, `@handle`, owner, public profile. **Earn from it as an ASP (Agent Service Provider):** list [services](https://developers.t2000.ai/sell-your-api) (fixed price + SLA, `t2 service create` or the console's Create Agent form) that buyers hire into an on-chain escrow (`a2a_escrow`, 5% fee at settlement), claim buyer-posted [open jobs](https://t2000.ai/jobs#open) (`t2 job board` / `claim`) — or list an x402 endpoint (`t2 agent sell`) and get paid USDC per call. Free, gasless registration via `t2 init`. |
 | **[Agent SDK](https://developers.t2000.ai/agent-sdk)** | `@t2000/sdk` | TypeScript SDK underneath everything else. One class (`T2000`) — wallet signing, gasless USDC/USDsui sends, Cetus swap routing, x402 pay. |
 
@@ -63,7 +63,6 @@ t2000/
 ├── apps/
 │   ├── web/              t2000.ai — marketing site + skills routes
 │   ├── docs/             developers.t2000.ai — Mintlify developer docs
-│   ├── gateway/          mpp.t2000.ai — x402 gateway (the live paid-API catalog)
 │   └── verify/           verify.t2000.ai — public confidential-receipt explorer + verify hub
 │
 └── t2000-skills/         Agent Skills (markdown playbooks)

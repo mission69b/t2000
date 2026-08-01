@@ -2,7 +2,7 @@
 
 /* Copy-in design tokens (design-tokens/tokens.css, the canonical VALUES
    source — geist-ds.mdc) + the family marketing chrome, same trio as
-   t2000.ai / mpp.t2000.ai. */
+   t2000.ai. */
 @import "./styles/tokens.css";
 @import "./styles/type.css";
 @import "./styles/page.css";

@@ -1,4 +1,4 @@
-import { DEVELOPERS_URL, GATEWAY_URL, SUIMPP_URL } from "../../data/t2k";
+import { AGENTS_URL, DEVELOPERS_URL, SUIMPP_URL } from "../../data/t2k";
 import { Breadcrumb } from "../site/Breadcrumb";
 
 interface Entry {
@@ -63,18 +63,18 @@ export function PaymentsHero() {
               <span style={{ color: "var(--t2k-accent)" }}>in USDC.</span>
             </h1>
             <p className="t2k-section-sub" style={{ marginTop: 26 }}>
-              Your agent hits an endpoint. The gateway prices it. USDC settles
+              Your agent hits an endpoint. The seller prices it. USDC settles
               in under a second. No keys. No accounts.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">
               <a
-                href={GATEWAY_URL}
+                href={AGENTS_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="t2k-btn t2k-btn--blue t2k-btn--lg"
               >
-                Browse services&nbsp;↗
+                Browse the store&nbsp;↗
               </a>
               <a
                 href={`${DEVELOPERS_URL}/agent-payments`}
@@ -164,7 +164,7 @@ function ActivityFeed({ entries }: { entries: Entry[] }) {
           style={{ color: "var(--fg-subtle)" }}
         >
           <span className="t2k-dot" />
-          mpp.t2000.ai · live
+          x402 on Sui · live
         </span>
         <span className="flex-1" />
         <span

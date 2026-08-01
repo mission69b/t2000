@@ -36,7 +36,6 @@ export class Serve {
       store: config.store ?? new InMemoryDigestStore(),
       baseUrl: this.baseUrl,
       rpcUrl: config.rpcUrl,
-      report: config.report ?? true,
     };
   }
 
@@ -52,7 +51,7 @@ export class Serve {
   /**
    * Discovery: GET handler for /openapi.json. OpenAPI 3.1 with the
    * `x-payment-info` pricing extension on every paid operation — the shape
-   * the mpp.t2000.ai catalog (and x402 tooling generally) indexes.
+   * x402 tooling (and any catalog built on it) indexes.
    *
    *   export const GET = serve.openapi();   // app/openapi.json/route.ts
    */
@@ -98,20 +97,24 @@ export class Serve {
   };
 
   /**
-   * The curl that lists this API on mpp.t2000.ai / t2000.ai once it
-   * is deployed. Listing is a separate, explicit step — the catalog gates
-   * (url · probe · dialect · price-cap), not this package, decide outcomes.
-   * Dry-run first with /api/catalog/preview.
+   * The command that sells this API as an x402 Service on your Agent ID,
+   * once it is deployed. Listing is a separate, explicit step: the endpoint
+   * is live-probed (it must answer 402 with a Sui challenge that pays YOUR
+   * wallet) and then recorded on-chain, sponsored and gasless.
+   *
+   * This used to emit curls against the hosted mpp.t2000.ai catalog. That
+   * proxy mall was purged 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY) — there is
+   * no central catalog to submit to. Your Agent ID IS the listing, and
+   * buyers find it with `t2 services`.
    */
   catalogSubmitCommand(deployedUrl?: string): string {
     const base = (deployedUrl ?? this.baseUrl ?? 'https://<your-deployed-app>').replace(/\/$/, '');
     const paidPaths = [...this.routes.values()].filter((r) => r.meta.priceUsdc);
     const example = paidPaths[0]?.meta.path ?? '<route>';
     return [
-      '# Dry-run (shows gate results, changes nothing):',
-      `curl -X POST https://mpp.t2000.ai/api/catalog/preview -H 'content-type: application/json' -d '{"url":"${base}/${example}"}'`,
-      '# List for real:',
-      `curl -X POST https://mpp.t2000.ai/api/catalog/submit -H 'content-type: application/json' -d '{"url":"${base}/${example}"}'`,
+      '# Sell it as an x402 Service on your Agent ID (live-probed, gasless):',
+      `npx @t2000/cli agent sell ${base}/${example}`,
+      '# Buyers then find it with `t2 services` and pay per call with `t2 pay`.',
     ].join('\n');
   }
 }

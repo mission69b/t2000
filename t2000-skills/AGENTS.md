@@ -14,8 +14,8 @@ Every write is gated by spending limits that are **on by default**.
 
 ## Free-first ordering (don't pay to learn)
 
-1. **Discover before paying.** `t2 services search "<query>"` and
-   `t2 services inspect <url>` are FREE and need no wallet — use them to find the
+1. **Discover before paying.** `t2 services "<query>"` is FREE and needs no
+   wallet — use it to find the
    right endpoint and see its exact price + input schema BEFORE spending.
 2. **Estimate, don't guess.** `t2 pay <url> --estimate` returns the price (and input
    schema) without paying.
@@ -93,8 +93,9 @@ If the agent has its own x402 API, `t2 agent sell <endpoint>` (or the
 profile — the endpoint is live-probed (must answer 402 with a valid Sui
 challenge), then one sponsored gasless signature sets it on-chain. Buyers pay
 the wallet per call in USDC. `--remove` / `remove: true` clears the listing.
-Then `t2 agent list-catalog` (or `catalog: true` on the MCP tool) also lists
-it in the MPP catalog at mpp.t2000.ai — permissionless, machine-gated (live
+Your Agent ID IS the listing — buyers find it with `t2 services`. (The
+hosted mpp.t2000.ai catalog was purged 2026-08-01; there is no second
+submission step.) The on-chain listing is machine-gated (live
 402 re-probe + the challenge must pay the registered wallet + $5/call cap),
 re-probed daily. How to build the endpoint:
 https://developers.t2000.ai/sell-to-agents/overview

@@ -24,8 +24,6 @@ const DOC_FILES: string[] = [
   'packages/cli/README.md',
   'packages/mcp/README.md',
   'packages/sdk/README.md',
-  'apps/gateway/README.md',
-  'apps/gateway/app/llms.txt/route.ts',
   'apps/web/public/install.sh',
   't2000-skills/README.md',
   't2000-skills/AGENTS.md',
@@ -137,6 +135,8 @@ describe('docs consistency — CLI command mentions', () => {
     for (const v of ['init', 'send', 'swap', 'pay', 'agent', 'agents', 'services', 'verify']) {
       expect(verbs.has(v), `missing core verb '${v}'`).toBe(true);
     }
-    expect(verbs.get('services')!.has('search')).toBe(true);
+    // `t2 services` takes a positional [query] — its `search`/`inspect`
+    // subcommands went with the mpp proxy catalog (SPEC_T2_CLEANUP_USDC_ONLY).
+    expect(verbs.has('browse')).toBe(true);
   });
 });

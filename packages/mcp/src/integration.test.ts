@@ -93,9 +93,9 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     await server.close();
   });
 
-  it('lists the 11 core tools (+3 chat tools registered separately in production)', async () => {
+  it('lists the 10 core tools (+3 chat tools registered separately in production)', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(11);
+    expect(tools).toHaveLength(10);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -108,21 +108,21 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
       't2000_pay',
       't2000_receive',
       't2000_send',
-      't2000_services',
       't2000_swap',
     ]);
   });
 
-  it('surfaces server instructions that prime MPP routing (cold-start fix)', () => {
+  it('surfaces server instructions that prime store discovery', () => {
     const instructions = client.getInstructions();
     expect(instructions).toBeTruthy();
-    // Names the MPP capability + the providers that triggered the cold-start miss.
-    expect(instructions).toContain('MPP');
-    expect(instructions).toContain('fal.ai');
-    expect(instructions).toContain('ElevenLabs');
+    expect(instructions).toContain('t2000_services');
     expect(instructions).toContain('t2000_pay');
-    // The load-bearing steer: do NOT decline a reachable third-party API.
-    expect(instructions).toMatch(/DO NOT say you cannot reach|cannot reach that service|isn't on an allowlist/i);
+    // The store IS the inventory: instructions must NOT promise access to named
+    // third-party providers we do not host — the purged mpp proxy mall is what
+    // made that claim true (SPEC_T2_CLEANUP_USDC_ONLY, 2026-08-01).
+    expect(instructions).not.toContain('fal.ai');
+    expect(instructions).not.toContain('ElevenLabs');
+    expect(instructions).toMatch(/does not proxy or resell/i);
   });
 
   it('exposes one skill-* prompt per SKILL.md on disk', async () => {

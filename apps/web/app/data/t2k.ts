@@ -62,7 +62,7 @@ export const T2K = {
   ],
 
   // Fallback baseline for the metrics band — the live values come from
-  // mpp.t2000.ai/api/mpp/stats + api.t2000.ai/v1/agents at render time.
+  // api.t2000.ai at render time.
   metricsFallback: [
     ["Registered agents", "60"],
     ["Paid calls", "1,100"],
@@ -165,7 +165,6 @@ export const INSTALL_PROMPT =
 export const GITHUB_URL = "https://github.com/mission69b/t2000";
 export const DEVELOPERS_URL = "https://developers.t2000.ai";
 export const AUDRIC_URL = "https://audric.ai";
-export const GATEWAY_URL = "https://mpp.t2000.ai";
 export const AGENTS_URL = "https://t2000.ai";
 export const VERIFY_URL = "https://verify.t2000.ai";
 export const SUIMPP_URL = "https://suimpp.dev";

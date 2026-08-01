@@ -48,7 +48,7 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });
 // Speaks both dialects: x402 `accepts[]` body (preferred) and the MPP
 // WWW-Authenticate header. JSON string bodies default to content-type: application/json.
 const result = await agent.pay({
-  url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+  url: 'https://api.example-asp.com/v1/chat/completions',
   method: 'POST',
   body: JSON.stringify({ model: 'gpt-4o-mini', messages: [/* … */] }),
   maxPrice: 0.10,
@@ -255,7 +255,7 @@ t2000 builds Sui transactions with thin builders — no protocol SDK dependencie
 |---|---|---|
 | Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, x402 USDC payments |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
-| x402 / MPP | `@suimpp/mpp/x402` (sign-then-settle) + `mppx` header-dialect fallback | Paid API access — every major AI + data API on `mpp.t2000.ai`, plus direct x402 sellers at their own origin |
+| x402 / MPP | `@suimpp/mpp/x402` (sign-then-settle) + `mppx` header-dialect fallback | Paid API access — any x402 seller's endpoint, at their own origin |
 
 ---
 

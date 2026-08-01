@@ -46,13 +46,14 @@ describe('read tools (v4 surface)', () => {
     registerReadTools(server, agent);
   });
 
-  it('registers 6 read tools', () => {
-    expect(tools.size).toBe(6);
+  it('registers 5 read tools', () => {
+    // t2000_services lives in commerce.ts now — it reads the STORE, not the
+    // purged mpp proxy catalog (SPEC_T2_CLEANUP_USDC_ONLY, 2026-08-01).
+    expect(tools.size).toBe(5);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
     expect(tools.has('t2000_receive')).toBe(true);
     expect(tools.has('t2000_history')).toBe(true);
-    expect(tools.has('t2000_services')).toBe(true);
     expect(tools.has('t2000_agents')).toBe(true);
   });
 
@@ -115,27 +116,4 @@ describe('read tools (v4 surface)', () => {
     expect(data.message).toBe('RPC timeout');
   });
 
-  it('t2000_services fetches the catalog from mpp.t2000.ai', async () => {
-    const mockServices = [
-      { id: 'openai', name: 'OpenAI', endpoints: [{ path: '/v1/chat/completions', price: '0.01' }] },
-    ];
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue(mockServices),
-    }));
-    const handler = tools.get('t2000_services')!;
-    const result = await handler({});
-    const data = JSON.parse(result.content[0].text);
-    expect(data).toHaveLength(1);
-    expect(data[0].id).toBe('openai');
-    vi.unstubAllGlobals();
-  });
-
-  it('t2000_services returns error on fetch failure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
-    const handler = tools.get('t2000_services')!;
-    const result = await handler({});
-    expect(result.isError).toBe(true);
-    vi.unstubAllGlobals();
-  });
 });

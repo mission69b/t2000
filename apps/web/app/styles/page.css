@@ -437,7 +437,7 @@
   /* ============================================================
      LEGACY SHIMS — classes used by pre-redesign components.
      Remove each once its consumers are ported (Phase 1: apps/web,
-     Phase 2: apps/gateway of the family design rollout).
+     Phase 2 of the family design rollout).
      ============================================================ */
 
   /* Border-strengthen — interactive cards. */

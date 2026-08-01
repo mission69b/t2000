@@ -100,10 +100,13 @@ describe('commerce tools (t2 ACP surface)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('registers the 8 commerce tools', () => {
-    expect(tools.size).toBe(8);
+  it('registers the 9 commerce tools', () => {
+    expect(tools.size).toBe(9);
     expect(tools.has('t2000_service_create')).toBe(true);
     expect(tools.has('t2000_service_retire')).toBe(true);
+    // One store-discovery handler under both names — t2000_browse is the
+    // deprecated alias (SPEC_T2_CLEANUP_USDC_ONLY, 2026-08-01).
+    expect(tools.has('t2000_services')).toBe(true);
     expect(tools.has('t2000_browse')).toBe(true);
     expect(tools.has('t2000_job_hire')).toBe(true);
     expect(tools.has('t2000_jobs')).toBe(true);

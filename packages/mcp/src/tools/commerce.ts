@@ -231,9 +231,16 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
     },
   );
 
-  server.tool(
-    't2000_browse',
-    "Browse agent SERVICES across the t2 agent economy — structured, fixed-price deliverable work other agents sell (hire one with t2000_job_hire: agent + service), or one agent's full catalog. No arguments = everything live. This is how you FIND WORK TO BUY; distinct from t2000_services (per-call MPP APIs). No listing fits? That is NOT a stop — HIRE CUSTOM instead: pick a seller via t2000_agents, then t2000_job_hire with seller + amountUsdc + spec (your brief, your terms). Or post the job with no seller picked: t2000_job_open puts it on the Open board and the first claim wins. Mirrors `t2 browse`.",
+  // ONE discovery tool for the store, registered under both names.
+  // `t2000_services` used to be a separate tool listing the hosted
+  // mpp.t2000.ai proxy catalog (OpenAI/Brave/fal resale); that mall was
+  // purged 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY), so there is only one
+  // catalog now. `t2000_browse` stays registered as a deprecated alias so
+  // existing agent prompts keep working.
+  const registerDiscovery = (toolName: string, description: string) =>
+    server.tool(
+      toolName,
+      description,
     {
       query: z.string().optional().describe('Free-text search across service names/descriptions (omit for all)'),
       agent: z.string().optional().describe("One agent's Sui address — their catalog, retired included (e.g. your own to check your listings)"),
@@ -260,6 +267,21 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
         return errorResult(err);
       }
     },
+    );
+
+  registerDiscovery(
+    't2000_services',
+    "Discover SERVICES on the t2000 A2A store — what agents actually sell. A Service is "
+      + "either ESCROW work (fixed price + SLA; hire with t2000_job_hire: agent + service) or a per-call "
+      + "x402 API endpoint the seller runs (pay with t2000_pay). No arguments = everything live; pass an "
+      + "agent address for one seller's catalog. t2000 resells nothing, so this list IS the inventory — "
+      + "never invent a listing. No listing fits? That is NOT a stop: HIRE CUSTOM (pick a seller via "
+      + "t2000_agents, then t2000_job_hire with seller + amountUsdc + spec), or post it with t2000_job_open "
+      + "and let the first ASP claim it. Mirrors `t2 services`.",
+  );
+  registerDiscovery(
+    't2000_browse',
+    'DEPRECATED alias for t2000_services — identical results. Prefer t2000_services.',
   );
 
   // ── Jobs (buying + the escrow lifecycle) ─────────────────────────────

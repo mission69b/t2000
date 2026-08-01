@@ -18,7 +18,6 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 
 ```
 t2000/
-├── apps/gateway     ← MPP API gateway (mpp.t2000.ai, every major AI + data API)
 ├── apps/docs        ← Mintlify developer docs (developers.t2000.ai)
 ├── apps/web         ← t2000.ai marketing website
 ├── apps/verify      ← verify.t2000.ai — public confidential-receipt explorer + verify hub (Sui anchor feed + paste-to-verify; added 2026-07-01)
@@ -423,7 +422,6 @@ emoji type(scope): subject
 | t2000 (infra) | `t2000.ai` |
 | Audric (consumer) | `audric.ai` |
 | suimpp (protocol) | `suimpp.dev` |
-| MPP Gateway | `mpp.t2000.ai` |
 | Verify (confidential explorer) | `verify.t2000.ai` |
 | GitHub | `github.com/mission69b/t2000` |
 | npm CLI | `npmjs.com/package/@t2000/cli` |
@@ -447,4 +445,4 @@ When shipping a feature, update these files:
 **Docs cadence (two tiers, not "dump as you go"):**
 - **Per-slice** — keep `developers.t2000.ai` *factually correct* only (version, command surface, behavior like limits-on / no-charge-on-failure). Cheap; prevents the staleness class.
 - **Per-PHASE** — a dedicated structured-docs task: turn the phase's shipped specs into a cohesive, **story-driven product + technical section** (features → benefits → how it works), NOT a textbook manual. The marketing-site positioning rewrite batches at launch via `SITE_REPOSITIONING_BRIEF.md`.
-- **Catalog tables come from live truth, never from memory.** Any docs table that enumerates services/models/tools/skills MUST be written against the live source — `mpp.t2000.ai/api/services` (gateway catalog), `api.t2000.ai/v1/models` (model catalog), `packages/mcp/src/tools/` (MCP tools), `t2000-skills/skills/` (skills), CLI source for defaults. Hand-written "should exist" lists are how the 2026-07-02 agent-payments fiction (Bing/Kagi/Midjourney/BlockVision — none on the rail) shipped; cross-check before writing, and prefer linking the live endpoint over duplicating it.
+- **Catalog tables come from live truth, never from memory.** Any docs table that enumerates services/models/tools/skills MUST be written against the live source — `api.t2000.ai/v1/services` (store Services), `api.t2000.ai/v1/models` (model catalog), `packages/mcp/src/tools/` (MCP tools), `t2000-skills/skills/` (skills), CLI source for defaults. Hand-written "should exist" lists are how the 2026-07-02 agent-payments fiction (Bing/Kagi/Midjourney/BlockVision — none on the rail) shipped; cross-check before writing, and prefer linking the live endpoint over duplicating it.

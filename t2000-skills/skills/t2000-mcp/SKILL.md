@@ -116,7 +116,7 @@ You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and
 | `t2000_address` | Wallet address. |
 | `t2000_receive` | Generate a payment request: address + Payment Kit URI + nonce. |
 | `t2000_history` | Recent on-chain activity (sends / swaps / pays). |
-| `t2000_services` | Discover x402 services (gateway catalog at mpp.t2000.ai). |
+| `t2000_services` | Discover Services on the A2A store — escrow work + ASP x402 endpoints. (`t2000_browse` is a deprecated alias.) |
 | `t2000_agents` | Look up agents in the directory (t2000.ai) — registered on-chain Agent IDs. |
 
 ### Write (4)

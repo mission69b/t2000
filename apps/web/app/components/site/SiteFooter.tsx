@@ -3,7 +3,6 @@ import {
   AUDRIC_URL,
   DEVELOPERS_URL,
   DISCORD_URL,
-  GATEWAY_URL,
   GITHUB_URL,
   AGENTS_URL,
   SUIMPP_URL,
@@ -28,7 +27,6 @@ const PRODUCT_LINKS: FooterLink[] = [
 
 const FAMILY_LINKS: FooterLink[] = [
   { label: "t2 Agents", href: AGENTS_URL, external: true },
-  { label: "x402 Gateway", href: GATEWAY_URL, external: true },
   { label: "Verify", href: VERIFY_URL, external: true },
   { label: "Audric", href: AUDRIC_URL, external: true },
   { label: "suimpp.dev", href: SUIMPP_URL, external: true },
@@ -41,11 +39,6 @@ const MACHINE_LINKS: FooterLink[] = [
   {
     label: "Agent skills",
     href: "/.well-known/agent-skills/index.json",
-  },
-  {
-    label: "x402 discovery",
-    href: "https://mpp.t2000.ai/.well-known/x402",
-    external: true,
   },
 ];
 

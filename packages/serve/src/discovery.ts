@@ -4,7 +4,8 @@ import type { Serve } from './serve.js';
 // ---------------------------------------------------------------------------
 // Discovery docs — /openapi.json + /llms.txt.
 //
-// The shapes here are graded by the catalog's ingest (apps/gateway/lib/
+// The shapes here are what the on-chain listing probe grades (the check
+// behind `t2 agent sell`) (was: apps/gateway/lib/
 // catalog-ingest.ts `gradeListing`): a warning-free listing needs info.title,
 // a one-paragraph info.description, a flat string `x-payment-info.price` per
 // paid operation, and an application/json requestBody schema with typed

@@ -26,8 +26,7 @@ function makeServe() {
     payTo: PAY_TO,
     baseUrl: 'https://api.example.com',
     name: 'Example Search',
-    description: 'Web search for agents, paid per call.',
-    report: false,
+    description: 'Web search for agents, paid per call.'
   });
   serve
     .route({ path: 'search', description: 'Search the web' })
@@ -97,7 +96,7 @@ describe('openapi.json', () => {
   });
 
   it('falls back to the request origin when baseUrl is unset', async () => {
-    const serve = createServe({ payTo: PAY_TO, report: false });
+    const serve = createServe({ payTo: PAY_TO });
     serve.route({ path: 'a' }).paid('1').handler(() => ({}));
     const res = serve.openapi()(new Request('https://deployed.example/openapi.json'));
     const doc = (await res.json()) as { servers: Array<{ url: string }> };

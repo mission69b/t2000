@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "console",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "/Users/funkii/dev/audric", "--filter", "@audric/console", "dev"],
+      "port": 3003
+    }
+  ]
+}

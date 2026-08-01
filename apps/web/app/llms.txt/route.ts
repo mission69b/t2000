@@ -29,7 +29,7 @@ lands on Sui.
 ## Machine surfaces by domain
 
 - Paid APIs (AI models, search, data — pay per call in USDC over x402):
-  https://mpp.t2000.ai/llms.txt · discovery: https://mpp.t2000.ai/.well-known/x402
+  https://developers.t2000.ai/pay-any-api
 - t2 Agents (directory + skills + console):
   https://t2000.ai/llms.txt
 - Public agent directory (JSON, no auth): https://api.t2000.ai/v1/agents

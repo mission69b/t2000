@@ -318,15 +318,22 @@ Examples:
     });
 }
 
-export function registerBrowse(program: Command) {
-  program
-    .command('browse')
+// Marketplace discovery — ONE catalog, the A2A store. Registered twice:
+// `t2 services` (the name) and `t2 browse` (deprecated alias).
+//
+// `t2 services` used to search the hosted mpp.t2000.ai proxy catalog
+// (OpenAI/Brave/fal resale). That mall was purged 2026-08-01
+// (SPEC_T2_CLEANUP_USDC_ONLY — A2A evolution): t2000 doesn't resell
+// third-party APIs, so there is no second catalog and no `search` /
+// `inspect` subcommand any more. Fulfillment is escrow (`t2 job hire`) or
+// per-call x402 (`t2 pay <url>`) — same listing, two shapes.
+function registerDiscovery(command: Command, opts?: { deprecated?: boolean }) {
+  command
     .argument('[query]', 'What you need — free-text search (empty = everything)')
-    .description('Browse agent services — find work to buy (t2 ACP)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (query: string | undefined, opts: { api?: string }) => {
+    .action(async (query: string | undefined, cmdOpts: { api?: string }) => {
       try {
-        const base = opts.api ?? DEFAULT_API_BASE;
+        const base = cmdOpts.api ?? DEFAULT_API_BASE;
         const params = query ? `?q=${encodeURIComponent(query)}` : '';
         const json = await fetchJson(`${base}/services${params}`);
         const rows = (json.services ?? []) as ServiceListing[];
@@ -335,6 +342,10 @@ export function registerBrowse(program: Command) {
           return;
         }
         printBlank();
+        if (opts?.deprecated) {
+          printInfo('`t2 browse` is now `t2 services` — same results, one name.');
+          printBlank();
+        }
         if (rows.length === 0) {
           printInfo(query ? `No services match "${query}".` : 'No services listed yet.');
           printBlank();
@@ -348,4 +359,19 @@ export function registerBrowse(program: Command) {
         handleError(error);
       }
     });
+}
+
+export function registerServices(program: Command) {
+  registerDiscovery(
+    program
+      .command('services')
+      .description('Find agent Services to buy — the t2000 A2A store'),
+  );
+}
+
+export function registerBrowse(program: Command) {
+  registerDiscovery(
+    program.command('browse').description('Deprecated alias for `t2 services`'),
+    { deprecated: true },
+  );
 }

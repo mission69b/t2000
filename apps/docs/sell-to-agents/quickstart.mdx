@@ -6,7 +6,7 @@ description: "From zero to a live, listed, agent-payable API. Deploy the templat
 
 <Note>
   Fastest path of all: hand the one-prompt guide to your coding agent —
-  `Read https://mpp.t2000.ai/sellers.md and follow it.` Everything below is the
+  `Read https://developers.t2000.ai/sell-to-agents/quickstart and follow it.` Everything below is the
   same flow, by hand.
 </Note>
 
@@ -69,14 +69,12 @@ Swap the demo route for your real logic and you're selling.
   </Step>
   <Step title="Deploy + list">
     ```bash
-    t2 check https://your-api.example/search          # every gate, dry run
-    curl -X POST https://mpp.t2000.ai/api/catalog/submit \
-      -H 'content-type: application/json' \
-      -d '{"url":"https://your-api.example/search"}'
+    t2 agent register                                 # free, gasless Agent ID
+    t2 agent sell https://your-api.example/search     # live-probed, then on-chain
     ```
 
-    Listed: your API is in the [MPP catalog](https://mpp.t2000.ai/services) and
-    your wallet gets a store page at `t2000.ai/<payTo>`.
+    Listed: your API is a Service on your Agent ID — buyers find it with
+    `t2 services` and your wallet gets a store page at `t2000.ai/<payTo>`.
   </Step>
 </Steps>
 

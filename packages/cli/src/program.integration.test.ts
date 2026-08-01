@@ -382,16 +382,17 @@ describeOrSkip('CLI integration — mcp install + uninstall round-trip', () => {
 });
 
 describeOrSkip('CLI integration — services + skills arg validation', () => {
-  it('t2 services search (no query) exits 1', () => {
-    const r = runCli(['services', 'search']);
-    expect(r.code).toBe(1);
-    expect(r.stderr).toMatch(/required|missing/i);
-  });
-
-  it('t2 services inspect (no url) exits 1', () => {
-    const r = runCli(['services', 'inspect']);
-    expect(r.code).toBe(1);
-    expect(r.stderr).toMatch(/required|missing/i);
+  // `t2 services` is store discovery now: a bare call lists everything, and
+  // the query is optional — so there is no arg-validation case to assert.
+  // Its old `search`/`inspect` subcommands went with the mpp proxy catalog
+  // (SPEC_T2_CLEANUP_USDC_ONLY, 2026-08-01).
+  it('t2 services --help resolves with no subcommands', () => {
+    const r = runCli(['services', '--help']);
+    expect(r.code).toBe(0);
+    // A positional [query], not a command group — the gateway-era
+    // `search`/`inspect` subcommands are gone, so there is no Commands block.
+    expect(r.stdout).toMatch(/\[query\]/);
+    expect(r.stdout).not.toMatch(/^Commands:/m);
   });
 
   it('t2 send (no args) exits 1', () => {

@@ -16,9 +16,9 @@
                         │ Bearer sk-…                            │ 402 → pay USDC → retry
                         ▼                                        ▼
         ┌───────────────────────────────┐        ┌───────────────────────────────┐
-        │   RAIL 1 — PRIVATE INFERENCE  │        │    RAIL 2 — x402 GATEWAY      │
-        │   api.t2000.ai/v1             │        │    mpp.t2000.ai               │
-        │   OpenAI-compatible · ZDR     │        │    every major AI + data API  │
+        │   RAIL 1 — PRIVATE INFERENCE  │        │    RAIL 2 — x402 SERVICES     │
+        │   api.t2000.ai/v1             │        │    the seller's own origin    │
+        │   OpenAI-compatible · ZDR     │        │    listed on their Agent ID   │
         │   + confidential GPU-TEE tier │        │    pay-per-call USDC, gasless │
         └──────────────┬────────────────┘        └──────────────┬────────────────┘
                        │ receipts + anchors                     │ settlement + verify
@@ -40,7 +40,6 @@ Consumers of the rails: **Audric** (audric.ai, consumer AI app — separate repo
 | Domain | App | Repo | Hosting | What it serves |
 |---|---|---|---|---|
 | `api.t2000.ai` | `/v1` routes in audric web-v3 | audric | Vercel (shared project with audric.ai) | Private Inference: chat completions, models, ACI receipts/attestation |
-| `mpp.t2000.ai` | `apps/gateway` | t2000 | Vercel (isolated project + DB) | x402 gateway: catalog, 402 endpoints, explorer (`/activity` 301s → t2000.ai/activity) |
 | `t2000.ai` | `apps/console` | audric | Vercel | The A2A store: Scan (economy dashboard) + agent store, services + jobs board, console (Create Agent · services · USDC Passport · ownership). USDC only — Capital, inference credit and PI keys were purged 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY) |
 | `t2000.ai` | `apps/web` | t2000 | Vercel | Marketing site + skills served as markdown (`/skills/*`, `feed.json`) |
 | `developers.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |
@@ -125,62 +124,58 @@ leg is ZDR (contractual), not E2E.
 
 ---
 
-## Rail 2 — x402 Gateway (`mpp.t2000.ai`)
+## Rail 2 — x402 Services (seller-hosted)
 
-Pay-per-call USDC for every major AI + data API. No accounts, no API keys, no gas.
+Pay-per-call USDC against an **ASP's own endpoint**. No accounts, no API keys,
+no gas.
+
+> **Purged 2026-08-01 (`SPEC_T2_CLEANUP_USDC_ONLY`, A2A evolution).** This rail
+> used to be a t2000-hosted proxy gateway at `mpp.t2000.ai` (`apps/gateway`):
+> a static catalog of ~40 third-party providers (OpenAI/Brave/fal/…), proxied
+> with upstream keys injected server-side, charged at ~2× list price with a
+> treasury margin and an auto-refund path. **That mall is gone** — the app, the
+> catalog, the proxy routes, the treasury margin and the payment log were all
+> deleted, and the host is decommissioned with no redirect. t2000 sells no
+> third-party API. What remains is the protocol and the wallet.
 
 ### Payment lifecycle
 
 ```
-Agent                            Gateway                              Sui
-  │── POST /openai/v1/… ──────────►│
-  │◄─ 402 Payment Required ────────│   dual-dialect, same challenge:
-  │    · x402 JSON envelope         │   native x402 (accepts[] w/ the
-  │      (accepts[], sui · USDC)    │   Sui/USDC scheme) AND the legacy
-  │    · legacy WWW-Authenticate    │   MPP header for pre-x402 CLIs —
-  │      Payment header             │   both HMAC-bound to this server
-  │                                │
+Agent                          Seller's API (their origin)            Sui
+  │── POST /v1/… ──────────────────►│
+  │◄─ 402 Payment Required ─────────│   dual-dialect, same challenge:
+  │    · x402 JSON envelope          │   native x402 (accepts[] w/ the
+  │      (accepts[], sui · USDC)     │   Sui/USDC scheme) AND the legacy
+  │    · legacy WWW-Authenticate     │   MPP header for pre-x402 CLIs
+  │      Payment header              │
   ├─ build + sign USDC transfer (gasless, sign-then-settle)
-  │── retry + payment credential ─►│
-  │                                │── settle + verify on-chain ───────►│
-  │                                │   tx success · USDC ≥ price ·
-  │                                │   recipient = treasury
-  │                                │── proxy upstream (key injected
-  │                                │   server-side from env)
-  │                                │
-  │        upstream OK             │        upstream FAILS (5xx/timeout)
-  │◄─ 200 + x-payment-receipt ─────│──► auto-refund: fresh gasless USDC
-  │                                │    transfer treasury → payer
-  │◄─ error + refund digest ───────│    (skipped only under the $0.01
-  │        (not charged)           │     dust guard)
+  │── retry + payment credential ───►│
+  │                                 │── settle + verify on-chain ──────►│
+  │                                 │   tx success · USDC ≥ price ·
+  │                                 │   recipient = the SELLER's payTo
+  │◄─ 200 + x-payment-receipt ──────│
 ```
 
-- **Dual-dialect:** the same endpoint serves both the native **x402** envelope (the
-  402 body carries `accepts[]` with the Sui/USDC payment scheme) and the **legacy MPP
-  header dialect** (`WWW-Authenticate: Payment` challenge) — so pre-x402 installed
-  CLIs keep working. Same HMAC binding, same settlement, same verification either way.
-  Discovery: `/.well-known/x402.json`, `/api/services` (catalog SSOT:
-  `apps/gateway/lib/services.ts`), `/llms.txt`.
-- **Stateless verification:** challenges are HMAC-signed (no DB lookup to validate);
-  the paid digest is then checked on-chain — status, USDC amount, treasury recipient.
-- **No-charge-on-failure:** the charge stands only if the upstream call succeeds. On
-  an upstream failure the gateway issues an automated refund — a fresh gasless USDC
-  transfer from the treasury back to the payer — and returns the upstream error plus
-  the refund digest. The only exception is the sub-$0.01 dust guard (refund gas/noise
-  not worth more than the charge).
-- **Key isolation:** upstream API keys exist only as gateway env vars; agents never
-  see them.
-- **Payment log:** gateway-owned Neon (service, endpoint, amount, digest, sender) —
-  feeds `/activity` and the public stats; aggregates only, no address profiling.
-- **Catalog federation (direct sellers):** the catalog also lists third-party x402
-  sellers at their own origin (`direct: true` in `services.ts`; first entry: JMPR
-  Travel). The gateway is not in the request path — payment settles straight to the
-  seller's pinned `payTo` wallet, and no-charge-on-failure does NOT apply (it's a
-  proxied-services promise). Clients report direct payments to `POST /api/mpp/report`
-  (digest + url); the gateway verifies the USDC inflow to the seller on-chain before
-  writing the activity-feed row.
-- **Margin:** ~2× upstream list price (proxied only; direct sellers pay us nothing —
-  the rail wins on volume and discovery).
+- **Dual-dialect:** a seller endpoint serves both the native **x402** envelope
+  (402 body carries `accepts[]` with the Sui/USDC scheme) and the **legacy MPP
+  header dialect** (`WWW-Authenticate: Payment`), so pre-x402 installed CLIs
+  keep working. `@t2000/serve` emits both.
+- **Direct settlement:** the challenge names the seller's own wallet and USDC
+  goes straight there. No intermediary holds funds, and **no protocol fee** is
+  taken on a per-call sale. (Escrowed Jobs are the other shape — 5% at
+  settlement; see Rail 3 / Agent ID.)
+- **Stateless verification:** challenges are HMAC-signed by the seller (no DB
+  lookup to validate); the paid digest is then checked on-chain — status, USDC
+  amount, recipient. Digest-once + challenge-once guard replay.
+- **Guarantees are the seller's own.** There is no platform refund path now that
+  nothing is proxied; `@t2000/serve` enforces validate-then-charge so a failing
+  upstream doesn't bill the buyer.
+- **Discovery:** the seller records the endpoint on its **Agent ID**
+  (`t2 agent sell <url>`, live-probed then set on-chain). Buyers list Services
+  with `t2 services` / `t2000_services`, reading `api.t2000.ai/v1/services`.
+  `t2 pay` also works against any x402 URL, listed or not.
+- **Buyer-side limits:** enforced in the SDK (`LimitEnforcer`) — per-tx and
+  daily caps apply to CLI and MCP writes alike.
 
 ---
 

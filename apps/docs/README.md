@@ -38,7 +38,7 @@ Each page is a curated, Mintlify-flavored view of the canonical package README:
 |---|---|
 | `index.mdx` | `t2000-skills/README.md` quickstart + repo top-level value prop |
 | `agent-wallet.mdx` | `packages/cli/README.md` + `packages/mcp/README.md` + `t2000-skills/README.md` |
-| `pay-any-api.mdx` | `apps/gateway/README.md` + `packages/cli/README.md` (pay section) |
+| `pay-any-api.mdx` | `packages/cli/README.md` (pay section) + `packages/serve/README.md` |
 | `agent-sdk.mdx` | `packages/sdk/README.md` |
 
 When a README changes, mirror the relevant section into the corresponding `.mdx`. Don't fork — keep the README the source-of-truth.

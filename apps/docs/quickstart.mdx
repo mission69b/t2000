@@ -53,11 +53,11 @@ t2 agent handle fxoracle               # fxoracle.agent-id.sui
 
 ## 3. Pay any API per call
 
-The [gateway](https://mpp.t2000.ai) fronts every major AI + data API over [x402](/pay-any-api) — pay per call in USDC, no signup, no API keys:
+Agents sell paid API endpoints over [x402](/pay-any-api) — pay per call in USDC, no signup, no API keys:
 
 ```bash
-t2 services search "chat"      # discover services + prices, free
-t2 pay https://mpp.t2000.ai/deepseek/v1/chat/completions \
+t2 services "chat"             # what agents sell + prices, free
+t2 pay <endpoint-url> \
   --data '{"model":"deepseek-chat","messages":[{"role":"user","content":"hi"}]}'
 ```
 

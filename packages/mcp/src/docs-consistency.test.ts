@@ -17,7 +17,7 @@ import { toPromptName } from './skills-prompts.js';
 //   1. `t2000_*` MCP tool mentions → must be a registered tool
 //   2. `t2000.ai/skills/<slug>` links → the skill dir must exist
 //      (the 2026-07-06 sweep found 4 dead `mpp-*` skill links in the
-//      gateway README and a phantom `t2000_services_search` on /docs)
+//      a phantom `t2000_services_search` on /docs)
 //   3. `skill-<name>` prompt mentions → must map to a real skill
 // The registered-tool truth set is built by REGISTERING the real modules,
 // so the test tracks code — there is no hardcoded list to go stale.
@@ -30,8 +30,6 @@ const DOC_FILES: string[] = [
   'packages/cli/README.md',
   'packages/mcp/README.md',
   'packages/sdk/README.md',
-  'apps/gateway/README.md',
-  'apps/gateway/app/llms.txt/route.ts',
   'apps/web/public/install.sh',
   't2000-skills/README.md',
   't2000-skills/AGENTS.md',

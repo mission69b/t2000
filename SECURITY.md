@@ -34,7 +34,7 @@ if you have one.
 - `@t2000/id` — `agent_id::registry` transaction builders
 - Move contracts (`contracts/`) — `agent_id::registry` (ownership / kill-switch
   authorization) and `confidential_anchor` (receipt-anchor integrity)
-- `apps/gateway` (mpp.t2000.ai) — payment verification, refund path, upstream
+- `packages/serve` — merchant-side x402: challenge issuance, settle verification, upstream
   API-key isolation
 - Websites (`apps/web`, `apps/verify`, `apps/docs`) — XSS, injection
 

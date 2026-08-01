@@ -1,6 +1,6 @@
 // [SPEC_AGENT_PAYMENTS_X402 item 2.14] `t2 status` — one-shot health/doctor
 // check. Aggregates existing reads (no new state): CLI version, wallet +
-// balances, spending limits, gateway reachability, and which AI clients have
+// balances, spending limits, and which AI clients have
 // the MCP server wired. The "is my setup healthy?" onboarding + support
 // primitive — answers the questions support would otherwise ask.
 
@@ -31,27 +31,10 @@ const { version: CLI_VERSION } = (() => {
   }
 })();
 
-const GATEWAY_URL = process.env.T2000_GATEWAY_URL ?? 'https://mpp.t2000.ai';
-const GATEWAY_TIMEOUT_MS = 3000;
-
-interface GatewayStatus {
-  url: string;
-  reachable: boolean;
-  latencyMs: number | null;
-}
-
-async function checkGateway(): Promise<GatewayStatus> {
-  const start = Date.now();
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), GATEWAY_TIMEOUT_MS);
-    const res = await fetch(`${GATEWAY_URL}/api/services`, { signal: controller.signal });
-    clearTimeout(timer);
-    return { url: GATEWAY_URL, reachable: res.ok, latencyMs: Date.now() - start };
-  } catch {
-    return { url: GATEWAY_URL, reachable: false, latencyMs: null };
-  }
-}
+// The hosted mpp gateway reachability probe was REMOVED 2026-08-01
+// (SPEC_T2_CLEANUP_USDC_ONLY): there is no t2000-hosted proxy catalog to be
+// reachable. Sellers run their own x402 endpoints, so there is no single
+// host whose health means anything here.
 
 async function checkMcpClients(): Promise<Array<{ name: string; wired: boolean }>> {
   const platforms = getPlatformConfigs();
@@ -63,14 +46,13 @@ async function checkMcpClients(): Promise<Array<{ name: string; wired: boolean }
 export function registerStatus(program: Command) {
   program
     .command('status')
-    .description('Health check: wallet, balances, limits, MCP wiring, gateway reachability')
+    .description('Health check: wallet, balances, limits, MCP wiring')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .action(async (opts: { key?: string }) => {
       try {
-        // Reads run in parallel — gateway + MCP don't depend on the wallet.
-        const [agentResult, gateway, mcpClients] = await Promise.all([
+        // Reads run in parallel — MCP wiring doesn't depend on the wallet.
+        const [agentResult, mcpClients] = await Promise.all([
           tryWithAgent({ keyPath: opts.key }),
-          checkGateway(),
           checkMcpClients(),
         ]);
 
@@ -96,7 +78,7 @@ export function registerStatus(program: Command) {
         }
 
         if (isJsonMode()) {
-          printJson({ cliVersion: CLI_VERSION, wallet, balance, limits, gateway, mcpClients });
+          printJson({ cliVersion: CLI_VERSION, wallet, balance, limits, mcpClients });
           return;
         }
 
@@ -131,13 +113,6 @@ export function registerStatus(program: Command) {
         } else {
           printKeyValue('Wallet', `${pc.yellow('not created')} ${pc.dim('— run `t2 init`')}`);
         }
-
-        printKeyValue(
-          'Gateway',
-          gateway.reachable
-            ? `${pc.green('✓ reachable')} ${pc.dim(`(${gateway.latencyMs}ms)`)}`
-            : `${pc.red('✗ unreachable')} ${pc.dim(`(${gateway.url})`)}`,
-        );
 
         const mcpSummary = mcpClients
           .map((c) => `${c.name} ${c.wired ? pc.green('✓') : pc.dim('✗')}`)

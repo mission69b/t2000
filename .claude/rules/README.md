@@ -6,7 +6,6 @@ primary SSOT). Keep them short — everything here costs context on every turn.
 | File | Scope |
 |------|-------|
 | `packages.md` | Per-package conventions across the 5-package stack — entry points, surfaces, commit scopes, publishing. |
-| `gateway.md` | `apps/gateway` — MPP payment verification patterns, payment reporting, validation checks. |
 
 ## Relationship to the rest of `.claude/`
 

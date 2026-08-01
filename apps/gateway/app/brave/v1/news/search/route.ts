@@ -1,7 +1,0 @@
-import { chargeProxy } from '@/lib/gateway';
-import { env } from '@/lib/env';
-
-export const POST = chargeProxy('https://api.search.brave.com/res/v1/news/search', {
-  'x-subscription-token': env.BRAVE_SEARCH_API_KEY!,
-  accept: 'application/json',
-}, { upstreamMethod: 'GET', bodyToQuery: true });

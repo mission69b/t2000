@@ -25,11 +25,10 @@ export interface ServeConfig {
   name?: string;
   /** One-line description (discovery docs, slice 2). */
   description?: string;
-  /**
-   * Report settled payments to the t2 activity feed (mpp.t2000.ai).
-   * Fire-and-forget, never blocks or fails a response. Default true.
-   */
-  report?: boolean;
+  // `report` was REMOVED 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY): it posted
+  // settled digests to the hosted mpp.t2000.ai activity feed, and that
+  // gateway is gone. Sellers own their endpoints; there is no central feed
+  // to notify. Receipts live on Sui.
   /** Override the Sui fullnode gRPC URL (default: mainnet/testnet fullnode). */
   rpcUrl?: string;
 }
