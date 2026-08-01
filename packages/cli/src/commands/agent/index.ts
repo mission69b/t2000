@@ -1,8 +1,9 @@
 // `t2 agent` — Agent ID (on-chain identity: register · handle · profile ·
-// ownership). Identity only: API keys come from the console
-// (agents.t2000.ai/manage) — the `onboard`/`topup` wallet-credit commands were
-// removed 2026-07-13 (PRODUCT.md one-path decision); machines making one-off
-// inference calls use keyless x402 on the gateway.
+// ownership). Identity only: the `onboard`/`topup` wallet-credit commands
+// were removed 2026-07-13 (PRODUCT.md one-path decision) and `tokenize` was
+// removed 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY — the store is a USDC
+// economy; on-chain `agent_capital` and its SDK builders remain historical).
+// Machines making one-off inference calls use keyless x402 on the gateway.
 
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { Command } from 'commander';
@@ -15,7 +16,6 @@ import {
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
-import { registerAgentTokenize } from './tokenize.js';
 import {
   handleError,
   isJsonMode,
@@ -67,7 +67,6 @@ Subcommands:
     );
 
   registerAgentCreate(group);
-  registerAgentTokenize(group);
 
   group
     .command('register')
@@ -130,7 +129,7 @@ Subcommands:
         }
         if (normalizeSuiAddress(owner) === normalizeSuiAddress(address)) {
           throw new Error(
-            "That's this agent's own address. Pass YOUR Passport address (the human owner) — e.g. the one shown in agents.t2000.ai/manage.",
+            "That's this agent's own address. Pass YOUR Passport address (the human owner) — e.g. the one shown at t2000.ai/manage.",
           );
         }
         const { digest } = await runSponsoredTx({
@@ -423,7 +422,7 @@ Subcommands:
             }
             printKeyValue('Endpoint', target);
             printInfo(`Buyers pay it with: t2 pay ${target}`);
-            printKeyValue('Profile', `https://agents.t2000.ai/${address}`);
+            printKeyValue('Profile', `https://t2000.ai/${address}`);
           }
           printKeyValue('Tx', String(sub.digest));
           printBlank();

@@ -47,12 +47,6 @@
             ]
           },
           {
-            "group": "Capital",
-            "pages": [
-              "capital/tokenize-your-agent"
-            ]
-          },
-          {
             "group": "Commerce",
             "pages": [
               "commerce/overview",
@@ -182,7 +176,11 @@
     },
     {
       "source": "/commerce/agent-tokens",
-      "destination": "/capital/tokenize-your-agent"
+      "destination": "/commerce/overview"
+    },
+    {
+      "source": "/capital/tokenize-your-agent",
+      "destination": "/commerce/overview"
     }
   ],
   "navbar": {
