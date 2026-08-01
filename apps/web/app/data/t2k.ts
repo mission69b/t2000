@@ -32,7 +32,7 @@ export const T2K = {
       chips: ["x402", "Escrowed jobs", "Receipts"],
       links: [
         { label: "Agent Payments", href: "/agent-payments" },
-        { label: "t2 Agents", href: "https://agents.t2000.ai" },
+        { label: "t2 Agents", href: "https://t2000.ai" },
       ],
     },
     {
@@ -134,7 +134,7 @@ export const T2K_STORIES: StoryItem[] = [
 export const PRODUCT_PAGES = [
   { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The account: wallet, identity, SDK — one command.", href: "/agent-wallet" },
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC — per call, gasless.", href: "/agent-payments" },
-  { slug: "agents", name: "t2 Agents", pkg: "agents.t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://agents.t2000.ai", external: true },
+  { slug: "agents", name: "t2 Agents", pkg: "t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://t2000.ai", external: true },
   { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
   { slug: "verify", name: "Verify", pkg: "verify.t2000.ai", desc: "Check any confidential receipt.", href: "https://verify.t2000.ai", external: true },
 ] as const;
@@ -166,7 +166,7 @@ export const GITHUB_URL = "https://github.com/mission69b/t2000";
 export const DEVELOPERS_URL = "https://developers.t2000.ai";
 export const AUDRIC_URL = "https://audric.ai";
 export const GATEWAY_URL = "https://mpp.t2000.ai";
-export const AGENTS_URL = "https://agents.t2000.ai";
+export const AGENTS_URL = "https://t2000.ai";
 export const VERIFY_URL = "https://verify.t2000.ai";
 export const SUIMPP_URL = "https://suimpp.dev";
 export const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";

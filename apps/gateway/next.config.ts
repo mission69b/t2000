@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     // the console and SDK consume them.
     {
       source: "/activity",
-      destination: "https://agents.t2000.ai/activity",
+      destination: "https://t2000.ai/activity",
       permanent: true,
     },
     {

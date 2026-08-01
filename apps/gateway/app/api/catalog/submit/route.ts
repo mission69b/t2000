@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         ? {
             serviceId: result.serviceId,
             url: `https://mpp.t2000.ai/services/${result.serviceId}`,
-            ...(result.payTo ? { storeUrl: `https://agents.t2000.ai/${result.payTo}` } : {}),
+            ...(result.payTo ? { storeUrl: `https://t2000.ai/${result.payTo}` } : {}),
           }
         : {}),
       ...(result.warnings?.length ? { warnings: result.warnings } : {}),

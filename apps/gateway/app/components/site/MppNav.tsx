@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// /activity 301s to agents.t2000.ai/activity (stats consolidation
+// /activity 301s to t2000.ai/activity (stats consolidation
 // 2026-07-23: ONE settlement feed) — the footer keeps the outbound link.
 type CurrentPage = "services" | "sell" | null;
 

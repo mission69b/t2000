@@ -7,7 +7,7 @@ import type { Service } from './services';
 //
 // Direct sellers (catalog federation) run on their OWN origin, and most of
 // them serve no CORS headers (JMPR: OPTIONS → 405, no ACAO — live finding
-// 2026-07-17). Browser payers (the agents.t2000.ai try-it card, Audric's
+// 2026-07-17). Browser payers (the t2000.ai try-it card, Audric's
 // in-chat pay_service) die on "Failed to fetch" before the 402 handshake
 // starts. CLI/MCP callers are unaffected (no browser, no CORS).
 //

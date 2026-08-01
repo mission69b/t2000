@@ -273,7 +273,7 @@ export function SellFlow() {
             {listed.payTo && (
               <a
                 className="t2k-btn t2k-btn--ghost no-underline"
-                href={`https://agents.t2000.ai/${listed.payTo}`}
+                href={`https://t2000.ai/${listed.payTo}`}
                 rel="noreferrer"
                 target="_blank"
               >
@@ -288,7 +288,7 @@ export function SellFlow() {
             Manage by managing your API: price changes are picked up by the
             daily re-probe (or paste the URL here again to refresh instantly).
             Want a verified badge + custom name and links? Claim your store
-            page — sign in at agents.t2000.ai with the wallet your 402 pays and
+            page — sign in at t2000.ai with the wallet your 402 pays and
             register, or run{" "}
             <span
               className="font-mono text-[12px]"
@@ -334,7 +334,7 @@ export function SellFlow() {
                 style={{ color: "var(--fg-subtle)" }}
               >
                 pays {payTo.slice(0, 8)}…{payTo.slice(-6)} · store page{" "}
-                agents.t2000.ai/{payTo.slice(0, 8)}…
+                t2000.ai/{payTo.slice(0, 8)}…
               </div>
             )}
           </div>

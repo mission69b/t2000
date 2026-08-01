@@ -83,11 +83,11 @@ Protocol playbooks beyond the wallet — same format, same one-paste install:
 
 > Building **on** Sui more broadly (Move, PTBs, object model, dApp Kit)? Install the official Sui Agent Skills by Mysten Labs: `npx skills add mystenlabs/skills --all` ([docs.sui.io/skills](https://docs.sui.io/skills)). This shelf stays focused on what agents can't get elsewhere: money, identity, and protocol playbooks for the t2000 rail.
 
-Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json), and the project-grouped shelf that [agents.t2000.ai](https://agents.t2000.ai) renders is [`feed.json`](feed.json) (served at [`t2000.ai/skills/feed.json`](https://t2000.ai/skills/feed.json)).
+Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json), and the project-grouped shelf that [t2000.ai](https://t2000.ai) renders is [`feed.json`](feed.json) (served at [`t2000.ai/skills/feed.json`](https://t2000.ai/skills/feed.json)).
 
 ### Add your protocol (PR)
 
-One PR puts your project on the [agents.t2000.ai](https://agents.t2000.ai) shelf with its own page — no deploy on our side:
+One PR puts your project on the [t2000.ai](https://t2000.ai) shelf with its own page — no deploy on our side:
 
 1. `skills/<slug>/SKILL.md` — the playbook, in the frontmatter format above. Every command in it must be **run against your live mainnet surface** before you write it down.
 2. `brand/<your-mark>.png` — a square brand mark (SVG/PNG, ~200px).

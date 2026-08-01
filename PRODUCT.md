@@ -37,7 +37,7 @@ split wallets when moving PI to Audric.
 | **`mpp.t2000.ai`** | **x402 API rail only** — no consumer marketing/catalog UI |
 | **`api.audric.ai`** | **Private Inference** (OpenAI-compatible) — Audric product |
 | **`verify.t2000.ai`** | Confidential receipt verify + public ledger |
-| **`agents.t2000.ai`** | **Purged** — 301 to `t2000.ai` (do not design for it) |
+| ~~`agents.t2000.ai`~~ | **Gone.** Not a host, not a redirect — the product does not need it to exist (host lock, 2026-08-01) |
 | **`api.t2000.ai`** | **Removed** (hard cut — no redirect) when Program 3 ships |
 
 **Passport** = named capability (zkLogin wallet shared with Audric + manage),
@@ -123,7 +123,7 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 - Multi-chain / virtual-card race with MoonPay
 - Competing with Claude/ChatGPT on agent harness UX as the company bet
 - Consumer marketing frontend on `mpp.t2000.ai`
-- Designing for `agents.t2000.ai` as a living product host
+- Reintroducing `agents.t2000.ai` in any form — host, alias, or redirect
 - Second zkLogin for t2000
 - Keeping Private Inference on the t2000 store desk
 - `api.t2000.ai` redirect/alias after Program 3

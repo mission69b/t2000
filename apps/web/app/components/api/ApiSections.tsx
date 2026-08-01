@@ -462,7 +462,7 @@ export function ApiIntegrations() {
               }}
             >
               Keys are free — sign in at{" "}
-              <span style={{ color: "var(--fg)" }}>agents.t2000.ai/manage</span>.
+              <span style={{ color: "var(--fg)" }}>t2000.ai/manage</span>.
               Then pick any model ID from the catalog.
             </div>
           </div>

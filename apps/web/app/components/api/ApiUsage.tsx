@@ -1,6 +1,6 @@
 // Live usage — the inference half of the old /usage page, folded into the
 // product page it describes (consolidation 2026-07-23: one activity feed on
-// agents.t2000.ai, one usage section here, one teaser band on the homepage).
+// t2000.ai, one usage section here, one teaser band on the homepage).
 // Anchored at #usage so the old /usage URL can 301 here.
 
 const USAGE_URL =

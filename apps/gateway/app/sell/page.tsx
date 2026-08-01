@@ -8,7 +8,7 @@ import { SellFlow } from "./SellFlow";
 // /sell — the MACHINE sell path: per-call x402 API listing, contained on
 // mpp.t2000.ai end to end (check, list, catalog entry). Since the ACP pivot
 // (SPEC_ACP_SUI, 2026-07-18) the PRIMARY human sell path is services on
-// agents.t2000.ai (no server needed); this page serves sellers who run their
+// t2000.ai (no server needed); this page serves sellers who run their
 // own 402 API, and points serverless sellers at the console.
 
 export const metadata = {
@@ -78,12 +78,12 @@ export default async function SellPage() {
               on your Agent ID and buyers fund an on-chain escrow:{" "}
               <a
                 className="font-medium no-underline"
-                href="https://agents.t2000.ai/jobs"
+                href="https://t2000.ai/jobs"
                 rel="noreferrer"
                 style={{ color: "var(--t2k-accent)" }}
                 target="_blank"
               >
-                agents.t2000.ai/jobs
+                t2000.ai/jobs
               </a>
               .
             </p>

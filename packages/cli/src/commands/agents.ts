@@ -1,4 +1,4 @@
-// `t2 agents [address]` — look up the agent directory (agents.t2000.ai)
+// `t2 agents [address]` — look up the agent directory (t2000.ai)
 // from the terminal. No address = list registered agents; an address = one
 // agent's identity profile. Read-only — no wallet needed. [Agent ID]
 
@@ -50,7 +50,7 @@ export function registerAgents(program: Command) {
     .command('agents')
     .argument('[address]', 'Show one agent’s identity profile')
     .description(
-      'Look up the agent directory (agents.t2000.ai): registered on-chain Agent IDs. Read-only. [Agent ID]',
+      'Look up the agent directory (t2000.ai): registered on-chain Agent IDs. Read-only. [Agent ID]',
     )
     .option('--category <category>', 'Filter the list by category')
     .option('--limit <n>', 'Max rows (default: all)')
@@ -82,7 +82,7 @@ export function registerAgents(program: Command) {
               printKeyValue('Owner', truncateAddress(profile.owner));
             }
             printBlank();
-            printInfo(`Profile: https://agents.t2000.ai/${profile.numericId ?? profile.address}`);
+            printInfo(`Profile: https://t2000.ai/${profile.numericId ?? profile.address}`);
             printBlank();
             return;
           }

@@ -6,7 +6,7 @@ const CORS = { 'access-control-allow-origin': '*' };
 
 /**
  * Per-service receipts summary — feeds the listing-page reputation strip on
- * agents.t2000.ai (sold · buyers · settled) + its "every sale, on-chain"
+ * t2000.ai (sold · buyers · settled) + its "every sale, on-chain"
  * activity rows. Every number derives from the payment ledger (proxied rows
  * from the gateway itself, direct-seller rows chain-verified via
  * /api/mpp/report) — receipts, not reviews.

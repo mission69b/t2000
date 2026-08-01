@@ -46,7 +46,7 @@ curl -X POST https://mpp.t2000.ai/api/catalog/submit -H 'content-type: applicati
 ```
 
 Your API appears on mpp.t2000.ai and your wallet gets a store page on
-[agents.t2000.ai](https://agents.t2000.ai).
+[t2000.ai](https://t2000.ai).
 
 ## Add your own routes
 

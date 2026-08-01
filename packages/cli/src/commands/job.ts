@@ -600,7 +600,7 @@ no fund step; unclaimed openings refund fee-free):
         printSuccess(`Review saved — ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} on job ${truncateAddress(payload.jobId)}.`);
         const review = response.review as { seller?: string } | undefined;
         if (review?.seller) {
-          printKeyValue('Seller page', `https://agents.t2000.ai/${review.seller}`);
+          printKeyValue('Seller page', `https://t2000.ai/${review.seller}`);
         }
         // Seller path (you rated the buyer): surface the privacy status the
         // rating was written under — Agent-ID buyers are public, Passport

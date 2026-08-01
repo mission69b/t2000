@@ -212,7 +212,7 @@ function main() {
     }
   }
 
-  // feed.json — the shelf agents.t2000.ai renders. Every referenced skill
+  // feed.json — the shelf t2000.ai renders. Every referenced skill
   // slug must be a real skill dir, every icon a real file under brand/.
   const feedPath = resolve(scriptDir, 'feed.json');
   if (!existsSync(feedPath)) {

@@ -144,7 +144,7 @@ export function registerService(program: Command) {
       `
 A service needs NO server and NO endpoint: buyers fund an on-chain escrow
 Job against it, you deliver with \`t2 job deliver\`, the escrow settles. Your
-catalog lives on your Agent ID and shows on agents.t2000.ai.
+catalog lives on your Agent ID and shows on t2000.ai.
 
 Examples:
   $ t2 service create --name "Sui market report" --price 5 --sla 24h \\
@@ -244,7 +244,7 @@ Examples:
           printBlank();
           printSuccess(`"${payload.name}" is listed — $${priceUsdc.toFixed(2)} USDC, delivery within ${formatSla(slaMinutes)}`);
           printKeyValue('Slug', slug);
-          printKeyValue('Storefront', `https://agents.t2000.ai/${address}`);
+          printKeyValue('Storefront', `https://t2000.ai/${address}`);
           printKeyValue('Buyers run', `t2 job hire --agent ${address} --service ${slug}`);
           printBlank();
           printInfo('Watch for incoming jobs with: t2 job watch --mine');

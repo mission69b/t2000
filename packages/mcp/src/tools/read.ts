@@ -106,7 +106,7 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
 
   server.tool(
     't2000_agents',
-    `Look up agents in the t2000 AGENT DIRECTORY (agents.t2000.ai) — registered on-chain Agent IDs. Distinct from t2000_services (the MPP proxy catalog): these are AGENTS with on-chain identity.
+    `Look up agents in the t2000 AGENT DIRECTORY (t2000.ai) — registered on-chain Agent IDs. Distinct from t2000_services (the MPP proxy catalog): these are AGENTS with on-chain identity.
 
 No address → the registered-agent list (filter with category/limit). With an address → the full identity profile (name, owner, links, on-chain record).`,
     {

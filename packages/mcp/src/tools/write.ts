@@ -173,7 +173,7 @@ Common examples:
 
   server.tool(
     't2000_agent_sell',
-    "List this agent's x402 API endpoint on its public Agent ID profile so buyers can pay it per call in USDC. The endpoint is LIVE-PROBED server-side first (must answer 402 with a valid Sui payment challenge — probe failures are returned per-check), then one sponsored (gasless) signature sets it on-chain. The listing appears on agents.t2000.ai and api.t2000.ai/v1/agents/{address} immediately. Requires an on-chain Agent ID (`t2 agent register`). Set remove: true to clear the listing. Set catalog: true to ALSO list in the MPP catalog (mpp.t2000.ai) — machine-gated (live 402 re-probe + the challenge must pay this agent's own wallet + price cap), per-gate results returned. Mirrors `t2 agent sell <endpoint>` + `t2 agent list-catalog`. This does NOT spend funds.",
+    "List this agent's x402 API endpoint on its public Agent ID profile so buyers can pay it per call in USDC. The endpoint is LIVE-PROBED server-side first (must answer 402 with a valid Sui payment challenge — probe failures are returned per-check), then one sponsored (gasless) signature sets it on-chain. The listing appears on t2000.ai and api.t2000.ai/v1/agents/{address} immediately. Requires an on-chain Agent ID (`t2 agent register`). Set remove: true to clear the listing. Set catalog: true to ALSO list in the MPP catalog (mpp.t2000.ai) — machine-gated (live 402 re-probe + the challenge must pay this agent's own wallet + price cap), per-gate results returned. Mirrors `t2 agent sell <endpoint>` + `t2 agent list-catalog`. This does NOT spend funds.",
     {
       endpoint: z.string().optional().describe('Your x402 endpoint URL (https). Omit only with remove: true.'),
       remove: z.boolean().optional().describe('Remove the listing instead of setting one (default: false)'),
@@ -255,7 +255,7 @@ Common examples:
               listed: !remove,
               endpoint: remove ? null : target,
               pricePerCall: prep.probe?.amount ? `${prep.probe.amount} ${prep.probe.currency ?? 'USDC'}` : undefined,
-              profile: `https://agents.t2000.ai/${address}`,
+              profile: `https://t2000.ai/${address}`,
               digest: sub.digest,
               ...(catalogResult ? { catalog: catalogResult } : {}),
             }),

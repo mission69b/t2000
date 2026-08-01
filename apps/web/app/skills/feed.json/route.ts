@@ -1,5 +1,5 @@
 // Serves t2000-skills/feed.json at t2000.ai/skills/feed.json — the machine-
-// readable skills shelf (projects → skills) that agents.t2000.ai renders.
+// readable skills shelf (projects → skills) that t2000.ai renders.
 // Same single-source pattern as /skills/[slug]: read from the repo folder at
 // request time; `outputFileTracingIncludes` bundles it for Vercel.
 import { readFile } from "node:fs/promises";

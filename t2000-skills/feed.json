@@ -1,5 +1,5 @@
 {
-  "$schema_note": "The t2 Agents skills shelf (agents.t2000.ai). One entry per project; every skill slug must have a matching skills/<slug>/SKILL.md in this repo, and every icon must exist under brand/. Served live at https://t2000.ai/skills/feed.json. PR a project: add your SKILL.md dir(s), a brand mark, and an entry here \u2014 merged projects get their own page.",
+  "$schema_note": "The t2 Agents skills shelf (t2000.ai). One entry per project; every skill slug must have a matching skills/<slug>/SKILL.md in this repo, and every icon must exist under brand/. Served live at https://t2000.ai/skills/feed.json. PR a project: add your SKILL.md dir(s), a brand mark, and an entry here \u2014 merged projects get their own page.",
   "version": 1,
   "projects": [
     {

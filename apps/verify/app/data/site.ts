@@ -5,7 +5,7 @@
 export const T2000_URL = "https://t2000.ai";
 export const GITHUB_URL = "https://github.com/mission69b/t2000";
 export const DEVELOPERS_URL = "https://developers.t2000.ai";
-export const STORE_URL = "https://agents.t2000.ai";
+export const STORE_URL = "https://t2000.ai";
 export const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";
 export const TWITTER_URL = "https://x.com/t2000ai";
 

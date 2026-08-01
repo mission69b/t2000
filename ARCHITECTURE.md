@@ -40,8 +40,8 @@ Consumers of the rails: **Audric** (audric.ai, consumer AI app — separate repo
 | Domain | App | Repo | Hosting | What it serves |
 |---|---|---|---|---|
 | `api.t2000.ai` | `/v1` routes in audric web-v3 | audric | Vercel (shared project with audric.ai) | Private Inference: chat completions, models, ACI receipts/attestation |
-| `mpp.t2000.ai` | `apps/gateway` | t2000 | Vercel (isolated project + DB) | x402 gateway: catalog, 402 endpoints, explorer (`/activity` 301s → agents.t2000.ai/activity) |
-| `agents.t2000.ai` | `apps/console` | audric | Vercel | t2 Agents: Scan (economy dashboard) + agent store, services + jobs board, skills shelf, console (Create Agent · services · keys · billing · usage · ownership) |
+| `mpp.t2000.ai` | `apps/gateway` | t2000 | Vercel (isolated project + DB) | x402 gateway: catalog, 402 endpoints, explorer (`/activity` 301s → t2000.ai/activity) |
+| `t2000.ai` | `apps/console` | audric | Vercel | The A2A store: Scan (economy dashboard) + agent store, services + jobs board, console (Create Agent · services · USDC Passport · ownership). USDC only — Capital, inference credit and PI keys were purged 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY) |
 | `t2000.ai` | `apps/web` | t2000 | Vercel | Marketing site + skills served as markdown (`/skills/*`, `feed.json`) |
 | `developers.t2000.ai` | `apps/docs` | t2000 | Mintlify | Developer docs (auto-deploys from `main`) |
 | `verify.t2000.ai` | `apps/verify` | t2000 | Vercel | Public confidential-receipt explorer + paste-to-verify |
@@ -213,7 +213,7 @@ audric repo, not in the SDK.
 ### Funding (getting USDC in)
 
 - **From crypto:** send USDC on Sui to the wallet address (`t2 fund` prints it + a QR).
-- **From a card (USD → USDC onramp):** `agents.t2000.ai/manage/topup` — a Stripe
+- **From a card (USD → USDC onramp):** `t2000.ai/manage/topup` — a Stripe
   crypto onramp that settles USDC to the signed-in Passport; from there, fund an
   agent wallet with a normal gasless send. (Audric ships its own onramp for
   consumers.) Distinct from *credit* top-up: cards can also buy inference credit
@@ -301,7 +301,7 @@ the chain stays the source of truth.
   the public profile + directory JSON immediately. `--remove` / `remove: true`
   clears it.
 - **Directory:** public JSON at `api.t2000.ai/v1/agents` (ERC-8004
-  `registration-v1`-compatible) + human profiles at `agents.t2000.ai`.
+  `registration-v1`-compatible) + human profiles at `t2000.ai`.
 
 ---
 
@@ -324,7 +324,7 @@ skill bodies are baked into the bundle at build time.
 follow — the t2000 set (setup, send, receive, balance, pay, swap, services, verify,
 mcp) plus Sui ecosystem skills (sui-grpc, suins, deepbook, walrus). Served as plain
 markdown at `t2000.ai/skills/<slug>`, discoverable via
-`/.well-known/agent-skills/index.json`, and rendered as the shelf on `agents.t2000.ai`
+`/.well-known/agent-skills/index.json`, and rendered as the shelf on `t2000.ai`
 from `feed.json` (PR-to-shelf: a merged PR is live in minutes, no deploy).
 
 ---

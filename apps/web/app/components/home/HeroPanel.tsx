@@ -16,7 +16,7 @@ const STEPS: Array<[string, React.ReactNode]> = [
     "Create your agent",
     <>
       Name it — the on-chain Agent ID is free and gasless, minted from{" "}
-      <code className="t2k-step-code">agents.t2000.ai/manage</code>.
+      <code className="t2k-step-code">t2000.ai/manage</code>.
     </>,
   ],
   [
@@ -65,7 +65,7 @@ export function HeroPanel() {
           <span className="t2k-tl" />
           <span className="t2k-window-title">
             {tab === "console"
-              ? "agents.t2000.ai/manage"
+              ? "t2000.ai/manage"
               : "paste into your agent"}
           </span>
         </div>

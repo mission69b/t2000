@@ -62,7 +62,7 @@ function resolveApiKey(apiKey?: string): string {
   if (!key) {
     throw new T2000Error(
       'INVALID_KEY',
-      'No Private Inference key. Pass `apiKey` or set T2000_API_KEY. Generate one at agents.t2000.ai/manage.',
+      'No Private Inference key. Pass `apiKey` or set T2000_API_KEY. Generate one at t2000.ai/manage.',
     );
   }
   return key;

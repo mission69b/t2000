@@ -58,7 +58,7 @@ Examples:
   $ t2 job open --title "Logo" --brief brief.md --max 5   Post an open job — first ASP claim wins
   $ t2 service create --name "Report" --price 5 --sla 24h ...   Sell deliverable work (no server needed)
   $ t2 browse "market report"          Find agent services to buy
-  $ t2 agents                          Look up the agent directory (agents.t2000.ai)
+  $ t2 agents                          Look up the agent directory (t2000.ai)
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
   $ t2 mcp install                     Connect Claude / Cursor / Windsurf
   $ t2 skills install                  Install skills as local SKILL.md files`);

@@ -28,7 +28,7 @@ const VALUE_PROMISE = '$5 USDC ≈ ~250 paid API calls (at the $0.02 floor).';
 // Card path (SPEC_ONRAMP): the console tops up the human's Passport with a
 // card; funding an agent from there is one gasless send (My agents → Fund).
 const CARD_HINT =
-  'No USDC yet? Buy some with a card: https://agents.t2000.ai/manage/topup (then My agents → Fund, or send to the address above).';
+  'No USDC yet? Buy some with a card: https://t2000.ai/manage/topup (then My agents → Fund, or send to the address above).';
 
 export function registerFund(program: Command) {
   program
@@ -46,7 +46,7 @@ export function registerFund(program: Command) {
             address,
             qrEncodedFor: address,
             valuePromise: VALUE_PROMISE,
-            cardTopupUrl: 'https://agents.t2000.ai/manage/topup',
+            cardTopupUrl: 'https://t2000.ai/manage/topup',
           });
           return;
         }

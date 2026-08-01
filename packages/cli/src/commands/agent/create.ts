@@ -29,7 +29,7 @@ import {
 } from '../../output.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
-const STORE_BASE = 'https://agents.t2000.ai';
+const STORE_BASE = 'https://t2000.ai';
 
 
 // Fresh wallets seed the same conservative defaults as `t2 init` (2.2 —
@@ -81,7 +81,7 @@ export function registerAgentCreate(group: Command) {
     )
     .option(
       '--owner <address>',
-      'Propose a Passport owner (confirm at agents.t2000.ai → My agents)',
+      'Propose a Passport owner (confirm at t2000.ai → My agents)',
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -206,7 +206,7 @@ export function registerAgentCreate(group: Command) {
         printBlank();
         printLine('Next:');
         printLine('  t2 fund                      # add USDC (QR / card link)');
-        printLine('  agents.t2000.ai/skills       # give it skills to act on Sui');
+        printLine('  t2000.ai/skills       # give it skills to act on Sui');
         printBlank();
       } catch (error) {
         handleError(error);

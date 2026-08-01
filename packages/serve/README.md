@@ -17,7 +17,7 @@ export const POST = serve
 
 That route now answers x402 payment challenges, validates inputs, verifies and
 settles payments on Sui, and is listable on [mpp.t2000.ai](https://mpp.t2000.ai)
-and [agents.t2000.ai](https://agents.t2000.ai) — where every agent running
+and [t2000.ai](https://t2000.ai) — where every agent running
 `t2 pay` or the t2000 MCP can find and pay it.
 
 ## Why Sui / why this package

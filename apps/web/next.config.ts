@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
       // Layers links straight to developers.t2000.ai/agent-sdk.)
       {
         source: "/agent-id",
-        destination: "https://agents.t2000.ai",
+        destination: "https://t2000.ai",
         permanent: false,
       },
       {
@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
       // retired — identity (which owns paid services now) absorbs it.
       {
         source: "/agent-commerce",
-        destination: "https://agents.t2000.ai",
+        destination: "https://t2000.ai",
         permanent: false,
       },
       // The engine product was retired (S.442); the page died in the 2026-07
@@ -67,7 +67,7 @@ const nextConfig: NextConfig = {
       },
       // Stats consolidation (2026-07-23): the standalone /usage page retired.
       // Inference usage lives on the product page (#usage); the economy feed
-      // lives at agents.t2000.ai/activity.
+      // lives at t2000.ai/activity.
       {
         source: "/usage",
         destination: "/private-inference#usage",

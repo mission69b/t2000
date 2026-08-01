@@ -16,7 +16,7 @@ export const API_BASE = 'https://api.t2000.ai/v1';
 export const CHAT_COMPLETIONS_URL = `${API_BASE}/chat/completions`;
 export const DEFAULT_MODEL = 't2000/auto';
 export const OPEN_MODEL = 't2000/auto-open';
-export const CONSOLE_KEYS_URL = 'https://agents.t2000.ai/manage';
+export const CONSOLE_KEYS_URL = 'https://t2000.ai/manage';
 
 export type ConnectClientSlug =
   | 'hermes'

@@ -83,7 +83,7 @@ export interface IngestResult {
   gates: GateResult[];
   /** Set on success — the catalog row id (mpp.t2000.ai/services/<id>). */
   serviceId?: string;
-  /** The seller wallet — the store page is agents.t2000.ai/<payTo>. */
+  /** The seller wallet — the store page is t2000.ai/<payTo>. */
   payTo?: string;
   warnings?: SellerWarning[];
   /** True when the call removed an existing entry (legacy address path,
@@ -292,7 +292,7 @@ function gradeListing(origin: string, e: Enumerated): SellerWarning[] {
       code: 'no-openapi',
       message: `No OpenAPI spec found at ${origin}/openapi.json — only the probed endpoint is listed, with no name or docs.`,
       prompt:
-        `My paid API at ${origin} is listed on agents.t2000.ai from its 402 challenge alone. ` +
+        `My paid API at ${origin} is listed on t2000.ai from its 402 challenge alone. ` +
         `Serve an OpenAPI 3.x document at ${origin}/openapi.json that describes every paid endpoint, ` +
         `with an "x-payment-info" extension on each operation carrying its fixed USDC price ` +
         `(e.g. "x-payment-info": { "price": "0.02", "currency": "USDC" }), plus a clear info.title ` +
@@ -306,7 +306,7 @@ function gradeListing(origin: string, e: Enumerated): SellerWarning[] {
       message: 'The OpenAPI info block has no description — the listing gets a generic one.',
       prompt:
         `Add a one-paragraph info.description to the OpenAPI document at ${origin}/openapi.json ` +
-        `describing what the API sells and who it's for. It becomes the listing description on agents.t2000.ai.`,
+        `describing what the API sells and who it's for. It becomes the listing description on t2000.ai.`,
     });
   }
   const noSchema = e.endpoints.filter((ep) => !ep.schema);
@@ -516,7 +516,7 @@ export async function previewSeller(
     currency: 'USDC',
     // DELIBERATELY the flat 'commerce' bucket for ALL direct sellers
     // (founder call 2026-07-26): the agent's directory category
-    // (agents.t2000.ai) is NOT mapped into the gateway catalog — a standing
+    // (t2000.ai) is NOT mapped into the gateway catalog — a standing
     // two-system sync isn't worth it for the rail's machine surface. Do not
     // "fix" by deriving from /v1/agents/{payTo}.
     categories: ['commerce'],

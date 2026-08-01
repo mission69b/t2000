@@ -8,7 +8,7 @@ const GATEWAY_LINKS: FooterLink[] = [
   { l: "Services", href: "/services" },
   {
     l: "Activity",
-    href: "https://agents.t2000.ai/activity",
+    href: "https://t2000.ai/activity",
     external: true,
   },
   { l: "Sell your API", href: "/sell" },

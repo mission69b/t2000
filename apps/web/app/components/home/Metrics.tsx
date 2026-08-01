@@ -4,12 +4,12 @@ import { CountUp } from "./CountUp";
 // The metrics band renders LIVE numbers (repositioning rule: numbers render
 // live or not at all): paid calls / settled volume from the store's economy
 // endpoint — the SSOT that composes escrow releases + per-call rail volume,
-// so this "Settled" matches agents.t2000.ai's "Settled USDC" exactly.
+// so this "Settled" matches t2000.ai's "Settled USDC" exactly.
 // Registered agents from the directory. Falls back to the static baseline in
 // t2k.ts when an API is unreachable at revalidate time.
 async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]>> {
   const [economy, agents, usage] = await Promise.all([
-    fetch("https://agents.t2000.ai/api/economy", {
+    fetch("https://t2000.ai/api/economy", {
       next: { revalidate: 300 },
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -53,9 +53,9 @@ async function getLiveMetrics(): Promise<ReadonlyArray<readonly [string, string]
 // The band is the teaser; the real pages carry the detail (stats
 // consolidation 2026-07-23: no standalone stats page).
 const METRIC_HREFS: Record<string, string> = {
-  "Registered agents": "https://agents.t2000.ai/agents",
-  "Paid calls": "https://agents.t2000.ai/activity",
-  Settled: "https://agents.t2000.ai/activity",
+  "Registered agents": "https://t2000.ai/agents",
+  "Paid calls": "https://t2000.ai/activity",
+  Settled: "https://t2000.ai/activity",
   "Tokens routed": "/private-inference#usage",
 };
 

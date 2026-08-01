@@ -98,7 +98,7 @@ export class Serve {
   };
 
   /**
-   * The curl that lists this API on mpp.t2000.ai / agents.t2000.ai once it
+   * The curl that lists this API on mpp.t2000.ai / t2000.ai once it
    * is deployed. Listing is a separate, explicit step — the catalog gates
    * (url · probe · dialect · price-cap), not this package, decide outcomes.
    * Dry-run first with /api/catalog/preview.

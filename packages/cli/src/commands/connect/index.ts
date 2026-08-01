@@ -4,7 +4,7 @@
 // Continue, aider, Codex, Grok Build, Cline, Cursor.
 //
 // The one key path (§1d): the key comes from the console
-// (agents.t2000.ai/manage), pasted here via --key (or already in
+// (t2000.ai/manage), pasted here via --key (or already in
 // T2000_API_KEY / a prior save). We persist it to ~/.t2000/config.json so
 // subsequent connects don't re-ask.
 

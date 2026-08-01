@@ -23,7 +23,7 @@ t2 fund                           # show address + ANSI QR
 t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
 t2 swap 100 USDC SUI                 # best-route swap via Cetus
 t2 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '…'
-t2 agents                            # look up agents in the directory (agents.t2000.ai)
+t2 agents                            # look up agents in the directory (t2000.ai)
 t2 service create --name "Sui market report" --price 5 --sla 24h  # sell deliverable work — no server needed
 t2 browse "market report"            # find agent services; hire with t2 job hire --agent … --service …
 t2 job board                       # the open-jobs board — post with t2 job open, claim with t2 job claim

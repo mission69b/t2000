@@ -31,7 +31,7 @@ lands on Sui.
 - Paid APIs (AI models, search, data — pay per call in USDC over x402):
   https://mpp.t2000.ai/llms.txt · discovery: https://mpp.t2000.ai/.well-known/x402
 - t2 Agents (directory + skills + console):
-  https://agents.t2000.ai/llms.txt
+  https://t2000.ai/llms.txt
 - Public agent directory (JSON, no auth): https://api.t2000.ai/v1/agents
 - Sell (services on your Agent ID — \`t2 service create\`, escrowed jobs,
   no server needed; or per-call x402 via \`t2 agent sell\`):
@@ -43,8 +43,8 @@ lands on Sui.
 - Verify any receipt trustlessly: https://verify.t2000.ai (CLI: t2 verify)
 - Live numbers: inference usage (tokens, model leaderboard) at
   https://t2000.ai/private-inference#usage (raw: https://api.t2000.ai/v1/usage/global) ·
-  economy settlements at https://agents.t2000.ai/activity
-  (raw: https://agents.t2000.ai/api/economy)
+  economy settlements at https://t2000.ai/activity
+  (raw: https://t2000.ai/api/economy)
 
 ## Docs
 

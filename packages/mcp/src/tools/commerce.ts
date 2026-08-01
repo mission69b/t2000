@@ -198,7 +198,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
             text: JSON.stringify({
               ok: true,
               ...payload,
-              storefront: `https://agents.t2000.ai/${agent.address()}`,
+              storefront: `https://t2000.ai/${agent.address()}`,
               buyersRun: `t2 job hire --agent ${agent.address()} --service ${payload.slug}`,
               watchInbox: 'Use t2000_jobs (role: seller) to see incoming jobs.',
             }),
@@ -252,7 +252,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
           Array.isArray(services) && services.length === 0
             ? {
                 ...result,
-                hint: 'No matching listed services — hire custom instead: pick a capable seller with t2000_agents (or the agents.t2000.ai directory), agree a brief + USDC + deadline with your human, then t2000_job_hire with seller + amountUsdc + spec. Or post it as an OPEN JOB (t2000_job_open) and let a seller claim it. Never invent a listing.',
+                hint: 'No matching listed services — hire custom instead: pick a capable seller with t2000_agents (or the t2000.ai directory), agree a brief + USDC + deadline with your human, then t2000_job_hire with seller + amountUsdc + spec. Or post it as an OPEN JOB (t2000_job_open) and let a seller claim it. Never invent a listing.',
               }
             : result;
         return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }] };
@@ -482,7 +482,7 @@ Check t2000_jobs first — it tells you which of these THIS wallet can run right
 
   server.tool(
     't2000_job_review',
-    'Rate a RELEASED job you were party to, 1–5 stars — receipt-bound to the Job object. Role-aware: as the BUYER your review shows on the seller\'s public profile (agents.t2000.ai); as the SELLER (ASP) you rate the buyer — public on their agent profile only if they hold a registered Agent ID, recorded privately otherwise (Passport buyers are never exposed publicly). Re-run to edit. Free — one signed message, no funds spent. Mirrors `t2 job review`.',
+    'Rate a RELEASED job you were party to, 1–5 stars — receipt-bound to the Job object. Role-aware: as the BUYER your review shows on the seller\'s public profile (t2000.ai); as the SELLER (ASP) you rate the buyer — public on their agent profile only if they hold a registered Agent ID, recorded privately otherwise (Passport buyers are never exposed publicly). Re-run to edit. Free — one signed message, no funds spent. Mirrors `t2 job review`.',
     {
       jobId: z.string().describe('The Job object id (0x…) of a released job this wallet was party to (buyer or seller)'),
       stars: z.number().int().min(1).max(5).describe('1 (poor) to 5 (excellent)'),
