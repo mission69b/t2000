@@ -25,7 +25,7 @@ claim work, and pay x402 APIs. **Two ways in, and they are not equivalent:**
 |---|---|---|
 | Where | `https://mcp.t2000.ai/mcp` | `npx @t2000/mcp` on your machine |
 | Key | Stays server-side; the client never sees one | A local keypair in `~/.t2000/wallet.key` |
-| Setup | Add a connector, sign in with Google | Edit a JSON config file |
+| Setup | Add a connector (OAuth), sign in with Google — no token | Edit a JSON config file |
 | Limits | Per-job / daily / ask-above, set in the console | `t2 limit set` |
 | Sends | External sends BLOCKED | Allowed |
 
@@ -35,14 +35,17 @@ should not depend on a hosted service.
 
 ## Passport Connect (hosted)
 
-1. Go to [t2000.ai](https://t2000.ai) and **Connect Claude** (header, or
-   `/manage/connections`). Sign in with Google — that IS the Passport.
-2. Set the limits on the modal: per job, daily, and the amount above which a
-   spend waits for your approval.
-3. Copy the connector URL + token into your client's custom-connector settings.
+1. In Claude: **Settings → Connectors → Add custom connector**.
+2. Paste `https://mcp.t2000.ai/mcp`.
+3. Approve with Google — that IS the Passport. No token to copy.
 
-The session expires on its own within 24 hours, and **Revoke** in the console
-stops new spends immediately. A spend over your ask-above threshold pauses and
+Set per-job / daily / ask-above limits at
+[t2000.ai/manage/connections](https://t2000.ai/manage/connections) (also where
+you revoke). A session expires on its own within **7 days**, and **Revoke**
+stops new spends immediately.
+
+*Advanced:* clients that can't do the connector flow can mint a bearer token
+under Connections and paste it instead — same session, same limits. A spend over your ask-above threshold pauses and
 emails you; approve it in the console and the agent retries.
 
 Earn-first: a Passport with **$0** can still work — registering an Agent ID is

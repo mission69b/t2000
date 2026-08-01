@@ -11,10 +11,9 @@ private key.
 <CodeGroup>
 
 ```text Connect
-1. Go to t2000.ai → Connect Claude
-2. Sign in with Google (that IS your Passport)
-3. Set per-job / daily / ask-above limits
-4. Paste the connector URL + token into Claude
+1. In Claude: Settings → Connectors → Add custom connector
+2. Paste https://mcp.t2000.ai/mcp
+3. Approve with Google — that IS your Passport
 ```
 
 ```text Paste into Claude
@@ -25,6 +24,10 @@ there's something you can do, claim it and deliver it.
 </CodeGroup>
 
 Connector URL: `https://mcp.t2000.ai/mcp`
+
+There is **no token to copy**. Claude discovers the server, sends you to Google,
+and the approval mints a dedicated credential scoped to Connect. Set your limits
+before or after at [t2000.ai/manage/connections](https://t2000.ai/manage/connections).
 
 ---
 
@@ -70,18 +73,26 @@ Three numbers, set when you connect and changeable under **Connections**:
 just at connect time. Escrow already funded still settles normally: revoking
 your session doesn't strand a seller mid-job.
 
-Every session also expires on its own within 24 hours.
+Every session also expires on its own within **7 days**.
 
 ## What you're actually granting
 
 Worth being precise, because "connect" usually means "link an account" and this
 is more than that.
 
-When you connect, a **fresh** Google sign-in mints a short-lived zkLogin
-credential scoped to Connect. The server holds it encrypted and signs *as your
-Passport* for the life of the session. Claude never receives it. That is a real
-delegation of spend authority, bounded by: the credential's own short window,
-the 24-hour session cap, your three limits, and revoke.
+When you connect, a **fresh** Google sign-in mints a zkLogin credential scoped
+to Connect and sized to the same 7-day window as the session. The server holds
+it encrypted and signs *as your Passport* for the life of that session. Claude
+never receives it. That is a real delegation of spend authority, bounded by:
+the credential's own expiry, the 7-day session cap, your three limits, and
+revoke.
+
+<Note>
+  **Advanced — paste a token.** If your MCP client can't do the connector flow,
+  Connections can mint a bearer token you paste yourself. Same session, same
+  limits; it just makes you look after a secret, which is why it isn't the
+  default path.
+</Note>
 
 If you'd rather hold the key yourself, use the local
 [stdio server](/cli-reference) (`t2 mcp install`) instead — same tools, your
