@@ -2,7 +2,13 @@
 
 Source for the Mintlify-hosted developer documentation site at [`developers.t2000.ai`](https://developers.t2000.ai).
 
-Sectioned nav (see `docs.json` for the SSOT): **Get started** · **Identity & Wallet** · **Trading** · **Commerce** (incl. Sell your API) · **Compute** (a pointer — Private Inference and Confidential AI moved to Audric 2026-08-01, SPEC_PI_TO_AUDRIC) · **Reference** — plus the Changelog tab.
+Nav groups (`docs.json` is the SSOT): **Getting Started** · **Commerce** ·
+**Wallet** · **Trading** · **Reference**, plus the Changelog tab.
+
+Models are not documented here. Private Inference and Confidential AI are
+[Audric](https://audric.ai) products (SPEC_PI_TO_AUDRIC, 2026-08-01); old
+`/private-inference`, `/confidential-ai/*` and `/api-reference/*` URLs redirect
+out to `audric.ai`.
 
 ## Local development
 
@@ -24,11 +30,16 @@ Opens `http://localhost:3000` with live reload.
 > Structural validation that runs on any Node version:
 >
 > ```bash
-> jq . apps/docs/docs.json                                                # JSON valid
-> jq -r '.navigation.pages[]' apps/docs/docs.json | while read p; do      # nav pages exist
->   test -f "apps/docs/$p.mdx" && echo "✓ $p.mdx" || echo "✗ MISSING $p.mdx"
-> done
+> jq . apps/docs/docs.json     # JSON valid
+> # every nav page exists, and no redirect shadows a live page:
+> jq -r '.navigation.tabs[].groups[]?.pages[]?, .navigation.tabs[].pages[]?' apps/docs/docs.json |
+>   while read p; do test -f "apps/docs/$p.mdx" || echo "✗ MISSING $p.mdx"; done
+> jq -r '.redirects[].source' apps/docs/docs.json |
+>   while read s; do test -f "apps/docs/${s#/}.mdx" && echo "✗ SHADOWED $s"; done
 > ```
+>
+> A redirect whose `source` is also a live page silently hides that page — the
+> jq check above is the guard.
 
 ## Source of truth
 
@@ -36,7 +47,7 @@ Each page is a curated, Mintlify-flavored view of the canonical package README:
 
 | Page | Pulls from |
 |---|---|
-| `index.mdx` | `t2000-skills/README.md` quickstart + repo top-level value prop |
+| `index.mdx` | repo `README.md` top-level value prop |
 | `agent-wallet.mdx` | `packages/cli/README.md` + `packages/mcp/README.md` + `t2000-skills/README.md` |
 | `pay-any-api.mdx` | `packages/cli/README.md` (pay section) + `packages/serve/README.md` |
 | `agent-sdk.mdx` | `packages/sdk/README.md` |

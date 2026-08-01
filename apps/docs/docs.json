@@ -105,7 +105,7 @@
     },
     {
       "source": "/private-api",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/commerce/agent-tokens",
@@ -117,75 +117,75 @@
     },
     {
       "source": "/api-reference/anchor",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/api-reference/attestation",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/api-reference/chat-completions",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/api-reference/models",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/api-reference/overview",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/api-reference/receipts",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/api-reference/sessions",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/authentication",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/attestation",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/attested-sessions",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/faqs",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/how-it-works",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/providers",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/receipts",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/trust-boundary",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/confidential-ai/verify",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/models",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/use-with-your-tools",
-      "destination": "/private-inference"
+      "destination": "https://audric.ai"
     },
     {
       "source": "/commerce/architecture",
@@ -286,6 +286,10 @@
     {
       "source": "/recipes",
       "destination": "/pay-any-api"
+    },
+    {
+      "source": "/private-inference",
+      "destination": "https://audric.ai"
     }
   ],
   "navbar": {
