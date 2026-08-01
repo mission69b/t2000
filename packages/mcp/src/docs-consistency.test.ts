@@ -117,8 +117,18 @@ describe('docs consistency — MCP tool names, skill links, prompt names', () =>
     expect(promptNames.has('skill-pay')).toBe(true);
   });
 
+  // Tools that exist ONLY on the hosted Passport Connect server (the audric
+  // repo's apps/mcp), not in this stdio package. The two surfaces are
+  // deliberately different — Connect adds identity + a swap quote and drops
+  // send + Private Inference (SPEC_T2_PASSPORT_CONNECT §4) — so docs may
+  // legitimately name a tool this registry has never heard of.
+  const CONNECT_ONLY_TOOLS = new Set(['t2000_agent_register', 't2000_swap_quote']);
+
   it('every `t2000_*` tool mentioned in docs is a registered tool', () => {
-    const violations = scanPattern(/\b(t2000_[a-z_]+)\b/g, (name) => tools.has(name));
+    const violations = scanPattern(
+      /\b(t2000_[a-z_]+)\b/g,
+      (name) => tools.has(name) || CONNECT_ONLY_TOOLS.has(name),
+    );
     expect(violations, `phantom MCP tools in docs:\n${report(violations)}`).toEqual([]);
   });
 

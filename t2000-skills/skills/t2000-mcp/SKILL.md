@@ -1,16 +1,16 @@
 ---
 name: t2000-mcp
 description: >-
-  Connect a t2000 Agent Wallet to Claude Desktop, Cursor, Cline, Continue,
-  or any MCP-compatible client. Use when asked to set up MCP, paste an MCP
-  server config, install @t2000/mcp, or troubleshoot why the MCP server
-  "doesn't do anything" when run from a terminal. v4 surface: 14 tools
-  (6 read + 4 write + 3 Private Inference + 1 limit-view) and one
-  skill-* prompt per SKILL.md in t2000-skills/skills/.
+  Connect a t2000 Passport to Claude, Cursor, Cline, Continue, or any
+  MCP-compatible client. Use when asked to set up MCP, add the t2000
+  connector, paste an MCP server config, install @t2000/mcp, or troubleshoot
+  why the stdio server "doesn't do anything" when run from a terminal. Two
+  paths: HOSTED Passport Connect (mcp.t2000.ai — the marketed one) and the
+  local stdio server (advanced).
 license: MIT
 metadata:
   author: t2000
-  version: "2.0"
+  version: "3.0"
   requires: a Sui wallet created via `t2 init` (npm install -g @t2000/cli)
 ---
 
@@ -18,7 +18,36 @@ metadata:
 
 ## Purpose
 
-Expose a t2000 Agent Wallet to any MCP-compatible AI client over stdio. **14 tools + N skill prompts** (one per `SKILL.md` in `t2000-skills/skills/`). No global install required — the recommended path uses `npx` so the AI client always pulls the latest published version.
+Give an AI client a t2000 Passport — a Sui USDC wallet that can hire agents,
+claim work, and pay x402 APIs. **Two ways in, and they are not equivalent:**
+
+| | **Passport Connect** (hosted) | **stdio** (local, advanced) |
+|---|---|---|
+| Where | `https://mcp.t2000.ai/mcp` | `npx @t2000/mcp` on your machine |
+| Key | Stays server-side; the client never sees one | A local keypair in `~/.t2000/wallet.key` |
+| Setup | Add a connector, sign in with Google | Edit a JSON config file |
+| Limits | Per-job / daily / ask-above, set in the console | `t2 limit set` |
+| Sends | External sends BLOCKED | Allowed |
+
+**Connect is the recommended path.** Use stdio when the wallet must be a local
+keypair the user controls directly — a headless agent, CI, or a machine that
+should not depend on a hosted service.
+
+## Passport Connect (hosted)
+
+1. Go to [t2000.ai](https://t2000.ai) and **Connect Claude** (header, or
+   `/manage/connections`). Sign in with Google — that IS the Passport.
+2. Set the limits on the modal: per job, daily, and the amount above which a
+   spend waits for your approval.
+3. Copy the connector URL + token into your client's custom-connector settings.
+
+The session expires on its own within 24 hours, and **Revoke** in the console
+stops new spends immediately. A spend over your ask-above threshold pauses and
+emails you; approve it in the console and the agent retries.
+
+Earn-first: a Passport with **$0** can still work — registering an Agent ID is
+free, and claiming an Open job costs nothing because the buyer's budget is
+already escrowed.
 
 ## ⚠️ The most common confusion
 
@@ -128,15 +157,13 @@ All support `dryRun: true` for previews without signing (where applicable).
 | `t2000_send` | Send USDC / USDsui / SUI. Asset REQUIRED. USDC + USDsui are gasless. |
 | `t2000_swap` | Swap tokens via Cetus Aggregator. Requires SUI for gas. |
 | `t2000_pay` | Pay for an x402-protected API service (USDC, gasless). |
-| `t2000_agent_sell` | List (or remove) this agent's x402 endpoint on its public Agent ID profile — live-probed first, then one sponsored gasless signature. `catalog: true` also lists it in the MPP catalog (machine-gated, per-gate results). Does NOT spend funds. |
-### Private Inference (3)
+| `t2000_agent_sell` | Sell this agent's x402 endpoint as a Service on its public Agent ID — live-probed first, then one sponsored gasless signature. Does NOT spend funds. |
+### Private Inference — NOT on Connect
 
-Need a `T2000_API_KEY` in the client's env config.
-
-| Tool | Description |
-|------|-------------|
-| `t2000_chat` | Private (zero-retention) or confidential (GPU-TEE) inference — Audric, `api.audric.ai`. |
-| `t2000_models` | The Private Inference model catalog. |
+`t2000_chat` / `t2000_models` are stdio-only and need a `T2000_API_KEY`.
+Private Inference is an **Audric** product served from `api.audric.ai`; mint a
+key at [audric.ai](https://audric.ai). Passport Connect deliberately omits
+these — Connect is the USDC commerce surface, not an inference gateway.
 
 ### Settings (1)
 

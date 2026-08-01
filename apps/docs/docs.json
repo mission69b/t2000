@@ -30,6 +30,7 @@
               "index",
               "quickstart",
               "console",
+              "passport-connect",
               "use-from-your-agent"
             ]
           },
