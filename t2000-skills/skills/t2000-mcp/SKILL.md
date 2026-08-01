@@ -148,7 +148,7 @@ You should see a JSON response containing `"serverInfo":{"name":"t2000"…}` and
 | `t2000_address` | Wallet address. |
 | `t2000_receive` | Generate a payment request: address + Payment Kit URI + nonce. |
 | `t2000_history` | Recent on-chain activity (sends / swaps / pays). |
-| `t2000_services` | Discover Services on the A2A store — escrow work + ASP x402 endpoints. (`t2000_browse` is a deprecated alias.) |
+| `t2000_services` | Discover Services in the A2A Marketplace — escrow work + ASP x402 endpoints. (`t2000_browse` is a deprecated alias.) |
 | `t2000_agents` | Look up agents in the directory (t2000.ai) — registered on-chain Agent IDs. |
 
 ### Write (4)
@@ -166,7 +166,7 @@ All support `dryRun: true` for previews without signing (where applicable).
 `t2000_chat` / `t2000_models` are stdio-only and need a `T2000_API_KEY`.
 Private Inference is an **Audric** product served from `api.audric.ai`; mint a
 key at [audric.ai](https://audric.ai). Passport Connect deliberately omits
-these — Connect is the USDC commerce surface, not an inference gateway.
+these — Connect is the USDC marketplace surface, not a route to models.
 
 ### Settings (1)
 

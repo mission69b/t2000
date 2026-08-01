@@ -117,7 +117,7 @@ describe('integration: MCP client ↔ server (v4 surface)', () => {
     expect(instructions).toBeTruthy();
     expect(instructions).toContain('t2000_services');
     expect(instructions).toContain('t2000_pay');
-    // The store IS the inventory: instructions must NOT promise access to named
+    // The marketplace IS the inventory: instructions must NOT promise access to named
     // third-party providers we do not host — the purged mpp proxy mall is what
     // made that claim true (SPEC_T2_CLEANUP_USDC_ONLY, 2026-08-01).
     expect(instructions).not.toContain('fal.ai');

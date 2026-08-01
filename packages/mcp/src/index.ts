@@ -33,9 +33,10 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
   const agent = await createAgent(opts?.keyPath);
 
   // The `instructions` field is surfaced by MCP clients (Claude Desktop,
-  // Cursor) at conversation start — it primes the model to route paid
-  // third-party API requests (fal.ai, ElevenLabs, …) through MPP instead
-  // of declining them in a cold session. See `instructions.ts`.
+  // Cursor) at conversation start — it primes the model to reach for the
+  // marketplace (hire an ASP, pay a listed x402 Service) instead of
+  // declining in a cold session. It must NOT name providers we don't host:
+  // t2000 resells nothing. See `instructions.ts`.
   const server = new McpServer(
     { name: 't2000', version: PKG_VERSION },
     { instructions: T2000_SERVER_INSTRUCTIONS },

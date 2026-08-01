@@ -47,7 +47,7 @@ describe('read tools (v4 surface)', () => {
   });
 
   it('registers 5 read tools', () => {
-    // t2000_services lives in commerce.ts now — it reads the STORE, not the
+    // t2000_services lives in commerce.ts now — it reads the MARKETPLACE, not the
     // purged mpp proxy catalog (SPEC_T2_CLEANUP_USDC_ONLY, 2026-08-01).
     expect(tools.size).toBe(5);
     expect(tools.has('t2000_balance')).toBe(true);

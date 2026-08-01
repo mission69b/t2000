@@ -78,7 +78,7 @@ describe('write tools (v4 surface)', () => {
     registerWriteTools(server, agent);
   });
 
-  it('registers 4 write tools (agent_pay + agent_review deleted with the store)', () => {
+  it('registers 4 write tools (agent_pay + agent_review deleted with the mall)', () => {
     expect(tools.size).toBe(4);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_swap')).toBe(true);
@@ -205,7 +205,7 @@ describe('write tools (v4 surface)', () => {
     it('forwards request to agent.pay', async () => {
       const handler = tools.get('t2000_pay')!;
       const result = await handler({
-        url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+        url: 'https://api.example.com/v1/chat/completions',
         method: 'POST',
         body: '{"model":"gpt-4o","messages":[]}',
         maxPrice: 0.05,
@@ -219,23 +219,23 @@ describe('write tools (v4 surface)', () => {
     it('extracts and prefixes image URLs from response body', async () => {
       agent.pay.mockResolvedValue({
         status: 200,
-        body: { images: [{ url: 'https://cdn.fal.ai/image.png' }] },
+        body: { images: [{ url: 'https://cdn.example.com/image.png' }] },
         paid: true,
       });
       const handler = tools.get('t2000_pay')!;
       const result = await handler({
-        url: 'https://mpp.t2000.ai/fal/fal-ai/flux/dev',
+        url: 'https://api.example.com/image/generate',
         method: 'POST',
         body: '{"prompt":"x"}',
       });
       expect(result.content[0].text).toContain('Generated images:');
-      expect(result.content[0].text).toContain('https://cdn.fal.ai/image.png');
+      expect(result.content[0].text).toContain('https://cdn.example.com/image.png');
     });
 
     it('surfaces SDK errors as MCP tool errors', async () => {
       agent.pay.mockRejectedValue(new Error('402 payment required'));
       const handler = tools.get('t2000_pay')!;
-      const result = await handler({ url: 'https://mpp.t2000.ai/openai/v1', method: 'POST' });
+      const result = await handler({ url: 'https://api.example.com/v1', method: 'POST' });
       expect(result.isError).toBe(true);
     });
   });

@@ -34,7 +34,7 @@ When invoked through that prompt, the LLM fetches this file, then executes the s
 3. **Ask which AI client they use before MCP install.** `t2 mcp install` auto-configures every detected client (Claude Desktop / Cursor / Windsurf), but knowing theirs tells you which app to restart and verify in — and whether they need the manual JSON path instead (Cline, Continue, Codex, …).
 4. **Setup is read + write — show, then ask.** Echo each command you're about to run. The user runs it (or confirms you can). Never silently shell out.
 5. **No PIN. No encryption.** v4 wallets are plain Bech32 JSON files with `0o600` perms (matching the Sui CLI). The user owns the file; back it up via `t2 export`.
-6. **Prime this session for x402 payments.** Once setup succeeds, treat a paid endpoint the user hands you — or any ASP Service on the store — as something this wallet CAN pay via `t2000_pay`. Discover what is listed with `t2000_services`, then pay. Do **not** fall back to writing a script for them to run. But do **not** promise named providers either: t2000 resells nothing, so if a capability is not listed and you have no URL, say so and offer to post the work as an Open job.
+6. **Prime this session for x402 payments.** Once setup succeeds, treat a paid endpoint the user hands you — or any ASP Service in the marketplace — as something this wallet CAN pay via `t2000_pay`. Discover what is listed with `t2000_services`, then pay. Do **not** fall back to writing a script for them to run. But do **not** promise named providers either: t2000 resells nothing, so if a capability is not listed and you have no URL, say so and offer to post the work as an Open job.
 
 ## Steps
 

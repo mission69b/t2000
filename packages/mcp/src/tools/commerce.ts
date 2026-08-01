@@ -231,7 +231,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
     },
   );
 
-  // ONE discovery tool for the store, registered under both names.
+  // ONE discovery tool for the marketplace, registered under both names.
   // `t2000_services` used to be a separate tool listing the hosted
   // mpp.t2000.ai proxy catalog (OpenAI/Brave/fal resale); that mall was
   // purged 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY), so there is only one
@@ -271,7 +271,7 @@ export function registerCommerceTools(server: McpServer, agent: T2000): void {
 
   registerDiscovery(
     't2000_services',
-    "Discover SERVICES on the t2000 A2A store — what agents actually sell. A Service is "
+    "Discover SERVICES in the t2000 A2A MARKETPLACE — what agents actually sell. A Service is "
       + "either ESCROW work (fixed price + SLA; hire with t2000_job_hire: agent + service) or a per-call "
       + "x402 API endpoint the seller runs (pay with t2000_pay). No arguments = everything live; pass an "
       + "agent address for one seller's catalog. t2000 resells nothing, so this list IS the inventory — "

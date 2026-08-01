@@ -77,7 +77,7 @@ export function registerChatTools(server: McpServer): void {
 
   server.tool(
     't2000_models',
-    'List the t2000 Private Inference model catalog (id · privacy tier · per-1M pricing). Call before t2000_chat to pick a model.',
+    'List the Audric Private Inference model catalog served from api.audric.ai (id · privacy tier · per-1M pricing). Call before t2000_chat to pick a model.',
     {},
     async () => {
       try {

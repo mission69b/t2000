@@ -63,7 +63,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_history',
-    'View recent on-chain activity — sends, swaps, MPP (paid API) payments. Each entry includes a transaction digest viewable on Suiscan (https://suiscan.xyz/mainnet/tx/{digest}). Mirrors `t2 history`.',
+    'View recent on-chain activity — sends, swaps, x402 (paid API) payments. Each entry includes a transaction digest viewable on Suiscan (https://suiscan.xyz/mainnet/tx/{digest}). Mirrors `t2 history`.',
     { limit: z.number().optional().describe('Number of transactions to return (default: 20)') },
     async ({ limit }) => {
       try {

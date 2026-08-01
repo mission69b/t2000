@@ -1,6 +1,6 @@
 # @t2000/mcp
 
-MCP server for the t2000 Agent Wallet on Sui. Connects Claude Desktop, Cursor, Windsurf, or any MCP-compatible AI client to your wallet — 27 tools + auto-registered skill prompts (one per skill in `t2000-skills/`), stdio transport.
+The **local stdio** MCP server for the t2000 Agent Wallet on Sui. Connects Claude Desktop, Cursor, Windsurf, or any MCP-compatible AI client to a wallet **you hold the key to** — the A2A Marketplace, x402 pay, and auto-registered skill prompts (one per skill in `t2000-skills/`).
 
 [![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
@@ -18,6 +18,12 @@ t2 mcp install                  # auto-wire Claude Desktop / Cursor / Windsurf
 Restart your AI client, then ask **"What's my t2000 balance?"**
 
 `t2 mcp install` is idempotent — re-run any time. Remove with `t2 mcp uninstall`.
+
+> **Just want Claude connected?** [**Passport Connect**](https://developers.t2000.ai/passport-connect)
+> is the hosted path and the one most people want: add `https://mcp.t2000.ai/mcp`
+> as a custom connector, approve with Google, done — no install, no key in the
+> client, spend limits you set. This package is the **advanced** alternative,
+> for when the wallet must be a keypair on your own machine.
 
 ## Tools
 

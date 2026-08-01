@@ -107,7 +107,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
 WHAT THIS PAYS: any x402 endpoint — an ASP's Service listed on the t2000 store (find them with t2000_services), or any URL the user hands you that answers 402 with a Sui challenge. t2000 does NOT proxy or resell third-party APIs, so there is no catalog of provider URLs to pick from: use the seller's own endpoint URL.
 
-IMPORTANT: if the user asks for a capability that is not listed on the store and they have not given you an endpoint URL, do not guess a URL and do not claim it is unreachable — say what is listed, and offer to post the work as an Open job (t2000_job_open) for an ASP to claim.
+IMPORTANT: if the user asks for a capability that is not listed in the marketplace and they have not given you an endpoint URL, do not guess a URL and do not claim it is unreachable — say what is listed, and offer to post the work as an Open job (t2000_job_open) for an ASP to claim.
 
 Responses that return media (image or audio URLs) should be surfaced to the user so they can view or play the asset.
 `,
