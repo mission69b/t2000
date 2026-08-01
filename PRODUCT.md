@@ -1,63 +1,133 @@
 # t2000 — The Product Map
 
-> One page. What t2000 sells, to whom, and how they start. For the technical
-> picture see [`ARCHITECTURE.md`](ARCHITECTURE.md); for docs see
+> One page. What we sell, under which brands, and how people start. For the
+> technical picture see [`ARCHITECTURE.md`](ARCHITECTURE.md); for docs see
 > [developers.t2000.ai](https://developers.t2000.ai).
+>
+> **🔴 LOCKED 2026-08-01 — three programs + product B.** t2000 = **USDC agent
+> economy only**. Private Inference = **Audric** (`api.audric.ai`, hard cut — no
+> `api.t2000.ai` redirect). Shared zkLogin Passport kept. Specs:
+> `SPEC_T2_PASSPORT_CONNECT.md` · `SPEC_T2_CLEANUP_USDC_ONLY.md` ·
+> `SPEC_PI_TO_AUDRIC.md`.
 
-## Three surfaces. Each has one customer and one path in.
+## Two brands. Full stop.
 
-| Surface | Customer | The path in | They pay with |
-|---|---|---|---|
-| **Private Inference** — `api.t2000.ai/v1` | human developers | sign into the [console](https://agents.t2000.ai/manage) → mint a key (free) → put base URL + key in your tool | free daily coding allowance, then credit (card or stablecoin top-up) |
-| **x402 Gateway** — `mpp.t2000.ai` | agents (machines) | `t2 init` (wallet) → fund USDC → `t2 pay <url>` | USDC per call, gasless |
-| **t2 Agents** — `agents.t2000.ai` | agents + humans who hire/sell work | [join](https://agents.t2000.ai/join) / Create Agent → list a service or API → buyers hire or call | USDC (escrowed job or per-call) |
+| Brand | Role | Money |
+|---|---|---|
+| **[t2000.ai](https://t2000.ai)** | A2A store + Passport Connect + x402 rails + wallet SDK/CLI/MCP | **USDC only** |
+| **[audric.ai](https://audric.ai)** | Consumer private AI + **Private Inference** (chat + developer API) | **Credit / Stripe** |
+
+**Do not create** parallel consumer brands (`paychat.sh`, `hireagent.sh`, etc.).
+PayBox-shaped distribution = **Passport Connect** on t2000 (hosted MCP into
+Claude / ChatGPT), not a new domain. Store discovery = **`t2000.ai`**.
+
+**One Passport:** same Google zkLogin → same Sui address on both brands. Never
+split wallets when moving PI to Audric.
+
+---
+
+## Apex IA (target)
+
+| URL | What it is |
+|---|---|
+| **`t2000.ai`** | **Home = A2A store** (browse / Hire / Open) + Passport / Connect CTAs |
+| **`t2000.ai/manage`** | Console — **USDC Passport**, limits, Connections, seller desk, jobs (no inference credit) |
+| **`mcp.t2000.ai`** | Hosted Passport MCP (Connect) — claim only when live |
+| **`developers.t2000.ai`** | Docs — wallet, store, x402, SDK/CLI/MCP (USDC). Not PI pricing. |
+| **`mpp.t2000.ai`** | **x402 API rail only** — no consumer marketing/catalog UI |
+| **`api.audric.ai`** | **Private Inference** (OpenAI-compatible) — Audric product |
+| **`verify.t2000.ai`** | Confidential receipt verify + public ledger |
+| **`agents.t2000.ai`** | **Purged** — 301 to `t2000.ai` (do not design for it) |
+| **`api.t2000.ai`** | **Removed** (hard cut — no redirect) when Program 3 ships |
+
+**Passport** = named capability (zkLogin wallet shared with Audric + manage),
+surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
+
+---
+
+## Surfaces (after the three-program lock)
+
+| Surface | Brand | Customer | Path in | They pay with |
+|---|---|---|---|---|
+| **A2A Store** | t2000 | humans + agents hiring/selling work | Create Passport → Hire / Open / sell | **USDC** (escrow or per-call) |
+| **Passport Connect** | t2000 | humans using Claude/ChatGPT | Connect → hosted MCP under limits | **USDC** (delegated session) |
+| **x402 Gateway** | t2000 | machines | `t2 init` / Passport → `t2 pay` / MCP `pay` | **USDC** per call |
+| **Private Inference** | **Audric** | humans + devs | Audric signup → **top up ≥ $5 credit** → API key / chat / coding-tool connect | **Credit** (no free `sk-` mint) |
 
 **What each is:**
 
-- **Private Inference** — every major open + frontier model behind one
-  OpenAI-compatible endpoint. Zero data retention by default, a
-  GPU-TEE **confidential tier** with Sui-anchored receipts anyone can verify
-  (`t2 verify`, [verify.t2000.ai](https://verify.t2000.ai)), and the
-  **`t2000/auto` router** — one model id that picks the right model per step
-  and bills at the served model's price.
-- **x402 Gateway** — every major AI + data API, payable per call in USDC with
-  no account, no API keys, no gas. The machine-native way to buy compute.
-- **t2 Agents** — the agent store. Sellers list **services** (fixed-price work
-  into on-chain escrow) or **APIs** (pay-per-call via `@t2000/serve` / catalog).
-  Buyers hire from the console, CLI, or Audric. Reputation is receipts.
+- **A2A Store** — agent-to-agent work + paid APIs on Sui. **ASPs** list
+  **services** (escrow Jobs) or **APIs** (x402 / `@t2000/serve`). Buyers **Hire**
+  or post **Open** jobs. Reputation is receipts. Capital storefront **purged**
+  (Program 2).
+- **Passport Connect** — hosted MCP + OAuth into Claude/ChatGPT; earn-first
+  (claim Open at $0) and hire/pay under limits; MCP Apps cards. Spec:
+  `SPEC_T2_PASSPORT_CONNECT.md`.
+- **x402 Gateway** — major AI + data APIs, pay per call in USDC, no account.
+  Machine-native. Discovery on store/docs — not a parallel mpp marketing site.
+- **Private Inference (Audric)** — open + frontier models, ZDR, confidential tier
+  with receipts (`verify.t2000.ai`). Coding tools point at `api.audric.ai`.
+  Spec: `SPEC_PI_TO_AUDRIC.md`.
+
+### Store vocabulary (locked)
+
+| Term | Meaning | Surfaced as |
+|---|---|---|
+| **A2A** | Agent-to-agent commerce on Sui escrow | “A2A” framing; package `a2a_escrow` |
+| **ASP** | Agent Service Provider | Role name; code may say `seller` |
+| **Hire** | Buyer funds a Job now | Primary buyer door |
+| **Open** | Buyer posts escrowed open job; ASP claims | Role + door |
+| **Job** | Escrowed unit of work | Inbox + chain object |
+| **Passport** | Shared zkLogin/local wallet — USDC, limits, Connect | Home + `/manage`; same address as Audric |
+
+Do **not** use Invite / RFQ / “open request” as product nouns.
 
 ## How we make money
 
-| # | Source | What we take |
-|---|---|---|
-| 1 | **Private Inference** | Credit / paid model usage after the free coding allowance |
-| 2 | **x402 Gateway** | USDC on proxied catalog calls (direct sellers settle to themselves — no platform cut) |
-| 3 | **t2 Agents escrow** | **5%** protocol fee at job settlement (`a2a_escrow` → t2000-revenue). Per-call API sales on the store are fee-free. |
+| # | Source | Brand | What we take |
+|---|---|---|---|
+| 1 | **Private Inference** | Audric | Credit / paid model usage |
+| 2 | **x402 Gateway** | t2000 | USDC on proxied catalog calls |
+| 3 | **A2A escrow** | t2000 | **5%** at job settlement (`a2a_escrow` → t2000-revenue). Per-call API sales fee-free. |
 
-## The substrate (not products — plumbing)
+Later: shared Stripe subscription entitlements across Audric + store perks (billing program — not Connect Phase 0).
+
+## The substrate
 
 | Thing | What it actually is |
 |---|---|
-| **Agent Wallet** (`@t2000/{cli,sdk,mcp}`) | The machine customer's *account*. A machine can't sign into a console — its keypair is its identity, its USDC balance is its billing. Exists to serve the gateway + store. |
-| **Agent ID** (`@t2000/id`) | On-chain registry: name, `@handle`, owner, kill-switch. The identity every seller and hireable agent is bound to. |
+| **Passport** (`@t2000/{cli,sdk,mcp}`) | One wallet — local keypair *or* zkLogin. **USDC** = store/Connect/x402 billing. Hosted MCP = Connect. |
+| **Agent ID** (`@t2000/id`) | On-chain registry for ASPs |
+| **t2 Compute** (planned) | Managed runtime for an Agent ID; brains = Audric or BYO — not a t2000 PI store product |
 
-## The consumers (demand for the rails)
+## The consumers
 
-- **[Audric](https://audric.ai)** — the consumer AI app; buys inference + gateway calls. In-chat escrow hire (Phase 5, after Capital) — not “Butler” (Virtuals) and not Audric Computer (separate durable-agent product).
-- **Any OpenAI-compatible tool via `t2 connect`** — Hermes, Claude Code, Codex,
-  Continue, Aider, Cursor, … pointed at Private Inference with a console key
-  ([use-with-your-tools](https://developers.t2000.ai/use-with-your-tools)).
+- **[Audric](https://audric.ai)** — private AI chat + PI API. Same Passport. No “Connect MCP” chrome (Passport is native). Commerce cards = later pass.
+- **Claude / ChatGPT via Passport Connect** — hosted MCP on t2000 (`mcp.t2000.ai`).
+- **Coding tools → models** — Audric API (`api.audric.ai`), not `t2 connect` to t2000.
+
+## Three active programs (2026-08-01)
+
+| # | Program | SPEC |
+|---|---|---|
+| 1 | Passport Connect (USDC MCP + cards) | `SPEC_T2_PASSPORT_CONNECT.md` |
+| 2 | Cleanup (Capital purge, apex host, USDC-only desk) | `SPEC_T2_CLEANUP_USDC_ONLY.md` |
+| 3 | PI → Audric (`api.audric.ai` hard cut) | `SPEC_PI_TO_AUDRIC.md` |
+
+## Explicit non-goals
+
+- New consumer vault/store domains (PayBox clones)
+- Multi-chain / virtual-card race with MoonPay
+- Competing with Claude/ChatGPT on agent harness UX as the company bet
+- Consumer marketing frontend on `mpp.t2000.ai`
+- Designing for `agents.t2000.ai` as a living product host
+- Second zkLogin for t2000
+- Keeping Private Inference on the t2000 store desk
+- `api.t2000.ai` redirect/alias after Program 3
 
 ## Removed
 
-- **`t2 code` (`@t2000/code`) + `create-t2-app` + templates gallery** — removed
-  2026-07-24. Not our market (another coding agent). Private Inference demand =
-  Audric + `t2 connect` into tools people already use (Claude Code, Codex, …;
-  Hermes later). Old `/code` and `/templates` URLs are gone (no redirect).
-- **`t2 agent onboard` + `t2 agent topup`** (wallet → credit → key) — removed
-  2026-07-13 (shipped in v8). Keys come from the console, period;
-  machines making one-off inference calls use keyless x402 on the gateway.
-  `t2 models` / `t2 verify` remain — they *consume* a key (`T2000_API_KEY`) and
-  verify receipts; they are not a second onboarding path. **`t2 chat`** (interactive
-  CLI chat) was removed — use your own agent with `t2 connect` or call the API
-  directly.
+- **`t2 code` / `create-t2-app` / templates** — 2026-07-24
+- **`t2 agent onboard` / `t2 agent topup`** — 2026-07-13
+- **Capital storefront** — Program 2 (on-chain may remain historical)
+- **`api.t2000.ai` as PI product host** — Program 3 hard cut → `api.audric.ai`
