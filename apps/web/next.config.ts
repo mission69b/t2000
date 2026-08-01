@@ -53,28 +53,18 @@ const nextConfig: NextConfig = {
         destination: "/agent-wallet",
         permanent: true,
       },
-      // Product page moved 2026-07-06 — /api reads like an API root and the
-      // app/api segment is conventionally route handlers, not a page.
+      // Private Inference is an AUDRIC product (Program 3, SPEC_PI_TO_AUDRIC):
+      // the t2000 marketing page was removed 2026-08-01 — it sold someone
+      // else's product and fetched two endpoints that now 410. Old inbound
+      // links land on Audric.
       {
-        source: "/api",
-        destination: "/private-inference",
-        permanent: true,
+        source: "/private-inference",
+        destination: "https://audric.ai",
+        permanent: false,
       },
-      // Stats consolidation (2026-07-23): the standalone /usage page retired.
-      // Inference usage lives on the product page (#usage); the economy feed
-      // lives at t2000.ai/activity.
-      {
-        source: "/usage",
-        destination: "/private-inference#usage",
-        permanent: true,
-      },
-      // Slug matched to the product name (2026-07-14): the page sells
-      // Private Inference, so the URL says so.
-      {
-        source: "/private-api",
-        destination: "/private-inference",
-        permanent: true,
-      },
+      { source: "/api", destination: "https://audric.ai", permanent: false },
+      { source: "/private-api", destination: "https://audric.ai", permanent: false },
+      { source: "/usage", destination: "https://audric.ai", permanent: false },
     ];
   },
   async headers() {

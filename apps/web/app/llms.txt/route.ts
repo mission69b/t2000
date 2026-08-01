@@ -42,7 +42,7 @@ lands on Sui.
 - Wire your coding tool (Claude Code, Codex, Continue, …): https://developers.t2000.ai/use-with-your-tools · CLI: t2 connect
 - Verify any confidential receipt in Audric: https://audric.ai
 - Live numbers: inference usage (tokens, model leaderboard) at
-  https://t2000.ai/private-inference#usage (raw: https://api.t2000.ai/v1/usage/global) ·
+
   economy settlements at https://t2000.ai/activity
   (raw: https://t2000.ai/api/economy)
 

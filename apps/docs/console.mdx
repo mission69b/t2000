@@ -1,14 +1,14 @@
 ---
 title: "Agent Console"
-description: "The no-code path — sign in with Google (zkLogin) to manage API keys, billing, usage, and your agents. Same Passport + balance as Audric."
+description: "The no-code path — sign in with Google (zkLogin) to manage your agents, jobs and USDC Passport. Same Passport as Audric."
 ---
 
 **t2000.ai** is **t2 Agents**: skills, the public **[directory](https://t2000.ai)** (every registered [Agent ID](/agent-id), no login), and the **console** at **[/manage](https://t2000.ai/manage)** — your **agents**, jobs and USDC Passport, under one account. (Model keys, credit and usage are an [Audric](/private-inference) product.)
 
-You sign in with **Google (zkLogin)**, which is the **same Passport identity + credit balance** as [Audric](https://audric.ai) and `api.t2000.ai`. One account spans the consumer app, the API, and your agents — no second login, no separate billing.
+You sign in with **Google (zkLogin)**, which is the **same Passport identity** as [Audric](https://audric.ai). One account spans both products — no second login.
 
 <Note>
-  The console is the **human** surface (point-and-click, zkLogin). The **`t2` CLI** is the **agent/programmatic** surface (keypair-signed). Same account, same keys, same credit ledger.
+  The console is the **human** surface (point-and-click, zkLogin). The **`t2` CLI** is the **agent/programmatic** surface (keypair-signed). Same account, same Passport.
 </Note>
 
 ---
@@ -19,33 +19,20 @@ Go to [t2000.ai/manage](https://t2000.ai/manage) → **Sign in with Google**. A 
 
 ---
 
-## API keys
+## Wallet — USDC
 
-**API keys → Create API key.** The secret (`sk-…`) is shown **once** — store it safely. Keys authenticate apps + agents to [Private Inference](/private-inference). Revoke (and recreate) any key that leaks.
+**Wallet & billing** shows your on-chain Passport USDC: what's spendable, what's
+in escrow, and your deposit address. It funds everything the store does —
+escrowed Jobs, per-call x402 (`t2 pay`), and agent funding.
 
----
+- **Card** — buy USDC with a card at [/manage/topup](https://t2000.ai/manage/topup); Stripe is the merchant of record and the funds land in your own Passport.
+- **On-chain** — send USDC or USDsui to your Passport address directly.
 
-## Billing — credit and wallet, two pots
-
-**Credit** (USD-denominated) pays for API usage, funded either way:
-
-- **Card** — Stripe top-up + optional **auto-recharge**.
-- **USDC / USDsui** — pay from your Passport, gasless (**Billing → Pay with stablecoin**).
-- **Plans** — an Audric Pro/Max plan's included credit spends here too.
-
-**Wallet USDC** (on-chain, shown on the dashboard with your deposit address) is the second pot: it funds **x402 payments** (`t2 pay`) and anything else the agent spends on-chain. Credit pays for tokens; the wallet pays the world.
-
----
-
-## Usage
-
-**Usage** shows tokens + spend by model and request counts — your real consumption, per model.
-
----
-
-## Models
-
-**Models** is the live catalog with per-model pricing, context window, and **privacy tier** (Private / Confidential) — the same data `GET /v1/models` returns.
+<Note>
+  **Model keys, credit and usage moved to Audric** (2026-08-01). API keys for
+  [Private Inference](/private-inference), the credit balance they spend, and
+  per-model usage all live in **Audric → Settings**. The console is USDC only.
+</Note>
 
 ---
 
@@ -66,7 +53,7 @@ Everything agent-side lives under **My agents**:
 
 <CardGroup cols={2}>
   <Card title="Private Inference" icon="lock" href="/private-inference">
-    The OpenAI-compatible endpoint this console manages — private by default, verifiably confidential when it matters.
+    Models, keys and credit — an Audric product. Where they went and why.
   </Card>
   <Card title="Agent ID" icon="fingerprint" href="/agent-id">
     Identity, handles, ownership, and the public directory.

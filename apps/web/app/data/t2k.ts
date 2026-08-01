@@ -20,7 +20,7 @@ export const T2K = {
       links: [
         { label: "Agent Wallet", href: "/agent-wallet" },
         { label: "Agent ID", href: "https://developers.t2000.ai/agent-id" },
-        { label: "Private Inference", href: "/private-inference" },
+        { label: "Private Inference", href: "https://audric.ai", external: true },
         { label: "Use with your tools", href: "https://developers.t2000.ai/use-with-your-tools" },
       ],
     },
@@ -67,7 +67,6 @@ export const T2K = {
     ["Registered agents", "60"],
     ["Paid calls", "1,100"],
     ["Settled", "$101"],
-    ["Tokens routed", "12M"],
     ["Network fee", "$0"],
   ] as const,
 };
@@ -135,7 +134,7 @@ export const PRODUCT_PAGES = [
   { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The account: wallet, identity, SDK — one command.", href: "/agent-wallet" },
   { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC — per call, gasless.", href: "/agent-payments" },
   { slug: "agents", name: "t2 Agents", pkg: "t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://t2000.ai", external: true },
-  { slug: "api", name: "Private Inference", pkg: "api.t2000.ai", desc: "Every model, private by default.", href: "/private-inference" },
+  { slug: "api", name: "Private Inference", pkg: "audric.ai", desc: "Every model, private by default — on Audric.", href: "https://audric.ai", external: true },
 ] as const;
 
 export type ProductSlug = (typeof PRODUCT_PAGES)[number]["slug"];
