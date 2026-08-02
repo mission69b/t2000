@@ -149,12 +149,13 @@ Responses that return media (image or audio URLs) should be surfaced to the user
 
   server.tool(
     't2000_agent_sell',
-    "Sell this agent's x402 API endpoint as a Service on its public Agent ID, so buyers can pay it per call in USDC. The endpoint is LIVE-PROBED server-side first (must answer 402 with a valid Sui payment challenge — probe failures are returned per-check), then one sponsored (gasless) signature sets it on-chain. The Service appears on t2000.ai and api.t2000.ai/v1/agents/{address} immediately, and buyers find it with t2000_services. Requires an on-chain Agent ID (`t2 agent register`). Set remove: true to clear the listing. Mirrors `t2 agent sell <endpoint>`. This does NOT spend funds.",
+    "Sell this agent's x402 API as Services on its public Agent ID, so buyers can pay it per call in USDC. Pass the API ORIGIN (https://api.example.com) to list every paid route in its openapi.json, or one route URL to list just that route. Every listed route is LIVE-PROBED server-side first (must answer 402 with a valid Sui payment challenge — probe failures are returned per-route), then one sponsored (gasless) signature sets the primary route on-chain. The routes appear on t2000.ai and api.t2000.ai/v1/agents/{address} immediately, and buyers find them with t2000_services. Requires an on-chain Agent ID (`t2 agent register`). Set remove: true to clear the listing. Mirrors `t2 agent sell <url>`. This does NOT spend funds.",
     {
-      endpoint: z.string().optional().describe('Your x402 endpoint URL (https). Omit only with remove: true.'),
+      endpoint: z.string().optional().describe('Your API origin (expands every paid route in its openapi.json) or one x402 route URL (https). Omit only with remove: true.'),
       remove: z.boolean().optional().describe('Remove the listing instead of setting one (default: false)'),
+      primary: z.string().optional().describe('Route path to record as the on-chain primary endpoint, e.g. "/palette" (default: the cheapest paid route)'),
     },
-    async ({ endpoint, remove }) => {
+    async ({ endpoint, remove, primary }) => {
       try {
         if (!(remove || endpoint)) {
           throw new Error('Provide the x402 endpoint URL (or remove: true to clear the listing).');
@@ -166,7 +167,11 @@ Responses that return media (image or audio URLs) should be surfaced to the user
         const prepRes = await fetch(`${base}/agent/endpoint/prepare`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address, endpoint: target }),
+          body: JSON.stringify({
+            address,
+            endpoint: target,
+            ...(primary ? { primary } : {}),
+          }),
         });
         const prep = (await prepRes.json().catch(() => ({}))) as {
           nonce?: string;
@@ -177,15 +182,37 @@ Responses that return media (image or audio URLs) should be surfaced to the user
             currency?: string | null;
             issues?: { message?: string; code?: string }[];
           } | null;
+          origin?: string | null;
+          primary?: { path?: string; url?: string } | null;
+          routes?: {
+            method?: string;
+            path?: string;
+            url?: string;
+            priceUsdc?: string | null;
+            summary?: string | null;
+            probeOk?: boolean;
+            issues?: { message?: string; code?: string }[];
+          }[];
           error?: { message?: string } | string;
         };
         if (!prepRes.ok) {
           const msg = typeof prep.error === 'string' ? prep.error : (prep.error?.message ?? `HTTP ${prepRes.status}`);
-          // Surface the probe's per-check findings so the agent can fix its endpoint.
+          // Surface the probe's per-check findings (per-route on origin
+          // expands) so the agent can fix its endpoint.
           return {
             content: [{
               type: 'text' as const,
-              text: JSON.stringify({ ok: false, error: msg, probeIssues: prep.probe?.issues ?? [] }),
+              text: JSON.stringify({
+                ok: false,
+                error: msg,
+                probeIssues: prep.probe?.issues ?? [],
+                routes: (prep.routes ?? []).map((r) => ({
+                  method: r.method,
+                  path: r.path,
+                  probeOk: r.probeOk,
+                  issues: r.issues ?? [],
+                })),
+              }),
             }],
             isError: true,
           };
@@ -212,8 +239,19 @@ Responses that return media (image or audio URLs) should be surfaced to the user
             text: JSON.stringify({
               ok: true,
               listed: !remove,
-              endpoint: remove ? null : target,
+              endpoint: remove ? null : (prep.primary?.url ?? target),
               pricePerCall: prep.probe?.amount ? `${prep.probe.amount} ${prep.probe.currency ?? 'USDC'}` : undefined,
+              origin: prep.origin ?? undefined,
+              routes: remove
+                ? undefined
+                : (prep.routes ?? []).map((r) => ({
+                    method: r.method,
+                    path: r.path,
+                    url: r.url,
+                    priceUsdc: r.priceUsdc,
+                    summary: r.summary,
+                    primary: r.path === prep.primary?.path || undefined,
+                  })),
               profile: `https://t2000.ai/${address}`,
               digest: sub.digest,
             }),
