@@ -317,12 +317,16 @@ Subcommands:
     .command('sell')
     .argument(
       '[endpoint]',
-      'Your x402 endpoint URL (https). Omit with --remove to clear the listing.',
+      'Your API origin (https://api.example.com — every paid route in its openapi.json gets listed) or one x402 route URL. Omit with --remove to clear the listing.',
     )
     .description(
-      'List your x402 endpoint on your public Agent ID profile. The endpoint is live-probed (must answer 402 with a Sui payment challenge), then set on-chain — sponsored, gasless. Same flow as the console\u2019s "Sell your API".',
+      'List your x402 API on your public Agent ID profile. An origin expands via {origin}/openapi.json — every paid route is live-probed (must answer 402 with a Sui payment challenge) and becomes a store card; a single 402 URL lists just that route. Then set on-chain — sponsored, gasless. Same flow as the console\u2019s "Sell your API".',
     )
     .option('--remove', 'Remove the listing instead')
+    .option(
+      '--primary <path>',
+      'Route to record as the on-chain primary endpoint (default: the cheapest paid route)',
+    )
     .option(
       '--category <category>',
       `Directory category for your listing: ${AGENT_CATEGORIES.join(' | ')} (required unless already set on your profile)`,
@@ -334,6 +338,7 @@ Subcommands:
         endpoint: string | undefined,
         opts: {
           remove?: boolean;
+          primary?: string;
           category?: string;
           key?: string;
           api?: string;
@@ -366,7 +371,11 @@ Subcommands:
           const prepRes = await fetch(`${base}/agent/endpoint/prepare`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address, endpoint: target }),
+            body: JSON.stringify({
+              address,
+              endpoint: target,
+              ...(opts.primary ? { primary: opts.primary } : {}),
+            }),
           });
           const prep = (await prepRes.json().catch(() => ({}))) as {
             nonce?: string;
@@ -377,17 +386,39 @@ Subcommands:
               currency?: string | null;
               issues?: { message?: string; code?: string }[];
             } | null;
+            origin?: string | null;
+            primary?: { path?: string; url?: string } | null;
+            routes?: {
+              method?: string;
+              path?: string;
+              url?: string;
+              priceUsdc?: string | null;
+              summary?: string | null;
+              probeOk?: boolean;
+              issues?: { message?: string; code?: string }[];
+            }[];
+            issues?: { message?: string; code?: string }[];
             error?: { message?: string } | string;
           };
           if (!prepRes.ok) {
-            const issues = prep.probe?.issues ?? [];
             const msg =
               typeof prep.error === 'string'
                 ? prep.error
                 : (prep.error?.message ?? `HTTP ${prepRes.status}`);
-            const detail = issues
-              .map((i) => `  ✗ ${i.message ?? i.code}`)
-              .join('\n');
+            // Origin expands carry per-route findings; single probes the
+            // flat issue list. Show whichever came back.
+            const lines: string[] = (prep.probe?.issues ?? []).map(
+              (i) => `  ✗ ${i.message ?? i.code}`,
+            );
+            for (const r of prep.routes ?? []) {
+              if (r.probeOk === false) {
+                lines.push(`  ✗ ${r.method ?? 'POST'} ${r.path}`);
+                for (const i of r.issues ?? []) {
+                  lines.push(`      ${i.message ?? i.code}`);
+                }
+              }
+            }
+            const detail = lines.join('\n');
             throw new Error(detail ? `${msg}\n${detail}` : msg);
           }
           if (!(prep.nonce && prep.txBytes)) {
@@ -400,12 +431,16 @@ Subcommands:
             body: { nonce: prep.nonce, address, signature },
           });
 
+          const primaryUrl = prep.primary?.url ?? target;
           if (isJsonMode()) {
             printJson({
               address,
-              endpoint: opts.remove ? null : target,
+              endpoint: opts.remove ? null : primaryUrl,
               listed: !opts.remove,
               probe: prep.probe ?? null,
+              origin: prep.origin ?? null,
+              primary: prep.primary ?? null,
+              routes: prep.routes ?? [],
               digest: sub.digest,
             });
             return;
@@ -414,12 +449,29 @@ Subcommands:
           if (opts.remove) {
             printSuccess('Listing removed.');
           } else {
-            printSuccess('Listed — your endpoint is live on your public profile.');
-            if (prep.probe?.amount) {
-              printKeyValue('Price', `${prep.probe.amount} USDC per call`);
+            const routes = prep.routes ?? [];
+            if (routes.length > 1) {
+              printSuccess(
+                `Listed — ${routes.length} paid routes are live on your public profile.`,
+              );
+              for (const r of routes) {
+                const mark = r.path === prep.primary?.path ? '  (primary)' : '';
+                const price = r.priceUsdc ? `${r.priceUsdc} USDC` : '?';
+                printKeyValue(
+                  `  ${r.method ?? 'POST'} ${r.path}`,
+                  `${price}${mark}`,
+                );
+              }
+            } else {
+              printSuccess(
+                'Listed — your endpoint is live on your public profile.',
+              );
+              if (prep.probe?.amount) {
+                printKeyValue('Price', `${prep.probe.amount} USDC per call`);
+              }
             }
-            printKeyValue('Endpoint', target);
-            printInfo(`Buyers pay it with: t2 pay ${target}`);
+            printKeyValue('Endpoint', primaryUrl);
+            printInfo(`Buyers pay it with: t2 pay ${primaryUrl}`);
             printKeyValue('Profile', `https://t2000.ai/${address}`);
           }
           printKeyValue('Tx', String(sub.digest));
