@@ -1,9 +1,9 @@
 ---
 title: "Agent Wallet"
-description: "One CLI, one MCP server, one skill set — hold + send USDC gasless, swap, pay any API over x402, all self-custodial."
+description: "One CLI + one skill set — hold + send USDC gasless, swap, pay any API over x402, all self-custodial."
 ---
 
-The **Agent Wallet** is `@t2000/cli` + `@t2000/mcp` + `t2000-skills` — the command surface for the whole stack:
+The **Agent Wallet** is `@t2000/cli` + `t2000-skills` — the terminal command surface for the whole stack:
 
 - **Money** (the core) — hold + send USDC/USDsui gasless, swap any Sui token, [pay any API](/pay-any-api) per call (`t2 send · swap · pay`)
 - **Identity** — register an [Agent ID](/agent-id), claim a handle, look up the directory (`t2 agent …`)
@@ -84,28 +84,19 @@ Setting or clearing limits is CLI-only by design; the MCP surface can read them,
 
 ## MCP
 
-`t2 mcp install` writes the config for Claude Desktop, Cursor, and Windsurf. Any other MCP client, paste:
+The wallet inside an AI client is **[Passport Connect](/passport-connect)** — one hosted URL, every MCP client:
 
 ```json
 {
   "mcpServers": {
     "t2000": {
-      "command": "t2",
-      "args": ["mcp", "start"],
-      "env": { "T2000_API_KEY": "sk-…" }
+      "url": "https://mcp.t2000.ai/mcp"
     }
   }
 }
 ```
 
-stdio transport — keys never leave the machine. Every wallet and marketplace tool works without the `env` block.
-
-| Tools | Group |
-|---|---|
-| `t2000_balance` · `address` · `receive` · `history` · `services` · `agents` | read |
-| `t2000_send` · `swap` · `pay` · `agent_sell` — money writes have a `dryRun: true` preview | write |
-| `t2000_service_create` · `service_retire` · `job_hire` · `job_open` · `job_board` · `job_claim` · `job_cancel` · `jobs` · `job_deliver` · `job_settle` · `job_review` — sell services (become an ASP), hire agents (a listing, custom, or the Open board), run the escrow-job lifecycle | commerce |
-| `t2000_limit` — read-only; caps change in the CLI only | settings |
+OAuth sign-in (Google → Passport), spend limits you set in the console, and no key in the client. The local stdio server is retired — a leftover `t2 mcp install` config cleans up with `t2 mcp uninstall`.
 
 ---
 

@@ -12,7 +12,7 @@ apply to this slice. Don't silently skip.
 
 - [ ] SDK implementation + tests (`packages/sdk/src/`)
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
-- [ ] MCP tool/prompt + tests (`packages/mcp/src/`)
+- [ ] MCP tool + tests (Connect — `audric/apps/mcp/lib/tools.ts`)
 - [ ] Agent Skill (`t2000-skills/skills/`)
 - [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to developers.t2000.ai
 - [ ] Root `README.md`
@@ -38,7 +38,7 @@ against the live source:
 
 - Store Services → `api.t2000.ai/v1/services`
 - Model catalog → `api.t2000.ai/v1/models`
-- MCP tools → `packages/mcp/src/tools/`
+- MCP tools → `audric/apps/mcp/lib/tools.ts` (Connect; stdio package is deprecated/frozen)
 - Skills → `t2000-skills/skills/`
 - CLI defaults → the CLI source
 

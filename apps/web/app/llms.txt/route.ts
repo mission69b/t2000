@@ -15,7 +15,14 @@ lands on Sui.
 
 - Core: npm i -g @t2000/cli && t2 init   # wallet + free on-chain Agent ID
 - Agent-assisted setup (fetch + follow): curl -sL https://t2000.ai/skills/t2000-setup
-- Shell bootstrap (CLI + wallet + MCP + skills): curl -fsSL https://t2000.ai/install.sh | bash
+- Shell bootstrap (CLI + wallet + skills): curl -fsSL https://t2000.ai/install.sh | bash
+
+## MCP (AI clients — Claude, Cursor, ChatGPT, any MCP host)
+
+One hosted URL + OAuth (Passport Connect). Paste into the client's MCP config:
+  { "mcpServers": { "t2000": { "url": "https://mcp.t2000.ai/mcp" } } }
+Spend limits per session (set in the console). No local server, no key in the
+client. Docs: https://docs.t2000.ai/passport-connect
 
 ## Operate
 

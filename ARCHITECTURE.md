@@ -58,7 +58,7 @@ is a product decision. The gateway is fully isolated (own project, DB, Redis, ke
 |---|---|---|
 | `@t2000/sdk` | TypeScript wallet core — send (gasless USDC/USDsui), swap (Cetus aggregator), pay (x402), history (GraphQL), balance, limits (`LimitEnforcer`), `verifyReceipt`. gRPC-only transport. | One tested money path shared by every consumer (CLI, MCP, Audric) — chain plumbing, gasless mechanics, and spend limits are implemented once, never per-host. |
 | `@t2000/cli` | `t2` — init · fund · balance · send · swap · pay · history · status · verify · export · limit · services · skills · mcp · connect · agent (identity subcommands incl. `sell`) · service · browse · job (a2a escrow lifecycle incl. `watch --mine`, `review`) · check | The terminal front door: humans, scripts, and CI drive the wallet without writing code. `t2 connect` wires coding tools to Private Inference; interactive CLI chat was removed. |
-| `@t2000/mcp` | MCP server (stdio) — 14 tools + one prompt per skill, skill bodies baked at build time | Puts the wallet *inside* AI clients (Claude, Cursor, Windsurf) over the open MCP standard — agents get money tools with zero custom integration. |
+| `@t2000/mcp` | **DEPRECATED** (SPEC_T2_KILL_STDIO, 2026-08-02) — the retired local stdio server; published versions stay on npm, no further updates | Replaced by hosted Passport Connect (`https://mcp.t2000.ai/mcp` + OAuth), which puts the wallet inside any MCP client with no install and no key client-side. |
 | `@t2000/id` | `agent_id::registry` client — `buildRegisterTx`, `buildUpdateTx`, ownership txs; ids baked for mainnet | Lets third parties build against the identity registry without pulling in the whole wallet SDK. |
 | `@suimpp/mpp` | The x402/MPP Sui payment method (client + server verification) — suimpp repo | The payment method as a small open package so *any* server can accept x402-on-Sui — the standard is bigger than our gateway. |
 
@@ -299,10 +299,13 @@ the chain stays the source of truth.
 
 ---
 
-## MCP server + skills
+## MCP + skills
 
-**`@t2000/mcp`** (stdio; installed by `t2 mcp install` into Claude Desktop / Cursor /
-Windsurf configs) — 14 tools:
+**Passport Connect** (`audric/apps/mcp`, hosted at `https://mcp.t2000.ai/mcp` +
+OAuth) is THE MCP surface — the tool registry lives in
+`audric/apps/mcp/lib/tools.ts` (read it for the live list; money verbs are
+`authorizeSpend`-gated, `t2000_send` is absent by design). The retired stdio
+server's last tool set, for the record:
 
 | Category | Tools |
 |---|---|

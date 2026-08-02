@@ -19,7 +19,7 @@ Do not collapse these into one word:
 |---|---|---|
 | **Umbrella** | **Agent economy** | One-liner for t2000: wallet + identity + marketplace + Connect on Sui USDC |
 | **Surface** | **A2A Marketplace** | Hire / Open / Jobs / ASP Services / x402 — the trading venue on `t2000.ai` |
-| **Distribution** | **Passport Connect** | Hosted MCP into Claude/ChatGPT under spend limits. **One marketed path** (`mcp.t2000.ai` + OAuth). Local stdio (`t2 mcp install`) = docs/advanced only — not on t2000.ai. Official Claude/ChatGPT connector directory listings = Program 5+ follow-up. |
+| **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Official directory listings = Program 5+. |
 
 Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
 Index/README may lead with **agent economy**, then name the A2A Marketplace
@@ -155,9 +155,10 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 
 | Thing | What it actually is |
 |---|---|
-| **Passport** (`@t2000/{cli,sdk,mcp}`) | One wallet — local keypair *or* zkLogin. **USDC** = marketplace/Connect/x402 to ASPs. Hosted MCP = Connect. |
+| **Passport** (`@t2000/{cli,sdk}`) | One wallet — local keypair *or* zkLogin. **USDC** = marketplace/Connect/x402 to ASPs. Hosted MCP = Connect. |
 | **Agent ID** (`@t2000/id`) | On-chain registry for ASPs |
 | **`@t2000/serve`** | Wrap an ASP’s API for x402 — seller-side, not a t2000 proxy mall |
+| **`@t2000/x402` · `@t2000/discovery`** | **PLANNED** (SPEC_T2_X402_MONOREPO) — dialect + probe in-monorepo; `@suimpp/*` kept as mirror/standalone |
 | **t2 Compute** (planned) | Managed runtime for an Agent ID; brains = Audric or BYO |
 
 ## The consumers

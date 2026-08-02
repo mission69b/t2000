@@ -22,7 +22,7 @@ t2000/
 ├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
-├── packages/mcp     ← @t2000/mcp (npm)   # (@t2000/engine RETIRED + deleted 2026-06-14)
+├── packages/mcp     ← @t2000/mcp (npm — DEPRECATED 2026-08-02, stdio retired; Connect = the MCP surface)   # (@t2000/engine RETIRED + deleted 2026-06-14)
 ├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29)
 ├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router — wrap any API for agent payments (added 2026-07-20; stack is 5 packages)
 ├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
@@ -432,7 +432,7 @@ When shipping a feature, update these files:
 
 - [ ] SDK implementation + tests (`packages/sdk/src/`)
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
-- [ ] MCP tool/prompt + tests (`packages/mcp/src/`)
+- [ ] MCP tool + tests (Connect — `audric/apps/mcp/lib/tools.ts`; stdio `packages/mcp` is deprecated/frozen)
 - [ ] Agent Skill (`t2000-skills/skills/`)
 - [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to `docs.t2000.ai`
 - [ ] Root README (`README.md`)
@@ -443,4 +443,4 @@ When shipping a feature, update these files:
 **Docs cadence (two tiers, not "dump as you go"):**
 - **Per-slice** — keep `docs.t2000.ai` *factually correct* only (version, command surface, behavior like limits-on / no-charge-on-failure). Cheap; prevents the staleness class.
 - **Per-PHASE** — a dedicated structured-docs task: turn the phase's shipped specs into a cohesive, **story-driven product + technical section** (features → benefits → how it works), NOT a textbook manual. The marketing-site positioning rewrite batches at launch via `SITE_REPOSITIONING_BRIEF.md`.
-- **Catalog tables come from live truth, never from memory.** Any docs table that enumerates services/models/tools/skills MUST be written against the live source — `api.t2000.ai/v1/services` (store Services), `api.t2000.ai/v1/models` (model catalog), `packages/mcp/src/tools/` (MCP tools), `t2000-skills/skills/` (skills), CLI source for defaults. Hand-written "should exist" lists are how the 2026-07-02 agent-payments fiction (Bing/Kagi/Midjourney/BlockVision — none on the rail) shipped; cross-check before writing, and prefer linking the live endpoint over duplicating it.
+- **Catalog tables come from live truth, never from memory.** Any docs table that enumerates services/models/tools/skills MUST be written against the live source — `api.t2000.ai/v1/services` (store Services), `api.t2000.ai/v1/models` (model catalog), `audric/apps/mcp/lib/tools.ts` (Connect MCP tools), `t2000-skills/skills/` (skills), CLI source for defaults. Hand-written "should exist" lists are how the 2026-07-02 agent-payments fiction (Bing/Kagi/Midjourney/BlockVision — none on the rail) shipped; cross-check before writing, and prefer linking the live endpoint over duplicating it.

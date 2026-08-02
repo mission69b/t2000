@@ -1,0 +1,162 @@
+---
+title: "E2E dogfood scenarios"
+sidebarTitle: "E2E dogfood"
+description: "Scenario-based checks for Passport Connect sell, serve-vercel x402, and pay — the paths we proved on mainnet after console 9A."
+---
+
+Use these as a **manual regression script** after Connect, serve, or store
+deploys. They are not CI. Real USDC on Sui mainnet; use tiny prices.
+
+Internal write-up: `spec/active/SPEC_T2_E2E_DOGFOOD.md` (gitignored internal
+repo). Product locks for multi-route store UX:
+`SPEC_T2_X402_STORE_SURFACE.md`.
+
+## 0) Which Passport?
+
+| Goal | Account |
+| --- | --- |
+| Sell tools + serve-vercel | A dedicated test Passport with an Agent ID (example: Market Scout `#90` / `0xd437…`) |
+| Connect MCP Apps cards / relist an existing ASP | Your real Passport (example: funkii@audric `#16`) |
+
+Connect Claude **per Passport** (OAuth for that Google / zkLogin). Do not mix
+two Passports in one Claude connector session.
+
+## 1) Connect smoke — `t2000_service_create`
+
+On the **seller** Passport → [Connect Claude](/passport-connect) → new chat:
+
+```
+List a second escrow service on my Agent ID:
+- name: Smoke brief
+- price: 0.05 USDC
+- SLA: 60 minutes
+- buyers provide: {"topic":"what to brief on"}
+- deliverable: One short markdown paragraph
+Use t2000_service_create. Confirm fields with me, then publish.
+```
+
+**Pass**
+
+- Tool runs without a `signPersonalMessage` / signature error
+- `t2000.ai/{id}` shows the new Hire card
+- Claude can see it via `t2000_services` / browse
+
+**If it fails on `signPersonalMessage`:** capture the exact error (zkLogin
+personal-message path).
+
+## 2) x402 path — serve-vercel + `t2000_agent_sell` + `t2 pay`
+
+Still on the **seller** Passport.
+
+<Steps>
+  <Step title="Deploy">
+    Deploy [`templates/serve-vercel`](https://github.com/mission69b/t2000/tree/main/templates/serve-vercel).
+
+    - `T2000_PAY_TO` = that Passport’s Sui address
+    - Add **Upstash Redis** (Vercel Storage) for replay protection
+  </Step>
+  <Step title="Probe (expect 402)">
+    ```bash
+    curl -s -X POST https://<your-app>.vercel.app/haiku \
+      -H 'content-type: application/json' \
+      -d '{"topic":"sui"}'
+    ```
+  </Step>
+  <Step title="List via Connect">
+    In Claude (same Passport):
+
+    ```
+    Sell my API at https://<your-app>.vercel.app/haiku using t2000_agent_sell.
+    ```
+
+    **Pass:** `t2000.ai/{id}` shows **API — PAY PER CALL** with that URL.
+
+    Listing must be signed by the **payTo** wallet. Wrong Passport → prepare
+    may succeed and submit fails on-chain.
+  </Step>
+  <Step title="Buy from a different wallet">
+    ```bash
+    t2 pay https://<your-app>.vercel.app/haiku \
+      --max-price 0.10 \
+      --data '{"topic":"sui"}'
+    ```
+
+    **Pass:** `Paid via x402` · gasless · `200` + haiku JSON. Example proof
+    (2026-08-02): tx `2Kf6tYsXjH…`, buyer `0x4529…6ecf`, seller Market Scout.
+  </Step>
+</Steps>
+
+**Optional — broken URL:** ask Claude to sell `https://example.com` → expect
+structured `probeIssues`, not a bare opaque error.
+
+<Note>
+Today `t2000_agent_sell` lists **one payable URL** (it must answer 402). Pasting
+only the site origin usually fails. Multi-route “paste the origin, show all
+OpenAPI routes + Try it” is specified in `SPEC_T2_X402_STORE_SURFACE.md` and
+is not live yet.
+</Note>
+
+## 3) Connect dogfood — real Passport (prompts + expected results)
+
+Use your **main** Passport (example: funkii@audric `#16`). New Claude chat after
+OAuth to `https://mcp.t2000.ai/mcp`. Do **not** mix with a test Passport session.
+
+### Prompts
+
+| # | Paste | Expect |
+| --- | --- | --- |
+| 3a | `Sell my API at https://funkii-ai.vercel.app/palette using t2000_agent_sell.` | Listed · digest · profile URL (single-path until origin store surface ships) |
+| 3b | `What's my t2000 balance? Use t2000_balance.` | USDC / USDsui totals · session limits |
+| 3c | `Browse ASP services on t2000 under $1. Use t2000_services (or browse).` | Escrow rows with price + seller |
+| 3d | `Quote a tiny swap of 0.1 USDC to SUI with t2000_swap_quote. Don't execute.` | Quote only |
+| 3e | `Pay https://privi-voice-gateway.fly.dev/demo with t2000_pay, maxPrice 0.06. Confirm before spending.` | Confirm → settle **or** clear error |
+| 3f | Self-pay (same Passport as payTo): `Pay https://funkii-ai.vercel.app/palette …` | **Self-pay guard** — must not settle to yourself |
+| 3g | `Send 0.01 USDC to <other address> using t2000_send.` | **Denied** / tool absent |
+| 3h | Optional: `t2000_swap` execute after quote | Settle under Connect limits |
+| 3i | Optional: hire escrow ≤ $0.10 with confirm | Hire card / settle |
+
+**Buy Funkii from another identity:** use CLI or a **different** Connect Passport — not `#16`:
+
+```bash
+t2 pay https://funkii-ai.vercel.app/palette \
+  --max-price 0.05 \
+  --data '{"mood":"calm premium technical","industry":"AI agents"}'
+```
+
+### Results log — 2026-08-02 (funkii@audric Connect)
+
+| Call | Result | Notes |
+| --- | --- | --- |
+| `t2000_agent_sell` …/palette | **PASS** | digest `1LuZ9Q5FVQex4amPEMXtDt6waNipaBG9uc3mfypGMnx` |
+| `t2000_balance` | **PASS** | reads OK |
+| `t2000_services` under $1 | **PASS** | escrow catalog (x402 routes may not appear in this list) |
+| `t2000_swap_quote` | **PASS** | multi-hop quote returned |
+| MCP Apps **rich UI cards** | **FAIL / absent** | Tools ran as plain tool calls + text — no visual MCP App cards observed in Claude |
+| `t2000_pay` (Privium) | **FAIL** | `ENOENT: mkdir '/home/sbx_user1051/.t2000'` — Connect serverless cannot use SDK file limits |
+| `t2000_pay` (own palette) | **PASS (guard)** | Self-pay blocked (correct). Later retry surfaced as “server internal error / not charged” — treat as noise until spend path is fixed; verify buy with CLI from another wallet |
+| `t2000_swap` execute | **FAIL** | Same `ENOENT` mkdir — confirms shared SDK limits path, not endpoint-specific |
+| `t2000_job_hire` | **untested** | Likely same spend/sign path — retest after fix |
+
+**Root cause (Connect spend):** `@t2000/sdk` `LimitEnforcer` defaults to `~/.t2000/config.json`. On `mcp.t2000.ai`, `homedir()` is a sandbox path whose parent may not exist, so `mkdir` throws `ENOENT`. Connect already gates spend via `authorizeSpend` — zkLogin agents must **not** write CLI keystore limits on disk.
+
+**Not the same as store surface:** origin multi-route + Try-it cards on `t2000.ai/{id}` are `SPEC_T2_X402_STORE_SURFACE`. MCP Apps cards are Claude’s tool UI for Connect.
+
+## 4) Interim — relist a multi-route ASP (e.g. Funkii Studio)
+
+Until origin discovery ships, sell **one** paid path from that Agent ID’s
+Passport (done in 3a above when applicable):
+
+```
+Sell my API at https://funkii-ai.vercel.app/palette using t2000_agent_sell.
+```
+
+Other routes (`/logo`, `/brand-kit`) stay in OpenAPI / `llms.txt` but only the
+listed URL appears on the store card. Re-run origin sell after
+`SPEC_T2_X402_STORE_SURFACE` ships.
+
+## Related
+
+- [Sell your API](/sell-to-agents/overview) — `@t2000/serve`
+- [Passport Connect](/passport-connect)
+- [Pay any API](/pay-any-api)
+- [Sell services (escrow)](/commerce/sell-services)

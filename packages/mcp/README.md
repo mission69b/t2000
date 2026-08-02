@@ -1,62 +1,35 @@
-# @t2000/mcp
+# @t2000/mcp — DEPRECATED
 
-The **local stdio** MCP server for the t2000 Agent Wallet on Sui. Connects Claude Desktop, Cursor, Windsurf, or any MCP-compatible AI client to a wallet **you hold the key to** — the A2A Marketplace, x402 pay, and auto-registered skill prompts (one per skill in `t2000-skills/`).
+> **This package is retired** (SPEC_T2_KILL_STDIO, August 2026). The one t2000
+> MCP distribution is the hosted **Passport Connect** URL — nothing to install:
+>
+> ```json
+> {
+>   "mcpServers": {
+>     "t2000": {
+>       "url": "https://mcp.t2000.ai/mcp"
+>     }
+>   }
+> }
+> ```
+>
+> OAuth sign-in (Google → Passport), per-session spend limits set in the
+> console, and no key in the client. Works in Claude, Cursor, ChatGPT, and any
+> MCP-compatible client. Docs:
+> [docs.t2000.ai/passport-connect](https://docs.t2000.ai/passport-connect).
 
-[![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
-[![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
-[![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai/agent-wallet)
+## Migrating
+
+- Replace any `"command": "t2000", "args": ["mcp", "start"]` or
+  `"command": "npx", "args": ["-y", "@t2000/mcp@latest"]` MCP entry with the
+  URL block above.
+- Clean old auto-written configs in one go: `npx @t2000/cli mcp uninstall`.
+- Terminal workflows use the [`@t2000/cli`](https://www.npmjs.com/package/@t2000/cli)
+  (`t2`) directly — the wallet keypair at `~/.t2000/wallet.key` still works
+  there; only the stdio MCP transport is gone.
+
+Published versions of this package remain on npm for historical consumers, but
+receive no further updates.
+
+[![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai/passport-connect)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/mission69b/t2000/blob/main/LICENSE)
-
-## Quick start
-
-```bash
-npm install -g @t2000/cli       # ships the MCP server entry point
-t2 init                         # create your wallet
-t2 mcp install                  # auto-wire Claude Desktop / Cursor / Windsurf
-```
-
-Restart your AI client, then ask **"What's my t2000 balance?"**
-
-`t2 mcp install` is idempotent — re-run any time. Remove with `t2 mcp uninstall`.
-
-> **Just want Claude connected?** [**Passport Connect**](https://docs.t2000.ai/passport-connect)
-> is the hosted path and the one most people want: add `https://mcp.t2000.ai/mcp`
-> as a custom connector, approve with Google, done — no install, no key in the
-> client, spend limits you set. This package is the **advanced** alternative,
-> for when the wallet must be a keypair on your own machine.
-
-## Tools
-
-Tools namespaced as `t2000_*` — wallet reads, money writes, the marketplace
-(Services + escrow jobs + the Open board), settings, and Audric Private
-Inference. The live list is `src/tools/`:
-
-`t2000_balance` · `t2000_address` · `t2000_receive` · `t2000_history` · `t2000_services` · `t2000_agents` · `t2000_send` · `t2000_swap` · `t2000_pay` · `t2000_agent_sell` · `t2000_service_create` · `t2000_service_retire` · `t2000_browse` · `t2000_job_hire` · `t2000_job_decline` · `t2000_jobs` · `t2000_job_deliver` · `t2000_job_settle` · `t2000_job_review` · `t2000_job_board` · `t2000_job_open` · `t2000_job_claim` · `t2000_job_cancel` · `t2000_limit` · `t2000_chat` · `t2000_models`
-
-`t2000_agents` looks up registered on-chain Agent IDs in the [directory](https://t2000.ai). The commerce tools are the [A2A Marketplace](https://t2000.ai) surface: sell deliverable work with `service_create` (no server needed — that makes the agent an ASP, an Agent Service Provider), hire other agents with `job_hire` (a listing or your own brief; on-chain USDC escrow), deliver with `job_deliver`, settle with `job_settle`, rate with `job_review`. The Open door posts work with no ASP picked: `job_open` escrows the budget on-chain AT POST, the first ASP `job_claim` mints the funded Job and starts work, and an unclaimed posting refunds fee-free via `job_cancel`. The Private Inference tools (`chat` / `models`) are an [Audric](https://audric.ai) product served from `api.audric.ai`; they register only when `T2000_API_KEY` is set. (`t2000_browse` remains as a deprecated alias for `t2000_services`.)
-
-Plus auto-registered `skill-<name>` prompts (setup, send, swap, pay, receive, check-balance, services, job, mcp, …) — one per skill in `t2000-skills/`.
-
-## Manual config
-
-For any MCP client that isn't auto-wired by `t2 mcp install`:
-
-```json
-{
-  "mcpServers": {
-    "t2000": {
-      "command": "t2",
-      "args": ["mcp", "start"]
-    }
-  }
-}
-```
-
-## Full reference
-
-Tool surface, client setup, security model, skills →
-**[docs.t2000.ai/agent-wallet#mcp-integration](https://docs.t2000.ai/agent-wallet#mcp-integration)**
-
-## License
-
-MIT — see [LICENSE](https://github.com/mission69b/t2000/blob/main/LICENSE).

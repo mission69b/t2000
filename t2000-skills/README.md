@@ -3,7 +3,6 @@
 Ship USDC apps on Sui faster with **t2000 Skills** — best-practice guidance for the t2000 Agent Wallet (sponsored sends, swaps, x402 API payments) — plus the **t2000 MCP server** for live wallet tools in your AI client.
 
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
-[![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
 [![docs](https://img.shields.io/badge/docs-t2000.ai-00D395)](https://t2000.ai)
 [![consumer](https://img.shields.io/badge/consumer%20app-audric.ai-7c3aed)](https://audric.ai)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -59,14 +58,14 @@ Installs all ten wallet skills (the `t2000-agent-wallet` plugin) via Claude Code
 
 | Skill | Description |
 |-------|-------------|
-| [`t2000-setup`](https://t2000.ai/skills/t2000-setup) | End-to-end Agent Wallet bootstrap: `t2 init`, optional `t2 limit set`, and `t2 mcp install`. Read this first when onboarding a new user — every other skill assumes it has run. |
+| [`t2000-setup`](https://t2000.ai/skills/t2000-setup) | End-to-end Agent Wallet bootstrap: `t2 init`, optional `t2 limit set`, and connecting the AI client to `mcp.t2000.ai`. Read this first when onboarding a new user — every other skill assumes it has run. |
 | [`t2000-check-balance`](https://t2000.ai/skills/t2000-check-balance) | Inspect wallet balances (USDC / USDsui / SUI) before any write. Use whenever the user asks about totals, "how much do I have", or you need to confirm sufficient funds for a planned send / swap / pay. |
 | [`t2000-send`](https://t2000.ai/skills/t2000-send) | Send USDC, USDsui, or SUI to a Sui address or SuiNS name. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
 | [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Share the wallet address, render an ANSI QR in terminal, or emit a Payment Kit `sui:pay?…` URI via MCP. Use for "share my address", "create a payment link", or "QR code". |
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
-| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Wire the `@t2000/mcp` stdio server into Claude Desktop, Cursor, Windsurf, Cline, Continue, or any MCP-compatible client. Covers `t2 mcp install`, manual config, the tool surface, and the most common "MCP doesn't load" failure modes. |
+| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Connect Claude, Cursor, ChatGPT, Cline, Continue, or any MCP client to the hosted Passport Connect MCP (`https://mcp.t2000.ai/mcp` + OAuth). Covers setup, session spend limits, the tool surface, and migrating off the retired stdio server. |
 
 ### Sui ecosystem skills
 
@@ -98,35 +97,21 @@ One PR puts your project on the [t2000.ai](https://t2000.ai) shelf with its own 
 
 The per-task skills above assume a shared **agent-ops layer**: payment-error recovery (don't blind-retry), free-first ordering (discover before paying), spending limits (on by default, gate CLI **and** MCP), no-charge-on-failure (settle-then-refund — proxied services only; direct sellers carry their own guarantees), and async/artifact semantics. It lives in [`AGENTS.md`](AGENTS.md) (served at [`t2000.ai/AGENTS.md`](https://t2000.ai/AGENTS.md)) — read it once per session.
 
-## t2000 MCP Server
+## t2000 MCP (Passport Connect)
 
-Skills tell your agent *how* to use the wallet. The MCP server gives it the actual *tools*: read (`balance`, `address`, `receive`, `history`, `services`, `agents`), write (`send`, `swap`, `pay`, `agent_sell`), the marketplace (`service_create`, `service_retire`, `job_hire`, `job_open`, `job_board`, `job_claim`, `job_cancel`, `jobs`, `job_deliver`, `job_decline`, `job_settle`, `job_review`), settings (`limit`), and Audric Private Inference (`chat`, `models` — only when `T2000_API_KEY` is set). It also auto-registers every skill as a `skill-<name>` prompt your client can invoke directly.
-
-```bash
-npx @t2000/cli mcp install
-```
-
-Auto-configures the t2000 MCP server in every supported AI client found on your machine. Idempotent — re-running reports "already configured".
-
-| Client | Setup | Config path |
-|--------|-------|-------------|
-| **Claude Desktop** | `npx @t2000/cli mcp install` | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| **Cursor** | `npx @t2000/cli mcp install` | `~/.cursor/mcp.json` |
-| **Windsurf** | `npx @t2000/cli mcp install` | `~/.codeium/windsurf/mcp_config.json` |
-| **Codex / Cline / Continue / any MCP client** | Manual JSON (below) | client-specific |
-
-Manual config — paste into your client's MCP config file:
+Skills tell your agent *how* to use the wallet. The hosted MCP gives it the actual *tools* — reads, marketplace verbs, and spend-gated money verbs. Every skill is also auto-registered as a `skill-<name>` prompt your client can invoke directly. One config for every MCP client:
 
 ```json
 {
   "mcpServers": {
     "t2000": {
-      "command": "t2000",
-      "args": ["mcp", "start"]
+      "url": "https://mcp.t2000.ai/mcp"
     }
   }
 }
 ```
+
+OAuth (Google → Passport) + per-session spend limits set in the console. The local stdio server (`@t2000/mcp`, `t2 mcp install`) is retired — see the [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) skill for migration.
 
 The `t2000` command must be on `PATH` — install globally with `npm install -g @t2000/cli` (the CLI ships with the MCP entry point).
 
@@ -183,7 +168,7 @@ You can use skills alone — the agent will produce correct `t2` commands for yo
 `~/.t2000/wallet.key` — a plain JSON file with a `suiprivkey1…` Bech32 secret and `0o600` perms. No PIN, no AES, no `.session` file. Use `t2 export` to print the secret, `t2 init --import` to restore on another machine.
 
 **What's the difference between t2000 and Audric?**
-t2000 is the infra brand: `@t2000/sdk`, `@t2000/cli`, `@t2000/mcp`. Audric is the consumer product built on top — see [audric.ai](https://audric.ai). This repo is the canonical home for skills that ship with the infra surface.
+t2000 is the infra brand: `@t2000/sdk`, `@t2000/cli`. Audric is the consumer product built on top — see [audric.ai](https://audric.ai). This repo is the canonical home for skills that ship with the infra surface.
 
 ## Resources
 
@@ -191,7 +176,6 @@ t2000 is the infra brand: `@t2000/sdk`, `@t2000/cli`, `@t2000/mcp`. Audric is th
 - [audric.ai](https://audric.ai) — consumer product
 - [agentskills.io](https://agentskills.io) — the Agent Skills standard
 - [npm @t2000/cli](https://www.npmjs.com/package/@t2000/cli)
-- [npm @t2000/mcp](https://www.npmjs.com/package/@t2000/mcp)
 - [npm @t2000/sdk](https://www.npmjs.com/package/@t2000/sdk)
 - [GitHub mission69b/t2000](https://github.com/mission69b/t2000)
 

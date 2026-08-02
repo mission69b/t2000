@@ -31,7 +31,7 @@ export function WalletHero() {
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <div>
             <div className="t2k-eyebrow mb-[22px]">
-              {"// AGENT WALLET · @t2000/cli + @t2000/mcp"}
+              {"// AGENT WALLET · @t2000/cli"}
             </div>
             <h1
               className="t2k-display"
@@ -139,10 +139,6 @@ function WalletHeroTerminal() {
         0x7a3b…f29c{"\n"}
         <span style={{ color: "var(--fg-subtle)" }}>{"  "}</span>
         ~/.t2000/wallet.key · 0o600{"\n\n"}
-        <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 mcp install
-        {"\n"}
-        <span style={{ color: "var(--t2k-success)" }}>✓</span> Claude Desktop ·
-        Cursor · Windsurf · ready{"\n\n"}
         <span style={{ color: "var(--fg-subtle)" }}>$ </span>t2 balance{"\n"}
         <span style={{ color: "var(--fg-subtle)" }}>{"  "}</span>USDC{"      "}
         547.20{"\n"}

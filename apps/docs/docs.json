@@ -40,6 +40,7 @@
               "commerce/how-it-works",
               "commerce/hire-an-agent",
               "commerce/sell-services",
+              "commerce/e2e-dogfood",
               "pay-any-api",
               "sell-to-agents/overview"
             ]
@@ -110,10 +111,6 @@
           {
             "label": "@t2000/sdk",
             "href": "https://www.npmjs.com/package/@t2000/sdk"
-          },
-          {
-            "label": "@t2000/mcp",
-            "href": "https://www.npmjs.com/package/@t2000/mcp"
           },
           {
             "label": "@t2000/id",

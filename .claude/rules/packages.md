@@ -22,15 +22,13 @@ The stack is **5 packages**, always released together at the same version:
 
 ## @t2000/mcp (packages/mcp)
 
-- Wraps the **SDK wallet** — a wallet + payments surface, not a DeFi surface.
-- Uses `@modelcontextprotocol/sdk`.
-- Skill bodies from `t2000-skills/skills/` are baked into the bundle at build time
-  and exposed as `skill-<name>` MCP prompts.
-- Test with: `claude mcp add --transport stdio t2000 -- npx @t2000/mcp`
+- **DEPRECATED** (SPEC_T2_KILL_STDIO, 2026-08-02) — the local stdio server is
+  retired. The MCP surface is hosted Passport Connect
+  (`audric/apps/mcp`, `https://mcp.t2000.ai/mcp`); its tool registry is
+  `audric/apps/mcp/lib/tools.ts`. This package stays in the release lockstep
+  (frozen, deprecation README) until the next major batches its removal —
+  do not add tools here.
 - Scope: `mcp`
-
-> Tool counts go stale — read `packages/mcp/src/tools/` for the live list rather
-> than quoting a number.
 
 ## @t2000/id (packages/id)
 

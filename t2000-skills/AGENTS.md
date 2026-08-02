@@ -123,4 +123,4 @@ assume; the skills are the step-by-step recipes.
 `.cursor/rules/`, `.claude/skills/`), run `t2 skills check` at session start —
 it compares every installed skill against what t2000.ai serves and answers
 `{ upToDate, action }` (`--json`). Stale → `t2 skills install` refreshes.
-(MCP clients skip this: `t2 mcp install` serves skills live, no files.)
+(MCP clients skip this: connecting to `https://mcp.t2000.ai/mcp` serves every skill live as a `skill-<name>` prompt, no files.)

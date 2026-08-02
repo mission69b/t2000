@@ -71,7 +71,8 @@ Fixes in the wrong layer waste time. Identify the owning layer before coding:
 | Layer | Runs where | Ships how |
 |-------|-----------|-----------|
 | `@t2000/sdk` | Server, or client via the sponsored flow | npm release |
-| `@t2000/cli` · `@t2000/mcp` · `@t2000/id` · `@t2000/serve` | User machine / MCP client | npm release |
+| `@t2000/cli` · `@t2000/id` · `@t2000/serve` | User machine / server | npm release |
+| Connect MCP (`audric/apps/mcp`) | mcp.t2000.ai (Vercel) | Vercel deploy |
 | Audric `web-v3` client components | Browser | Vercel deploy |
 | Audric API routes | Vercel serverless | Vercel deploy |
 
