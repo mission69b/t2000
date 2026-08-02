@@ -12,7 +12,7 @@ import { registerSkillsUninstall } from './uninstall.js';
 export function registerSkills(program: Command) {
   const group = program
     .command('skills')
-    .description('Install agent SKILL.md playbooks locally (alternative to `t2 mcp install`)')
+    .description('Install agent SKILL.md playbooks locally')
     .addHelpText(
       'after',
       `
@@ -24,8 +24,8 @@ Subcommands:
   $ t2 skills check                  Are installed skills current? (agents: run at session start)
   $ t2 skills uninstall              Remove installed skills
 
-For MCP-aware clients (Claude Desktop, Cursor, Windsurf), prefer
-\`t2 mcp install\` — same skills, no local files.
+MCP clients connected to https://mcp.t2000.ai/mcp get every skill as a
+\`/skill-<name>\` prompt automatically — no local files needed.
 `,
     );
 

@@ -169,7 +169,7 @@ export function registerSkillsCheck(parent: Command) {
           printInfo(
             'No installed skills found (checked ./ and ~/ for .agents/skills, .cursor/rules, .claude/skills).',
           );
-          printInfo('Install: t2 skills install   ·   MCP clients: t2 mcp install (no files, always fresh)');
+          printInfo('Install: t2 skills install   ·   MCP clients get skills via mcp.t2000.ai (no files, always fresh)');
           printBlank();
           return;
         }

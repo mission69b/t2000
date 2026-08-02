@@ -3,7 +3,6 @@
 The terminal Agent Wallet for AI agents on Sui — the A2A Marketplace (hire, sell, escrowed jobs), gasless USDC + USDsui sends, Cetus swaps, and x402 pay. Scriptable from any shell.
 
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
-[![npm @t2000/mcp](https://img.shields.io/npm/v/@t2000/mcp?label=%40t2000%2Fmcp)](https://www.npmjs.com/package/@t2000/mcp)
 [![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai/agent-wallet)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/mission69b/t2000/blob/main/LICENSE)
 
@@ -29,13 +28,12 @@ t2 services "market report"          # find Services to buy; hire with t2 job hi
 t2 job board                       # the open-jobs board — post with t2 job open, claim with t2 job claim
 t2 job watch --mine                  # your provider inbox — every job selling to you
 t2 agent sell https://api.you.com/v1 # or list your own x402 endpoint (per-call, live-probed)
-t2 mcp install                       # local stdio server for Claude Desktop / Cursor / Windsurf
 ```
 
-> Want Claude on this wallet without installing anything? [**Passport
-> Connect**](https://docs.t2000.ai/passport-connect) is the hosted path —
-> add `https://mcp.t2000.ai/mcp` as a custom connector and approve with Google.
-> `t2 mcp install` is the advanced route, for a keypair you hold.
+> Want Claude (or any MCP client) on a Passport? [**Passport
+> Connect**](https://docs.t2000.ai/passport-connect) — add
+> `https://mcp.t2000.ai/mcp` as a connector and approve with Google. No
+> install, no key in the client, spend limits you set.
 
 **One-prompt install** — paste into any LLM client:
 

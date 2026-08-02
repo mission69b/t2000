@@ -1,8 +1,8 @@
 // [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 5 — 2026-05-26]
 // `t2 skills list` — print the skills inventory from the t2000.ai
 // manifest. Pairs with `t2 skills install` for local SKILL.md install
-// (the MCP path is preferred — `t2 mcp install` exposes them as
-// `/skill-<name>` slash commands).
+// (clients on the hosted MCP get them as `/skill-<name>` slash
+// commands automatically).
 
 import type { Command } from 'commander';
 import { fetchManifest } from './lib.js';

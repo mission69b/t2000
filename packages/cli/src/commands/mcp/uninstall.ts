@@ -1,6 +1,6 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 5 — 2026-05-26]
-// `t2 mcp uninstall` — remove the t2000 MCP server entry from every
-// supported AI client's JSON config file. Idempotent — platforms
+// `t2 mcp uninstall` — remove the RETIRED stdio server entry from every
+// supported AI client's JSON config file (the cleanup path for configs that
+// `t2 mcp install` wrote before SPEC_T2_KILL_STDIO). Idempotent — platforms
 // without a t2000 entry are reported as `skipped`.
 
 import type { Command } from 'commander';
@@ -49,7 +49,7 @@ export async function runUninstall(): Promise<McpUninstallResult[]> {
 export function registerMcpUninstall(parent: Command) {
   parent
     .command('uninstall')
-    .description('Remove the t2000 MCP server entry from Claude Desktop, Cursor, and Windsurf')
+    .description('Remove the retired stdio server entry from Claude Desktop, Cursor, and Windsurf configs')
     .action(async () => {
       try {
         const results = await runUninstall();

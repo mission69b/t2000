@@ -40,40 +40,6 @@ importers:
         specifier: ^4.0.0
         version: 4.2.577(@radix-ui/react-popover@1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.3))(react@19.2.3))(@types/node@22.19.15)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.3))(typescript@5.9.3)
 
-  apps/mcp:
-    dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.28.0
-        version: 1.28.0(zod@3.25.76)
-      '@t2000/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
-      next:
-        specifier: 16.2.1
-        version: 16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react:
-        specifier: 19.2.4
-        version: 19.2.4
-      react-dom:
-        specifier: 19.2.4
-        version: 19.2.4(react@19.2.4)
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^20
-        version: 20.19.37
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
   apps/web:
     dependencies:
       '@mysten/sui':
@@ -156,9 +122,6 @@ importers:
       '@mysten/sui':
         specifier: ^2.17.0
         version: 2.17.0(typescript@5.9.3)
-      '@t2000/mcp':
-        specifier: workspace:*
-        version: link:../mcp
       '@t2000/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -252,7 +215,7 @@ importers:
     dependencies:
       '@cetusprotocol/aggregator-sdk':
         specifier: ^1.4.8
-        version: 1.4.8(axios@1.16.1)(typescript@5.9.3)
+        version: 1.4.8(axios@1.15.2)(typescript@5.9.3)
       '@mysten/move-bytecode-template':
         specifier: ^0.4.0
         version: 0.4.0
@@ -6891,10 +6854,10 @@ snapshots:
 
   '@canvas/image-data@1.1.0': {}
 
-  '@cetusprotocol/aggregator-sdk@1.4.8(axios@1.16.1)(typescript@5.9.3)':
+  '@cetusprotocol/aggregator-sdk@1.4.8(axios@1.15.2)(typescript@5.9.3)':
     dependencies:
       '@mysten/sui': 2.17.0(typescript@5.9.3)
-      '@pythnetwork/hermes-client': 3.1.0(axios@1.16.1)
+      '@pythnetwork/hermes-client': 3.1.0(axios@1.15.2)
       bip39: 3.1.0
       dotenv: 16.6.1
       json-bigint: 1.0.0
@@ -8197,9 +8160,9 @@ snapshots:
     optionalDependencies:
       yauzl: 2.10.0
 
-  '@pythnetwork/hermes-client@3.1.0(axios@1.16.1)':
+  '@pythnetwork/hermes-client@3.1.0(axios@1.15.2)':
     dependencies:
-      '@zodios/core': 10.9.6(axios@1.16.1)(zod@3.25.76)
+      '@zodios/core': 10.9.6(axios@1.15.2)(zod@3.25.76)
       eventsource: 3.0.7
       zod: 3.25.76
     transitivePeerDependencies:
@@ -9154,9 +9117,9 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@zodios/core@10.9.6(axios@1.16.1)(zod@3.25.76)':
+  '@zodios/core@10.9.6(axios@1.15.2)(zod@3.25.76)':
     dependencies:
-      axios: 1.16.1
+      axios: 1.15.2
       zod: 3.25.76
 
   abitype@1.2.3(typescript@5.9.3)(zod@4.4.3):
@@ -10226,8 +10189,8 @@ snapshots:
       '@next/eslint-plugin-next': 16.2.1
       eslint: 9.39.4(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.0.1(eslint@9.39.4(jiti@2.6.1))
@@ -10249,7 +10212,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.6.1)):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -10260,21 +10223,21 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1)):
+  eslint-module-utils@2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       eslint: 9.39.4(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.6.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1)):
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -10285,7 +10248,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.4(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
+      eslint-module-utils: 2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3

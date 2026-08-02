@@ -1,9 +1,9 @@
 // [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 5 — 2026-05-26]
 // `t2 skills install [slug]` — download SKILL.md files into the local
 // target directory (`.agents/skills/`, `.cursor/rules/`, or
-// `.claude/skills/`). For MCP-aware clients prefer `t2 mcp install`
-// which exposes skills as `/skill-<name>` slash commands without
-// writing files to disk.
+// `.claude/skills/`). Clients connected to the hosted MCP
+// (mcp.t2000.ai) get skills as `/skill-<name>` slash commands
+// without writing files to disk.
 
 import type { Command } from 'commander';
 import { writeFile, mkdir } from 'node:fs/promises';
@@ -84,7 +84,7 @@ export function registerSkillsInstall(parent: Command) {
         printBlank();
         printInfo('Reload your AI client to pick up the new skill files.');
         if (target !== 'cursor') {
-          printInfo('(For an MCP-aware client, prefer `t2 mcp install` — same skills, zero local files.)');
+          printInfo('(Clients connected to mcp.t2000.ai already have these as /skill-<name> prompts.)');
         }
         printBlank();
       } catch (err) {
