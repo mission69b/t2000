@@ -1,29 +1,56 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 5 — 2026-05-26]
-// `t2 mcp` command group. Replaces the pre-pivot single-file
-// `commands/mcp.ts` (deleted) with a folder structure mirroring the
-// rest of the v4 surface (services/, limit/, wallet/, skills/).
+// `t2 mcp` — RETIRED (SPEC_T2_KILL_STDIO, 2026-08-02). The local stdio MCP
+// server is gone; the one MCP distribution is the hosted Connect URL. This
+// hidden stub exists so old muscle memory / scripts get the pointer instead of
+// commander's unknown-command error, and so `t2 mcp uninstall` can still clean
+// the stdio entry out of AI-client configs that `t2 mcp install` once wrote.
 
 import type { Command } from 'commander';
-import { registerMcpStart } from './start.js';
-import { registerMcpInstall } from './install.js';
+import { printBlank, printInfo, printLine } from '../../output.js';
 import { registerMcpUninstall } from './uninstall.js';
+
+const CONNECT_SNIPPET = `{
+  "mcpServers": {
+    "t2000": {
+      "url": "https://mcp.t2000.ai/mcp"
+    }
+  }
+}`;
+
+function printRetired(): void {
+  printBlank();
+  printInfo('The local stdio MCP server is retired.');
+  printLine('');
+  printLine('Connect any MCP client to the hosted server instead — one URL,');
+  printLine('OAuth sign-in, spend limits you set in the console:');
+  printLine('');
+  for (const line of CONNECT_SNIPPET.split('\n')) {
+    printLine(`  ${line}`);
+  }
+  printLine('');
+  printLine('Docs: https://docs.t2000.ai/passport-connect');
+  printLine('Terminal workflows: use the t2 CLI itself.');
+  printLine('Old client configs: clean up with `t2 mcp uninstall`.');
+  printBlank();
+}
 
 export function registerMcp(program: Command) {
   const group = program
-    .command('mcp')
-    .description('MCP server + AI-client integration')
-    .addHelpText(
-      'after',
-      `
-Subcommands:
-  $ t2 mcp                            Start the MCP stdio server (default)
-  $ t2 mcp start                      Same as above (explicit)
-  $ t2 mcp install                    Auto-configure Claude / Cursor / Windsurf
-  $ t2 mcp uninstall                  Remove t2000 from every AI-client config
-`,
-    );
+    .command('mcp', { hidden: true })
+    .description('Retired — connect clients to https://mcp.t2000.ai/mcp instead');
 
-  registerMcpStart(group);
-  registerMcpInstall(group);
+  group.action(() => {
+    printRetired();
+    process.exitCode = 1;
+  });
+  for (const retired of ['start', 'install']) {
+    group
+      .command(retired, { hidden: true })
+      .description('Retired — connect clients to https://mcp.t2000.ai/mcp instead')
+      .action(() => {
+        printRetired();
+        process.exitCode = 1;
+      });
+  }
+
   registerMcpUninstall(group);
 }

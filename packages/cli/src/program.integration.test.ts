@@ -65,7 +65,6 @@ describeOrSkip('CLI integration — wiring + version + help', () => {
       'pay',
       'services',
       'limit',
-      'mcp',
       'skills',
     ]) {
       expect(r.stdout).toContain(cmd);
@@ -304,7 +303,7 @@ describeOrSkip('CLI integration — limit set / show / reset round-trip', () => 
   });
 });
 
-describeOrSkip('CLI integration — mcp install + uninstall round-trip', () => {
+describeOrSkip('CLI integration — mcp is retired (SPEC_T2_KILL_STDIO)', () => {
   let home: string;
 
   beforeAll(() => {
@@ -315,50 +314,32 @@ describeOrSkip('CLI integration — mcp install + uninstall round-trip', () => {
     if (home) rmSync(home, { recursive: true, force: true });
   });
 
-  it('t2 --json mcp install writes the t2 entry to every platform', () => {
-    const r = runCli(['--json', 'mcp', 'install'], { home });
+  it('t2 mcp hard-errors with the Connect URL', () => {
+    const r = runCli(['mcp'], { home });
+    expect(r.code).not.toBe(0);
+    expect(r.stdout + r.stderr).toContain('https://mcp.t2000.ai/mcp');
+  });
+
+  it('t2 mcp install hard-errors with the Connect URL (no working install path)', () => {
+    const r = runCli(['mcp', 'install'], { home });
+    expect(r.code).not.toBe(0);
+    expect(r.stdout + r.stderr).toContain('https://mcp.t2000.ai/mcp');
+    expect(r.stdout + r.stderr).toContain('retired');
+  });
+
+  it('t2 mcp start hard-errors with the Connect URL', () => {
+    const r = runCli(['mcp', 'start'], { home });
+    expect(r.code).not.toBe(0);
+    expect(r.stdout + r.stderr).toContain('https://mcp.t2000.ai/mcp');
+  });
+
+  it('t2 --help does not advertise mcp (hidden retired stub)', () => {
+    const r = runCli(['--help']);
     expect(r.code).toBe(0);
-    const parsed = JSON.parse(r.stdout);
-    expect(Array.isArray(parsed.installed)).toBe(true);
-    const slugs = parsed.installed.map((p: { slug: string }) => p.slug);
-    expect(slugs).toContain('claude-desktop');
-    expect(slugs).toContain('cursor');
-    expect(slugs).toContain('windsurf');
-    for (const p of parsed.installed) {
-      expect(p.status).toBe('added');
-    }
+    expect(r.stdout).not.toMatch(/t2 mcp install/);
   });
 
-  it('t2 mcp install is idempotent — second call reports "exists"', () => {
-    const r = runCli(['--json', 'mcp', 'install'], { home });
-    expect(r.code).toBe(0);
-    const parsed = JSON.parse(r.stdout);
-    for (const p of parsed.installed) {
-      expect(p.status).toBe('exists');
-    }
-  });
-
-  it('written config has command:t2000 + args:[mcp, start]', () => {
-    // Pre-Phase-C: bin is `t2000`, not `t2`. The MCP entry must use the
-    // bin name that's actually on PATH after `npm install -g @t2000/cli`.
-    const cursorConfig = join(home, '.cursor', 'mcp.json');
-    expect(existsSync(cursorConfig)).toBe(true);
-    const raw = readFileSync(cursorConfig, 'utf-8');
-    const parsed = JSON.parse(raw);
-    expect(parsed.mcpServers.t2000.command).toBe('t2000');
-    expect(parsed.mcpServers.t2000.args).toEqual(['mcp', 'start']);
-  });
-
-  it('t2 mcp uninstall removes the entry from every platform', () => {
-    const r = runCli(['--json', 'mcp', 'uninstall'], { home });
-    expect(r.code).toBe(0);
-    const parsed = JSON.parse(r.stdout);
-    for (const p of parsed.uninstalled) {
-      expect(p.removed).toBe(true);
-    }
-  });
-
-  it('mcp uninstall preserves sibling MCP entries', () => {
+  it('t2 mcp uninstall still cleans a stale stdio entry, preserving siblings', () => {
     const cursorConfig = join(home, '.cursor', 'mcp.json');
     mkdirSync(dirname(cursorConfig), { recursive: true });
     writeFileSync(
@@ -426,10 +407,7 @@ describeOrSkip('CLI integration — help on every group resolves cleanly', () =>
     ['limit', 'show'],
     ['limit', 'set'],
     ['limit', 'reset'],
-    ['mcp'],
-    ['mcp', 'install'],
     ['mcp', 'uninstall'],
-    ['mcp', 'start'],
     ['skills'],
     ['skills', 'list'],
     ['skills', 'install'],

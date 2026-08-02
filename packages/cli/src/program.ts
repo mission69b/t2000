@@ -68,10 +68,10 @@ Wallet:
   $ t2 limit set --daily 100           Change the daily spend cap (default $100/day)
 
 Connect an AI client:
-  Hosted (recommended)                 Add https://mcp.t2000.ai/mcp as a custom connector
-                                       in Claude, then approve with Google — no install,
-                                       no key in the client, spend limits you set.
-  $ t2 mcp install                     Local stdio server (advanced) — for a keypair you hold
+  One URL                              Add https://mcp.t2000.ai/mcp as a connector in
+                                       Claude, Cursor, or any MCP client, then approve
+                                       with Google — no install, no key in the client,
+                                       spend limits you set.
   $ t2 skills install                  Install skills as local SKILL.md files
 
 Models (Audric — a separate product, billed in credit):

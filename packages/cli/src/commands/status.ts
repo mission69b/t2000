@@ -1,8 +1,9 @@
 // [SPEC_AGENT_PAYMENTS_X402 item 2.14] `t2 status` — one-shot health/doctor
 // check. Aggregates existing reads (no new state): CLI version, wallet +
-// balances, spending limits, and which AI clients have
-// the MCP server wired. The "is my setup healthy?" onboarding + support
-// primitive — answers the questions support would otherwise ask.
+// balances, and spending limits. The "is my setup healthy?" onboarding +
+// support primitive — answers the questions support would otherwise ask.
+// The MCP surface is the hosted Connect URL (SPEC_T2_KILL_STDIO); the only
+// stdio-related read left is a stale-config warning that points at cleanup.
 
 import type { Command } from 'commander';
 import pc from 'picocolors';
@@ -36,24 +37,26 @@ const { version: CLI_VERSION } = (() => {
 // reachable. Sellers run their own x402 endpoints, so there is no single
 // host whose health means anything here.
 
-async function checkMcpClients(): Promise<Array<{ name: string; wired: boolean }>> {
+/** Clients still carrying the RETIRED stdio entry (→ `t2 mcp uninstall`). */
+async function staleStdioClients(): Promise<string[]> {
   const platforms = getPlatformConfigs();
-  return Promise.all(
+  const wired = await Promise.all(
     platforms.map(async (p) => ({ name: p.name, wired: hasMcpEntry(await readJsonFile(p.path)) })),
   );
+  return wired.filter((c) => c.wired).map((c) => c.name);
 }
 
 export function registerStatus(program: Command) {
   program
     .command('status')
-    .description('Health check: wallet, balances, limits, MCP wiring')
+    .description('Health check: wallet, balances, limits')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .action(async (opts: { key?: string }) => {
       try {
-        // Reads run in parallel — MCP wiring doesn't depend on the wallet.
-        const [agentResult, mcpClients] = await Promise.all([
+        // Reads run in parallel — config checks don't depend on the wallet.
+        const [agentResult, staleStdio] = await Promise.all([
           tryWithAgent({ keyPath: opts.key }),
-          checkMcpClients(),
+          staleStdioClients(),
         ]);
 
         let wallet: { created: boolean; address?: string } = { created: false };
@@ -78,7 +81,7 @@ export function registerStatus(program: Command) {
         }
 
         if (isJsonMode()) {
-          printJson({ cliVersion: CLI_VERSION, wallet, balance, limits, mcpClients });
+          printJson({ cliVersion: CLI_VERSION, wallet, balance, limits, staleStdio });
           return;
         }
 
@@ -114,16 +117,10 @@ export function registerStatus(program: Command) {
           printKeyValue('Wallet', `${pc.yellow('not created')} ${pc.dim('— run `t2 init`')}`);
         }
 
-        const mcpSummary = mcpClients
-          .map((c) => `${c.name} ${c.wired ? pc.green('✓') : pc.dim('✗')}`)
-          .join('  ·  ');
-        printKeyValue('MCP wired', mcpSummary);
-        if (!mcpClients.some((c) => c.wired)) {
+        printKeyValue('MCP', 'https://mcp.t2000.ai/mcp  ' + pc.dim('(hosted — add as a connector in any MCP client)'));
+        if (staleStdio.length > 0) {
           printLine(
-            pc.dim('  Hosted: add https://mcp.t2000.ai/mcp as a custom connector in Claude.')
-          );
-          printLine(
-            pc.dim('  Local:  `t2 mcp install` wires the stdio server (advanced — keypair you hold).')
+            pc.yellow(`  Stale stdio config in ${staleStdio.join(', ')} — the local server is retired; run \`t2 mcp uninstall\`.`)
           );
         }
         printBlank();
