@@ -380,11 +380,27 @@ async function respond402(
       chain,
       currentEpoch: epoch,
     });
-    return json(402, {
-      x402Version: X402_VERSION,
-      error: args.error ?? 'Payment required',
-      accepts: [requirements],
-    });
+    // Belt-and-suspenders for pre-0.2.2 discovery clients and dual-dialect
+    // consumers: mirror the challenge into the MPP WWW-Authenticate shape.
+    // The accepts[] body stays the authoritative envelope — the header carries
+    // the same recipient/currency and the DECIMAL amount that dialect uses.
+    const host = (() => {
+      try {
+        return new URL(args.resource).hostname;
+      } catch {
+        return undefined;
+      }
+    })();
+    const wwwAuth = `Payment realm="${host ?? 'x402'}", recipient="${runtime.payTo}", currency="${runtime.currency}", amount="${args.priceUsdc}"`;
+    return json(
+      402,
+      {
+        x402Version: X402_VERSION,
+        error: args.error ?? 'Payment required',
+        accepts: [requirements],
+      },
+      { 'WWW-Authenticate': wwwAuth },
+    );
   } catch (err) {
     // Chain info unreachable — a 402 without the envelope is unpayable, so
     // be honest about the outage instead of serving a dead challenge.

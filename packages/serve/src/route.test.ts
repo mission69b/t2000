@@ -108,6 +108,15 @@ describe('402 challenge (unpaid)', () => {
     expect(entry?.resource).toBe('https://seller.example/search');
   });
 
+  it('also sets the MPP WWW-Authenticate header (dual-dialect, pre-0.2.2 probes)', async () => {
+    const route = makeRoute();
+    const res = await route(post('https://seller.example/search', {}));
+    const header = res.headers.get('www-authenticate');
+    expect(header).toContain('Payment realm="seller.example"');
+    expect(header).toContain(`recipient="${PAY_TO}"`);
+    expect(header).toContain('amount="0.01"'); // decimal — the header dialect's unit
+  });
+
   it('fires the 402 BEFORE body validation — the probe POSTs {} and must see the challenge', async () => {
     const route = makeRoute();
     const res = await route(post('https://seller.example/search', { wrong: 'shape' }));
