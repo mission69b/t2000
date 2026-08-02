@@ -19,7 +19,7 @@ t2000/
 ├── packages/                                ← npm packages (5 published: sdk, cli, mcp, id, serve)
 │   ├── cli/                                 (@t2000/cli)
 │   ├── id/                                  (@t2000/id — agent_id::registry client)
-│   ├── mcp/                                 (@t2000/mcp)
+│   ├── mcp/                                 (@t2000/mcp — DEPRECATED, stdio retired; Connect is the MCP surface)
 │   ├── sdk/                                 (@t2000/sdk)
 │   └── serve/                               (@t2000/serve — merchant-side x402 router)
 │   # design tokens live in design-tokens/tokens.css (copy-in, no package)

@@ -30,7 +30,7 @@ if you have one.
 - `@t2000/sdk` — key handling, transaction building, gasless send / swap / pay,
   spend-limit enforcement, receipt verification (`verifyReceipt`)
 - `@t2000/cli` — input validation, wallet file handling (`~/.t2000`, `0600`)
-- `@t2000/mcp` — tool permissions, input validation
+- `@t2000/mcp` — DEPRECATED (stdio retired); the MCP surface is hosted Passport Connect (`audric/apps/mcp`)
 - `@t2000/id` — `agent_id::registry` transaction builders
 - Move contracts (`contracts/`) — `agent_id::registry` (ownership / kill-switch
   authorization) and `confidential_anchor` (receipt-anchor integrity)

@@ -65,6 +65,6 @@ verify, job). Those are **consumer** content; `.claude/skills/` are **contributo
 engineering constraints — different altitude, different audience. Don't merge them.
 
 Product skills reach end users via two channels:
-1. **`@t2000/mcp`** — skill bodies baked into the npm bundle at build time, exposed
-   as `skill-<name>` MCP prompts in any MCP client after `t2 mcp install`.
+1. **Passport Connect** (`mcp.t2000.ai`) — every skill exposed as a
+   `skill-<name>` MCP prompt on the hosted server (stdio `@t2000/mcp` retired).
 2. **`mission69b/t2000-skills`** — auto-synced via `.github/workflows/sync-skills.yml`.

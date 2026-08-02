@@ -8,12 +8,13 @@
 #   1. Checks for Node.js (v18+)
 #   2. Installs @t2000/cli globally via npm (provides the `t2` binary)
 #   3. Creates a wallet (`t2 init`) — or detects an existing one
-#   4. Wires the MCP server into Claude Desktop / Cursor / Windsurf
-#   5. Installs the agent skills
+#   4. Installs the agent skills
+#
+# AI clients don't need this installer — they connect to the hosted MCP:
+#   { "mcpServers": { "t2000": { "url": "https://mcp.t2000.ai/mcp" } } }
 #
 # Environment variables (all opt-OUT):
 #   T2000_SKIP_INIT    - Skip wallet creation (read-only install)
-#   T2000_SKIP_MCP     - Skip MCP wiring
 #   T2000_SKIP_SKILLS  - Skip skills install
 
 main() {
@@ -136,16 +137,6 @@ else
   t2 init
 fi
 
-# ─── Wire MCP into Claude Desktop / Cursor / Windsurf (idempotent) ───────────
-# Non-fatal: a missing platform config or a write hiccup must not abort install.
-
-if [[ "${T2000_SKIP_MCP:-}" != "true" ]]; then
-  echo ""
-  bold "  Wiring MCP into your AI clients..."
-  echo ""
-  t2 mcp install || warn "MCP wiring skipped (no supported client config found, or a write failed). Run \`t2 mcp install\` later."
-fi
-
 # ─── Install agent skills (idempotent) ──────────────────────────────────────
 
 if [[ "${T2000_SKIP_SKILLS:-}" != "true" ]]; then
@@ -171,7 +162,7 @@ echo ""
 info "  Fund with USDC on Sui, then pay per call — at the \$0.02 rail floor, \$5 ≈ ~250 calls."
 info "  Spending limits are ON by default (\$25/tx, \$100/day). Change with \`t2 limit set\`."
 echo ""
-info "  Restart your AI client, then ask it: \"what's my t2000 balance?\""
+info "  AI clients: add https://mcp.t2000.ai/mcp as an MCP connector (Passport Connect)."
 info "  Developer docs:  https://docs.t2000.ai"
 echo ""
 

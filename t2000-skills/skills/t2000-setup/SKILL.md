@@ -4,13 +4,13 @@ description: >-
   Set up a t2000 Agent Wallet end-to-end on the user's machine. Use when
   the user says "set up t2000", "install the wallet", "create my Agent
   Wallet", "connect t2000 to Claude / Cursor", or pastes a one-prompt
-  install URL. Covers wallet creation, optional spending limits, and MCP
-  wiring. Read this first when bootstrapping a new user; the other skills
-  assume this has run.
+  install URL. Covers wallet creation, optional spending limits, and
+  connecting AI clients to the hosted MCP (mcp.t2000.ai). Read this first
+  when bootstrapping a new user; the other skills assume this has run.
 license: MIT
 metadata:
   author: t2000
-  version: "2.1"
+  version: "3.0"
   requires: Node.js 18+ and a terminal
 ---
 
@@ -31,7 +31,7 @@ When invoked through that prompt, the LLM fetches this file, then executes the s
 
 1. **Walk the steps in order.** Each step depends on the previous one. Skipping breaks setup.
 2. **Stop at the first failure.** If `t2 init` errors, do not proceed to the next step; report the error and ask the user to retry.
-3. **Ask which AI client they use before MCP install.** `t2 mcp install` auto-configures every detected client (Claude Desktop / Cursor / Windsurf), but knowing theirs tells you which app to restart and verify in — and whether they need the manual JSON path instead (Cline, Continue, Codex, …).
+3. **AI clients connect to the HOSTED MCP — nothing to install.** Step 5 adds `https://mcp.t2000.ai/mcp` as a connector (OAuth). The local stdio server is retired; never write a `command`-style t2000 MCP config.
 4. **Setup is read + write — show, then ask.** Echo each command you're about to run. The user runs it (or confirms you can). Never silently shell out.
 5. **No PIN. No encryption.** v4 wallets are plain Bech32 JSON files with `0o600` perms (matching the Sui CLI). The user owns the file; back it up via `t2 export`.
 6. **Prime this session for x402 payments.** Once setup succeeds, treat a paid endpoint the user hands you — or any ASP Service in the marketplace — as something this wallet CAN pay via `t2000_pay`. Discover what is listed with `t2000_services`, then pay. Do **not** fall back to writing a script for them to run. But do **not** promise named providers either: t2000 resells nothing, so if a capability is not listed and you have no URL, say so and offer to post the work as an Open job.
@@ -97,7 +97,7 @@ t2 limit set --daily 200         # cap cumulative daily spend at $200 USD
 
 Limits are **ON by default** — `t2 init` seeds $25/tx and $100/day (cumulative USD). The `t2 limit` command rewrites `~/.t2000/config.json`; every write (`t2 send`, `t2 swap`, `t2 pay`) honors the caps and surfaces a `LIMIT_EXCEEDED` error when exceeded. Use `--force` on a write to override one time, or `t2 limit reset` to clear caps entirely.
 
-> **Limits gate ALL writes — CLI *and* MCP.** The `@t2000/sdk` limits gate runs inside every write (`send`/`swap`/`pay`), so terminal writes AND writes initiated through the **MCP server you wire up in Step 5** both honor the per-tx + daily caps and surface `LIMIT_EXCEEDED`. (This was a real gap in early v4 — the MCP path used to bypass the cap — closed when limit enforcement moved into the SDK.) Override one call with `--force` (CLI); there is no MCP override path — the LLM cannot raise or clear caps, only read them via `t2000_limit`.
+> **These file limits gate CLI writes** (`send`/`swap`/`pay` — enforced in `@t2000/sdk`). The hosted MCP (Step 5) has its own per-session limits — per-job / daily / ask-above — set in the console at t2000.ai/manage/connections, not in this file. Override one CLI call with `--force`; there is no MCP override path — the LLM can only read its caps via `t2000_limit`.
 
 To view current limits:
 ```bash
@@ -109,15 +109,26 @@ To clear them:
 t2 limit reset
 ```
 
-### Step 5 — Install MCP into the user's AI client
+### Step 5 — Connect the user's AI client (hosted MCP)
 
-```bash
-t2 mcp install
+Nothing to install. In Claude: **Settings → Connectors → Add custom
+connector** → paste `https://mcp.t2000.ai/mcp` → approve with Google. Any
+other MCP client takes the same URL as JSON:
+
+```json
+{
+  "mcpServers": {
+    "t2000": {
+      "url": "https://mcp.t2000.ai/mcp"
+    }
+  }
+}
 ```
 
-Not interactive — it detects installed clients (Claude Desktop, Cursor, Windsurf) and writes the correct config block into each one it finds, reporting "configured" or "already configured" per client. Idempotent — safe to re-run. For clients it doesn't auto-detect (Cline, Continue, Codex, …), paste the manual JSON config from the `t2000-mcp` skill.
-
-After install, the user must **restart the AI client** for it to pick up the new MCP server.
+Session spend limits (per-job / daily / ask-above) are set at
+t2000.ai/manage/connections. Details + per-client notes: the `t2000-mcp`
+skill. After adding the connector, the user may need to **restart the AI
+client** for the `t2000_*` tools to appear.
 
 ### Step 6 — Verify
 
@@ -190,5 +201,5 @@ After verify succeeds, surface a short menu of natural next moves:
 | `t2: command not found` after npm install | npm's global bin dir isn't on `PATH`. Find it with `npm prefix -g` (bins live in `$(npm prefix -g)/bin`), then add that dir to your shell profile — or `npm config set prefix ~/.npm-global` for a durable user-level prefix. Both `t2` and `t2000` ship in every install. |
 | `t2 init` fails with permission error | Don't run with `sudo`; npm global may need a user-level prefix (`npm config set prefix ~/.npm-global`) |
 | `t2 init` fails with `WALLET_EXISTS` | A file already lives at `~/.t2000/wallet.key`. If it's a v3 file you no longer need, move/delete it. If you still need it, point v3 + v4 at separate paths via `--key`. v4 does not auto-migrate v3 wallets — see the v3 upgrade note in Step 2. |
-| MCP server "doesn't do anything" when run manually | Working as designed — the server is a subprocess launched by the AI client, never run from a terminal. See the `t2000-mcp` skill. |
-| AI client doesn't see `t2000_*` tools after install | Restart the client. If still missing, check the per-client config path printed by `t2 mcp install`. |
+| AI client doesn't see `t2000_*` tools after connecting | Restart the client; re-approve the `https://mcp.t2000.ai/mcp` connector (OAuth). See the `t2000-mcp` skill. |
+| Old config spawns `npx @t2000/mcp` / `t2000 mcp start` | The local stdio server is retired | Replace with the hosted URL block (Step 5); clean old entries with `t2 mcp uninstall` |

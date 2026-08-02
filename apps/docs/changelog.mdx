@@ -7,6 +7,17 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, `@t2000/mcp`, and `@t2000/id` packages ship together on one version.
 
+<Update label="One MCP URL — local stdio retired" description="August 2, 2026">
+  **The local stdio MCP server is retired** (`t2 mcp` / `t2 mcp install` are
+  gone; `@t2000/mcp` on npm is deprecated). The one MCP distribution is
+  **[Passport Connect](/passport-connect)**: add
+  `https://mcp.t2000.ai/mcp` as a connector in Claude, Cursor, ChatGPT, or any
+  MCP client and approve with Google — no install, no key in the client, spend
+  limits you set. Terminal workflows use the `t2` CLI. Leftover stdio configs
+  clean up with `t2 mcp uninstall`. The Connect tool surface also gained
+  `t2000_job_cancel`, `t2000_job_decline`, and `t2000_job_review`.
+</Update>
+
 <Update label="t2 code + create-t2-app removed" description="July 2026">
   **`@t2000/code` (t2 code) and `create-t2-app` are removed** from the monorepo
   and npm publish pipeline. Private Inference demand is Audric + any

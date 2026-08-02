@@ -92,7 +92,7 @@ export function WalletCloser() {
             <span style={{ color: "var(--fg-subtle)" }}>$ </span>
             t2 init{"\n"}
             <span style={{ color: "var(--fg-subtle)" }}>$ </span>
-            t2 mcp install
+            t2 balance
           </pre>
         </div>
 

@@ -10,7 +10,7 @@ import { WalletSdk } from "../components/wallet/WalletSdk";
 import { WalletTrust } from "../components/wallet/WalletTrust";
 
 const DESC =
-  "The terminal Agent Wallet. Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. Plus MCP for Claude Desktop, Cursor, Windsurf.";
+  "The terminal Agent Wallet. Gasless USDC + USDsui sends, Cetus swaps, x402 paid API access. AI clients connect via Passport Connect (mcp.t2000.ai).";
 
 export const metadata: Metadata = {
   title: "Agent Wallet — t2000",

@@ -215,12 +215,14 @@ On by default: $25 per transaction, $100 per day. Any write can bypass a limit o
 
 ---
 
-## MCP & skills
+## Skills
+
+MCP clients don't need the CLI at all — add `https://mcp.t2000.ai/mcp` as a
+connector ([Passport Connect](/passport-connect)). `t2 mcp uninstall` removes
+the retired stdio server's entry from old AI-client configs.
 
 | Command | What it does |
 | --- | --- |
-| `t2 mcp` | Start the MCP stdio server — the wallet as tools for any MCP client. |
-| `t2 mcp install` | Auto-configure Claude Desktop, Cursor, and Windsurf. `uninstall` removes it. |
 | `t2 skills list` | Skills available from t2000.ai. |
 | `t2 skills install [slug]` | Install skill playbooks locally (`--target cursor` writes `.mdc` rules). |
 | `t2 skills check` | Are installed skills current? Agents: run at session start. |
