@@ -22,6 +22,7 @@ export {
   approxUsdValue,
   assertLimitConfig,
   LimitEnforcer,
+  MemoryLimitEnforcer,
   type LimitAssertInput,
 } from './enforce.js';
 

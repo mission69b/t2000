@@ -9,12 +9,14 @@
 
 import {
   type LimitsConfig,
+  type DailySpend,
   getLimits,
   setLimits,
   clearLimits,
   hasLimits,
   dailySpentToday,
   recordDailySpend,
+  todayUtc,
 } from './config.js';
 import { LimitExceededError, type LimitOperation } from './errors.js';
 
@@ -116,5 +118,62 @@ export class LimitEnforcer {
 
   dailySpentToday(): number {
     return dailySpentToday(this.configDir);
+  }
+}
+
+/**
+ * In-memory enforcer for signer-mode agents (`T2000.fromZkLogin` — Passport
+ * Connect / hosted MCP). Same gate semantics, ZERO disk I/O: serverless homes
+ * are unwritable (Lambda: `ENOENT mkdir '/home/sbx_user…/.t2000'`), which made
+ * `record()` after a SETTLED pay/swap fail the whole tool call. Connect spends
+ * are gated server-side (`authorizeSpend` per-job/daily/ask-above) — the file
+ * limits in `~/.t2000/config.json` remain the keypair-agent (CLI/stdio) gate.
+ * Limits start unset (matching a fresh config file); a host that wants
+ * client-side caps on top can still `setLimits()` — they live for the
+ * process/session only.
+ */
+export class MemoryLimitEnforcer extends LimitEnforcer {
+  private limitsMem: LimitsConfig | undefined;
+  private spend: DailySpend = { date: todayUtc(), usd: 0 };
+
+  override assert(input: LimitAssertInput): void {
+    assertLimitConfig({
+      limits: this.limitsMem,
+      spentTodayUsd: this.dailySpentToday(),
+      operation: input.operation,
+      amountUsd: input.amountUsd,
+      force: input.force,
+    });
+  }
+
+  override record(amountUsd: number): void {
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) return;
+    const today = todayUtc();
+    const prior = this.spend.date === today ? this.spend.usd : 0;
+    this.spend = { date: today, usd: prior + amountUsd };
+  }
+
+  override getLimits(): LimitsConfig | undefined {
+    return this.limitsMem;
+  }
+
+  override hasLimits(): boolean {
+    const l = this.limitsMem;
+    return !!l && (l.perTxUsd !== undefined || l.dailyUsd !== undefined);
+  }
+
+  override setLimits(limits: LimitsConfig): void {
+    const merged: LimitsConfig = { ...this.limitsMem };
+    if (limits.perTxUsd !== undefined) merged.perTxUsd = limits.perTxUsd;
+    if (limits.dailyUsd !== undefined) merged.dailyUsd = limits.dailyUsd;
+    this.limitsMem = merged;
+  }
+
+  override clearLimits(): void {
+    this.limitsMem = undefined;
+  }
+
+  override dailySpentToday(): number {
+    return this.spend.date === todayUtc() ? this.spend.usd : 0;
   }
 }

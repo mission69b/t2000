@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { approxUsdValue, assertLimitConfig, LimitEnforcer } from './enforce.js';
+import { approxUsdValue, assertLimitConfig, LimitEnforcer, MemoryLimitEnforcer } from './enforce.js';
 import { LimitExceededError } from './errors.js';
 import { readLimitsFile, todayUtc } from './config.js';
 
@@ -107,5 +107,56 @@ describe('LimitEnforcer (file-backed, cumulative daily)', () => {
     e.record(5);
     expect(e.dailySpentToday()).toBe(15);
     expect(readLimitsFile(dir).dailySpend).toEqual({ date: todayUtc(), usd: 15 });
+  });
+});
+
+describe('MemoryLimitEnforcer (signer-mode / Connect — zero disk I/O)', () => {
+  it('starts unset and passes like a fresh config', () => {
+    const e = new MemoryLimitEnforcer();
+    expect(e.hasLimits()).toBe(false);
+    expect(e.getLimits()).toBeUndefined();
+    expect(() => e.assert({ operation: 'pay', amountUsd: 999 })).not.toThrow();
+  });
+
+  it('keeps the same gate semantics in memory', () => {
+    const e = new MemoryLimitEnforcer();
+    e.setLimits({ perTxUsd: 25, dailyUsd: 100 });
+    expect(e.hasLimits()).toBe(true);
+    expect(() => e.assert({ operation: 'pay', amountUsd: 30 })).toThrow(LimitExceededError);
+    e.record(90);
+    expect(e.dailySpentToday()).toBe(90);
+    expect(() => e.assert({ operation: 'send', amountUsd: 20 })).toThrow(LimitExceededError);
+    expect(() => e.assert({ operation: 'send', amountUsd: 10 })).not.toThrow();
+    // force overrides, matching the file enforcer
+    expect(() => e.assert({ operation: 'pay', amountUsd: 999, force: true })).not.toThrow();
+    e.clearLimits();
+    expect(e.hasLimits()).toBe(false);
+  });
+
+  it('never writes the config file on record()', () => {
+    const dir = mkdtempSync(join(tmpdir(), 't2000-mem-'));
+    try {
+      const e = new MemoryLimitEnforcer();
+      e.record(10);
+      e.record(2.5);
+      expect(e.dailySpentToday()).toBe(12.5);
+      // The parent class would have written dailySpend here; memory must not.
+      expect(readLimitsFile(dir).dailySpend).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('resets the in-memory daily total on UTC rollover', () => {
+    const e = new MemoryLimitEnforcer();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-02T23:59:00Z'));
+    e.record(95);
+    expect(e.dailySpentToday()).toBe(95);
+    vi.setSystemTime(new Date('2026-08-03T00:01:00Z'));
+    expect(e.dailySpentToday()).toBe(0);
+    e.record(5);
+    expect(e.dailySpentToday()).toBe(5);
+    vi.useRealTimers();
   });
 });

@@ -55,7 +55,7 @@ import { verifyReceipt, type VerifyOptions, type VerifyResult } from './verify.j
 import { SUPPORTED_ASSETS, assertAllowedAsset, type SendableAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
-import { LimitEnforcer, approxUsdValue } from './limits/index.js';
+import { LimitEnforcer, MemoryLimitEnforcer, approxUsdValue } from './limits/index.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -100,7 +100,11 @@ export class T2000 extends EventEmitter<T2000Events> {
       this._address = getAddress(kp);
     }
     this.client = client;
-    this.limits = new LimitEnforcer(configDir);
+    // Signer-mode agents (zkLogin / Connect) run on hosts whose homedir may be
+    // unwritable (Lambda ENOENT on mkdir ~/.t2000) and are spend-gated
+    // server-side (authorizeSpend) — same gate semantics, memory-only ledger.
+    // File limits (~/.t2000/config.json) remain the keypair-agent gate.
+    this.limits = isSignerMode ? new MemoryLimitEnforcer() : new LimitEnforcer(configDir);
   }
 
   static async create(options: T2000Options = {}): Promise<T2000> {
