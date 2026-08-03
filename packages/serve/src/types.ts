@@ -25,10 +25,17 @@ export interface ServeConfig {
   name?: string;
   /** One-line description (discovery docs, slice 2). */
   description?: string;
-  // `report` was REMOVED 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY): it posted
-  // settled digests to the hosted mpp.t2000.ai activity feed, and that
-  // gateway is gone. Sellers own their endpoints; there is no central feed
-  // to notify. Receipts live on Sui.
+  /**
+   * Opt-in attributed activity reporting (SPEC_T2_ACTIVITY_X402 B2). After a
+   * SUCCESSFUL settle, serve fire-and-forgets the settlement digest to this
+   * URL (`https://t2000.ai/api/activity/x402` — the endpoint chain-verifies
+   * before anything is recorded). Strictly best-effort: a dead report can
+   * never change the buyer's response. Unset = no report.
+   *
+   * (The old `report` option — removed 2026-08-01 — posted to the retired
+   * mpp gateway; this posts to the receipt-backed t2000.ai ledger instead.)
+   */
+  activityReportUrl?: string;
   /** Override the Sui fullnode gRPC URL (default: mainnet/testnet fullnode). */
   rpcUrl?: string;
 }

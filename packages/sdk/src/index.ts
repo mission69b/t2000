@@ -4,6 +4,12 @@ export { KeypairSigner } from './wallet/keypairSigner.js';
 export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 export { payWithMpp, preflightPay } from './wallet/pay.js';
 export {
+  DEFAULT_ACTIVITY_REPORT_URL,
+  reportX402Activity,
+  type ActivityReportConfig,
+  type X402ActivityPayload,
+} from './wallet/activity-report.js';
+export {
   chatCompletion,
   chatCompletionStream,
   listModels,

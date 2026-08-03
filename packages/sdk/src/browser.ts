@@ -15,6 +15,12 @@ export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 // `T2000.pay()` delegates to. Pair with `executeTx` for advanced callers.
 // (`PayOptions` / `PayResult` are exported from the types block below.)
 export { payWithMpp, preflightPay } from './wallet/pay.js';
+export {
+  DEFAULT_ACTIVITY_REPORT_URL,
+  reportX402Activity,
+  type ActivityReportConfig,
+  type X402ActivityPayload,
+} from './wallet/activity-report.js';
 export { executeTx } from './wallet/executeTx.js';
 
 // Error handling

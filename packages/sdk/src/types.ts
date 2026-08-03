@@ -195,6 +195,14 @@ export interface PayOptions {
   maxPrice?: number;
   /** Bypass the spending-limit gate for this call (caller owns consent). */
   force?: boolean;
+  /**
+   * Attributed x402.paid activity reporting (B2) — after a successful pay,
+   * the settlement digest is fire-and-forgotten to the t2000.ai report
+   * endpoint (chain-verified server-side; never affects the payment).
+   * Default ON with source 'pay'; hosts override the source ('connect',
+   * 'try-it') or URL, or pass `false` to opt out.
+   */
+  activityReport?: { url?: string; source?: 'pay' | 'try-it' | 'connect' } | false;
 }
 
 export interface PayResult {
