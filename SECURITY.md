@@ -51,11 +51,11 @@ if you have one.
   boundary is the filesystem ACL; see `ARCHITECTURE.md § Wallet + keys`.)
 - **Default-on spending limits** — per-tx + daily caps enforced inside the SDK,
   gating CLI **and** MCP writes.
-- **Payment verification** — HMAC-bound stateless challenges + on-chain USDC
-  verification; automated refund on upstream failure (no-charge-on-failure).
-- **Confidential inference** — fail-closed GPU-TEE attestation, TEE-signed
-  receipts, Sui-anchored hashes, client-side DCAP verification (`t2 verify`).
-- **Upstream API keys** — gateway env vars only; never exposed to callers.
+- **Payment verification** — challenge-bound signed payments, structurally
+  verified before settlement; the handler runs BEFORE money moves, so a
+  failing seller never charges the buyer (no-charge-on-failure).
+- **Confidential inference** — an Audric product (`api.audric.ai`):
+  fail-closed GPU-TEE attestation, TEE-signed receipts, Sui-anchored hashes.
 - **Automated scanning** — CodeQL + dependency audit in GitHub Actions.
 
 ## Audit Status
