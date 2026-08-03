@@ -51,6 +51,7 @@ npm install @t2000/serve
 |---|---|---|
 | `T2000_PAY_TO` | yes | Your Sui address — payments settle here (`t2 address` prints it) |
 | `T2000_NETWORK` | no | `mainnet` (default) or `testnet` |
+| `T2000_ACTIVITY_REPORT_URL` | no | Fire-and-forget `x402.paid` reports after each successful settle — set `https://t2000.ai/api/activity/x402` to appear on the [t2000.ai](https://t2000.ai/activity) activity tape. Chain-verified server-side; never affects buyer responses. Unset = no report. |
 | `T2000_BASE_URL` | no | Public URL of the deployed app (used in challenges + discovery) |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | serverless: yes | Upstash-compatible KV for durable replay protection. Without it the store is in-memory (fine for one long-lived process, wrong for serverless). |
 

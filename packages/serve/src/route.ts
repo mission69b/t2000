@@ -49,6 +49,8 @@ export interface RouteRuntime {
   store: DigestStore;
   baseUrl?: string;
   rpcUrl?: string;
+  /** B2 attributed reporting — unset = no report (see ServeConfig). */
+  activityReportUrl?: string;
 }
 
 export interface RouteOptions {
@@ -345,6 +347,16 @@ export class RouteBuilder<TBody = undefined> {
         // Digest-once already holds; challenge-once is defense in depth.
       }
 
+      // B2: attributed activity report — AFTER a successful settle only,
+      // strictly fire-and-forget (a dead report can never change the
+      // buyer's 200 or the settle; SPEC_T2_ACTIVITY_X402 §7 lock 6).
+      reportActivity(runtime, {
+        digest: settle.transaction,
+        payer: settle.payer,
+        priceUsdc,
+        resource,
+      });
+
       const headers = new Headers(served.headers);
       headers.set(X402_PAYMENT_RESPONSE_HEADER, encodeX402Response(settle));
       return new Response(served.body, { status: served.status, headers });
@@ -360,6 +372,35 @@ export class RouteBuilder<TBody = undefined> {
     };
     this.register(route);
     return route;
+  }
+}
+
+/** Fire-and-forget x402.paid report (B2). Never awaited into the response
+ *  path; short timeout; every failure swallowed. The report endpoint
+ *  chain-verifies the digest, so this carries claims, not trust. */
+function reportActivity(
+  runtime: RouteRuntime,
+  args: { digest: string; payer: string; priceUsdc: string; resource: string },
+): void {
+  const url = runtime.activityReportUrl;
+  if (!url) return;
+  try {
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        digest: args.digest,
+        payTo: runtime.payTo,
+        payer: args.payer,
+        amountMicroUsdc: Math.round(Number(args.priceUsdc) * 1_000_000),
+        network: `sui:${runtime.network}`,
+        route: args.resource,
+        source: 'serve',
+      }),
+      signal: AbortSignal.timeout(1500),
+    }).catch(() => undefined);
+  } catch {
+    // even a sync throw (bad URL) must not touch the buyer's response
   }
 }
 

@@ -36,6 +36,7 @@ export class Serve {
       store: config.store ?? new InMemoryDigestStore(),
       baseUrl: this.baseUrl,
       rpcUrl: config.rpcUrl,
+      activityReportUrl: config.activityReportUrl,
     };
   }
 
@@ -132,6 +133,11 @@ export function createServe(config: ServeConfig): Serve {
  *   T2000_BASE_URL    optional — public URL of the deployed app
  *   T2000_NAME        optional — service name for discovery docs
  *   T2000_DESCRIPTION optional — one-liner for discovery docs
+ *   T2000_ACTIVITY_REPORT_URL
+ *                     optional — fire-and-forget x402.paid reports after each
+ *                     successful settle; set https://t2000.ai/api/activity/x402
+ *                     to appear on the t2000.ai activity tape (chain-verified
+ *                     server-side, never affects buyer responses)
  *   KV_REST_API_URL / KV_REST_API_TOKEN
  *                     optional — enables the durable Upstash replay store
  *                     (REQUIRED in serverless production; without it replay
@@ -175,6 +181,7 @@ export function createServeFromEnv(env: Record<string, string | undefined> = pro
     baseUrl: read('T2000_BASE_URL'),
     name: read('T2000_NAME'),
     description: read('T2000_DESCRIPTION'),
+    activityReportUrl: read('T2000_ACTIVITY_REPORT_URL'),
     store,
   });
 }

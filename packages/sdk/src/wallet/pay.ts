@@ -4,6 +4,7 @@ import type { X402Requirements } from '@t2000/sui-x402';
 import type { TransactionSigner } from '../signer.js';
 import type { PayOptions, PayResult } from '../types.js';
 import { T2000Error } from '../errors.js';
+import { reportX402Activity } from './activity-report.js';
 import { executeTx } from './executeTx.js';
 import {
   type PreflightResult,
@@ -287,6 +288,25 @@ async function payViaX402(args: {
 
   const result = await finalize(res, { paid });
   if (!paid) return { ...result, dialect: 'x402' };
+
+  // B2: attributed activity report — settled payments only, fire-and-forget
+  // (the endpoint chain-verifies the digest; a dead report changes nothing).
+  if (digest && options.activityReport !== false) {
+    const report = options.activityReport || {};
+    reportX402Activity(
+      {
+        digest,
+        payTo: requirements.payTo,
+        payer: signer.getAddress(),
+        amountMicroUsdc: Number(amountRaw),
+        network: requirements.network,
+        route: options.url,
+        source: report.source ?? 'pay',
+      },
+      report.url,
+    );
+  }
+
   return {
     ...result,
     dialect: 'x402',

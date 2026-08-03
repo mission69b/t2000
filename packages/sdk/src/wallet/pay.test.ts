@@ -483,6 +483,83 @@ describe('payWithMpp — header-only 402 (dialect removed)', () => {
   });
 });
 
+describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
+  const reportCalls = () =>
+    fetchMock.mock.calls.filter((call: unknown[]) => String(call[0]).includes('/api/activity/x402'));
+
+  it('reports source=pay with the settlement digest after a successful x402 pay', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue('0xabc') } }),
+      );
+
+    const result = await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://mpp.t2000.ai/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+    });
+
+    expect(result.paid).toBe(true);
+    const calls = reportCalls();
+    expect(calls).toHaveLength(1);
+    const body = JSON.parse(String((calls[0][1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body.digest).toBe('0xabc');
+    expect(body.payTo).toBe('0xtreasury');
+    expect(body.payer).toBe('0xsender');
+    expect(body.amountMicroUsdc).toBe(20_000);
+    expect(body.source).toBe('pay');
+  });
+
+  it('activityReport: false opts out; a custom source/url is honored', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
+      );
+    await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05, activityReport: false },
+    });
+    expect(reportCalls()).toHaveLength(0);
+
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
+      );
+    await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: {
+        url: 'https://mpp.t2000.ai/x',
+        maxPrice: 0.05,
+        activityReport: { source: 'connect', url: 'https://example.test/api/activity/x402' },
+      },
+    });
+    const calls = reportCalls();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0][0])).toBe('https://example.test/api/activity/x402');
+    const body = JSON.parse(String((calls[0][1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body.source).toBe('connect');
+  });
+
+  it('an unsettled pay (no receipt) reports nothing', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: { error: 'settle failed' } }));
+
+    const result = await payWithMpp({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+    });
+    expect(result.paid).toBe(false);
+    expect(reportCalls()).toHaveLength(0);
+  });
+});
+
 describe('payWithMpp — free / cached', () => {
   it('reports not-paid when the endpoint serves without a 402', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { cached: true } }));

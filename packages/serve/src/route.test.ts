@@ -274,6 +274,73 @@ describe('paid request lifecycle (sign-then-settle, handler-then-settle)', () =>
   });
 });
 
+describe('B2 activity report (fire-and-forget)', () => {
+  function makeReportingRoute(activityReportUrl?: string) {
+    const serve = createServe({
+      payTo: PAY_TO,
+      baseUrl: 'https://seller.example',
+      activityReportUrl,
+    });
+    return serve
+      .route({ path: 'search' })
+      .paid('0.01')
+      .body(querySchema)
+      .handler(() => ({ ok: true }));
+  }
+
+  it('reports after a successful settle — digest, payTo, amount, source=serve', async () => {
+    const reportFetch = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal('fetch', reportFetch);
+    const route = makeReportingRoute('https://t2000.ai/api/activity/x402');
+    const requirements = await get402Requirements(route);
+    const { header } = await signPayment(requirements);
+
+    const res = await route(
+      post('https://seller.example/search', { query: 'sui' }, { [X402_PAYMENT_HEADER]: header }),
+    );
+    expect(res.status).toBe(200);
+    expect(reportFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = reportFetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://t2000.ai/api/activity/x402');
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    expect(body.digest).toBe('MOCKDIGEST123'); // settleMock's transaction
+    expect(body.payTo).toBe(PAY_TO);
+    expect(body.amountMicroUsdc).toBe(10_000); // 0.01 USDC
+    expect(body.network).toBe('sui:mainnet');
+    expect(body.source).toBe('serve');
+  });
+
+  it('a dead report NEVER changes the buyer 200 (rejects are swallowed)', async () => {
+    const reportFetch = vi.fn(async () => {
+      throw new Error('report endpoint down');
+    });
+    vi.stubGlobal('fetch', reportFetch);
+    const route = makeReportingRoute('https://t2000.ai/api/activity/x402');
+    const requirements = await get402Requirements(route);
+    const { header } = await signPayment(requirements);
+
+    const res = await route(
+      post('https://seller.example/search', { query: 'sui' }, { [X402_PAYMENT_HEADER]: header }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-PAYMENT-RESPONSE')).toBeTruthy();
+  });
+
+  it('no activityReportUrl → no report call', async () => {
+    const reportFetch = vi.fn();
+    vi.stubGlobal('fetch', reportFetch);
+    const route = makeReportingRoute(undefined);
+    const requirements = await get402Requirements(route);
+    const { header } = await signPayment(requirements);
+
+    const res = await route(
+      post('https://seller.example/search', { query: 'sui' }, { [X402_PAYMENT_HEADER]: header }),
+    );
+    expect(res.status).toBe(200);
+    expect(reportFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('unprotected routes', () => {
   it('serves without any payment machinery', async () => {
     const serve = createServe({ payTo: PAY_TO });
