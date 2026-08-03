@@ -21,15 +21,23 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # x402 + discovery build FIRST — sdk/serve depend on @t2000/x402 and
+      # serve's tests probe with @t2000/discovery (B1 absorb).
+      - run: pnpm --filter @t2000/x402 build
+      - run: pnpm --filter @t2000/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/id build
       - run: pnpm --filter @t2000/serve build
+      - run: pnpm --filter @t2000/x402 typecheck
+      - run: pnpm --filter @t2000/discovery typecheck
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/cli typecheck
       - run: pnpm --filter @t2000/id typecheck
       - run: pnpm --filter @t2000/serve typecheck
+      - run: pnpm --filter @t2000/x402 test
+      - run: pnpm --filter @t2000/discovery test
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
@@ -54,7 +62,10 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       # cli bundles @t2000/{sdk,id} from their dists — build deps FIRST
-      # (S.816: cli-before-id broke the v10.10/v10.11 publishes).
+      # (S.816: cli-before-id broke the v10.10/v10.11 publishes). x402 +
+      # discovery lead the order: sdk/serve build against their dists.
+      - run: pnpm --filter @t2000/x402 build
+      - run: pnpm --filter @t2000/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/id build
       - run: pnpm --filter @t2000/mcp build
@@ -67,6 +78,18 @@ jobs:
       # https://www.npmjs.com/package/@t2000/sdk?activeTab=provenance and
       # provide cryptographic linkage from the published tarball back to
       # the GitHub Actions run that produced it.
+      - name: Publish @t2000/x402
+        run: pnpm --filter @t2000/x402 publish --no-git-checks --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish @t2000/discovery
+        run: pnpm --filter @t2000/discovery publish --no-git-checks --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
       - name: Publish @t2000/sdk
         run: pnpm --filter @t2000/sdk publish --no-git-checks --access public --provenance
         env:

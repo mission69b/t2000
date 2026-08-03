@@ -90,7 +90,7 @@ pnpm build
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
-Releases happen via the `release.yml` GitHub Actions workflow (bumps all five packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
+Releases happen via the `release.yml` GitHub Actions workflow (bumps all seven packages in lockstep). See [`CLAUDE.md`](CLAUDE.md) for the release process and engineering principles.
 
 ## Security
 
