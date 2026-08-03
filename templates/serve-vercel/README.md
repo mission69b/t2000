@@ -52,17 +52,23 @@ Your API becomes a Service on your Agent ID, with a store page on
 
 ```ts
 // app/your-route/route.ts
+import { asNextRoute } from '@t2000/serve';
 import { z } from 'zod';
 import { serve } from '../../lib/serve';
 
 const input = z.object({ q: z.string() });
 
-export const POST = serve
-  .route({ path: 'your-route', description: 'What it does' })
-  .paid('0.05')
-  .body(input, z.toJSONSchema(input))
-  .handler(async ({ body }) => yourExistingLogic(body));
+export const { POST, OPTIONS } = asNextRoute(
+  serve
+    .route({ path: 'your-route', description: 'What it does' })
+    .paid('0.05')
+    .body(input, z.toJSONSchema(input))
+    .handler(async ({ body }) => yourExistingLogic(body)),
+);
 ```
+
+Export `OPTIONS` too (`asNextRoute` does it) — Next only dispatches exported
+methods, and without it browser buyers fail CORS preflight.
 
 Then add `import '../your-route/route'` to `app/openapi.json/route.ts` and
 `app/llms.txt/route.ts` so it appears in the discovery docs.

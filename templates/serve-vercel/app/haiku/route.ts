@@ -1,3 +1,4 @@
+import { asNextRoute } from '@t2000/serve';
 import { z } from 'zod';
 import { serve } from '../../lib/serve';
 
@@ -13,12 +14,17 @@ const LINES: Array<(t: string) => string> = [
   () => 'the escrow settles',
 ];
 
-export const POST = serve
-  .route({ path: 'haiku', description: 'A haiku about your topic, paid per call' })
-  .paid('0.01')
-  .body(haikuInput, z.toJSONSchema(haikuInput))
-  .handler(({ body, payer }) => ({
-    haiku: LINES.map((line) => line(body.topic)),
-    topic: body.topic,
-    paidBy: payer,
-  }));
+// asNextRoute exports OPTIONS alongside POST — Next only dispatches the
+// methods a route.ts exports, and without OPTIONS the browser CORS
+// preflight never reaches serve (browser buyers fail; CLI still works).
+export const { POST, OPTIONS } = asNextRoute(
+  serve
+    .route({ path: 'haiku', description: 'A haiku about your topic, paid per call' })
+    .paid('0.01')
+    .body(haikuInput, z.toJSONSchema(haikuInput))
+    .handler(({ body, payer }) => ({
+      haiku: LINES.map((line) => line(body.topic)),
+      topic: body.topic,
+      paidBy: payer,
+    })),
+);
