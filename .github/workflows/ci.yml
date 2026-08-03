@@ -29,15 +29,15 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # x402 + discovery build FIRST — sdk/serve import @t2000/x402 and
+      # x402 + discovery build FIRST — sdk/serve import @t2000/sui-x402 and
       # their DTS builds resolve against its dist (B1; same order as
       # publish.yml).
-      - run: pnpm --filter @t2000/x402 build
+      - run: pnpm --filter @t2000/sui-x402 build
       - run: pnpm --filter @t2000/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/id build
-      - run: pnpm --filter @t2000/x402 typecheck
+      - run: pnpm --filter @t2000/sui-x402 typecheck
       - run: pnpm --filter @t2000/discovery typecheck
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/mcp typecheck
@@ -47,7 +47,7 @@ jobs:
       # Lint the published packages (the job's namesake — was previously
       # build+typecheck only). docs lint = mintlify/broken-links (network +
       # node-specific), kept out of code CI on purpose.
-      - run: pnpm --filter @t2000/x402 lint
+      - run: pnpm --filter @t2000/sui-x402 lint
       - run: pnpm --filter @t2000/discovery lint
       - run: pnpm --filter @t2000/sdk lint
       - run: pnpm --filter @t2000/cli lint
@@ -67,12 +67,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Same order model as publish.yml: x402 → discovery → sdk/mcp/id →
       # cli (bundles sdk+id dists) — serve's tests need x402's dist too.
-      - run: pnpm --filter @t2000/x402 build
+      - run: pnpm --filter @t2000/sui-x402 build
       - run: pnpm --filter @t2000/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/id build
-      - run: pnpm --filter @t2000/x402 test
+      - run: pnpm --filter @t2000/sui-x402 test
       - run: pnpm --filter @t2000/discovery test
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/mcp test

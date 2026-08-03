@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@mysten/sui": "^2.17.0",
-    "@t2000/x402": "workspace:*"
+    "@t2000/sui-x402": "workspace:*"
   },
   "devDependencies": {
     "@t2000/discovery": "workspace:*",
