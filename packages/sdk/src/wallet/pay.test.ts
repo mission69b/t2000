@@ -5,11 +5,11 @@ import type { SuiGrpcClient } from '@mysten/sui/grpc';
 
 // --- Mocks for the dynamically-imported stacks -----------------------------
 // payWithMpp probes with global fetch, then takes the x402 path
-// (@t2000/x402). We mock the dynamic deps so the pay loop is exercised
+// (@t2000/sui-x402). We mock the dynamic deps so the pay loop is exercised
 // without network / chain access.
 
 const buildX402Mock = vi.fn(async (..._args: unknown[]) => ({ header: 'signed-x402-header', payment: {} }));
-vi.mock('@t2000/x402', () => ({
+vi.mock('@t2000/sui-x402', () => ({
   buildX402SignedPayment: (...args: unknown[]) => buildX402Mock(...args),
   X402_PAYMENT_HEADER: 'X-PAYMENT',
   X402_PAYMENT_RESPONSE_HEADER: 'X-PAYMENT-RESPONSE',

@@ -1,10 +1,10 @@
 import { createServer, type Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createX402Requirements, USDC, X402_VERSION } from '@t2000/x402';
+import { createX402Requirements, USDC, X402_VERSION } from '@t2000/sui-x402';
 
 // The B1 CI gate (SPEC_T2_X402_MONOREPO): a serve-shaped 402 — the exact
 // x402Version + accepts[] envelope respond402 emits, built with the REAL
-// @t2000/x402 requirements builder — must probe clean with the REAL
+// @t2000/sui-x402 requirements builder — must probe clean with the REAL
 // @t2000/discovery. One implementation on each side; if either half drifts
 // (field names, scheme, network prefix, amount units), this test is the
 // tripwire, replacing the cross-repo skew class that motivated the absorb.

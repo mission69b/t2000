@@ -12,12 +12,12 @@ const settleMock = vi.hoisted(() =>
     payer: '0xpayer',
   })),
 );
-vi.mock('@t2000/x402', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@t2000/x402')>();
+vi.mock('@t2000/sui-x402', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@t2000/sui-x402')>();
   return { ...actual, settleX402Payment: settleMock };
 });
 
-import { buildX402SignedPayment, X402_PAYMENT_HEADER } from '@t2000/x402';
+import { buildX402SignedPayment, X402_PAYMENT_HEADER } from '@t2000/sui-x402';
 import { __resetChainCaches, __seedChainInfo } from './chain.js';
 import { createServe, createServeFromEnv } from './serve.js';
 import type { BuiltRoute } from './types.js';

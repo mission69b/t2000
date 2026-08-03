@@ -1,7 +1,7 @@
 # Package Rules
 
 The stack is **7 packages**, always released together at the same version:
-`@t2000/{sdk,cli,mcp,id,serve,x402,discovery}`.
+`@t2000/{sdk,cli,mcp,id,serve,sui-x402,discovery}` (dialect dir = `packages/x402`; npm name `sui-x402` — `@t2000/x402` is an unpublish tombstone).
 
 ## @t2000/sdk (packages/sdk)
 
@@ -40,7 +40,7 @@ The stack is **7 packages**, always released together at the same version:
 - Merchant-side x402 router — wrap any API for agent payments. Joined at `10.1.0`.
 - Scope: `serve`
 
-## @t2000/x402 (packages/x402)
+## @t2000/sui-x402 (packages/x402)
 
 - The x402 payment dialect for Sui (scheme `exact`, sign-then-settle gasless
   USDC): requirements builders, header parse/verify/settle, DigestStore.

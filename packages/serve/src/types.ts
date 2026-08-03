@@ -1,4 +1,4 @@
-import type { DigestStore } from '@t2000/x402';
+import type { DigestStore } from '@t2000/sui-x402';
 
 /** Sui network the seller settles on. */
 export type ServeNetwork = 'mainnet' | 'testnet';

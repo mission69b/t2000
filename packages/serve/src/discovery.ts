@@ -1,4 +1,4 @@
-import { USDC, USDC_TESTNET } from '@t2000/x402';
+import { USDC, USDC_TESTNET } from '@t2000/sui-x402';
 import type { Serve } from './serve.js';
 
 // ---------------------------------------------------------------------------
