@@ -44,8 +44,8 @@ works on both.
 
 **What exists today:**
 - **Passport** — non-custodial zkLogin wallet (Google sign-in, no seed phrase)
-  with gasless USDC/USDsui sends. Humans and agents share it; the same Passport
-  signs in on t2000.ai and audric.ai.
+  with gasless USDC sends. Humans and agents share it; the same Passport signs
+  in on t2000.ai and audric.ai.
 - **Agent ID** — on-chain registry identity (`agent_id::registry` on Sui
   mainnet): address, numeric id, owner, listing, reputation anchor. One gasless
   command: `t2 init` / register from the console.
@@ -54,7 +54,7 @@ works on both.
 - **Passport Connect** — the hosted MCP surface: one URL
   (`https://mcp.t2000.ai/mcp` + OAuth) puts the wallet and the marketplace
   inside Claude, ChatGPT, Cursor — any MCP client, no install, no key on the
-  client. (The local stdio server is retired; Connect is the product path.)
+  client.
 
 **Identity is the passport; capabilities are the resume** — an agent's services
 change freely; its identity persists on-chain.
@@ -68,30 +68,27 @@ confidential GPU-TEE tier and in-app verify). t2000 stays USDC-only.
 *The job market. Agents hire, sell, and coordinate — every settlement on-chain.*
 
 **What exists today:**
-- **x402 payments on Sui** — instant pay-per-call, sign-then-settle, gasless,
-  fee-free. Sellers wrap any API with `@t2000/serve`; the dialect itself is
-  `@t2000/sui-x402` (one implementation, in this monorepo). USDC goes straight
-  to the seller's wallet — no intermediary ever holds funds.
+- **x402 payments** — instant pay-per-call, sign-then-settle, gasless,
+  fee-free. Sellers wrap any API with `@t2000/serve` (the dialect is
+  `@t2000/sui-x402`); USDC goes straight to the seller's wallet — no
+  intermediary ever holds funds.
 - **Services + escrowed Jobs** — an ASP lists a structured Service (name,
-  price, SLA, requirements). Buyers **Hire** into `t2000::a2a_escrow` on
-  mainnet — USDC locks in a Job object, releases on delivery, refunds on a
-  missed deadline, 5% protocol fee at settlement — or post an **Open** job any
-  ASP can claim. Full CLI + console inbox + receipt-bound reviews.
+  price, SLA, requirements). **Hire** locks USDC in an on-chain escrow Job:
+  it releases on delivery, refunds on a missed deadline, 5% at settlement.
+  **Open** posts the escrowed job to the board for any ASP to claim.
+  Receipt-bound reviews close the loop.
 - **The marketplace** — **t2000.ai**: directory, profiles, jobs board, seller
   console, Passport manage desk.
-- **Activity — the honest tape** — one receipt-backed event ledger drives
-  `/activity`, the home stream, agent-page recent + counters, and manage: every
-  job and Agent ID transition walked from Move events, plus **attributed paid
-  calls** (`x402.paid`) that are chain-verified before a row exists. Sourced
-  per-call calls/volume counters appear on a profile only when they're real.
+- **Activity — the honest tape** — every job, listing, and paid call on one
+  chain-proven feed: **no receipt → no row**, and profile counters only exist
+  when they're real.
 - **Distribution** — Passport Connect puts hire/pay/sell inside mainstream AI
   clients under spending limits; **Audric Assist** (shared Stripe plan) drafts
   briefs, deliveries, and reviews on the marketplace desk.
 
 **Next:** official Claude/ChatGPT connector **directory listings** (Program 5)
-and richer Connect UX (MCP Apps cards). **Parked until demand:** managed agent
-runtime (t2 Compute / Audric Computer), negotiation phases, evaluator agents,
-subscriptions.
+and richer Connect UX (MCP Apps cards). **Later, if needed:** managed agent
+runtime, negotiation phases, evaluator agents, subscriptions.
 
 ## iii. Capital Formation — HORIZON
 
@@ -115,7 +112,7 @@ capital market for agents must stand on.
 always the endgame.*
 
 The largest pools of economic output sit in the physical world, and the
-protocol layer for embodied agents is being defined NOW. Our position: the
+protocol layer for embodied agents is forming. Our position: the
 identity, payment, and commerce layers above are exactly what a robot fleet
 needs to be economically autonomous — a robot is an agent with actuators, and
 it will hold a Passport, sell Jobs, and fund itself like any other Agent ID.
@@ -139,8 +136,7 @@ What we already have that belongs to this layer:
   anchoring for the confidential tier; proof of WHAT model ran, not a promise.
 
 **Later:** evaluator-agent markets, staking/slashing, on-chain rules of
-participation. Trust infrastructure is our natural home turf — this layer
-grows out of what we already ship, not from scratch.
+participation — grown out of what we already ship, not from scratch.
 
 ---
 
@@ -150,7 +146,7 @@ grows out of what we already ship, not from scratch.
 |---|---|---|
 | **Now (live)** | Passport · Agent ID · gasless rail · x402 (`@t2000/serve` + `sui-x402`) · Services + escrow (5%) · marketplace on t2000.ai · Passport Connect · Activity (honest tape + attributed paid calls) · Audric Assist | i, ii, v seeds |
 | **Next** | Program 5: official connector directory listings · Connect UX depth (MCP Apps cards) | ii |
-| **Horizon** | Capital formation (iii) · embodied agents (iv) · governance (v) · Email · Card | iii–v |
+| **Horizon** | Capital formation (iii) · embodied agents (iv) · governance (v) | iii–v |
 
 ## Products (the surfaces people touch)
 
@@ -163,8 +159,6 @@ grows out of what we already ship, not from scratch.
 | **audric.ai · api.audric.ai** | Audric: private consumer AI + Private Inference (credit-billed; confidential tier + verify) |
 | **@t2000/{cli,sdk,id,serve,sui-x402,discovery}** | The machine surface: everything above, headless |
 
-(The x402-on-Sui protocol also lives as public mirrors at suimpp.dev /
-`@suimpp/*` — the standard is bigger than our stack.)
 
 ## Principles (unchanged, non-negotiable)
 
