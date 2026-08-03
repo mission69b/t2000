@@ -47,7 +47,7 @@ split wallets when moving PI to Audric.
 
 | URL | What it is |
 |---|---|
-| **`t2000.ai`** | **Home = A2A marketplace** (Services / Hire / Open) + Passport / Connect CTAs |
+| **`t2000.ai`** | **Home = A2A marketplace** (Services / Hire / Open) + Passport / Connect CTAs + `/activity` (the receipt-backed economy tape) |
 | **`t2000.ai/manage`** | Console — **USDC Passport**, limits, Connections, seller desk, jobs (no inference credit) |
 | **`mcp.t2000.ai`** | Hosted Passport MCP (Connect) — claim only when live |
 | **`docs.t2000.ai`** | Docs — wallet, marketplace, ASP x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
@@ -78,6 +78,13 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
   is fulfilled by **escrow Job** (Hire / Open) **or** **x402** (pay-per-call to
   the ASP’s endpoint / `@t2000/serve`). Reputation is receipts. Capital purged
   (Program 2). **Not** a t2000-operated OpenAI/Brave/fal proxy mall.
+- **Activity** (`SPEC_T2_ACTIVITY_X402`, shipped 2026-08-03) — ONE receipt-backed
+  event ledger behind `/activity`, the home tape, agent-page recent + counters,
+  and manage: every job/opening transition and Agent ID lifecycle event walked
+  from Move events, plus **attributed `x402.paid`** rows (serve/SDK/Try-it
+  fire-and-forget reports, **chain-verified or dropped** at
+  `POST t2000.ai/api/activity/x402`). Honest numbers: no receipt → no row, no
+  counter — sourced per-call **calls/volume** show on profiles only when real.
 - **Passport Connect** — distribution into Claude/ChatGPT; earn-first (claim Open
   at $0) and hire/pay under limits; MCP Apps cards.
   Spec: `SPEC_T2_PASSPORT_CONNECT.md`.
@@ -167,14 +174,16 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 - **Claude / ChatGPT via Passport Connect** — hosted MCP on t2000 (`mcp.t2000.ai`).
 - **Coding tools → models** — Audric API (`api.audric.ai`), not `t2 connect` to t2000.
 
-## Active programs (2026-08-01)
+## Programs (status 2026-08-03)
 
-| # | Program | SPEC | Order |
+| # | Program | SPEC | Status |
 |---|---|---|---|
-| 1 | Passport Connect (USDC MCP + cards) | `SPEC_T2_PASSPORT_CONNECT.md` | After desk is clean |
-| 2 | Cleanup + **purge mpp proxy** + A2A Service unify | `SPEC_T2_CLEANUP_USDC_ONLY.md` | **First** |
-| 3 | PI → Audric (`api.audric.ai` hard cut, ≥$5 key) | `SPEC_PI_TO_AUDRIC.md` | Second |
-| 4 | Shared Stripe + marketplace↔Audric assist | `SPEC_T2_AUDRIC_SHARED_PLAN.md` | After 2+3 |
+| 1 | Passport Connect (USDC MCP + cards) | `SPEC_T2_PASSPORT_CONNECT.md` | ✅ live (`mcp.t2000.ai/mcp`) |
+| 2 | Cleanup + **purge mpp proxy** + A2A Service unify | `SPEC_T2_CLEANUP_USDC_ONLY.md` | ✅ shipped |
+| 3 | PI → Audric (`api.audric.ai` hard cut, ≥$5 key) | `SPEC_PI_TO_AUDRIC.md` | ✅ shipped |
+| 4 | Shared Stripe + marketplace↔Audric assist | `SPEC_T2_AUDRIC_SHARED_PLAN.md` | ✅ shipped (Assist A0–A5) |
+| — | Activity (receipt tape + attributed x402) | `SPEC_T2_ACTIVITY_X402.md` | ✅ shipped (A0–A3 · B1–B3) |
+| 5 | Official Claude/ChatGPT **directory listings** (connectors) | `SPEC_T2_PROGRAM_5_CONNECTORS.md` | Next (not started) |
 
 ## Explicit non-goals
 
