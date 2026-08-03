@@ -42,7 +42,6 @@
   "devDependencies": {
     "@hono/node-server": "^1",
     "@inquirer/prompts": "^7",
-    "@mysten/move-bytecode-template": "^0.4.0",
     "@mysten/sui": "^2.17.0",
     "@t2000/sdk": "workspace:*",
     "@types/node": "^20",

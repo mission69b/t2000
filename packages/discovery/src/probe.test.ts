@@ -24,11 +24,11 @@ describe('probe', () => {
         recipient: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
         currency: SUI_USDC_TYPE,
         amount: '10000',
-        realm: 'mpp.t2000.ai',
+        realm: 'paid.example',
       }),
     );
 
-    const result = await probe('https://mpp.t2000.ai/openai/v1/chat/completions', 'https://mpp.t2000.ai');
+    const result = await probe('https://paid.example/openai/v1/chat/completions', 'https://paid.example');
     expect(result.ok).toBe(true);
     expect(result.hasSuiPayment).toBe(true);
     expect(result.statusCode).toBe(402);
@@ -163,7 +163,7 @@ describe('probe', () => {
       }),
     );
 
-    const result = await probe('https://mpp.t2000.ai/api/test', 'https://mpp.t2000.ai');
+    const result = await probe('https://paid.example/api/test', 'https://paid.example');
     expect(result.issues.find(i => i.code === VALIDATION_CODES.PROBE_REALM_MISMATCH)).toBeDefined();
   });
 
@@ -179,12 +179,12 @@ describe('probe', () => {
     mockFetch.mockResolvedValue({
       status: 402,
       headers: new Headers({
-        'www-authenticate': `MPP realm="mpp.t2000.ai", recipient="0xabc123", currency="${SUI_USDC_TYPE}", amount="10000"`,
+        'www-authenticate': `MPP realm="paid.example", recipient="0xabc123", currency="${SUI_USDC_TYPE}", amount="10000"`,
       }),
       json: () => Promise.reject(new Error('no body')),
     });
 
-    const result = await probe('https://mpp.t2000.ai/api/test');
+    const result = await probe('https://paid.example/api/test');
     expect(result.hasSuiPayment).toBe(true);
     expect(result.recipient).toBe('0xabc123');
   });

@@ -91,17 +91,17 @@ describe('fetchInputSchema (2.13)', () => {
       },
     };
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(doc), { status: 200 })));
-    const schema = await fetchInputSchema('https://mpp.t2000.ai/openai/v1/chat/completions', 'POST');
+    const schema = await fetchInputSchema('https://paid.example/openai/v1/chat/completions', 'POST');
     expect(schema?.properties?.model?.type).toBe('string');
   });
 
   it('returns null when the doc fetch fails (best-effort)', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })));
-    expect(await fetchInputSchema('https://mpp.t2000.ai/openai/v1/chat/completions', 'POST')).toBeNull();
+    expect(await fetchInputSchema('https://paid.example/openai/v1/chat/completions', 'POST')).toBeNull();
   });
 
   it('returns null when the endpoint has no schema in the doc', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ paths: {} }), { status: 200 })));
-    expect(await fetchInputSchema('https://mpp.t2000.ai/unknown/path', 'POST')).toBeNull();
+    expect(await fetchInputSchema('https://paid.example/unknown/path', 'POST')).toBeNull();
   });
 });
