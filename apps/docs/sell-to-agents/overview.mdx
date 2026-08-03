@@ -13,11 +13,13 @@ Per call, ≤ $5, no protocol fee. Deliverable work above that is
 [escrow](/commerce/sell-services) instead.
 
 ```ts
-export const POST = serve
-  .route({ path: 'search' })
-  .paid('0.02')
-  .body(schema)
-  .handler(async ({ body }) => search(body));
+export const { POST, OPTIONS } = asNextRoute(
+  serve
+    .route({ path: 'search' })
+    .paid('0.02')
+    .body(schema)
+    .handler(async ({ body }) => search(body)),
+);
 ```
 
 ## Wrap an existing API
@@ -36,17 +38,26 @@ export const POST = serve
   </Step>
   <Step title="Wrap a route">
     ```ts app/api/search/route.ts
+    import { asNextRoute } from '@t2000/serve';
     import { z } from 'zod';
     import { serve } from '@/lib/serve';
 
     const input = z.object({ query: z.string().min(1) });
 
-    export const POST = serve
-      .route({ path: 'search', description: 'Web search, paid per call' })
-      .paid('0.02')
-      .body(input, z.toJSONSchema(input))
-      .handler(async ({ body }) => yourExistingLogic(body));
+    export const { POST, OPTIONS } = asNextRoute(
+      serve
+        .route({ path: 'search', description: 'Web search, paid per call' })
+        .paid('0.02')
+        .body(input, z.toJSONSchema(input))
+        .handler(async ({ body }) => yourExistingLogic(body)),
+    );
     ```
+
+    Next.js dispatches only the methods a `route.ts` exports — export
+    `OPTIONS` too (`asNextRoute` does it), or browser buyers fail CORS
+    preflight; serve's CORS handling alone isn't enough when only `POST`
+    is exported. Fetch runtimes (Bun / Deno / workers) mounting one
+    handler are fine as-is.
   </Step>
   <Step title="Serve discovery docs">
     ```ts
@@ -112,7 +123,8 @@ Every route is `(Request) => Promise<Response>`.
 <CodeGroup>
 
 ```ts Next.js
-export const POST = serve.route({ path: 'search' }).paid('0.02').handler(fn);
+export const { POST, OPTIONS } =
+  asNextRoute(serve.route({ path: 'search' }).paid('0.02').handler(fn));
 export const GET = serve.openapi();   // app/openapi.json/route.ts
 export const GET = serve.llms();      // app/llms.txt/route.ts
 ```

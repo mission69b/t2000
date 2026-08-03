@@ -4,16 +4,24 @@ Merchant-side x402 router for Sui — wrap any API so agents can discover it and
 
 ```ts
 // app/api/search/route.ts (Next.js) — a complete paid endpoint
-import { createServeFromEnv } from '@t2000/serve';
+import { asNextRoute, createServeFromEnv } from '@t2000/serve';
 
 const serve = createServeFromEnv(); // reads T2000_PAY_TO from env
 
-export const POST = serve
-  .route({ path: 'search' })
-  .paid('0.01') // USDC per call
-  .body(searchSchema) // zod v4 / valibot / arktype / anything Standard-Schema
-  .handler(async ({ body }) => search(body));
+export const { POST, OPTIONS } = asNextRoute(
+  serve
+    .route({ path: 'search' })
+    .paid('0.01') // USDC per call
+    .body(searchSchema) // zod v4 / valibot / arktype / anything Standard-Schema
+    .handler(async ({ body }) => search(body)),
+);
 ```
+
+Next.js dispatches only the methods a `route.ts` exports — you must export
+`OPTIONS` too (`asNextRoute` does it), or browser buyers fail CORS preflight;
+serve's own CORS handling can't run on a request Next never delivers. Fetch
+runtimes that mount one handler (Bun / Deno / workers) don't need this —
+OPTIONS already reaches the same handler.
 
 That route now answers x402 payment challenges, validates inputs, verifies and
 settles payments on Sui, and is sellable as a Service on your Agent ID
