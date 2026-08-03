@@ -1,7 +1,7 @@
 {
   "name": "@t2000/sdk",
   "version": "10.19.0",
-  "description": "TypeScript SDK for Agent Wallets on Sui — gasless USDC + USDsui transfers, Cetus swap routing, NAVI lending (programmatic), MPP paid API access, zkLogin compatible.",
+  "description": "TypeScript SDK for Agent Wallets on Sui \u2014 gasless USDC + USDsui transfers, Cetus swap routing, NAVI lending (programmatic), MPP paid API access, zkLogin compatible.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -62,6 +62,7 @@
     "@noble/hashes": "^1.8.0",
     "@phala/dcap-qvl": "^0.5.2",
     "@suimpp/mpp": "^0.9.0",
+    "@t2000/x402": "workspace:*",
     "bn.js": "^5.2.1",
     "eventemitter3": "^5",
     "mppx": "^0.4.9"

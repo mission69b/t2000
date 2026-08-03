@@ -1,5 +1,4 @@
-import type { DigestStore } from '@suimpp/mpp/server';
-import type { Currency } from '@suimpp/mpp/server';
+import type { Currency, DigestStore } from '@t2000/x402';
 import {
   createX402Requirements,
   encodeX402Response,
@@ -11,7 +10,7 @@ import {
   X402_PAYMENT_RESPONSE_HEADER,
   X402_VERSION,
   type X402SettleResponse,
-} from '@suimpp/mpp/x402';
+} from '@t2000/x402';
 import { getChainInfo, getGrpcClient } from './chain.js';
 import type {
   BuiltRoute,

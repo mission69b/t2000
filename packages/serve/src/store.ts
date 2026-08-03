@@ -1,7 +1,7 @@
-import type { DigestStore } from '@suimpp/mpp/server';
+import type { DigestStore } from '@t2000/x402';
 
-export { InMemoryDigestStore } from '@suimpp/mpp/server';
-export type { DigestStore } from '@suimpp/mpp/server';
+export { InMemoryDigestStore } from '@t2000/x402';
+export type { DigestStore } from '@t2000/x402';
 
 // ---------------------------------------------------------------------------
 // Upstash-REST digest store — the production replay store for serverless

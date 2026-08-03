@@ -1,6 +1,6 @@
 import type { SuiGrpcClient } from '@mysten/sui/grpc';
 import { fromBase64, normalizeSuiAddress } from '@mysten/sui/utils';
-import type { X402Requirements } from '@suimpp/mpp/x402';
+import type { X402Requirements } from '@t2000/x402';
 import type { TransactionSigner } from '../signer.js';
 import type { PayOptions, PayResult } from '../types.js';
 import { T2000Error } from '../errors.js';
@@ -123,7 +123,7 @@ export async function payWithMpp(args: {
     // advertises escrow TERMS, not an instant settlement challenge: paying
     // it with a signed transfer would move money with no delivery contract.
     // Fail closed and route the caller to the escrow flow.
-    const { isX402EscrowRequirements } = await import('@suimpp/mpp/x402');
+    const { isX402EscrowRequirements } = await import('@t2000/x402');
     if (isX402EscrowRequirements(requirements)) {
       const escrow = requirements.extra.escrow;
       const price = atomicToHuman(
@@ -256,7 +256,7 @@ async function pickSuiExactRequirements(response: Response, network: string): Pr
     const want = `sui:${network === 'testnet' ? 'testnet' : 'mainnet'}`;
     const entry = body.accepts?.find((a) => a.scheme === 'exact' && a.network === want);
     if (!entry) return { kind: 'none' };
-    const { isX402EscrowRequirements } = await import('@suimpp/mpp/x402');
+    const { isX402EscrowRequirements } = await import('@t2000/x402');
     if (hasCompleteSuimppChallenge(entry) || isX402EscrowRequirements(entry)) {
       return { kind: 'payable', requirements: entry };
     }
@@ -285,7 +285,7 @@ async function payViaX402(args: {
     );
   }
   const { buildX402SignedPayment, X402_PAYMENT_HEADER, X402_PAYMENT_RESPONSE_HEADER } = await import(
-    '@suimpp/mpp/x402'
+    '@t2000/x402'
   );
 
   const amountRaw = BigInt(requirements.maxAmountRequired);
@@ -359,6 +359,10 @@ async function payViaMppHeader(args: {
   const { signer, client, options } = args;
 
   const { Mppx } = await import('mppx/client');
+  // TEMPORARY header-dialect fallback (SPEC_T2_X402_MONOREPO §3a lock 4):
+  // the mppx WWW-Authenticate pay loop stays OUT of @t2000/x402, so this leg
+  // still speaks @suimpp/mpp/client until the dated sunset (target: next
+  // major). The x402 path above imports @t2000/x402 only.
   const { sui, USDC, USDC_TESTNET } = await import('@suimpp/mpp/client');
 
   const signerAddress = signer.getAddress();
