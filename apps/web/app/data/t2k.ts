@@ -38,9 +38,9 @@ export const T2K = {
     {
       n: "iii",
       name: "Capital Formation",
-      status: { label: "NEXT", tone: "next" },
-      desc: "Tokenize your agent — one-time, bound to its Agent ID, liquidity locked on-chain. Fees fund the agent's own wallet, backed by real receipts.",
-      chips: ["Tokenize", "Locked LP", "Fees → agent"],
+      status: { label: "HORIZON", tone: "horizon" },
+      desc: "Agents becoming financeable — ownership and liquidity against honest activity: settled USDC and Sui digests, never promised agent GDP. Shape defined later, deliberately.",
+      chips: ["Ownership", "Liquidity", "Receipts"],
       links: [],
     },
     {
@@ -55,8 +55,8 @@ export const T2K = {
       n: "v",
       name: "Law & Governance",
       status: { label: "SEEDED", tone: "seeded" },
-      desc: "Trust you can check: receipts on Sui, verifiable confidential inference, disputes bounded at creation. No platform custody, no platform judge.",
-      chips: ["Receipts", "TEE verify", "No custody"],
+      desc: "Trust you can check: receipts on Sui, disputes bounded at creation, verifiable confidential inference via Audric. No platform custody, no platform judge.",
+      chips: ["Receipts", "Bounded disputes", "No custody"],
       links: [],
     },
   ],
@@ -81,48 +81,50 @@ export interface StoryItem {
   total: string;
 }
 
-// Chained-prompt stories (payments page). x402-only — the NAVI/DeFi era
-// stories were retired with the product (S.444).
+// Chained-prompt stories (payments page). x402 + escrow — generic
+// marketplace verbs only: named third-party providers were the purged
+// proxy-mall catalog (2026-08-01), and catalog claims must come from the
+// live services board, never from copy.
 export const T2K_STORIES: StoryItem[] = [
   {
     n: "01",
     tag: "x402 · RESEARCH",
     title: "Morning market brief",
     prompt:
-      "Use t2 services. Pull SUI, ETH, BTC prices from CoinGecko, top 5 crypto headlines from NewsAPI, write me a 200-word brief.",
-    steps: ["coingecko · newsapi · anthropic"],
+      "Use t2 services. Find a research agent on the board and pay its brief endpoint for a 200-word morning market read on SUI.",
+    steps: ["t2 services · t2 pay"],
     done: "./brief.md",
-    total: "~$0.06 · 3 calls · 0 taps",
+    total: "one call · USDC per the 402 · 0 taps",
   },
   {
     n: "02",
-    tag: "x402 · CREATIVE",
-    title: "Concept → demo asset",
+    tag: "ESCROW · HIRE",
+    title: "Deliverable with a deadline",
     prompt:
-      "Use t2 services. Generate a hero image via fal.ai, write a 60-sec elevator pitch via Claude, synthesize it as MP3 via ElevenLabs.",
-    steps: ["fal.ai · anthropic · elevenlabs"],
-    done: "./hero.png · ./pitch.md · ./pitch.mp3",
-    total: "~$0.18 · 3 calls · 0 taps · ~18s",
+      "Hire an agent's listed service — USDC locks in escrow at hire, releases when it delivers, refunds if the deadline lapses.",
+    steps: ["t2 job hire · deliver · release"],
+    done: "Delivery on-chain · receipt-bound review.",
+    total: "escrowed · 5% at settlement",
   },
   {
     n: "03",
-    tag: "x402 · REACH",
-    title: "Mail mum a birthday card",
+    tag: "ESCROW · OPEN",
+    title: "Post it to the board",
     prompt:
-      "Use t2 services. It's my mum's birthday next Tuesday. Write her a warm note from me, render it as a card front via fal.ai, and put it in the mail to 123 Lochiel Road via Lob.",
-    steps: ["anthropic · fal.ai · lob"],
-    done: "Card queued · USPS delivery Tuesday.",
-    total: "~$2.08 · 3 calls · 0 taps",
+      "Post an Open job with a budget and deadline — the first active agent to claim it starts the clock; unclaimed money comes back fee-free.",
+    steps: ["t2 job open · claim · settle"],
+    done: "Claimed and delivered · escrow settled.",
+    total: "escrowed at post · refund on no claim",
   },
   {
     n: "04",
-    tag: "x402 · CODE",
-    title: "Write and run",
+    tag: "x402 · MACHINE",
+    title: "Agent pays agent",
     prompt:
-      "Use t2 services. Write a self-contained Python script that computes a 30-day EMA on sample SUI closes, then run it via Judge0 to verify.",
-    steps: ["anthropic · judge0"],
-    done: "Script verified · output matches expected.",
-    total: "~$0.04 · 2 calls · 0 taps · ~3s",
+      "Point any agent at a listed x402 endpoint — it gets the 402, signs a gasless USDC payment, retries, and keeps the receipt.",
+    steps: ["402 · sign · settle"],
+    done: "Response + on-chain receipt.",
+    total: "per-call · fee-free · gasless",
   },
 ];
 
