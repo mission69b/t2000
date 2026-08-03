@@ -25,40 +25,6 @@ vi.mock('@mysten/sui/grpc', () => ({
   },
 }));
 
-// --- Legacy MPP header dialect mocks ---------------------------------------
-// `mppx` (root) is NOT mocked — parseMppSuiChallenge exercises the real
-// Challenge.fromResponseList against a realistic WWW-Authenticate header.
-// `mppx/client` + `@suimpp/mpp/client` are mocked to simulate the pay loop:
-// fetch → onChallenge → sui method execute → 200.
-const mppxFetchMock = vi.fn();
-let mppxChallengeAmount = '0.02'; // per-test override for the simulated challenge price
-const mppxCreateMock = vi.fn((config: {
-  onChallenge?: (c: unknown) => Promise<string | undefined>;
-  methods: Array<{ __opts: { execute: (tx: unknown) => Promise<{ digest: string }> } }>;
-}) => ({
-  fetch: async (url: string, init: unknown) => {
-    mppxFetchMock(url, init);
-    // Simulate the mppx loop: probe hits 402 → parse challenge → hook → pay → retry.
-    await config.onChallenge?.({
-      id: 'cid',
-      realm: 'seller.example',
-      method: 'sui',
-      intent: 'charge',
-      request: { amount: mppxChallengeAmount, currency: USDC_TYPE, recipient: '0xseller' },
-    });
-    await config.methods[0].__opts.execute({ __tx: true });
-    return mockResponse({ status: 200, body: { ok: true } });
-  },
-}));
-vi.mock('mppx/client', () => ({
-  Mppx: { create: (config: unknown) => mppxCreateMock(config as Parameters<typeof mppxCreateMock>[0]) },
-}));
-vi.mock('@suimpp/mpp/client', () => ({
-  sui: (opts: unknown) => ({ __opts: opts }),
-  USDC: { type: 'usdc-mainnet' },
-  USDC_TESTNET: { type: 'usdc-testnet' },
-}));
-
 vi.mock('../token-registry.js', () => ({ getDecimalsForCoinType: () => 6 }));
 
 // migration path deps — invoke the buildTx callback so the inner
@@ -265,7 +231,6 @@ describe('payWithMpp — x402 sign-then-settle', () => {
       }),
     ).rejects.toThrow(/nothing this sdk can pay/i);
     expect(buildX402Mock).not.toHaveBeenCalled();
-    expect(mppxCreateMock).not.toHaveBeenCalled();
   });
 
   it('fails CLOSED on a job-class (escrow-intent) 402 — route to t2 job hire', async () => {
@@ -354,22 +319,24 @@ function jmprShaped402(withHeader = true): Response {
 }
 
 describe('payWithMpp — incomplete x402 accepts[] (JMPR shape) fails closed', () => {
-  it('keypair: never signs x402 off an incomplete entry — falls through to the header dialect', async () => {
-    mppxChallengeAmount = '0.02';
+  it('incomplete entry WITH a header challenge: typed DIALECT_UNSUPPORTED, no money moves (header dialect removed)', async () => {
     fetchMock.mockResolvedValueOnce(jmprShaped402());
 
-    const result = await payWithMpp({
-      signer: makeSigner(),
-      client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
+      }),
+    ).rejects.toMatchObject({
+      code: 'DIALECT_UNSUPPORTED',
+      message: expect.stringMatching(/header-only 402[\s\S]*no longer supported[\s\S]*No payment was made/i),
     });
-
     expect(buildX402Mock).not.toHaveBeenCalled(); // the crash site is never reached
-    expect(result.paid).toBe(true);
-    expect(result.dialect).toBe('legacy');
+    expect(executeTxMock).not.toHaveBeenCalled(); // money never moved
   });
 
-  it('zkLogin: typed DIALECT_UNSUPPORTED, never the raw destructure TypeError, no money moves', async () => {
+  it('zkLogin: same typed fail-closed, never the raw destructure TypeError, no money moves', async () => {
     fetchMock.mockResolvedValueOnce(jmprShaped402());
 
     const zkSigner = { ...makeSigner(), kind: 'zklogin' } as TransactionSigner;
@@ -433,8 +400,9 @@ describe('payWithMpp — incomplete x402 accepts[] (JMPR shape) fails closed', (
   });
 });
 
-// The MPP header dialect (WWW-Authenticate: Payment … method="sui") — the
-// restored pre-S.452 fallback for header-only external sellers (JMPR shape).
+// The MPP header dialect (WWW-Authenticate: Payment … method="sui") was
+// REMOVED 2026-08-03 — a header-only 402 is a typed fail-closed, never a
+// payment. The fixture stays to prove the refusal path.
 function mppHeader402(amount = '0.02'): Response {
   const request = toBase64(
     new TextEncoder().encode(JSON.stringify({ amount, currency: USDC_TYPE, recipient: '0xseller' })),
@@ -450,27 +418,25 @@ function mppHeader402(amount = '0.02'): Response {
   });
 }
 
-describe('payWithMpp — MPP header dialect fallback', () => {
-  it('pays a header-only 402 via the legacy digest dialect', async () => {
-    mppxChallengeAmount = '0.02';
-    fetchMock.mockResolvedValueOnce(mppHeader402('0.02')); // probe (mppx re-fetches internally via its own mock)
+describe('payWithMpp — header-only 402 (dialect removed)', () => {
+  it('never pays a header-only 402 — typed DIALECT_UNSUPPORTED, no transfer', async () => {
+    fetchMock.mockResolvedValueOnce(mppHeader402('0.02'));
 
-    const result = await payWithMpp({
-      signer: makeSigner(),
-      client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+    await expect(
+      payWithMpp({
+        signer: makeSigner(),
+        client: makeClient({ total: '1000000', coins: [] }),
+        options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+      }),
+    ).rejects.toMatchObject({
+      code: 'DIALECT_UNSUPPORTED',
+      message: expect.stringMatching(/No payment was made/i),
     });
-
     expect(buildX402Mock).not.toHaveBeenCalled();
-    expect(mppxCreateMock).toHaveBeenCalledTimes(1);
-    expect(executeTxMock).toHaveBeenCalledTimes(1); // the on-chain payment leg
-    expect(result.paid).toBe(true);
-    expect(result.dialect).toBe('legacy');
-    expect(result.cost).toBe(0.02); // challenge price, not the maxPrice ceiling
-    expect(result.receipt?.reference).toBe('0xmigration');
+    expect(executeTxMock).not.toHaveBeenCalled(); // money never moved
   });
 
-  it('prefers x402 when a 402 carries BOTH the envelope and the header', async () => {
+  it('still pays x402 when a 402 carries BOTH the envelope and the header', async () => {
     const request = toBase64(
       new TextEncoder().encode(JSON.stringify({ amount: '0.02', currency: USDC_TYPE, recipient: '0xseller' })),
     );
@@ -495,25 +461,7 @@ describe('payWithMpp — MPP header dialect fallback', () => {
     });
 
     expect(result.dialect).toBe('x402');
-    expect(mppxCreateMock).not.toHaveBeenCalled();
-  });
-
-  it('fails CLOSED for zkLogin signers on a header-only 402 — no money moves', async () => {
-    // External sellers verify the payer's personal-message signature
-    // seller-side; zkLogin sigs are unverifiable to them, so the payment
-    // would settle without delivery (JMPR live incident, 2026-07-17).
-    fetchMock.mockResolvedValueOnce(mppHeader402('0.02'));
-
-    const zkSigner = { ...makeSigner(), kind: 'zklogin' } as TransactionSigner;
-    await expect(
-      payWithMpp({
-        signer: zkSigner,
-        client: makeClient({ total: '1000000', coins: [] }),
-        options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
-      }),
-    ).rejects.toMatchObject({ code: 'DIALECT_UNSUPPORTED' });
-    expect(mppxCreateMock).not.toHaveBeenCalled();
-    expect(executeTxMock).not.toHaveBeenCalled(); // money never moved
+    expect(result.paid).toBe(true);
   });
 
   it('still pays x402 for zkLogin signers (chain verifies the sig, not the seller)', async () => {
@@ -532,20 +480,6 @@ describe('payWithMpp — MPP header dialect fallback', () => {
 
     expect(result.paid).toBe(true);
     expect(result.dialect).toBe('x402');
-  });
-
-  it('throws PRICE_EXCEEDS_LIMIT from onChallenge BEFORE paying when the header price exceeds maxPrice', async () => {
-    mppxChallengeAmount = '0.50';
-    fetchMock.mockResolvedValueOnce(mppHeader402('0.50'));
-
-    await expect(
-      payWithMpp({
-        signer: makeSigner(),
-        client: makeClient({ total: '1000000', coins: [] }),
-        options: { url: 'https://seller.example/x', maxPrice: 0.05 },
-      }),
-    ).rejects.toThrow(/exceeds maxPrice/i);
-    expect(executeTxMock).not.toHaveBeenCalled(); // money never moved
   });
 });
 

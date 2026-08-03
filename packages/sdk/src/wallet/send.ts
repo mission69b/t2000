@@ -114,7 +114,7 @@ export async function buildSendTx({
 
   // Balance pre-flight against `core.getBalance().balance.balance` (sums
   // coins + address balance). The legacy `getCoins` page miss broke for
-  // users whose stables had drifted into address balance via @suimpp/mpp 0.7+.
+  // users whose stables had drifted into address balance via earlier pay flows.
   const balanceResp = await client.core.getBalance({ owner: address, coinType: assetInfo.type });
   const totalBalance = BigInt(balanceResp.balance.balance);
   if (totalBalance < rawAmount) {

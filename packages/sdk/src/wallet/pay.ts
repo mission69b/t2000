@@ -4,7 +4,6 @@ import type { X402Requirements } from '@t2000/sui-x402';
 import type { TransactionSigner } from '../signer.js';
 import type { PayOptions, PayResult } from '../types.js';
 import { T2000Error } from '../errors.js';
-import { parseChallengeAmount } from '../mpp-cost.js';
 import { executeTx } from './executeTx.js';
 import {
   type PreflightResult,
@@ -50,25 +49,21 @@ export function preflightPay(input: { url: string; maxPrice?: number }): Preflig
 // (no fs / keyManager / SafeguardEnforcer), so the Audric client can run it
 // in-browser on the zkLogin session key. `T2000.pay()` delegates here.
 //
-// TWO dialects, ONE preference order (both ride the SAME gasless
-// `send_funds<USDC>` rail; the only difference is who submits):
+// ONE dialect: x402 `sui-exact` (SPEC_AGENT_PAYMENTS_X402 1.2; scheme =
+// SUIMPP_X402_SCHEME.md v0.3, dialect SSOT = @t2000/sui-x402). The 402 body
+// carries `accepts[]`; the client signs an authorization, the SERVER settles
+// (settle-then-serve, so a failed upstream is never charged). The withdrawal
+// form draws from the SIP-58 address balance, so coin-object funds are
+// migrated in first when needed (S.414 finding).
 //
-// 1. x402 `sui-exact` (preferred — SPEC_AGENT_PAYMENTS_X402 1.2; scheme =
-//    SUIMPP_X402_SCHEME.md v0.3): the 402 body carries `accepts[]`; the
-//    client signs an authorization, the SERVER settles (settle-then-serve,
-//    so a failed upstream is never charged). The withdrawal form draws from
-//    the SIP-58 address balance, so coin-object funds are migrated in first
-//    when needed (S.414 finding).
-//
-// 2. MPP header dialect (fallback — suimpp.dev/spec): the 402 carries only a
-//    `WWW-Authenticate: Payment … method="sui"` challenge, no x402 body. The
-//    CLIENT broadcasts the gasless USDC transfer and retries with the digest
-//    credential. S.452 retired this path assuming all sellers were our
-//    gateway (which dual-serves); the first EXTERNAL seller (JMPR, S.453)
-//    shipped header-only — the client must speak everything the gateway and
-//    suimpp spec serve, so the fallback is back. Trade-off vs x402: the
-//    client pays BEFORE the server proves it can deliver, so a broken seller
-//    can charge without serving — x402 stays preferred whenever offered.
+// The MPP header dialect (WWW-Authenticate: Payment, client-broadcasts-then-
+// retries with the digest) was REMOVED 2026-08-03 (S.880): it paid before
+// the server proved it could deliver (a broken seller charges without
+// serving — the JMPR class), zkLogin payers could never use it safely, and
+// it was the SDK's last runtime tie to the retired suimpp header stack. A
+// header-only 402 now fails closed with a typed error before any money
+// moves. The `extra.suimpp` FIELD NAME on the wire is protocol SSOT and is
+// unrelated to any package dependency.
 // ---------------------------------------------------------------------------
 
 export async function payWithMpp(args: {
@@ -147,31 +142,20 @@ export async function payWithMpp(args: {
     return result;
   }
 
-  // No PAYABLE x402 envelope (none, or a decorative exact entry with no
-  // usable challenge — JMPR class) — fall back to the MPP header dialect
-  // when the 402 advertises a `sui` method challenge.
-  const headerChallenge = await parseMppSuiChallenge(probe);
-  if (headerChallenge) {
-    // Fail CLOSED before any money moves: the header dialect pays first and
-    // proves identity with a personal-message signature the SELLER verifies.
-    // zkLogin signatures are ZK constructs external sellers can't check —
-    // the payment settles on-chain, then the retry 402s and the buyer ate
-    // the charge (live: JMPR × Audric Passport, 2026-07-17). x402 is immune
-    // (the tx itself carries the zkLogin sig; the CHAIN verifies it), so
-    // zkLogin payers require sellers that offer x402.
-    if (signer.kind === 'zklogin') {
-      throw new T2000Error(
-        'DIALECT_UNSUPPORTED',
-        'This seller only offers the MPP header dialect, which zkLogin (Passport) wallets ' +
-          'cannot safely pay: the seller cannot verify zkLogin signatures, so the payment ' +
-          'would settle on-chain without the service delivering. No payment was made. ' +
-          'Use an x402-capable service, or pay from a keypair wallet (t2 CLI / MCP).',
-        { dialect: 'mpp-header', signerKind: 'zklogin' },
-      );
-    }
-    assertNotSelfPayment(signer.getAddress(), headerChallenge.recipient);
-    const result = await payViaMppHeader({ signer, client, options });
-    return result;
+  // No PAYABLE x402 envelope — fail CLOSED, always, before any money moves.
+  // A header-only 402 (`WWW-Authenticate: Payment …`, no x402 accepts[]) is
+  // deliberately unsupported: that dialect paid client-side BEFORE the
+  // server proved it could deliver. Name it precisely so sellers know the
+  // fix is emitting the x402 envelope (e.g. via @t2000/serve).
+  if (hasPaymentAuthenticateHeader(probe)) {
+    throw new T2000Error(
+      'DIALECT_UNSUPPORTED',
+      'This seller answered a header-only 402 (WWW-Authenticate: Payment) with no payable ' +
+        'x402 accepts[] envelope. The MPP header dialect is no longer supported — it charged ' +
+        'before the seller proved it could deliver. No payment was made. The seller must ' +
+        'offer x402 (e.g. @t2000/serve emits it).',
+      { dialect: 'mpp-header', reason: 'header-only-402-unsupported' },
+    );
   }
 
   if (pick.kind === 'incomplete') {
@@ -188,34 +172,6 @@ export async function payWithMpp(args: {
     `Endpoint returned 402 without an x402 'exact' / sui:${client.network} requirement in the body ` +
       `or an MPP 'sui' challenge in WWW-Authenticate. Nothing this SDK can pay.`,
   );
-}
-
-/**
- * Parse the MPP header dialect from a 402 response: the
- * `WWW-Authenticate: Payment …` challenge(s), looking for `method="sui"`.
- * Returns the decoded `{ amount, currency, recipient }` request (amount is a
- * decimal string, e.g. "0.02") or `undefined` when the response carries no
- * sui challenge. Exported for the CLI's `t2 pay --estimate`.
- */
-export async function parseMppSuiChallenge(
-  response: Response,
-): Promise<{ amount: string; currency: string; recipient: string; description?: string } | undefined> {
-  try {
-    const { Challenge } = await import('mppx');
-    const challenges = Challenge.fromResponseList(response);
-    const suiChallenge = challenges.find((c) => c.method === 'sui' && c.intent === 'charge');
-    if (!suiChallenge) return undefined;
-    const req = suiChallenge.request as Record<string, unknown>;
-    if (typeof req?.amount !== 'string' || typeof req?.recipient !== 'string') return undefined;
-    return {
-      amount: req.amount,
-      currency: typeof req.currency === 'string' ? req.currency : '',
-      recipient: req.recipient,
-      description: suiChallenge.description,
-    };
-  } catch {
-    return undefined;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -245,8 +201,8 @@ type SuiExactPick =
   /** Complete instant challenge OR job-class escrow entry — safe to act on. */
   | { kind: 'payable'; requirements: X402Requirements }
   /** An `exact`/`sui:<network>` entry exists but is INCOMPLETE (no usable
-   *  `extra.suimpp`, no escrow terms) — never x402-payable; the caller falls
-   *  through to the header dialect or fails closed with a typed error. */
+   *  `extra.suimpp`, no escrow terms) — never x402-payable; the caller
+   *  fails closed with a typed error. */
   | { kind: 'incomplete' }
   | { kind: 'none' };
 
@@ -342,93 +298,6 @@ async function payViaX402(args: {
   };
 }
 
-// ---------------------------------------------------------------------------
-// MPP header dialect — client broadcasts, retries with the digest credential.
-// The pre-S.452 `payViaLegacy`, restored (S.453) for header-only external
-// sellers. mppx's client handles the 402 → pay → retry loop; we plug in the
-// Sui charge method with an `execute` override that routes the on-chain leg
-// through `executeTx` (gRPC build → gasless resolver → the same
-// `send_funds<USDC>` rail as x402).
-// ---------------------------------------------------------------------------
-
-async function payViaMppHeader(args: {
-  signer: TransactionSigner;
-  client: SuiGrpcClient;
-  options: PayOptions;
-}): Promise<PayResult> {
-  const { signer, client, options } = args;
-
-  const { Mppx } = await import('mppx/client');
-  // TEMPORARY header-dialect fallback (SPEC_T2_X402_MONOREPO §3a lock 4):
-  // the mppx WWW-Authenticate pay loop stays OUT of @t2000/sui-x402, so this leg
-  // still speaks @suimpp/mpp/client until the dated sunset (target: next
-  // major). The x402 path above imports @t2000/sui-x402 only.
-  const { sui, USDC, USDC_TESTNET } = await import('@suimpp/mpp/client');
-
-  const signerAddress = signer.getAddress();
-  const network: 'mainnet' | 'testnet' = client.network === 'testnet' ? 'testnet' : 'mainnet';
-  const grpcClient = await makeGrpcBuildClient(client);
-
-  let paymentDigest: string | undefined;
-  let gasCostSui = 0;
-  // The real amount charged on-chain is the 402 challenge price (a decimal
-  // USDC string like "0.01"), NOT the caller's `maxPrice` ceiling (Bug 1,
-  // dogfood 2026-05-31). Capture it in `onChallenge` — and enforce the
-  // ceiling THERE, before any credential is created: the header dialect pays
-  // client-side, so this hook is the last stop before money moves.
-  let chargedAmount: number | undefined;
-
-  const mppx = Mppx.create({
-    polyfill: false,
-    onChallenge: async (challenge: { request?: { amount?: unknown } }) => {
-      const parsed = parseChallengeAmount(challenge);
-      if (parsed !== undefined) {
-        chargedAmount = parsed;
-        assertWithinMaxPrice(parsed, options.maxPrice);
-      }
-      return undefined;
-    },
-    methods: [
-      sui({
-        client,
-        currency: network === 'testnet' ? USDC_TESTNET : USDC,
-        signer: {
-          toSuiAddress: () => signerAddress,
-          signPersonalMessage: (bytes: Uint8Array) => signer.signPersonalMessage(bytes),
-        } as unknown as Parameters<typeof sui>[0]['signer'],
-        execute: async (tx) => {
-          const result = await executeTx(client, signer, () => tx, { buildClient: grpcClient });
-          paymentDigest = result.digest;
-          gasCostSui = result.gasCostSui;
-          return { digest: result.digest };
-        },
-      }),
-    ],
-  });
-
-  const method = (options.method ?? 'GET').toUpperCase();
-  const canHaveBody = method !== 'GET' && method !== 'HEAD';
-
-  const response = await mppx.fetch(options.url, {
-    method,
-    headers: options.headers,
-    body: canHaveBody ? options.body : undefined,
-  });
-
-  const paid = !!paymentDigest;
-  const result = await finalize(response, { paid });
-  if (!paid) return { ...result, dialect: 'legacy' };
-  return {
-    ...result,
-    dialect: 'legacy',
-    cost: chargedAmount ?? options.maxPrice ?? undefined,
-    gasCostSui,
-    receipt: paymentDigest
-      ? { reference: paymentDigest, timestamp: new Date().toISOString() }
-      : undefined,
-  };
-}
-
 /** Throw when the 402's payTo IS the payer — a self-transfer executes but
  * nets a zero balance change, so an x402 seller's settle check refuses to
  * serve after the on-chain leg already ran (and a header-dialect seller
@@ -520,6 +389,14 @@ async function ensureAddressBalanceCovers(args: {
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
+
+/** True when the 402 carries an MPP `WWW-Authenticate: Payment …` challenge
+ *  — recognized ONLY to name the unsupported dialect in the error; never
+ *  parsed, never paid. */
+function hasPaymentAuthenticateHeader(response: Response): boolean {
+  const header = response.headers.get('www-authenticate') ?? '';
+  return /(^|,)\s*Payment[\s,]/i.test(`${header},`);
+}
 
 /** Cheap "is this JSON?" check — parse, don't guess from the first char. */
 function isJsonText(text: string): boolean {
