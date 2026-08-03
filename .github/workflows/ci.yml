@@ -35,12 +35,10 @@ jobs:
       - run: pnpm --filter @t2000/sui-x402 build
       - run: pnpm --filter @t2000/discovery build
       - run: pnpm --filter @t2000/sdk build
-      - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/id build
       - run: pnpm --filter @t2000/sui-x402 typecheck
       - run: pnpm --filter @t2000/discovery typecheck
       - run: pnpm --filter @t2000/sdk typecheck
-      - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/cli typecheck
       - run: pnpm --filter @t2000/serve typecheck
       - run: pnpm --filter @t2000/web typecheck
@@ -51,7 +49,6 @@ jobs:
       - run: pnpm --filter @t2000/discovery lint
       - run: pnpm --filter @t2000/sdk lint
       - run: pnpm --filter @t2000/cli lint
-      - run: pnpm --filter @t2000/mcp lint
       - run: pnpm --filter @t2000/serve lint
 
   test:
@@ -70,12 +67,10 @@ jobs:
       - run: pnpm --filter @t2000/sui-x402 build
       - run: pnpm --filter @t2000/discovery build
       - run: pnpm --filter @t2000/sdk build
-      - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/id build
       - run: pnpm --filter @t2000/sui-x402 test
       - run: pnpm --filter @t2000/discovery test
       - run: pnpm --filter @t2000/sdk test
-      - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/cli test
       - run: pnpm --filter @t2000/serve test

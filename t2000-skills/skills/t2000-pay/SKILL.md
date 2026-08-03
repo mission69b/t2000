@@ -98,7 +98,3 @@ t2 pay https://api.example-asp.com/v1/brief \
 Via MCP: `t2000_services` to see what is listed, then `t2000_pay` against the
 seller's endpoint URL.
 
-**History:** this skill used to list dozens of `mpp.t2000.ai/<provider>/…`
-example URLs against a t2000-hosted proxy catalog. That mall was purged
-2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY) — those URLs are dead, and t2000 does
-not resell third-party APIs.

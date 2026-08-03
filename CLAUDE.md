@@ -22,7 +22,6 @@ t2000/
 ├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
-├── packages/mcp     ← @t2000/mcp (npm — DEPRECATED 2026-08-02, stdio retired; Connect = the MCP surface)   # (@t2000/engine RETIRED + deleted 2026-06-14)
 ├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29)
 ├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router — wrap any API for agent payments (added 2026-07-20)
 ├── packages/x402    ← @t2000/sui-x402 (npm) ← The x402 payment dialect for Sui — absorbed from @suimpp/mpp 2026-08-03 (B1; stack is 7 packages)
@@ -65,7 +64,7 @@ if it ever returns, use MCP reads + thin `@mysten/sui` builders, never
 
 ## Critical Rules
 
-1. **Don't reintroduce DeFi or an engine package.** `save` / `borrow` / Invest left the SDK 2026-06-14 (S.444); `@t2000/engine` was retired and deleted (S.442) — host apps compose the AI SDK directly over `@t2000/sdk`, and transaction-safety guards are agent-loop guards owned by the host, not the SDK. The stack is 7 packages: `@t2000/{sdk,cli,mcp,id,serve,sui-x402,discovery}` (dialect npm name is `sui-x402`; dir stays `packages/x402`). Lineage: `git log` + `SPEC_AUDRIC_V3.md`.
+1. **Don't reintroduce DeFi or an engine package.** `save` / `borrow` / Invest left the SDK 2026-06-14 (S.444); `@t2000/engine` was retired and deleted (S.442) — host apps compose the AI SDK directly over `@t2000/sdk`, and transaction-safety guards are agent-loop guards owned by the host, not the SDK. The stack is 6 packages: `@t2000/{sdk,cli,id,serve,sui-x402,discovery}` (dialect npm name is `sui-x402`; dir stays `packages/x402`; the deprecated stdio `@t2000/mcp` was deleted from the monorepo 2026-08-03 — Connect is the MCP surface). Lineage: `git log` + `SPEC_AUDRIC_V3.md`.
 2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP / thin `@mysten/sui` tx builders instead.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in `@t2000/sdk` or the host agent loop.
@@ -142,7 +141,6 @@ speculatively):
 | `t2000-financial-amounts` | Floor-never-round, per-token precision, the canonical token registry |
 | `t2000-sui-platform` | Address Balances (SIP-58) concurrency + gasless-transfer eligibility gotchas |
 | `t2000-design-system` | Copy-in tokens, per-app shadcn, house near-black theme |
-| `t2000-confidential-verify` | GPU-TEE inference: anchor-every, Redis receipts, trust-boundary honesty |
 
 **Vendored Sui skills** (10 of 20 from `MystenLabs/skills`, installed 2026-07-24 —
 `accessing-data` · `sui-sdks` · `ptbs` · `sui-object-model` · `sui-move` ·
@@ -250,7 +248,6 @@ gh workflow run release.yml --field bump=patch   # patch | minor | major
 cd /Users/funkii/dev/t2000
 npm --prefix packages/sdk version X.Y.Z --no-git-tag-version
 npm --prefix packages/cli version X.Y.Z --no-git-tag-version
-npm --prefix packages/mcp version X.Y.Z --no-git-tag-version
 npm --prefix packages/id version X.Y.Z --no-git-tag-version
 npm --prefix packages/serve version X.Y.Z --no-git-tag-version
 npm --prefix packages/x402 version X.Y.Z --no-git-tag-version
@@ -264,7 +261,7 @@ git push origin vX.Y.Z
 ```
 
 This runs `.github/workflows/release.yml`, which:
-1. Bumps all 7 package versions together (`sdk`, `cli`, `mcp`, `id`, `serve`, `sui-x402`, `discovery`) to the same version
+1. Bumps all 6 package versions together (`sdk`, `cli`, `id`, `serve`, `sui-x402`, `discovery`) to the same version
 2. Commits `📦 build: vX.Y.Z` to main
 3. Creates and pushes the `vX.Y.Z` annotated tag
 4. Explicitly triggers `.github/workflows/publish.yml` via `workflow_dispatch`
@@ -273,7 +270,7 @@ This runs `.github/workflows/release.yml`, which:
 
 `.github/workflows/publish.yml` (triggered by Step 1):
 1. **CI** — lint + typecheck + test + build all packages
-2. **Publish** — `pnpm publish` for each of the 7 packages (`continue-on-error: true` — safe if version already exists)
+2. **Publish** — `pnpm publish` for each of the 6 packages (idempotent if a version already exists; the dialect + discovery steps hard-fail on real errors)
 3. **GitHub Release** — `gh release create vX.Y.Z --generate-notes`
 4. **Discord** — posts release notification to `#releases` channel
 
@@ -306,7 +303,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 - **Never** push multiple tags in the same session to fix failures — fix the code and re-run the workflow
 
 **Key details:**
-- All 7 packages (`sdk`, `cli`, `mcp`, `id`, `serve`, `sui-x402`, `discovery`) are always at the same version number (`@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29; `@t2000/serve` at `10.1.0`, 2026-07-20; the dialect + `@t2000/discovery` at `10.20.0`, 2026-08-03 — the B1 absorb; the dialect's npm name is `@t2000/sui-x402` because `@t2000/x402` is an unpublish tombstone from 2026-05-27, E409 on re-publish) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x` on npm — historical only; the audric web-v2 consumer was deleted 2026-07-24.)
+- All 6 packages (`sdk`, `cli`, `id`, `serve`, `sui-x402`, `discovery`) are always at the same version number (`@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29; `@t2000/serve` at `10.1.0`, 2026-07-20; the dialect + `@t2000/discovery` at `10.20.0`, 2026-08-03 — the B1 absorb; the dialect's npm name is `@t2000/sui-x402` because `@t2000/x402` is an unpublish tombstone from 2026-05-27, E409 on re-publish) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x` on npm — historical only; the audric web-v2 consumer was deleted 2026-07-24.)
 - `continue-on-error: true` on publish steps — idempotent if a version already exists
 - `workflow_dispatch` on `publish.yml` serves as a manual fallback if needed
 
@@ -437,7 +434,7 @@ When shipping a feature, update these files:
 
 - [ ] SDK implementation + tests (`packages/sdk/src/`)
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
-- [ ] MCP tool + tests (Connect — `audric/apps/mcp/lib/tools.ts`; stdio `packages/mcp` is deprecated/frozen)
+- [ ] MCP tool + tests (Connect — `audric/apps/mcp/lib/tools.ts`)
 - [ ] Agent Skill (`t2000-skills/skills/`)
 - [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to `docs.t2000.ai`
 - [ ] Root README (`README.md`)

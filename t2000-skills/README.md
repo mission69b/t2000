@@ -65,7 +65,7 @@ Installs all ten wallet skills (the `t2000-agent-wallet` plugin) via Claude Code
 | [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
 | [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
 | [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
-| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Connect Claude, Cursor, ChatGPT, Cline, Continue, or any MCP client to the hosted Passport Connect MCP (`https://mcp.t2000.ai/mcp` + OAuth). Covers setup, session spend limits, the tool surface, and migrating off the retired stdio server. |
+| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Connect Claude, Cursor, ChatGPT, Cline, Continue, or any MCP client to the hosted Passport Connect MCP (`https://mcp.t2000.ai/mcp` + OAuth). Covers setup, session spend limits, and the tool surface. |
 
 ### Sui ecosystem skills
 
@@ -111,7 +111,7 @@ Skills tell your agent *how* to use the wallet. The hosted MCP gives it the actu
 }
 ```
 
-OAuth (Google → Passport) + per-session spend limits set in the console. The local stdio server (`@t2000/mcp`, `t2 mcp install`) is retired — see the [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) skill for migration.
+OAuth (Google → Passport) + per-session spend limits set in the console.
 
 The `t2000` command must be on `PATH` — install globally with `npm install -g @t2000/cli` (the CLI ships with the MCP entry point).
 

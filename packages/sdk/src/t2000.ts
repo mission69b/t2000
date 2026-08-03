@@ -16,7 +16,7 @@ import {
 import type { TransactionSigner } from './signer.js';
 import { KeypairSigner } from './wallet/keypairSigner.js';
 import { executeTx } from './wallet/executeTx.js';
-import { payWithMpp } from './wallet/pay.js';
+import { payWithX402 } from './wallet/pay.js';
 import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
@@ -176,7 +176,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     // shared with the Audric client's unified gasless write path). T2000
     // owns only the limit book-ends; the server budget ledger is the cap on
     // the browser side, so the browser caller skips the SDK limit gate.
-    const result = await payWithMpp({ signer: this._signer, client: this.client, options });
+    const result = await payWithX402({ signer: this._signer, client: this.client, options });
 
     if (result.paid) {
       this.limits.record(result.cost ?? options.maxPrice ?? 0);

@@ -31,7 +31,7 @@ When invoked through that prompt, the LLM fetches this file, then executes the s
 
 1. **Walk the steps in order.** Each step depends on the previous one. Skipping breaks setup.
 2. **Stop at the first failure.** If `t2 init` errors, do not proceed to the next step; report the error and ask the user to retry.
-3. **AI clients connect to the HOSTED MCP — nothing to install.** Step 5 adds `https://mcp.t2000.ai/mcp` as a connector (OAuth). The local stdio server is retired; never write a `command`-style t2000 MCP config.
+3. **AI clients connect to the HOSTED MCP — nothing to install.** Step 5 adds `https://mcp.t2000.ai/mcp` as a connector (OAuth); never write a `command`-style t2000 MCP config.
 4. **Setup is read + write — show, then ask.** Echo each command you're about to run. The user runs it (or confirms you can). Never silently shell out.
 5. **No PIN. No encryption.** v4 wallets are plain Bech32 JSON files with `0o600` perms (matching the Sui CLI). The user owns the file; back it up via `t2 export`.
 6. **Prime this session for x402 payments.** Once setup succeeds, treat a paid endpoint the user hands you — or any ASP Service in the marketplace — as something this wallet CAN pay via `t2000_pay`. Discover what is listed with `t2000_services`, then pay. Do **not** fall back to writing a script for them to run. But do **not** promise named providers either: t2000 resells nothing, so if a capability is not listed and you have no URL, say so and offer to post the work as an Open job.
@@ -202,4 +202,4 @@ After verify succeeds, surface a short menu of natural next moves:
 | `t2 init` fails with permission error | Don't run with `sudo`; npm global may need a user-level prefix (`npm config set prefix ~/.npm-global`) |
 | `t2 init` fails with `WALLET_EXISTS` | A file already lives at `~/.t2000/wallet.key`. If it's a v3 file you no longer need, move/delete it. If you still need it, point v3 + v4 at separate paths via `--key`. v4 does not auto-migrate v3 wallets — see the v3 upgrade note in Step 2. |
 | AI client doesn't see `t2000_*` tools after connecting | Restart the client; re-approve the `https://mcp.t2000.ai/mcp` connector (OAuth). See the `t2000-mcp` skill. |
-| Old config spawns `npx @t2000/mcp` / `t2000 mcp start` | The local stdio server is retired | Replace with the hosted URL block (Step 5); clean old entries with `t2 mcp uninstall` |
+| Old config spawns a local t2000 MCP command | Stale entry — the hosted URL is the only transport | Replace with the hosted URL block (Step 5); clean old entries with `t2 mcp uninstall` |

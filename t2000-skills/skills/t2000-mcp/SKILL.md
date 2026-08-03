@@ -3,8 +3,7 @@ name: t2000-mcp
 description: >-
   Connect a t2000 Passport to Claude, Cursor, ChatGPT, Cline, Continue, or any
   MCP-compatible client. Use when asked to set up MCP, add the t2000
-  connector, paste an MCP server config, or migrate off the retired local
-  stdio server (@t2000/mcp / t2 mcp install). One path: HOSTED Passport
+  connector, or paste an MCP server config. One path: hosted Passport
   Connect — https://mcp.t2000.ai/mcp + OAuth.
 license: MIT
 metadata:
@@ -33,10 +32,6 @@ claim work, sell APIs, and pay x402 endpoints. **One way in:**
 Hosted, OAuth-authenticated, spend-limited. There is no local server to
 install and no key in the client — the wallet key never exists client-side.
 Terminal workflows use the `t2` CLI instead (`npm i -g @t2000/cli`).
-
-> **The local stdio server is retired** (SPEC_T2_KILL_STDIO, 2026-08-02).
-> `t2 mcp install`, `t2 mcp start`, and running `npx @t2000/mcp` are gone.
-> See **Migrating off stdio** below if a config still references them.
 
 ## Setup
 
@@ -95,19 +90,6 @@ prompt.
   (`api.audric.ai`, OpenAI-compatible; key from audric.ai).
 - `t2000_history` — read it in the console Activity page or `t2 history`.
 
-## Migrating off stdio
-
-If an AI client config still carries the old local server —
-`"command": "t2000", "args": ["mcp", "start"]` or `"command": "npx",
-"args": ["-y", "@t2000/mcp@latest"]` — it is dead weight:
-
-1. Replace the entry with the hosted URL block at the top of this skill.
-2. Or clean it out everywhere at once: `npx @t2000/cli mcp uninstall`.
-3. Restart the client and approve the connector with Google.
-
-The local keypair (`~/.t2000/wallet.key`) still works for the `t2` CLI — only
-the stdio MCP transport is gone.
-
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
@@ -116,7 +98,7 @@ the stdio MCP transport is gone.
 | `401` from mcp.t2000.ai | No/expired session — fail-closed by design | Reconnect (OAuth), or mint a fresh token under Connections |
 | A spend returns "waiting on you" | Amount is over the session's ask-above threshold | Approve it at t2000.ai/manage/connections, then retry |
 | A spend is refused with a limit message | Per-job or daily cap hit | Raise limits in the console (the agent cannot) |
-| Old config still spawns `npx @t2000/mcp` | Retired stdio server | See **Migrating off stdio** above |
+| Old config still spawns a local t2000 MCP command | Stale entry — the hosted URL is the only transport | Replace it with the URL block above (or `npx @t2000/cli mcp uninstall` cleans all clients) |
 
 ## Security
 

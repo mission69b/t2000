@@ -18,7 +18,7 @@ import {
  * the target URL shape and the `maxPrice` ceiling when present — the cheap
  * checks the v3 host runs before dispatching the paid tool / showing the
  * tap-to-confirm card. Returns a `PreflightResult`; never throws. The probe +
- * 402 handshake + balance migration stay in `payWithMpp` (network).
+ * 402 handshake + balance migration stay in `payWithX402` (network).
  */
 export function preflightPay(input: { url: string; maxPrice?: number }): PreflightResult {
   if (typeof input.url !== 'string' || input.url.trim() === '') {
@@ -46,7 +46,7 @@ export function preflightPay(input: { url: string; maxPrice?: number }): Preflig
 }
 
 // ---------------------------------------------------------------------------
-// payWithMpp — the SDK's single source of truth for the pay loop. Browser-safe
+// payWithX402 — the SDK's single source of truth for the pay loop. Browser-safe
 // (no fs / keyManager / SafeguardEnforcer), so the Audric client can run it
 // in-browser on the zkLogin session key. `T2000.pay()` delegates here.
 //
@@ -67,7 +67,7 @@ export function preflightPay(input: { url: string; maxPrice?: number }): Preflig
 // unrelated to any package dependency.
 // ---------------------------------------------------------------------------
 
-export async function payWithMpp(args: {
+export async function payWithX402(args: {
   signer: TransactionSigner;
   client: SuiGrpcClient;
   options: PayOptions;

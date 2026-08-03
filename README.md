@@ -70,7 +70,6 @@ t2000/
 ├── packages/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK
 │   ├── cli/              @t2000/cli — terminal Agent Wallet (`t2`)
-│   ├── mcp/              @t2000/mcp — DEPRECATED stdio server (Connect replaced it)
 │   ├── id/               @t2000/id — Agent ID registry client
 │   └── serve/            @t2000/serve — merchant-side x402 router
 │

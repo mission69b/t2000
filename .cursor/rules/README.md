@@ -16,7 +16,6 @@ here exist so Cursor still gets the invariants and knows where to read the depth
 | `financial-amounts.mdc` | ✅ | `.claude/skills/t2000-financial-amounts/` |
 | `design-system.mdc` | glob: `design-tokens/**`, `apps/**` | `.claude/skills/t2000-design-system/` |
 | `sui-platform.mdc` | glob: `packages/sdk/**`, `apps/gateway/**`, `contracts/**` | `.claude/skills/t2000-sui-platform/` |
-| `confidential-ai-verify.mdc` | glob: verify + anchor paths | `.claude/skills/t2000-confidential-verify/` |
 
 `engineering-discipline.mdc` is the **one deliberate duplication**: it mirrors the
 short always-on block from `CLAUDE.md § Engineering Discipline`, because Cursor does
@@ -66,5 +65,5 @@ engineering constraints — different altitude, different audience. Don't merge 
 
 Product skills reach end users via two channels:
 1. **Passport Connect** (`mcp.t2000.ai`) — every skill exposed as a
-   `skill-<name>` MCP prompt on the hosted server (stdio `@t2000/mcp` retired).
+   `skill-<name>` MCP prompt on the hosted server.
 2. **`mission69b/t2000-skills`** — auto-synced via `.github/workflows/sync-skills.yml`.
