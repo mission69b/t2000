@@ -1,6 +1,6 @@
 {
   "name": "@t2000/discovery",
-  "version": "10.21.2",
+  "version": "10.22.0",
   "description": "Probe and validate x402 seller endpoints on Sui — 402 accepts[] / WWW-Authenticate probing plus OpenAPI paid-endpoint extraction. The discovery half of the @t2000 serve stack.",
   "type": "module",
   "main": "./dist/index.cjs",
