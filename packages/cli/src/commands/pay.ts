@@ -206,9 +206,9 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
     return;
   }
 
-  // Read the x402 `accepts[]` envelope from the 402 body (preferred — sellers
-  // advertise it on every 402 per SUIMPP_X402_SCHEME). Header-only sellers
-  // (the MPP `WWW-Authenticate` dialect) are handled below as a fallback.
+  // Read the x402 `accepts[]` envelope from the 402 body — the ONE dialect
+  // (SUIMPP_X402_SCHEME; the MPP WWW-Authenticate header dialect was removed
+  // from the stack 2026-08-03, S.880). Header-only 402s report as unpayable.
   interface X402Accept {
     scheme?: string;
     network?: string;
@@ -225,28 +225,20 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
   } catch {
     accepts = [];
   }
-  let req = accepts.find((a) => a.scheme === 'exact' && a.network?.startsWith('sui:')) ?? accepts[0];
-  let dialect = 'x402';
+  const req = accepts.find((a) => a.scheme === 'exact' && a.network?.startsWith('sui:')) ?? accepts[0];
+  const dialect = 'x402';
   if (!req) {
-    // MPP header dialect fallback — same preference order as sdk.pay().
-    // Normalize the header challenge (decimal amount) into the x402 shape
-    // (raw 6-decimal units) so one print path serves both dialects.
-    const { parseMppSuiChallenge } = await import('@t2000/sdk');
-    const challenge = await parseMppSuiChallenge(response);
-    if (!challenge) {
-      throw new Error(
-        'Service returned 402 but advertised neither an x402 requirement (accepts[]) ' +
-          "nor an MPP 'sui' challenge (WWW-Authenticate). Nothing this CLI can pay.",
-      );
-    }
-    dialect = 'MPP header';
-    req = {
-      scheme: 'exact',
-      network: 'sui:mainnet',
-      asset: challenge.currency || 'USDC',
-      maxAmountRequired: String(Math.round(Number(challenge.amount) * 1_000_000)),
-      payTo: challenge.recipient,
-    };
+    // Mirror sdk.pay()'s fail-closed: a header-only MPP 402 is unpayable
+    // (that dialect charged before the seller proved it could deliver).
+    const headerOnly = /(^|,)\s*Payment[\s,]/i.test(`${response.headers.get('www-authenticate') ?? ''},`);
+    throw new Error(
+      headerOnly
+        ? 'Service answered a header-only 402 (WWW-Authenticate: Payment) with no x402 ' +
+          'accepts[] envelope. The MPP header dialect is no longer supported — the seller ' +
+          'must offer x402 (e.g. @t2000/serve emits it). Nothing this CLI can pay.'
+        : 'Service returned 402 but advertised no x402 requirement (accepts[]). ' +
+          'Nothing this CLI can pay.',
+    );
   }
 
   const amountRaw = req.maxAmountRequired;
