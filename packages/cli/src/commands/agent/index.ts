@@ -2,7 +2,8 @@
 // ownership). Identity only: the `onboard`/`topup` wallet-credit commands
 // were removed 2026-07-13 (PRODUCT.md one-path decision) and `tokenize` was
 // removed 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY — the store is a USDC
-// economy; on-chain `agent_capital` and its SDK builders remain historical).
+// economy; the SDK builders were deleted 2026-08-03 — on-chain
+// `agent_capital` remains historical only).
 // Machines making one-off inference calls pay ASP x402 endpoints directly.
 
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';

@@ -116,9 +116,6 @@ importers:
       '@inquirer/prompts':
         specifier: ^7
         version: 7.10.1(@types/node@20.19.37)
-      '@mysten/move-bytecode-template':
-        specifier: ^0.4.0
-        version: 0.4.0
       '@mysten/sui':
         specifier: ^2.17.0
         version: 2.17.0(typescript@5.9.3)
@@ -237,9 +234,6 @@ importers:
       '@cetusprotocol/aggregator-sdk':
         specifier: ^1.4.8
         version: 1.4.8(axios@1.15.2)(typescript@5.9.3)
-      '@mysten/move-bytecode-template':
-        specifier: ^0.4.0
-        version: 0.4.0
       '@mysten/payment-kit':
         specifier: ^0.1.6
         version: 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
@@ -1274,9 +1268,6 @@ packages:
 
   '@mysten/bcs@2.0.3':
     resolution: {integrity: sha512-dwcaL4HNAsEGpU3hKUAsXgCZp9l6++e2A3THpzoYZ8e7bsy4XH1V0dXD5dIzgNcVZiZfb6ZnDMG+gdF6+1WOQA==}
-
-  '@mysten/move-bytecode-template@0.4.0':
-    resolution: {integrity: sha512-sRzp7k4l20bLdemSmObXa/p3NNUIRi3e3pTEGWjArfqLhBHfOSFHEw13eO5nLwkqxZ/dPPPPp6zx9Nzk1BmxTw==}
 
   '@mysten/payment-kit@0.1.6':
     resolution: {integrity: sha512-HZgdeiVL/DhmaRnbG+ta/A1FTxrMLFVc+KEkQAXVzUaTv6gkIXlUMiyWVWWMIeajhtR+oCgq8ARjo6yPs9zLbQ==}
@@ -7816,8 +7807,6 @@ snapshots:
     dependencies:
       '@mysten/utils': 0.3.1
       '@scure/base': 2.0.0
-
-  '@mysten/move-bytecode-template@0.4.0': {}
 
   '@mysten/payment-kit@0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))':
     dependencies:

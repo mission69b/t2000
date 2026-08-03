@@ -113,7 +113,7 @@ function x402Accepts(amountRaw = '20000') {
         asset: USDC_TYPE,
         maxAmountRequired: amountRaw,
         payTo: '0xtreasury',
-        resource: 'https://mpp.t2000.ai/x',
+        resource: 'https://paid.example/x',
         maxTimeoutSeconds: 60,
         extra: { suimpp: { challengeId: 'cid', nonce: 1, chain: 'c', minEpoch: '1', maxEpoch: '2' } },
       },
@@ -143,7 +143,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
       // address balance fully covers (no coins) → no migration
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://mpp.t2000.ai/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
     });
 
     expect(buildX402Mock).toHaveBeenCalledTimes(1);
@@ -167,7 +167,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
       // all funds in coin objects, address balance = 0 → migration runs
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [{ objectId: '0xc', balance: '1000000' }] }),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', maxPrice: 0.05 },
     });
 
     expect(executeTxMock).toHaveBeenCalledTimes(1); // the coin→AB migration tx
@@ -184,7 +184,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     const result = await payWithMpp({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', maxPrice: 0.05 },
     });
 
     expect(result.paid).toBe(false);
@@ -199,7 +199,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
       payWithMpp({
         signer: makeSigner(),
         client: makeClient({ total: '5000', coins: [] }), // 0.005 USDC < 0.02
-        options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+        options: { url: 'https://paid.example/x', maxPrice: 0.05 },
       }),
     ).rejects.toThrow(/insufficient/i);
   });
@@ -213,7 +213,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
       payWithMpp({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
-        options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+        options: { url: 'https://paid.example/x', maxPrice: 0.05 },
       }),
     ).rejects.toThrow(/your own wallet/i);
     expect(buildX402Mock).not.toHaveBeenCalled();
@@ -277,7 +277,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
       payWithMpp({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
-        options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+        options: { url: 'https://paid.example/x', maxPrice: 0.05 },
       }),
     ).rejects.toThrow(/exceeds maxPrice/i);
     expect(buildX402Mock).not.toHaveBeenCalled(); // rejected before signing
@@ -457,7 +457,7 @@ describe('payWithMpp — header-only 402 (dialect removed)', () => {
     const result = await payWithMpp({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', maxPrice: 0.05 },
     });
 
     expect(result.dialect).toBe('x402');
@@ -475,7 +475,7 @@ describe('payWithMpp — header-only 402 (dialect removed)', () => {
     const result = await payWithMpp({
       signer: zkSigner,
       client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', maxPrice: 0.05 },
     });
 
     expect(result.paid).toBe(true);
@@ -497,7 +497,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
     const result = await payWithMpp({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://mpp.t2000.ai/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
     });
 
     expect(result.paid).toBe(true);
@@ -520,7 +520,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
     await payWithMpp({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05, activityReport: false },
+      options: { url: 'https://paid.example/x', maxPrice: 0.05, activityReport: false },
     });
     expect(reportCalls()).toHaveLength(0);
 
@@ -533,7 +533,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
       options: {
-        url: 'https://mpp.t2000.ai/x',
+        url: 'https://paid.example/x',
         maxPrice: 0.05,
         activityReport: { source: 'connect', url: 'https://example.test/api/activity/x402' },
       },
@@ -553,7 +553,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
     const result = await payWithMpp({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', maxPrice: 0.05 },
     });
     expect(result.paid).toBe(false);
     expect(reportCalls()).toHaveLength(0);
@@ -567,7 +567,7 @@ describe('payWithMpp — free / cached', () => {
     const result = await payWithMpp({
       signer: makeSigner(),
       client: makeClient(),
-      options: { url: 'https://mpp.t2000.ai/x', maxPrice: 0.05 },
+      options: { url: 'https://paid.example/x', maxPrice: 0.05 },
     });
 
     expect(result.paid).toBe(false);
