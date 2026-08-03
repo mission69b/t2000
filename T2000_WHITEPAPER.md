@@ -32,8 +32,9 @@ works on both.
 |---|---|---|---|
 | i | **Identity & Wallet** | Agents need wallets, credentials, and economic rights. | **LIVE** |
 | ii | **Commerce** | Agents need markets to hire, sell, and coordinate. | **LIVE** |
-| iii | **Physical Labor** | Agents need bodies to affect the physical world. | **HORIZON — the namesake** |
-| iv | **Law & Governance** | Agents need alignment, rules, and enforcement. | **SEEDED** (receipts + escrow) |
+| iii | **Capital Formation** | Agents need ownership, investment, and liquidity. | **HORIZON** |
+| iv | **Physical Labor** | Agents need bodies to affect the physical world. | **HORIZON — the namesake** |
+| v | **Law & Governance** | Agents need alignment, rules, and enforcement. | **SEEDED** (receipts + escrow) |
 
 ---
 
@@ -92,7 +93,23 @@ and richer Connect UX (MCP Apps cards). **Parked until demand:** managed agent
 runtime (t2 Compute / Audric Computer), negotiation phases, evaluator agents,
 subscriptions.
 
-## iii. Physical Labor — HORIZON (the namesake)
+## iii. Capital Formation — HORIZON
+
+*Agents becoming financeable — ownership, investment, liquidity.*
+
+Commerce and receipts make agents economically real. Capital is the layer where
+agents can attract ownership and liquidity **against honest activity** — settled
+USDC and Sui digests, not promised "agent GDP."
+
+**Shape defined later, deliberately.** Not shipping a Capital storefront or
+tokenize flow as product this phase. When the layer is built, the invariant is
+unchanged: **receipts or it didn't happen** — no platform token, no custody,
+no fake numbers.
+
+The rails above (Identity, Wallet, Commerce, Activity) are the substrate any
+capital market for agents must stand on.
+
+## iv. Physical Labor — HORIZON (the namesake)
 
 *Agents need bodies. t2000 is named after the Terminator — this layer was
 always the endgame.*
@@ -107,7 +124,7 @@ it will hold a Passport, sell Jobs, and fund itself like any other Agent ID.
 the rails (an embodied agent needs nothing new from layers i–ii), and the
 roadmap slot.
 
-## iv. Law & Governance — SEEDED
+## v. Law & Governance — SEEDED
 
 *Alignment, rules, enforcement. Elsewhere this layer is a promise; ours is
 already partially real.*
@@ -131,9 +148,9 @@ grows out of what we already ship, not from scratch.
 
 | Phase | What ships | Layer |
 |---|---|---|
-| **Now (live)** | Passport · Agent ID · gasless rail · x402 (`@t2000/serve` + `sui-x402`) · Services + escrow (5%) · marketplace on t2000.ai · Passport Connect · Activity (honest tape + attributed paid calls) · Audric Assist | i, ii, iv seeds |
+| **Now (live)** | Passport · Agent ID · gasless rail · x402 (`@t2000/serve` + `sui-x402`) · Services + escrow (5%) · marketplace on t2000.ai · Passport Connect · Activity (honest tape + attributed paid calls) · Audric Assist | i, ii, v seeds |
 | **Next** | Program 5: official connector directory listings · Connect UX depth (MCP Apps cards) | ii |
-| **Horizon** | Embodied agents (iii) · governance (iv) · Email · Card | iii–iv |
+| **Horizon** | Capital formation (iii) · embodied agents (iv) · governance (v) · Email · Card | iii–v |
 
 ## Products (the surfaces people touch)
 
