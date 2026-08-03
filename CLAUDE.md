@@ -24,7 +24,7 @@ t2000/
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29)
 ├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router — wrap any API for agent payments (added 2026-07-20)
-├── packages/x402    ← @t2000/sui-x402 (npm) ← The x402 payment dialect for Sui — absorbed from @suimpp/mpp 2026-08-03 (B1; stack is 7 packages)
+├── packages/x402    ← @t2000/sui-x402 (npm) ← The x402 payment dialect for Sui — absorbed from @suimpp/mpp 2026-08-03 (B1)
 ├── packages/discovery ← @t2000/discovery (npm) ← x402 endpoint probe + OpenAPI extract — absorbed from @suimpp/discovery 2026-08-03
 ├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
 ├── packages/models  ← @t2000/models (PLANNED, H2 — Agent Models: OpenAI-compatible gateway to self-hosted Qwen + resold frontier)
@@ -34,7 +34,7 @@ t2000/
 
 ### Two brand layers
 
-**t2000** = infra. Names the underlying capabilities (SDK, CLI, MCP, x402 gateway, contracts). Used in technical docs, package names, READMEs, dev-facing surfaces. (The `@t2000/engine` harness package was retired 2026-06-14.)
+**t2000** = infra + the agent economy. Names the marketplace (t2000.ai), Passport Connect (mcp.t2000.ai), and the stack (SDK, CLI, serve, the sui-x402 dialect, Agent ID, contracts). Used in technical docs, package names, READMEs, dev-facing surfaces. (The `@t2000/engine` harness package was retired 2026-06-14.)
 
 **Audric** = consumer. The product a user touches at audric.ai.
 
@@ -199,7 +199,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
-| `PRODUCT.md` | **The product map SSOT** — 2 products (Private Inference · x402 gateway), one customer + one path each; wallet/Agent ID = substrate, not products; `t2 agent onboard` deprecated | Any product/positioning/onboarding work |
+| `PRODUCT.md` | **The product map SSOT** — the USDC agent economy: A2A Marketplace (t2000.ai) + Passport Connect (mcp.t2000.ai); Private Inference = Audric (api.audric.ai); wallet/Agent ID = substrate, not products | Any product/positioning/onboarding work |
 | [`docs.t2000.ai`](https://docs.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
 | `T2000_WHITEPAPER.md` | Public whitepaper — the layer map (Identity/Wallet · Commerce · Physical Labor horizon · Law & Governance); peer of PRODUCT/ARCHITECTURE at root | Vision/positioning work |
 | `ARCHITECTURE.md` | Current-state technical map — the two rails' request lifecycles, wallet/gas/limits, Agent ID, MCP/skills, auth, data stores, CI (rewritten 2026-07-13) | API or integration work |

@@ -63,7 +63,7 @@ every surface.
 
 ---
 
-## Packages (npm, lockstep version — 7)
+## Packages (npm, lockstep version — 6)
 
 | Package | What it is |
 |---|---|
@@ -73,9 +73,8 @@ every surface.
 | `@t2000/serve` | Merchant-side x402 router — wrap any API: `.route().paid().body().handler()`, settle-then-serve, discovery docs, `asNextRoute` for Next.js, optional activity report (default-on from env) |
 | `@t2000/sui-x402` | **The x402 dialect SSOT** — scheme `exact` requirements/verify/settle, digest replay store. (npm name note: `@t2000/x402` is an unpublish tombstone.) |
 | `@t2000/discovery` | x402 endpoint probe (accepts[] + WWW-Authenticate) + OpenAPI paid-route extraction — the listing gate + catalog contract |
-| `@t2000/mcp` | **DEPRECATED** — the retired local stdio server; kept published, no updates. Connect (`mcp.t2000.ai/mcp`) is the MCP surface. |
 
-All 7 release in lockstep via `release.yml` → `publish.yml` (never publish
+All 6 release in lockstep via `release.yml` → `publish.yml` (never publish
 manually; the dialect + discovery publish steps hard-fail). The x402 protocol
 also stays published as `@suimpp/{mpp,discovery}` mirrors from the suimpp repo
 — one line of history, not part of this stack's runtime.
@@ -270,6 +269,7 @@ NAVI/DeFi (2026-06), the hosted mpp proxy gateway + catalog and the Capital
 storefront (2026-08-01, `SPEC_T2_CLEANUP_USDC_ONLY`), Private Inference on
 `api.t2000.ai` and `verify.t2000.ai` as t2000 surfaces (retired 2026-08-01,
 `SPEC_PI_TO_AUDRIC` — both live on with Audric), the local stdio MCP server
-(2026-08-02, `SPEC_T2_KILL_STDIO`), and the MPP header payment dialect in the
+(retired 2026-08-02, `SPEC_T2_KILL_STDIO`; the `@t2000/mcp` package left the
+monorepo + lockstep 2026-08-03), and the MPP header payment dialect in the
 SDK (2026-08-03). Their rationale and internals live in git history and the
 internal build tracker; nothing in this document describes them.
