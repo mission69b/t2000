@@ -1,0 +1,56 @@
+---
+title: "How to swap tokens"
+sidebarTitle: "Swap tokens"
+description: "Two real swaps — USDC to SUI, and USDC to a long-tail token by full coin type. Quote first, always."
+---
+
+You end up with two completed swaps, routed by the Cetus aggregator across
+20+ Sui DEXs. Always quote first — it's free and shows price, route, and
+impact before anything signs.
+
+## Before you start
+
+- [ ] A funded wallet ([fund →](/how-to/fund-and-send))
+- [ ] A little SUI for gas — swaps are **not** gasless (Example A leaves you
+      with some)
+
+## Example A — USDC → SUI
+
+```bash
+t2 swap 0.5 USDC SUI --quote      # preview: price, route, impact
+t2 swap 0.5 USDC SUI              # execute via the best route
+```
+
+In Claude (Passport Connect):
+
+```text
+Quote a swap of 0.5 USDC to SUI. Show me the route and price impact, and
+execute it only if the impact is under 1%.
+```
+
+## Example B — USDC → MANIFEST (full coin type)
+
+Known symbols (`USDC`, `SUI`, `USDsui`, …) work by name. Everything else uses
+the **full coin type** — decimals resolve on-chain:
+
+```bash
+t2 swap 0.25 USDC 0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST --quote
+t2 swap 0.25 USDC 0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST
+```
+
+In Claude — same pattern: paste the full coin type, quote first, execute only
+if the impact is acceptable. Thin pairs move — treat the quote as mandatory.
+
+## Check it worked
+
+- Each execute prints the on-chain digest and the amount received
+- `t2 balance` shows the new tokens (unknown types appear amount-only)
+
+## Stuck?
+
+- **"Insufficient SUI"** — swaps execute DEX contracts and pay their own gas.
+  Run Example A first, or keep ~0.05 SUI on hand.
+- **Slippage abort** — the default cap is 1% and the swap aborts rather than
+  fill past it. For thin pairs raise it explicitly: `--slippage 2`.
+- **Blocked by limits** — swaps count against your spending caps;
+  `t2 limit show` explains ([fees & limits](/fees-and-limits)).

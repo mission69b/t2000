@@ -1,0 +1,116 @@
+---
+title: "How to sell your API"
+sidebarTitle: "Sell your API"
+description: "Wrap any route with @t2000/serve, list it on your Agent ID, and get paid USDC per call. No protocol fee."
+---
+
+You end up with an API card on your public profile that any agent can pay per
+call — ≤ $5 a call, no protocol fee, settled to your own wallet. Your server
+never holds a key and never pays gas.
+
+## Before you start
+
+- [ ] [Get set up](/how-to/get-set-up) — the wallet that receives payments
+      must be the one that lists (its address is your `payTo`)
+- [ ] Somewhere to deploy (Vercel works in one click) — or an existing
+      Node/Bun/Deno API to wrap
+
+## 1 — Deploy an x402 endpoint
+
+**No API yet?** [Deploy the template](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Ftemplates%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api) —
+set `T2000_PAY_TO` to your Sui address, add Upstash for Redis from Vercel's
+Storage tab, then swap the demo route for your logic.
+
+**Wrapping an existing API?**
+
+```bash
+npm install @t2000/serve
+```
+
+```ts app/api/search/route.ts
+import { asNextRoute, createServeFromEnv } from '@t2000/serve';
+import { z } from 'zod';
+
+const serve = createServeFromEnv();           // reads T2000_PAY_TO
+const input = z.object({ query: z.string().min(1) });
+
+export const { POST, OPTIONS } = asNextRoute(
+  serve
+    .route({ path: 'search', description: 'Web search, paid per call' })
+    .paid('0.02')
+    .body(input, z.toJSONSchema(input))
+    .handler(async ({ body }) => yourExistingLogic(body)),
+);
+```
+
+Serve discovery docs too — `serve.openapi()` at `/openapi.json` and
+`serve.llms()` at `/llms.txt`. Not Next.js? Every route is
+`(Request) => Promise<Response>`: `Bun.serve({ fetch: serve.fetch })`,
+`Deno.serve(serve.fetch)`, or mount `serve.fetch` in Hono/Workers.
+
+| Env var | Required | What |
+|---|---|---|
+| `T2000_PAY_TO` | **yes** | Your Sui address — every payment settles here |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | serverless: **yes** | Replay store (Upstash-compatible KV). In-memory is fine for one long-lived process, wrong for serverless |
+| `T2000_BASE_URL` · `T2000_NAME` · `T2000_DESCRIPTION` | no | Public URL + listing copy in 402s and discovery docs |
+
+Validation runs **before** settlement: invalid body → 422, handler throw →
+500 — the buyer keeps their money in both cases. Money moves last.
+
+## 2 — Probe the 402 (free)
+
+```bash
+curl -s -X POST https://<your-app>.vercel.app/search \
+  -H 'content-type: application/json' -d '{}'
+```
+
+Expect a `402` carrying an x402 `accepts[]` envelope. Built with serve, this
+passes by construction.
+
+## 3 — List it on your Agent ID
+
+<CodeGroup>
+
+```bash In the terminal
+t2 init --import <payTo-secret>     # skip if this wallet IS payTo
+t2 agent sell https://<your-app>.vercel.app
+```
+
+```text In Claude (Passport Connect)
+Sell my API at https://<your-app>.vercel.app on my t2000 Agent ID.
+```
+
+</CodeGroup>
+
+An origin expands via `{origin}/openapi.json` — every paid route is
+live-probed and becomes a store card; a single 402 URL lists just that route.
+Only the payTo wallet can list (the 402 must pay the wallet doing the
+listing). Change your price and the listing follows your 402;
+`t2 agent sell --remove` clears it.
+
+## 4 — Check it worked: buy from a different wallet
+
+From any **other** funded wallet:
+
+```bash
+t2 pay https://<your-app>.vercel.app/search \
+  --data '{"query":"test"}' --max-price 0.10
+```
+
+- `Paid via x402` · `200` + your route's response · receipt in
+  `X-PAYMENT-RESPONSE`
+- Your profile at `t2000.ai/<your-address>` shows the API card, and paid
+  calls appear on your Activity
+- Buyers find it with `t2 services`
+
+## Stuck?
+
+- **Listing rejected at probe** — the URL must answer 402 with a complete
+  Sui `accepts[]` envelope; header-only 402s and bare `exact` entries fail.
+  Test step 2 first.
+- **Submit fails on-chain after prepare** — you're listing from a wallet
+  that isn't the payTo; re-run from the payTo key.
+- **Paying yourself** — self-pay is blocked. Verify with a second wallet.
+
+Deliverable work priced above $5/call belongs in escrow instead —
+[list a Service](/how-to/list-a-service), no server needed.
