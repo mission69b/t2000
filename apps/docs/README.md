@@ -2,8 +2,8 @@
 
 Source for the Mintlify-hosted developer documentation site at [`docs.t2000.ai`](https://docs.t2000.ai).
 
-Nav groups (`docs.json` is the SSOT): **Getting Started** · **Commerce** ·
-**Wallet** · **Trading** · **Reference**, plus the Changelog tab.
+Nav groups (`docs.json` is the SSOT): **Getting Started** · **How to** ·
+**Reference**, plus the Changelog tab.
 
 Models are not documented here. Private Inference and Confidential AI are
 [Audric](https://audric.ai) products (SPEC_PI_TO_AUDRIC, 2026-08-01).
@@ -48,9 +48,13 @@ Each page is a curated, Mintlify-flavored view of the canonical package README:
 | Page | Pulls from |
 |---|---|
 | `index.mdx` | repo `README.md` top-level value prop |
-| `agent-wallet.mdx` | `packages/cli/README.md` + `packages/mcp/README.md` + `t2000-skills/README.md` |
-| `pay-any-api.mdx` | `packages/cli/README.md` (pay section) + `packages/serve/README.md` |
+| `agent-wallet.mdx` | `packages/cli/README.md` + `t2000-skills/README.md` |
+| `how-to/pay-an-api.mdx` | `packages/cli/README.md` (pay section) |
+| `how-to/sell-your-api.mdx` | `packages/serve/README.md` |
 | `agent-sdk.mdx` | `packages/sdk/README.md` |
+
+The `how-to/*` pages are scenario steps (Connect paste + `t2` commands) — flags
+must match the live CLI (`t2 <cmd> --help`), prices per the docs SPEC.
 
 When a README changes, mirror the relevant section into the corresponding `.mdx`. Don't fork — keep the README the source-of-truth.
 

@@ -1,0 +1,62 @@
+---
+title: "How to fund and send USDC"
+sidebarTitle: "Fund and send"
+description: "Deposit USDC to your wallet, confirm the balance, and prove the rail with a $0.01 gasless send."
+---
+
+You end up with a funded wallet and one completed gasless send. USDC and
+USDsui sends need **no SUI** — the transfer is sponsored.
+
+## Before you start
+
+- [ ] [Get set up](/how-to/get-set-up)
+- [ ] USDC on Sui to deposit — **$2–5** covers the whole learning path (a
+      hire, a paid call, and a small swap)
+
+## In Claude (Passport Connect)
+
+```text
+Show me my t2000 deposit address so I can fund the wallet with USDC.
+```
+
+After you've deposited:
+
+```text
+What's my balance now? Break it down by token.
+```
+
+<Note>
+  Connect sessions can receive and spend inside the marketplace, but **cannot
+  send USDC to outside addresses** — that's blocked in code. Outbound sends are
+  a CLI (or [Audric](https://audric.ai)) action with your own key.
+</Note>
+
+## In the terminal (`t2`)
+
+```bash
+t2 fund             # deposit address + QR — send USDC (Sui network) here
+t2 balance          # confirm it landed
+```
+
+Prove the rail with a penny:
+
+```bash
+t2 send 0.01 USDC 0xRECIPIENT      # or a SuiNS name like alice.sui
+```
+
+## Check it worked
+
+- The send prints an on-chain digest — no SUI was needed, no gas prompt
+- `t2 balance` reflects it; `t2 history` shows the transfer
+
+## Stuck?
+
+- **Deposit not showing** — it must be USDC **on Sui** (native, not bridged
+  from another chain's UI) sent to the exact `t2 fund` address; `t2 balance`
+  reads the chain directly.
+- **"Insufficient SUI"** on a send — only USDC and USDsui sends are gasless;
+  SUI sends pay their own gas. Swaps also need a little SUI
+  ([swap →](/how-to/swap)).
+- **Blocked by limits** — sends respect your spending caps ($25/tx · $100/day
+  by default); `t2 limit show` explains, `--force` overrides one call
+  ([fees & limits](/fees-and-limits)).

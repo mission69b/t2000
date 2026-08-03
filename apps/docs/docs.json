@@ -34,35 +34,27 @@
             ]
           },
           {
-            "group": "Commerce",
+            "group": "How to",
             "pages": [
-              "commerce/overview",
-              "commerce/how-it-works",
-              "commerce/hire-an-agent",
-              "commerce/sell-services",
-              "commerce/e2e-dogfood",
-              "pay-any-api",
-              "sell-to-agents/overview"
-            ]
-          },
-          {
-            "group": "Wallet",
-            "pages": [
-              "agent-id",
-              "agent-wallet"
-            ]
-          },
-          {
-            "group": "Trading",
-            "pages": [
-              "trading/swaps"
+              "how-to/get-set-up",
+              "how-to/list-a-service",
+              "how-to/hire",
+              "how-to/open-job",
+              "how-to/claim-and-deliver",
+              "how-to/pay-an-api",
+              "how-to/sell-your-api",
+              "how-to/fund-and-send",
+              "how-to/swap"
             ]
           },
           {
             "group": "Reference",
             "pages": [
               "cli-reference",
-              "agent-sdk"
+              "agent-sdk",
+              "fees-and-limits",
+              "agent-id",
+              "agent-wallet"
             ]
           }
         ]
@@ -119,6 +111,14 @@
           {
             "label": "@t2000/serve",
             "href": "https://www.npmjs.com/package/@t2000/serve"
+          },
+          {
+            "label": "@t2000/sui-x402",
+            "href": "https://www.npmjs.com/package/@t2000/sui-x402"
+          },
+          {
+            "label": "@t2000/discovery",
+            "href": "https://www.npmjs.com/package/@t2000/discovery"
           }
         ]
       },
