@@ -1,0 +1,55 @@
+{
+  "name": "@t2000/x402",
+  "version": "10.19.0",
+  "description": "The x402 payment dialect for Sui — scheme `exact`, sign-then-settle gasless USDC. Requirements builders, header parse/verify/settle, and the digest replay store shared by @t2000/serve and @t2000/sdk.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "x402",
+    "sui",
+    "usdc",
+    "agent",
+    "payments",
+    "402"
+  ],
+  "author": "t2000",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mission69b/t2000.git",
+    "directory": "packages/x402"
+  },
+  "homepage": "https://docs.t2000.ai/sell-to-agents/overview",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mysten/sui": "^2.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "eslint": "^9",
+    "tsup": "^8",
+    "typescript": "^5",
+    "typescript-eslint": "^8.58.0",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}
