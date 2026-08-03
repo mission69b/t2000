@@ -21,11 +21,11 @@ metadata:
 Get a fresh user from "nothing installed" to "Agent Wallet ready" in under 5 minutes. This is the canonical entry point for the **one-prompt install** UX:
 
 ```
-Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup
-instructions to set up my Agent Wallet.
+Run `npx skills add mission69b/t2000-skills -s t2000-setup` and follow the
+installed skill to set up my Agent Wallet.
 ```
 
-When invoked through that prompt, the LLM fetches this file, then executes the steps below in order.
+When invoked through that prompt, the LLM installs and reads this file, then executes the steps below in order.
 
 ## Rules
 

@@ -221,11 +221,13 @@ MCP clients don't need the CLI at all — add `https://mcp.t2000.ai/mcp` as a
 connector ([Passport Connect](/passport-connect)). `t2 mcp uninstall` removes
 the retired stdio server's entry from old AI-client configs.
 
-| Command | What it does |
-| --- | --- |
-| `t2 skills list` | Skills available from t2000.ai. |
-| `t2 skills install [slug]` | Install skill playbooks locally (`--target cursor` writes `.mdc` rules). |
-| `t2 skills check` | Are installed skills current? Agents: run at session start. |
+Skill playbooks are optional and install straight from GitHub — the CLI has no
+skills command:
+
+```bash
+npx skills add mission69b/t2000-skills        # all skills, auto-detects your agent
+npx skills add mission69b/t2000-skills -s t2000-pay   # one skill
+```
 
 ---
 

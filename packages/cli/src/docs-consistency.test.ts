@@ -23,7 +23,6 @@ const DOC_FILES: string[] = [
   'README.md',
   'packages/cli/README.md',
   'packages/sdk/README.md',
-  'apps/web/public/install.sh',
   't2000-skills/README.md',
   't2000-skills/AGENTS.md',
 ];

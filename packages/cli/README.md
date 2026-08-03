@@ -38,8 +38,8 @@ t2 agent sell https://api.you.com/v1 # or list your own x402 endpoint (per-call,
 **One-prompt install** — paste into any LLM client:
 
 ```
-Run `curl -sL https://t2000.ai/skills/t2000-setup` and use the returned
-setup instructions to set up my Agent Wallet.
+Run `npx skills add mission69b/t2000-skills -s t2000-setup` and follow the
+installed skill to set up my Agent Wallet.
 ```
 
 Every command supports `--json` (machine-parseable) and `--key <path>` (custom wallet file).

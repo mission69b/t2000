@@ -37,7 +37,7 @@ A blind retry can double-spend or burn calls. Diagnose first:
 
 | Symptom | Cause | Action |
 |---|---|---|
-| `WALLET_NOT_FOUND` | no wallet yet | run `t2 init` (or `install.sh`); don't retry the pay |
+| `WALLET_NOT_FOUND` | no wallet yet | run `t2 init`; don't retry the pay |
 | `INSUFFICIENT_BALANCE` | wallet underfunded | `t2 fund` → add USDC, then retry once |
 | `LIMIT_EXCEEDED` | over a spend cap | surface to the user; `--force` only with consent; never loop |
 | `4xx` from the seller | bad request (e.g. a missing field) | fix the request; do NOT retry unchanged |
@@ -111,16 +111,15 @@ that API."
 
 ## Deeper, per-task playbooks
 
-Fetch `https://t2000.ai/skills/<slug>` — e.g. `https://t2000.ai/skills/t2000-setup`.
+Read `skills/<slug>/SKILL.md` in this repo (or the public
+[`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) mirror).
 Slugs: `t2000-setup`, `t2000-send`, `t2000-swap`, `t2000-pay`, `t2000-receive`,
-`t2000-services`, `t2000-check-balance`, `t2000-job`, `t2000-mcp`
-(manifest:
-`https://t2000.ai/.well-known/agent-skills/index.json`; local install:
-`t2 skills install`). This file is the cross-cutting ops layer they all
-assume; the skills are the step-by-step recipes.
+`t2000-services`, `t2000-check-balance`, `t2000-job`, `t2000-mcp`. Local
+install: `npx skills add mission69b/t2000-skills` (add `-s <slug>` for one).
+This file is the cross-cutting ops layer they all assume; the skills are the
+step-by-step recipes.
 
 **Copied skills drift.** If skills were installed to disk (`.agents/skills/`,
-`.cursor/rules/`, `.claude/skills/`), run `t2 skills check` at session start —
-it compares every installed skill against what t2000.ai serves and answers
-`{ upToDate, action }` (`--json`). Stale → `t2 skills install` refreshes.
+`.cursor/rules/`, `.claude/skills/`), refresh them with `npx skills update`
+(or re-run `npx skills add mission69b/t2000-skills`).
 (MCP clients skip this: connecting to `https://mcp.t2000.ai/mcp` serves every skill live as a `skill-<name>` prompt, no files.)

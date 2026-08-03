@@ -36,7 +36,7 @@ if you have one.
   authorization) and `confidential_anchor` (receipt-anchor integrity)
 - `packages/serve` — merchant-side x402: challenge issuance, settle verification, upstream
   API-key isolation
-- Websites (`apps/web`, `apps/docs`) — XSS, injection
+- Websites (`apps/docs`) — XSS, injection
 
 ### Out of scope
 

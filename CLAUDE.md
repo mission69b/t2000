@@ -19,7 +19,6 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 ```
 t2000/
 ├── apps/docs        ← Mintlify developer docs (docs.t2000.ai)
-├── apps/web         ← t2000.ai marketing website
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29)
@@ -70,7 +69,7 @@ if it ever returns, use MCP reads + thin `@mysten/sui` builders, never
 4. **Never fork claude-code.** Study patterns, reimplement in `@t2000/sdk` or the host agent loop.
 5. **Always check `docs.t2000.ai`** before writing documentation or marketing copy. Mintlify is the live docs SSOT (auto-deployed from `apps/docs/`) — covers product naming, CLI surface, SDK API, MCP tools. For code-level truth (fees, decimals, allowed-asset lists, error codes), read `packages/sdk/src/constants.ts` + `packages/sdk/src/token-registry.ts` directly.
 6. **Always use `token-registry.ts`** for token metadata (`COIN_REGISTRY`, `resolveTokenType`, `getDecimalsForCoinType`, `resolveSymbol`, the `*_TYPE` constants). Never hardcode decimals or coin types. (There is no token "tier" gate — USDC is the settlement stable; everything else is holdable/swappable.)
-7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web-v3/lib/env.ts` — schema + `instrumentation.ts` boot-time validation (audric enforces the no-raw-`process.env` convention via Biome/ultracite + code review, not an ESLint rule). The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. `t2000/apps/web` — static marketing site with 3 optional Sui-address overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
+7. **Never read `process.env.X` directly in any app or package WITH ≥1 REQUIRED env var.** Apps that depend on a required env var MUST validate their env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web-v3/lib/env.ts` — schema + `instrumentation.ts` boot-time validation (audric enforces the no-raw-`process.env` convention via Biome/ultracite + code review, not an ESLint rule). The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).<br>**Carve-out (S.227, 2026-05-21):** Apps with ZERO required env vars (e.g. a static site whose only env vars are optional overrides) may validate inline at the read site instead of installing a full Zod gate. The bug class the rule prevents (REQUIRED var silently degrading) doesn't exist when there's nothing required to degrade. If such an app ever adds its first required var, ship the gate at that point.
 8. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design — **with one carve-out: the `t2000::a2a_escrow` protocol fee (2026-07-18, v9.9.x).** Escrowed-job settlement carries a 5% fee (raised from 2.5% on 2026-07-19 via AdminCap `set_fee_bps`) enforced by the Move contract itself on the seller-bound payout (bps locked into the Job at funding; refunds fee-free; receiver = t2000-revenue, rotatable via AdminCap). That fee lives on-chain, not in the SDK/CLI code paths — send/swap/pay remain fee-free. Audric is the only fee owner: it passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps (the Cetus aggregator takes the overlay fee from swap output and transfers it to the wallet). The deprecated `t2000::treasury::collect_fee` Move call + `addCollectFeeToTx` helper were removed; the `addFeeTransfer`/`protocolFee` helper (only ever used for the now-removed save/borrow fees) was deleted with the DeFi surface. New consumer apps that want non-swap fees split + transfer to a wallet inside the same PTB; the indexer detects USDC inflows and writes `ProtocolFeeLedger` rows. See S.43 in `audric-build-tracker.md`.
 9. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
@@ -362,22 +361,13 @@ const client = new SuiGrpcClient({ baseUrl: 'https://fullnode.mainnet.sui.io', n
 
 ---
 
-## Next.js (apps/web)
-
-- App Router: `layout.tsx` for shared UI, `loading.tsx` for Suspense, `error.tsx` for boundaries
-- Server Components by default, `'use client'` only when needed
-- Route groups `(name)` for organization without URL impact
-- `generateMetadata` for dynamic page metadata
-
----
-
 ## Styling
 
 See the `t2000-design-system` skill for the full model. In short:
 
 - **Shared VALUES via copy-in, not a dependency.** `design-tokens/tokens.css` (pure CSS vars — Geist palette + semantic `--bg`/`--fg`/`--border` + radii/spacing/fonts) is the SSOT; each app copies it in and owns it. House look is the **seamless near-black** dark theme; per-app accent via `--t2k-accent`.
 - **Components: shadcn primitives owned per-app** (`components/ui/`), used where interaction/a11y justifies. Marketing/utility pages (t2000.ai, mpp, verify, suimpp) are largely raw JSX + tokens — don't force shadcn onto them. Only **audric web-v3** is a full shadcn app (and keeps its own theme).
-- **`@t2000/ui` was removed from the monorepo** (2026-07-01) — `web` + `gateway` now own their token + marketing-chrome CSS locally (`app/styles/*.css`). `suimpp.dev` (separate repo) still consumes the published npm version until it migrates. Don't reintroduce a shared UI/token package.
+- **`@t2000/ui` was removed from the monorepo** (2026-07-01), and the marketing web app that consumed it was deleted 2026-08-03 (t2000.ai is the console, in the audric repo). Don't reintroduce a shared UI/token package.
 - Group utilities: layout → spacing → sizing → colors → effects; `cn()` for conditional classes; Geist font everywhere.
 
 ---
