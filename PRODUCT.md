@@ -203,7 +203,7 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 
 - **`t2 code` / `create-t2-app` / templates** — 2026-07-24
 - **`t2 agent onboard` / `t2 agent topup`** — 2026-07-13
-- **Capital storefront** — Program 2 (on-chain may remain historical)
+- **Capital storefront** — Program 2 (on-chain may remain historical; the Capital Formation *layer* stays horizon vision in `T2000_WHITEPAPER.md`, not a live SKU)
 - **Hosted x402 proxy mall (`mpp.t2000.ai` / `apps/gateway` resale)** — Program 2
   (A2A evolution; re-offer later only as normal ASP Services)
 - **Private Inference on `api.t2000.ai`** — Program 3 → `api.audric.ai`; commerce stays
