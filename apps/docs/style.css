@@ -1,56 +1,81 @@
-/* ============================================================
-   docs.t2000.ai — cinematic chrome (visual-only pass,
-   follow-up to SPEC_T2_WEB_VERIFY_DESIGN_PORT 2026-07-27).
-   Mintlify auto-includes this file; the heavy lifting is docs.json
-   (pearl color family, pure-black dark canvas, dark-first). This
-   file self-hosts Geist and tempers the leftover mint-theme blue.
-   NOT a cinematic.css port — Mintlify DOM ≠ marketing DOM.
-   Exemption kept: :focus-visible stays Geist blue (a11y).
-   ============================================================ */
+/* docs.t2000.ai — 9a Ember Steel (brandkit + VOCABULARY-9a). Mintlify DOM ≠ store.
+   Brand VALUES only: void ground, paper type, ember accent, mono for data.
+   No glow, no gradients, no second accent, radius 0 where reachable.
+   docs.json drives the theme (ember color family, void/paper grounds,
+   Space Grotesk via fonts key); this file loads JetBrains Mono and catches
+   what the theme hardcodes. :focus-visible stays a visible ember ring. */
 
-/* Geist, self-hosted (variable woff2 from the export kit). Falls back to
-   the theme sans harmlessly if the static path ever stops serving. */
-@font-face {
-  font-family: "Geist";
-  src: url("/fonts/Geist_wght_.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Mono";
-  src: url("/fonts/GeistMono_wght_.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+:root {
+  --t2k-void: #0c0f12;
+  --t2k-plate: #161a1e;
+  --t2k-raised: #1e242a;
+  --t2k-ember: #ff7a45;
+  --t2k-ember-hover: #ff9a71;
+  --t2k-ink: #0c0f12;
+  --t2k-paper: #f2f0ec;
+  --t2k-muted: #8b959c;
+  --t2k-hairline: rgba(242, 240, 236, 0.09);
+  --t2k-hairline-control: rgba(242, 240, 236, 0.16);
 }
 
 body {
-  font-family: "Geist", ui-sans-serif, system-ui, -apple-system,
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 code,
 kbd,
 pre,
 samp {
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
     "Liberation Mono", monospace;
 }
 
-/* Dark chrome: pearl links + selection on the pure-black canvas. The
-   docs.json pearl color family already drives sidebar-active, tabs, and
-   buttons — these rules only catch stragglers the theme hardcodes. */
-.dark ::selection {
-  background: #ffffff;
-  color: #000000;
+/* Void ground — reinforce where the theme bleeds pure black. */
+.dark body,
+.dark #content-area {
+  background-color: var(--t2k-void);
 }
 
-/* Content links: pearl, underline on hover — never brand blue. Scoped to
-   the prose container so nav/sidebar (theme-colored) stay untouched. */
+/* Selection: ember on ink. */
+.dark ::selection {
+  background: var(--t2k-ember);
+  color: var(--t2k-ink);
+}
+
+/* Prose links: ember, brighter on hover. Scoped to the prose container so
+   nav/sidebar (already theme-colored via docs.json primary) stay untouched. */
 .dark .prose a:not([class*="card"]) {
-  color: #ededed;
-  text-decoration-color: rgba(255, 255, 255, 0.28);
+  color: var(--t2k-ember);
+  text-decoration-color: rgba(255, 122, 69, 0.4);
 }
 .dark .prose a:not([class*="card"]):hover {
-  color: #ffffff;
+  color: var(--t2k-ember-hover);
+  text-decoration-color: var(--t2k-ember-hover);
+}
+
+/* Hairline architecture where Mintlify exposes plain borders. */
+.dark .prose hr {
+  border-color: var(--t2k-hairline);
+}
+.dark .prose table th,
+.dark .prose table td {
+  border-color: var(--t2k-hairline);
+}
+.dark .prose thead {
+  border-bottom-color: var(--t2k-hairline-control);
+}
+
+/* Inline code face on plate, hairline edge, radius 0. */
+.dark .prose code:not(pre code) {
+  background: var(--t2k-plate);
+  border: 1px solid var(--t2k-hairline);
+  border-radius: 0;
+}
+
+/* Keyboard focus: a visible ember ring, never invisible. */
+:focus-visible {
+  outline: 2px solid var(--t2k-ember);
+  outline-offset: 2px;
 }

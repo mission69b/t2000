@@ -9,14 +9,14 @@
     "dark": "/logo.png"
   },
   "colors": {
-    "primary": "#0a0a0a",
-    "light": "#ededed",
-    "dark": "#ffffff"
+    "primary": "#FF7A45",
+    "light": "#FF9A71",
+    "dark": "#E2601F"
   },
   "background": {
     "color": {
-      "light": "#FFFFFF",
-      "dark": "#000000"
+      "light": "#F2F0EC",
+      "dark": "#0C0F12"
     }
   },
   "navigation": {
@@ -144,10 +144,10 @@
   "seo": {
     "indexing": "all",
     "metatags": {
-      "og:image": "https://t2000.ai/og/og-t2000.png",
+      "og:image": "https://docs.t2000.ai/og.png",
       "og:site_name": "docs.t2000.ai",
       "twitter:card": "summary_large_image",
-      "twitter:image": "https://t2000.ai/og/og-t2000.png"
+      "twitter:image": "https://docs.t2000.ai/og.png"
     }
   },
   "appearance": {
@@ -156,5 +156,13 @@
   },
   "styling": {
     "codeblocks": "dark"
+  },
+  "fonts": {
+    "heading": {
+      "family": "Space Grotesk"
+    },
+    "body": {
+      "family": "Space Grotesk"
+    }
   }
 }
