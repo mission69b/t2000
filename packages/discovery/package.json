@@ -1,0 +1,52 @@
+{
+  "name": "@t2000/discovery",
+  "version": "10.19.0",
+  "description": "Probe and validate x402 seller endpoints on Sui — 402 accepts[] / WWW-Authenticate probing plus OpenAPI paid-endpoint extraction. The discovery half of the @t2000 serve stack.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "x402",
+    "sui",
+    "discovery",
+    "openapi",
+    "agent",
+    "payments"
+  ],
+  "author": "t2000",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mission69b/t2000.git",
+    "directory": "packages/discovery"
+  },
+  "homepage": "https://docs.t2000.ai/sell-to-agents/overview",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "eslint": "^9",
+    "tsup": "^8",
+    "typescript": "^5",
+    "typescript-eslint": "^8.58.0",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}
