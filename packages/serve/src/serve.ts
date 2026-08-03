@@ -1,5 +1,5 @@
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
-import { InMemoryDigestStore, USDC, USDC_TESTNET, type Currency } from '@suimpp/mpp/server';
+import { InMemoryDigestStore, USDC, USDC_TESTNET, type Currency } from '@t2000/x402';
 import { buildLlmsTxt, buildOpenApiDocument } from './discovery.js';
 import { RouteBuilder, type RouteOptions, type RouteRuntime } from './route.js';
 import { UpstashDigestStore } from './store.js';

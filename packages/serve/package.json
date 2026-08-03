@@ -1,7 +1,7 @@
 {
   "name": "@t2000/serve",
   "version": "10.19.0",
-  "description": "Merchant-side x402 router for Sui — wrap any API so agents can discover it and pay per call in USDC. One builder: .paid().body().handler(). Sign-then-settle, no seller key, no seller gas.",
+  "description": "Merchant-side x402 router for Sui \u2014 wrap any API so agents can discover it and pay per call in USDC. One builder: .paid().body().handler(). Sign-then-settle, no seller key, no seller gas.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -44,10 +44,10 @@
   },
   "dependencies": {
     "@mysten/sui": "^2.17.0",
-    "@suimpp/mpp": "^0.9.0"
+    "@t2000/x402": "workspace:*"
   },
   "devDependencies": {
-    "@suimpp/discovery": "^0.2.1",
+    "@t2000/discovery": "workspace:*",
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",

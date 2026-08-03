@@ -1,4 +1,4 @@
-import { USDC, USDC_TESTNET } from '@suimpp/mpp/server';
+import { USDC, USDC_TESTNET } from '@t2000/x402';
 import type { Serve } from './serve.js';
 
 // ---------------------------------------------------------------------------

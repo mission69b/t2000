@@ -120,9 +120,9 @@ describe('llms.txt', () => {
   });
 });
 
-describe('catalog contract — the real @suimpp/discovery validators', () => {
+describe('catalog contract — the real @t2000/discovery validators', () => {
   it('extractEndpoints + validateOpenApi accept the generated doc with zero errors', async () => {
-    const { extractEndpoints, validateOpenApi } = await import('@suimpp/discovery');
+    const { extractEndpoints, validateOpenApi } = await import('@t2000/discovery');
     const serve = makeServe();
     const res = serve.openapi()(new Request('https://api.example.com/openapi.json'));
     const doc = (await res.json()) as Parameters<typeof extractEndpoints>[0];
