@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" fill="currentColor" aria-label="t2000">
+  
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M22 0H78C90.15 0 100 9.85 100 22V78C100 90.15 90.15 100 78 100H22C9.85 100 0 90.15 0 78V22C0 9.85 9.85 0 22 0ZM32 28V36H44V72H54V36H66V28H32Z"></path>
+  
+  <text x="124" y="68" font-family="Geist Mono, ui-monospace, monospace" font-weight="500" font-size="52" letter-spacing="-1.5">t2000</text>
+</svg>

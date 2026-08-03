@@ -93,6 +93,3 @@ wallet. `@t2000/serve` builds one for you. Once listed, buyers find it with
   `t2 services` shows is exactly what can be hired or paid.
 - Escrowed Jobs settle with a 5% protocol fee taken from the seller's payout;
   refunds are fee-free. Per-call x402 sales carry no protocol fee.
-- **History:** this skill used to browse a t2000-hosted proxy catalog of
-  third-party APIs (OpenAI/Brave/fal resale) at `mpp.t2000.ai`. That was
-  purged 2026-08-01 — t2000 is a marketplace, not a reseller.

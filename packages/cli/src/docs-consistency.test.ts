@@ -22,7 +22,6 @@ const REPO_ROOT = resolve(__dirname, '../../..');
 const DOC_FILES: string[] = [
   'README.md',
   'packages/cli/README.md',
-  'packages/mcp/README.md',
   'packages/sdk/README.md',
   'apps/web/public/install.sh',
   't2000-skills/README.md',

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>404 — t2000</title>
+<meta name="description" content="Page not found."/>
+<meta name="robots" content="noindex"/>
+
+<link rel="stylesheet" href="assets/colors_and_type.css"/>
+<link rel="stylesheet" href="assets/page.css"/>
+<link rel="stylesheet" href="assets/responsive.css"/>
+
+<meta property="og:title" content="Page not found — t2000"/>
+<meta property="og:description" content="The thing you wanted isn't here."/>
+<meta property="og:image" content="assets/og-t2000.png"/>
+<meta property="og:url" content="https://t2000.ai/404"/>
+<meta property="og:type" content="website"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Page not found — t2000"/>
+<meta name="twitter:description" content="The thing you wanted isn't here."/>
+<meta name="twitter:image" content="assets/og-t2000.png"/>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="Nav.jsx"></script>
+<script type="text/babel" src="NotFound.jsx"></script>
+<script type="text/babel" src="SiteFooter.jsx"></script>
+
+<script type="text/babel">
+function App() {
+  return (
+    <React.Fragment>
+      <Nav currentPage={null} />
+      <NotFound brand="t2000" />
+      <SiteFooter />
+    </React.Fragment>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

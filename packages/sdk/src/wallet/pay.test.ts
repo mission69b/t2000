@@ -4,7 +4,7 @@ import type { TransactionSigner } from '../signer.js';
 import type { SuiGrpcClient } from '@mysten/sui/grpc';
 
 // --- Mocks for the dynamically-imported stacks -----------------------------
-// payWithMpp probes with global fetch, then takes the x402 path
+// payWithX402 probes with global fetch, then takes the x402 path
 // (@t2000/sui-x402). We mock the dynamic deps so the pay loop is exercised
 // without network / chain access.
 
@@ -58,7 +58,7 @@ vi.mock('@mysten/sui/transactions', () => ({
   },
 }));
 
-import { payWithMpp } from './pay.js';
+import { payWithX402 } from './pay.js';
 
 const USDC_TYPE = '0xusdc::usdc::USDC';
 
@@ -131,7 +131,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('payWithMpp — x402 sign-then-settle', () => {
+describe('payWithX402 — x402 sign-then-settle', () => {
   it('signs an X-PAYMENT and reports paid + cost + digest (address balance covers it)', async () => {
     fetchMock
       .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') })) // probe
@@ -139,7 +139,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
         mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue('0xabc') } }),
       ); // paid re-request
 
-    const result = await payWithMpp({
+    const result = await payWithX402({
       // address balance fully covers (no coins) → no migration
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
@@ -163,7 +163,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
         mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
       );
 
-    const result = await payWithMpp({
+    const result = await payWithX402({
       // all funds in coin objects, address balance = 0 → migration runs
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [{ objectId: '0xc', balance: '1000000' }] }),
@@ -181,7 +181,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
       .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts() }))
       .mockResolvedValueOnce(mockResponse({ status: 402, body: { error: 'settle failed' } })); // no receipt header
 
-    const result = await payWithMpp({
+    const result = await payWithX402({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
       options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -196,7 +196,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }));
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '5000', coins: [] }), // 0.005 USDC < 0.02
         options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -210,7 +210,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: selfAccepts }));
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
         options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -224,7 +224,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: { detail: 'Payment required' } }));
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient(),
         options: { url: 'https://legacy.example/x', maxPrice: 0.05 },
@@ -260,7 +260,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     );
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '10000000', coins: [] }),
         options: { url: 'https://seller.example/jobs/report', maxPrice: 10 },
@@ -274,7 +274,7 @@ describe('payWithMpp — x402 sign-then-settle', () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('200000') })); // $0.20
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
         options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -318,12 +318,12 @@ function jmprShaped402(withHeader = true): Response {
   });
 }
 
-describe('payWithMpp — incomplete x402 accepts[] (JMPR shape) fails closed', () => {
+describe('payWithX402 — incomplete x402 accepts[] (JMPR shape) fails closed', () => {
   it('incomplete entry WITH a header challenge: typed DIALECT_UNSUPPORTED, no money moves (header dialect removed)', async () => {
     fetchMock.mockResolvedValueOnce(jmprShaped402());
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
         options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
@@ -341,7 +341,7 @@ describe('payWithMpp — incomplete x402 accepts[] (JMPR shape) fails closed', (
 
     const zkSigner = { ...makeSigner(), kind: 'zklogin' } as TransactionSigner;
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: zkSigner,
         client: makeClient({ total: '1000000', coins: [] }),
         options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
@@ -355,7 +355,7 @@ describe('payWithMpp — incomplete x402 accepts[] (JMPR shape) fails closed', (
     fetchMock.mockResolvedValueOnce(jmprShaped402(false));
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
         options: { url: 'https://agent.jmpr.world/v1/hotels/search', method: 'POST', body: '{}', maxPrice: 0.05 },
@@ -390,7 +390,7 @@ describe('payWithMpp — incomplete x402 accepts[] (JMPR shape) fails closed', (
     );
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
         options: { url: 'https://seller.example/x', maxPrice: 0.05 },
@@ -418,12 +418,12 @@ function mppHeader402(amount = '0.02'): Response {
   });
 }
 
-describe('payWithMpp — header-only 402 (dialect removed)', () => {
+describe('payWithX402 — header-only 402 (dialect removed)', () => {
   it('never pays a header-only 402 — typed DIALECT_UNSUPPORTED, no transfer', async () => {
     fetchMock.mockResolvedValueOnce(mppHeader402('0.02'));
 
     await expect(
-      payWithMpp({
+      payWithX402({
         signer: makeSigner(),
         client: makeClient({ total: '1000000', coins: [] }),
         options: { url: 'https://seller.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
@@ -454,7 +454,7 @@ describe('payWithMpp — header-only 402 (dialect removed)', () => {
         mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
       );
 
-    const result = await payWithMpp({
+    const result = await payWithX402({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
       options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -472,7 +472,7 @@ describe('payWithMpp — header-only 402 (dialect removed)', () => {
       );
 
     const zkSigner = { ...makeSigner(), kind: 'zklogin' } as TransactionSigner;
-    const result = await payWithMpp({
+    const result = await payWithX402({
       signer: zkSigner,
       client: makeClient({ total: '1000000', coins: [] }),
       options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -483,7 +483,7 @@ describe('payWithMpp — header-only 402 (dialect removed)', () => {
   });
 });
 
-describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
+describe('payWithX402 — B2 activity report (fire-and-forget)', () => {
   const reportCalls = () =>
     fetchMock.mock.calls.filter((call: unknown[]) => String(call[0]).includes('/api/activity/x402'));
 
@@ -494,7 +494,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
         mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue('0xabc') } }),
       );
 
-    const result = await payWithMpp({
+    const result = await payWithX402({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
       options: { url: 'https://paid.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
@@ -517,7 +517,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
       .mockResolvedValueOnce(
         mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
       );
-    await payWithMpp({
+    await payWithX402({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
       options: { url: 'https://paid.example/x', maxPrice: 0.05, activityReport: false },
@@ -529,7 +529,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
       .mockResolvedValueOnce(
         mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue() } }),
       );
-    await payWithMpp({
+    await payWithX402({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
       options: {
@@ -550,7 +550,7 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
       .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
       .mockResolvedValueOnce(mockResponse({ status: 402, body: { error: 'settle failed' } }));
 
-    const result = await payWithMpp({
+    const result = await payWithX402({
       signer: makeSigner(),
       client: makeClient({ total: '1000000', coins: [] }),
       options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -560,11 +560,11 @@ describe('payWithMpp — B2 activity report (fire-and-forget)', () => {
   });
 });
 
-describe('payWithMpp — free / cached', () => {
+describe('payWithX402 — free / cached', () => {
   it('reports not-paid when the endpoint serves without a 402', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { cached: true } }));
 
-    const result = await payWithMpp({
+    const result = await payWithX402({
       signer: makeSigner(),
       client: makeClient(),
       options: { url: 'https://paid.example/x', maxPrice: 0.05 },
@@ -576,13 +576,13 @@ describe('payWithMpp — free / cached', () => {
   });
 });
 
-describe('payWithMpp — content-type defaulting', () => {
+describe('payWithX402 — content-type defaulting', () => {
   // Without the default, fetch stamps text/plain and strict servers (FastAPI)
   // 422 the string body before the 402 ever fires (live finding vs JMPR).
   it('defaults content-type: application/json when the body is JSON and none is set', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { ok: true } }));
 
-    await payWithMpp({
+    await payWithX402({
       signer: makeSigner(),
       client: makeClient(),
       options: { url: 'https://x.example/api', method: 'POST', body: '{"city":"Tokyo"}' },
@@ -595,7 +595,7 @@ describe('payWithMpp — content-type defaulting', () => {
   it('respects a caller-supplied Content-Type (any casing)', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { ok: true } }));
 
-    await payWithMpp({
+    await payWithX402({
       signer: makeSigner(),
       client: makeClient(),
       options: {
@@ -613,7 +613,7 @@ describe('payWithMpp — content-type defaulting', () => {
   it('leaves non-JSON bodies alone', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { ok: true } }));
 
-    await payWithMpp({
+    await payWithX402({
       signer: makeSigner(),
       client: makeClient(),
       options: { url: 'https://x.example/api', method: 'POST', body: 'plain text' },

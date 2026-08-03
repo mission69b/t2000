@@ -121,6 +121,5 @@ balance is already an accumulator.
 ## Related
 
 - Amount flooring for on-chain legs → `t2000-financial-amounts` skill
-- The anchor signer's concurrency story → `t2000-confidential-verify` skill
 - Enoki sponsorship path → `audric/.cursor/rules/audric-transaction-flow.mdc`
 - `spec/` — `SPEC_AUDRIC_TOPUP_METERING.md` §3c (the scaling resolution this generalizes)

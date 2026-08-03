@@ -1,7 +1,7 @@
 # Package Rules
 
-The stack is **7 packages**, always released together at the same version:
-`@t2000/{sdk,cli,mcp,id,serve,sui-x402,discovery}` (dialect dir = `packages/x402`; npm name `sui-x402` — `@t2000/x402` is an unpublish tombstone).
+The stack is **6 packages**, always released together at the same version:
+`@t2000/{sdk,cli,id,serve,sui-x402,discovery}` (dialect dir = `packages/x402`; npm name `sui-x402` — `@t2000/x402` is an unpublish tombstone; the stdio `@t2000/mcp` was deleted 2026-08-03, deprecated on npm, Connect is the MCP surface).
 
 ## @t2000/sdk (packages/sdk)
 
@@ -19,16 +19,6 @@ The stack is **7 packages**, always released together at the same version:
   `history`, `services`, `limit`, `verify`, `connect`, `mcp`, `skills`, `init`.
 - Keep output consistent with existing commands; test with `--help` / `--dry-run`.
 - Scope: `cli`
-
-## @t2000/mcp (packages/mcp)
-
-- **DEPRECATED** (SPEC_T2_KILL_STDIO, 2026-08-02) — the local stdio server is
-  retired. The MCP surface is hosted Passport Connect
-  (`audric/apps/mcp`, `https://mcp.t2000.ai/mcp`); its tool registry is
-  `audric/apps/mcp/lib/tools.ts`. This package stays in the release lockstep
-  (frozen, deprecation README) until the next major batches its removal —
-  do not add tools here.
-- Scope: `mcp`
 
 ## @t2000/id (packages/id)
 
@@ -61,7 +51,7 @@ The stack is **7 packages**, always released together at the same version:
 
 **Use `/release`.** The process is mandatory and documented in
 `CLAUDE.md § Release process`: trigger `release.yml` via
-`gh workflow run release.yml --field bump=<patch|minor|major>`, which bumps all 7
+`gh workflow run release.yml --field bump=<patch|minor|major>`, which bumps all 6
 packages, commits, tags, and dispatches `publish.yml`.
 
 **Never** bump versions by hand, push a `vX.Y.Z` tag by hand, or run

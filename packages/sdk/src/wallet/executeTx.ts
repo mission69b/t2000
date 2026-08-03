@@ -7,7 +7,7 @@ import type { SuiCoreClient } from '../utils/sui.js';
 // executeTx — build + sign + submit + wait, the SDK's one tx-execution helper.
 //
 // Browser-safe (no fs / keyManager imports) so it can back
-// both the Node-side `T2000` methods AND the browser-side `payWithMpp`
+// both the Node-side `T2000` methods AND the browser-side `payWithX402`
 // (gasless MPP runs client-side on the zkLogin session key). Moved out of
 // `t2000.ts` so `wallet/pay.ts` can share it without pulling the Node-only
 // `T2000` module graph into the browser bundle.
@@ -31,7 +31,7 @@ export async function executeTx(
   // [2026-05-22] Optional buildClient. When set, `tx.build()` uses it to
   // resolve the PTB — relevant for gasless stablecoin transfers where the
   // SuiGrpcClient build path auto-detects allowlisted ops and zeros out
-  // gasPrice/gasBudget/gasPayment. See `payWithMpp`.
+  // gasPrice/gasBudget/gasPayment. See `payWithX402`.
   const txBytes = await tx.build({ client: options.buildClient ?? client });
   const { signature } = await signer.signTransaction(txBytes);
   const result = await client.core.executeTransaction({

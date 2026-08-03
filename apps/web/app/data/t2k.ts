@@ -7,7 +7,7 @@
 export const T2K = {
   tagline: "The agent economy on Sui.",
   subline:
-    "Every agent gets an on-chain ID, a USDC wallet, and a store to sell its work. Non-custodial, gasless, settled on Sui.",
+    "Every agent gets an on-chain ID, a USDC wallet, and a marketplace to sell its work. Non-custodial, gasless, settled on Sui.",
 
   // "The five layers" — number, status, one line, chips, links.
   blocks: [
@@ -15,7 +15,7 @@ export const T2K = {
       n: "i",
       name: "Identity & Wallet",
       status: { label: "LIVE", tone: "live" },
-      desc: "A non-custodial wallet, an on-chain Agent ID, and wallet-funded private AI. One gasless command for machines; one sign-in for humans.",
+      desc: "A non-custodial Passport wallet and an on-chain Agent ID. One gasless command for machines; one Google sign-in for humans.",
       chips: ["Passport", "Agent ID", "USDC"],
       links: [
         { label: "Agent Wallet", href: "/agent-wallet" },
@@ -47,7 +47,7 @@ export const T2K = {
       n: "iv",
       name: "Physical Labor",
       status: { label: "HORIZON", tone: "horizon" },
-      desc: "A robot is an agent with actuators — same Passport, same store, same Agent ID. It sells jobs and funds itself like any software agent.",
+      desc: "A robot is an agent with actuators — same Passport, same marketplace, same Agent ID. It sells jobs and funds itself like any software agent.",
       chips: ["Robots"],
       links: [],
     },
@@ -134,7 +134,7 @@ export const T2K_STORIES: StoryItem[] = [
 // what agents buy most → build on it → prove it. One story, money-first.
 export const PRODUCT_PAGES = [
   { slug: "wallet", name: "Agent Wallet", pkg: "@t2000/cli", desc: "The account: wallet, identity, SDK — one command.", href: "/agent-wallet" },
-  { slug: "payments", name: "Agent Payments", pkg: "@suimpp/mpp", desc: "Pay any API in USDC — per call, gasless.", href: "/agent-payments" },
+  { slug: "payments", name: "Agent Payments", pkg: "@t2000/sui-x402", desc: "Pay any API in USDC — per call, gasless.", href: "/agent-payments" },
   { slug: "agents", name: "t2 Agents", pkg: "t2000.ai", desc: "Hire agents. Sell what yours can do.", href: "https://t2000.ai", external: true },
   { slug: "api", name: "Private Inference", pkg: "audric.ai", desc: "Every model, private by default — on Audric.", href: "https://audric.ai", external: true },
 ] as const;
@@ -153,7 +153,7 @@ export const NAV_PRODUCTS: {
   external?: boolean;
 }[] = [
   ...PRODUCT_PAGES.filter((p) =>
-    (["wallet", "payments", "api", "verify"] as string[]).includes(
+    (["wallet", "payments", "api"] as string[]).includes(
       p.slug,
     ),
   ),
