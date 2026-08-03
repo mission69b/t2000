@@ -5,6 +5,13 @@ import { RouteBuilder, type RouteOptions, type RouteRuntime } from './route.js';
 import { UpstashDigestStore } from './store.js';
 import type { BuiltRoute, ServeConfig, ServeNetwork } from './types.js';
 
+/** The t2000.ai attributed-activity report endpoint — ONE canonical string
+ *  (matches the sdk's DEFAULT_ACTIVITY_REPORT_URL; tests assert equality). */
+export const DEFAULT_ACTIVITY_REPORT_URL = 'https://t2000.ai/api/activity/x402';
+
+/** Explicit opt-out tokens for T2000_ACTIVITY_REPORT_URL (case-insensitive). */
+const REPORT_OPT_OUT = new Set(['false', '0', 'off', 'none']);
+
 export class Serve {
   private readonly runtime: RouteRuntime;
   /** Every route built through this instance, keyed by path (discovery). */
@@ -15,6 +22,8 @@ export class Serve {
   readonly name?: string;
   readonly description?: string;
   readonly baseUrl?: string;
+  /** Where settled payments are reported (B2) — undefined = no report. */
+  readonly activityReportUrl?: string;
 
   constructor(config: ServeConfig) {
     if (!config.payTo || !isValidSuiAddress(config.payTo)) {
@@ -27,6 +36,7 @@ export class Serve {
     this.name = config.name;
     this.description = config.description;
     this.baseUrl = config.baseUrl?.replace(/\/$/, '');
+    this.activityReportUrl = config.activityReportUrl;
 
     const currency: Currency = this.network === 'testnet' ? USDC_TESTNET : USDC;
     this.runtime = {
@@ -36,7 +46,7 @@ export class Serve {
       store: config.store ?? new InMemoryDigestStore(),
       baseUrl: this.baseUrl,
       rpcUrl: config.rpcUrl,
-      activityReportUrl: config.activityReportUrl,
+      activityReportUrl: this.activityReportUrl,
     };
   }
 
@@ -134,10 +144,15 @@ export function createServe(config: ServeConfig): Serve {
  *   T2000_NAME        optional — service name for discovery docs
  *   T2000_DESCRIPTION optional — one-liner for discovery docs
  *   T2000_ACTIVITY_REPORT_URL
- *                     optional — fire-and-forget x402.paid reports after each
- *                     successful settle; set https://t2000.ai/api/activity/x402
- *                     to appear on the t2000.ai activity tape (chain-verified
- *                     server-side, never affects buyer responses)
+ *                     optional — where settled payments are reported
+ *                     (fire-and-forget x402.paid after each successful settle;
+ *                     chain-verified server-side, never affects buyer
+ *                     responses). DEFAULT-ON for FromEnv: unset →
+ *                     https://t2000.ai/api/activity/x402 so new sellers appear
+ *                     on the t2000.ai activity tape. Opt out with
+ *                     `false` | `0` | `off` | `none` (case-insensitive), or
+ *                     set a custom URL. (`new Serve({...})` without
+ *                     activityReportUrl stays silent — only FromEnv defaults.)
  *   KV_REST_API_URL / KV_REST_API_TOKEN
  *                     optional — enables the durable Upstash replay store
  *                     (REQUIRED in serverless production; without it replay
@@ -181,7 +196,16 @@ export function createServeFromEnv(env: Record<string, string | undefined> = pro
     baseUrl: read('T2000_BASE_URL'),
     name: read('T2000_NAME'),
     description: read('T2000_DESCRIPTION'),
-    activityReportUrl: read('T2000_ACTIVITY_REPORT_URL'),
+    activityReportUrl: resolveReportUrlFromEnv(read('T2000_ACTIVITY_REPORT_URL')),
     store,
   });
+}
+
+/** FromEnv activity-report resolution (B2 default-on): unset/empty →
+ *  the t2000.ai default; an explicit opt-out token → undefined (silent);
+ *  anything else is the seller's custom report URL. */
+function resolveReportUrlFromEnv(raw: string | undefined): string | undefined {
+  if (raw === undefined) return DEFAULT_ACTIVITY_REPORT_URL;
+  if (REPORT_OPT_OUT.has(raw.toLowerCase())) return undefined;
+  return raw;
 }

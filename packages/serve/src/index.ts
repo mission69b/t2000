@@ -21,7 +21,12 @@
 // private key and never pays gas. The handler runs BEFORE settlement, so a
 // failed handler never charges the buyer.
 
-export { createServe, createServeFromEnv, Serve } from './serve.js';
+export {
+  createServe,
+  createServeFromEnv,
+  DEFAULT_ACTIVITY_REPORT_URL,
+  Serve,
+} from './serve.js';
 export { asNextRoute } from './next.js';
 export { RouteBuilder } from './route.js';
 export { buildLlmsTxt, buildOpenApiDocument } from './discovery.js';
