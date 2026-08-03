@@ -268,7 +268,7 @@ chain), which AI client is used. The SDK and CLI have zero telemetry.
 Retired and fully removed from live code: the `@t2000/engine` harness and
 NAVI/DeFi (2026-06), the hosted mpp proxy gateway + catalog and the Capital
 storefront (2026-08-01, `SPEC_T2_CLEANUP_USDC_ONLY`), Private Inference on
-`api.t2000.ai` and `verify.t2000.ai` as t2000 surfaces (2026-08-01,
+`api.t2000.ai` and `verify.t2000.ai` as t2000 surfaces (retired 2026-08-01,
 `SPEC_PI_TO_AUDRIC` — both live on with Audric), the local stdio MCP server
 (2026-08-02, `SPEC_T2_KILL_STDIO`), and the MPP header payment dialect in the
 SDK (2026-08-03). Their rationale and internals live in git history and the
