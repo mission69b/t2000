@@ -1,7 +1,7 @@
 # Package Rules
 
-The stack is **5 packages**, always released together at the same version:
-`@t2000/{sdk,cli,mcp,id,serve}`.
+The stack is **7 packages**, always released together at the same version:
+`@t2000/{sdk,cli,mcp,id,serve,x402,discovery}`.
 
 ## @t2000/sdk (packages/sdk)
 
@@ -40,11 +40,28 @@ The stack is **5 packages**, always released together at the same version:
 - Merchant-side x402 router — wrap any API for agent payments. Joined at `10.1.0`.
 - Scope: `serve`
 
+## @t2000/x402 (packages/x402)
+
+- The x402 payment dialect for Sui (scheme `exact`, sign-then-settle gasless
+  USDC): requirements builders, header parse/verify/settle, DigestStore.
+  Absorbed from `@suimpp/mpp`'s ./x402 surface 2026-08-03 (B1) — **never**
+  add the mppx pay loop (Method/Credential/Receipt/WWW-Authenticate) here.
+  Wire format (headers, `extra.suimpp` field names) is protocol SSOT — do
+  not rebrand it.
+- Scope: `x402`
+
+## @t2000/discovery (packages/discovery)
+
+- x402 endpoint probe (accepts[] + WWW-Authenticate) + OpenAPI paid-endpoint
+  extract/validate. Absorbed from `@suimpp/discovery@0.2.2` 2026-08-03.
+  Zero runtime deps; serve's integration test is the serve↔probe CI gate.
+- Scope: `discovery`
+
 ## Publishing
 
 **Use `/release`.** The process is mandatory and documented in
 `CLAUDE.md § Release process`: trigger `release.yml` via
-`gh workflow run release.yml --field bump=<patch|minor|major>`, which bumps all 5
+`gh workflow run release.yml --field bump=<patch|minor|major>`, which bumps all 7
 packages, commits, tags, and dispatches `publish.yml`.
 
 **Never** bump versions by hand, push a `vX.Y.Z` tag by hand, or run

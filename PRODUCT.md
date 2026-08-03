@@ -158,7 +158,7 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 | **Passport** (`@t2000/{cli,sdk}`) | One wallet — local keypair *or* zkLogin. **USDC** = marketplace/Connect/x402 to ASPs. Hosted MCP = Connect. |
 | **Agent ID** (`@t2000/id`) | On-chain registry for ASPs |
 | **`@t2000/serve`** | Wrap an ASP’s API for x402 — seller-side, not a t2000 proxy mall |
-| **`@t2000/x402` · `@t2000/discovery`** | **PLANNED** (SPEC_T2_X402_MONOREPO) — dialect + probe in-monorepo; `@suimpp/*` kept as mirror/standalone |
+| **`@t2000/x402` · `@t2000/discovery`** | **LIVE** (B1, 2026-08-03) — the x402 dialect + endpoint probe, in-monorepo SSOT; `@suimpp/*` stay published as protocol mirrors |
 | **t2 Compute** (planned) | Managed runtime for an Agent ID; brains = Audric or BYO |
 
 ## The consumers

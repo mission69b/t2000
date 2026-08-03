@@ -24,7 +24,9 @@ t2000/
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/mcp     ← @t2000/mcp (npm — DEPRECATED 2026-08-02, stdio retired; Connect = the MCP surface)   # (@t2000/engine RETIRED + deleted 2026-06-14)
 ├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29)
-├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router — wrap any API for agent payments (added 2026-07-20; stack is 5 packages)
+├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router — wrap any API for agent payments (added 2026-07-20)
+├── packages/x402    ← @t2000/x402 (npm) ← The x402 payment dialect for Sui — absorbed from @suimpp/mpp 2026-08-03 (B1; stack is 7 packages)
+├── packages/discovery ← @t2000/discovery (npm) ← x402 endpoint probe + OpenAPI extract — absorbed from @suimpp/discovery 2026-08-03
 ├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
 ├── packages/models  ← @t2000/models (PLANNED, H2 — Agent Models: OpenAI-compatible gateway to self-hosted Qwen + resold frontier)
 ├── t2000-skills/    ← Agent skill definitions
@@ -63,7 +65,7 @@ if it ever returns, use MCP reads + thin `@mysten/sui` builders, never
 
 ## Critical Rules
 
-1. **Don't reintroduce DeFi or an engine package.** `save` / `borrow` / Invest left the SDK 2026-06-14 (S.444); `@t2000/engine` was retired and deleted (S.442) — host apps compose the AI SDK directly over `@t2000/sdk`, and transaction-safety guards are agent-loop guards owned by the host, not the SDK. The stack is 5 packages: `@t2000/{sdk,cli,mcp,id,serve}`. Lineage: `git log` + `SPEC_AUDRIC_V3.md`.
+1. **Don't reintroduce DeFi or an engine package.** `save` / `borrow` / Invest left the SDK 2026-06-14 (S.444); `@t2000/engine` was retired and deleted (S.442) — host apps compose the AI SDK directly over `@t2000/sdk`, and transaction-safety guards are agent-loop guards owned by the host, not the SDK. The stack is 7 packages: `@t2000/{sdk,cli,mcp,id,serve,x402,discovery}`. Lineage: `git log` + `SPEC_AUDRIC_V3.md`.
 2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP / thin `@mysten/sui` tx builders instead.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in `@t2000/sdk` or the host agent loop.
@@ -250,6 +252,8 @@ npm --prefix packages/cli version X.Y.Z --no-git-tag-version
 npm --prefix packages/mcp version X.Y.Z --no-git-tag-version
 npm --prefix packages/id version X.Y.Z --no-git-tag-version
 npm --prefix packages/serve version X.Y.Z --no-git-tag-version
+npm --prefix packages/x402 version X.Y.Z --no-git-tag-version
+npm --prefix packages/discovery version X.Y.Z --no-git-tag-version
 git add packages/*/package.json
 git commit -m "📦 build: vX.Y.Z"
 git push origin main
@@ -259,7 +263,7 @@ git push origin vX.Y.Z
 ```
 
 This runs `.github/workflows/release.yml`, which:
-1. Bumps all 5 package versions together (`sdk`, `cli`, `mcp`, `id`, `serve`) to the same version
+1. Bumps all 7 package versions together (`sdk`, `cli`, `mcp`, `id`, `serve`, `x402`, `discovery`) to the same version
 2. Commits `📦 build: vX.Y.Z` to main
 3. Creates and pushes the `vX.Y.Z` annotated tag
 4. Explicitly triggers `.github/workflows/publish.yml` via `workflow_dispatch`
@@ -268,7 +272,7 @@ This runs `.github/workflows/release.yml`, which:
 
 `.github/workflows/publish.yml` (triggered by Step 1):
 1. **CI** — lint + typecheck + test + build all packages
-2. **Publish** — `pnpm publish` for each of the 5 packages (`continue-on-error: true` — safe if version already exists)
+2. **Publish** — `pnpm publish` for each of the 7 packages (`continue-on-error: true` — safe if version already exists)
 3. **GitHub Release** — `gh release create vX.Y.Z --generate-notes`
 4. **Discord** — posts release notification to `#releases` channel
 
@@ -301,7 +305,7 @@ git add -A && git commit -m "📦 build(web): bump @t2000/sdk to vX.Y.Z" && git 
 - **Never** push multiple tags in the same session to fix failures — fix the code and re-run the workflow
 
 **Key details:**
-- All 5 packages (`sdk`, `cli`, `mcp`, `id`, `serve`) are always at the same version number (`@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29; `@t2000/serve` at `10.1.0`, 2026-07-20) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x` on npm — historical only; the audric web-v2 consumer was deleted 2026-07-24.)
+- All 7 packages (`sdk`, `cli`, `mcp`, `id`, `serve`, `x402`, `discovery`) are always at the same version number (`@t2000/id` joined the lockstep at `5.7.0`, 2026-06-29; `@t2000/serve` at `10.1.0`, 2026-07-20; `@t2000/{x402,discovery}` at `10.20.0`, 2026-08-03 — the B1 absorb from `@suimpp/{mpp,discovery}`) — no drift. (`@t2000/engine` retired 2026-06-14; its last published version is `4.x` on npm — historical only; the audric web-v2 consumer was deleted 2026-07-24.)
 - `continue-on-error: true` on publish steps — idempotent if a version already exists
 - `workflow_dispatch` on `publish.yml` serves as a manual fallback if needed
 
