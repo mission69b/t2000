@@ -191,8 +191,8 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 - Multi-chain / virtual-card race with MoonPay
 - Competing with Claude/ChatGPT on agent harness UX as the company bet
 - **Hosted mpp proxy catalog** (OpenAI/Brave/fal/… resale) — purged
-- Reintroducing `mpp.t2000.ai` as a product host / parallel mall
-- Reintroducing `agents.t2000.ai` in any form — host, alias, or redirect
+- Reintroducing the purged `mpp.t2000.ai` as a product host / parallel mall
+- Reintroducing the gone `agents.t2000.ai` in any form — host, alias, or redirect
 - Second zkLogin for t2000
 - Keeping Private Inference on the t2000 marketplace desk
 - Serving Private Inference chat/completions on `api.t2000.ai` after Program 3

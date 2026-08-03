@@ -203,6 +203,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 |----------|---------------|-------------|
 | `PRODUCT.md` | **The product map SSOT** — 2 products (Private Inference · x402 gateway), one customer + one path each; wallet/Agent ID = substrate, not products; `t2 agent onboard` deprecated | Any product/positioning/onboarding work |
 | [`docs.t2000.ai`](https://docs.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
+| `T2000_WHITEPAPER.md` | Public whitepaper — the layer map (Identity/Wallet · Commerce · Physical Labor horizon · Law & Governance); peer of PRODUCT/ARCHITECTURE at root | Vision/positioning work |
 | `ARCHITECTURE.md` | Current-state technical map — the two rails' request lifecycles, wallet/gas/limits, Agent ID, MCP/skills, auth, data stores, CI (rewritten 2026-07-13) | API or integration work |
 | `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
 | `PRODUCT_ROADMAP.md` (local-only) | Whole-product master roadmap — 5 Audric products + t2000 infra + the 3 strategic threads (Store, Agent Models, Agent Deploy) + revenue model (gitignored) | Feature planning |
