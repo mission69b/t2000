@@ -25,7 +25,7 @@ t2 send 5 USDC alice.sui   # gasless send
 ```
 
 ```text Paste into your agent
-Run curl -sL https://t2000.ai/skills/t2000-setup, and use the returned setup instructions to set up my t2000 Agent Wallet (config-only — it never moves funds). Then run t2 fund and show me the deposit address + QR.
+Run `npx skills add mission69b/t2000-skills -s t2000-setup` and follow the installed skill to set up my t2000 Agent Wallet (config-only — it never moves funds). Then run t2 fund and show me the deposit address + QR.
 ```
 
 ```text Try it in Audric
@@ -102,11 +102,10 @@ OAuth sign-in (Google → Passport), spend limits you set in the console, and no
 
 ## Skills
 
-Markdown playbooks your agent reads on demand — one per task (setup · balance · send · receive · swap · services · pay · job · verify · mcp) plus Sui ecosystem reads (SuiNS · Walrus · DeepBook · Sui gRPC · Move security). Each serves as plain markdown at `t2000.ai/skills/<slug>`; the manifest is [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json).
+Markdown playbooks your agent reads on demand — one per task (setup · balance · send · receive · swap · services · pay · job · verify · mcp) plus Sui ecosystem reads (SuiNS · Walrus · DeepBook · Sui gRPC · Move security). Each lives as plain markdown in the public [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) repo (auto-synced from this monorepo on every push).
 
 ```bash
-npx @t2000/cli skills install --target=cursor    # or claude-code · agents (default)
-npx skills add mission69b/t2000-skills           # Vercel Skills CLI
+npx skills add mission69b/t2000-skills           # auto-detects Claude Code, Cursor, Codex, …
 ```
 
 Skills and MCP are complementary: skills carry the context that rarely changes (workflows, gotchas); MCP carries what does (live balances, quotes, chain state).

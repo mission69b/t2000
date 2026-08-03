@@ -65,7 +65,6 @@ describeOrSkip('CLI integration — wiring + version + help', () => {
       'pay',
       'services',
       'limit',
-      'skills',
     ]) {
       expect(r.stdout).toContain(cmd);
     }
@@ -93,6 +92,7 @@ describeOrSkip('CLI integration — wiring + version + help', () => {
       'swap-quote',
       'claim-rewards',
       'task',
+      'skills',
     ]) {
       // Match command-table rows, not the brand or "fund" inside other
       // copy — every legacy cmd row would have surrounding whitespace.
@@ -362,7 +362,7 @@ describeOrSkip('CLI integration — mcp is retired (SPEC_T2_KILL_STDIO)', () => 
   });
 });
 
-describeOrSkip('CLI integration — services + skills arg validation', () => {
+describeOrSkip('CLI integration — services arg validation', () => {
   // `t2 services` is store discovery now: a bare call lists everything, and
   // the query is optional — so there is no arg-validation case to assert.
   // Its old `search`/`inspect` subcommands went with the mpp proxy catalog
@@ -408,10 +408,6 @@ describeOrSkip('CLI integration — help on every group resolves cleanly', () =>
     ['limit', 'set'],
     ['limit', 'reset'],
     ['mcp', 'uninstall'],
-    ['skills'],
-    ['skills', 'list'],
-    ['skills', 'install'],
-    ['skills', 'uninstall'],
   ];
 
   for (const path of groups) {
@@ -431,7 +427,7 @@ describeOrSkip('CLI integration — help on every group resolves cleanly', () =>
       const r = runCli([...path, '--help']);
       // Look for "t2000 <verb>" patterns specifically — the brand word
       // "t2000" appearing alone (e.g. in URLs, brand copy) is fine.
-      const stray = r.stdout.match(/\bt2000\s+(send|swap|pay|init|export|fund|status|balance|history|services|limit|mcp|skills)\b/g);
+      const stray = r.stdout.match(/\bt2000\s+(send|swap|pay|init|export|fund|status|balance|history|services|limit|mcp)\b/g);
       if (stray && stray.length > 0) {
         offenders.push(`${path.join(' ')}: ${stray.join(', ')}`);
       }

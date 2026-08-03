@@ -206,7 +206,7 @@ export function registerAgentCreate(group: Command) {
         printBlank();
         printLine('Next:');
         printLine('  t2 fund                      # add USDC (QR / card link)');
-        printLine('  t2000.ai/skills       # give it skills to act on Sui');
+        printLine('  npx skills add mission69b/t2000-skills   # optional playbooks');
         printBlank();
       } catch (error) {
         handleError(error);

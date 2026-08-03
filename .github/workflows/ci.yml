@@ -41,7 +41,6 @@ jobs:
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/cli typecheck
       - run: pnpm --filter @t2000/serve typecheck
-      - run: pnpm --filter @t2000/web typecheck
       # Lint the published packages (the job's namesake — was previously
       # build+typecheck only). docs lint = mintlify/broken-links (network +
       # node-specific), kept out of code CI on purpose.
@@ -74,4 +73,3 @@ jobs:
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/cli test
       - run: pnpm --filter @t2000/serve test
-      - run: pnpm --filter @t2000/web test

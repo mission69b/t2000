@@ -3,37 +3,13 @@
 Ship USDC apps on Sui faster with **t2000 Skills** — best-practice guidance for the t2000 Agent Wallet (sponsored sends, swaps, x402 API payments) — plus the **t2000 MCP server** for live wallet tools in your AI client.
 
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
-[![docs](https://img.shields.io/badge/docs-t2000.ai-00D395)](https://t2000.ai)
+[![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai)
 [![consumer](https://img.shields.io/badge/consumer%20app-audric.ai-7c3aed)](https://audric.ai)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ## Installation
 
 Skills are markdown instruction files your agent reads on demand. Pick the install path that matches your AI client.
-
-### Cursor
-
-```bash
-npx @t2000/cli skills install --target=cursor
-```
-
-Writes one `.mdc` file per skill into `./.cursor/rules/`. Add `--global` to install into `~/.cursor/rules/` instead.
-
-### Claude Code
-
-```bash
-npx @t2000/cli skills install --target=claude-code
-```
-
-Writes `<slug>/SKILL.md` folders into `./.claude/skills/`. Add `--global` for `~/.claude/skills/`.
-
-### Codex / Windsurf / any agentskills.io client
-
-```bash
-npx @t2000/cli skills install                # default --target=agents
-```
-
-Writes `<slug>/SKILL.md` folders into `./.agents/skills/` — the [agentskills.io](https://agentskills.io) standard layout that Codex, Windsurf, Cline, Continue, and the Vercel Skills CLI all read.
 
 ### Vercel Skills CLI (any client)
 
@@ -58,14 +34,14 @@ Installs all ten wallet skills (the `t2000-agent-wallet` plugin) via Claude Code
 
 | Skill | Description |
 |-------|-------------|
-| [`t2000-setup`](https://t2000.ai/skills/t2000-setup) | End-to-end Agent Wallet bootstrap: `t2 init`, optional `t2 limit set`, and connecting the AI client to `mcp.t2000.ai`. Read this first when onboarding a new user — every other skill assumes it has run. |
-| [`t2000-check-balance`](https://t2000.ai/skills/t2000-check-balance) | Inspect wallet balances (USDC / USDsui / SUI) before any write. Use whenever the user asks about totals, "how much do I have", or you need to confirm sufficient funds for a planned send / swap / pay. |
-| [`t2000-send`](https://t2000.ai/skills/t2000-send) | Send USDC, USDsui, or SUI to a Sui address or SuiNS name. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
-| [`t2000-receive`](https://t2000.ai/skills/t2000-receive) | Share the wallet address, render an ANSI QR in terminal, or emit a Payment Kit `sui:pay?…` URI via MCP. Use for "share my address", "create a payment link", or "QR code". |
-| [`t2000-swap`](https://t2000.ai/skills/t2000-swap) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
-| [`t2000-services`](https://t2000.ai/skills/t2000-services) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
-| [`t2000-pay`](https://t2000.ai/skills/t2000-pay) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
-| [`t2000-mcp`](https://t2000.ai/skills/t2000-mcp) | Connect Claude, Cursor, ChatGPT, Cline, Continue, or any MCP client to the hosted Passport Connect MCP (`https://mcp.t2000.ai/mcp` + OAuth). Covers setup, session spend limits, and the tool surface. |
+| [`t2000-setup`](skills/t2000-setup/SKILL.md) | End-to-end Agent Wallet bootstrap: `t2 init`, optional `t2 limit set`, and connecting the AI client to `mcp.t2000.ai`. Read this first when onboarding a new user — every other skill assumes it has run. |
+| [`t2000-check-balance`](skills/t2000-check-balance/SKILL.md) | Inspect wallet balances (USDC / USDsui / SUI) before any write. Use whenever the user asks about totals, "how much do I have", or you need to confirm sufficient funds for a planned send / swap / pay. |
+| [`t2000-send`](skills/t2000-send/SKILL.md) | Send USDC, USDsui, or SUI to a Sui address or SuiNS name. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
+| [`t2000-receive`](skills/t2000-receive/SKILL.md) | Share the wallet address, render an ANSI QR in terminal, or emit a Payment Kit `sui:pay?…` URI via MCP. Use for "share my address", "create a payment link", or "QR code". |
+| [`t2000-swap`](skills/t2000-swap/SKILL.md) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
+| [`t2000-services`](skills/t2000-services/SKILL.md) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
+| [`t2000-pay`](skills/t2000-pay/SKILL.md) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
+| [`t2000-mcp`](skills/t2000-mcp/SKILL.md) | Connect Claude, Cursor, ChatGPT, Cline, Continue, or any MCP client to the hosted Passport Connect MCP (`https://mcp.t2000.ai/mcp` + OAuth). Covers setup, session spend limits, and the tool surface. |
 
 ### Sui ecosystem skills
 
@@ -73,25 +49,24 @@ Protocol playbooks beyond the wallet — same format, same one-paste install:
 
 | Skill | Description |
 |-------|-------------|
-| [`sui-grpc`](https://t2000.ai/skills/sui-grpc) | Read Sui chain state over gRPC — balances, objects, transactions, coin metadata, names. JSON-RPC is deactivated July 31, 2026 on mainnet; this is the replacement surface. |
-| [`suins`](https://t2000.ai/skills/suins) | Resolve SuiNS names (`alice.sui`) to addresses and back — gRPC-first, with the JSON-RPC stopgap and its cutoff date. |
-| [`deepbook`](https://t2000.ai/skills/deepbook) | Live market data from DeepBook, Sui's on-chain order book — pools, tickers, order books, candles, trades — via the free public indexer. |
-| [`walrus`](https://t2000.ai/skills/walrus) | Read + store blobs on Walrus over plain HTTP — free aggregator reads, testnet publisher writes, and the honest mainnet-write story. |
-| [`sui-move-security`](https://t2000.ai/skills/sui-move-security) | Write + review Sui Move that touches value with OpenZeppelin's audited packages — the never-roll-your-own rules (mul_div, explicit rounding, checked shifts, capability transfer policies) plus a review checklist. |
+| [`sui-grpc`](skills/sui-grpc/SKILL.md) | Read Sui chain state over gRPC — balances, objects, transactions, coin metadata, names. JSON-RPC is deactivated July 31, 2026 on mainnet; this is the replacement surface. |
+| [`suins`](skills/suins/SKILL.md) | Resolve SuiNS names (`alice.sui`) to addresses and back — gRPC-first, with the JSON-RPC stopgap and its cutoff date. |
+| [`deepbook`](skills/deepbook/SKILL.md) | Live market data from DeepBook, Sui's on-chain order book — pools, tickers, order books, candles, trades — via the free public indexer. |
+| [`walrus`](skills/walrus/SKILL.md) | Read + store blobs on Walrus over plain HTTP — free aggregator reads, testnet publisher writes, and the honest mainnet-write story. |
+| [`sui-move-security`](skills/sui-move-security/SKILL.md) | Write + review Sui Move that touches value with OpenZeppelin's audited packages — the never-roll-your-own rules (mul_div, explicit rounding, checked shifts, capability transfer policies) plus a review checklist. |
 
-> Building **on** Sui more broadly (Move, PTBs, object model, dApp Kit)? Install the official Sui Agent Skills by Mysten Labs: `npx skills add mystenlabs/skills --all` ([docs.sui.io/skills](https://docs.sui.io/skills)). This shelf stays focused on what agents can't get elsewhere: money, identity, and protocol playbooks for the t2000 rail.
+> Building **on** Sui more broadly (Move, PTBs, object model, dApp Kit)? Install the official Sui Agent Skills by Mysten Labs: `npx skills add mystenlabs/skills --all` ([docs.sui.io/skills](https://docs.sui.io/skills)). This set stays focused on what agents can't get elsewhere: money, identity, and protocol playbooks for the t2000 rail.
 
-Each skill is also served as plain markdown at `https://t2000.ai/skills/<slug>` — `curl` it or open in a browser. The discovery manifest lives at [`/.well-known/agent-skills/index.json`](https://t2000.ai/.well-known/agent-skills/index.json), and the project-grouped shelf that [t2000.ai](https://t2000.ai) renders is [`feed.json`](feed.json) (served at [`t2000.ai/skills/feed.json`](https://t2000.ai/skills/feed.json)).
+Each skill is plain markdown at `skills/<slug>/SKILL.md` — read it here or in the public [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) mirror.
 
 ### Add your protocol (PR)
 
-One PR puts your project on the [t2000.ai](https://t2000.ai) shelf with its own page — no deploy on our side:
+One PR adds your playbook — no deploy on our side:
 
 1. `skills/<slug>/SKILL.md` — the playbook, in the frontmatter format above. Every command in it must be **run against your live mainnet surface** before you write it down.
-2. `brand/<your-mark>.png` — a square brand mark (SVG/PNG, ~200px).
-3. A project entry in [`feed.json`](feed.json) — id, name, one-line tagline, url, `icon` (`https://t2000.ai/skills/brand/<file>`), accent hex, `lastVerified` date, and your skill rows.
+2. Optional `brand/<your-mark>.png` — a square brand mark (SVG/PNG, ~200px).
 
-`npx tsx validate.ts` must pass (it checks frontmatter, feed shape, icon files, and slug↔dir consistency). Merged = live within ~5 minutes.
+`npx tsx validate.ts` must pass (it checks frontmatter and slug↔dir consistency). Merged = synced to the public skills repo within minutes.
 
 ### Operating guide — [`AGENTS.md`](https://t2000.ai/AGENTS.md)
 
@@ -147,14 +122,10 @@ Skills + MCP are complementary: skills give the agent context that doesn't chang
 Skills are local files. To get the latest versions:
 
 ```bash
-# Via @t2000/cli — re-runs the install (overwrites in place)
-t2 skills install --target=cursor          # or --target=claude-code / --target=agents
-
-# Via the Vercel Skills CLI
 npx skills update
 ```
 
-The CLI fetches the manifest at install time, so a single re-run picks up every skill update we've shipped since you last installed. If a skill was deleted upstream, run `t2 skills uninstall` first to clear the orphan from `./.agents/skills/` (or the equivalent target dir).
+Re-running `npx skills add mission69b/t2000-skills` also refreshes in place. If a skill was deleted upstream, remove its folder from your agent's skills dir by hand.
 
 ## FAQ
 

@@ -19,7 +19,6 @@ import { registerModels } from './commands/models.js';
 import { registerConnect } from './commands/connect/index.js';
 import { registerLimit } from './commands/limit/index.js';
 import { registerMcp } from './commands/mcp/index.js';
-import { registerSkills } from './commands/skills/index.js';
 import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
 import { registerJob } from './commands/job.js';
@@ -72,7 +71,7 @@ Connect an AI client:
                                        Claude, Cursor, or any MCP client, then approve
                                        with Google — no install, no key in the client,
                                        spend limits you set.
-  $ t2 skills install                  Install skills as local SKILL.md files
+  $ npx skills add mission69b/t2000-skills   Optional agent playbooks (GitHub)
 
 Models (Audric — a separate product, billed in credit):
   $ t2 models                          List the Audric Private Inference model catalog
@@ -93,7 +92,6 @@ Models (Audric — a separate product, billed in credit):
   registerServices(program);
   registerLimit(program);
   registerMcp(program);
-  registerSkills(program);
   registerAgent(program);
   registerAgents(program);
   registerJob(program);

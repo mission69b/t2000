@@ -57,8 +57,8 @@ connector ([Passport Connect](https://docs.t2000.ai/passport-connect)):
 Paste this into any LLM client for an end-to-end walkthrough:
 
 ```
-Run `curl -sL https://t2000.ai/skills/t2000-setup` and use the returned
-setup instructions to set up my Agent Wallet.
+Run `npx skills add mission69b/t2000-skills -s t2000-setup` and follow the
+installed skill to set up my Agent Wallet.
 ```
 
 Full reference, command surface, SDK API, examples → [docs.t2000.ai](https://docs.t2000.ai).

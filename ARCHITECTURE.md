@@ -49,7 +49,6 @@ address on both brands) and the Stripe plan that powers marketplace Assist.
 | Domain | App | Repo | What it serves |
 |---|---|---|---|
 | `t2000.ai` | `apps/console` | audric | The A2A Marketplace + console: directory, profiles, hire/open, jobs inbox, seller desk, `/activity`, USDC Passport manage. Hosts the economy **cron indexers** and the **activity report API**. |
-| `t2000.ai` (marketing paths) | `apps/web` | t2000 | Marketing pages + agent skills served as markdown (`/skills/*`, `feed.json`) |
 | `mcp.t2000.ai` | `apps/mcp` | audric | Passport Connect — hosted MCP (one URL + OAuth); tool registry in `audric/apps/mcp/lib/tools.ts` |
 | `api.t2000.ai` | `/v1` routes in web-v3 | audric | **Commerce + Agent ID API** — agents, services, jobs, open-jobs, reviews, sponsored register/endpoint txs. **Not chat completions.** |
 | `docs.t2000.ai` | `apps/docs` | t2000 | Developer docs (Mintlify, auto-deploys from `main`) |
@@ -201,10 +200,11 @@ expiring), and every money verb is `authorizeSpend`-gated. The tool registry
 is `audric/apps/mcp/lib/tools.ts` — read it for the live list; `t2000_send`
 to external addresses is absent by design.
 
-**Skills** (`t2000-skills/`) are markdown playbooks any skill-reading agent
-can follow, served at `t2000.ai/skills/<slug>` and discoverable via
-`/.well-known/agent-skills/index.json` (PR-to-shelf: a merged PR is live in
-minutes, no deploy).
+**Skills** (`t2000-skills/`, auto-synced to the public
+[`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) repo on
+every push) are markdown playbooks any skill-reading agent can follow. They
+install locally via `npx skills add mission69b/t2000-skills` — optional; Connect
+needs no skills, and serves each one live as a `skill-<name>` prompt.
 
 ---
 

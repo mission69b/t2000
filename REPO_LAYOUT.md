@@ -72,7 +72,6 @@ These are the ONLY files that should live at repo root (everything else moves to
 | `.gitignore`, `.npmrc`, `.prettierrc`, `.nvmrc` | Tooling config (`.nvmrc` pins node 22 — matches CI; node 25+ breaks native deps like sqlite3 + mintlify) |
 | `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` | Workspace |
 | `tsconfig.base.json`, `turbo.json`, `glama.json` | Build config |
-| `install.sh` | One-shot installer |
 
 Plus founder-local truth source (gitignored, not visible publicly):
 - `audric-build-tracker.md` (build progress log, ~3 MB rotation policy)
