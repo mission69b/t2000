@@ -13,6 +13,7 @@ import {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
+import type { SerializedCetusRoute, SwapRouteResult } from './protocols/cetus-swap.js';
 import type { TransactionSigner } from './signer.js';
 import { KeypairSigner } from './wallet/keypairSigner.js';
 import { executeTx } from './wallet/executeTx.js';
@@ -234,6 +235,16 @@ export class T2000 extends EventEmitter<T2000Events> {
     byAmountIn?: boolean;
     slippage?: number;
     force?: boolean;
+    /**
+     * A quote's `serializedRoute` (from `swapQuote`/`getSwapQuote`) — when
+     * provided, the quoted route is BINDING: it must be fresh
+     * (`isCetusRouteFresh`, one shared TTL) and match from/to/amount, or the
+     * swap throws (`SWAP_QUOTE_STALE` / `SWAP_ROUTE_MISMATCH`) with a
+     * re-quote instruction. Never silently re-routed — an agent that showed
+     * the user a rate executes that rate or fails loud. Omitted → discover
+     * a fresh route (existing behavior).
+     */
+    serializedRoute?: SerializedCetusRoute;
   }): Promise<SwapResult> {
     // Gate on the input-side USD value (stables 1:1; SUI/other → ungated).
     this.limits.assert({
@@ -242,7 +253,15 @@ export class T2000 extends EventEmitter<T2000Events> {
       force: params.force,
     });
 
-    const { findSwapRoute, buildSwapTx, resolveTokenType, preflightSwap } = await import('./protocols/cetus-swap.js');
+    const {
+      findSwapRoute,
+      buildSwapTx,
+      resolveTokenType,
+      preflightSwap,
+      deserializeCetusRoute,
+      isCetusRouteFresh,
+      verifyCetusRouteCoinMatch,
+    } = await import('./protocols/cetus-swap.js');
 
     // Layer 2 — cheap synchronous preflight (from/to/amount sanity, identity
     // swap). Runs before any route-finding network call.
@@ -260,13 +279,38 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fromDecimals = await resolveCoinDecimals(this.client, fromType);
     const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
 
-    const route = await findSwapRoute({
-      walletAddress: this._address,
-      from: fromType,
-      to: toType,
-      amount: rawAmount,
-      byAmountIn,
-    });
+    let route: SwapRouteResult | null;
+    if (params.serializedRoute) {
+      // Quote-bound execution: validate, never silently re-discover.
+      const s = params.serializedRoute;
+      if (!verifyCetusRouteCoinMatch(s, { fromCoinType: fromType, toCoinType: toType })) {
+        throw new T2000Error(
+          'SWAP_ROUTE_MISMATCH',
+          `The quoted route is for ${s.fromCoinType} -> ${s.toCoinType}, not ${params.from} -> ${params.to}. Re-quote and pass the new serializedRoute.`,
+        );
+      }
+      if (s.byAmountIn !== byAmountIn || BigInt(s.amountIn) !== rawAmount) {
+        throw new T2000Error(
+          'SWAP_ROUTE_MISMATCH',
+          'The quoted route was for a different amount. Re-quote with the amount you want to execute and pass the new serializedRoute.',
+        );
+      }
+      if (!isCetusRouteFresh(s)) {
+        throw new T2000Error(
+          'SWAP_QUOTE_STALE',
+          'The quote expired (routes are held for ~30s). Re-quote and pass the fresh serializedRoute.',
+        );
+      }
+      route = deserializeCetusRoute(s);
+    } else {
+      route = await findSwapRoute({
+        walletAddress: this._address,
+        from: fromType,
+        to: toType,
+        amount: rawAmount,
+        byAmountIn,
+      });
+    }
 
     if (!route) throw new T2000Error('SWAP_NO_ROUTE', `No swap route found for ${params.from} -> ${params.to}.`);
     if (route.insufficientLiquidity) throw new T2000Error('SWAP_NO_ROUTE', `Insufficient liquidity for ${params.from} -> ${params.to}.`);
