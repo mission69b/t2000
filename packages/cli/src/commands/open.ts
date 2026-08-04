@@ -25,6 +25,7 @@ import {
   postOpenJob,
   MAX_JOB_USDC,
   type OpenJobRow,
+  resolveCreatedObjectId,
 } from '@t2000/sdk';
 import { parseDuration } from './job.js';
 import { withAgent } from '../lib/with-agent.js';
@@ -80,25 +81,13 @@ function fmtLeft(ms: number | null): string {
   return `${Math.max(1, Math.floor(left / 60_000))}m`;
 }
 
-/** Best-effort: pull the created object id (Opening or Job) off a digest. */
-async function resolveCreated(
+/** Best-effort: pull the created object id (Opening or Job) off a digest —
+ *  the shared SDK walk (S.906 SSOT). */
+function resolveCreated(
   digest: string,
   marker: '::opening::Opening<' | '::escrow::Job<',
 ): Promise<string | undefined> {
-  try {
-    const client = getSuiClient();
-    const result = await client.core.waitForTransaction({
-      digest,
-      include: { objectTypes: true },
-      timeout: 15_000,
-    });
-    const txn =
-      result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
-    const types = txn.objectTypes ?? {};
-    return Object.keys(types).find((id) => types[id]?.includes(marker));
-  } catch {
-    return undefined; // the digest alone is still a receipt
-  }
+  return resolveCreatedObjectId(getSuiClient(), digest, marker);
 }
 
 /** Adds the Open-door verbs onto the `t2 job` group. */
