@@ -41,6 +41,11 @@ t2 swap 0.25 USDC 0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb
 In Claude — same pattern: paste the full coin type, quote first, execute only
 if the impact is acceptable. Thin pairs move — treat the quote as mandatory.
 
+On Passport Connect the quote is **binding**: `t2000_swap_quote` returns a
+`serializedRoute`; pass it to `t2000_swap` and the quoted route executes as
+shown or the swap fails loud with a re-quote instruction (quotes hold ~30s) —
+never a silent re-route.
+
 ## Check it worked
 
 - Each execute prints the on-chain digest and the amount received
