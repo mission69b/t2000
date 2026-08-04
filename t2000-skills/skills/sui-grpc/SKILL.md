@@ -60,7 +60,7 @@ const obj = await client.core.getObject({ objectId: '0x…' });
 const tx = await client.core.getTransaction({ digest: '…' });
 
 // SuiNS
-const { record } = await client.nameService.lookupName({ name: 'agent-id.sui' });
+const { record } = await client.nameService.lookupName({ name: 'audric.sui' });
 ```
 
 ## Rules

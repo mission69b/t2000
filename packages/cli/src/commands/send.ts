@@ -17,8 +17,8 @@
 //
 // SuiNS resolution is delegated to the SDK's `T2000.resolveRecipient` —
 // 0x addresses and `.sui` names (including subnames like
-// `alice.audric.sui` / `alice.agent-id.sui`) resolve without CLI-side
-// handling. Bare `@handle` forms are NOT resolvable.
+// `alice.audric.sui`) resolve without CLI-side handling. Bare `@handle`
+// forms are NOT resolvable.
 
 import type { Command } from 'commander';
 import pc from 'picocolors';

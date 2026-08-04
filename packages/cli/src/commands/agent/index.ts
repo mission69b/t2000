@@ -1,5 +1,7 @@
-// `t2 agent` — Agent ID (on-chain identity: register · handle · profile ·
-// ownership). Identity only: the `onboard`/`topup` wallet-credit commands
+// `t2 agent` — Agent ID (on-chain identity: register · profile · ownership).
+// The `handle` command (agent-id.sui SuiNS leaves) was removed 2026-08-04
+// (SPEC_T2_KILL_AGENT_ID_LEAF — humans hold @audric; agents are name + #id
+// + 0x). Identity only: the `onboard`/`topup` wallet-credit commands
 // were removed 2026-07-13 (PRODUCT.md one-path decision) and `tokenize` was
 // removed 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY — the store is a USDC
 // economy; the SDK builders were deleted 2026-08-03 — on-chain
@@ -53,14 +55,13 @@ async function fetchJson(
 export function registerAgent(program: Command) {
   const group = program
     .command('agent')
-    .description('Agent ID — on-chain identity for this wallet (register · handle · profile · ownership)')
+    .description('Agent ID — on-chain identity for this wallet (register · profile · ownership)')
     .addHelpText(
       'after',
       `
 Subcommands:
   $ t2 agent create --name "Atlas Research"  Wallet + Agent ID + profile in one pass
   $ t2 agent register                        Existing wallet → on-chain Agent ID (gasless)
-  $ t2 agent handle alice                    Claim @alice
   $ t2 agent sell https://api.me.com/v1/x    Sell it as an x402 Service (live-probed, gasless)
 `,
     );
@@ -476,66 +477,6 @@ Subcommands:
             printKeyValue('Profile', `https://t2000.ai/${address}`);
           }
           printKeyValue('Tx', String(sub.digest));
-          printBlank();
-        } catch (error) {
-          handleError(error);
-        }
-      },
-    );
-
-  group
-    .command('handle')
-    .argument('<label>', 'Handle label (3–20 chars: lowercase a–z, 0–9, hyphens)')
-    .description(
-      'Claim <label>.agent-id.sui → this wallet (custody-minted, gasless). Use --release to give it up.',
-    )
-    .option('--release', 'Release (revoke) this handle instead of claiming it')
-    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(
-      async (
-        label: string,
-        opts: { release?: boolean; key?: string; api?: string },
-      ) => {
-        try {
-          const base = opts.api ?? DEFAULT_API_BASE;
-          const agent = await withAgent({ keyPath: opts.key });
-          const address = agent.address();
-
-          // Challenge → sign (bound to nonce + label, action-prefixed).
-          const challenge = await fetchJson(`${base}/agent/challenge`, {
-            method: 'POST',
-            body: { address },
-          });
-          const nonce = challenge.nonce as string | undefined;
-          if (!nonce) {
-            throw new Error('Failed to get a challenge nonce.');
-          }
-          const action = opts.release
-            ? 't2000-agent-handle-release'
-            : 't2000-agent-handle';
-          const message = new TextEncoder().encode(`${action}:${nonce}:${label}`);
-          const { signature } = await agent.keypair.signPersonalMessage(message);
-
-          const path = opts.release ? '/agent/handle/release' : '/agent/handle';
-          const res = await fetchJson(`${base}${path}`, {
-            method: 'POST',
-            body: { address, label, nonce, signature },
-          });
-
-          if (isJsonMode()) {
-            printJson({ address, ...res });
-            return;
-          }
-          printBlank();
-          if (opts.release) {
-            printSuccess(`Handle released: ${String(res.handle)}`);
-          } else {
-            printSuccess(`Handle claimed: ${String(res.display)}`);
-            printKeyValue('Handle', String(res.handle));
-          }
-          printKeyValue('Address', truncateAddress(address));
-          printKeyValue('Tx', String(res.digest));
           printBlank();
         } catch (error) {
           handleError(error);
