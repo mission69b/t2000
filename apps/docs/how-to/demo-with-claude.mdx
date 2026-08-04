@@ -1,0 +1,122 @@
+---
+title: "Demo end-to-end flows with Claude"
+sidebarTitle: "Demo with Claude"
+description: "Paste-ready Passport Connect prompts that walk wallet, limits, marketplace hire, x402 pay, and earn — in ~10–12 minutes."
+---
+
+Use this when you show t2000 live (founders, partners, room demos). The actor is a human with Claude + [Passport Connect](/passport-connect) — not a scripted video.
+
+## Before you start
+
+- [ ] Passport Connect attached in Claude (same Google as the Passport)
+- [ ] Small amount of USDC in the wallet (enough for a sub-dollar hire and a ~$0.10 x402 call)
+- [ ] Optional browser tab: [t2000.ai/manage](https://t2000.ai/manage) (control plane while Claude spends under limits)
+
+**Talk track (one line):** *One Google Passport — wallet, marketplace, agents/MCP. No second login.*
+
+**Avoid mid-demo:** large swaps, unbounded API spend without a `maxPrice`, agent-id / dual-handle history (retired).
+
+## Sequence (~10–12 min)
+
+| # | Flow | Point |
+|---|------|--------|
+| 1 | Identity + balance | Passport is real on-chain money |
+| 2 | Limits | Spend is bounded |
+| 3 | Browse marketplace | Escrow catalog, not abstract "AI marketplace" |
+| 4 | Hire (or draft-only) | Jobs + USDC escrow |
+| 5 | x402 pay (cheap) | Agents pay APIs from the same USDC |
+| 6 | Earn / seller view | Jobs can pay *you* |
+| 7 | One Passport story | Same wallet as Audric + desk |
+| Desk | `/manage` | Human control plane |
+
+---
+
+## 1 — Identity + money
+
+```text
+Who am I on the Passport? Show my address, USDC balance, and recent history if any.
+```
+
+## 2 — Limits / safety
+
+```text
+What are my spend limits? Don't send or pay anything — just report them.
+```
+
+## 3 — Browse the marketplace
+
+```text
+Browse paid agent services on t2000. List 3 options with price and what you get.
+Recommend one under $1 if available.
+```
+
+## 4 — Hire (money moves)
+
+Prefer a **cheap fixed listing**. Stay in control of settle.
+
+**Spend (escrow hire):**
+
+```text
+If there's a fixed-price service under $1 USDC that looks simple, walk me through hiring it:
+explain price, fund the job, then show job status. Don't settle until I approve.
+```
+
+**Safer (no chain spend yet):**
+
+```text
+Don't hire yet — pick one service and draft the hire brief; wait for my confirm before creating the job.
+```
+
+See also: [How to hire](/how-to/hire).
+
+## 5 — Pay an API (x402)
+
+```text
+Using t2000 services, find a cheap x402 API (search or weather if listed)
+that costs under maxPrice $0.10. Call it once and show the result + what we paid.
+```
+
+See also: [How to pay an API](/how-to/pay-an-api).
+
+## 6 — Earn side (seller)
+
+```text
+As a seller: list my open/incoming jobs (role seller if any).
+If none, explain what I'd need to list a service to earn USDC.
+```
+
+See also: [How to sell your API](/how-to/sell-your-api) · [Claim and deliver](/how-to/claim-and-deliver).
+
+## 7 — Same Passport everywhere
+
+```text
+Check my balance again. In one sentence: how is this wallet the same one I'd use on Audric and for t2000 jobs?
+```
+
+## Optional — console tab
+
+With Claude still open, show [t2000.ai/manage](https://t2000.ai/manage):
+
+- `@handle` (Passport handle)
+- Wallet card (USDC) vs AI credit line (separate money)
+- Plan matrix if relevant
+
+**Talk track:** *Claude spends under my limits; the console is the human control plane.*
+
+---
+
+## Demo mode system prompt (optional)
+
+Paste once at the start of a Claude chat if you want hard confirmations:
+
+```text
+You are running a t2000 Passport product demo. Use Passport Connect / t2000 tools.
+Before ANY send, swap, pay, or job create that spends USDC: state the estimated cost and wait for my explicit "go".
+Prefer maxPrice and cheap catalogs. Never claim swaps are gasless. If a tool fails, say what happened in plain language.
+```
+
+## Related
+
+- [Passport Connect](/passport-connect)
+- [Start here](/quickstart) — Console · Claude · Terminal
+- [Fees and limits](/fees-and-limits)
