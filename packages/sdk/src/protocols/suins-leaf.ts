@@ -49,9 +49,9 @@ export const AUDRIC_PARENT_NFT_ID =
  * A SuiNS parent under which leaf subnames are minted: the registered SLD name
  * + the on-chain `SuinsRegistration` NFT id the minting service must own/sign.
  *
- * Added 2026-06-29 (Agent ID Phase B, gate 2) to let the same leaf machinery
- * serve a SECOND namespace — `agent-id.sui` for Agent ID handles — without
- * forking it. Audric stays the default so every existing caller is unchanged.
+ * Added 2026-06-29 to keep the leaf machinery generic over the parent.
+ * Audric is the default (and, since the agent-id leaf product was retired
+ * 2026-08-04, the only product parent) — every existing caller is unchanged.
  */
 export interface SuinsParent {
   name: string;
@@ -64,21 +64,12 @@ export const AUDRIC_PARENT: SuinsParent = {
   nftId: AUDRIC_PARENT_NFT_ID,
 };
 
-/** The Agent ID parent (`<label>.agent-id.sui` → `@agent-id`). Distinct from
- *  audric.sui on purpose (infra/agent registry vs consumer brand).
- *
- *  Registered on SuiNS mainnet 2026-06-29; the `SuinsRegistration` NFT
- *  (`0xc8c1…d5d1f`) is held by the custody address
- *  `0x6988a92d…30e4532`, which signs leaf mints + pays their gas. Override via
- *  `AGENT_ID_PARENT_NFT_ID` for testnet/dev. */
-export const AGENT_ID_PARENT_NAME = 'agent-id.sui';
-export const AGENT_ID_PARENT_NFT_ID =
-  process.env.AGENT_ID_PARENT_NFT_ID ??
-  '0xc8c13f5b5a6d4c47c04877014794f65e67e2745d3bfa089b736eb54b0ebd5d1f';
-export const AGENT_ID_PARENT: SuinsParent = {
-  name: AGENT_ID_PARENT_NAME,
-  nftId: AGENT_ID_PARENT_NFT_ID,
-};
+// The agent-id.sui parent constants were REMOVED 2026-08-04
+// (SPEC_T2_KILL_AGENT_ID_LEAF): humans hold @audric only; agents are Agent
+// ID name + #id + 0x — no SuiNS leaf. The generic builders below stay
+// parameterized on `SuinsParent` for the Audric consumer parent. The parent
+// NFT (`0xc8c1…d5d1f`) sits unused on-chain; its custody address keeps its
+// separate gas-sponsor role.
 
 export interface BuildAddLeafParams {
   /** Bare label, e.g. `'alice'` — NOT the full `'alice.audric.sui'` path. */
@@ -271,9 +262,8 @@ export function displayHandle(
   label: string,
   parentName: string = AUDRIC_PARENT_NAME,
 ): string {
-  // Strip the trailing `.sui` TLD for the `@` display form.
-  // `displayHandle('alice')` → `'alice@audric'`; for Agent ID,
-  // `displayHandle('bot', AGENT_ID_PARENT_NAME)` → `'bot@agent-id'`.
+  // Strip the trailing `.sui` TLD for the `@` display form:
+  // `displayHandle('alice')` → `'alice@audric'`.
   const parentDisplay = parentName.replace(/\.sui$/, '');
   return `${label}@${parentDisplay}`;
 }

@@ -1,12 +1,12 @@
 ---
 title: "Agent ID"
-description: "On-chain identity for agents on Sui — an address, a @handle, an owner, and a public profile in the agent directory."
+description: "On-chain identity for agents on Sui — an address, a name, a #id, an owner, and a public profile in the agent directory."
 ---
 
-**Agent ID** gives every agent a portable, on-chain identity on Sui: a keypair-anchored address, an optional **`@handle`**, an optional human **owner**, and a public **profile** — discoverable in the **[agent directory](https://t2000.ai)**. The identity lives in the `agent_id::registry` Move package on mainnet, and everything here is **sponsored** — a brand-new agent holding 0 SUI can register itself.
+**Agent ID** gives every agent a portable, on-chain identity on Sui: a keypair-anchored address, a **name** and **#id**, an optional human **owner**, and a public **profile** — discoverable in the **[agent directory](https://t2000.ai)**. The identity lives in the `agent_id::registry` Move package on mainnet, and everything here is **sponsored** — a brand-new agent holding 0 SUI can register itself.
 
 <Note>
-  Identity is **address-anchored**, not name-anchored: the Sui address is the canonical id; handle and display name are layers on top. API keys are a separate spend-side concern — they come from the [console](/console), not from identity.
+  Identity is **address-anchored**, not name-anchored: the Sui address is the canonical id; the display name and #id are layers on top. API keys are a separate spend-side concern — they come from the [console](/console), not from identity.
 </Note>
 
 ---
@@ -31,19 +31,6 @@ Run t2 agent create --name "Atlas Research" --description "Market research on de
 Add `--owner <your-passport-address>` to propose yourself as owner — confirm in the [console](https://t2000.ai/manage), then edit the listing from the browser. The pieces also exist separately: `t2 init` registers a new wallet out of the box; `t2 agent register` covers an existing one; `t2 agent profile` names it later.
 
 **The agent registers itself — its key stays where it runs.** There is no browser create-form for agent keypairs by design (a keypair minted in a tab is how keys get lost). **Your Passport is an agent too** — tap **Create your Agent ID** on the [dashboard](https://t2000.ai/manage) to register your own address, consent-first, deactivate anytime.
-
----
-
-## Claim a handle
-
-`<label>.agent-id.sui`, shown as `@<label>` — resolves to your address via SuiNS. Optional, gasless:
-
-```bash
-t2 agent handle alice                # claim alice.agent-id.sui
-t2 agent handle alice --release      # give it up (change = release + re-claim)
-```
-
-Unique, first-come-first-served, enforced on-chain — a taken label fails cleanly (`409 handle_taken`), nothing charged or minted. Only the handle's current target can release it.
 
 ---
 

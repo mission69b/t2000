@@ -2,8 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { Transaction } from '@mysten/sui/transactions';
 
 import {
-  AGENT_ID_PARENT,
-  AGENT_ID_PARENT_NAME,
   AUDRIC_PARENT_NAME,
   AUDRIC_PARENT_NFT_ID,
   buildAddLeafTx,
@@ -187,17 +185,18 @@ describe('suins-leaf', () => {
     });
   });
 
-  // [Agent ID Phase B, gate 2] The leaf machinery is parameterized by parent so
-  // the same builders serve a second namespace (`agent-id.sui`) without forking.
-  describe('parameterized parent (Agent ID)', () => {
-    const AGENT_PARENT: SuinsParent = {
-      name: 'agent-id.sui',
+  // The leaf machinery stays parameterized by parent (generic under
+  // `SuinsParent`); the retired agent-id parent is gone — a synthetic
+  // parent keeps the parameterization covered.
+  describe('parameterized parent', () => {
+    const OTHER_PARENT: SuinsParent = {
+      name: 'example.sui',
       nftId: '0xabc0000000000000000000000000000000000000000000000000000000000abc',
     };
 
     it('displayHandle / fullHandle accept a parent name', () => {
-      expect(displayHandle('bot', AGENT_ID_PARENT_NAME)).toBe('bot@agent-id');
-      expect(fullHandle('bot', AGENT_ID_PARENT_NAME)).toBe('bot.agent-id.sui');
+      expect(displayHandle('bot', OTHER_PARENT.name)).toBe('bot@example');
+      expect(fullHandle('bot', OTHER_PARENT.name)).toBe('bot.example.sui');
     });
 
     it('default parent is still audric (back-compat)', () => {
@@ -210,18 +209,13 @@ describe('suins-leaf', () => {
       buildAddLeafTx(fakeSuinsClient, {
         label: 'bot',
         targetAddress: VALID_TARGET,
-        parent: AGENT_PARENT,
+        parent: OTHER_PARENT,
       });
       expect(createLeafSubName).toHaveBeenCalledWith({
-        parentNft: AGENT_PARENT.nftId,
-        name: 'bot.agent-id.sui',
+        parentNft: OTHER_PARENT.nftId,
+        name: 'bot.example.sui',
         targetAddress: VALID_TARGET,
       });
-    });
-
-    it('agent-id parent has the registered NFT id', () => {
-      expect(AGENT_ID_PARENT.name).toBe('agent-id.sui');
-      expect(AGENT_ID_PARENT.nftId).toMatch(/^0x[0-9a-f]{64}$/);
     });
 
     it('throws when a parent NFT id is not configured', () => {
