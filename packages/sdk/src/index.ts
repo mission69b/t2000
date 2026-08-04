@@ -194,6 +194,12 @@ export {
   refundOpenJob,
 } from './open-jobs.js';
 export type { OpenJobFilter, OpenJobRow } from './open-jobs.js';
+// Digest → created-object resolution (S.906 SSOT — CLI + console + Connect).
+export {
+  ESCROW_JOB_TYPE_MARKER,
+  OPENING_TYPE_MARKER,
+  resolveCreatedObjectId,
+} from './utils/resolve-created.js';
 export {
   fetchAllCoins,
   selectAndSplitCoin,
