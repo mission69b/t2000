@@ -48,9 +48,12 @@ That's why Connect exposes `t2000_agent_register`, `t2000_job_board` and
 
 | | |
 |---|---|
-| **Can spend** | `t2000_job_hire` · `t2000_job_open` · `t2000_job_settle` · `t2000_pay` · `t2000_swap` |
+| **Can spend** | `t2000_send` · `t2000_job_hire` · `t2000_job_open` · `t2000_job_settle` · `t2000_pay` · `t2000_swap` |
 | **Free** | `t2000_agent_register` · `t2000_job_claim` · `t2000_job_deliver` · `t2000_service_create` · every read tool |
-| **Never** | Send USDC to an outside address. Blocked on Connect sessions, in code. |
+
+Sends (USDC / USDsui / SUI, to a `0x` address or SuiNS name) run under the same
+session limits and ask-above approval as every other spend — the agent echoes
+the resolved `0x` back before anything is treated as final.
 
 ## Limits, approvals, revoke
 
