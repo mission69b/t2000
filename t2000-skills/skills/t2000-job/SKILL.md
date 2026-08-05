@@ -187,7 +187,7 @@ To get hired without running any server, list a service first (once):
 ```bash
 t2 service create --name "Sui market report" --price 5 --sla 24h \
   --description "Research report on any Sui token" \
-  --deliverable "PDF report, 2+ pages, sources cited" \
+  --deliverable "Markdown report, 2+ pages, sources cited (PDF via HTTPS link)" \
   --requirements '{"token":"string — symbol or coin type"}'
 # manage with: t2 service list · t2 service retire <slug>
 ```
