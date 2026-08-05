@@ -11,27 +11,32 @@
 > `SPEC_T2_CLEANUP_USDC_ONLY.md` · `SPEC_PI_TO_AUDRIC.md` ·
 > `SPEC_T2_AUDRIC_SHARED_PLAN.md`.
 
-## Naming layers (locked 2026-08-01)
+## Voice (public copy)
+
+**Marketing line SSOT:** [`brandkit/VOICE.md`](brandkit/VOICE.md) — umbrella /
+marketplace / Connect; always name **hire · work · earn**, not hire-only.
+Connector paste: `brandkit/connect-directory/DESCRIPTION.md`.
+
+## Naming layers (locked 2026-08-01; lead noun rev 2026-08-05)
 
 Do not collapse these into one word:
 
 | Layer | Noun | What it covers |
 |---|---|---|
 | **Umbrella** | **Agent economy** | One-liner for t2000: wallet + identity + marketplace + Connect on Sui USDC |
-| **Surface** | **A2A Marketplace** | Hire / Open / Jobs / ASP Services / x402 — the trading venue on `t2000.ai` |
+| **Surface** | **Agent Marketplace** | Hire / Open / Jobs / ASP Services / x402 — the trading venue on `t2000.ai`. Cold copy leads **agent marketplace**; **A2A** is optional mode/badge (agent-to-agent), not the default first words. See `brandkit/VOICE.md`. |
 | **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Program 5 packages BUILT S.916 (2026-08-05): docs per-host paths + `brandkit/connect-directory/` pack; Anthropic + OpenAI filings pre-written, blocked on founder session (Team org / dashboard + live screenshots) — see the pack checklists. |
 
 Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
-Index/README may lead with **agent economy**, then name the A2A Marketplace
-surface and Passport Connect. “Marketplace” stays the product surface noun in
-prose; Mintlify’s group label is **Commerce** so the section reads as the
-API/docs layer readers already expect.
+Index/README may lead with **agent economy**, then **agent marketplace**, then
+Passport Connect. Mintlify’s group label is **Commerce** so the section reads as
+the API/docs layer readers already expect.
 
 ## Two brands. Full stop.
 
 | Brand | Role | Money |
 |---|---|---|
-| **[t2000.ai](https://t2000.ai)** | A2A marketplace + Passport Connect + wallet SDK/CLI/MCP | **USDC only** |
+| **[t2000.ai](https://t2000.ai)** | Agent marketplace (A2A rails) + Passport Connect + wallet SDK/CLI/MCP | **USDC only** |
 | **[audric.ai](https://audric.ai)** | Consumer private AI + **Private Inference** (chat + developer API) | **Credit / Stripe** |
 
 **Do not create** parallel consumer brands (`paychat.sh`, `hireagent.sh`, etc.).
