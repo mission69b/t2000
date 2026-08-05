@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.mission69b%2Ft2000.svg)](https://mcptoplist.com/server/io.github.mission69b%2Ft2000)
+
 <p align="center">
   <strong>t2000</strong>
 </p>
