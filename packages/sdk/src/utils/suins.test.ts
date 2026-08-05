@@ -22,6 +22,7 @@ import {
   SUI_ADDRESS_REGEX,
   SUI_ADDRESS_STRICT_REGEX,
   SUINS_NAME_REGEX,
+  canonicalizeRecipientInput,
   looksLikeSuiNs,
   resolveSuinsViaRpc,
   resolveAddressToSuinsViaRpc,
@@ -200,6 +201,50 @@ describe('utils/suins — SDK exports (S.279)', () => {
     it('throws SuinsNotRegisteredError when a well-formed name resolves to null', async () => {
       mockQuery.mockResolvedValueOnce({ data: { address: null } });
       await expect(normalizeAddressInput('ghost.sui')).rejects.toBeInstanceOf(SuinsNotRegisteredError);
+    });
+  });
+
+  // P3.1 / S.912 — Passport handles: `label@audric` ≡ `label.audric.sui`.
+  describe('canonicalizeRecipientInput (@audric handles)', () => {
+    it('maps label@audric to the canonical SuiNS name', () => {
+      expect(canonicalizeRecipientInput('funkii@audric')).toBe('funkii.audric.sui');
+    });
+
+    it('lowercases label AND namespace form', () => {
+      expect(canonicalizeRecipientInput('Funkii@Audric')).toBe('funkii.audric.sui');
+    });
+
+    it('leaves 0x addresses, .sui names, and garbage untouched (trim only)', () => {
+      expect(canonicalizeRecipientInput('  0xAbC1  ')).toBe('0xAbC1');
+      expect(canonicalizeRecipientInput('alex.sui')).toBe('alex.sui');
+      expect(canonicalizeRecipientInput('funkii')).toBe('funkii');
+      expect(canonicalizeRecipientInput('alice@other')).toBe('alice@other');
+    });
+
+    it('looksLikeSuiNs accepts @audric handles, rejects bare labels + other namespaces', () => {
+      expect(looksLikeSuiNs('alice@audric')).toBe(true);
+      expect(looksLikeSuiNs('alice')).toBe(false);
+      expect(looksLikeSuiNs('alice@other')).toBe(false);
+    });
+
+    it('normalizeAddressInput resolves the handle via the canonical name', async () => {
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValueOnce({ data: { address: { address: '0xABC' } } });
+      await expect(normalizeAddressInput('Funkii@Audric')).resolves.toEqual({
+        address: '0xabc',
+        suinsName: 'funkii.audric.sui',
+        raw: 'Funkii@Audric',
+      });
+      // The RPC saw the CANONICAL name — one resolution chain, no @ leaks.
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ variables: { name: 'funkii.audric.sui' } }),
+      );
+    });
+
+    it('unregistered handle → SuinsNotRegisteredError, never an invented address', async () => {
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValueOnce({ data: { address: null } });
+      await expect(normalizeAddressInput('ghost@audric')).rejects.toBeInstanceOf(SuinsNotRegisteredError);
     });
   });
 });

@@ -61,11 +61,38 @@ export const SUI_ADDRESS_STRICT_REGEX = /^0x[a-fA-F0-9]{64}$/i;
  */
 export const SUINS_NAME_REGEX = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/;
 
+/**
+ * Passport display handle (P3.1 / S.912): `funkii@audric`. Product lock —
+ * humans hold `label@audric`; the on-chain SuiNS name is
+ * `label.audric.sui`. ONLY the `@audric` namespace maps (the parent we
+ * own); `label@other` stays invalid — we never loosen the SuiNS regex to
+ * accept `@` globally.
+ */
+const AUDRIC_HANDLE_RE = /^([a-z0-9-]+)@audric$/i;
+
+/**
+ * Canonicalize user paste BEFORE address/SuiNS shape checks:
+ * - `label@audric` → `label.audric.sui` (lowercased) — the literal parent
+ *   string deliberately matches `AUDRIC_PARENT_NAME` in
+ *   `protocols/suins-leaf.ts` (not imported: that module pulls the heavy
+ *   `@mysten/suins` client into every normalizer consumer).
+ * - everything else (0x, `.sui` names, garbage) passes through trimmed.
+ */
+export function canonicalizeRecipientInput(raw: string): string {
+  const trimmed = raw.trim();
+  const m = AUDRIC_HANDLE_RE.exec(trimmed);
+  if (m) {
+    return `${m[1].toLowerCase()}.audric.sui`;
+  }
+  return trimmed;
+}
+
 export class InvalidAddressError extends Error {
   constructor(public readonly raw: string) {
     super(
       `"${raw}" isn't a valid Sui address or SuiNS name. ` +
-        `Pass a 0x-prefixed hex address (e.g. 0x40cd…3e62) or a SuiNS name ending in .sui (e.g. alex.sui).`,
+        `Pass a 0x-prefixed hex address (e.g. 0x40cd…3e62), a SuiNS name ending in .sui (e.g. alex.sui), ` +
+        `or a Passport handle (e.g. alex@audric).`,
     );
     this.name = 'InvalidAddressError';
   }
@@ -95,7 +122,9 @@ export class SuinsRpcError extends Error {
  */
 export function looksLikeSuiNs(value: string): boolean {
   if (!value) return false;
-  return SUINS_NAME_REGEX.test(value.trim().toLowerCase());
+  // `label@audric` canonicalizes to `label.audric.sui` first (P3.1), so
+  // Passport handles count as names everywhere this predicate gates.
+  return SUINS_NAME_REGEX.test(canonicalizeRecipientInput(value).toLowerCase());
 }
 
 /**
@@ -111,7 +140,8 @@ export async function resolveSuinsViaRpc(
   rawName: string,
   ctx: { suiRpcUrl?: string; signal?: AbortSignal } = {},
 ): Promise<string | null> {
-  const name = rawName.trim().toLowerCase();
+  // Canonicalize first (P3.1) so call sites may pass `label@audric` directly.
+  const name = canonicalizeRecipientInput(rawName).toLowerCase();
   if (!SUINS_NAME_REGEX.test(name)) {
     throw new InvalidAddressError(rawName);
   }
@@ -225,7 +255,9 @@ export async function normalizeAddressInput(
   value: string,
   ctx: { suiRpcUrl?: string; signal?: AbortSignal } = {},
 ): Promise<NormalizedAddress> {
-  const trimmed = value.trim();
+  // P3.1: `label@audric` → `label.audric.sui` before shape checks. `raw`
+  // keeps the ORIGINAL paste; `suinsName` carries the canonical name.
+  const trimmed = canonicalizeRecipientInput(value);
   if (SUI_ADDRESS_REGEX.test(trimmed)) {
     return { address: trimmed.toLowerCase(), suinsName: null, raw: value };
   }
