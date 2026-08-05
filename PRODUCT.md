@@ -19,7 +19,7 @@ Do not collapse these into one word:
 |---|---|---|
 | **Umbrella** | **Agent economy** | One-liner for t2000: wallet + identity + marketplace + Connect on Sui USDC |
 | **Surface** | **A2A Marketplace** | Hire / Open / Jobs / ASP Services / x402 — the trading venue on `t2000.ai` |
-| **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Official directory listings = Program 5+. |
+| **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Program 5 packages BUILT S.916 (2026-08-05): docs per-host paths + `brandkit/connect-directory/` pack; Anthropic + OpenAI filings pre-written, blocked on founder session (Team org / dashboard + live screenshots) — see the pack checklists. |
 
 Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
 Index/README may lead with **agent economy**, then name the A2A Marketplace
