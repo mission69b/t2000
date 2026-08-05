@@ -17,7 +17,7 @@ import type { SerializedCetusRoute, SwapRouteResult } from './protocols/cetus-sw
 import type { TransactionSigner } from './signer.js';
 import { KeypairSigner } from './wallet/keypairSigner.js';
 import { executeTx } from './wallet/executeTx.js';
-import { payWithX402 } from './wallet/pay.js';
+import { payWithX402, probeX402, type X402Probe } from './wallet/pay.js';
 import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
@@ -168,6 +168,16 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   // -- MPP Payments --
+
+  /**
+   * READ-ONLY price probe for an x402 endpoint (S.919). Reports what `pay()`
+   * would cost without signing or spending, so a caller (Connect's
+   * `t2000_pay_probe`, the CLI, a UI) can show terms before committing.
+   * No limit gate: nothing moves.
+   */
+  async payProbe(options: PayOptions): Promise<X402Probe> {
+    return await probeX402({ network: this.client.network, options });
+  }
 
   async pay(options: PayOptions): Promise<PayResult> {
     // Gate on the maxPrice ceiling pre-flight (USD); record the ACTUAL cost

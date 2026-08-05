@@ -67,19 +67,114 @@ export function preflightPay(input: { url: string; maxPrice?: number }): Preflig
 // unrelated to any package dependency.
 // ---------------------------------------------------------------------------
 
-export async function payWithX402(args: {
-  signer: TransactionSigner;
-  client: SuiGrpcClient;
-  options: PayOptions;
-}): Promise<PayResult> {
-  const { signer, client } = args;
-  let options = args.options;
+/**
+ * What a paid call WOULD cost, without paying (S.919). Every branch mirrors
+ * a `payWithX402` outcome so the probe can never promise something the pay
+ * path then refuses — one dialect story, not two.
+ */
+export type X402Probe =
+  | { kind: 'free'; status: number; note: string }
+  | {
+      kind: 'payable';
+      priceUsdc: number;
+      asset: string;
+      payTo: string;
+      network: string;
+    }
+  | { kind: 'escrow'; priceUsdc: number; payTo: string; note: string }
+  | { kind: 'unsupported'; reason: string; note: string }
+  | { kind: 'incomplete'; reason: string; note: string }
+  | { kind: 'not-x402'; status: number; note: string };
 
-  // Layer 2 — cheap synchronous preflight (URL shape + maxPrice sanity) before
-  // any network round-trip. Rethrow the precise code+message verbatim.
-  const pf = preflightPay({ url: options.url, maxPrice: options.maxPrice });
+/**
+ * READ-ONLY x402 probe: issue the same request `pay()` would, read the 402,
+ * and report the terms. Never signs, never spends, never throws on a
+ * non-payable answer — an unpayable endpoint is information, not a failure.
+ * (Invalid input still throws, exactly as `pay()` would, so a caller can't
+ * probe a URL that could never be paid.)
+ */
+export async function probeX402(args: {
+  network: string;
+  options: PayOptions;
+}): Promise<X402Probe> {
+  const { network } = args;
+  const pf = preflightPay({ url: args.options.url, maxPrice: args.options.maxPrice });
   if (!pf.valid) throw new T2000Error(pf.code, pf.error);
 
+  const { reqInit } = normalizePayRequest(args.options);
+  const probe = await fetch(args.options.url, reqInit);
+  if (probe.status !== 402) {
+    return {
+      kind: 'free',
+      status: probe.status,
+      note: 'No payment required — this endpoint served without a 402.',
+    };
+  }
+
+  const pick = await pickSuiExactRequirements(probe, network);
+  if (pick.kind === 'payable') {
+    const requirements = pick.requirements;
+    const priceUsdc = atomicToHuman(
+      BigInt(requirements.maxAmountRequired),
+      await assetDecimals(requirements.asset),
+    );
+    const { isX402EscrowRequirements } = await import('@t2000/sui-x402');
+    if (isX402EscrowRequirements(requirements)) {
+      return {
+        kind: 'escrow',
+        priceUsdc,
+        payTo: requirements.payTo,
+        note:
+          'This endpoint sells deliverable work through on-chain escrow, not an instant call. ' +
+          'Hire it as a job instead — funds lock in a Job object and release on delivery.',
+      };
+    }
+    return {
+      kind: 'payable',
+      priceUsdc,
+      asset: requirements.asset,
+      payTo: requirements.payTo,
+      network,
+    };
+  }
+
+  if (hasPaymentAuthenticateHeader(probe)) {
+    return {
+      kind: 'unsupported',
+      reason: 'header-only-402-unsupported',
+      note:
+        'This seller answered a header-only 402 (WWW-Authenticate: Payment) with no payable ' +
+        'x402 accepts[] envelope. That dialect is no longer supported — the seller must offer ' +
+        'x402 (e.g. @t2000/serve emits it).',
+    };
+  }
+  if (pick.kind === 'incomplete') {
+    return {
+      kind: 'incomplete',
+      reason: 'incomplete-x402-accepts',
+      note:
+        "Seller's x402 challenge is incomplete (missing extra.suimpp) — the 402 advertises an " +
+        'exact/sui entry but carries no settlement challenge to bind a payment to.',
+    };
+  }
+  return {
+    kind: 'not-x402',
+    status: probe.status,
+    note:
+      `Endpoint returned 402 without an x402 'exact' / sui:${network} requirement in the body. ` +
+      'Nothing this SDK can pay.',
+  };
+}
+
+/**
+ * Shared request shaping for probe + pay so both legs send the SAME bytes —
+ * a probe that differed from the paid retry would report the wrong price.
+ */
+function normalizePayRequest(input: PayOptions): {
+  options: PayOptions;
+  reqInit: RequestInit;
+} {
+  let options = input;
   const method = (options.method ?? 'GET').toUpperCase();
   const canHaveBody = method !== 'GET' && method !== 'HEAD';
 
@@ -100,11 +195,33 @@ export async function payWithX402(args: {
     };
   }
 
-  const reqInit: RequestInit = {
-    method,
-    headers: options.headers,
-    body: canHaveBody ? options.body : undefined,
+  return {
+    options,
+    reqInit: {
+      method,
+      headers: options.headers,
+      body: canHaveBody ? options.body : undefined,
+    },
   };
+}
+
+export async function payWithX402(args: {
+  signer: TransactionSigner;
+  client: SuiGrpcClient;
+  options: PayOptions;
+}): Promise<PayResult> {
+  const { signer, client } = args;
+  let options = args.options;
+
+  // Layer 2 — cheap synchronous preflight (URL shape + maxPrice sanity) before
+  // any network round-trip. Rethrow the precise code+message verbatim.
+  const pf = preflightPay({ url: options.url, maxPrice: options.maxPrice });
+  if (!pf.valid) throw new T2000Error(pf.code, pf.error);
+
+  // Shared with `probeX402` (S.919) so both legs send identical bytes.
+  const normalized = normalizePayRequest(options);
+  options = normalized.options;
+  const reqInit = normalized.reqInit;
 
   // Probe (no payment). A paid endpoint answers 402; a free/cached one serves.
   const probe = await fetch(options.url, reqInit);
