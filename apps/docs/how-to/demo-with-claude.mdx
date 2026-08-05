@@ -1,7 +1,7 @@
 ---
-title: "Demo end-to-end flows with Claude"
+title: "Demo the agent marketplace in Claude"
 sidebarTitle: "Demo with Claude"
-description: "Paste-ready Passport Connect prompts that walk wallet, limits, marketplace hire, x402 pay, and earn — in ~10–12 minutes."
+description: "Paste-ready prompts that walk the agent marketplace in Claude — hire, pay per call, and earn — in ~10–12 minutes."
 ---
 
 Use this when you show t2000 live (founders, partners, room demos). The actor is a human with Claude + [Passport Connect](/passport-connect) — not a scripted video.
@@ -12,7 +12,7 @@ Use this when you show t2000 live (founders, partners, room demos). The actor is
 - [ ] Small amount of USDC in the wallet (enough for a sub-dollar hire and a ~$0.10 x402 call)
 - [ ] Optional browser tab: [t2000.ai/manage](https://t2000.ai/manage) (control plane while Claude spends under limits)
 
-**Talk track (one line):** *One Google Passport — wallet, marketplace, agents/MCP. No second login.*
+**Talk track (one line):** *The agent marketplace, open in the chat — hire an agent, put yours to work, claim jobs to earn. One Google Passport, no second login.*
 
 **Avoid mid-demo:** large swaps, unbounded API spend without a `maxPrice`, agent-id / dual-handle history (retired).
 
@@ -21,13 +21,13 @@ Use this when you show t2000 live (founders, partners, room demos). The actor is
 | # | Flow | Point |
 |---|------|--------|
 | 1 | Identity + balance | Passport is real on-chain money |
-| 2 | Limits | Spend is bounded |
-| 3 | Browse marketplace | Escrow catalog, not abstract "AI marketplace" |
-| 4 | Hire (or draft-only) | Jobs + USDC escrow |
-| 5 | x402 pay (cheap) | Agents pay APIs from the same USDC |
-| 6 | Earn / seller view | Jobs can pay *you* |
-| 7 | One Passport story | Same wallet as Audric + desk |
-| Desk | `/manage` | Human control plane |
+| 2 | Browse the marketplace | A real catalog with prices, SLA, escrow terms |
+| 3 | Hire (or draft-only) | Jobs + USDC escrow, settle on your word |
+| 4 | Pay an API once | Agents pay per call from the same USDC |
+| 5 | **Earn** — claim an Open job | The market pays *you*; claiming costs $0 |
+| 6 | Optional: send with confirm | Resolves the address, waits for go |
+| 7 | One Passport story | Same wallet as Audric + the desk |
+| Desk | `/manage` | Human control plane — limits live here |
 
 ---
 
@@ -37,20 +37,14 @@ Use this when you show t2000 live (founders, partners, room demos). The actor is
 Who am I on the Passport? Show my address, USDC balance, and recent history if any.
 ```
 
-## 2 — Limits / safety
+## 2 — Browse the marketplace
 
 ```text
-What are my spend limits? Don't send or pay anything — just report them.
+Browse marketplace Services I can hire on t2000 — show price, SLA, and escrow
+terms before I fund anything. Recommend one under $1 if there is one.
 ```
 
-## 3 — Browse the marketplace
-
-```text
-Browse paid agent services on t2000. List 3 options with price and what you get.
-Recommend one under $1 if available.
-```
-
-## 4 — Hire (money moves)
+## 3 — Hire (money moves)
 
 Prefer a **cheap fixed listing**. Stay in control of settle.
 
@@ -69,23 +63,43 @@ Don't hire yet — pick one service and draft the hire brief; wait for my confir
 
 See also: [How to hire](/how-to/hire).
 
-## 5 — Pay an API (x402)
+## 4 — Pay an API once (x402)
 
 ```text
-Using t2000 services, find a cheap x402 API (search or weather if listed)
-that costs under maxPrice $0.10. Call it once and show the result + what we paid.
+Find a cheap x402 Service on t2000 and probe its price first — probing is free
+and spends nothing. If it's under $0.10, pay for one call and show me the result
+and exactly what it cost.
 ```
 
 See also: [How to pay an API](/how-to/pay-an-api).
 
-## 6 — Earn side (seller)
+## 5 — Earn: claim an Open job
+
+The best beat in the room — the market pays *you*, and claiming costs nothing
+because the buyer's budget is already escrowed.
 
 ```text
-As a seller: list my open/incoming jobs (role seller if any).
-If none, explain what I'd need to list a service to earn USDC.
+What Open jobs can I claim to earn on the t2000 agent marketplace right now?
+Show me the budget and deadline for one you could genuinely do, claim it, and
+tell me the status after each step.
 ```
 
-See also: [How to sell your API](/how-to/sell-your-api) · [Claim and deliver](/how-to/claim-and-deliver).
+If there's time, finish the loop:
+
+```text
+Deliver that job and show me where it stands now.
+```
+
+See also: [Claim and deliver](/how-to/claim-and-deliver) · [Sell your API](/how-to/sell-your-api).
+
+## 6 — Optional: send with a confirm
+
+Only if the room asks "can it move real money?" — it resolves the recipient and
+waits for your go.
+
+```text
+Send $0.10 USDC to funkii@audric — confirm the resolved address before sending.
+```
 
 ## 7 — Same Passport everywhere
 
@@ -101,7 +115,7 @@ With Claude still open, show [t2000.ai/manage](https://t2000.ai/manage):
 - Wallet card (USDC) vs AI credit line (separate money)
 - Plan matrix if relevant
 
-**Talk track:** *Claude spends under my limits; the console is the human control plane.*
+**Talk track:** *The marketplace runs in the chat; the console is the human control plane — limits, ask-above, and revoke all live here.*
 
 ---
 
@@ -113,6 +127,20 @@ Paste once at the start of a Claude chat if you want hard confirmations:
 You are running a t2000 Passport product demo. Use Passport Connect / t2000 tools.
 Before ANY send, swap, pay, or job create that spends USDC: state the estimated cost and wait for my explicit "go".
 Prefer maxPrice and cheap catalogs. Never claim swaps are gasless. If a tool fails, say what happened in plain language.
+```
+
+## Optional — card and board smoke (UI QA)
+
+Not part of the demo. Paste this when you want to check the cards render and the
+lists stay honest after a deploy — it names no tools, so the agent has to find
+them:
+
+```text
+On t2000: open the jobs board, pick the first full open job, and tell me whether
+the card shows both a short brief and the full opening. Then look up agent #90's
+"smoke-brief" service and report description, deliverable, and storefront URL.
+Search services for "brief" and say honestly if there's more than one match.
+Keep lists compact.
 ```
 
 ## Related
