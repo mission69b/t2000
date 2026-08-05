@@ -58,7 +58,7 @@ vi.mock('@mysten/sui/transactions', () => ({
   },
 }));
 
-import { payWithX402 } from './pay.js';
+import { payWithX402, probeX402 } from './pay.js';
 
 const USDC_TYPE = '0xusdc::usdc::USDC';
 
@@ -621,5 +621,94 @@ describe('payWithX402 — content-type defaulting', () => {
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init.headers).toBeUndefined();
+  });
+});
+
+// --- S.919: probeX402 — the READ half of the pay split -----------------------
+// The probe must mirror every payWithX402 branch WITHOUT signing or spending,
+// so the portal's read tool can never promise terms the write tool refuses.
+describe('probeX402 — read-only price probe', () => {
+  const opts = { url: 'https://paid.example/x' };
+
+  it('reports a payable price without signing or spending', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }));
+
+    const probe = await probeX402({ network: 'mainnet', options: opts });
+
+    expect(probe).toEqual({
+      kind: 'payable',
+      priceUsdc: 0.02,
+      asset: USDC_TYPE,
+      payTo: '0xtreasury',
+      network: 'mainnet',
+    });
+    // ONE request, and nothing was ever signed.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(buildX402Mock).not.toHaveBeenCalled();
+    expect(executeTxMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a free endpoint as free (no 402, no payment)', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 200, body: { ok: true } }));
+
+    const probe = await probeX402({ network: 'mainnet', options: opts });
+
+    expect(probe.kind).toBe('free');
+    expect(probe).toMatchObject({ status: 200 });
+    expect(buildX402Mock).not.toHaveBeenCalled();
+  });
+
+  it('classifies an escrow-intent 402 as escrow, not payable', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        status: 402,
+        body: {
+          accepts: [
+            {
+              scheme: 'exact',
+              network: 'sui:mainnet',
+              asset: USDC_TYPE,
+              maxAmountRequired: '5000000',
+              payTo: '0xjobseller',
+              resource: 'https://seller.example/jobs/report',
+              maxTimeoutSeconds: 60,
+              extra: {
+                escrow: { deliverWithinMs: 86_400_000, reviewWindowMs: 3_600_000, rejectSplitBps: 8000 },
+              },
+            },
+          ],
+        },
+      }),
+    );
+
+    const probe = await probeX402({ network: 'mainnet', options: opts });
+
+    expect(probe.kind).toBe('escrow');
+    expect(probe).toMatchObject({ priceUsdc: 5, payTo: '0xjobseller' });
+  });
+
+  it('reports the header-only MPP dialect as unsupported (never payable)', async () => {
+    fetchMock.mockResolvedValueOnce(jmprShaped402(true));
+
+    const probe = await probeX402({ network: 'mainnet', options: opts });
+
+    expect(probe.kind).toBe('unsupported');
+    expect(probe).toMatchObject({ reason: 'header-only-402-unsupported' });
+  });
+
+  it('reports an incomplete x402 challenge instead of a price', async () => {
+    fetchMock.mockResolvedValueOnce(jmprShaped402(false));
+
+    const probe = await probeX402({ network: 'mainnet', options: opts });
+
+    expect(probe.kind).toBe('incomplete');
+    expect(probe).toMatchObject({ reason: 'incomplete-x402-accepts' });
+  });
+
+  it('still throws on invalid input — a URL that could never be paid', async () => {
+    await expect(
+      probeX402({ network: 'mainnet', options: { url: 'not-a-url' } }),
+    ).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
