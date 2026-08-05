@@ -26,6 +26,7 @@ import { resolveSymbol, resolveCoinDecimals } from './token-registry.js';
 import {
   SUI_ADDRESS_REGEX,
   SuinsNotRegisteredError,
+  canonicalizeRecipientInput,
   looksLikeSuiNs,
   resolveSuinsViaRpc,
 } from './utils/suins.js';
@@ -570,7 +571,9 @@ export class T2000 extends EventEmitter<T2000Events> {
   async resolveRecipient(
     input: string,
   ): Promise<{ address: string; suinsName?: string }> {
-    const trimmed = input.trim();
+    // P3.1: canonicalize `label@audric` → `label.audric.sui` here too, so
+    // send previews return the canonical name — one path with the utils.
+    const trimmed = canonicalizeRecipientInput(input);
     if (SUI_ADDRESS_REGEX.test(trimmed)) {
       return { address: trimmed.toLowerCase() };
     }
@@ -594,7 +597,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
     throw new T2000Error(
       'INVALID_ADDRESS',
-      `Cannot resolve recipient "${input}". Provide a 0x address or a .sui name.`,
+      `Cannot resolve recipient "${input}". Provide a 0x address, a .sui name, or a Passport handle (name@audric).`,
     );
   }
 

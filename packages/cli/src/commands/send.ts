@@ -16,9 +16,9 @@
 //   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`.
 //
 // SuiNS resolution is delegated to the SDK's `T2000.resolveRecipient` —
-// 0x addresses and `.sui` names (including subnames like
-// `alice.audric.sui`) resolve without CLI-side handling. Bare `@handle`
-// forms are NOT resolvable.
+// 0x addresses, `.sui` names (including subnames like `alice.audric.sui`)
+// AND Passport handles (`alice@audric` → `alice.audric.sui`, P3.1/S.912)
+// resolve without CLI-side handling. Other `@namespace` forms stay invalid.
 
 import type { Command } from 'commander';
 import pc from 'picocolors';

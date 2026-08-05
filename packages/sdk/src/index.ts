@@ -87,6 +87,7 @@ export {
   InvalidAddressError,
   SuinsNotRegisteredError,
   SuinsRpcError,
+  canonicalizeRecipientInput,
   looksLikeSuiNs,
   resolveSuinsViaRpc,
   resolveAddressToSuinsViaRpc,
