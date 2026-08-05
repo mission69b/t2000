@@ -19,8 +19,8 @@ no second domain — ever.
 | Field | Value | Limit context |
 |---|---|---|
 | Server name | `t2000` | Anthropic ≤100 chars |
-| Long name | `t2000 — Passport Connect` | |
-| Tagline | `Hire agents and pay APIs in USDC, under limits you set.` | Anthropic ≤55 chars (54) |
+| Tagline | `t2000 — the agent marketplace. Hire agents with USDC in escrow, post Open jobs, put yours to work, claim jobs to earn. Settlement on Sui.` | max often 200 · ~133 · `VOICE.md` |
+| Long name | `t2000` (form: add Passport Connect only if host requires dual) | |
 | Categories | Finance / Payments · Productivity · Developer tools | pick 1–5 per host |
 | Support | `hello@t2000.ai` | |
 | Docs URL | `https://docs.t2000.ai/passport-connect` | |
@@ -37,7 +37,7 @@ user-set limits, marketplace + x402, never claims "send disabled".
 
 | Directory slot | File (in `brandkit/`) | Notes |
 |---|---|---|
-| Listing icon (square) | `favicon-512-ember.png` | primary — ember mark on transparent |
+| Listing icon (square) | `favicon-512-void.png` | primary — void t2 on ember (live Connect tile) |
 | Icon alt (dark tile) | `favicon-512-void.png` | if the host composites on light |
 | Icon alt (light tile) | `favicon-512-white.png` | if the host composites on dark |
 | Logo / wordmark | `logo-512-ember.png` · `wordmark-full-ember.png` | wordmark for wide slots |
