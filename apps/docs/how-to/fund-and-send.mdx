@@ -22,13 +22,22 @@ Show me my t2000 deposit address so I can fund the wallet with USDC.
 After you've deposited:
 
 ```text
-What's my balance now? Break it down by token.
+What's my Passport USDC balance? Break it down by token.
+```
+
+Then prove the rail with a small send — the agent resolves the recipient and
+waits for your go before anything moves:
+
+```text
+Send $0.10 USDC to funkii@audric — confirm the resolved address before sending.
 ```
 
 <Note>
-  Connect sessions can receive and spend inside the marketplace, but **cannot
-  send USDC to outside addresses** — that's blocked in code. Outbound sends are
-  a CLI (or [Audric](https://audric.ai)) action with your own key.
+  Sends run under your Connect session limits: a per-job cap, a daily ceiling,
+  and an **ask-above** amount that pauses and waits for your approval in the
+  console. Change them under
+  [Connections](https://t2000.ai/manage/connections). The same send is
+  available from the CLI with your own key.
 </Note>
 
 ## In the terminal (`t2`)
