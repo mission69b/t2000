@@ -15,6 +15,10 @@
 // Registered flat on the `t2 job` group — one job noun.
 
 import { readFile } from 'node:fs/promises';
+import {
+  assertSpendAllowed,
+  recordSpendIfLanded,
+} from '../lib/spend-gate.js';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import {
@@ -119,6 +123,10 @@ export function registerOpenVerbs(group: Command) {
             throw new Error(`--max must be between 0.01 and ${MAX_JOB_USDC} USDC.`);
           }
           const brief = await resolveBrief(opts.brief);
+          // The budget escrows ON-CHAIN at post — a real outflow from the
+          // buyer's wallet, so it belongs under the same cap as a hire.
+          // (Claiming is free and is never recorded as spend.)
+          assertSpendAllowed(maxUsdc);
           const agent = await withAgent({ keyPath: opts.key });
           const digest = await postOpenJob(base, agent.signer, {
             title: opts.title.trim(),
@@ -127,6 +135,7 @@ export function registerOpenVerbs(group: Command) {
             slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
             openHours: parseDuration(opts.openFor) / 3_600_000,
           });
+          recordSpendIfLanded(maxUsdc, digest);
           const openingId = await resolveCreated(digest, '::opening::Opening<');
           if (isJsonMode()) {
             printJson({ digest, openingId });
