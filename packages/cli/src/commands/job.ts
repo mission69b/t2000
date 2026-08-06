@@ -20,15 +20,9 @@
 
 import { createHash } from 'node:crypto';
 import {
-  assertLimitConfig,
-  dailySpentToday,
-  getLimits,
-  LimitExceededError,
-  recordDailySpend,
-} from '@t2000/sdk';
-
-/** The shared limit error advertises `--force`; job verbs don't have it. */
-const FORCE_HINT_RE = /\s*Use --force[^.]*\.\s*$/;
+  assertSpendAllowed,
+  recordSpendIfLanded,
+} from '../lib/spend-gate.js';
 import { expandAgentRefs, resolveAgentRef } from '../lib/agent-ref.js';
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
@@ -215,26 +209,8 @@ async function sponsoredJobVerb(opts: {
   // sponsored rail rather than the SDK write path, so it inherited neither
   // half of the gate: a $25 cap did not stop a hire, and a completed hire
   // left "spent today" reading $0.00.
-  if (opts.spendUsdc !== undefined && opts.spendUsdc > 0) {
-    try {
-      assertLimitConfig({
-        limits: getLimits(),
-        spentTodayUsd: dailySpentToday(),
-        operation: 'send',
-        amountUsd: opts.spendUsdc,
-        force: opts.force,
-      });
-    } catch (e) {
-      // The shared gate's message offers `--force`, which the job verbs do
-      // not have (and this slice deliberately did not invent). Point at the
-      // door that actually exists rather than one that doesn't.
-      if (e instanceof LimitExceededError) {
-        throw new Error(
-          `${e.message.replace(FORCE_HINT_RE, '')} Raise the cap with \`t2 limit set\` — job verbs have no --force.`,
-        );
-      }
-      throw e;
-    }
+  if (opts.spendUsdc !== undefined) {
+    assertSpendAllowed(opts.spendUsdc, opts.force);
   }
 
   const { digest } = await runSponsoredTx({
@@ -250,10 +226,7 @@ async function sponsoredJobVerb(opts: {
     },
   });
 
-  // Record only on a real digest — a failed hire must not eat the day's cap.
-  if (digest && opts.spendUsdc !== undefined && opts.spendUsdc > 0) {
-    recordDailySpend(opts.spendUsdc);
-  }
+  recordSpendIfLanded(opts.spendUsdc ?? 0, digest);
   return { address, digest };
 }
 

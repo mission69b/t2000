@@ -126,10 +126,20 @@ describe('B — intent assert', () => {
 
   it('refuses a module swap', async () => {
     const b64 = await buildTxB64(
-      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim`,
+      `${MAINNET_A2A_ESCROW_PACKAGE_ID}::opening::claim`,
     );
     expect(() => assertTxMatchesIntent(b64, { action: 'create' })).toThrow(
       IntentMismatchError,
+    );
+  });
+
+  it('refuses the right package with the wrong verb (package is pinned per action)', async () => {
+    const b64 = await buildTxB64(
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim`,
+    );
+    // A real t2000 package, a real function — but not what `create` calls.
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).toThrow(
+      /targets package/,
     );
   });
 
@@ -153,6 +163,73 @@ describe('B — intent assert', () => {
       assertTxMatchesIntent('bm90LWEtdHJhbnNhY3Rpb24=', { action: 'create' }),
     ).toThrow(/could not decode/);
   });
+});
+
+// S.930.1 — the first map was transcribed from the API's action strings
+// instead of the SDK builders, so it named two functions that do not exist on
+// mainnet and refused two real happy paths. These cases pin the map to the
+// builders; if a Move upgrade renames a target, they fail here rather than in
+// someone's terminal.
+describe('B — the map matches the SDK builders, verb for verb', () => {
+  const REAL_TARGETS: [string, string][] = [
+    ['create', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`],
+    ['deliver', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::deliver`],
+    ['release', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::release`],
+    ['reject', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::reject`],
+    ['refund', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::refund`],
+    // buildDeclineJobTx: OPENING package, `escrow` module — looks like a typo,
+    // isn't. `decline` shipped in the v3 upgrade.
+    ['decline', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::decline`],
+    [
+      'open-create',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open`,
+    ],
+    ['open-claim', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim`],
+    [
+      'open-cancel',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::cancel_open`,
+    ],
+    [
+      'open-refund',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::refund_unclaimed`,
+    ],
+  ];
+
+  for (const [action, target] of REAL_TARGETS) {
+    it(`signs ${action} → ${target.split('::').slice(1).join('::')}`, async () => {
+      const b64 = await buildTxB64(target);
+      expect(() => assertTxMatchesIntent(b64, { action })).not.toThrow();
+    });
+  }
+
+  // The exact names the broken map expected. Neither exists on mainnet.
+  const PHANTOMS: [string, string][] = [
+    [
+      'open-cancel',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::cancel`,
+    ],
+    [
+      'decline',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::decline`,
+    ],
+    [
+      'open-create',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create`,
+    ],
+    [
+      'open-refund',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::refund`,
+    ],
+  ];
+
+  for (const [action, target] of PHANTOMS) {
+    it(`refuses the phantom ${target.split('::').slice(1).join('::')} under ${action}`, async () => {
+      const b64 = await buildTxB64(target);
+      expect(() => assertTxMatchesIntent(b64, { action })).toThrow(
+        IntentMismatchError,
+      );
+    });
+  }
 });
 
 describe('the funnel never signs what it refused', () => {

@@ -32,32 +32,91 @@ export const CANONICAL_API_ORIGIN = 'https://api.t2000.ai';
 /** The flag that lets a non-default host obtain a signature. */
 export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
 
-/** Packages the wallet will sign calls into. MAINNET literals from the SDK —
- *  deliberately NOT `A2A_ESCROW_PACKAGE_ID`, which reads `process.env` and so
- *  would let an attacker supply both the transaction and the yardstick. */
-const ALLOWED_PACKAGES = new Set([
-  MAINNET_A2A_ESCROW_PACKAGE_ID,
-  MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
-]);
-
-/** What the user typed → what the PTB is allowed to call. Fail closed: a verb
- *  absent from this map cannot be signed through the guarded path. */
-const ACTION_FUNCTIONS: Record<string, { module: string; functions: string[] }> =
-  {
-    // Buyer funds an escrow job from a listing or their own terms.
-    create: { module: 'escrow', functions: ['create'] },
-    // Seller-side lifecycle.
-    deliver: { module: 'escrow', functions: ['deliver'] },
-    release: { module: 'escrow', functions: ['release'] },
-    reject: { module: 'escrow', functions: ['reject'] },
-    refund: { module: 'escrow', functions: ['refund'] },
-    decline: { module: 'opening', functions: ['decline'] },
-    // Open board.
-    'open-create': { module: 'opening', functions: ['create', 'create_open'] },
-    'open-claim': { module: 'opening', functions: ['claim'] },
-    'open-cancel': { module: 'opening', functions: ['cancel'] },
-    'open-refund': { module: 'opening', functions: ['refund_unclaimed', 'refund'] },
-  };
+/** Every verb, mapped to the EXACT target its SDK builder emits.
+ *
+ *  Transcribed from `packages/sdk/src/wallet/{job,opening}.ts` — not from the
+ *  API's action strings, which is how the first cut of this map shipped
+ *  `opening::cancel` and `opening::decline`: two functions that do not exist
+ *  on mainnet, guarding two happy paths that therefore could not be signed at
+ *  all. A fail-closed check is only as good as its ground truth, so the table
+ *  below mirrors the builders line for line:
+ *
+ *    buildDeclineJobTx      → OPENING pkg :: escrow  :: decline   (v3)
+ *    buildCancelOpeningTx   → OPENING pkg :: opening :: cancel_open
+ *    buildRefundUnclaimedTx → OPENING pkg :: opening :: refund_unclaimed
+ *    buildOpenJobTx         → OPENING pkg :: opening :: create_open
+ *    buildClaimOpeningTx    → OPENING pkg :: opening :: claim
+ *    buildCreateJobTx       → ESCROW  pkg :: escrow  :: create
+ *    buildDeliverJobTx      → ESCROW  pkg :: escrow  :: deliver
+ *    jobCall                → ESCROW  pkg :: escrow  :: release|refund|reject
+ *
+ *  `decline` is the one that looks like a typo and isn't: it lives in the
+ *  OPENING package but the `escrow` module, because it shipped in the v3
+ *  upgrade. Package ids are the MAINNET literals — deliberately NOT the
+ *  env-overridable constants, which would let an attacker supply both the
+ *  transaction and the yardstick.
+ *
+ *  A Move upgrade that moves a verb to a new package needs a matching CLI
+ *  release. That is the cost of fail-closed, and it is the intended trade.
+ */
+const ACTION_TARGETS: Record<
+  string,
+  { pkg: string; module: string; functions: string[] }
+> = {
+  // v1 escrow package.
+  create: {
+    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    module: 'escrow',
+    functions: ['create'],
+  },
+  deliver: {
+    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    module: 'escrow',
+    functions: ['deliver'],
+  },
+  release: {
+    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    module: 'escrow',
+    functions: ['release'],
+  },
+  reject: {
+    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    module: 'escrow',
+    functions: ['reject'],
+  },
+  refund: {
+    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    module: 'escrow',
+    functions: ['refund'],
+  },
+  // v3 opening package — note the `escrow` module.
+  decline: {
+    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    module: 'escrow',
+    functions: ['decline'],
+  },
+  // Open board.
+  'open-create': {
+    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    module: 'opening',
+    functions: ['create_open'],
+  },
+  'open-claim': {
+    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    module: 'opening',
+    functions: ['claim'],
+  },
+  'open-cancel': {
+    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    module: 'opening',
+    functions: ['cancel_open'],
+  },
+  'open-refund': {
+    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    module: 'opening',
+    functions: ['refund_unclaimed'],
+  },
+};
 
 /** Verbs that are NOT marketplace escrow calls and are verified by host pin
  *  alone — the registry package is not in the escrow allowlist, and its args
@@ -146,7 +205,7 @@ export function assertTxMatchesIntent(
     return;
   }
 
-  const expected = ACTION_FUNCTIONS[intent.action];
+  const expected = ACTION_TARGETS[intent.action];
   if (!expected) {
     throw new IntentMismatchError(
       `Refusing to sign: "${intent.action}" is not a verb this wallet knows how to verify.`,
@@ -186,9 +245,9 @@ export function assertTxMatchesIntent(
   }
 
   for (const call of calls) {
-    if (!ALLOWED_PACKAGES.has(call.pkg)) {
+    if (call.pkg !== expected.pkg) {
       throw new IntentMismatchError(
-        `Refusing to sign: transaction calls package ${call.pkg}, which is not a t2000 escrow package.`,
+        `Refusing to sign: "${intent.action}" targets package ${expected.pkg}, but the transaction calls ${call.pkg}.`,
       );
     }
     if (call.module !== expected.module) {
