@@ -17,6 +17,10 @@ import {
   parseCategory,
 } from '../../lib/agent-category.js';
 import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
+import {
+  assertSigningHostAllowed,
+  isAllowUntrustedApi,
+} from '../../lib/tx-guard.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
 import {
@@ -138,6 +142,7 @@ Subcommands:
           prepareUrl: `${base}/agent/owner/propose`,
           prepareBody: { address, owner },
           submitUrl: `${base}/agent/owner/submit`,
+          intent: { action: 'link' },
         });
         if (isJsonMode()) {
           printJson({ agent: address, pendingOwner: owner, digest });
@@ -174,6 +179,7 @@ Subcommands:
           prepareUrl: `${base}/agent/owner/confirm`,
           prepareBody: { owner: address, agent: agentAddress },
           submitUrl: `${base}/agent/owner/submit`,
+          intent: { action: 'confirm' },
         });
         if (isJsonMode()) {
           printJson({ owner: address, agent: agentAddress, digest });
@@ -207,6 +213,7 @@ Subcommands:
           prepareUrl: `${base}/agent/owner/renounce`,
           prepareBody: { owner: address, agent: agentAddress },
           submitUrl: `${base}/agent/owner/submit`,
+          intent: { action: 'confirm' },
         });
         if (isJsonMode()) {
           printJson({ owner: address, agent: agentAddress, unlinked: true, digest });
@@ -370,6 +377,12 @@ Subcommands:
 
           // Two-phase sponsored flow, inline (not runSponsoredTx) so a failed
           // probe surfaces its per-check findings, not just one message.
+          // Inline does NOT mean unguarded: the host pin still applies, and
+          // it has to run before the address is sent (S.930). Intent checking
+          // stops at the host for this verb — it calls the registry package,
+          // which is outside the escrow allowlist, so claiming to verify its
+          // shape here would be theatre.
+          assertSigningHostAllowed(base, isAllowUntrustedApi());
           const prepRes = await fetch(`${base}/agent/endpoint/prepare`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

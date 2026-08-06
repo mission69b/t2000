@@ -147,6 +147,7 @@ export {
 export { buildSendTx, addSendToTx, preflightSend } from './wallet/send.js';
 export {
   A2A_ESCROW_PACKAGE_ID,
+  MAINNET_A2A_ESCROW_PACKAGE_ID,
   A2A_ESCROW_FEE_CONFIG_ID,
   MAX_JOB_USDC,
   MAX_REVIEW_WINDOW_MS,
@@ -166,6 +167,7 @@ export {
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
 export {
   A2A_ESCROW_OPENING_PACKAGE_ID,
+  MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
   A2A_ESCROW_PACKAGE_V2_ID,
   A2A_ESCROW_PACKAGE_V3_ID,
   MAX_OPEN_WINDOW_MS,
@@ -193,6 +195,8 @@ export {
   getOpenJob,
   listOpenJobs,
   postOpenJob,
+  setSponsoredTxGuard,
+  type SponsoredTxGuard,
   refundOpenJob,
 } from './open-jobs.js';
 export type { OpenJobFilter, OpenJobRow } from './open-jobs.js';

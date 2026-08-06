@@ -167,6 +167,7 @@ export function registerAgentCreate(group: Command) {
             prepareUrl: `${base}/agent/owner/propose`,
             prepareBody: { address, owner },
             submitUrl: `${base}/agent/owner/submit`,
+            intent: { action: 'link' },
           });
           ownerProposed = true;
         }

@@ -28,9 +28,15 @@ import {
  *  adds `escrow::decline`; v2 added the `opening` module). New-verb calls
  *  (opening + decline) target this; original-id verbs stay put, and older
  *  package ids remain callable for published clients. */
+/** The published `opening` package id on MAINNET — a literal, never an env
+ *  read, so it can serve as a signature-time trust anchor (S.930). Must match
+ *  the Move upgrade publish notes. */
+export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
+  '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
+
 export const A2A_ESCROW_OPENING_PACKAGE_ID =
   process.env.A2A_ESCROW_OPENING_PACKAGE_ID ??
-  '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
+  MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID;
 
 /**
  * PINNED per-upgrade package ids — event-filter anchors, NEVER bump these.

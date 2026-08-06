@@ -1,3 +1,12 @@
+import {
+  assertSigningHostAllowed,
+  assertTxMatchesIntent,
+  describeIntent,
+  isAllowUntrustedApi,
+  type TxIntent,
+} from './tx-guard.js';
+import { printLine } from '../output.js';
+
 // Shared sponsored-registration helper (Agent ID B.1 gate 5b). Used by
 // `t2 agent register`, `t2 agent create`, and `t2 init`
 // (best-effort). Two-phase: prepare (server builds the sponsored tx) → the
@@ -39,13 +48,24 @@ export async function runSponsoredTx(opts: {
   prepareUrl: string;
   prepareBody: Record<string, unknown>;
   submitUrl: string;
+  /** What the user asked for. REQUIRED — the bytes are checked against it
+   *  before signing, and a caller with no intent cannot sign (S.930). */
+  intent: TxIntent;
 }): Promise<{ digest?: string }> {
+  const allowUntrusted = isAllowUntrustedApi();
+  // Before the wallet address is even sent anywhere.
+  assertSigningHostAllowed(opts.prepareUrl, allowUntrusted);
+
   const prep = await postJson(opts.prepareUrl, opts.prepareBody);
   const nonce = prep.nonce as string | undefined;
   const txBytes = prep.txBytes as string | undefined;
   if (!(nonce && txBytes)) {
     throw new Error('Failed to prepare the transaction.');
   }
+  // The server proposed; now check it proposed what we asked for.
+  assertTxMatchesIntent(txBytes, opts.intent, { allowUntrusted });
+  printLine(describeIntent(opts.intent, opts.prepareUrl));
+
   const bytes = new Uint8Array(Buffer.from(txBytes, 'base64'));
   const { signature } = await opts.keypair.signTransaction(bytes);
   const res = await postJson(opts.submitUrl, {
@@ -71,6 +91,8 @@ export async function registerWallet(opts: {
   address: string;
   base: string;
 }): Promise<RegisterResult> {
+  const allowUntrusted = isAllowUntrustedApi();
+  assertSigningHostAllowed(opts.base, allowUntrusted);
   const prep = await postJson(`${opts.base}/agent/register/prepare`, {
     address: opts.address,
   });
@@ -83,6 +105,7 @@ export async function registerWallet(opts: {
   if (!(regNonce && txBytes)) {
     throw new Error('Failed to prepare registration.');
   }
+  assertTxMatchesIntent(txBytes, { action: 'register' }, { allowUntrusted });
   const bytes = new Uint8Array(Buffer.from(txBytes, 'base64'));
   const { signature } = await opts.keypair.signTransaction(bytes);
   const res = await postJson(`${opts.base}/agent/register/submit`, {
