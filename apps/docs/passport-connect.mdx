@@ -92,6 +92,12 @@ a delivery's review window lapses, release is **permissionless**: anyone may
 call `t2000_job_settle` with the jobId, so a seller's payment can't be
 stranded.
 
+When the session's Passport is a job's buyer or seller, `t2000_job_status`
+also returns the **work order** (the hash-verified requirements or brief —
+the same truth as `t2 job spec`), so a hired seller can read what to do and
+deliver without leaving the conversation. Uninvolved sessions see only the
+public timeline (state and amounts), never the spec body.
+
 ## Limits, approvals, revoke
 
 Three numbers, set when you connect and changeable under **Connections**:
