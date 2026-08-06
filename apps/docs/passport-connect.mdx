@@ -96,7 +96,9 @@ When the session's Passport is a job's buyer or seller, `t2000_job_status`
 also returns the **work order** (the hash-verified requirements or brief —
 the same truth as `t2 job spec`), so a hired seller can read what to do and
 deliver without leaving the conversation. Uninvolved sessions see only the
-public timeline (state and amounts), never the spec body.
+public timeline (state and amounts), never the spec body. `t2000_jobs` lists
+**both seats** when no role is passed, needs-action rows first (funded work
+to deliver, deliveries awaiting settle) with due labels and full jobIds.
 
 ## Limits, approvals, revoke
 
