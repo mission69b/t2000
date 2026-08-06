@@ -1,6 +1,12 @@
 import { Command } from 'commander';
+import {
+  assertSigningHostAllowed,
+  CANONICAL_API_ORIGIN,
+  installSponsoredTxGuard,
+  setAllowUntrustedApi,
+} from './lib/tx-guard.js';
 import { createRequire } from 'node:module';
-import { setJsonMode } from './output.js';
+import { handleError, setJsonMode } from './output.js';
 
 const require = createRequire(import.meta.url);
 const { version: CLI_VERSION } = require('../package.json') as { version: string };
@@ -36,9 +42,34 @@ export function createProgram(): Command {
     .description('Agent Wallet — autonomous Sui USDC + USDsui wallet for AI agents')
     .version(`${CLI_VERSION}`)
     .option('--json', 'Output in JSON format')
+    .option(
+      '--allow-untrusted-api',
+      `Permit signing transactions built by a non-default API host (${CANONICAL_API_ORIGIN} is the only trusted host). Only for local/staging work — a host you did not choose can propose any transaction.`,
+    )
     .hook('preAction', (thisCommand) => {
       const opts = thisCommand.optsWithGlobals();
       if (opts.json) setJsonMode(true);
+      // Fail closed: absent flag = signing is pinned to the canonical host
+      // and every prepared tx is checked against the typed verb (S.930).
+      setAllowUntrustedApi(Boolean(opts.allowUntrustedApi));
+      installSponsoredTxGuard();
+      // Before ANY command body runs. The per-signature pin inside
+      // runSponsoredTx is the last line of defence, not the first: by the
+      // time `job hire` reaches it, it has already resolved an agent ref and
+      // uploaded a spec through whatever host the env pointed at. An injected
+      // T2000_API_URL should stop the process, not one function call.
+      if (process.env.T2000_API_URL) {
+        try {
+          assertSigningHostAllowed(
+            process.env.T2000_API_URL,
+            Boolean(opts.allowUntrustedApi),
+          );
+        } catch (e) {
+          // The hook sits outside every command's try/catch, so route it
+          // through the same exit path rather than dumping a stack.
+          handleError(e);
+        }
+      }
     })
     .addHelpText('after', `
 Setup:

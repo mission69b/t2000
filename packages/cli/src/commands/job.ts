@@ -19,6 +19,16 @@
 // sponsorship never weakens it). Reads are direct RPC.
 
 import { createHash } from 'node:crypto';
+import {
+  assertLimitConfig,
+  dailySpentToday,
+  getLimits,
+  LimitExceededError,
+  recordDailySpend,
+} from '@t2000/sdk';
+
+/** The shared limit error advertises `--force`; job verbs don't have it. */
+const FORCE_HINT_RE = /\s*Use --force[^.]*\.\s*$/;
 import { expandAgentRefs, resolveAgentRef } from '../lib/agent-ref.js';
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
@@ -191,16 +201,59 @@ async function sponsoredJobVerb(opts: {
   keyPath?: string;
   action: 'create' | 'decline' | 'deliver' | 'release' | 'reject' | 'refund';
   params: Record<string, unknown>;
+  /** USDC leaving THIS wallet, for the spending gate. Only `create` moves
+   *  buyer money out; the seller-side verbs settle escrow that is already
+   *  locked, so they pass nothing and are never counted. */
+  spendUsdc?: number;
+  seller?: string;
+  force?: boolean;
 }): Promise<{ address: string; digest?: string }> {
   const agent = await withAgent({ keyPath: opts.keyPath });
   const address = agent.address();
+
+  // Assert BEFORE the money leaves (S.930 C). The job path went through the
+  // sponsored rail rather than the SDK write path, so it inherited neither
+  // half of the gate: a $25 cap did not stop a hire, and a completed hire
+  // left "spent today" reading $0.00.
+  if (opts.spendUsdc !== undefined && opts.spendUsdc > 0) {
+    try {
+      assertLimitConfig({
+        limits: getLimits(),
+        spentTodayUsd: dailySpentToday(),
+        operation: 'send',
+        amountUsd: opts.spendUsdc,
+        force: opts.force,
+      });
+    } catch (e) {
+      // The shared gate's message offers `--force`, which the job verbs do
+      // not have (and this slice deliberately did not invent). Point at the
+      // door that actually exists rather than one that doesn't.
+      if (e instanceof LimitExceededError) {
+        throw new Error(
+          `${e.message.replace(FORCE_HINT_RE, '')} Raise the cap with \`t2 limit set\` — job verbs have no --force.`,
+        );
+      }
+      throw e;
+    }
+  }
+
   const { digest } = await runSponsoredTx({
     keypair: agent.keypair,
     actor: address,
     prepareUrl: `${opts.base}/job/prepare`,
     prepareBody: { address, action: opts.action, params: opts.params },
     submitUrl: `${opts.base}/job/submit`,
+    intent: {
+      action: opts.action,
+      amountUsdc: opts.spendUsdc,
+      seller: opts.seller,
+    },
   });
+
+  // Record only on a real digest — a failed hire must not eat the day's cap.
+  if (digest && opts.spendUsdc !== undefined && opts.spendUsdc > 0) {
+    recordDailySpend(opts.spendUsdc);
+  }
   return { address, digest };
 }
 
@@ -384,6 +437,9 @@ no fund step; unclaimed openings refund fee-free):
             keyPath: opts.key,
             action: 'create',
             params: { seller, amountUsdc, specHash, deliverByMs, reviewWindowMs, rejectSplitBps },
+            // The buyer's USDC leaves here — the one job verb that spends.
+            spendUsdc: amountUsdc,
+            seller,
           });
 
           // The job id comes off the created object — read it back via the

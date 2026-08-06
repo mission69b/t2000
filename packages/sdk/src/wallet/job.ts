@@ -31,10 +31,21 @@ import { A2A_ESCROW_OPENING_PACKAGE_ID } from './opening.js';
  * via env for testnet/dev.
  */
 
-/** The published `a2a_escrow` package id (mainnet). */
-export const A2A_ESCROW_PACKAGE_ID =
-  process.env.A2A_ESCROW_PACKAGE_ID ??
+/** The published `a2a_escrow` package id on MAINNET — a literal, never an
+ *  env read.
+ *
+ *  Security (S.930): the env-overridable constant below is a dev/testnet
+ *  convenience, which makes it useless as a trust anchor — anything verifying
+ *  "is this the real escrow package?" against it would be checking the
+ *  attacker's own answer. Signature-time verification compares against THIS.
+ *  Must match the Move upgrade publish notes. */
+export const MAINNET_A2A_ESCROW_PACKAGE_ID =
   '0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd';
+
+/** The published `a2a_escrow` package id (mainnet default; env-overridable
+ *  for testnet/dev — NOT a trust anchor, see above). */
+export const A2A_ESCROW_PACKAGE_ID =
+  process.env.A2A_ESCROW_PACKAGE_ID ?? MAINNET_A2A_ESCROW_PACKAGE_ID;
 
 /** The shared `FeeConfig` object every escrow entry reads (mainnet). */
 export const A2A_ESCROW_FEE_CONFIG_ID =

@@ -43,6 +43,29 @@ async function fetchJson(
  *  on-chain Openings. `id` is the Opening OBJECT id (0x…). Buyer addresses
  *  never appear (registered-agent buyers surface by id); the claiming ASP
  *  is public. Title + brief are public by design. */
+/** A host-installed veto on sponsored open-board transactions (S.930).
+ *
+ *  Called twice per verb: once with no `txBytes` before the prepare request
+ *  (so an untrusted API host can be refused before it learns the address),
+ *  and once with the prepared bytes before they are signed. Throwing from
+ *  either aborts the verb.
+ *
+ *  The SDK deliberately ships NO default policy: package-id verification
+ *  needs non-env literals and a notion of "the canonical host", both of which
+ *  belong to the host application. Unset = today's behavior. */
+export type SponsoredTxGuard = (ctx: {
+  base: string;
+  action: string;
+  txBytes?: string;
+}) => void;
+
+let sponsoredTxGuard: SponsoredTxGuard | null = null;
+
+/** Install (or clear, with `null`) the sponsored-tx guard. */
+export function setSponsoredTxGuard(guard: SponsoredTxGuard | null): void {
+  sponsoredTxGuard = guard;
+}
+
 export interface OpenJobRow {
   id: string;
   title: string | null;
@@ -103,6 +126,9 @@ async function sponsoredOpeningVerb(
   params: Record<string, unknown>,
 ): Promise<string> {
   const address = signer.getAddress();
+  // Host pin (S.930): a hook installed by the host app gets to refuse before
+  // the wallet address reaches an untrusted builder.
+  sponsoredTxGuard?.({ base, action });
   const prep = await fetchJson(`${base}/job/prepare`, {
     method: 'POST',
     body: { address, action, params },
@@ -112,6 +138,8 @@ async function sponsoredOpeningVerb(
   if (!(nonce && txBytes)) {
     throw new Error('Failed to prepare the transaction.');
   }
+  // Intent check (S.930): and again with the bytes, before they are signed.
+  sponsoredTxGuard?.({ base, action, txBytes });
   const { signature } = await signer.signTransaction(fromBase64(txBytes));
   const json = await fetchJson(`${base}/job/submit`, {
     method: 'POST',
