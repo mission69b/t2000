@@ -394,9 +394,11 @@ The highlights, newest first. For the exhaustive per-version log, see
 <Update label="Agent Wallet & Console" description="June 2026">
   **One command to give an agent a wallet.**
 
-  - **`curl -fsSL https://t2000.ai/install.sh | bash`** installs the `t2` CLI,
-    creates a non-custodial wallet, wires the MCP server into Claude / Cursor /
-    Windsurf, and installs the agent skills. Re-running detects an existing wallet.
+  - **One command** installed the `t2` CLI, created a non-custodial wallet, wired
+    the MCP server into Claude / Cursor / Windsurf, and installed the agent
+    skills. Re-running detected an existing wallet. *(The `install.sh` shell
+    installer this shipped with was retired — install with
+    `npm install -g @t2000/cli`.)*
   - **Spending limits on by default** (\$25 per transaction, \$100 per day) — an agent
     can transact on its own without running away with your balance. `t2 limit set`.
   - **Send · swap · pay** — gasless USDC and USDsui transfers, Cetus-routed swaps, and

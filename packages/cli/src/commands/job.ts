@@ -23,6 +23,11 @@ import {
   assertSpendAllowed,
   recordSpendIfLanded,
 } from '../lib/spend-gate.js';
+import {
+  formatUsdMicro,
+  sellerReceivesLine,
+  settlementSplit,
+} from '../lib/settle-fee.js';
 import { expandAgentRefs, resolveAgentRef } from '../lib/agent-ref.js';
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
@@ -35,6 +40,7 @@ import {
   validateAddress,
   verifyJobForSeller,
   MAX_JOB_USDC,
+  preflightCreateJob,
   type Job,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
@@ -405,6 +411,50 @@ no fund step; unclaimed openings refund fee-free):
               : DEFAULT_REVIEW_WINDOW_MS;
             rejectSplitBps = Number.parseInt(opts.split, 10);
           }
+          // Preflight (S.932): terms sanity + the MAX_JOB_USDC cap, which the
+          // hire path never enforced client-side even though `open` did — a
+          // $999 hire only failed after a signature. Then the balance, then
+          // the numbers, and only then anything irreversible.
+          const pre = preflightCreateJob({
+            seller,
+            amountUsdc,
+            specHash,
+            deliverByMs,
+            reviewWindowMs,
+            rejectSplitBps,
+          });
+          if (!pre.valid) {
+            throw new Error(pre.error);
+          }
+
+          const preAgent = await withAgent({ keyPath: opts.key });
+          const bal = await preAgent.balance();
+          const usdc = bal.stables.USDC ?? 0;
+          if (usdc < amountUsdc) {
+            throw new Error(
+              `Insufficient USDC — need ${formatUsdMicro(Math.floor(amountUsdc * 1_000_000))}, wallet has ${formatUsdMicro(Math.floor(usdc * 1_000_000))}. Fund it: t2 fund`,
+            );
+          }
+
+          // Ahead of the summary on purpose: printing "here is what will
+          // happen" and then refusing on the daily cap reads as a broken
+          // promise. sponsoredJobVerb asserts again (pure read, idempotent).
+          assertSpendAllowed(amountUsdc);
+
+          // The buyer sees the price BEFORE signing. On a listing hire the
+          // price comes from the seller's listing, not from anything typed on
+          // this command line, so printing it is the only way they see it.
+          const split = settlementSplit(amountUsdc);
+          if (!isJsonMode()) {
+            printBlank();
+            printInfo('Hire preflight');
+            printKeyValue('  Escrow', `${split.escrow} USDC (leaves your wallet on sign)`);
+            printKeyValue('  Seller', truncateAddress(seller));
+            if (serviceSlug) printKeyValue('  Service', serviceSlug);
+            printKeyValue('  Deliver by', new Date(deliverByMs).toISOString());
+            printKeyValue('  Settle fee', `${split.fee} from the seller's payout — not added to your escrow`);
+          }
+
           const { address, digest } = await sponsoredJobVerb({
             base,
             keyPath: opts.key,
@@ -437,7 +487,7 @@ no fund step; unclaimed openings refund fee-free):
           }
 
           if (isJsonMode()) {
-            printJson({ jobId, digest, buyer: address, seller, amountUsdc, specHash, deliverByMs, reviewWindowMs, rejectSplitBps, ...(serviceSlug ? { service: serviceSlug } : {}) });
+            printJson({ jobId, digest, buyer: address, seller, amountUsdc, specHash, deliverByMs, reviewWindowMs, rejectSplitBps, feeBps: split.feeBps, sellerReceiveUsdc: split.payoutMicro / 1_000_000, ...(serviceSlug ? { service: serviceSlug } : {}) });
             return;
           }
           printBlank();
@@ -445,6 +495,7 @@ no fund step; unclaimed openings refund fee-free):
           if (jobId) printKeyValue('Job', jobId);
           printKeyValue('Spec hash', specHash);
           printKeyValue('Deliver by', new Date(deliverByMs).toISOString());
+          printKeyValue('Seller receives', sellerReceivesLine(amountUsdc));
           if (digest) printKeyValue('Tx', digest);
           printBlank();
           if (jobId) {
