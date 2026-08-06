@@ -19,6 +19,7 @@
 // sponsorship never weakens it). Reads are direct RPC.
 
 import { createHash } from 'node:crypto';
+import { expandAgentRefs, resolveAgentRef } from '../lib/agent-ref.js';
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
@@ -247,7 +248,10 @@ no fund step; unclaimed openings refund fee-free):
     .argument('[seller]', "The ASP's Sui address (omit when hiring a --service listing)")
     .description('Hire — fund an escrow job in one transaction (buyer): a listing (--agent + --service) or your own terms (amount + seller + --spec)')
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED so the seller can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading)')
-    .option('--agent <address>', "Hire a listing: the ASP's agent address")
+    .option(
+      '--agent <address|#id|@handle>',
+      "Hire a listing: the ASP's agent address, #id, or @handle",
+    )
     .option('--service <slug>', 'The service slug (see t2 services / t2 service list <agent>)')
     .option('--requirements <file-or-json-or-text>', 'What the seller asked buyers to provide — if the listing lists JSON keys, fill EVERY key (JSON object; extra keys OK)')
     .option('--deadline <duration>', 'Time the seller has to deliver (e.g. 30m, 24h, 7d)', '24h')
@@ -295,7 +299,12 @@ no fund step; unclaimed openings refund fee-free):
                 'Omit the amount/seller arguments when buying a service — the listing sets the price and the seller.',
               );
             }
-            const sellerAgent = validateAddress(opts.agent);
+            // Same ingress the site accepts (S.929): `#93` / `93` / `@handle`
+            // / `0x…`. Resolved BEFORE the service fetch, so an unknown id
+            // fails as a sentence and never reaches a prepare or a signature.
+            const sellerAgent = validateAddress(
+              (await resolveAgentRef(base, opts.agent)).address,
+            );
             const service = await fetchService(base, sellerAgent, serviceSlugOpt);
             serviceSlug = service.slug;
 
@@ -313,6 +322,11 @@ no fund step; unclaimed openings refund fee-free):
                 requirements = text.trim();
               }
             }
+            // Requirement values that NAME an agent become addresses before
+            // anything is asserted or hashed — sellers built their tooling
+            // around `0x…` and must never decode what "#93" meant on the day
+            // the job was funded. Order: resolve, assert, freeze.
+            requirements = await expandAgentRefs(base, requirements);
             // The shared hire gate (SPEC_ACP_JOB_SPEC_V1 §4.1) — same
             // implementation as MCP + console hire-prepare, so a job can
             // never fund with an unusable brief.
@@ -353,7 +367,9 @@ no fund step; unclaimed openings refund fee-free):
             if (!Number.isFinite(amountUsdc) || amountUsdc <= 0) {
               throw new Error(`Amount must be a positive number (got "${amountArg}").`);
             }
-            seller = validateAddress(sellerArg);
+            seller = validateAddress(
+              (await resolveAgentRef(base, sellerArg)).address,
+            );
             // Uploads unless the input is already a 0x… sha256 — the bare
             // hash stays the confidential path (nothing leaves the machine).
             ({ hash: specHash } = await resolveSpecUpload(base, opts.spec));
