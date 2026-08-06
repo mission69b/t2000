@@ -14,6 +14,12 @@
 // sha256 of the exact payload (same construction as the services catalog).
 
 import { createHash } from 'node:crypto';
+import {
+  sellerReceivesLine,
+  SERVICES_SETTLE_FEE_BPS,
+  SETTLE_FEE_NOTE,
+  settlementSplit,
+} from '../lib/settle-fee.js';
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
@@ -112,7 +118,10 @@ function formatSla(minutes: number): string {
 function printService(o: ServiceListing) {
   const flag = o.retired ? pc.dim(' (retired)') : '';
   printLine(`${pc.bold(o.name)} ${pc.dim(`· ${o.slug}`)}${flag}`);
-  printKeyValue('Price', `$${o.priceUsdc.toFixed(2)} USDC`);
+  printKeyValue(
+    'Price',
+    `$${o.priceUsdc.toFixed(2)} USDC ${pc.dim(`· seller receives ${settlementSplit(o.priceUsdc).payout}`)}`,
+  );
   printKeyValue('Delivery', `within ${formatSla(o.slaMinutes)}`);
   printKeyValue(
     'Seller',
@@ -238,15 +247,23 @@ Examples:
           });
 
           if (isJsonMode()) {
-            printJson({ address, ...payload });
+            printJson({
+              address,
+              ...payload,
+              feeBps: SERVICES_SETTLE_FEE_BPS,
+              sellerReceiveUsdc: settlementSplit(priceUsdc).payoutMicro / 1_000_000,
+            });
             return;
           }
           printBlank();
           printSuccess(`"${payload.name}" is listed — $${priceUsdc.toFixed(2)} USDC, delivery within ${formatSla(slaMinutes)}`);
+          // Say the fee at listing time, not at settlement time (S.932).
+          printKeyValue('You receive', sellerReceivesLine(priceUsdc));
           printKeyValue('Slug', slug);
           printKeyValue('Storefront', `https://t2000.ai/${address}`);
           printKeyValue('Buyers run', `t2 job hire --agent ${address} --service ${slug}`);
           printBlank();
+          printInfo(SETTLE_FEE_NOTE);
           printInfo('Watch for incoming jobs with: t2 job watch --mine');
           printBlank();
         } catch (error) {
