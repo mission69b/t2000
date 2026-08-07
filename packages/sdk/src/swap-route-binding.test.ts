@@ -151,4 +151,56 @@ describe('T2000.swap serializedRoute binding', () => {
     await expect(agent.swap({ from: 'SUI', to: 'USDC', amount: 1 })).rejects.toThrow(SENTINEL);
     expect(findSwapRoute).toHaveBeenCalledTimes(1);
   });
+
+  // S.947 — the "undefined -> undefined" bug class: agents passed the WHOLE
+  // swapQuote response (or a stripped partial) as serializedRoute. The whole
+  // response unwraps once and executes; anything without the coin-type
+  // snapshot fails loud with a shape error, never "undefined -> undefined".
+
+  it('the WHOLE quote response as serializedRoute unwraps once and executes', async () => {
+    const agent = makeAgent();
+    stubBalance(agent);
+    const wholeQuoteResponse = {
+      fromToken: 'SUI',
+      toToken: 'USDC',
+      fromAmount: 1,
+      toAmount: 3.5,
+      priceImpact: 0.001,
+      route: 'FLOWXV3 + AFTERMATH',
+      serializedRoute: quotedRoute(),
+    };
+    await expect(
+      agent.swap({
+        from: 'SUI',
+        to: 'USDC',
+        amount: 1,
+        serializedRoute: wholeQuoteResponse as never,
+      }),
+    ).rejects.toThrow(SENTINEL);
+    expect(findSwapRoute).not.toHaveBeenCalled();
+  });
+
+  it('a shape without coin types fails loud with the recovery — never "undefined -> undefined"', async () => {
+    const agent = makeAgent();
+    const stripped = { ...quotedRoute() } as Record<string, unknown>;
+    stripped.fromCoinType = undefined;
+    stripped.toCoinType = undefined;
+    const err = await agent
+      .swap({ from: 'SUI', to: 'USDC', amount: 1, serializedRoute: stripped as never })
+      .then(() => null, (e: unknown) => e);
+    expect(err).toBeInstanceOf(T2000Error);
+    expect((err as T2000Error).code).toBe('SWAP_ROUTE_MISMATCH');
+    expect((err as T2000Error).message).toMatch(/missing fromCoinType\/toCoinType/);
+    expect((err as T2000Error).message).not.toMatch(/undefined -> undefined/);
+    expect(findSwapRoute).not.toHaveBeenCalled();
+  });
+
+  it('the mismatch message reports full coin types on the expected side', async () => {
+    const agent = makeAgent();
+    const err = await agent
+      .swap({ from: 'USDC', to: 'SUI', amount: 1, serializedRoute: quotedRoute() })
+      .then(() => null, (e: unknown) => e);
+    expect((err as T2000Error).message).toContain(USDC_TYPE);
+    expect((err as T2000Error).message).toContain(SUI_TYPE);
+  });
 });
