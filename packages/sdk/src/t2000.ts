@@ -293,11 +293,31 @@ export class T2000 extends EventEmitter<T2000Events> {
     let route: SwapRouteResult | null;
     if (params.serializedRoute) {
       // Quote-bound execution: validate, never silently re-discover.
-      const s = params.serializedRoute;
+      let s = params.serializedRoute;
+      // Shape forgiveness (one level only): agents often pass the WHOLE
+      // swapQuote response — `{ ..., serializedRoute: {...} }` — instead of
+      // its `serializedRoute` field. If the nested object has the real
+      // shape, unwrap it once; anything else still fails loud below.
+      const nested = (s as { serializedRoute?: SerializedCetusRoute }).serializedRoute;
+      if (
+        nested && typeof nested === 'object' &&
+        typeof nested.fromCoinType === 'string' && nested.routerData
+      ) {
+        s = nested;
+      }
+      // A real quote ALWAYS carries the coin-type snapshot
+      // (serializeCetusRoute sets both). Absent types = this is not the
+      // object t2000 quoted — say so, instead of "undefined -> undefined".
+      if (typeof s.fromCoinType !== 'string' || typeof s.toCoinType !== 'string') {
+        throw new T2000Error(
+          'SWAP_ROUTE_MISMATCH',
+          'serializedRoute is not the object t2000 quoted — it is missing fromCoinType/toCoinType. Pass quote.serializedRoute exactly as the quote returned it (not the whole quote response), or omit serializedRoute to discover a fresh route.',
+        );
+      }
       if (!verifyCetusRouteCoinMatch(s, { fromCoinType: fromType, toCoinType: toType })) {
         throw new T2000Error(
           'SWAP_ROUTE_MISMATCH',
-          `The quoted route is for ${s.fromCoinType} -> ${s.toCoinType}, not ${params.from} -> ${params.to}. Re-quote and pass the new serializedRoute.`,
+          `The quoted route is for ${s.fromCoinType} -> ${s.toCoinType}, not ${fromType} -> ${toType}. Re-quote and pass the new serializedRoute.`,
         );
       }
       if (s.byAmountIn !== byAmountIn || BigInt(s.amountIn) !== rawAmount) {
