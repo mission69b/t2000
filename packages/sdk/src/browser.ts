@@ -103,7 +103,8 @@ export type { SwapRouteResult, OverlayFeeConfig } from './protocols/cetus-swap.j
 // host runs these in the agent loop before the tap-to-confirm card.
 // buildSendTx is browser-safe (builds a gasless PTB; the client is injected) —
 // the Audric client signs it in-browser with the zkLogin session (send_transfer).
-export { buildSendTx, preflightSend } from './wallet/send.js';
+export { buildSendTx, preflightSend, classifySendAsset, invalidSendAssetMessage } from './wallet/send.js';
+export type { SendAssetClass } from './wallet/send.js';
 
 // A2A escrow job builders + readers — browser-safe (client injected, no fs).
 // Store surfaces build the buyer-side legs on a zkLogin session key.

@@ -83,18 +83,18 @@ export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDsui'] as const
 // Operation → allowed asset rules (single source of truth)
 // ---------------------------------------------------------------------------
 
-// [v4.0 Phase A Day 2 — 2026-05-26] `send` is constrained to
-// `['USDC', 'USDsui', 'SUI']`. Rationale (SPEC_AGENT_WALLET_GREENFIELD §A):
-// - USDC + USDsui are gasless via `0x2::balance::send_funds` (Sui mainnet
-//   protocol allowlist) — the two foundation stables.
-// - SUI is the only non-stable kept on the allowlist so users with no
-//   stablecoin balance can still pay gas-native SUI transfers.
-// - USDT, USDe, WAL, ETH, NAVX, GOLD are NOT sendable — users must swap to
-//   USDC/USDsui first (one-step) or hold SUI and use a manual Move call.
-// `swap` is unrestricted (Cetus routes any pair). The DeFi operations
+// [S.957 — 2026-08-08] `send` widened from `['USDC', 'USDsui', 'SUI']` to
+// `'*'`: any asset that RESOLVES to a Sui coin type (registry symbol or full
+// `0x…::module::TYPE`) with sufficient balance is sendable. The real gate is
+// `classifySendAsset` (wallet/send.ts) — unresolvable symbols still throw
+// INVALID_ASSET, and only USDC/USDsui ride the gasless
+// `0x2::balance::send_funds` path; everything else pays gas in SUI.
+// (The composeTx `send_transfer` appender keeps the narrow stables+SUI list —
+// sponsored bundles carry Enoki-shaped constraints of their own.)
+// `swap` was always unrestricted (Cetus routes any pair). The DeFi operations
 // (save/borrow/withdraw/repay) were removed with NAVI.
 export const OPERATION_ASSETS = {
-  send: ['USDC', 'USDsui', 'SUI'],
+  send: '*',
   swap: '*',
 } as const;
 
@@ -135,9 +135,10 @@ export function assertAllowedAsset(op: Operation, asset: string | undefined): vo
 }
 
 /**
- * [v4.0 Phase A Day 2] Narrow type alias for assets sendable through the
- * Agent Wallet. Matches `OPERATION_ASSETS.send` exactly. Exported so the
- * CLI / SDK / composeTx can share one type without re-declaring it.
+ * [v4.0 Phase A Day 2] Narrow type alias for the composeTx `send_transfer`
+ * appender (sponsored bundles stay stables+SUI) and the gasless docs.
+ * [S.957] No longer the single-step `send` gate — that widened to any
+ * resolvable coin type via `classifySendAsset`.
  */
 export type SendableAsset = 'USDC' | 'USDsui' | 'SUI';
 export const SENDABLE_ASSETS: readonly SendableAsset[] = ['USDC', 'USDsui', 'SUI'] as const;

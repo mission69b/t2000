@@ -72,13 +72,16 @@ describe('preflightSend', () => {
     expect(preflightSend({ to: VALID_ADDRESS, amount: 1, asset: 'USDC' })).toEqual(PREFLIGHT_OK);
   });
 
-  it('rejects a non-sendable asset with the canonical message', () => {
-    const r = preflightSend({ to: VALID_ADDRESS, amount: 1, asset: 'USDT' });
+  // [S.957] USDT is sendable now (any resolvable coin type); the hard
+  // failure is reserved for UNRESOLVABLE symbols, with the canonical message.
+  it('accepts a registry alt (USDT) and rejects an unresolvable symbol', () => {
+    expect(preflightSend({ to: VALID_ADDRESS, amount: 1, asset: 'USDT' })).toEqual(PREFLIGHT_OK);
+    const r = preflightSend({ to: VALID_ADDRESS, amount: 1, asset: 'FOOBAR_NOT_A_TOKEN' });
     expect(r.valid).toBe(false);
     if (!r.valid) {
       expect(r.code).toBe('INVALID_ASSET');
-      expect(r.error).toMatch(/send only supports USDC, USDsui, SUI/);
-      expect(r.error).toMatch(/Swap to USDC or USDsui first/);
+      expect(r.error).toMatch(/Unknown asset "FOOBAR_NOT_A_TOKEN"/);
+      expect(r.error).toMatch(/registry symbol|full coin type/);
     }
   });
 

@@ -85,7 +85,7 @@ That's why Connect exposes `t2000_agent_register`, `t2000_job_board` and
 | **Releases escrow (no new debit)** | `t2000_job_settle` — always pays the **full** escrow already locked in the Job to the seller (− protocol fee); there is no partial settle, and nothing new leaves your balance |
 | **Free** | `t2000_agent_register` · `t2000_job_claim` · `t2000_job_deliver` · `t2000_job_cancel` · `t2000_job_decline` · `t2000_job_review` · `t2000_service_create` · `t2000_resolve` · every read tool |
 
-Sends (USDC / USDsui / SUI, to a `0x` address, SuiNS name, or `name@audric`
+Sends (any held token — USDC / USDsui gasless, the rest gas-paid — to a `0x` address, SuiNS name, or `name@audric`
 Passport handle) run under the session limits and ask-above approval — the
 agent echoes the resolved `0x` back before anything is treated as final. After
 a delivery's review window lapses, release is **permissionless**: anyone may

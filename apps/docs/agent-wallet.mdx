@@ -44,7 +44,7 @@ The core loop is four commands — everything else (swap, history, limits, ident
 |---|---|
 | `t2 init` | Create the wallet + a free on-chain Agent ID. `--import` restores a `suiprivkey1…` secret. |
 | `t2 fund` | Deposit address + QR. |
-| `t2 send <amount> <asset> <recipient>` | USDC / USDsui (gasless) or SUI. Recipient: `0x…` or SuiNS name (incl. subnames like `alice.audric.sui`). |
+| `t2 send <amount> <asset> <recipient>` | Any held token — registry symbol (`USDC`, `MANIFEST`) or full coin type. USDC / USDsui are gasless; the rest need SUI for gas. Recipient: `0x…` or SuiNS name (incl. subnames like `alice.audric.sui`). |
 | `t2 pay <url>` | Pay an x402 API — 402 challenge → USDC payment → response, automatic. |
 
 Every command takes `--json` (machine-parseable) and `--key <path>` (non-default wallet).

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Transaction } from '@mysten/sui/transactions';
-import { buildSendTx, addSendToTx } from './send.js';
+import { buildSendTx, addSendToTx, classifySendAsset } from './send.js';
 import { SUPPORTED_ASSETS } from '../constants.js';
 
 function mockClient(balanceOverride?: bigint, coinType?: string) {
@@ -142,33 +142,113 @@ describe('buildSendTx — SUI gas-native path', () => {
   });
 });
 
-describe('buildSendTx — asset constraint (v4)', () => {
-  it('throws INVALID_ASSET for USDT', async () => {
+// [S.957] Send widened to any held coin type. The old 3-asset whitelist
+// pins are replaced by: unresolvable symbols hard-fail, resolvable alts
+// build a GAS-PAID transfer (never the gasless send_funds shape), and
+// insufficient balance stays a clear error.
+describe('buildSendTx — any held coin type (S.957)', () => {
+  const MANIFEST_TYPE =
+    '0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST';
+
+  it('throws INVALID_ASSET for an unresolvable bare symbol', async () => {
     const client = mockClient();
     await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'USDT' as any }),
-    ).rejects.toThrow(/send only supports USDC, USDsui, SUI/);
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'FOOBAR_NOT_A_TOKEN' }),
+    ).rejects.toThrow(/Unknown asset "FOOBAR_NOT_A_TOKEN"/);
   });
 
-  it('throws INVALID_ASSET for USDe', async () => {
-    const client = mockClient();
-    await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'USDe' as any }),
-    ).rejects.toThrow(/send only supports USDC, USDsui, SUI/);
+  it('builds a gas-paid transfer for a registry alt symbol (MANIFEST) — no send_funds', async () => {
+    const client = mockClient(10_000_000_000n, MANIFEST_TYPE);
+    const tx = await buildSendTx({
+      client,
+      address: VALID_ADDRESS,
+      to: VALID_ADDRESS,
+      amount: 1,
+      asset: 'MANIFEST',
+    });
+    expect(tx).toBeInstanceOf(Transaction);
+    const data = tx.getData();
+    const moveCalls = data.commands.filter(
+      (c) => 'MoveCall' in (c as Record<string, unknown>),
+    );
+    expect(moveCalls.length).toBe(0); // NOT the gasless send_funds shape
+    const transfers = data.commands.filter(
+      (c) => 'TransferObjects' in (c as Record<string, unknown>),
+    );
+    expect(transfers.length).toBe(1);
+    // Registry decimals (9) resolve offline — no metadata round-trip.
+    expect(client.core.getBalance).toHaveBeenCalledWith({
+      owner: VALID_ADDRESS,
+      coinType: MANIFEST_TYPE,
+    });
   });
 
-  it('throws INVALID_ASSET for WAL', async () => {
-    const client = mockClient();
-    await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'WAL' as any }),
-    ).rejects.toThrow(/send only supports/);
+  it('accepts the full coin type string too', async () => {
+    const client = mockClient(10_000_000_000n, MANIFEST_TYPE);
+    const tx = await buildSendTx({
+      client,
+      address: VALID_ADDRESS,
+      to: VALID_ADDRESS,
+      amount: 1,
+      asset: MANIFEST_TYPE,
+    });
+    expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it('error message hints at swapping to USDC / USDsui first', async () => {
-    const client = mockClient();
+  it('reads decimals from on-chain metadata for a non-registry type', async () => {
+    const alienType = `0x${'f'.repeat(64)}::alien::ALIEN`;
+    const client = mockClient(10_000n, alienType);
+    client.core.getCoinMetadata = vi.fn().mockResolvedValue({ metadata: { decimals: 2 } });
+    const tx = await buildSendTx({
+      client,
+      address: VALID_ADDRESS,
+      to: VALID_ADDRESS,
+      amount: 100, // 100 × 10^2 = 10_000 raw — exactly the mocked balance
+      asset: alienType,
+    });
+    expect(tx).toBeInstanceOf(Transaction);
+    expect(client.core.getCoinMetadata).toHaveBeenCalledWith({ coinType: alienType });
+  });
+
+  it('throws INSUFFICIENT_BALANCE for a held-token shortfall', async () => {
+    const client = mockClient(100n, MANIFEST_TYPE);
     await expect(
-      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1, asset: 'GOLD' as any }),
-    ).rejects.toThrow(/Swap to USDC or USDsui first/);
+      buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 5, asset: 'MANIFEST' }),
+    ).rejects.toThrow(/Insufficient MANIFEST balance/);
+  });
+
+  it('USDC stays gasless when passed as its full coin type (no gate bypass)', async () => {
+    const client = mockClient();
+    const tx = await buildSendTx({
+      client,
+      address: VALID_ADDRESS,
+      to: VALID_ADDRESS,
+      amount: 1,
+      asset: SUPPORTED_ASSETS.USDC.type,
+    });
+    const moveCalls = tx.getData().commands.filter(
+      (c) => 'MoveCall' in (c as Record<string, unknown>),
+    ) as Array<{ MoveCall: { module: string; function: string } }>;
+    expect(moveCalls.length).toBe(1);
+    expect(moveCalls[0].MoveCall.function).toBe('send_funds');
+  });
+});
+
+describe('classifySendAsset (S.957)', () => {
+  it('classifies stables, SUI, registry alts, and full types', () => {
+    expect(classifySendAsset('USDC')).toMatchObject({ kind: 'gasless-stable', symbol: 'USDC' });
+    expect(classifySendAsset('usdsui')).toMatchObject({ kind: 'gasless-stable', symbol: 'USDsui' });
+    expect(classifySendAsset('SUI')).toMatchObject({ kind: 'sui' });
+    expect(classifySendAsset('MANIFEST')).toMatchObject({ kind: 'coin', symbol: 'MANIFEST' });
+    expect(classifySendAsset(SUPPORTED_ASSETS.USDC.type)).toMatchObject({
+      kind: 'gasless-stable',
+      symbol: 'USDC',
+    });
+  });
+
+  it('returns null for unresolvable symbols and malformed types', () => {
+    expect(classifySendAsset('FOOBAR_NOT_A_TOKEN')).toBeNull();
+    expect(classifySendAsset('0xnot::a')).toBeNull();
   });
 });
 

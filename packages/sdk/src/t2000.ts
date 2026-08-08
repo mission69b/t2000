@@ -19,7 +19,7 @@ import { KeypairSigner } from './wallet/keypairSigner.js';
 import { executeTx } from './wallet/executeTx.js';
 import { payWithX402, probeX402, type X402Probe } from './wallet/pay.js';
 import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
-import { buildSendTx } from './wallet/send.js';
+import { buildSendTx, classifySendAsset, invalidSendAssetMessage } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
 import { resolveSymbol, resolveCoinDecimals } from './token-registry.js';
@@ -54,7 +54,7 @@ import {
   type ChatResult,
 } from './inference.js';
 import { verifyReceipt, type VerifyOptions, type VerifyResult } from './verify.js';
-import { SUPPORTED_ASSETS, assertAllowedAsset, type SendableAsset, type SupportedAsset } from './constants.js';
+import { SUPPORTED_ASSETS, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { LimitEnforcer, MemoryLimitEnforcer, approxUsdValue } from './limits/index.js';
@@ -501,49 +501,43 @@ export class T2000 extends EventEmitter<T2000Events> {
   /**
    * Send `amount` of `asset` to `to` (hex address or SuiNS name).
    *
-   * [v4.0 Phase A Day 2 — SPEC_AGENT_WALLET_GREENFIELD §A]
+   * [S.957 — 2026-08-08] `asset` accepts **any held coin type** — a
+   * registry symbol (`USDC`, `MANIFEST`) or a full `0x…::module::TYPE`.
+   * Unresolvable strings throw `INVALID_ASSET`; empty balances throw
+   * `INSUFFICIENT_BALANCE`.
    *
-   * **Breaking changes from v3.x:**
-   * - `asset` is now REQUIRED (no implicit `?? 'USDC'` default). Callers
-   *   must specify `'USDC' | 'USDsui' | 'SUI'`. Sending `'USDT'` /
-   *   `'USDe'` / `'WAL'` / `'ETH'` / `'NAVX'` / `'GOLD'` now errors
-   *   with `INVALID_ASSET` — swap to a stable first.
    * - USDC + USDsui builds go through `SuiGrpcClient` so the gRPC build
    *   resolver auto-detects `0x2::balance::send_funds` eligibility and
-   *   zeros gas at simulate time. Result: **gasless USDC / USDsui sends
-   *   from a zero-SUI wallet.** SUI sends stay on the standard gas-paid
-   *   path.
+   *   zeros gas at simulate time — **gasless sends from a zero-SUI
+   *   wallet.** They remain the ONLY gasless assets.
+   * - SUI and every other coin type are gas-paid (the sender needs SUI).
+   * - `asset` stays REQUIRED (no implicit `?? 'USDC'` default — v4 rule).
    *
    * Submission stays on the JSON-RPC client (the rest of the SDK
    * expects JSON-RPC for read paths, and Sui's docs explicitly support
    * the "build via gRPC, execute via JSON-RPC" hybrid).
    */
-  async send(params: { to: string; amount: number; asset: SupportedAsset; force?: boolean }): Promise<SendResult> {
-    // [v4.0 Phase A Day 2] Asset is REQUIRED at runtime (no more silent
-    // USDC default). The parameter type is `SupportedAsset` (the wider
-    // SDK surface) rather than `SendableAsset` so callers that still
-    // hand a wide-typed asset through — primarily the engine LLM tool
-    // surface — compile without modification. Runtime narrowing happens
-    // via `assertAllowedAsset('send', asset)`, which throws
-    // `INVALID_ASSET` for anything outside `['USDC', 'USDsui', 'SUI']`.
-    // This matches the SPEC verification gate `asset: 'USDY'` →
-    // `INVALID_ASSET` (runtime check, not compile check).
+  async send(params: { to: string; amount: number; asset: string; force?: boolean }): Promise<SendResult> {
     const asset = params.asset;
     if (!asset) {
       throw new T2000Error(
         'INVALID_ASSET',
-        "send() requires an explicit asset. Use one of: USDC, USDsui, SUI.",
+        'send() requires an explicit asset. Use a registry symbol (USDC, USDsui, SUI, MANIFEST, …) or a full coin type (0x…::module::TYPE).',
       );
     }
-    assertAllowedAsset('send', asset);
-    // `assertAllowedAsset('send', asset)` narrows the runtime value to
-    // one of `SendableAsset` (USDC / USDsui / SUI). Cast statically.
-    const sendableAsset = asset as SendableAsset;
+    // [S.957] Resolve BEFORE the limit gate so nonsense symbols fail as
+    // INVALID_ASSET (not a limits question) and so stables passed as full
+    // coin types still price 1:1 at the gate (no gating bypass by type).
+    const cls = classifySendAsset(asset);
+    if (!cls) {
+      throw new T2000Error('INVALID_ASSET', invalidSendAssetMessage(asset));
+    }
 
-    // Spending-limit gate (USD; stables 1:1, SUI ungated). `force` bypasses.
+    // Spending-limit gate (USD; stables 1:1 via canonical symbol; SUI and
+    // unpriced alts stay ungated — never invent a price). `force` bypasses.
     this.limits.assert({
       operation: 'send',
-      amountUsd: approxUsdValue(sendableAsset, params.amount) ?? 0,
+      amountUsd: approxUsdValue(cls.symbol, params.amount) ?? 0,
       force: params.force,
     });
 
@@ -552,23 +546,21 @@ export class T2000 extends EventEmitter<T2000Events> {
     const sendTo = resolved.address;
 
     // Gasless-eligible stables (USDC / USDsui) build via the dedicated gRPC
-    // client so the resolver can zero gas at simulate. SUI is not on the
-    // `balance::send_funds` allowlist, so it builds via the default client
-    // (also gRPC post-cutover) with normal gas — no separate build client.
-    const useGrpc = sendableAsset === 'USDC' || sendableAsset === 'USDsui';
-    const buildClient = useGrpc ? getSuiGrpcClient() : undefined;
+    // client so the resolver can zero gas at simulate. Everything else
+    // builds via the default client with normal gas.
+    const buildClient = cls.kind === 'gasless-stable' ? getSuiGrpcClient() : undefined;
 
     const gasResult = await executeTx(
       this.client,
       this._signer,
-      () => buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset: sendableAsset }),
+      () => buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset }),
       { buildClient },
     );
 
-    this.limits.record(approxUsdValue(sendableAsset, sendAmount) ?? 0);
+    this.limits.record(approxUsdValue(cls.symbol, sendAmount) ?? 0);
     const balance = await this.balance();
 
-    this.emitBalanceChange(sendableAsset, sendAmount, 'send', gasResult.digest);
+    this.emitBalanceChange(cls.symbol, sendAmount, 'send', gasResult.digest);
 
     return {
       success: true,

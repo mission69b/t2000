@@ -36,7 +36,7 @@ t2 history          # last transactions, newest first
 
 | Command | What it does |
 | --- | --- |
-| `t2 send <amount> <asset> <recipient>` | Send USDC, USDsui, or SUI. USDC + USDsui are gasless. Recipient: `0x…` address, SuiNS name, or `@audric` handle. |
+| `t2 send <amount> <asset> <recipient>` | Send any held token (registry symbol or full coin type). USDC + USDsui are gasless; everything else needs SUI for gas. Recipient: `0x…` address, SuiNS name, or `@audric` handle. |
 | `t2 swap <amount> <from> <to>` | Swap any token pair via the Cetus aggregator. `--quote` previews without executing; `--slippage <pct>` caps slippage (default 1%). |
 
 ```bash
