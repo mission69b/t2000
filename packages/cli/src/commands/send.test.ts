@@ -1,7 +1,8 @@
 // [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 3 — 2026-05-26]
-// Parser tests for `t2 send <amount> <asset> <recipient>` v4 surface.
-// Locks in the SPEC's "asset required, no USDC default" rule + the
-// constrained whitelist (USDC / USDsui / SUI).
+// Parser tests for `t2 send <amount> <asset> <recipient>`.
+// Locks in the "asset required, no USDC default" rule + [S.957] the
+// widened surface: any resolvable coin type (registry symbol or full
+// 0x…::module::TYPE) parses; unresolvable symbols still hard-fail.
 
 import { describe, it, expect } from 'vitest';
 import { parseSendArgs } from './send.js';
@@ -75,30 +76,38 @@ describe('parseSendArgs (v4)', () => {
     });
   });
 
-  describe('asset whitelist (USDC | USDsui | SUI)', () => {
-    it('rejects USDT with a swap hint', () => {
-      expect(() => parseSendArgs(['5', 'USDT', '0xabc'])).toThrow(/Unsupported asset/);
-      expect(() => parseSendArgs(['5', 'USDT', '0xabc'])).toThrow(/Swap to USDC or USDsui first/);
+  describe('any resolvable asset (S.957)', () => {
+    it('parses a registry alt symbol (MANIFEST) — no more "swap first"', () => {
+      expect(parseSendArgs(['10', 'MANIFEST', '0xabc'])).toEqual({
+        amount: 10,
+        asset: 'MANIFEST',
+        recipient: '0xabc',
+      });
     });
 
-    it('rejects USDY (one of the Sui-allowlisted stables we do NOT track)', () => {
-      expect(() => parseSendArgs(['5', 'USDY', '0xabc'])).toThrow(/Unsupported asset/);
+    it('parses previously-rejected registry assets (USDT / WAL / GOLD)', () => {
+      for (const asset of ['USDT', 'WAL', 'GOLD']) {
+        expect(parseSendArgs(['5', asset, '0xabc']).asset).toBe(asset);
+      }
     });
 
-    it('rejects USDe', () => {
-      expect(() => parseSendArgs(['5', 'USDe', '0xabc'])).toThrow(/Unsupported asset/);
+    it('parses a full coin type verbatim', () => {
+      const full =
+        '0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST';
+      expect(parseSendArgs(['10', full, '0xabc'])).toEqual({
+        amount: 10,
+        asset: full,
+        recipient: '0xabc',
+      });
     });
 
-    it('rejects GOLD (XAUM)', () => {
-      expect(() => parseSendArgs(['5', 'GOLD', '0xabc'])).toThrow(/Unsupported asset/);
+    it('still rejects an unresolvable bogus symbol', () => {
+      expect(() => parseSendArgs(['5', 'FOOBAR_NOT_A_TOKEN', '0xabc'])).toThrow(/Unknown asset/);
+      expect(() => parseSendArgs(['5', 'XYZ', '0xabc'])).toThrow(/Unknown asset/);
     });
 
-    it('rejects WAL', () => {
-      expect(() => parseSendArgs(['5', 'WAL', '0xabc'])).toThrow(/Unsupported asset/);
-    });
-
-    it('rejects a bogus symbol', () => {
-      expect(() => parseSendArgs(['5', 'XYZ', '0xabc'])).toThrow(/Unsupported asset/);
+    it('rejects a malformed :: type', () => {
+      expect(() => parseSendArgs(['5', '0xnot::a', '0xabc'])).toThrow(/Unknown asset/);
     });
   });
 

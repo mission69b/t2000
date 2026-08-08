@@ -144,7 +144,8 @@ export {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
-export { buildSendTx, addSendToTx, preflightSend } from './wallet/send.js';
+export { buildSendTx, addSendToTx, preflightSend, classifySendAsset, invalidSendAssetMessage } from './wallet/send.js';
+export type { SendAssetClass } from './wallet/send.js';
 export {
   A2A_ESCROW_PACKAGE_ID,
   MAINNET_A2A_ESCROW_PACKAGE_ID,

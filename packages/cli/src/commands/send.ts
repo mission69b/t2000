@@ -1,18 +1,18 @@
 // [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 3 — 2026-05-26]
 // `t2 send <amount> <asset> <recipient>` — v4 Agent Wallet surface.
 //
-// Contract changes vs. the pre-pivot legacy command:
+// Contract:
 //   - `<asset>` is REQUIRED. There is no USDC default. A bare
 //     `t2 send 5 alice.sui` exits 1 with a clear error.
-//   - Asset is constrained to USDC / USDsui / SUI (matches SDK
-//     `OPERATION_ASSETS.send` after Day 2). Any other token gets a
-//     `unsupported asset` error pointing at `t2 swap` as the path to
-//     get into USDC / USDsui / SUI first.
+//   - [S.957 — 2026-08-08] Asset is ANY held coin type — a registry
+//     symbol (USDC, MANIFEST, …) or a full `0x…::module::TYPE`.
+//     Unresolvable symbols still exit 1. USDC + USDsui are gasless;
+//     everything else (SUI included) needs SUI for gas.
 //   - USDC + USDsui transfers go through the SDK's gasless
-//     `0x2::balance::send_funds` path (Day 2 rewrite). When the SDK
-//     reports `gasCost === 0`, the receipt renders a `gasless ⚡`
-//     badge so the operator sees the protocol-level zero-gas semantic
-//     actually kicked in.
+//     `0x2::balance::send_funds` path. When the SDK reports
+//     `gasCost === 0`, the receipt renders a `gasless ⚡` badge so the
+//     operator sees the protocol-level zero-gas semantic actually
+//     kicked in.
 //   - PIN flow removed. Uses `withAgent` from `lib/with-agent.ts`.
 //
 // SuiNS resolution is delegated to the SDK's `T2000.resolveRecipient` —
@@ -22,7 +22,7 @@
 
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { truncateAddress, formatUsd, type SupportedAsset } from '@t2000/sdk';
+import { truncateAddress, formatUsd, classifySendAsset } from '@t2000/sdk';
 import {
   printSuccess,
   printKeyValue,
@@ -34,35 +34,40 @@ import {
 } from '../output.js';
 import { withAgent } from '../lib/with-agent.js';
 
-const ACCEPTED_ASSETS = ['USDC', 'USDsui', 'SUI'] as const;
-type AcceptedAsset = (typeof ACCEPTED_ASSETS)[number];
-
-const ACCEPTED_ASSETS_LIST = ACCEPTED_ASSETS.join(', ');
+const ASSET_HINT =
+  'a registry symbol (USDC, USDsui, SUI, MANIFEST, …) or a full coin type (0x…::module::TYPE)';
 
 /**
- * Pure parser for the v4 `t2 send` positional args.
+ * Pure parser for the `t2 send` positional args.
  *
  * Accepted shapes (all asset-required):
  *   - `t2 send 5 USDC 0x…`
+ *   - `t2 send 10 MANIFEST 0x…`                    ← S.957: any held token
+ *   - `t2 send 10 0xc466…::manifest::MANIFEST 0x…` ← full coin type
  *   - `t2 send 5 USDC alice.sui`
- *   - `t2 send 5 USDC alice.audric.sui`
  *   - `t2 send 5 USDC to 0x…`  ← legacy "to" filler word still tolerated
  *
  * Rejected:
- *   - `t2 send 5 0x…`            → asset required
- *   - `t2 send 5`                → usage error
- *   - `t2 send 5 USDY 0x…`       → unsupported asset
+ *   - `t2 send 5 0x…`               → asset required
+ *   - `t2 send 5`                   → usage error
+ *   - `t2 send 5 FOOBAR 0x…`        → unresolvable asset
+ *
+ * [S.957] Validation delegates to the SDK's `classifySendAsset` — the same
+ * resolvability rule the write path enforces (single source of truth). The
+ * returned `asset` keeps the canonical symbol for the big three (so display
+ * stays `USDsui`, not `usdsui`) and passes anything else through verbatim
+ * for the SDK to resolve again.
  */
 export function parseSendArgs(args: string[]): {
   amount: number;
-  asset: AcceptedAsset;
+  asset: string;
   recipient: string;
 } {
   const filtered = args.filter((a) => a.toLowerCase() !== 'to');
 
   if (filtered.length < 2) {
     throw new Error(
-      `Usage: t2 send <amount> <asset> <recipient>\n  asset must be one of: ${ACCEPTED_ASSETS_LIST}\n  recipient can be a 0x address or SuiNS name (alice.sui, alice.audric.sui)`,
+      `Usage: t2 send <amount> <asset> <recipient>\n  asset is ${ASSET_HINT}\n  recipient can be a 0x address or SuiNS name (alice.sui, alice.audric.sui)`,
     );
   }
 
@@ -70,7 +75,7 @@ export function parseSendArgs(args: string[]): {
     // `t2 send 5 alice.sui` — asset omitted. Error rather than
     // silently defaulting to USDC.
     throw new Error(
-      `Missing required <asset> argument. Use one of: ${ACCEPTED_ASSETS_LIST}. Example: t2 send ${filtered[0]} USDC ${filtered[1]}`,
+      `Missing required <asset> argument. Use ${ASSET_HINT}. Example: t2 send ${filtered[0]} USDC ${filtered[1]}`,
     );
   }
 
@@ -80,10 +85,10 @@ export function parseSendArgs(args: string[]): {
   }
 
   const candidate = filtered[1];
-  const normalized = normalizeAssetSymbol(candidate);
-  if (!normalized) {
+  const cls = classifySendAsset(candidate);
+  if (!cls) {
     throw new Error(
-      `Unsupported asset "${candidate}". Use one of: ${ACCEPTED_ASSETS_LIST}. Swap to USDC or USDsui first with \`t2 swap\`, or send SUI.`,
+      `Unknown asset "${candidate}". Use ${ASSET_HINT}. Check your holdings with \`t2 balance\`.`,
     );
   }
 
@@ -92,20 +97,11 @@ export function parseSendArgs(args: string[]): {
     throw new Error(`Missing recipient. Usage: t2 send <amount> <asset> <recipient>.`);
   }
 
-  return { amount, asset: normalized, recipient };
-}
-
-/**
- * Case-insensitive normalisation. `usdc` / `USDC` / `usdsui` /
- * `USDSUI` / `USDsui` / `sui` / `SUI` all map. Anything else returns
- * `undefined`.
- */
-function normalizeAssetSymbol(input: string): AcceptedAsset | undefined {
-  const lower = input.toLowerCase();
-  if (lower === 'usdc') return 'USDC';
-  if (lower === 'usdsui') return 'USDsui';
-  if (lower === 'sui') return 'SUI';
-  return undefined;
+  // Canonical symbol for the well-known three (display consistency); a full
+  // coin type or alt symbol passes through as typed — the SDK re-resolves.
+  const asset =
+    cls.kind === 'gasless-stable' || cls.kind === 'sui' ? cls.symbol : candidate;
+  return { amount, asset, recipient };
 }
 
 export function registerSend(program: Command) {
@@ -114,9 +110,11 @@ export function registerSend(program: Command) {
     .argument('<amount>', 'Amount of <asset> to send (denominated in asset units, NOT USD)')
     .argument(
       '[args...]',
-      'Asset (USDC | USDsui | SUI), optional "to" keyword, and recipient (0x address or SuiNS name like alice.sui)',
+      'Asset (registry symbol like USDC / MANIFEST, or a full 0x…::module::TYPE coin type), optional "to" keyword, and recipient (0x address or SuiNS name like alice.sui)',
     )
-    .description('Send USDC, USDsui, or SUI. USDC + USDsui are gasless (no SUI required).')
+    .description(
+      'Send any held token. USDC + USDsui are gasless; everything else needs SUI for gas.',
+    )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--force', 'Override spending limits for this call (see `t2 limit`)')
     .addHelpText(
@@ -126,6 +124,8 @@ Examples:
   $ t2 send 5 USDC 0xabc…              Send 5 USDC (gasless) to a hex address
   $ t2 send 5 USDsui alice.sui         Send 5 USDsui (gasless) to a SuiNS name
   $ t2 send 0.1 SUI alice.audric.sui   Send 0.1 SUI (gas required) to a SuiNS subname
+  $ t2 send 10 MANIFEST 0xabc…         Send any held token (gas required)
+  $ t2 send 10 0xc466…::manifest::MANIFEST 0xabc…   Full coin type works too
 `,
     )
     .action(async (amount: string, args: string[], opts: { key?: string; force?: boolean }) => {
@@ -140,10 +140,9 @@ Examples:
         const result = await agent.send({
           to: recipient,
           amount: parsedAmount,
-          // The CLI parser already narrowed asset to USDC / USDsui / SUI;
-          // the SDK accepts `SupportedAsset` and re-validates via
-          // `assertAllowedAsset('send', …)` at runtime.
-          asset: asset as SupportedAsset,
+          // [S.957] Any resolvable asset string — the SDK re-resolves via
+          // `classifySendAsset` (same rule the parser used).
+          asset,
           force: opts.force,
         });
 
@@ -160,9 +159,14 @@ Examples:
           ? `${result.suinsName} ${pc.dim(`(${truncateAddress(result.to)})`)}`
           : truncateAddress(result.to);
 
-        const amountDisplay = asset === 'SUI'
-          ? `${result.amount.toFixed(4)} SUI`
-          : `${formatUsd(result.amount)} ${asset}`;
+        // Stables render as USD (1:1); SUI keeps its 4dp habit; any other
+        // token renders plain `<amount> <asset>` — never an invented $.
+        const amountDisplay =
+          asset === 'USDC' || asset === 'USDsui'
+            ? `${formatUsd(result.amount)} ${asset}`
+            : asset === 'SUI'
+              ? `${result.amount.toFixed(4)} SUI`
+              : `${result.amount} ${asset}`;
 
         printBlank();
         printSuccess(`Sent ${amountDisplay} → ${displayTo}`);

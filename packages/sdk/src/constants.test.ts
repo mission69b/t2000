@@ -26,12 +26,13 @@ describe('STABLE_ASSETS', () => {
   });
 });
 
-// [NAVI removed] The only live operations are `send` (gasless-eligible stables
-// + SUI) and `swap` (unrestricted — Cetus routes any pair). save / borrow /
-// withdraw / repay were removed with the DeFi surface.
+// [NAVI removed] The only live operations are `send` and `swap`.
+// [S.957] BOTH are wildcards now — send widened to any resolvable coin type;
+// the real send gate is `classifySendAsset` (wallet/send.ts), which still
+// hard-fails unresolvable symbols.
 describe('OPERATION_ASSETS', () => {
-  it('restricts send to USDC + USDsui + SUI', () => {
-    expect(OPERATION_ASSETS.send).toEqual(['USDC', 'USDsui', 'SUI']);
+  it('allows any asset for send (resolvability gated in wallet/send.ts)', () => {
+    expect(OPERATION_ASSETS.send).toBe('*');
   });
 
   it('allows any asset for swap', () => {
@@ -46,18 +47,10 @@ describe('isAllowedAsset', () => {
     }
   });
 
-  it('returns true for USDC + USDsui + SUI on send, false for other assets', () => {
-    expect(isAllowedAsset('send', 'USDC')).toBe(true);
-    expect(isAllowedAsset('send', 'USDsui')).toBe(true);
-    expect(isAllowedAsset('send', 'SUI')).toBe(true);
-    expect(isAllowedAsset('send', 'usdc')).toBe(true);
-    expect(isAllowedAsset('send', 'usdsui')).toBe(true);
-    expect(isAllowedAsset('send', 'USDT')).toBe(false);
-    expect(isAllowedAsset('send', 'USDe')).toBe(false);
-    expect(isAllowedAsset('send', 'WAL')).toBe(false);
-    expect(isAllowedAsset('send', 'ETH')).toBe(false);
-    expect(isAllowedAsset('send', 'NAVX')).toBe(false);
-    expect(isAllowedAsset('send', 'GOLD')).toBe(false);
+  it('returns true for any asset on send (S.957 wildcard)', () => {
+    for (const asset of ['USDC', 'USDsui', 'SUI', 'usdc', 'USDT', 'WAL', 'MANIFEST']) {
+      expect(isAllowedAsset('send', asset)).toBe(true);
+    }
   });
 });
 
@@ -79,22 +72,9 @@ describe('assertAllowedAsset', () => {
     expect(() => assertAllowedAsset('send', 'SUI')).not.toThrow();
   });
 
-  it('throws T2000Error with INVALID_ASSET for USDT on send + hints at swap path', () => {
-    expect(() => assertAllowedAsset('send', 'USDT')).toThrow(T2000Error);
-    try {
-      assertAllowedAsset('send', 'USDT');
-    } catch (e) {
-      const err = e as T2000Error;
-      expect(err.code).toBe('INVALID_ASSET');
-      expect(err.message).toContain('send only supports USDC, USDsui, SUI');
-      expect(err.message).toContain('Cannot use USDT');
-      expect(err.message).toContain('Swap to USDC or USDsui first, or send SUI');
-    }
-  });
-
-  it('throws for WAL / ETH / NAVX / GOLD on send', () => {
-    for (const asset of ['WAL', 'ETH', 'NAVX', 'GOLD'] as const) {
-      expect(() => assertAllowedAsset('send', asset)).toThrow(T2000Error);
+  it('does not throw for registry alts on send (S.957 — gate moved to classifySendAsset)', () => {
+    for (const asset of ['USDT', 'WAL', 'ETH', 'NAVX', 'GOLD', 'MANIFEST'] as const) {
+      expect(() => assertAllowedAsset('send', asset)).not.toThrow();
     }
   });
 });

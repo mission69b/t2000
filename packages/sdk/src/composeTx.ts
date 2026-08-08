@@ -78,7 +78,7 @@ import {
   GASLESS_MIN_STABLE_AMOUNT,
   GASLESS_STABLE_TYPES,
   SUPPORTED_ASSETS,
-  assertAllowedAsset,
+  SENDABLE_ASSETS,
   type SendableAsset,
   type SupportedAsset,
 } from './constants.js';
@@ -114,8 +114,8 @@ export type WriteToolName =
  * type is the wider `SupportedAsset` rather than the narrower
  * `SendableAsset` so callers that thread a wide-typed asset through
  * (primarily the engine LLM tool surface) compile without modification.
- * Runtime narrowing happens via `assertAllowedAsset('send', asset)`,
- * which throws `INVALID_ASSET` for anything outside the
+ * Runtime narrowing happens via the appender's local `SENDABLE_ASSETS`
+ * check, which throws `INVALID_ASSET` for anything outside the
  * `['USDC', 'USDsui', 'SUI']` whitelist. USDC + USDsui route through
  * the gasless `0x2::balance::send_funds` Move call; SUI uses the
  * standard `transferObjects` path.
@@ -344,18 +344,23 @@ export const WRITE_APPENDER_REGISTRY: {
   send_transfer: async (tx, input, ctx) => {
     const recipient = validateAddress(input.to);
     // [v4.0 Phase A Day 2] Asset is required (no `?? 'USDC'` default).
-    // assertAllowedAsset narrows the runtime value to
-    // `'USDC' | 'USDsui' | 'SUI'` and throws INVALID_ASSET otherwise.
-    // The TypeScript shape is `SupportedAsset` (wider, accommodates
-    // engine LLM tool callers that pass wide-typed assets through);
-    // the runtime assertion is the canonical gate.
+    // [S.957] The single-step wallet `send` widened to any coin type, but
+    // this appender keeps the narrow stables+SUI list on purpose: bundles
+    // run under Enoki sponsorship constraints (coin-object-only selection,
+    // no `coinWithBalance` FundsWithdrawal) that the generic path doesn't
+    // satisfy. Widening here is a separate, deliberate slice.
     if (!input.asset) {
       throw new T2000Error(
         'INVALID_ASSET',
         "send_transfer requires an explicit asset. Use one of: USDC, USDsui, SUI.",
       );
     }
-    assertAllowedAsset('send', input.asset);
+    if (!SENDABLE_ASSETS.some((a) => a.toLowerCase() === input.asset.toLowerCase())) {
+      throw new T2000Error(
+        'INVALID_ASSET',
+        `send_transfer only supports ${SENDABLE_ASSETS.join(', ')}. Cannot use ${input.asset}. Swap to USDC or USDsui first, or send SUI.`,
+      );
+    }
     const asset: SendableAsset = input.asset as SendableAsset;
     const assetInfo = SUPPORTED_ASSETS[asset];
     if (input.amount <= 0) {
