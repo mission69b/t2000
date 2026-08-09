@@ -36,7 +36,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
+  '0x83f02c59575b7daa4576eeccc22542f8a5679520e4edd02feeeee2daae16b819';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
