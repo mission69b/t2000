@@ -10,7 +10,7 @@ import {
 } from '../preflight.js';
 import { validateAddress, type SuiCoreClient } from '../utils/sui.js';
 import { selectAndSplitCoin } from './coinSelection.js';
-import { A2A_ESCROW_OPENING_PACKAGE_ID } from './opening.js';
+import { A2A_ESCROW_LATEST_PACKAGE_ID } from './opening.js';
 
 /**
  * A2A Escrow — client for the `a2a_escrow::escrow` Move package
@@ -72,8 +72,15 @@ function feeConfigArg(tx: Transaction) {
 
 /** v1 job-value cap in USDC — same instinct as the catalog price cap: the
  *  no-arbitration reject-split is only fair at sizes where neither side is
- *  incentivized to game it (SPEC_A2A_ESCROW §2). */
+ *  incentivized to game it (SPEC_A2A_ESCROW §2). On-chain since the S.981
+ *  v4 upgrade (`MAX_JOB_AMOUNT_DEFAULT`, AdminCap-tunable ≤ 100 USDC). */
 export const MAX_JOB_USDC = 50;
+
+/** Job-value floor in USDC (S.981 product lock, founder 2026-08-09) —
+ *  on-chain as `MIN_JOB_AMOUNT_DEFAULT` (AdminCap-tunable, hard floor 0.01).
+ *  This mirror is the preflight's human error; the chain is the SSOT — an
+ *  admin move between releases surfaces as the on-chain abort instead. */
+export const MIN_JOB_USDC = 0.05;
 
 /** Contract-enforced create bounds (mirror `escrow.move` — the caps that
  *  close the v1 unbounded-window overflow lock). */
@@ -172,6 +179,12 @@ export function preflightCreateJob(terms: JobTerms): PreflightResult {
   if (!Number.isFinite(terms.amountUsdc) || terms.amountUsdc <= 0) {
     return preflightFail('INVALID_AMOUNT', `Amount must be positive. Got ${terms.amountUsdc}.`);
   }
+  if (terms.amountUsdc < MIN_JOB_USDC) {
+    return preflightFail(
+      'INVALID_AMOUNT',
+      `Escrow jobs start at ${MIN_JOB_USDC} USDC (contract-enforced minimum). Got ${terms.amountUsdc}.`,
+    );
+  }
   if (terms.amountUsdc > MAX_JOB_USDC) {
     return preflightFail(
       'INVALID_AMOUNT',
@@ -234,8 +247,11 @@ export async function buildCreateJobTx({
   const { coin } = await selectAndSplitCoin(tx, client, buyer, USDC_TYPE, rawAmount, {
     allowSwapAll: false,
   });
+  // S.981: version-gated verbs target the LATEST package id (the original id
+  // stays the type/event anchor). Pre-cutover this is byte-identical code at
+  // the v3 id; post-upgrade it's what keeps create on the version-gated path.
   tx.moveCall({
-    target: `${A2A_ESCROW_PACKAGE_ID}::${MODULE}::create`,
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::create`,
     typeArguments: [USDC_TYPE],
     arguments: [
       tx.pure.address(seller),
@@ -258,7 +274,7 @@ export async function buildCreateJobTx({
 export function buildDeclineJobTx(jobId: string): Transaction {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::decline`,
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::decline`,
     typeArguments: [USDC_TYPE],
     arguments: [tx.object(jobId), feeConfigArg(tx), tx.object(CLOCK_ID)],
   });
@@ -268,7 +284,7 @@ export function buildDeclineJobTx(jobId: string): Transaction {
 function jobCall(jobId: string, fn: 'release' | 'refund' | 'reject'): Transaction {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${A2A_ESCROW_PACKAGE_ID}::${MODULE}::${fn}`,
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::${fn}`,
     typeArguments: [USDC_TYPE],
     arguments: [tx.object(jobId), feeConfigArg(tx), tx.object(CLOCK_ID)],
   });
@@ -279,7 +295,7 @@ function jobCall(jobId: string, fn: 'release' | 'refund' | 'reject'): Transactio
 export function buildDeliverJobTx(jobId: string, deliveryHash: string): Transaction {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${A2A_ESCROW_PACKAGE_ID}::${MODULE}::deliver`,
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::deliver`,
     typeArguments: [USDC_TYPE],
     arguments: [
       tx.object(jobId),

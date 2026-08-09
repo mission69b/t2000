@@ -147,6 +147,9 @@ public fun create_open<T>(
     assert!(claim_policy == CLAIM_POLICY_ANY_ACTIVE, EBadClaimPolicy);
     let amount = payment.value();
     assert!(amount > 0, EZeroAmount);
+    // Money-entering bounds (S.981) — same gate as `escrow::create`. Checked
+    // at POST only; claim never re-checks (committed funds must always mint).
+    escrow::assert_amount_in_bounds_pkg(cfg, amount);
     let now = clock.timestamp_ms();
     assert!(open_until_ms > now, EOpenWindowInPast);
     assert!(open_until_ms <= now + MAX_OPEN_WINDOW_MS, EOpenWindowTooFar);

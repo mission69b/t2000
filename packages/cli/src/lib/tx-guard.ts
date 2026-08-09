@@ -58,63 +58,73 @@ export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
  *  env-overridable constants, which would let an attacker supply both the
  *  transaction and the yardstick.
  *
+ *  `pkgs` is a FAMILY (S.981): every id is a mainnet publish of OUR package,
+ *  and the prepare host's SDK may emit either the original or the latest id
+ *  while a release transition is in flight — refusing one of our own ids
+ *  would freeze every hire until server and CLI deploys aligned to the
+ *  minute. Version safety is the chain's job: after an upgrade + `migrate`,
+ *  a call into a stale package id aborts on-chain with EWrongVersion, no
+ *  funds moved. The guard's job is package AUTHENTICITY, and both ids are
+ *  authentically ours.
+ *
  *  A Move upgrade that moves a verb to a new package needs a matching CLI
  *  release. That is the cost of fail-closed, and it is the intended trade.
  */
 const ACTION_TARGETS: Record<
   string,
-  { pkg: string; module: string; functions: string[] }
+  { pkgs: string[]; module: string; functions: string[] }
 > = {
-  // v1 escrow package.
+  // Escrow verbs — emitted at the original id (pre-S.981 SDK) or the latest
+  // id (S.981+ SDK, the version-gated path).
   create: {
-    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'escrow',
     functions: ['create'],
   },
   deliver: {
-    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'escrow',
     functions: ['deliver'],
   },
   release: {
-    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'escrow',
     functions: ['release'],
   },
   reject: {
-    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'escrow',
     functions: ['reject'],
   },
   refund: {
-    pkg: MAINNET_A2A_ESCROW_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'escrow',
     functions: ['refund'],
   },
   // v3 opening package — note the `escrow` module.
   decline: {
-    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'escrow',
     functions: ['decline'],
   },
   // Open board.
   'open-create': {
-    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
     functions: ['create_open'],
   },
   'open-claim': {
-    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
     functions: ['claim'],
   },
   'open-cancel': {
-    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
     functions: ['cancel_open'],
   },
   'open-refund': {
-    pkg: MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
     functions: ['refund_unclaimed'],
   },
@@ -285,11 +295,11 @@ export function assertTxMatchesIntent(
 
   // Decoded packages come back zero-padded (`0x000…0002`), the allowlist
   // literals may not be — compare normalized on both sides.
-  const expectedPkg = normalizeSuiAddress(expected.pkg);
+  const expectedPkgs = expected.pkgs.map((p) => normalizeSuiAddress(p));
 
   let foundIntent = false;
   for (const call of calls) {
-    if (normalizeSuiAddress(call.pkg) === expectedPkg) {
+    if (expectedPkgs.includes(normalizeSuiAddress(call.pkg))) {
       if (call.module !== expected.module) {
         throw new IntentMismatchError(
           `Refusing to sign: "${intent.action}" should call ${expected.module}, but the transaction calls ${call.module}.`,
@@ -307,7 +317,7 @@ export function assertTxMatchesIntent(
       continue;
     }
     throw new IntentMismatchError(
-      `Refusing to sign: "${intent.action}" targets package ${expected.pkg}, but the transaction calls ${call.pkg}::${call.module}::${call.fn}.`,
+      `Refusing to sign: "${intent.action}" targets package ${expected.pkgs.join(' | ')}, but the transaction calls ${call.pkg}::${call.module}::${call.fn}.`,
     );
   }
 

@@ -23,7 +23,7 @@ import {
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { truncateAddress, validateAddress } from '@t2000/sdk';
+import { MIN_JOB_USDC, truncateAddress, validateAddress } from '@t2000/sdk';
 import {
   AGENT_CATEGORIES,
   ensureSellerCategory,
@@ -169,7 +169,7 @@ Examples:
     .command('create')
     .description('List a service under your Agent ID (re-run to update it)')
     .requiredOption('--name <name>', 'Service name (max 80 chars)')
-    .requiredOption('--price <usdc>', 'Fixed price in USDC (0.01–50)')
+    .requiredOption('--price <usdc>', 'Fixed price in USDC (0.05–50)')
     .requiredOption('--sla <duration>', 'Delivery SLA — e.g. 30m, 24h, 7d')
     .requiredOption('--description <text>', 'What this service is (max 2000 chars)')
     .requiredOption('--deliverable <text>', 'What the buyer receives (max 1000 chars)')
@@ -205,6 +205,13 @@ Examples:
           const priceUsdc = Number.parseFloat(opts.price);
           if (!Number.isFinite(priceUsdc) || priceUsdc <= 0) {
             throw new Error(`--price must be a positive number (got "${opts.price}").`);
+          }
+          // S.981: a listing priced under the escrow minimum could never be
+          // hired — the create would abort on-chain. Refuse at list time.
+          if (priceUsdc < MIN_JOB_USDC) {
+            throw new Error(
+              `--price must be at least ${MIN_JOB_USDC} USDC — escrow jobs start there (contract-enforced minimum).`,
+            );
           }
           const slaMinutes = Math.round(parseDuration(opts.sla) / 60_000);
           const reviewWindowMinutes = Math.round(parseDuration(opts.review) / 60_000);

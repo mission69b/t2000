@@ -501,9 +501,19 @@ fun zero_fee_release_pays_seller_in_full() {
 }
 
 // === Dust job: fee floors to zero, seller gets everything ===
+// A 10-unit job is below the S.981 launch min — production can no longer
+// create one, but the settlement math it pins must stay correct for any
+// pre-bounds job (and for a future admin lowering the min). Rail-free
+// test hook drops the min so the flow still runs end-to-end.
 #[test]
 fun dust_fee_floors_to_zero() {
     let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let mut cfg = ts::take_shared<FeeConfig>(&sc);
+        escrow::set_min_job_amount_for_testing(&mut cfg, 1);
+        ts::return_shared(cfg);
+    };
     create_job_with(&mut sc, &clk, 10, REVIEW_WINDOW, SPLIT_BPS);
     deliver(&mut sc, &clk);
     release_as(&mut sc, BUYER, &clk);
@@ -694,4 +704,166 @@ fun decline_after_release_fails() {
         ts::return_shared(cfg);
     };
     abort 0
+}
+
+// === S.981: job amount bounds — DF-or-default, admin rails, create gate ===
+
+fun set_min_as_admin(sc: &mut ts::Scenario, min_amount: u64) {
+    ts::next_tx(sc, ADMIN);
+    let cap = ts::take_from_sender<AdminCap>(sc);
+    let mut cfg = ts::take_shared<FeeConfig>(sc);
+    escrow::set_min_job_amount(&cap, &mut cfg, min_amount);
+    ts::return_shared(cfg);
+    ts::return_to_sender(sc, cap);
+}
+
+fun set_max_as_admin(sc: &mut ts::Scenario, max_amount: u64) {
+    ts::next_tx(sc, ADMIN);
+    let cap = ts::take_from_sender<AdminCap>(sc);
+    let mut cfg = ts::take_shared<FeeConfig>(sc);
+    escrow::set_max_job_amount(&cap, &mut cfg, max_amount);
+    ts::return_shared(cfg);
+    ts::return_to_sender(sc, cap);
+}
+
+#[test]
+fun bounds_default_when_no_df() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        assert!(
+            escrow::config_min_job_amount(&cfg) == escrow::default_min_job_amount(),
+            0,
+        );
+        assert!(
+            escrow::config_max_job_amount(&cfg) == escrow::default_max_job_amount(),
+            1,
+        );
+        ts::return_shared(cfg);
+    };
+    clock::destroy_for_testing(clk);
+    ts::end(sc);
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EAmountTooSmall)]
+fun create_below_default_min_fails() {
+    let (mut sc, clk) = setup();
+    create_job_with(
+        &mut sc,
+        &clk,
+        escrow::default_min_job_amount() - 1,
+        REVIEW_WINDOW,
+        SPLIT_BPS,
+    );
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EAmountTooLarge)]
+fun create_above_default_max_fails() {
+    let (mut sc, clk) = setup();
+    create_job_with(
+        &mut sc,
+        &clk,
+        escrow::default_max_job_amount() + 1,
+        REVIEW_WINDOW,
+        SPLIT_BPS,
+    );
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+fun create_at_exact_bounds_succeeds() {
+    let (mut sc, clk) = setup();
+    create_job_with(
+        &mut sc,
+        &clk,
+        escrow::default_min_job_amount(),
+        REVIEW_WINDOW,
+        SPLIT_BPS,
+    );
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let job = ts::take_shared<Job<SUI>>(&sc);
+        assert!(escrow::state(&job) == escrow::state_funded(), 0);
+        assert!(escrow::amount(&job) == escrow::default_min_job_amount(), 1);
+        ts::return_shared(job);
+    };
+    create_job_with(
+        &mut sc,
+        &clk,
+        escrow::default_max_job_amount(),
+        REVIEW_WINDOW,
+        SPLIT_BPS,
+    );
+    clock::destroy_for_testing(clk);
+    ts::end(sc);
+}
+
+#[test]
+fun admin_sets_bounds_within_rails_and_df_wins() {
+    let (mut sc, clk) = setup();
+    // First set ADDS the DF; second set UPDATES it (both paths covered).
+    set_min_as_admin(&mut sc, 100_000);
+    set_min_as_admin(&mut sc, 200_000);
+    set_max_as_admin(&mut sc, 60_000_000);
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        assert!(escrow::config_min_job_amount(&cfg) == 200_000, 0);
+        assert!(escrow::config_max_job_amount(&cfg) == 60_000_000, 1);
+        ts::return_shared(cfg);
+    };
+    clock::destroy_for_testing(clk);
+    ts::end(sc);
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EAmountTooSmall)]
+fun create_respects_admin_raised_min() {
+    let (mut sc, clk) = setup();
+    set_min_as_admin(&mut sc, 100_000);
+    create_job_with(&mut sc, &clk, 99_999, REVIEW_WINDOW, SPLIT_BPS);
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadAmountBounds)]
+fun set_min_below_hard_floor_fails() {
+    let (mut sc, clk) = setup();
+    set_min_as_admin(&mut sc, escrow::min_job_amount_floor() - 1);
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadAmountBounds)]
+fun set_min_above_live_max_fails() {
+    let (mut sc, clk) = setup();
+    set_min_as_admin(&mut sc, escrow::default_max_job_amount() + 1);
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadAmountBounds)]
+fun set_max_above_hard_ceiling_fails() {
+    let (mut sc, clk) = setup();
+    set_max_as_admin(&mut sc, escrow::max_job_amount_ceiling() + 1);
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadAmountBounds)]
+fun set_max_below_live_min_fails() {
+    let (mut sc, clk) = setup();
+    set_max_as_admin(&mut sc, escrow::default_min_job_amount() - 1);
+    clock::destroy_for_testing(clk);
+    abort 99
 }
