@@ -9,6 +9,7 @@ import {
   A2A_ESCROW_FEE_CONFIG_ID,
   A2A_ESCROW_FEE_CONFIG_VERSION,
   MAX_JOB_USDC,
+  MIN_JOB_USDC,
 } from './job.js';
 
 /**
@@ -24,19 +25,33 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id (v3 upgrade 2026-07-28 —
- *  adds `escrow::decline`; v2 added the `opening` module). New-verb calls
- *  (opening + decline) target this; original-id verbs stay put, and older
- *  package ids remain callable for published clients. */
-/** The published `opening` package id on MAINNET — a literal, never an env
- *  read, so it can serve as a signature-time trust anchor (S.930). Must match
- *  the Move upgrade publish notes. */
-export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
+/** The LATEST published `a2a_escrow` package id on MAINNET (v3 upgrade
+ *  2026-07-28 — added `escrow::decline`; v2 added the `opening` module).
+ *  A literal, never an env read, so it can serve as a signature-time trust
+ *  anchor (S.930). Must match the Move upgrade publish notes.
+ *
+ *  S.981: EVERY version-gated verb (escrow create/deliver/release/reject/
+ *  refund + decline + all opening verbs) targets this id, so a package
+ *  upgrade + `migrate` cutover is a ONE-VALUE change here. The original id
+ *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
+ *  strings, event filters, and object-type queries — those never move. */
+export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
   '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
 
-export const A2A_ESCROW_OPENING_PACKAGE_ID =
+/** Back-compat name for the latest id (pre-S.981 consumers import this). */
+export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
+  MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID;
+
+/** Env-overridable latest id for testnet/dev (NOT a trust anchor). A fresh
+ *  dev publish has original == latest, so `A2A_ESCROW_PACKAGE_ID` alone is
+ *  honored as the fallback override. */
+export const A2A_ESCROW_LATEST_PACKAGE_ID =
   process.env.A2A_ESCROW_OPENING_PACKAGE_ID ??
-  MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID;
+  process.env.A2A_ESCROW_PACKAGE_ID ??
+  MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID;
+
+/** Back-compat name (pre-S.981). */
+export const A2A_ESCROW_OPENING_PACKAGE_ID = A2A_ESCROW_LATEST_PACKAGE_ID;
 
 /**
  * PINNED per-upgrade package ids — event-filter anchors, NEVER bump these.
@@ -104,6 +119,13 @@ export function preflightCreateOpening(terms: OpeningTerms): {
 } {
   if (!Number.isFinite(terms.amountUsdc) || terms.amountUsdc <= 0) {
     return { valid: false, code: 'INVALID_AMOUNT', error: 'Budget must be positive.' };
+  }
+  if (terms.amountUsdc < MIN_JOB_USDC) {
+    return {
+      valid: false,
+      code: 'INVALID_AMOUNT',
+      error: `Open jobs start at ${MIN_JOB_USDC} USDC (contract-enforced minimum). Got ${terms.amountUsdc}.`,
+    };
   }
   if (terms.amountUsdc > MAX_JOB_USDC) {
     return {

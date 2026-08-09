@@ -151,12 +151,41 @@ describe('B — intent assert', () => {
     );
   });
 
-  it('refuses the right package with the wrong verb (package is pinned per action)', async () => {
+  it('refuses the right package with the wrong verb (module is pinned per action)', async () => {
     const b64 = await buildTxB64(
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim`,
     );
     // A real t2000 package, a real function — but not what `create` calls.
+    // Since S.981 the latest id is in create's package FAMILY, so the refusal
+    // lands on the module pin instead of the package pin — still a refusal.
     expect(() => assertTxMatchesIntent(b64, { action: 'create' })).toThrow(
+      /should call escrow/,
+    );
+  });
+
+  // S.981: the S.981+ SDK emits escrow verbs at the LATEST package id (the
+  // version-gated path); the pre-S.981 server SDK emits the original. Both
+  // are mainnet publishes of OUR package — the guard accepts the family, and
+  // version safety is the chain's job (stale id → EWrongVersion abort).
+  it('signs escrow verbs at either family id (original and latest)', async () => {
+    for (const pkg of [
+      MAINNET_A2A_ESCROW_PACKAGE_ID,
+      MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
+    ]) {
+      const b64 = await buildTxB64(`${pkg}::escrow::create`);
+      expect(() =>
+        assertTxMatchesIntent(b64, { action: 'create' }),
+      ).not.toThrow();
+    }
+  });
+
+  it('the family does NOT extend to opening verbs at the original id', async () => {
+    // opening never existed in the original package — a tx claiming it does
+    // is not ours.
+    const b64 = await buildTxB64(
+      `${MAINNET_A2A_ESCROW_PACKAGE_ID}::opening::claim`,
+    );
+    expect(() => assertTxMatchesIntent(b64, { action: 'open-claim' })).toThrow(
       /targets package/,
     );
   });

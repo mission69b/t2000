@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Transaction } from '@mysten/sui/transactions';
+import { A2A_ESCROW_LATEST_PACKAGE_ID } from './opening.js';
 import {
   A2A_ESCROW_PACKAGE_ID,
   MAX_JOB_USDC,
+  MIN_JOB_USDC,
   MAX_REVIEW_WINDOW_MS,
   MAX_DELIVER_HORIZON_MS,
   buildCreateJobTx,
@@ -79,6 +81,16 @@ describe('preflightCreateJob', () => {
     expect(preflightCreateJob(terms()).valid).toBe(true);
   });
 
+  it('rejects amounts under the contract minimum with a human message (S.981)', () => {
+    const pf = preflightCreateJob(terms({ amountUsdc: 0.04 }));
+    expect(pf.valid).toBe(false);
+    expect(pf.valid === false && pf.error).toContain(`${MIN_JOB_USDC}`);
+  });
+
+  it('accepts the exact minimum', () => {
+    expect(preflightCreateJob(terms({ amountUsdc: MIN_JOB_USDC })).valid).toBe(true);
+  });
+
   it('rejects amounts over the v1 cap', () => {
     const r = preflightCreateJob(terms({ amountUsdc: MAX_JOB_USDC + 1 }));
     expect(r.valid).toBe(false);
@@ -115,7 +127,7 @@ describe('preflightCreateJob', () => {
 });
 
 describe('buildCreateJobTx', () => {
-  it('builds a create Move call with the escrow package target', async () => {
+  it('builds a create Move call targeting the LATEST escrow package (S.981)', async () => {
     const tx = await buildCreateJobTx({ client: mockClient(), buyer: BUYER, terms: terms() });
     expect(tx).toBeInstanceOf(Transaction);
     const calls = tx
@@ -125,7 +137,10 @@ describe('buildCreateJobTx', () => {
     }>;
     const create = calls.find((c) => c.MoveCall.function === 'create');
     expect(create).toBeDefined();
-    expect(create?.MoveCall.package).toBe(A2A_ESCROW_PACKAGE_ID);
+    // Version-gated verbs ride the latest published id so an upgrade +
+    // migrate cutover is a one-value change; the original id stays the
+    // type/event anchor only.
+    expect(create?.MoveCall.package).toBe(A2A_ESCROW_LATEST_PACKAGE_ID);
     expect(create?.MoveCall.module).toBe('escrow');
   });
 

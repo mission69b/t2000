@@ -49,10 +49,14 @@ module a2a_escrow::escrow;
 use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::{Self, Coin};
+use sui::dynamic_field as df;
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
-const VERSION: u64 = 1;
+/// v2 (S.981): on-chain job amount bounds. The bump is what makes the floor
+/// real — without the cutover, builders still calling the old package's
+/// `create` (amount > 0 only) would bypass it.
+const VERSION: u64 = 2;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
@@ -72,6 +76,22 @@ const MAX_REVIEW_WINDOW_MS: u64 = 2_592_000_000;
 /// Deliver deadline horizon cap: 365 days out from create.
 const MAX_DELIVER_HORIZON_MS: u64 = 31_536_000_000;
 
+// === Job amount bounds (S.981) — raw coin units, NOT display USDC ===
+// The contract is coin-generic; these are raw `Coin::value()` units. The
+// product runs USDC (6 decimals), so 50_000 = $0.05. Live values are
+// AdminCap-tunable via dynamic fields on `FeeConfig.id` (a compatible
+// upgrade CANNOT add struct fields — DF is the only storage that works on
+// the live shared object); readers fall back to these package defaults
+// when the DF is absent.
+/// Launch minimum: 0.05 USDC.
+const MIN_JOB_AMOUNT_DEFAULT: u64 = 50_000;
+/// Launch maximum: 50 USDC (the former SDK-only `MAX_JOB_USDC`, now real).
+const MAX_JOB_AMOUNT_DEFAULT: u64 = 50_000_000;
+/// Hard rail: the admin can never set the min below 0.01 USDC.
+const MIN_JOB_AMOUNT_FLOOR: u64 = 10_000;
+/// Hard rail: the admin can never set the max above 100 USDC.
+const MAX_JOB_AMOUNT_CEILING: u64 = 100_000_000;
+
 // === Errors ===
 const ENotAuthorized: u64 = 0;
 const EWrongState: u64 = 1;
@@ -88,6 +108,9 @@ const EDeadlineTooFar: u64 = 11;
 const EFeeTooHigh: u64 = 12;
 const EWrongVersion: u64 = 13;
 const ENotUpgrade: u64 = 14;
+const EAmountTooSmall: u64 = 15;
+const EAmountTooLarge: u64 = 16;
+const EBadAmountBounds: u64 = 17;
 
 // === Objects ===
 
@@ -107,6 +130,13 @@ public struct FeeConfig has key {
     /// Where fees settle. Read at settle time (rotatable by AdminCap).
     fee_receiver: address,
 }
+
+/// Dynamic-field keys for the AdminCap-tunable job amount bounds on
+/// `FeeConfig.id` (S.981). Values are `u64` raw coin units. Stored as DFs —
+/// not struct fields — because the compatible-upgrade rules forbid layout
+/// changes on the live shared object.
+public struct MinJobAmountKey has copy, drop, store {}
+public struct MaxJobAmountKey has copy, drop, store {}
 
 /// One escrowed job. Shared so buyer, seller, and cranks can all touch it;
 /// the escrow balance is inside the object.
@@ -207,6 +237,34 @@ fun assert_version(cfg: &FeeConfig) {
     assert!(cfg.version == VERSION, EWrongVersion);
 }
 
+/// Live min job amount: the DF when set, else the package default.
+public fun config_min_job_amount(cfg: &FeeConfig): u64 {
+    if (df::exists(&cfg.id, MinJobAmountKey {})) {
+        *df::borrow(&cfg.id, MinJobAmountKey {})
+    } else {
+        MIN_JOB_AMOUNT_DEFAULT
+    }
+}
+
+/// Live max job amount: the DF when set, else the package default.
+public fun config_max_job_amount(cfg: &FeeConfig): u64 {
+    if (df::exists(&cfg.id, MaxJobAmountKey {})) {
+        *df::borrow(&cfg.id, MaxJobAmountKey {})
+    } else {
+        MAX_JOB_AMOUNT_DEFAULT
+    }
+}
+
+/// Bounds gate for money ENTERING escrow — `create` and (via the package
+/// accessor) `opening::create_open` only. Settlement verbs and
+/// `create_claimed` never re-check: an Opening fixed its amount at post,
+/// and funds already committed must always be able to settle out even if
+/// the admin moves the bounds afterwards.
+fun assert_amount_in_bounds(cfg: &FeeConfig, amount: u64) {
+    assert!(amount >= config_min_job_amount(cfg), EAmountTooSmall);
+    assert!(amount <= config_max_job_amount(cfg), EAmountTooLarge);
+}
+
 /// Floor(amount * bps / 10_000) with u128 intermediate — no overflow.
 fun mul_bps(amount: u64, bps: u64): u64 {
     (((amount as u128) * (bps as u128)) / (BPS_DENOMINATOR as u128)) as u64
@@ -233,6 +291,7 @@ public fun create<T>(
     assert!(buyer != seller, EBuyerIsSeller);
     let amount = payment.value();
     assert!(amount > 0, EZeroAmount);
+    assert_amount_in_bounds(cfg, amount);
     let now = clock.timestamp_ms();
     assert!(deliver_by_ms > now, EDeadlineInPast);
     assert!(deliver_by_ms <= now + MAX_DELIVER_HORIZON_MS, EDeadlineTooFar);
@@ -345,6 +404,13 @@ public(package) fun max_deliver_horizon_ms_pkg(): u64 { MAX_DELIVER_HORIZON_MS }
 public(package) fun max_review_window_ms_pkg(): u64 { MAX_REVIEW_WINDOW_MS }
 
 public(package) fun bps_denominator_pkg(): u64 { BPS_DENOMINATOR }
+
+/// Bounds gate for `opening::create_open` — same money-entering rule as
+/// `create` (fail-fast at post, never re-checked at claim: `create_claimed`
+/// must always be able to mint the Job for an already-escrowed Opening).
+public(package) fun assert_amount_in_bounds_pkg(cfg: &FeeConfig, amount: u64) {
+    assert_amount_in_bounds(cfg, amount)
+}
 
 // === Deliver (seller posts proof before the deadline) ===
 public fun deliver<T>(
@@ -532,6 +598,33 @@ public fun set_fee_receiver(_: &AdminCap, cfg: &mut FeeConfig, receiver: address
     cfg.fee_receiver = receiver;
 }
 
+/// Set (add or update) the live min job amount DF. Rails: never below the
+/// package hard floor, never above the live max — `min ≤ max` always holds
+/// after a set, so `create` can never become unsatisfiable.
+public fun set_min_job_amount(_: &AdminCap, cfg: &mut FeeConfig, min_amount: u64) {
+    assert_version(cfg);
+    assert!(min_amount >= MIN_JOB_AMOUNT_FLOOR, EBadAmountBounds);
+    assert!(min_amount <= config_max_job_amount(cfg), EBadAmountBounds);
+    if (df::exists(&cfg.id, MinJobAmountKey {})) {
+        *df::borrow_mut(&mut cfg.id, MinJobAmountKey {}) = min_amount;
+    } else {
+        df::add(&mut cfg.id, MinJobAmountKey {}, min_amount);
+    }
+}
+
+/// Set (add or update) the live max job amount DF. Rails: never above the
+/// package hard ceiling, never below the live min.
+public fun set_max_job_amount(_: &AdminCap, cfg: &mut FeeConfig, max_amount: u64) {
+    assert_version(cfg);
+    assert!(max_amount <= MAX_JOB_AMOUNT_CEILING, EBadAmountBounds);
+    assert!(max_amount >= config_min_job_amount(cfg), EBadAmountBounds);
+    if (df::exists(&cfg.id, MaxJobAmountKey {})) {
+        *df::borrow_mut(&mut cfg.id, MaxJobAmountKey {}) = max_amount;
+    } else {
+        df::add(&mut cfg.id, MaxJobAmountKey {}, max_amount);
+    }
+}
+
 /// Version cutover after an in-place package upgrade: bumps the shared
 /// config to the new package's VERSION, which makes every entry in the OLD
 /// package abort with EWrongVersion.
@@ -586,3 +679,23 @@ public fun max_review_window_ms(): u64 { MAX_REVIEW_WINDOW_MS }
 public fun max_deliver_horizon_ms(): u64 { MAX_DELIVER_HORIZON_MS }
 #[test_only]
 public fun default_fee_bps(): u64 { FEE_BPS_DEFAULT }
+/// Rail-free DF write so settlement-math tests (e.g. dust fees flooring to
+/// zero) can still create sub-minimum jobs — production sets go through
+/// `set_min_job_amount`'s rails.
+#[test_only]
+public fun set_min_job_amount_for_testing(cfg: &mut FeeConfig, min_amount: u64) {
+    if (df::exists(&cfg.id, MinJobAmountKey {})) {
+        *df::borrow_mut(&mut cfg.id, MinJobAmountKey {}) = min_amount;
+    } else {
+        df::add(&mut cfg.id, MinJobAmountKey {}, min_amount);
+    }
+}
+
+#[test_only]
+public fun default_min_job_amount(): u64 { MIN_JOB_AMOUNT_DEFAULT }
+#[test_only]
+public fun default_max_job_amount(): u64 { MAX_JOB_AMOUNT_DEFAULT }
+#[test_only]
+public fun min_job_amount_floor(): u64 { MIN_JOB_AMOUNT_FLOOR }
+#[test_only]
+public fun max_job_amount_ceiling(): u64 { MAX_JOB_AMOUNT_CEILING }
