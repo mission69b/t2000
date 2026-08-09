@@ -20,9 +20,11 @@ import {
 
 const EVIL_PACKAGE = `0x${'e'.repeat(64)}`;
 
-async function buildTxB64(target: string): Promise<string> {
+const SENDER = `0x${'1'.repeat(64)}`;
+
+function baseTx(): Transaction {
   const tx = new Transaction();
-  tx.setSender(`0x${'1'.repeat(64)}`);
+  tx.setSender(SENDER);
   tx.setGasPrice(1000);
   tx.setGasBudget(10_000_000);
   tx.setGasPayment([
@@ -32,7 +34,23 @@ async function buildTxB64(target: string): Promise<string> {
       digest: '11111111111111111111111111111111',
     },
   ]);
+  return tx;
+}
+
+async function buildTxB64(target: string): Promise<string> {
+  const tx = baseTx();
   tx.moveCall({ target, arguments: [] });
+  return Buffer.from(await tx.build()).toString('base64');
+}
+
+/** Multi-call fixture — same offline build as `buildTxB64`, caller adds the
+ *  commands. Mirrors the shape `coinWithBalance` resolves to on a real
+ *  address-balance-funded create (S.980). */
+async function buildMultiTxB64(
+  add: (tx: Transaction) => void,
+): Promise<string> {
+  const tx = baseTx();
+  add(tx);
   return Buffer.from(await tx.build()).toString('base64');
 }
 
@@ -230,6 +248,131 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       );
     });
   }
+});
+
+// S.980 — the S.930 check was written against pure single-MoveCall fixtures,
+// but a real funded create sources its USDC through `coinWithBalance`
+// (packages/sdk/src/wallet/coinSelection.ts), which prepends/appends `0x2`
+// framework calls: redeem_funds from the sender's address balance before the
+// escrow call, send_funds returning the remainder to the sender after it. The
+// old "every call === expected" loop refused every such PTB — any wallet whose
+// USDC sat in address balance (i.e. received gaslessly) could not hire at all.
+describe('B — framework coin prelude around a funded create (S.980)', () => {
+  it('signs the founder-bug shape: redeem_funds then escrow::create', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      tx.moveCall({ target: '0x2::coin::redeem_funds', arguments: [] });
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`,
+        arguments: [],
+      });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).not.toThrow();
+  });
+
+  it('signs the full resolver shape: redeem_funds, create, send_funds(remainder → sender)', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      const [coin] = tx.moveCall({
+        target: '0x2::coin::redeem_funds',
+        arguments: [],
+      });
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`,
+        arguments: [],
+      });
+      tx.moveCall({
+        target: '0x2::coin::send_funds',
+        arguments: [coin, tx.pure.address(SENDER)],
+      });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).not.toThrow();
+  });
+
+  it('signs open-create with the same prelude (opening funds from AB too)', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      tx.moveCall({ target: '0x2::coin::redeem_funds', arguments: [] });
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open`,
+        arguments: [],
+      });
+    });
+    expect(() =>
+      assertTxMatchesIntent(b64, { action: 'open-create' }),
+    ).not.toThrow();
+  });
+
+  it('refuses a prelude-only PTB that never calls the escrow', async () => {
+    // redeem_funds + send_funds with no create is a signature over nothing
+    // the user asked for.
+    const b64 = await buildMultiTxB64((tx) => {
+      tx.moveCall({ target: '0x2::coin::redeem_funds', arguments: [] });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).toThrow(
+      /never does/,
+    );
+  });
+
+  it('refuses create followed by a call into an evil package', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`,
+        arguments: [],
+      });
+      tx.moveCall({ target: `${EVIL_PACKAGE}::escrow::create`, arguments: [] });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).toThrow(
+      /targets package/,
+    );
+  });
+
+  it('refuses send_funds to anyone but the sender — that is a drain, not a remainder', async () => {
+    const thirdParty = `0x${'d'.repeat(64)}`;
+    const b64 = await buildMultiTxB64((tx) => {
+      const [coin] = tx.moveCall({
+        target: '0x2::coin::redeem_funds',
+        arguments: [],
+      });
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`,
+        arguments: [],
+      });
+      tx.moveCall({
+        target: '0x2::coin::send_funds',
+        arguments: [coin, tx.pure.address(thirdParty)],
+      });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).toThrow(
+      IntentMismatchError,
+    );
+  });
+
+  it('refuses a 0x2 call outside the allowlist (framework != carte blanche)', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`,
+        arguments: [],
+      });
+      tx.moveCall({
+        target: '0x2::transfer::public_transfer',
+        arguments: [],
+      });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).toThrow(
+      IntentMismatchError,
+    );
+  });
+
+  it('accepts the balance-module prelude variants the resolver can emit', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      tx.moveCall({ target: '0x2::balance::redeem_funds', arguments: [] });
+      tx.moveCall({ target: '0x2::coin::into_balance', arguments: [] });
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`,
+        arguments: [],
+      });
+      tx.moveCall({ target: '0x2::coin::destroy_zero', arguments: [] });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'create' })).not.toThrow();
+  });
 });
 
 describe('the funnel never signs what it refused', () => {
