@@ -1,6 +1,6 @@
 {
   "name": "@t2000/sui-x402",
-  "version": "10.29.1",
+  "version": "10.30.0",
   "description": "The x402 payment dialect for Sui — scheme `exact`, sign-then-settle gasless USDC. Requirements builders, header parse/verify/settle, and the digest replay store shared by @t2000/serve and @t2000/sdk.",
   "type": "module",
   "main": "./dist/index.cjs",
