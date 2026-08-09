@@ -1,4 +1,6 @@
+import { bcs } from '@mysten/sui/bcs';
 import { Transaction } from '@mysten/sui/transactions';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { setSponsoredTxGuard } from '@t2000/sdk';
 import {
   MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
@@ -118,6 +120,39 @@ const ACTION_TARGETS: Record<
   },
 };
 
+/** The Sui framework package, in the padded form decoded PTBs report. */
+const SUI_FRAMEWORK_PACKAGE = normalizeSuiAddress('0x2');
+
+/** Framework calls a funded create may legitimately emit BEFORE/AFTER the
+ *  escrow call — the coin-sourcing prelude (S.980).
+ *
+ *  When a wallet's USDC sits in its address balance (SIP-58 — where gasless
+ *  transfers land it), the SDK's `selectAndSplitCoin` funds the PTB through
+ *  `coinWithBalance` (`packages/sdk/src/wallet/coinSelection.ts`), whose
+ *  build-time resolver emits `0x2` MoveCalls around the escrow call. The
+ *  original "every MoveCall === the escrow target" check therefore refused
+ *  every real funded `create`/`open-create` for every address-balance wallet.
+ *
+ *  Transcribed from `@mysten/sui` `transactions/intents/CoinWithBalance.ts` —
+ *  the COMPLETE set that resolver can emit, nothing more:
+ *
+ *    coin::redeem_funds / balance::redeem_funds — withdraw from the SENDER's
+ *      own address balance (`withdrawFrom: Sender` by construction)
+ *    coin::into_balance — Coin→Balance conversion of a split result
+ *    coin::zero / balance::zero — zero-value intents
+ *    coin::destroy_zero — burn the zero-value dust coin
+ *
+ *  `coin::send_funds` (the remainder-return) is deliberately NOT here: it
+ *  sends a coin to an arbitrary address, so it is only allowed when its
+ *  recipient argument decodes to the transaction sender — see
+ *  `isSenderRemainderReturn`. Nothing else from `0x2` (transfer, pay, …)
+ *  is allowed: an unexpected module or function still refuses, fail closed.
+ */
+const FRAMEWORK_PRELUDE: Record<string, ReadonlySet<string>> = {
+  coin: new Set(['redeem_funds', 'into_balance', 'zero', 'destroy_zero']),
+  balance: new Set(['redeem_funds', 'zero']),
+};
+
 /** Verbs that are NOT marketplace escrow calls and are verified by host pin
  *  alone — the registry package is not in the escrow allowlist, and its args
  *  aren't extractable here. Narrow and named rather than a silent fallthrough. */
@@ -212,24 +247,28 @@ export function assertTxMatchesIntent(
     );
   }
 
-  let calls: { pkg: string; module: string; fn: string }[];
+  let sender: string | null | undefined;
+  let inputs: DecodedInput[];
+  let calls: DecodedCall[];
   try {
     const tx = Transaction.from(
       new Uint8Array(Buffer.from(txBytes, 'base64')),
     );
-    calls = tx
-      .getData()
-      .commands.flatMap((c) =>
-        c.$kind === 'MoveCall' && c.MoveCall
-          ? [
-              {
-                pkg: c.MoveCall.package,
-                module: c.MoveCall.module,
-                fn: c.MoveCall.function,
-              },
-            ]
-          : [],
-      );
+    const data = tx.getData();
+    sender = data.sender;
+    inputs = data.inputs as DecodedInput[];
+    calls = data.commands.flatMap((c) =>
+      c.$kind === 'MoveCall' && c.MoveCall
+        ? [
+            {
+              pkg: c.MoveCall.package,
+              module: c.MoveCall.module,
+              fn: c.MoveCall.function,
+              args: (c.MoveCall.arguments ?? []) as DecodedCall['args'],
+            },
+          ]
+        : [],
+    );
   } catch (e) {
     throw new IntentMismatchError(
       `Refusing to sign: could not decode the prepared transaction (${
@@ -244,22 +283,100 @@ export function assertTxMatchesIntent(
     );
   }
 
+  // Decoded packages come back zero-padded (`0x000…0002`), the allowlist
+  // literals may not be — compare normalized on both sides.
+  const expectedPkg = normalizeSuiAddress(expected.pkg);
+
+  let foundIntent = false;
   for (const call of calls) {
-    if (call.pkg !== expected.pkg) {
-      throw new IntentMismatchError(
-        `Refusing to sign: "${intent.action}" targets package ${expected.pkg}, but the transaction calls ${call.pkg}.`,
-      );
+    if (normalizeSuiAddress(call.pkg) === expectedPkg) {
+      if (call.module !== expected.module) {
+        throw new IntentMismatchError(
+          `Refusing to sign: "${intent.action}" should call ${expected.module}, but the transaction calls ${call.module}.`,
+        );
+      }
+      if (!expected.functions.includes(call.fn)) {
+        throw new IntentMismatchError(
+          `Refusing to sign: "${intent.action}" should call ${expected.module}::${expected.functions.join('|')}, but the transaction calls ${call.module}::${call.fn}.`,
+        );
+      }
+      foundIntent = true;
+      continue;
     }
-    if (call.module !== expected.module) {
-      throw new IntentMismatchError(
-        `Refusing to sign: "${intent.action}" should call ${expected.module}, but the transaction calls ${call.module}.`,
-      );
+    if (isAllowedCoinPrelude(call, sender, inputs)) {
+      continue;
     }
-    if (!expected.functions.includes(call.fn)) {
-      throw new IntentMismatchError(
-        `Refusing to sign: "${intent.action}" should call ${expected.module}::${expected.functions.join('|')}, but the transaction calls ${call.module}::${call.fn}.`,
-      );
-    }
+    throw new IntentMismatchError(
+      `Refusing to sign: "${intent.action}" targets package ${expected.pkg}, but the transaction calls ${call.pkg}::${call.module}::${call.fn}.`,
+    );
+  }
+
+  // A PTB made ONLY of allowed prelude calls never touches the escrow — a
+  // redeem_funds+send_funds pair with no create is a signature over nothing
+  // the user asked for. Refuse it.
+  if (!foundIntent) {
+    throw new IntentMismatchError(
+      `Refusing to sign: "${intent.action}" should call ${expected.module}::${expected.functions.join('|')}, but the transaction never does.`,
+    );
+  }
+}
+
+type DecodedCall = {
+  pkg: string;
+  module: string;
+  fn: string;
+  args: { $kind?: string; Input?: number }[];
+};
+
+type DecodedInput = { $kind?: string; Pure?: { bytes?: string } };
+
+function isAllowedCoinPrelude(
+  call: DecodedCall,
+  sender: string | null | undefined,
+  inputs: DecodedInput[],
+): boolean {
+  if (normalizeSuiAddress(call.pkg) !== SUI_FRAMEWORK_PACKAGE) {
+    return false;
+  }
+  if (FRAMEWORK_PRELUDE[call.module]?.has(call.fn)) {
+    return true;
+  }
+  if (call.module === 'coin' && call.fn === 'send_funds') {
+    return isSenderRemainderReturn(call, sender, inputs);
+  }
+  return false;
+}
+
+/** `coin::send_funds(coin, recipient)` is allowed ONLY as the remainder
+ *  return the `coinWithBalance` resolver appends — recipient must be a Pure
+ *  address input that decodes to the transaction sender. Any other shape
+ *  (a different address, a non-Pure argument, no sender on the tx) refuses:
+ *  send_funds to anyone else is a drain, not a prelude. */
+function isSenderRemainderReturn(
+  call: DecodedCall,
+  sender: string | null | undefined,
+  inputs: DecodedInput[],
+): boolean {
+  if (!sender) {
+    return false;
+  }
+  const recipientArg = call.args[1];
+  if (
+    !recipientArg ||
+    recipientArg.$kind !== 'Input' ||
+    typeof recipientArg.Input !== 'number'
+  ) {
+    return false;
+  }
+  const input = inputs[recipientArg.Input];
+  if (!input || input.$kind !== 'Pure' || !input.Pure?.bytes) {
+    return false;
+  }
+  try {
+    const recipient = bcs.Address.fromBase64(input.Pure.bytes);
+    return normalizeSuiAddress(recipient) === normalizeSuiAddress(sender);
+  } catch {
+    return false;
   }
 }
 
