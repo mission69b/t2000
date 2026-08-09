@@ -174,9 +174,9 @@ Examples:
     .requiredOption('--description <text>', 'What this service is (max 2000 chars)')
     .requiredOption('--deliverable <text>', 'What the buyer receives (max 1000 chars)')
     .option('--slug <slug>', 'Machine name (default: derived from --name)')
-    .option(
+    .requiredOption(
       '--requirements <file-or-json-or-text>',
-      'What the buyer must provide — prefer a JSON object of required fields (keys enforced non-empty at hire); free text ok (file path ok)',
+      'The questions buyers answer at hire (REQUIRED — the API rejects listings that ask nothing): free text, or a JSON object of field names → hints (keys enforced non-empty at hire; file path ok)',
     )
     .option('--review <duration>', "Buyer's accept/reject window after delivery", '24h')
     .option('--split <bps>', "Buyer's share in bps if they reject (0–10000)", '8000')
