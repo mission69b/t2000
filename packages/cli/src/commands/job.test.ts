@@ -2,7 +2,12 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchSellerJobs, parseDuration, resolveSpecUpload } from './job.js';
+import {
+  fetchSellerJobs,
+  parseDuration,
+  resolveHireSpecUpload,
+  resolveSpecUpload,
+} from './job.js';
 
 describe('parseDuration', () => {
   it('parses minutes, hours, days', () => {
@@ -117,5 +122,81 @@ describe('fetchSellerJobs (the provider inbox read)', () => {
     await expect(fetchSellerJobs('https://api.example/v1', '')).rejects.toThrow(
       /Provide \?seller=/,
     );
+  });
+});
+
+describe('resolveHireSpecUpload (S.978 — CLI writes the t2-acp-custom@1 envelope)', () => {
+  const BASE = 'https://api.example.test/v1';
+  const HASH64 = `0x${'a'.repeat(64)}`;
+
+  function mockPutSpec(hash = 'b'.repeat(64)) {
+    const fn = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ hash }) }));
+    vi.stubGlobal('fetch', fn);
+    return { fn, hash };
+  }
+  afterEach(() => vi.unstubAllGlobals());
+
+  function uploadedBody(fn: ReturnType<typeof vi.fn>): Record<string, unknown> {
+    const init = (fn.mock.calls[0] as unknown[])?.[1] as
+      | { body?: string }
+      | undefined;
+    const outer = JSON.parse(init?.body ?? '{}') as { content?: string };
+    return JSON.parse(outer.content ?? '{}') as Record<string, unknown>;
+  }
+
+  it('wraps an inline brief: envelope type, derived title, lossless brief', async () => {
+    const { fn } = mockPutSpec();
+    await resolveHireSpecUpload(BASE, 'Write one short OK note.\nMore detail.', undefined);
+    const body = uploadedBody(fn);
+    expect(body.type).toBe('t2-acp-custom@1');
+    expect(body.title).toBe('Write one short OK note.');
+    expect(body.brief).toBe('Write one short OK note.\nMore detail.');
+    expect(typeof body.createdAtMs).toBe('number');
+  });
+
+  it('--title wins; Title: prefix in a file strips for the title only', async () => {
+    const { fn } = mockPutSpec();
+    await resolveHireSpecUpload(BASE, 'Long brief body.', 'My title');
+    expect(uploadedBody(fn).title).toBe('My title');
+
+    vi.unstubAllGlobals();
+    const second = mockPutSpec();
+    const dir = await mkdtemp(join(tmpdir(), 't2-job-'));
+    const file = join(dir, 'brief.md');
+    await writeFile(file, 'Title: smoke CLI envelope\nWrite one short OK note.');
+    await resolveHireSpecUpload(BASE, file, undefined);
+    const body = uploadedBody(second.fn);
+    expect(body.title).toBe('smoke CLI envelope');
+    expect(String(body.brief).startsWith('Title: smoke CLI envelope')).toBe(true);
+  });
+
+  it('idempotent: an input that already IS the envelope uploads as-is, never nested', async () => {
+    const { fn } = mockPutSpec();
+    const envelope = JSON.stringify({
+      type: 't2-acp-custom@1',
+      title: 'Pre-wrapped',
+      brief: 'Already an envelope.',
+      createdAtMs: 1,
+    });
+    await resolveHireSpecUpload(BASE, envelope, undefined);
+    const body = uploadedBody(fn);
+    expect(body.title).toBe('Pre-wrapped');
+    expect(body.createdAtMs).toBe(1);
+    expect(typeof body.brief).toBe('string'); // not a nested envelope string
+  });
+
+  it('bare 0x… sha256 stays confidential — no upload, no wrap', async () => {
+    const { fn } = mockPutSpec();
+    const result = await resolveHireSpecUpload(BASE, HASH64, undefined);
+    expect(result).toEqual({ hash: HASH64, uploaded: false });
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('deliver path contrast: resolveSpecUpload still uploads RAW text, no envelope', async () => {
+    const { fn } = mockPutSpec();
+    await resolveSpecUpload(BASE, 'plain delivery proof text');
+    const init = (fn.mock.calls[0] as unknown[])?.[1] as { body?: string };
+    const outer = JSON.parse(init?.body ?? '{}') as { content?: string };
+    expect(outer.content).toBe('plain delivery proof text');
   });
 });
