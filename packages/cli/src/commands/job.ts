@@ -41,6 +41,8 @@ import {
   verifyJobForSeller,
   MAX_JOB_USDC,
   preflightCreateJob,
+  customHireEnvelope,
+  isCustomHireEnvelope,
   type Job,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
@@ -90,19 +92,21 @@ const SHA256_HEX_RE = /^0x[0-9a-fA-F]{64}$/;
  *  fails with guidance BEFORE any network call. */
 const SPEC_STORE_MAX_BYTES = 16 * 1024;
 
-/** Spec/delivery commitment (SPEC_ACP_JOB_SPEC_V1 §4.2): the body UPLOADS by
- *  default so the counterparty can actually read it — a bare `0x…` sha256
- *  passes through untouched (the confidential path: nothing leaves your
- *  machine). Anything else is read (file path, else literal text), guarded
- *  to UTF-8 text under the store's 16 KiB cap, uploaded via `putJobSpec`,
- *  and the store's hash pinned on-chain. */
-export async function resolveSpecUpload(
-  base: string,
+// Spec/delivery commitment (SPEC_ACP_JOB_SPEC_V1 §4.2): bodies UPLOAD by
+// default so the counterparty can actually read them; a bare `0x…` sha256
+// is the confidential path (nothing leaves your machine).
+
+/** Read + guard the spec/delivery input WITHOUT uploading: a bare `0x…`
+ *  sha256 passes through as the confidential hash; anything else resolves
+ *  (file path, else literal text) to UTF-8 text under the store's 16 KiB
+ *  cap. Shared by hire (which wraps text in the custom envelope, S.978)
+ *  and deliver (which uploads raw — proofs are never wrapped). */
+export async function loadSpecText(
   input: string,
-): Promise<{ hash: string; uploaded: boolean }> {
+): Promise<{ kind: 'hash'; hash: string } | { kind: 'text'; text: string }> {
   const trimmed = input.trim();
   if (SHA256_HEX_RE.test(trimmed)) {
-    return { hash: trimmed.toLowerCase(), uploaded: false };
+    return { kind: 'hash', hash: trimmed.toLowerCase() };
   }
   let bytes: Buffer;
   try {
@@ -127,7 +131,44 @@ export async function resolveSpecUpload(
         'commitment with --hash-only 0x<sha256>.',
     );
   }
-  return { hash: `0x${await putJobSpec(base, text)}`, uploaded: true };
+  return { kind: 'text', text };
+}
+
+export async function resolveSpecUpload(
+  base: string,
+  input: string,
+): Promise<{ hash: string; uploaded: boolean }> {
+  const loaded = await loadSpecText(input);
+  if (loaded.kind === 'hash') {
+    return { hash: loaded.hash, uploaded: false };
+  }
+  return { hash: `0x${await putJobSpec(base, loaded.text)}`, uploaded: true };
+}
+
+/** Direct-hire spec upload (S.978): text briefs wrap in the SDK's
+ *  `t2-acp-custom@1` envelope — the same write shape as console + Connect —
+ *  so manage / the public page / the feed title the job without derive
+ *  fallbacks. Idempotent (an input that already IS the envelope uploads
+ *  as-is); a bare 0x… sha stays the confidential path, never wrapped. */
+export async function resolveHireSpecUpload(
+  base: string,
+  input: string,
+  title: string | undefined,
+): Promise<{ hash: string; uploaded: boolean }> {
+  const loaded = await loadSpecText(input);
+  if (loaded.kind === 'hash') {
+    return { hash: loaded.hash, uploaded: false };
+  }
+  const body = isCustomHireEnvelope(loaded.text)
+    ? loaded.text
+    : customHireEnvelope(loaded.text, title, Date.now());
+  if (Buffer.byteLength(body, 'utf8') > SPEC_STORE_MAX_BYTES) {
+    throw new Error(
+      'The brief plus its envelope exceeds the 16 KiB job-spec store cap — ' +
+        'shorten the brief, or link the long artifact (URL / IPFS).',
+    );
+  }
+  return { hash: `0x${await putJobSpec(base, body)}`, uploaded: true };
 }
 
 function stateColor(state: Job['state']): string {
@@ -279,7 +320,8 @@ no fund step; unclaimed openings refund fee-free):
     .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when hiring a --service listing)`)
     .argument('[seller]', "The ASP's Sui address (omit when hiring a --service listing)")
     .description('Hire — fund an escrow job in one transaction (buyer): a listing (--agent + --service) or your own terms (amount + seller + --spec)')
-    .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED so the seller can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading)')
+    .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED as the public t2-acp-custom@1 title+brief envelope so the seller and the store can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading, no envelope)')
+    .option('--title <text>', 'Public job title (≤80 chars). Custom/direct hire only; derived from the brief\'s first line if omitted')
     .option(
       '--agent <address|#id|@handle>',
       "Hire a listing: the ASP's agent address, #id, or @handle",
@@ -297,6 +339,7 @@ no fund step; unclaimed openings refund fee-free):
         sellerArg: string | undefined,
         opts: {
           spec?: string;
+          title?: string;
           agent?: string;
           service?: string;
           requirements?: string;
@@ -402,9 +445,14 @@ no fund step; unclaimed openings refund fee-free):
             seller = validateAddress(
               (await resolveAgentRef(base, sellerArg)).address,
             );
-            // Uploads unless the input is already a 0x… sha256 — the bare
-            // hash stays the confidential path (nothing leaves the machine).
-            ({ hash: specHash } = await resolveSpecUpload(base, opts.spec));
+            // Uploads as the t2-acp-custom@1 envelope (S.978) unless the
+            // input is already a 0x… sha256 — the bare hash stays the
+            // confidential path (nothing leaves the machine).
+            ({ hash: specHash } = await resolveHireSpecUpload(
+              base,
+              opts.spec,
+              opts.title,
+            ));
             deliverByMs = Date.now() + parseDuration(opts.deadline);
             reviewWindowMs = opts.review
               ? parseDuration(opts.review)

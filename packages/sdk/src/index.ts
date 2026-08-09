@@ -191,6 +191,10 @@ export {
 } from './commerce.js';
 export type { ServiceListing } from './commerce.js';
 export {
+  customHireEnvelope,
+  isCustomHireEnvelope,
+} from './job-spec-envelope.js';
+export {
   cancelOpenJob,
   claimOpenJob,
   getOpenJob,
