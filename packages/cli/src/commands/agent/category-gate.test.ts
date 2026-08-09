@@ -79,6 +79,10 @@ describeOrSkip('seller category gate — wiring', () => {
       'A test',
       '--deliverable',
       'A report',
+      // S.973: --requirements is a requiredOption now — commander would
+      // fail on it before the category gate this test pins.
+      '--requirements',
+      'Topic, word count, tone, platform.',
       '--category',
       'bogus',
     ]);
