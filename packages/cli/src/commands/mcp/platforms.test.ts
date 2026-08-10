@@ -4,24 +4,10 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  MCP_SERVER_ENTRY,
   MCP_SERVER_KEY,
   hasMcpEntry,
-  withMcpEntry,
   withoutMcpEntry,
 } from './platforms.js';
-
-describe('MCP_SERVER_ENTRY', () => {
-  it('uses the t2000 bin (the only exposed binary until Phase C)', () => {
-    // Pre-Phase-C: t2 isn't on PATH; AI client must launch via t2000.
-    expect(MCP_SERVER_ENTRY.command).toBe('t2000');
-    expect(MCP_SERVER_ENTRY.args).toEqual(['mcp', 'start']);
-  });
-
-  it('uses the t2000 key (canonical install identifier)', () => {
-    expect(MCP_SERVER_KEY).toBe('t2000');
-  });
-});
 
 describe('hasMcpEntry', () => {
   it('returns false for empty config', () => {
@@ -36,31 +22,6 @@ describe('hasMcpEntry', () => {
     expect(hasMcpEntry({ mcpServers: { t2000: { command: 't2', args: ['mcp', 'start'] } } })).toBe(
       true,
     );
-  });
-});
-
-describe('withMcpEntry', () => {
-  it('adds the entry when none exists', () => {
-    const result = withMcpEntry({});
-    expect(hasMcpEntry(result)).toBe(true);
-    expect((result.mcpServers as Record<string, unknown>).t2000).toEqual(MCP_SERVER_ENTRY);
-  });
-
-  it('preserves other servers in mcpServers', () => {
-    const result = withMcpEntry({ mcpServers: { other: { command: 'foo' } } });
-    expect((result.mcpServers as Record<string, unknown>).other).toEqual({ command: 'foo' });
-    expect((result.mcpServers as Record<string, unknown>).t2000).toEqual(MCP_SERVER_ENTRY);
-  });
-
-  it('is idempotent — overwrites a stale (Day 5 t2-bin) entry', () => {
-    const stale = { mcpServers: { t2000: { command: 't2', args: ['mcp', 'start'] } } };
-    const result = withMcpEntry(stale);
-    expect((result.mcpServers as Record<string, unknown>).t2000).toEqual(MCP_SERVER_ENTRY);
-  });
-
-  it('preserves unknown top-level keys (does not nuke user config)', () => {
-    const result = withMcpEntry({ mcpServers: {}, customField: 'preserved' });
-    expect(result.customField).toBe('preserved');
   });
 });
 

@@ -196,15 +196,17 @@ keeps the directory read-model authoritative.
 **Passport Connect** (`audric/apps/mcp`, `https://mcp.t2000.ai/mcp` + OAuth)
 is THE MCP surface — no install, no client-side key; delegated spend sessions
 are server-held, bounded (per-job / daily / ask-above limits, revocable,
-expiring), and every money verb is `authorizeSpend`-gated. The tool registry
-is `audric/apps/mcp/lib/tools.ts` — read it for the live list; `t2000_send`
-to external addresses is absent by design.
+expiring), and every money verb is `authorizeSpend`-gated — `t2000_send` included
+(external transfers run under the same session limits as every spend). The
+tool inventory SSOT is Connect `tools/list` (`audric/apps/mcp/lib/tools.ts`) —
+skills are playbooks, never a second registry.
 
 **Skills** (`t2000-skills/`, auto-synced to the public
 [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) repo on
 every push) are markdown playbooks any skill-reading agent can follow. They
 install locally via `npx skills add mission69b/t2000-skills` — optional; Connect
-needs no skills, and serves each one live as a `skill-<name>` prompt.
+needs no skills. Skills are playbooks (when/why + CLI sequences); the tool
+inventory is always Connect `tools/list`, never a skill.
 
 ---
 

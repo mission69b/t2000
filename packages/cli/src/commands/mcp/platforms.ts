@@ -1,8 +1,9 @@
-// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 5 — 2026-05-26]
-// Shared MCP platform descriptors + low-level JSON config helpers.
-// Used by `t2 mcp install` + `t2 mcp uninstall`. Kept separate from the
-// command files so unit tests can exercise the data layer without
-// spinning up commander.
+// [SPEC_AGENT_WALLET_GREENFIELD Phase A Day 5 — 2026-05-26; S.998 purge]
+// Shared MCP platform descriptors + low-level JSON config helpers for
+// `t2 mcp uninstall` — LEGACY STDIO CLEANUP ONLY. The install writer
+// (MCP_SERVER_ENTRY / withMcpEntry) was deleted in S.998: there is no
+// local t2000 MCP server; Passport Connect (https://mcp.t2000.ai/mcp) is
+// the only MCP surface and `t2 mcp install` hard-errors pointing at it.
 //
 // Codex coverage NOTE: `~/.codex/config.json` doesn't exist in this
 // helper today — adding it is gated on confirming Codex's settled
@@ -24,23 +25,6 @@ export interface McpPlatform {
   /** Absolute path to the platform's JSON config file. */
   path: string;
 }
-
-/**
- * The MCP server entry that gets written into each platform's
- * `mcpServers.<key>` map. Uses `t2000` — the only bin currently
- * exposed by `packages/cli/package.json`. Phase C will rename the
- * primary bin to `t2` and keep `t2000` as a permanent alias; at that
- * point new installs MAY switch to `command: 't2'` but existing
- * installs continue working because `t2000` stays valid.
- *
- * Day 6 finding: shipped with `command: 't2'` during the Day 5 refactor,
- * which broke any user who ran `t2 mcp install` since `t2` isn't on
- * PATH until Phase C lands. Day 6 audit caught it; reverted here.
- */
-export const MCP_SERVER_ENTRY = {
-  command: 't2000',
-  args: ['mcp', 'start'],
-} as const;
 
 /**
  * Key under `mcpServers` in each platform's config. Stays `t2000` so
@@ -97,20 +81,6 @@ export async function writeJsonFile(path: string, data: McpConfigFile): Promise<
   await writeFile(path, JSON.stringify(data, null, 2) + '\n', 'utf-8');
 }
 
-/**
- * Pure mutator: returns the new config object with the t2000 MCP
- * entry merged in. Idempotent — calling twice produces the same
- * result. Caller decides whether to write it back to disk.
- */
-export function withMcpEntry(config: McpConfigFile): McpConfigFile {
-  return {
-    ...config,
-    mcpServers: {
-      ...(config.mcpServers ?? {}),
-      [MCP_SERVER_KEY]: { ...MCP_SERVER_ENTRY },
-    },
-  };
-}
 
 export function hasMcpEntry(config: McpConfigFile): boolean {
   return (

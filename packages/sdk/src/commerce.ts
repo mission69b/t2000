@@ -1,6 +1,6 @@
 // Commerce API client (t2 ACP) — agent services + the content-addressed
 // job-spec store on api.t2000.ai. Shared by `@t2000/cli` (`t2 service` /
-// `t2 browse` / `t2 job`) and `@t2000/mcp` (the t2000_service_* / t2000_job_*
+// `t2 browse` / `t2 job`) and Passport Connect (audric/apps/mcp — the t2000_service_* / t2000_job_*
 // tools) so the tamper-verify logic exists exactly once.
 //
 // Browser-safe: hashing uses WebCrypto (`crypto.subtle`), available in every

@@ -14,18 +14,33 @@ metadata:
   requires: Node.js 18+ and a terminal
 ---
 
-# t2000: Agent Wallet — One-Prompt Setup
+# t2000: Agent Wallet — Setup
+
+## First: do they even need the CLI?
+
+**Marketplace from Claude (or any MCP client) only?** Skip everything below.
+Add `https://mcp.t2000.ai/mcp` as a custom connector, approve with Google —
+that IS the Passport. No CLI, no skills, nothing local; limits live at
+[t2000.ai/manage/connections](https://t2000.ai/manage/connections). Details:
+the `t2000-connect` skill.
+
+The steps below are for the **optional terminal Agent Wallet** (funnel B):
+a local `t2` CLI + key file for terminal workflows. Connect remains an
+optional add-on afterwards.
 
 ## Purpose
 
-Get a fresh user from "nothing installed" to "Agent Wallet ready" in under 5 minutes. This is the canonical entry point for the **one-prompt install** UX:
+Get a fresh user from "nothing installed" to "Agent Wallet ready" in under 5
+minutes, via this skill:
 
 ```
 Run `npx skills add mission69b/t2000-skills -s t2000-setup` and follow the
 installed skill to set up my Agent Wallet.
 ```
 
-When invoked through that prompt, the LLM installs and reads this file, then executes the steps below in order.
+The skill is the playbook the LLM follows — there is no hosted installer
+script at any URL. When invoked, read this file, then execute the steps
+below in order.
 
 ## Rules
 
@@ -126,7 +141,7 @@ other MCP client takes the same URL as JSON:
 ```
 
 Session spend limits (per-job / daily / ask-above) are set at
-t2000.ai/manage/connections. Details + per-client notes: the `t2000-mcp`
+t2000.ai/manage/connections. Details + per-client notes: the `t2000-connect`
 skill. After adding the connector, the user may need to **restart the AI
 client** for the `t2000_*` tools to appear.
 
@@ -148,22 +163,6 @@ What's my t2000 balance?
 ```
 
 Should invoke the `t2000_balance` MCP tool and return the same numbers.
-
-**6c — AI client prompt smoke**:
-
-The MCP server doesn't just expose tools — it also exposes one `skill-<name>` prompt per t2000 skill (auto-registered from `t2000-skills/skills/*/SKILL.md`). Type `/` in the AI client's chat input to open the prompt picker. You should see:
-
-- `skill-setup` — this skill
-- `skill-send` — sending USDC / USDsui / SUI
-- `skill-swap` — swapping via Cetus
-- `skill-pay` — paying for x402 services
-- `skill-receive` — generating payment requests
-- `skill-services` — discovering ASP Services in the marketplace
-- `skill-check-balance` — reading the wallet
-- `skill-job` — hiring agents / selling services over escrowed A2A jobs
-- `skill-mcp` — MCP integration deep-dive
-
-Run `/skill-check-balance` (or just type and accept the autocomplete). The skill markdown loads as a prompt and the assistant returns a structured balance breakdown.
 
 > **Tip — triggering the wallet in a *fresh* session.** In a brand-new chat, lead with **"use t2 services"** — e.g. *"Use t2 services to find someone who writes market briefs, then hire them."* That tells the client to load the `t2000_*` tools instead of answering from its own sandbox. Name what you want DONE, not a provider: t2000 sells what ASPs list, and nothing else.
 
@@ -191,7 +190,7 @@ After verify succeeds, surface a short menu of natural next moves:
 - "Generate a payment request" → `t2000-receive`
 - "See available paid services" → `t2000-services`
 - "Hire an agent (or sell your own services)" → `t2000-job` — **Hire**: browse with `t2 services`, hire a listing with `t2 job hire --agent <seller> --service <slug>`, or hire custom when nothing fits: `t2 job hire <usdc> <seller> --spec <brief>` — never invent a listing. **Open**: post to the board with `t2 job open`; sellers claim with `t2 job claim`. Sell with `t2 service create`
-- "Connect more AI clients" → `t2000-mcp`
+- "Connect more AI clients" → `t2000-connect`
 - "See what else t2 can do" → run `t2 --help` or browse https://docs.t2000.ai/agent-wallet#skills
 
 ## Troubleshooting
@@ -201,5 +200,5 @@ After verify succeeds, surface a short menu of natural next moves:
 | `t2: command not found` after npm install | npm's global bin dir isn't on `PATH`. Find it with `npm prefix -g` (bins live in `$(npm prefix -g)/bin`), then add that dir to your shell profile — or `npm config set prefix ~/.npm-global` for a durable user-level prefix. Both `t2` and `t2000` ship in every install. |
 | `t2 init` fails with permission error | Don't run with `sudo`; npm global may need a user-level prefix (`npm config set prefix ~/.npm-global`) |
 | `t2 init` fails with `WALLET_EXISTS` | A file already lives at `~/.t2000/wallet.key`. If it's a v3 file you no longer need, move/delete it. If you still need it, point v3 + v4 at separate paths via `--key`. v4 does not auto-migrate v3 wallets — see the v3 upgrade note in Step 2. |
-| AI client doesn't see `t2000_*` tools after connecting | Restart the client; re-approve the `https://mcp.t2000.ai/mcp` connector (OAuth). See the `t2000-mcp` skill. |
+| AI client doesn't see `t2000_*` tools after connecting | Restart the client; re-approve the `https://mcp.t2000.ai/mcp` connector (OAuth). See the `t2000-connect` skill. |
 | Old config spawns a local t2000 MCP command | Stale entry — the hosted URL is the only transport | Replace with the hosted URL block (Step 5); clean old entries with `t2 mcp uninstall` |

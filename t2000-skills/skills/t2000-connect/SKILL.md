@@ -1,5 +1,5 @@
 ---
-name: t2000-mcp
+name: t2000-connect
 description: >-
   Connect a t2000 Passport to Claude, Cursor, ChatGPT, Cline, Continue, or any
   MCP-compatible client. Use when asked to set up MCP, add the t2000
@@ -8,11 +8,11 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "4.0"
+  version: "5.0"
   requires: nothing local — a Google account becomes the Passport
 ---
 
-# t2000: MCP (Passport Connect)
+# t2000: Passport Connect
 
 ## Purpose
 
@@ -54,41 +54,31 @@ it as the connector's auth header — same session, same limits.
 Per-job / daily / ask-above limits are set at
 [t2000.ai/manage/connections](https://t2000.ai/manage/connections) (also where
 you revoke). A session expires on its own within **7 days**; **Revoke** stops
-new spends immediately. A spend over the ask-above threshold pauses and emails
-you — approve it in the console and the agent retries.
-
-**External sends are blocked by design** on Connect sessions — moving USDC out
-of the Passport happens in Audric or the console, never through a session.
+new spends immediately. A spend **at or above the ask-above threshold is
+refused** until you raise the limit in the console — there is no one-shot
+approve; edit the limit, then the agent retries.
 
 Earn-first: a Passport with **$0** can still work — registering an Agent ID is
 free, and claiming an Open job costs nothing because the buyer's budget is
 already escrowed.
 
-## Available tools
+## Tools
 
-Read (free): `t2000_balance` · `t2000_address` · `t2000_receive` ·
-`t2000_services` · `t2000_agents` · `t2000_jobs` · `t2000_job_board` ·
-`t2000_limit` (read-only — an agent may read its leash, never lengthen it) ·
-`t2000_swap_quote`
+> **Connect's `tools/list` is the only tool inventory. Never invent tools
+> from this skill — or any skill.**
 
-Earn (free): `t2000_agent_register` · `t2000_agent_sell` (origin-aware — pass
-your API origin to list every paid route) · `t2000_service_create` ·
-`t2000_service_retire` · `t2000_job_claim` · `t2000_job_deliver` ·
-`t2000_job_decline` · `t2000_job_review`
+Three families, discovered live from the connector:
 
-Spend (gated by the session limits): `t2000_pay` (x402) · `t2000_swap` ·
-`t2000_job_hire` · `t2000_job_open` (budget escrows at post; unclaimed
-postings refund fee-free via `t2000_job_cancel`) · `t2000_job_settle`
+- **Free reads** — balance, catalog, job board, your inbox, status, limits
+  (read-only: an agent may read its leash, never lengthen it).
+- **Free earn** — register an Agent ID, list services, claim Open work,
+  deliver, review.
+- **Limit-gated spends** — hire, post Open jobs, settle, pay x402, swap, and
+  send, all checked against the session's per-job / daily / ask-above
+  ceilings before anything moves.
 
-Every skill in `t2000-skills/skills/` is also exposed as a `skill-<name>`
-prompt.
-
-### Not on Connect — deliberate
-
-- `t2000_send` — external transfers are a human action (Audric / console).
-- `t2000_chat` / `t2000_models` — Private Inference is an **Audric** product
-  (`api.audric.ai`, OpenAI-compatible; key from audric.ai).
-- `t2000_history` — read it in the console Activity page or `t2 history`.
+External `send` runs on Connect under those same session limits — like every
+spend, an amount at or above ask-above is refused until the limit is raised.
 
 ## Troubleshooting
 
@@ -96,13 +86,14 @@ prompt.
 |---------|-------|-----|
 | Client shows no `t2000_*` tools | Connector not approved | Re-add `https://mcp.t2000.ai/mcp`, complete the Google sign-in |
 | `401` from mcp.t2000.ai | No/expired session — fail-closed by design | Reconnect (OAuth), or mint a fresh token under Connections |
-| A spend returns "waiting on you" | Amount is over the session's ask-above threshold | Approve it at t2000.ai/manage/connections, then retry |
+| A spend is refused naming ask-above | Amount at or above the session threshold | Raise Ask-above (and Per-job if needed) at t2000.ai/manage/connections, then retry — there is no approve flow |
 | A spend is refused with a limit message | Per-job or daily cap hit | Raise limits in the console (the agent cannot) |
-| Old config still spawns a local t2000 MCP command | Stale entry — the hosted URL is the only transport | Replace it with the URL block above (or `npx @t2000/cli mcp uninstall` cleans all clients) |
+| Old config still spawns a local t2000 MCP command | Stale stdio entry from the deleted local server | Replace it with the URL block above; `npx @t2000/cli mcp uninstall` cleans stale stdio configs from all clients (legacy cleanup only) |
 
 ## Security
 
 - The wallet key never exists client-side — sessions are zkLogin-backed and
   server-held, scoped by the limits you set.
 - Sessions expire within 7 days; revocation is immediate.
-- External sends are impossible from a session, whatever the prompt says.
+- Every spend — send included — is checked against the session limits; the
+  agent cannot raise them.
