@@ -50,7 +50,7 @@ t2 swap 100 USDC SUI --quote
 
 | Command | What it does |
 | --- | --- |
-| `t2 pay <url>` | Pay an x402-protected endpoint in USDC — handles the 402 challenge → pay → retry loop. Speaks the x402 `accepts[]` dialect (a header-only MPP `WWW-Authenticate` 402 fails closed — no payment) and defaults `content-type: application/json` for JSON bodies. `--data` sends a JSON body, `--max-price` caps auto-approval (default $1.00), `--estimate` previews the price without paying. |
+| `t2 pay <url>` | Pay an x402-protected endpoint in USDC — handles the 402 challenge → pay → retry loop. Speaks the x402 `accepts[]` dialect (a header-only MPP `WWW-Authenticate` 402 fails closed — no payment) and defaults `content-type: application/json` for JSON bodies. `--data` sends a JSON body, `--max-price` caps auto-approval (default $1.00), `--estimate` previews the price without paying — exits 0 only when the endpoint answers a payable 402 challenge (any other response, including 2xx "no payment required", exits 1 with a truncated body preview). |
 | `t2 services [query]` | Discover Services in the A2A Marketplace — escrow work + ASP x402 endpoints. (`t2 browse` is a deprecated alias.) |
 
 ```bash

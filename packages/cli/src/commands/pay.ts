@@ -52,7 +52,7 @@ export function registerPay(program: Command) {
     .option('--max-price <amount>', 'Max USDC price to auto-approve', '1.00')
     .option(
       '--estimate',
-      'Preview the price + service info (no signing, no payment). Exits 0 if the service responds with a 402 challenge.',
+      'Preview the price + service info (no signing, no payment). Exits 0 ONLY if the service answers a payable 402 x402 challenge; any other response (including 2xx "no payment required") exits 1.',
     )
     .option('--force', 'Override spending limits for this call (see `t2 limit`)')
     .addHelpText(
@@ -141,13 +141,44 @@ Examples:
     });
 }
 
+/** Cap on body previews for non-402 estimate responses — operators piping
+ *  `--estimate` must never get a multi-KB HTML dump on stdout (S.1002). */
+const ESTIMATE_PREVIEW_MAX = 512;
+
+/** Truncate a response body for display: full text under the cap, else the
+ *  first `max` chars + an honest truncation note with the real size. */
+export function truncatePreview(body: string, max = ESTIMATE_PREVIEW_MAX): string {
+  if (body.length <= max) {
+    return body;
+  }
+  return `${body.slice(0, max)}… (truncated, ${body.length} total bytes)`;
+}
+
+/** Estimate failure that exits 1 with ONE structured JSON object in --json
+ *  mode (handleError prefers toJSON) and a short reason line otherwise. */
+class EstimateFailure extends Error {
+  constructor(
+    message: string,
+    private readonly payload: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'EstimateFailure';
+  }
+  toJSON(): Record<string, unknown> {
+    return this.payload;
+  }
+}
+
 /**
- * `--estimate` path. Issues the request with no Payment header, expects
- * a 402, parses the WWW-Authenticate challenge, prints the relevant
- * fields. Exits 0 on success — this is a discovery / pricing flow, not
- * an error path.
+ * `--estimate` path. Issues the request with no Payment header, expects a
+ * 402, parses the x402 `accepts[]` body envelope — the primary dialect
+ * (the WWW-Authenticate header is belt-and-suspenders only; S.880) — and
+ * prints the relevant fields. Exit contract (S.1002, founder-locked):
+ * 0 ONLY when the response proves a payable 402 x402 challenge. Any other
+ * status — including 2xx "no payment required" — throws, because operators
+ * script estimate as "may I pay this URL"; friendly copy, non-zero exit.
  */
-async function runEstimate(url: string, opts: PayOptions): Promise<void> {
+export async function runEstimate(url: string, opts: PayOptions): Promise<void> {
   const method = opts.data && opts.method === 'GET' ? 'POST' : opts.method;
   const canHaveBody = method !== 'GET' && method !== 'HEAD';
 
@@ -175,35 +206,40 @@ async function runEstimate(url: string, opts: PayOptions): Promise<void> {
   });
 
   if (response.status !== 402) {
-    // The endpoint is either open (no payment needed) or returned a
-    // non-MPP error. Either way, surface the status + body so the user
-    // can act on it.
+    // Not a payment challenge — the endpoint is open (2xx), dead, or
+    // erroring. Surface the status + a TRUNCATED preview, then fail:
+    // exit 0 here would let "estimate before pay" scripts treat mistyped
+    // or dead URLs as verified payable services (S.1002).
     const body = await response.text().catch(() => '');
-    if (isJsonMode()) {
-      printJson({
+    const preview = truncatePreview(body);
+    const open = response.status >= 200 && response.status < 300;
+    const note = open
+      ? `Endpoint responded ${response.status} without a 402 challenge — no payment required.`
+      : `Endpoint responded ${response.status} (not a 402 payment challenge).`;
+    if (!isJsonMode()) {
+      if (open) {
+        printInfo(`No payment required (status ${response.status}).`);
+      } else {
+        printInfo(`Status ${response.status} — not a 402 payment challenge.`);
+      }
+      if (preview) {
+        printBlank();
+        console.log(preview);
+        printBlank();
+      }
+    }
+    throw new EstimateFailure(
+      `${note} --estimate exits 0 only for a payable 402 x402 challenge.`,
+      {
         url,
         method,
         status: response.status,
+        ok: false,
         estimate: null,
-        note:
-          response.status >= 200 && response.status < 300
-            ? 'Endpoint responded without a 402 challenge — no payment required.'
-            : `Endpoint responded with ${response.status} (not a 402 payment challenge).`,
-        body,
-      });
-      return;
-    }
-    if (response.status >= 200 && response.status < 300) {
-      printSuccess(`No payment required (status ${response.status}).`);
-    } else {
-      printInfo(`Status ${response.status} — not a 402 payment challenge.`);
-    }
-    if (body) {
-      printBlank();
-      console.log(body);
-      printBlank();
-    }
-    return;
+        note,
+        ...(preview ? { bodyPreview: preview } : {}),
+      },
+    );
   }
 
   // Read the x402 `accepts[]` envelope from the 402 body — the ONE dialect
