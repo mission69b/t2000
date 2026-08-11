@@ -13,7 +13,7 @@ apply to this slice. Don't silently skip.
 - [ ] SDK implementation + tests (`packages/sdk/src/`)
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
 - [ ] MCP tool + tests (Connect — `audric/apps/mcp/lib/tools.ts`)
-- [ ] Agent Skill (`t2000-skills/skills/`)
+- [ ] Agent Skill (`t2000-skills/skills/`) — only on lifecycle/policy/money-rule changes; never for Connect card/`next` polish (tools/list is the inventory SSOT)
 - [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to developers.t2000.ai
 - [ ] Root `README.md`
 - [ ] Package `README.md`s

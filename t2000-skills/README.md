@@ -1,6 +1,6 @@
 # t2000 Agent Skills
 
-Ship USDC apps on Sui faster with **t2000 Skills** — best-practice guidance for the t2000 Agent Wallet (sponsored sends, swaps, x402 API payments) — plus the **t2000 MCP server** for live wallet tools in your AI client.
+Ship USDC apps on Sui faster with **t2000 Skills** — best-practice PLAYBOOKS for the t2000 Agent Wallet (sponsored sends, swaps, x402 API payments). Skills teach when/why + CLI sequences; the live tool inventory is always Passport Connect `tools/list` (`https://mcp.t2000.ai/mcp`) — never a skill.
 
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
 [![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai)
@@ -41,7 +41,7 @@ Installs all ten wallet skills (the `t2000-agent-wallet` plugin) via Claude Code
 | [`t2000-swap`](skills/t2000-swap/SKILL.md) | Best-route swaps via Cetus Aggregator across 20+ Sui DEXs (SUI, USDC, USDsui, USDT, USDe, ETH, GOLD, NAVX, WAL, vSUI, …). Covers `--quote`, slippage, asset selection, and the "swap needs SUI for gas" gotcha. |
 | [`t2000-services`](skills/t2000-services/SKILL.md) | Discover x402 services (paid AI / search / image-gen / mail / TTS APIs) payable via `t2 pay`. Pairs with `t2000-pay` — always discover first, then pay. |
 | [`t2000-pay`](skills/t2000-pay/SKILL.md) | Pay for an x402-protected API service via the wallet. Handles the HTTP 402 challenge → quote → USDC payment → retry loop automatically. Use whenever a task needs a paid API (chat, search, image, mail, weather, code execution, …). |
-| [`t2000-mcp`](skills/t2000-mcp/SKILL.md) | Connect Claude, Cursor, ChatGPT, Cline, Continue, or any MCP client to the hosted Passport Connect MCP (`https://mcp.t2000.ai/mcp` + OAuth). Covers setup, session spend limits, and the tool surface. |
+| [`t2000-connect`](skills/t2000-connect/SKILL.md) | Connect Claude, Cursor, ChatGPT, Cline, Continue, or any MCP client to the hosted Passport Connect MCP (`https://mcp.t2000.ai/mcp` + OAuth). Covers setup and session spend limits — the tool inventory is Connect `tools/list`, never a skill. |
 
 ### Sui ecosystem skills
 
@@ -74,7 +74,7 @@ The per-task skills above assume a shared **agent-ops layer**: payment-error rec
 
 ## t2000 MCP (Passport Connect)
 
-Skills tell your agent *how* to use the wallet. The hosted MCP gives it the actual *tools* — reads, marketplace verbs, and spend-gated money verbs. Every skill is also auto-registered as a `skill-<name>` prompt your client can invoke directly. One config for every MCP client:
+Skills tell your agent *how* to use the wallet. The hosted MCP gives it the actual *tools* — reads, marketplace verbs, and spend-gated money verbs (discover them via the connector's `tools/list`; skills never list tools). One config for every MCP client:
 
 ```json
 {
@@ -90,7 +90,7 @@ OAuth (Google → Passport) + per-session spend limits set in the console.
 
 The `t2000` command must be on `PATH` — install globally with `npm install -g @t2000/cli` (the CLI ships with the MCP entry point).
 
-Full setup walkthrough + troubleshooting: see [`t2000-mcp/SKILL.md`](skills/t2000-mcp/SKILL.md).
+Full setup walkthrough + troubleshooting: see [`t2000-connect/SKILL.md`](skills/t2000-connect/SKILL.md).
 
 ## Prerequisites
 

@@ -425,7 +425,7 @@ When shipping a feature, update these files:
 - [ ] SDK implementation + tests (`packages/sdk/src/`)
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
 - [ ] MCP tool + tests (Connect — `audric/apps/mcp/lib/tools.ts`)
-- [ ] Agent Skill (`t2000-skills/skills/`)
+- [ ] Agent Skill (`t2000-skills/skills/`) — ONLY when lifecycle/policy/money rules changed; skills are playbooks, never a tool inventory (Connect `tools/list` is the SSOT), so Connect card/`next` polish never touches them
 - [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to `docs.t2000.ai`
 - [ ] Root README (`README.md`)
 - [ ] Package READMEs (`packages/*/README.md`)

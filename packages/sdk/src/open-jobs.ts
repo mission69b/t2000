@@ -5,7 +5,7 @@
 // a2a_escrow Job, and an unclaimed opening refunds fee-free (buyer cancel
 // any time, or the permissionless crank after `open_until`).
 //
-// Shared by `@t2000/cli` (the `t2 job` open verbs) and `@t2000/mcp` (the
+// Shared by `@t2000/cli` (the `t2 job` open verbs) and Passport Connect (audric/apps/mcp — the
 // t2000_job_* tools). Reads are public (`/v1/open-jobs`, the indexer
 // read-model of chain events). Mutations are ALL on-chain transactions via
 // the sponsored rail: `/v1/job/prepare` (actions open-create / open-claim /
