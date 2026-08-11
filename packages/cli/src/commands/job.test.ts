@@ -3,10 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  bucketSellerJob,
+  deliverPreflightError,
   fetchSellerJobs,
+  type IndexedJob,
   parseDuration,
   resolveHireSpecUpload,
   resolveSpecUpload,
+  reviewClosesMs,
+  summarizeSellerInbox,
 } from './job.js';
 
 describe('parseDuration', () => {
@@ -198,5 +203,122 @@ describe('resolveHireSpecUpload (S.978 — CLI writes the t2-acp-custom@1 envelo
     const init = (fn.mock.calls[0] as unknown[])?.[1] as { body?: string };
     const outer = JSON.parse(init?.body ?? '{}') as { content?: string };
     expect(outer.content).toBe('plain delivery proof text');
+  });
+});
+
+// [S.1003 — beta #93 B–D] Seller inbox buckets + one-shot deliver preflight.
+// Pure helpers only, frozen nowMs — no network, no chain.
+
+const NOW = 1_760_000_000_000; // frozen clock
+const HOUR = 3_600_000;
+
+function job(overrides: Partial<IndexedJob>): IndexedJob {
+  return {
+    jobId: '0x' + 'a'.repeat(64),
+    buyer: '0x' + 'b'.repeat(64),
+    seller: '0x' + 'c'.repeat(64),
+    amountUsdc: 1,
+    state: 'funded',
+    deliverByMs: NOW + HOUR,
+    reviewWindowMs: HOUR,
+    deliveryHash: null,
+    createdAtMs: NOW - HOUR,
+    updatedAtMs: NOW - HOUR,
+    ...overrides,
+  };
+}
+
+describe('bucketSellerJob (S.1003)', () => {
+  it('funded with a future deadline → needsYou', () => {
+    expect(bucketSellerJob(job({ state: 'funded', deliverByMs: NOW + 1 }), NOW)).toBe('needsYou');
+  });
+
+  it('funded past the deadline → fundedLate (chain rejects late delivers)', () => {
+    expect(bucketSellerJob(job({ state: 'funded', deliverByMs: NOW - 1 }), NOW)).toBe('fundedLate');
+  });
+
+  it('delivered inside the review window → awaitingBuyer', () => {
+    expect(
+      bucketSellerJob(job({ state: 'delivered', updatedAtMs: NOW - HOUR / 2, reviewWindowMs: HOUR }), NOW),
+    ).toBe('awaitingBuyer');
+  });
+
+  it('delivered past the review window → releasable', () => {
+    expect(
+      bucketSellerJob(job({ state: 'delivered', updatedAtMs: NOW - 2 * HOUR, reviewWindowMs: HOUR }), NOW),
+    ).toBe('releasable');
+  });
+
+  it('prefers deliveredAtMs over updatedAtMs for the review clock when present', () => {
+    // updatedAtMs alone would say releasable; the real delivered clock says open.
+    expect(
+      bucketSellerJob(
+        job({ state: 'delivered', updatedAtMs: NOW - 2 * HOUR, deliveredAtMs: NOW - HOUR / 2, reviewWindowMs: HOUR }),
+        NOW,
+      ),
+    ).toBe('awaitingBuyer');
+  });
+
+  it('released/rejected/refunded → terminal', () => {
+    for (const state of ['released', 'rejected', 'refunded'] as const) {
+      expect(bucketSellerJob(job({ state }), NOW)).toBe('terminal');
+    }
+  });
+
+  it('delivered with missing window fields → awaitingBuyer, never releasable without a clock', () => {
+    expect(bucketSellerJob(job({ state: 'delivered', updatedAtMs: 0, reviewWindowMs: HOUR }), NOW)).toBe('awaitingBuyer');
+    expect(
+      bucketSellerJob(job({ state: 'delivered', reviewWindowMs: 0, updatedAtMs: NOW - 2 * HOUR }), NOW),
+    ).toBe('awaitingBuyer');
+  });
+});
+
+describe('reviewClosesMs', () => {
+  it('anchors on deliveredAtMs ?? updatedAtMs + window', () => {
+    expect(reviewClosesMs({ deliveredAtMs: 100, updatedAtMs: 50, reviewWindowMs: 10 })).toBe(110);
+    expect(reviewClosesMs({ updatedAtMs: 50, reviewWindowMs: 10 })).toBe(60);
+  });
+
+  it('null without an honest clock', () => {
+    expect(reviewClosesMs({ updatedAtMs: 0, reviewWindowMs: 10 })).toBeNull();
+    expect(reviewClosesMs({ updatedAtMs: 50, reviewWindowMs: 0 })).toBeNull();
+  });
+});
+
+describe('summarizeSellerInbox — the beta false-wake case', () => {
+  it('delivered-only workload counts ZERO needsYou', () => {
+    const jobs = [
+      job({ jobId: '0x' + '1'.repeat(64), state: 'delivered', updatedAtMs: NOW - HOUR / 2 }),
+      job({ jobId: '0x' + '2'.repeat(64), state: 'delivered', updatedAtMs: NOW - 3 * HOUR }),
+      job({ jobId: '0x' + '3'.repeat(64), state: 'released' }),
+      job({ jobId: '0x' + '4'.repeat(64), state: 'refunded' }),
+      job({ jobId: '0x' + '5'.repeat(64), state: 'delivered', updatedAtMs: NOW - HOUR / 4 }),
+    ];
+    const inbox = summarizeSellerInbox(jobs, NOW);
+    expect(inbox.counts).toEqual({ total: 5, needsYou: 0, fundedLate: 0, awaitingBuyer: 2, releasable: 1, terminal: 2 });
+    expect(inbox.releasable[0]?.jobId).toBe('0x' + '2'.repeat(64));
+    // Buckets partition the list — nothing lost, nothing double-counted.
+    const sum = inbox.needsYou.length + inbox.fundedLate.length + inbox.awaitingBuyer.length + inbox.releasable.length + inbox.terminal.length;
+    expect(sum).toBe(5);
+  });
+});
+
+describe('deliverPreflightError (S.1003 one-shot honesty)', () => {
+  it('already delivered → permanent-hash message, no upload/sign', () => {
+    expect(deliverPreflightError('delivered', NOW + HOUR, NOW)).toMatch(/already delivered|cannot be replaced/i);
+  });
+
+  it('terminal states → not deliverable', () => {
+    for (const state of ['released', 'rejected', 'refunded'] as const) {
+      expect(deliverPreflightError(state, NOW + HOUR, NOW)).toMatch(/nothing can be delivered/);
+    }
+  });
+
+  it('funded past the deadline → refund-path message', () => {
+    expect(deliverPreflightError('funded', NOW - 1, NOW)).toMatch(/deadline.*passed|refund/i);
+  });
+
+  it('funded before the deadline → null (proceed)', () => {
+    expect(deliverPreflightError('funded', NOW + 1, NOW)).toBeNull();
   });
 });
