@@ -59,11 +59,13 @@ the frontmatter; keep the table above honest against the actual files.
 ## Skills are NOT mirrored here
 
 `t2000-skills/skills/<name>/SKILL.md` is the canonical source for the user-facing
-product skills (setup, mcp, check-balance, receive, send, swap, pay, services,
-verify, job). Those are **consumer** content; `.claude/skills/` are **contributor**
+product skills (setup, connect, check-balance, receive, send, swap, pay, services,
+job, …). Those are **consumer** playbooks; `.claude/skills/` are **contributor**
 engineering constraints — different altitude, different audience. Don't merge them.
+Skills are **not** a tool inventory — Connect `tools/list` is the SSOT for verbs.
 
-Product skills reach end users via two channels:
-1. **Passport Connect** (`mcp.t2000.ai`) — every skill exposed as a
-   `skill-<name>` MCP prompt on the hosted server.
-2. **`mission69b/t2000-skills`** — auto-synced via `.github/workflows/sync-skills.yml`.
+Product skills reach end users via:
+1. **`mission69b/t2000-skills`** — auto-synced via `.github/workflows/sync-skills.yml`
+   (`npx skills add mission69b/t2000-skills`).
+2. Optional console/skill markdown feeds — **not** per-skill MCP prompts on Connect
+   (Connect itself is tools + OAuth only; no `skill-<name>` prompt registry).

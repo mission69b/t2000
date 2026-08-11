@@ -1,17 +1,17 @@
 ---
 name: t2000-setup
 description: >-
-  Set up a t2000 Agent Wallet end-to-end on the user's machine. Use when
-  the user says "set up t2000", "install the wallet", "create my Agent
-  Wallet", "connect t2000 to Claude / Cursor", or pastes a one-prompt
-  install URL. Covers wallet creation, optional spending limits, and
-  connecting AI clients to the hosted MCP (mcp.t2000.ai). Read this first
-  when bootstrapping a new user; the other skills assume this has run.
+  Set up a t2000 terminal Agent Wallet (`t2 init`) when the user needs a local
+  CLI key file — not for Claude-only marketplace (that is Passport Connect
+  OAuth only). Also use when they say "set up t2000", "install the wallet",
+  or "connect t2000 to Claude / Cursor" if a local wallet is in scope. Covers
+  npm CLI install, optional spending limits, and adding hosted Connect
+  (mcp.t2000.ai). Marketplace-only users should skip CLI; see t2000-connect.
 license: MIT
 metadata:
   author: t2000
-  version: "3.0"
-  requires: Node.js 18+ and a terminal
+  version: "3.1"
+  requires: Node.js 18+ and a terminal (skip this skill entirely for Connect-only)
 ---
 
 # t2000: Agent Wallet — Setup
