@@ -207,6 +207,9 @@ export interface IndexedJob {
   deliveryHash: string | null;
   createdAtMs: number;
   updatedAtMs: number;
+  /** On-chain delivered_at_ms if the indexer ever surfaces it — preferred
+   *  review-clock anchor when present (forward-compat, S.1003). */
+  deliveredAtMs?: number | null;
 }
 
 export async function fetchSellerJobs(base: string, seller: string): Promise<IndexedJob[]> {
@@ -216,25 +219,124 @@ export async function fetchSellerJobs(base: string, seller: string): Promise<Ind
 
 const TERMINAL_STATES = new Set(['released', 'rejected', 'refunded']);
 
-function inboxHint(job: IndexedJob): string {
-  if (job.state === 'funded') {
-    // Full object ids in suggested commands — truncated mid-hex is not pasteable.
-    return `t2 job spec ${job.jobId} → do the work → t2 job deliver ${job.jobId} <file>`;
+// ── Seller inbox buckets (S.1003, beta #93 B–D) ─────────────────────────────
+// "Open" is not a seller-actionable signal: a delivered job counts as open
+// while the seller can do nothing but wait, and a lapsed review window means
+// money idles unless someone runs release. Bucket by what the SELLER can do.
+
+export type SellerInboxBucket = 'needsYou' | 'fundedLate' | 'awaitingBuyer' | 'releasable' | 'terminal';
+
+/** When the buyer's review window closes. MCP parity: anchor on
+ *  deliveredAtMs when the row carries it, else updatedAtMs (the delivered
+ *  transition IS the last update). Null when no honest clock exists. */
+export function reviewClosesMs(job: Pick<IndexedJob, 'deliveredAtMs' | 'updatedAtMs' | 'reviewWindowMs'>): number | null {
+  const anchor = job.deliveredAtMs ?? job.updatedAtMs;
+  if (!(typeof anchor === 'number' && anchor > 0 && typeof job.reviewWindowMs === 'number' && job.reviewWindowMs > 0)) {
+    return null;
   }
-  if (job.state === 'delivered') {
-    return `waiting on the buyer's review — anyone can \`t2 job release\` once it lapses`;
-  }
-  return '';
+  return anchor + job.reviewWindowMs;
 }
 
-function printInboxRow(job: IndexedJob) {
+export function bucketSellerJob(job: IndexedJob, nowMs: number): SellerInboxBucket {
+  if (TERMINAL_STATES.has(job.state)) {
+    return 'terminal';
+  }
+  if (job.state === 'funded') {
+    // The chain rejects late delivers (EPastDeadline) — funded-past-deadline
+    // is NOT workable; the refund path is open to anyone.
+    return nowMs <= job.deliverByMs ? 'needsYou' : 'fundedLate';
+  }
+  // delivered: releasable only with a real lapsed clock — never claim
+  // "releasable" on missing window fields (conservative: awaitingBuyer).
+  const closes = reviewClosesMs(job);
+  return closes !== null && nowMs > closes ? 'releasable' : 'awaitingBuyer';
+}
+
+export interface SellerInboxSummary {
+  counts: {
+    total: number;
+    needsYou: number;
+    fundedLate: number;
+    awaitingBuyer: number;
+    releasable: number;
+    terminal: number;
+  };
+  needsYou: IndexedJob[];
+  fundedLate: IndexedJob[];
+  awaitingBuyer: IndexedJob[];
+  releasable: IndexedJob[];
+  terminal: IndexedJob[];
+}
+
+export function summarizeSellerInbox(jobs: IndexedJob[], nowMs: number): SellerInboxSummary {
+  const buckets: SellerInboxSummary = {
+    counts: { total: jobs.length, needsYou: 0, fundedLate: 0, awaitingBuyer: 0, releasable: 0, terminal: 0 },
+    needsYou: [],
+    fundedLate: [],
+    awaitingBuyer: [],
+    releasable: [],
+    terminal: [],
+  };
+  for (const job of jobs) {
+    const bucket = bucketSellerJob(job, nowMs);
+    buckets[bucket].push(job);
+    buckets.counts[bucket] += 1;
+  }
+  return buckets;
+}
+
+function inboxHint(job: IndexedJob, bucket: SellerInboxBucket): string {
+  switch (bucket) {
+    case 'needsYou':
+      // Full object ids in suggested commands — truncated mid-hex is not pasteable.
+      return `t2 job spec ${job.jobId} → do the work → t2 job deliver ${job.jobId} <file>`;
+    case 'releasable':
+      return `releasable now — t2 job release ${job.jobId}`;
+    case 'awaitingBuyer': {
+      const closes = reviewClosesMs(job);
+      return closes !== null
+        ? `waiting on the buyer's review — release becomes permissionless after ${new Date(closes).toISOString()}`
+        : `waiting on the buyer's review — anyone can \`t2 job release\` once it lapses`;
+    }
+    case 'fundedLate':
+      return `deliver deadline passed — the chain rejects late delivers; the buyer (or anyone) may t2 job refund ${job.jobId}`;
+    default:
+      return '';
+  }
+}
+
+function printInboxRow(job: IndexedJob, bucket: SellerInboxBucket) {
   const deadline = job.state === 'funded' ? ` · deliver by ${new Date(job.deliverByMs).toISOString()}` : '';
   printLine(
     `  ${stateColor(job.state as Job['state'])}  $${job.amountUsdc.toFixed(2)} USDC · from ${truncateAddress(job.buyer)}${deadline}`,
   );
   printLine(`  ${pc.dim(job.jobId)}`);
-  const hint = inboxHint(job);
+  const hint = inboxHint(job, bucket);
   if (hint) printLine(`  ${pc.dim('→')} ${hint}`);
+}
+
+/** Deliver preflight (S.1003): the FIRST deliver pins the hash forever — a
+ *  second deliver, a terminal job, or a lapsed deadline all abort on-chain
+ *  (EWrongState / EPastDeadline). Say so in words BEFORE uploading a body or
+ *  signing. Returns the human error, or null when deliver can proceed. */
+export function deliverPreflightError(state: Job['state'], deliverByMs: number, nowMs: number): string | null {
+  if (state === 'delivered') {
+    return (
+      'This job is already delivered. The delivery hash is permanent and cannot be replaced — ' +
+      'wait for the buyer\'s review, or once the window closes anyone may run `t2 job release <jobId>`. ' +
+      'Fixes travel via buyer reject (inside the window) or out-of-band, never a second deliver.'
+    );
+  }
+  if (state === 'released' || state === 'rejected' || state === 'refunded') {
+    return `This job is ${state} — nothing can be delivered.`;
+  }
+  if (state === 'funded' && nowMs > deliverByMs) {
+    return (
+      `The deliver deadline (${new Date(deliverByMs).toISOString()}) has passed — the chain rejects late ` +
+      'delivers, so nothing was uploaded or signed. The refund path is open: anyone may run `t2 job refund <jobId>`.'
+    );
+  }
+  return null;
 }
 
 async function sponsoredJobVerb(opts: {
@@ -597,13 +699,25 @@ no fund step; unclaimed openings refund fee-free):
     .command('deliver')
     .argument('<jobId>', 'The Job object id (0x…)')
     .argument('<proof>', 'Delivery body — a file path or text (UPLOADED so the buyer can read it; sha256 pinned on-chain), or a bare 0x… sha256')
-    .description('Post your delivery before the deadline (seller) — the body uploads to the job-spec store so the buyer can read it, and its sha256 pins on-chain')
+    .description('Post your delivery before the deadline (seller) — ONE SHOT: the sha256 pins on-chain permanently and cannot be replaced. Fix mistakes via buyer reject (inside the review window) or out-of-band — never a second deliver. Decline is only possible BEFORE delivery.')
     .option('--hash-only', "Pin <proof> as a precomputed 0x… sha256 WITHOUT uploading a body — the confidential / large-artifact path (the buyer can't read it on-platform; hand the artifact over out-of-band)")
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (jobId: string, proof: string, opts: { hashOnly?: boolean; key?: string; api?: string }) => {
       try {
         const base = opts.api ?? DEFAULT_API_BASE;
+        // Preflight BEFORE any upload (S.1003): a redeliver / terminal /
+        // past-deadline job aborts on-chain anyway — catch it here with
+        // words instead of a raw MoveAbort, and never orphan an uploaded
+        // body. A failed read falls through: don't invent state, let the
+        // verb surface whatever the chain says.
+        const existing = await getJob(getSuiClient(), jobId).catch(() => null);
+        if (existing) {
+          const preflightError = deliverPreflightError(existing.state, existing.deliverByMs, Date.now());
+          if (preflightError) {
+            throw new Error(preflightError.replaceAll('<jobId>', jobId));
+          }
+        }
         let deliveryHash: string;
         let uploaded = false;
         if (opts.hashOnly) {
@@ -615,6 +729,11 @@ no fund step; unclaimed openings refund fee-free):
         } else {
           ({ hash: deliveryHash, uploaded } = await resolveSpecUpload(base, proof));
         }
+        if (!isJsonMode()) {
+          // Point of no return — copy only, NEVER a stdin prompt: this
+          // command must stay safe for unattended/cron sellers.
+          printInfo('Delivery pins once. The buyer review window starts after this succeeds; you cannot replace the hash.');
+        }
         const { digest } = await sponsoredJobVerb({
           base,
           keyPath: opts.key,
@@ -622,11 +741,12 @@ no fund step; unclaimed openings refund fee-free):
           params: { jobId, deliveryHash },
         });
         if (isJsonMode()) {
-          printJson({ jobId, deliveryHash, uploaded, digest });
+          printJson({ jobId, deliveryHash, uploaded, digest, onceOnly: true });
           return;
         }
         printBlank();
         printSuccess('Delivery posted — the buyer\'s review window is now open.');
+        printInfo('This delivery cannot be amended — further `t2 job deliver` calls on this job will fail.');
         printKeyValue('Delivery hash', deliveryHash);
         if (digest) printKeyValue('Tx', digest);
         if (uploaded) {
@@ -819,26 +939,59 @@ no fund step; unclaimed openings refund fee-free):
         //    seller's next verb at each step.
         if (opts.mine) {
           const base = opts.api ?? DEFAULT_API_BASE;
-          const seen = new Map<string, string>(); // jobId → last printed state
+          // jobId → last announced bucket. Buckets (not raw states): a
+          // delivered job becomes RELEASABLE by clock alone — a state-keyed
+          // loop would never surface money left on the table (S.1003).
+          const seen = new Map<string, SellerInboxBucket>();
 
           const jobs = await fetchSellerJobs(base, me);
+          const inbox = summarizeSellerInbox(jobs, Date.now());
           if (isJsonMode()) {
-            printJson({ seller: me, jobs });
+            // Compat: `jobs` stays the full API list; counts + buckets are
+            // additive so pollers stop re-deriving seller actionability.
+            printJson({
+              seller: me,
+              counts: inbox.counts,
+              needsYou: inbox.needsYou,
+              fundedLate: inbox.fundedLate,
+              awaitingBuyer: inbox.awaitingBuyer,
+              releasable: inbox.releasable,
+              terminal: inbox.terminal,
+              jobs,
+            });
             return;
           }
-          const open = jobs.filter((j) => !TERMINAL_STATES.has(j.state));
           printBlank();
-          printInfo(`Provider inbox for ${truncateAddress(me)} — ${jobs.length} job(s), ${open.length} open.`);
-          printBlank();
-          for (const job of open) {
-            printInboxRow(job);
-            printBlank();
+          // "need you" counts ONLY deliverable funded work — never delivered
+          // (waiting) or funded-late (dead) rows; all counters always print
+          // so operator scripts see a stable shape.
+          printInfo(
+            `Provider inbox for ${truncateAddress(me)} — ${jobs.length} job(s) · ` +
+              `${inbox.counts.needsYou} need you · ${inbox.counts.awaitingBuyer} awaiting buyer · ` +
+              `${inbox.counts.releasable} releasable now`,
+          );
+          if (inbox.counts.fundedLate > 0) {
+            printLine(pc.dim(`  ${inbox.counts.fundedLate} past deliver deadline (not deliverable — refund path is open to others)`));
           }
-          if (open.length === 0) {
+          printBlank();
+          // Actionable first: your work, then money to collect, then waits.
+          for (const [bucket, rows] of [
+            ['needsYou', inbox.needsYou],
+            ['releasable', inbox.releasable],
+            ['awaitingBuyer', inbox.awaitingBuyer],
+            ['fundedLate', inbox.fundedLate],
+          ] as const) {
+            for (const job of rows) {
+              printInboxRow(job, bucket);
+              printBlank();
+            }
+          }
+          const openCount = jobs.length - inbox.counts.terminal;
+          if (openCount === 0) {
             printInfo('No open jobs. New hires appear here the moment the escrow funds.');
             printBlank();
           }
-          for (const job of jobs) seen.set(job.jobId, job.state);
+          for (const job of jobs) seen.set(job.jobId, bucketSellerJob(job, Date.now()));
           if (opts.once) return;
 
           for (;;) {
@@ -849,17 +1002,21 @@ no fund step; unclaimed openings refund fee-free):
             } catch {
               continue; // transient API blip — keep watching
             }
+            const nowMs = Date.now();
             for (const job of latest) {
+              const bucket = bucketSellerJob(job, nowMs);
               const prev = seen.get(job.jobId);
-              if (prev === job.state) continue;
-              seen.set(job.jobId, job.state);
+              if (prev === bucket) continue;
+              seen.set(job.jobId, bucket);
               printBlank();
-              if (prev === undefined && job.state === 'funded') {
+              if (prev === undefined && bucket === 'needsYou') {
                 printSuccess(`New job — $${job.amountUsdc.toFixed(2)} USDC escrowed for you.`);
+              } else if (bucket === 'releasable') {
+                printSuccess(`Releasable now — t2 job release ${job.jobId}`);
               } else {
                 printInfo(`Job ${truncateAddress(job.jobId)}: ${prev ?? 'new'} → ${job.state}`);
               }
-              printInboxRow(job);
+              printInboxRow(job, bucket);
               printBlank();
             }
           }
