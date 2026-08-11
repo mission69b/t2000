@@ -115,6 +115,11 @@ describe('402 challenge (unpaid)', () => {
     expect(header).toContain('Payment realm="seller.example"');
     expect(header).toContain(`recipient="${PAY_TO}"`);
     expect(header).toContain('amount="0.01"'); // decimal — the header dialect's unit
+    // currency is the coin TYPE STRING — the same identity accepts[].asset
+    // carries. Object interpolation shipped "[object Object]" (beta #93).
+    expect(header).not.toContain('[object Object]');
+    const body = (await res.json()) as { accepts: Array<{ asset: string }> };
+    expect(header).toContain(`currency="${body.accepts[0]?.asset}"`);
   });
 
   it('fires the 402 BEFORE body validation — the probe POSTs {} and must see the challenge', async () => {

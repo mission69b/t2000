@@ -424,6 +424,9 @@ async function respond402(
     // consumers: mirror the challenge into the MPP WWW-Authenticate shape.
     // The accepts[] body stays the authoritative envelope — the header carries
     // the same recipient/currency and the DECIMAL amount that dialect uses.
+    // currency must be the coin TYPE STRING (the same identity the x402
+    // asset field uses) — `Currency` is { type, decimals }, and object
+    // interpolation shipped currency="[object Object]" (beta #93, S.1002).
     const host = (() => {
       try {
         return new URL(args.resource).hostname;
@@ -431,7 +434,7 @@ async function respond402(
         return undefined;
       }
     })();
-    const wwwAuth = `Payment realm="${host ?? 'x402'}", recipient="${runtime.payTo}", currency="${runtime.currency}", amount="${args.priceUsdc}"`;
+    const wwwAuth = `Payment realm="${host ?? 'x402'}", recipient="${runtime.payTo}", currency="${runtime.currency.type}", amount="${args.priceUsdc}"`;
     return json(
       402,
       {
