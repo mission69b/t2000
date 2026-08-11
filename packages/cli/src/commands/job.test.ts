@@ -322,3 +322,95 @@ describe('deliverPreflightError (S.1003 one-shot honesty)', () => {
     expect(deliverPreflightError('funded', NOW + 1, NOW)).toBeNull();
   });
 });
+
+// [S.1004] Chain hydrate — the indexer lags; chain is the bucket SSOT.
+
+import type { Job } from '@t2000/sdk';
+import { hydrateSellerJobsFromChain, mergeIndexedJobFromChain } from './job.js';
+
+function chainJob(overrides: Partial<Job>): Job {
+  return {
+    id: '0x' + 'a'.repeat(64),
+    buyer: '0x' + 'b'.repeat(64),
+    seller: '0x' + 'c'.repeat(64),
+    amountUsdc: 1,
+    escrowUsdc: 1,
+    feeBps: 500,
+    specHash: '0x' + 'd'.repeat(64),
+    deliverByMs: NOW + HOUR,
+    reviewWindowMs: HOUR,
+    rejectSplitBps: 8000,
+    state: 'funded',
+    deliveryHash: null,
+    deliveredAtMs: null,
+    createdAtMs: NOW - HOUR,
+    ...overrides,
+  };
+}
+
+describe('mergeIndexedJobFromChain (S.1004)', () => {
+  it('index funded + chain delivered → delivered with deliveredAtMs carried', () => {
+    const merged = mergeIndexedJobFromChain(
+      job({ state: 'funded', updatedAtMs: NOW - 2 * HOUR }),
+      chainJob({ state: 'delivered', deliveredAtMs: NOW - 60_000, deliveryHash: '0x' + 'e'.repeat(64) }),
+    );
+    expect(merged.state).toBe('delivered');
+    expect(merged.deliveredAtMs).toBe(NOW - 60_000);
+    expect(merged.deliveryHash).toBe('0x' + 'e'.repeat(64));
+    // Review clock now anchors on the true delivery time, not the stale row.
+    expect(merged.updatedAtMs).toBe(NOW - 60_000);
+  });
+
+  it('chain released → terminal state wins over a stale index row', () => {
+    const merged = mergeIndexedJobFromChain(job({ state: 'delivered' }), chainJob({ state: 'released' }));
+    expect(merged.state).toBe('released');
+  });
+});
+
+describe('hydrateSellerJobsFromChain (S.1004)', () => {
+  it('funded lag: API funded + RPC delivered buckets awaitingBuyer, not needsYou', async () => {
+    const rows = [job({ state: 'funded' })];
+    const hydrated = await hydrateSellerJobsFromChain(rows, () =>
+      Promise.resolve(chainJob({ state: 'delivered', deliveredAtMs: NOW - 60_000 })),
+    );
+    const inbox = summarizeSellerInbox(hydrated, NOW);
+    expect(inbox.counts.needsYou).toBe(0);
+    expect(inbox.counts.awaitingBuyer).toBe(1);
+  });
+
+  it('one failing RPC read keeps that index row; others still hydrate', async () => {
+    const bad = '0x' + '9'.repeat(64);
+    const rows = [job({ jobId: bad, state: 'funded' }), job({ jobId: '0x' + '8'.repeat(64), state: 'funded' })];
+    const hydrated = await hydrateSellerJobsFromChain(rows, (id) =>
+      id === bad
+        ? Promise.reject(new Error('object not found'))
+        : Promise.resolve(chainJob({ id, state: 'delivered', deliveredAtMs: NOW - 1 })),
+    );
+    expect(hydrated[0]?.state).toBe('funded'); // fail-soft: index row kept
+    expect(hydrated[1]?.state).toBe('delivered');
+  });
+
+  it('terminal rows never call getJob', async () => {
+    const calls: string[] = [];
+    const rows = [job({ state: 'released' }), job({ state: 'refunded' }), job({ state: 'rejected' })];
+    await hydrateSellerJobsFromChain(rows, (id) => {
+      calls.push(id);
+      return Promise.resolve(chainJob({}));
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it('maxHydrate caps at the first N non-terminal rows in input order', async () => {
+    const calls: string[] = [];
+    const rows = Array.from({ length: 26 }, (_, i) =>
+      job({ jobId: `0x${String(i).padStart(64, '0')}`, state: 'funded' }),
+    );
+    await hydrateSellerJobsFromChain(rows, (id) => {
+      calls.push(id);
+      return Promise.resolve(chainJob({ id, state: 'funded' }));
+    });
+    expect(calls.length).toBe(25);
+    expect(calls[0]).toBe(rows[0]?.jobId);
+    expect(calls.at(-1)).toBe(rows[24]?.jobId);
+  });
+});

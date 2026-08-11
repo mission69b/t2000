@@ -285,6 +285,71 @@ export function summarizeSellerInbox(jobs: IndexedJob[], nowMs: number): SellerI
   return buckets;
 }
 
+// ── Chain hydrate (S.1004, founder e2e on 10.30.1) ──────────────────────────
+// /v1/jobs is eventually consistent: right after `t2 job deliver`, the single
+// -job watch (getJob) said delivered while --mine still painted "need you"
+// from the stale index row. Chain is the SSOT for BUCKETS; the API only
+// DISCOVERS the job list. Hydrate non-terminal rows before bucketing.
+
+/** Hydration cap per refresh: real inboxes fit; a huge seller history may
+ *  leave deeper non-terminal rows index-only for one poll (documented
+ *  trade — one RPC read per open job per refresh). */
+const HYDRATE_MAX = 25;
+/** Parallel getJob reads per batch — polite to public RPC. */
+const HYDRATE_CONCURRENCY = 8;
+
+/** Merge an on-chain Job over its indexed row — chain wins wherever it
+ *  speaks; pure. deliveredAtMs is the critical carry: reviewClosesMs then
+ *  anchors on true delivery time instead of a stale updatedAtMs. */
+export function mergeIndexedJobFromChain(row: IndexedJob, chain: Job): IndexedJob {
+  return {
+    ...row,
+    jobId: chain.id ?? row.jobId,
+    state: chain.state,
+    buyer: chain.buyer ?? row.buyer,
+    seller: chain.seller ?? row.seller,
+    amountUsdc: chain.amountUsdc ?? row.amountUsdc,
+    deliverByMs: chain.deliverByMs ?? row.deliverByMs,
+    reviewWindowMs: chain.reviewWindowMs ?? row.reviewWindowMs,
+    deliveryHash: chain.deliveryHash ?? row.deliveryHash,
+    deliveredAtMs: chain.deliveredAtMs ?? row.deliveredAtMs ?? null,
+    createdAtMs: chain.createdAtMs ?? row.createdAtMs,
+    // Review clock prefers deliveredAtMs (reviewClosesMs anchors there when
+    // set); for delivered rows keep updatedAtMs honest with the chain clock,
+    // otherwise the index value stands — never invent a clock.
+    updatedAtMs:
+      chain.state === 'delivered' && chain.deliveredAtMs != null ? chain.deliveredAtMs : row.updatedAtMs,
+  };
+}
+
+/** Hydrate non-terminal rows via getJob. Terminal rows skip RPC (their
+ *  actionability can't change); a failed read keeps the index row as-is —
+ *  one flaky object must never abort the whole inbox. Order stable. */
+export async function hydrateSellerJobsFromChain(
+  rows: IndexedJob[],
+  getJobById: (jobId: string) => Promise<Job>,
+  opts?: { maxHydrate?: number },
+): Promise<IndexedJob[]> {
+  const max = opts?.maxHydrate ?? HYDRATE_MAX;
+  const out = [...rows];
+  const targets: number[] = [];
+  for (let i = 0; i < out.length && targets.length < max; i++) {
+    if (!TERMINAL_STATES.has(out[i].state)) targets.push(i);
+  }
+  for (let at = 0; at < targets.length; at += HYDRATE_CONCURRENCY) {
+    await Promise.all(
+      targets.slice(at, at + HYDRATE_CONCURRENCY).map(async (i) => {
+        try {
+          out[i] = mergeIndexedJobFromChain(out[i], await getJobById(out[i].jobId));
+        } catch {
+          // keep the index row — fail soft
+        }
+      }),
+    );
+  }
+  return out;
+}
+
 function inboxHint(job: IndexedJob, bucket: SellerInboxBucket): string {
   switch (bucket) {
     case 'needsYou':
@@ -943,8 +1008,13 @@ no fund step; unclaimed openings refund fee-free):
           // delivered job becomes RELEASABLE by clock alone — a state-keyed
           // loop would never surface money left on the table (S.1003).
           const seen = new Map<string, SellerInboxBucket>();
+          const mineClient = getSuiClient();
+          // Discover from the index, bucket from the CHAIN (S.1004): the
+          // indexer lags writes, and stale rows made correct buckets lie.
+          const loadInbox = async (): Promise<IndexedJob[]> =>
+            hydrateSellerJobsFromChain(await fetchSellerJobs(base, me), (id) => getJob(mineClient, id));
 
-          const jobs = await fetchSellerJobs(base, me);
+          const jobs = await loadInbox();
           const inbox = summarizeSellerInbox(jobs, Date.now());
           if (isJsonMode()) {
             // Compat: `jobs` stays the full API list; counts + buckets are
@@ -998,7 +1068,7 @@ no fund step; unclaimed openings refund fee-free):
             await new Promise((r) => setTimeout(r, intervalMs));
             let latest: IndexedJob[];
             try {
-              latest = await fetchSellerJobs(base, me);
+              latest = await loadInbox();
             } catch {
               continue; // transient API blip — keep watching
             }
