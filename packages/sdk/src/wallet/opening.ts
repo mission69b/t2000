@@ -25,8 +25,10 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v3 upgrade
- *  2026-07-28 — added `escrow::decline`; v2 added the `opening` module).
+/** The LATEST published `a2a_escrow` package id on MAINNET (v5 upgrade
+ *  2026-08-12, S.1019 — create_open requires reject_split 10000; v4 added
+ *  amount bounds (S.981); v3 added `escrow::decline`; v2 the `opening`
+ *  module).
  *  A literal, never an env read, so it can serve as a signature-time trust
  *  anchor (S.930). Must match the Move upgrade publish notes.
  *
@@ -36,7 +38,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x83f02c59575b7daa4576eeccc22542f8a5679520e4edd02feeeee2daae16b819';
+  '0xc84fc8a6d7e8766e36abb16acf5f0c0d15444797137274bbbe027ac7972c56a7';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -107,8 +109,14 @@ export interface OpeningTerms {
   /** Delivery window the claiming ASP gets: deliver_by = claim + sla. */
   slaMs: number;
   reviewWindowMs: number;
+  /** v5 (S.1019): MUST be 10000 — open-board reject pays the buyer in
+   *  full (contract-asserted; a partial split made junk delivery +EV over
+   *  an honest decline). Hire/`escrow::create` keeps the 0–10000 range. */
   rejectSplitBps: number;
 }
+
+/** The only reject split `create_open` accepts since v5 (S.1019). */
+export const OPEN_REJECT_SPLIT_BPS = 10_000;
 
 /** Client-side preflight — mirrors the contract's `create_open` bounds plus
  *  the $50 client cap (the contract is value-neutral, same as Job). */
@@ -146,6 +154,15 @@ export function preflightCreateOpening(terms: OpeningTerms): {
   }
   if (terms.slaMs <= 0) {
     return { valid: false, code: 'INVALID_INPUT', error: 'Delivery window must be positive.' };
+  }
+  if (terms.rejectSplitBps !== OPEN_REJECT_SPLIT_BPS) {
+    return {
+      valid: false,
+      code: 'INVALID_INPUT',
+      error:
+        'Open postings lock reject at 100% buyer / 0% seller (rejectSplitBps must be 10000, ' +
+        'contract-enforced since v5) — reject is economically a decline, so junk delivery has no edge.',
+    };
   }
   return { valid: true };
 }

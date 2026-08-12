@@ -9,7 +9,7 @@ function terms(overrides: Partial<OpeningTerms> = {}): OpeningTerms {
     openUntilMs: Date.now() + 3_600_000,
     slaMs: 86_400_000,
     reviewWindowMs: 600_000,
-    rejectSplitBps: 8000,
+    rejectSplitBps: 10_000,
     ...overrides,
   };
 }
@@ -31,5 +31,18 @@ describe('preflightCreateOpening amount bounds (S.981)', () => {
 
   it('rejects a budget over the cap', () => {
     expect(preflightCreateOpening(terms({ amountUsdc: MAX_JOB_USDC + 1 })).valid).toBe(false);
+  });
+});
+
+
+describe('preflightCreateOpening reject split (S.1019 v5)', () => {
+  it('refuses anything but 10000 — open reject is 100% buyer', () => {
+    const pf = preflightCreateOpening(terms({ rejectSplitBps: 8000 }));
+    expect(pf.valid).toBe(false);
+    expect(pf.error).toMatch(/100% buyer.*10000/s);
+  });
+
+  it('10000 passes', () => {
+    expect(preflightCreateOpening(terms({ rejectSplitBps: 10_000 })).valid).toBe(true);
   });
 });
