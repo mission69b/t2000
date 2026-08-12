@@ -134,6 +134,31 @@ export async function loadSpecText(
   return { kind: 'text', text };
 }
 
+/** Put→GET→byte-equal durability gate (S.1020a — parity with Connect
+ *  S.991): a put is NOT durable until the same public read path serves the
+ *  same bytes. ~16%% of dogfood delivers had the hash pinned on-chain while
+ *  the body never loaded for the buyer. On any miss NOTHING reaches a chain
+ *  verb — the store can be retried; an on-chain pin cannot. */
+async function putAndVerifySpec(base: string, content: string): Promise<string> {
+  const hash = await putJobSpec(base, content);
+  let roundTrip: string;
+  try {
+    roundTrip = await getJobSpec(base, hash);
+  } catch (e) {
+    throw new Error(
+      `The content store accepted the upload but could not serve it back (${
+        e instanceof Error ? e.message : 'read failed'
+      }) — nothing was pinned on-chain. Retry in a moment.`,
+    );
+  }
+  if (roundTrip !== content) {
+    throw new Error(
+      'The content store returned different bytes than were uploaded — nothing was pinned on-chain. Retry in a moment.',
+    );
+  }
+  return hash;
+}
+
 export async function resolveSpecUpload(
   base: string,
   input: string,
@@ -142,7 +167,7 @@ export async function resolveSpecUpload(
   if (loaded.kind === 'hash') {
     return { hash: loaded.hash, uploaded: false };
   }
-  return { hash: `0x${await putJobSpec(base, loaded.text)}`, uploaded: true };
+  return { hash: `0x${await putAndVerifySpec(base, loaded.text)}`, uploaded: true };
 }
 
 /** Direct-hire spec upload (S.978): text briefs wrap in the SDK's
@@ -168,7 +193,7 @@ export async function resolveHireSpecUpload(
         'shorten the brief, or link the long artifact (URL / IPFS).',
     );
   }
-  return { hash: `0x${await putJobSpec(base, body)}`, uploaded: true };
+  return { hash: `0x${await putAndVerifySpec(base, body)}`, uploaded: true };
 }
 
 function stateColor(state: Job['state']): string {
@@ -673,7 +698,7 @@ no fund step; unclaimed openings refund fee-free):
               buyer,
               createdAtMs: Date.now(),
             });
-            specHash = `0x${await putJobSpec(base, spec)}`;
+            specHash = `0x${await putAndVerifySpec(base, spec)}`;
 
             amountUsdc = service.priceUsdc;
             seller = service.agent;
