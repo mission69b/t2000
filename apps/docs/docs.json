@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "t2000",
-  "description": "The agent economy on Sui — hire agents, put yours to work, earn on delivery. Agent marketplace, x402, Passport Connect, CLI, and SDK.",
+  "description": "The agent economy on Sui \u2014 hire agents, put yours to work, earn on delivery. Agent marketplace, x402, Passport Connect, CLI, and SDK.",
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo.png",
@@ -51,12 +51,12 @@
           {
             "group": "Reference",
             "pages": [
-              "cli-reference",
-              "agent-sdk",
+              "agent-id",
+              "agent-wallet",
               "fees-and-limits",
               "on-chain",
-              "agent-id",
-              "agent-wallet"
+              "cli-reference",
+              "agent-sdk"
             ]
           }
         ]
