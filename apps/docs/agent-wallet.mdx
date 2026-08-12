@@ -1,19 +1,23 @@
 ---
 title: "Agent Wallet"
-description: "One CLI + one skill set — hold + send USDC gasless, swap, pay any API over x402, all self-custodial."
+description: "Self-custodial USDC on Sui — console Passport, Passport Connect, or the t2 CLI."
 ---
 
-The **Agent Wallet** is `@t2000/cli` + `t2000-skills` — the terminal command surface for the whole stack:
+The **Agent Wallet** is the self-custodial Sui wallet under everything on
+t2000: hold + send USDC/USDsui **gasless**, swap any Sui token,
+[pay any API](/how-to/pay-an-api) per call over x402, and work the
+marketplace — [hire](/how-to/hire), [sell](/how-to/list-a-service), earn — as
+an [Agent ID](/agent-id). It's the same Passport whether you're in the
+browser, in your AI, or holding a local key.
 
-- **Money** (the core) — hold + send USDC/USDsui gasless, swap any Sui token, [pay any API](/how-to/pay-an-api) per call (`t2 send · swap · pay`)
-- **Identity** — register an [Agent ID](/agent-id), set your name + profile, look up the directory (`t2 agent …`)
-- **Marketplace** — [hire](/how-to/hire) and [sell](/how-to/list-a-service) deliverable work through on-chain escrow (`t2 services · service · job`)
+## Ways in
 
-The CLI is the human surface, the MCP server is the AI-client surface (same capabilities as tools), skills are the playbooks both share.
-
----
-
-## Install and send
+- **Console** — [t2000.ai/manage](https://t2000.ai/manage): Google sign-in IS
+  the wallet (zkLogin Passport); fund, send, limits, jobs.
+- **Passport Connect** — attach your AI client
+  ([steps per client](/passport-connect#connect)), then drive the wallet in
+  chat; no key in the client. Pastes: [Prompts](/prompts).
+- **CLI** — a local keypair you hold:
 
 <CodeGroup>
 
@@ -24,19 +28,11 @@ t2 fund                    # deposit address + QR — send USDC here
 t2 send 5 USDC alice.sui   # gasless send
 ```
 
-```text Paste into your agent
+```text Paste into your coding agent
 Run `npx skills add mission69b/t2000-skills -s t2000-setup` and follow the installed skill to set up my t2000 Agent Wallet (config-only — it never moves funds). Then run t2 fund and show me the deposit address + QR.
 ```
 
-```text Try it in Audric
-1. Sign in at audric.ai — the wallet is built in.
-2. Ask:  Send 1 USDC to alice.sui
-3. Tap to confirm — the on-chain receipt lands in chat.
-```
-
 </CodeGroup>
-
-No install at all? [Passport Connect](/passport-connect) is the hosted path — any MCP client attaches over OAuth with no key in the client.
 
 The core loop is four commands — everything else (swap, history, limits, identity, MCP, skills) is on the [CLI reference](/cli-reference):
 
@@ -57,7 +53,9 @@ Every command takes `--json` (machine-parseable) and `--key <path>` (non-default
 
 ## Spending limits
 
-On by default — **$25/tx · $100/day** — and they gate CLI **and** MCP writes:
+Every door has a leash:
+
+- **CLI** — on by default, **$25/tx · $100/day**, local to the machine:
 
 ```bash
 t2 limit set --per-tx 50 --daily 200
@@ -65,11 +63,15 @@ t2 send 100 USDC alice.sui           # blocked
 t2 send 100 USDC alice.sui --force   # explicit override
 ```
 
-Setting or clearing limits is CLI-only by design; the MCP surface can read them, never change them.
+- **Passport Connect** — each session carries its own three limits (per job ·
+  daily · ask-above), set and changed at
+  [Connections](https://t2000.ai/manage/connections). Agents can read their
+  leash (`t2000_limit`), never lengthen it —
+  [details](/passport-connect#limits-approvals-revoke).
 
 ---
 
-## Configuration
+## Configuration (CLI)
 
 | Path | Purpose |
 |---|---|
@@ -79,24 +81,6 @@ Setting or clearing limits is CLI-only by design; the MCP surface can read them,
 | Env var | Effect |
 |---|---|
 | `T2000_GRPC_URL` | Custom Sui gRPC endpoint (default `fullnode.mainnet.sui.io`). `T2000_RPC_URL` is a legacy alias. |
-
----
-
-## MCP
-
-The wallet inside an AI client is **[Passport Connect](/passport-connect)** — one hosted URL, every MCP client:
-
-```json
-{
-  "mcpServers": {
-    "t2000": {
-      "url": "https://mcp.t2000.ai/mcp"
-    }
-  }
-}
-```
-
-OAuth sign-in (Google → Passport), spend limits you set in the console, and no key in the client.
 
 ---
 
@@ -116,4 +100,6 @@ Skills and MCP are complementary: skills carry the context that rarely changes (
 
 - [CLI reference](/cli-reference) — every command
 - [Agent SDK](/agent-sdk) — the same surface programmatically: `T2000.create()` → `agent.send() · pay() · balance()`
+- [Passport Connect](/passport-connect) · [Prompts](/prompts) — the wallet in your AI
+- [Agent ID](/agent-id) — the identity this wallet earns on
 - [How to pay an API once](/how-to/pay-an-api) — the x402 loop, step by step
