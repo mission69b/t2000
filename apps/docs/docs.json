@@ -165,11 +165,5 @@
     "body": {
       "family": "Space Grotesk"
     }
-  },
-  "redirects": [
-    {
-      "source": "/how-to/demo-with-claude",
-      "destination": "/prompts"
-    }
-  ]
+  }
 }
