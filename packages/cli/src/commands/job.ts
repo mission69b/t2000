@@ -212,6 +212,13 @@ export interface IndexedJob {
   deliveredAtMs?: number | null;
 }
 
+/** The BUYER seat of the same read-model (S.1016) — recovers the escrow
+ *  name when the hire line's one-time jobId print is lost. */
+export async function fetchBuyerJobs(base: string, buyer: string): Promise<IndexedJob[]> {
+  const json = await fetchJson(`${base}/jobs?buyer=${encodeURIComponent(buyer)}&limit=100`);
+  return (json.jobs ?? []) as IndexedJob[];
+}
+
 export async function fetchSellerJobs(base: string, seller: string): Promise<IndexedJob[]> {
   const json = await fetchJson(`${base}/jobs?seller=${encodeURIComponent(seller)}&limit=100`);
   return (json.jobs ?? []) as IndexedJob[];
@@ -322,10 +329,11 @@ export function mergeIndexedJobFromChain(row: IndexedJob, chain: Job): IndexedJo
   };
 }
 
-/** Hydrate non-terminal rows via getJob. Terminal rows skip RPC (their
+/** Hydrate non-terminal rows via getJob — SEAT-NEUTRAL (rows are rows;
+ *  S.1016 reuses it for the buyer inbox). Terminal rows skip RPC (their
  *  actionability can't change); a failed read keeps the index row as-is —
  *  one flaky object must never abort the whole inbox. Order stable. */
-export async function hydrateSellerJobsFromChain(
+export async function hydrateJobsFromChain(
   rows: IndexedJob[],
   getJobById: (jobId: string) => Promise<Job>,
   opts?: { maxHydrate?: number },
@@ -350,6 +358,72 @@ export async function hydrateSellerJobsFromChain(
   return out;
 }
 
+/** S.1004 name kept as an alias — tests + external callers keep working. */
+export const hydrateSellerJobsFromChain = hydrateJobsFromChain;
+
+// ── Buyer inbox buckets (S.1016, beta #93 round five) ───────────────────────
+// The mirror of the seller buckets, aligned with Connect's buyer seat:
+// delivered = the buyer's move (settle or reject); funded past deadline =
+// refundable; funded in window = waiting on the seller. Full jobId on every
+// actionable row — recovering the escrow name IS the point. S.1015 stands:
+// a funded undelivered row never hints bare release.
+
+export type BuyerInboxBucket = 'needsYou' | 'refundable' | 'waiting' | 'terminal';
+
+export function bucketBuyerJob(job: IndexedJob, nowMs: number): BuyerInboxBucket {
+  if (TERMINAL_STATES.has(job.state)) {
+    return 'terminal';
+  }
+  if (job.state === 'delivered') {
+    return 'needsYou';
+  }
+  return nowMs > job.deliverByMs ? 'refundable' : 'waiting';
+}
+
+export interface BuyerInboxSummary {
+  counts: {
+    total: number;
+    needsYou: number;
+    refundable: number;
+    waiting: number;
+    terminal: number;
+  };
+  needsYou: IndexedJob[];
+  refundable: IndexedJob[];
+  waiting: IndexedJob[];
+  terminal: IndexedJob[];
+}
+
+export function summarizeBuyerInbox(jobs: IndexedJob[], nowMs: number): BuyerInboxSummary {
+  const buckets: BuyerInboxSummary = {
+    counts: { total: jobs.length, needsYou: 0, refundable: 0, waiting: 0, terminal: 0 },
+    needsYou: [],
+    refundable: [],
+    waiting: [],
+    terminal: [],
+  };
+  for (const job of jobs) {
+    const bucket = bucketBuyerJob(job, nowMs);
+    buckets[bucket].push(job);
+    buckets.counts[bucket] += 1;
+  }
+  return buckets;
+}
+
+function buyerInboxHint(job: IndexedJob, bucket: BuyerInboxBucket): string {
+  switch (bucket) {
+    case 'needsYou':
+      // Delivered — grading the work is the buyer's verb pair.
+      return `delivered — grade it: t2 job release ${job.jobId}  ·  t2 job reject ${job.jobId}`;
+    case 'refundable':
+      return `deadline passed, no delivery — t2 job refund ${job.jobId} (fee-free, anyone may crank it)`;
+    case 'waiting':
+      return `waiting on the seller — t2 job watch ${job.jobId}`;
+    default:
+      return '';
+  }
+}
+
 function inboxHint(job: IndexedJob, bucket: SellerInboxBucket): string {
   switch (bucket) {
     case 'needsYou':
@@ -371,12 +445,19 @@ function inboxHint(job: IndexedJob, bucket: SellerInboxBucket): string {
 }
 
 function printInboxRow(job: IndexedJob, bucket: SellerInboxBucket) {
+  printInboxRowWithHint(job, inboxHint(job, bucket), 'from', job.buyer);
+}
+
+function printBuyerInboxRow(job: IndexedJob, bucket: BuyerInboxBucket) {
+  printInboxRowWithHint(job, buyerInboxHint(job, bucket), 'seller', job.seller);
+}
+
+function printInboxRowWithHint(job: IndexedJob, hint: string, partyLabel: string, party: string) {
   const deadline = job.state === 'funded' ? ` · deliver by ${new Date(job.deliverByMs).toISOString()}` : '';
   printLine(
-    `  ${stateColor(job.state as Job['state'])}  $${job.amountUsdc.toFixed(2)} USDC · from ${truncateAddress(job.buyer)}${deadline}`,
+    `  ${stateColor(job.state as Job['state'])}  $${job.amountUsdc.toFixed(2)} USDC · ${partyLabel} ${truncateAddress(party)}${deadline}`,
   );
   printLine(`  ${pc.dim(job.jobId)}`);
-  const hint = inboxHint(job, bucket);
   if (hint) printLine(`  ${pc.dim('→')} ${hint}`);
 }
 
@@ -468,7 +549,8 @@ Typical flow:
   seller  $ t2 job deliver 0xJOB report.md
   buyer   $ t2 job release 0xJOB          (or: t2 job reject 0xJOB)
   either  $ t2 job watch 0xJOB
-  seller  $ t2 job watch --mine           (the provider inbox — all your jobs)
+  seller  $ t2 job watch --mine           (the provider inbox — all your sells)
+  buyer   $ t2 job watch --buying         (the buyer inbox — every job you funded)
 
 Hiring a LISTING (t2 ACP) — price + terms come from the listing:
   buyer   $ t2 services "market report"
@@ -1051,18 +1133,101 @@ no fund step; unclaimed openings refund fee-free):
 
   group
     .command('watch')
-    .argument('[jobId]', 'The Job object id (0x…) — omit with --mine')
-    .description('Poll a job — or, with --mine, the provider inbox (every job selling to you)')
+    .argument('[jobId]', 'The Job object id (0x…) — omit with --mine or --buying')
+    .description('Poll a job — or an inbox: --mine (every job selling to you) / --buying (every job you funded)')
     .option('--mine', 'Watch ALL jobs where this wallet is the seller (the provider inbox)')
+    .option('--buying', 'Watch ALL jobs where this wallet is the BUYER — recovers job ids the hire line printed once (S.1016)')
     .option('--interval <seconds>', 'Poll interval', '15')
     .option('--once', 'Print the current state and exit')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (jobId: string | undefined, opts: { mine?: boolean; interval: string; once?: boolean; key?: string; api?: string }) => {
+    .action(async (jobId: string | undefined, opts: { mine?: boolean; buying?: boolean; interval: string; once?: boolean; key?: string; api?: string }) => {
       try {
+        if (opts.mine && opts.buying) {
+          throw new Error('Pick one seat: --mine (selling) or --buying (funding) — not both.');
+        }
+        if (jobId && (opts.mine || opts.buying)) {
+          throw new Error('Pick one mode: a job id OR an inbox flag (--mine / --buying).');
+        }
         const agent = await withAgent({ keyPath: opts.key });
         const me = agent.address();
         const intervalMs = Math.max(5, Number.parseInt(opts.interval, 10) || 15) * 1000;
+
+        // ── The buyer inbox (S.1016): the same read-model, buyer seat.
+        //    Lose the hire line's one-time jobId print and this recovers
+        //    the escrow name — full ids on every actionable row.
+        if (opts.buying) {
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const seen = new Map<string, BuyerInboxBucket>();
+          const buyClient = getSuiClient();
+          const loadInbox = async (): Promise<IndexedJob[]> =>
+            hydrateJobsFromChain(await fetchBuyerJobs(base, me), (id) => getJob(buyClient, id));
+
+          const jobs = await loadInbox();
+          const inbox = summarizeBuyerInbox(jobs, Date.now());
+          if (isJsonMode()) {
+            printJson({
+              buyer: me,
+              counts: inbox.counts,
+              needsYou: inbox.needsYou,
+              refundable: inbox.refundable,
+              waiting: inbox.waiting,
+              terminal: inbox.terminal,
+              jobs,
+            });
+            return;
+          }
+          printBlank();
+          printInfo(
+            `Buyer inbox for ${truncateAddress(me)} — ${jobs.length} job(s) · ` +
+              `${inbox.counts.needsYou} need you · ${inbox.counts.refundable} refundable · ` +
+              `${inbox.counts.waiting} waiting`,
+          );
+          printBlank();
+          for (const [bucket, rows] of [
+            ['needsYou', inbox.needsYou],
+            ['refundable', inbox.refundable],
+            ['waiting', inbox.waiting],
+          ] as const) {
+            for (const job of rows) {
+              printBuyerInboxRow(job, bucket);
+              printBlank();
+            }
+          }
+          if (jobs.length - inbox.counts.terminal === 0) {
+            printInfo('No open buys. Hire a listing or post an Open job and it lands here.');
+            printBlank();
+          }
+          for (const job of jobs) seen.set(job.jobId, bucketBuyerJob(job, Date.now()));
+          if (opts.once) return;
+
+          for (;;) {
+            await new Promise((r) => setTimeout(r, intervalMs));
+            let latest: IndexedJob[];
+            try {
+              latest = await loadInbox();
+            } catch {
+              continue; // transient API blip — keep watching
+            }
+            const nowMs = Date.now();
+            for (const job of latest) {
+              const bucket = bucketBuyerJob(job, nowMs);
+              const prev = seen.get(job.jobId);
+              if (prev === bucket) continue;
+              seen.set(job.jobId, bucket);
+              printBlank();
+              if (bucket === 'needsYou') {
+                printSuccess(`Delivered — grade it: t2 job release ${job.jobId} · t2 job reject ${job.jobId}`);
+              } else if (bucket === 'refundable') {
+                printSuccess(`Refundable — t2 job refund ${job.jobId} (deadline passed, no delivery)`);
+              } else {
+                printInfo(`Job ${truncateAddress(job.jobId)}: ${prev ?? 'new'} → ${job.state}`);
+              }
+              printBuyerInboxRow(job, bucket);
+              printBlank();
+            }
+          }
+        }
 
         // ── The provider inbox: sell with NO server. The event indexer
         //    (api.t2000.ai /v1/jobs) surfaces every job funding this wallet;
@@ -1159,7 +1324,7 @@ no fund step; unclaimed openings refund fee-free):
         }
 
         if (!jobId) {
-          printError('Provide a job id — or use --mine for the provider inbox.');
+          printError('Provide a job id — or an inbox: --mine (selling) / --buying (funding).');
           process.exitCode = 1;
           return;
         }
