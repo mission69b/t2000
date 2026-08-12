@@ -98,7 +98,7 @@ function resolveCreated(
 export function registerOpenVerbs(group: Command) {
   group
     .command('open')
-    .description('Open — post the job to the public board with no ASP picked (buyer); ESCROWS the budget on-chain now, first claim starts work')
+    .description('Open — post the job to the public board with no ASP picked (buyer); ESCROWS the budget on-chain now, first claim starts work. Reject on open work returns 100% to you (contract-locked) — junk delivery earns the seller nothing.')
     .requiredOption('--title <text>', "The job's public name (up to 80 chars)")
     .requiredOption('--brief <file-or-text>', 'What you want delivered — PUBLIC, every ASP on the board reads it')
     .requiredOption('--max <usdc>', `Budget escrowed AT POST (max ${MAX_JOB_USDC})`)
