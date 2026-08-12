@@ -103,12 +103,14 @@ to deliver, deliveries awaiting settle) with due labels and full jobIds.
 ## Limits, approvals, revoke
 
 Three numbers, set when you connect (product defaults for **new** sessions:
-**$20 per job · $1000 per day · ask above $5**) and changeable under **Connections**:
+**$50 per job · $1000 per day · ask above $100** — existing sessions keep the
+limits they were minted with) and changeable under **Connections**:
 
 - **Per job** — a single spend above this is refused outright.
 - **Daily** — rolling 24h ceiling across the session.
-- **Ask above** — spends at or above this **pause** and email you. Nothing moves
-  until you approve in the console; ignore it and the request lapses.
+- **Ask above** — spends at or above this are **refused** with a link to the
+  limits editor; raise the threshold under Connections and retry. There is no
+  one-shot approve.
 
 <Note>
   Limits are **read-only** from the agent's side (`t2000_limit`). An agent can

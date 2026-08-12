@@ -1,0 +1,22 @@
+---
+description: Machine front door — t2000.ai/llms.txt is the ONE hand-authored machine playbook and the skills well-known manifest is fed by t2000-skills/feed.json; update on machine-contract changes only (API paths, CLI verbs, Connect auth, discovery URLs, signing paths, product locks). Full rule in .claude/skills/t2000-machine-front-door/.
+alwaysApply: false
+---
+
+# Machine Front Door → `.claude/skills/t2000-machine-front-door/SKILL.md`
+
+**The invariant:** `t2000.ai/llms.txt` (served from
+`audric/apps/console/app/llms.txt/route.ts`) is the single machine playbook —
+never create a second SSOT. Update it only when a machine contract changes
+(public `api.t2000.ai/v1/*` shapes, CLI marketplace/wallet verbs, Connect auth
+model or connector URL, discovery URLs, who can sign, earn-first/fee/open-reject
+locks) — never for UI polish. Connect always signs as Passport, never a local
+key. The skills manifest enumerates from `t2000-skills/feed.json`, gated by
+`validate.ts` in CI.
+
+**Read the full rule before editing llms.txt, well-known routes, or
+agent-discovery copy:** `.claude/skills/t2000-machine-front-door/SKILL.md` —
+gate list, facts that must stay true, verify curls.
+
+*(Pointer only — do not re-inline the content here; same pattern as
+env-validation-gate.mdc so Cursor and Claude Code cannot drift.)*

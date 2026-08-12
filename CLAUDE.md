@@ -140,6 +140,7 @@ speculatively):
 | `t2000-financial-amounts` | Floor-never-round, per-token precision, the canonical token registry |
 | `t2000-sui-platform` | Address Balances (SIP-58) concurrency + gasless-transfer eligibility gotchas |
 | `t2000-design-system` | Copy-in tokens, per-app shadcn, house near-black theme |
+| `t2000-machine-front-door` | t2000.ai/llms.txt one-SSOT playbook, skills feed.json manifest, the ship-gate list, Connect≠local-key |
 
 **Vendored Sui skills** (10 of 20 from `MystenLabs/skills`, installed 2026-07-24 —
 `accessing-data` · `sui-sdks` · `ptbs` · `sui-object-model` · `sui-move` ·
@@ -431,6 +432,7 @@ When shipping a feature, update these files:
 - [ ] Package READMEs (`packages/*/README.md`)
 - [ ] Version bump + build all packages
 - [ ] **Feature/benefit capture** — append the slice's feature + proof point to `SITE_REPOSITIONING_BRIEF.md` §6 (positioning SSOT), and land the `docs.t2000.ai` factual delta when the dev-facing contract changed (CLI/SDK/MCP surface, version, or behavior)
+- [ ] **Machine front door** — if the slice changed a *machine contract* (public `api.t2000.ai/v1/*` paths/shapes agents rely on · CLI marketplace/wallet verbs agents are told to run · Connect auth model or connector URL · discovery URLs (skills manifest, AGENTS.md, well-known) · who can sign (CLI keypair · SDK · prepare/submit · Connect Passport) · earn-first/fee/open-reject locks), update the ONE apex playbook `audric/apps/console/app/llms.txt/route.ts` and confirm every URL it cites returns non-5xx. Pure UI polish / copy nits / manage chrome do NOT fire the gate — write N/A. Never create a second machine-playbook SSOT. Depth: `.claude/skills/t2000-machine-front-door/SKILL.md`
 
 **Docs cadence (two tiers, not "dump as you go"):**
 - **Per-slice** — keep `docs.t2000.ai` *factually correct* only (version, command surface, behavior like limits-on / no-charge-on-failure). Cheap; prevents the staleness class.

@@ -14,9 +14,17 @@ apply to this slice. Don't silently skip.
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
 - [ ] MCP tool + tests (Connect — `audric/apps/mcp/lib/tools.ts`)
 - [ ] Agent Skill (`t2000-skills/skills/`) — only on lifecycle/policy/money-rule changes; never for Connect card/`next` polish (tools/list is the inventory SSOT)
-- [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to developers.t2000.ai
+- [ ] Mintlify docs (`apps/docs/*.mdx`) — auto-deploys to docs.t2000.ai
 - [ ] Root `README.md`
 - [ ] Package `README.md`s
+- [ ] **Machine front door** — if this slice changed a *machine contract*
+      (public `api.t2000.ai/v1/*` paths/shapes agents rely on · CLI
+      marketplace/wallet verbs agents are told to run · Connect auth model or
+      connector URL · discovery URLs · who can sign · earn-first/fee/
+      open-reject locks), update `audric/apps/console/app/llms.txt/route.ts`
+      and confirm every URL it cites returns non-5xx. UI polish/copy nits
+      don't fire the gate — write N/A. Depth:
+      `.claude/skills/t2000-machine-front-door/SKILL.md`
 - [ ] Version bump + build all packages (`/release`)
 
 Tests live **inline next to source** (`Foo.ts` + `Foo.test.ts`) — never add a new
@@ -24,7 +32,7 @@ Tests live **inline next to source** (`Foo.ts` + `Foo.test.ts`) — never add a 
 
 ## Docs cadence — two tiers, not "dump as you go"
 
-- **Per-slice (now):** keep developers.t2000.ai *factually correct* only — version,
+- **Per-slice (now):** keep docs.t2000.ai *factually correct* only — version,
   command surface, behavior (limits-on, no-charge-on-failure). Cheap; prevents the
   staleness class.
 - **Per-phase (later):** a dedicated structured-docs task turning the phase's specs
@@ -49,7 +57,7 @@ Cross-check before writing, and prefer linking the live endpoint over duplicatin
 ## Positioning capture
 
 - [ ] Append the slice's feature + proof point to `SITE_REPOSITIONING_BRIEF.md` §6
-- [ ] Land the developers.t2000.ai factual delta if the dev-facing contract changed
+- [ ] Land the docs.t2000.ai factual delta if the dev-facing contract changed
 
 ## Then
 

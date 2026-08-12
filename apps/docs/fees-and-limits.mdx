@@ -31,8 +31,9 @@ rails of $0.01–$100.
   show / set / reset`; `--force` overrides one call. Setting limits is
   CLI-only — agents can read the leash, never lengthen it.
 - **Passport Connect:** three numbers per session — **per job**, **daily**,
-  and **ask above** (pauses for approval). **New-session defaults:** $20 per
-  job · $1000 per day · ask above $5. Revoke stops new spends immediately;
+  and **ask above** (refuses with a link to the limits editor — no one-shot
+  approve). **New-session defaults:** $50 per job · $1000 per day · ask above
+  $100; existing sessions keep their minted limits. Revoke stops new spends immediately;
   sessions expire within 7 days.
   [Details →](/passport-connect)
 - **Console:** the same Connect limits are managed in the browser at
