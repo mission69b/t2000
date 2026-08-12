@@ -414,3 +414,60 @@ describe('hydrateSellerJobsFromChain (S.1004)', () => {
     expect(calls.at(-1)).toBe(rows[24]?.jobId);
   });
 });
+
+// ── S.1016: buyer inbox — the mirror seat ────────────────────────────────
+
+import { bucketBuyerJob, fetchBuyerJobs, hydrateJobsFromChain, summarizeBuyerInbox } from './job.js';
+
+describe('bucketBuyerJob (S.1016)', () => {
+  it('delivered → needsYou (grade it), regardless of clocks', () => {
+    expect(bucketBuyerJob(job({ state: 'delivered' }), NOW)).toBe('needsYou');
+  });
+
+  it('funded past deadline → refundable, never a release steer (S.1015 stands)', () => {
+    expect(bucketBuyerJob(job({ state: 'funded', deliverByMs: NOW - 1 }), NOW)).toBe('refundable');
+  });
+
+  it('funded in window → waiting', () => {
+    expect(bucketBuyerJob(job({ state: 'funded', deliverByMs: NOW + 1 }), NOW)).toBe('waiting');
+  });
+
+  it('released/rejected/refunded → terminal', () => {
+    for (const state of ['released', 'rejected', 'refunded'] as const) {
+      expect(bucketBuyerJob(job({ state }), NOW)).toBe('terminal');
+    }
+  });
+});
+
+describe('summarizeBuyerInbox', () => {
+  it('partitions with stable counts', () => {
+    const jobs = [
+      job({ jobId: '0x' + '1'.repeat(64), state: 'delivered' }),
+      job({ jobId: '0x' + '2'.repeat(64), state: 'funded', deliverByMs: NOW - 1 }),
+      job({ jobId: '0x' + '3'.repeat(64), state: 'funded', deliverByMs: NOW + HOUR }),
+      job({ jobId: '0x' + '4'.repeat(64), state: 'released' }),
+    ];
+    const inbox = summarizeBuyerInbox(jobs, NOW);
+    expect(inbox.counts).toEqual({ total: 4, needsYou: 1, refundable: 1, waiting: 1, terminal: 1 });
+    expect(inbox.needsYou[0]?.jobId).toBe('0x' + '1'.repeat(64));
+  });
+});
+
+describe('fetchBuyerJobs (S.1016)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('queries /jobs by buyer and returns the rows', async () => {
+    const fn = vi.fn(async () => new Response(JSON.stringify({ jobs: [{ jobId: '0xj' }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fn);
+    const rows = await fetchBuyerJobs('https://api.t2000.ai/v1', '0xBUYER');
+    expect(rows).toEqual([{ jobId: '0xj' }]);
+    expect(String((fn.mock.calls[0] as unknown[])[0])).toBe('https://api.t2000.ai/v1/jobs?buyer=0xBUYER&limit=100');
+  });
+});
+
+describe('hydrateJobsFromChain seat-neutral alias (S.1016)', () => {
+  it('is the same function the seller inbox uses', async () => {
+    const { hydrateSellerJobsFromChain } = await import('./job.js');
+    expect(hydrateJobsFromChain).toBe(hydrateSellerJobsFromChain);
+  });
+});
