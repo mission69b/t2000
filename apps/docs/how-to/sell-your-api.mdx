@@ -15,6 +15,33 @@ never holds a key and never pays gas.
 - [ ] Somewhere to deploy (Vercel works in one click) — or an existing
       Node/Bun/Deno API to wrap
 
+## Paste into your coding agent
+
+The whole page as one job for Claude Code, Cursor, or a local CLI:
+
+```text
+Help me sell a paid API on t2000 end-to-end with the official Vercel template.
+
+Docs: https://docs.t2000.ai/how-to/sell-your-api
+Template: https://github.com/mission69b/t2000/tree/main/templates/serve-vercel
+Deploy: https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Ftemplates%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api
+
+Rules:
+- I already have (or you help me get) a Sui address that will be payTo — same wallet must list later.
+- x402 path: no protocol fee; ≤ $5/call. Do not invent escrow/5% fees for this path.
+- Confirm with me before any paid call or on-chain list. Never spend from my wallet without asking.
+- Self-pay is blocked — verification pay must use a different funded wallet than payTo.
+
+Do this in order; stop and ask when you need a secret, browser login, or a decision from me:
+1) Deploy the template (Vercel clone or local clone + vercel). Set T2000_PAY_TO to my address. On Vercel add Upstash Redis so KV_REST_API_URL / KV_REST_API_TOKEN exist.
+2) Confirm the live origin. Probe free: POST {origin}/haiku with empty JSON — expect HTTP 402 and a Sui x402 accepts[] envelope (not a bare/header-only 402).
+3) Optional: swap/customize the demo handler — keep paid() validation-before-settlement; export OPTIONS; wire new routes into openapi.json + llms.txt if I add any.
+4) List from the payTo wallet only: t2 agent sell {origin} (or the single-route URL). Dry-run/probe first; show me the buyer-facing price; list only after I confirm.
+5) Prove it from a second wallet: t2 pay {origin}/haiku --data '{"topic":"sui"}' --max-price 0.10 (or equivalent). Confirm profile card + Activity, or say what blocked us.
+
+If something fails, use the Stuck? section on the docs page — don't invent workarounds that bypass payTo matching or the 402 envelope.
+```
+
 ## 1 — Deploy an x402 endpoint
 
 **No API yet?** [Deploy the template](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Ftemplates%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api) —
@@ -60,9 +87,12 @@ Validation runs **before** settlement: invalid body → 422, handler throw →
 ## 2 — Probe the 402 (free)
 
 ```bash
-curl -s -X POST https://<your-app>.vercel.app/search \
+curl -s -X POST https://<your-app>.vercel.app/haiku \
   -H 'content-type: application/json' -d '{}'
 ```
+
+(`/haiku` is the template's demo route — wrapping your own API, probe the
+path you defined instead.)
 
 Expect a `402` carrying an x402 `accepts[]` envelope. Built with serve, this
 passes by construction.
@@ -76,7 +106,7 @@ t2 init --import <payTo-secret>     # skip if this wallet IS payTo
 t2 agent sell https://<your-app>.vercel.app
 ```
 
-```text In Claude (Passport Connect)
+```text Passport Connect
 Put my API on the t2000 agent marketplace: https://<your-app>.vercel.app.
 Probe it first and show me the price buyers will see per call, then list it
 on my Agent ID once I confirm.
@@ -95,8 +125,8 @@ listing). Change your price and the listing follows your 402;
 From any **other** funded wallet:
 
 ```bash
-t2 pay https://<your-app>.vercel.app/search \
-  --data '{"query":"test"}' --max-price 0.10
+t2 pay https://<your-app>.vercel.app/haiku \
+  --data '{"topic":"sui"}' --max-price 0.10
 ```
 
 - `Paid via x402` · `200` + your route's response · receipt in
