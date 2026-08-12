@@ -29,6 +29,7 @@ import {
   ensureSellerCategory,
   parseCategory,
 } from '../lib/agent-category.js';
+import { looksLikeAgentRefValue, resolveAgentRef } from '../lib/agent-ref.js';
 import { fetchJson, type ServiceListing } from '../lib/services.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
@@ -115,6 +116,14 @@ function formatSla(minutes: number): string {
   return `${minutes}m`;
 }
 
+/** The principal line (S.1017): name + #numericId + address. Two sellers
+ *  with near-identical names must never look like one principal — the #id
+ *  and 0x are the marketplace's identity facts, the name is just brand. */
+export function serviceSellerLabel(o: Pick<ServiceListing, 'agentName' | 'agentNumericId' | 'agent'>): string {
+  const id = o.agentNumericId != null ? ` #${o.agentNumericId}` : '';
+  return `${o.agentName ?? 'unnamed'}${id} ${truncateAddress(o.agent)}`;
+}
+
 function printService(o: ServiceListing) {
   const flag = o.retired ? pc.dim(' (retired)') : '';
   printLine(`${pc.bold(o.name)} ${pc.dim(`· ${o.slug}`)}${flag}`);
@@ -123,10 +132,13 @@ function printService(o: ServiceListing) {
     `$${o.priceUsdc.toFixed(2)} USDC ${pc.dim(`· seller receives ${settlementSplit(o.priceUsdc).payout}`)}`,
   );
   printKeyValue('Delivery', `within ${formatSla(o.slaMinutes)}`);
-  printKeyValue(
-    'Seller',
-    `${o.agentName ?? 'unnamed'} ${pc.dim(truncateAddress(o.agent))}`,
-  );
+  {
+    const id = o.agentNumericId != null ? ` #${o.agentNumericId}` : '';
+    printKeyValue(
+      'Seller',
+      `${o.agentName ?? 'unnamed'}${pc.bold(id)} ${pc.dim(truncateAddress(o.agent))}`,
+    );
+  }
   printKeyValue('You get', o.deliverable);
   if (o.requirements != null) {
     printKeyValue(
@@ -351,18 +363,82 @@ Examples:
 // third-party APIs, so there is no second catalog and no `search` /
 // `inspect` subcommand any more. Fulfillment is escrow (`t2 job hire`) or
 // per-call x402 (`t2 pay <url>`) — same listing, two shapes.
+export type ServicesScope =
+  | { kind: 'all' }
+  | { kind: 'search'; q: string }
+  | { kind: 'agent'; agent: string; numericId?: number | null };
+
+/** Route the discovery query onto the API that already answers it (S.1017,
+ *  beta #93): a 0x address or agent ref (#N / @handle) is a PRINCIPAL scope
+ *  and goes to `?agent=` — free-text `?q=` never matches hex, so the old
+ *  path answered "No services match 0x…" for a seller with live listings.
+ *  Anything else stays a text search. Pure except the one resolver hop for
+ *  #N / @handle (the same endpoint the site uses). */
+export async function resolveServicesQuery(
+  base: string,
+  query: string | undefined,
+): Promise<{ url: string; scope: ServicesScope }> {
+  const q = query?.trim();
+  if (!q) {
+    return { url: `${base}/services`, scope: { kind: 'all' } };
+  }
+  if (q.startsWith('0x')) {
+    // One address check for the whole CLI — validateAddress; invalid hex
+    // falls through to text search (where it will honestly match nothing).
+    try {
+      const agent = validateAddress(q);
+      return {
+        url: `${base}/services?agent=${encodeURIComponent(agent)}`,
+        scope: { kind: 'agent', agent },
+      };
+    } catch {
+      // not a valid address — treat as text below
+    }
+  } else if (looksLikeAgentRefValue(q)) {
+    const ref = await resolveAgentRef(base, q);
+    return {
+      url: `${base}/services?agent=${encodeURIComponent(ref.address)}`,
+      scope: { kind: 'agent', agent: ref.address, numericId: ref.numericId },
+    };
+  }
+  return {
+    url: `${base}/services?q=${encodeURIComponent(q)}`,
+    scope: { kind: 'search', q },
+  };
+}
+
+function scopeLabel(scope: ServicesScope): string {
+  if (scope.kind !== 'agent') {
+    return '';
+  }
+  return scope.numericId != null
+    ? `#${scope.numericId} (${truncateAddress(scope.agent)})`
+    : truncateAddress(scope.agent);
+}
+
 function registerDiscovery(command: Command, opts?: { deprecated?: boolean }) {
   command
-    .argument('[query]', 'What you need — free-text search (empty = everything)')
+    .argument('[query]', 'What you need — free text, or a SELLER scope: 0x… address, #id, or @handle (empty = everything)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (query: string | undefined, cmdOpts: { api?: string }) => {
       try {
         const base = cmdOpts.api ?? DEFAULT_API_BASE;
-        const params = query ? `?q=${encodeURIComponent(query)}` : '';
-        const json = await fetchJson(`${base}/services${params}`);
-        const rows = (json.services ?? []) as ServiceListing[];
+        const { url, scope } = await resolveServicesQuery(base, query);
+        const json = await fetchJson(url);
+        const all = (json.services ?? []) as ServiceListing[];
+        // Buyer discovery is the ACTIVE board: `?agent=` serves the seller's
+        // management view retired-included — hide retired here with an
+        // honest note (`t2 service list` keeps the full management dump).
+        const rows = scope.kind === 'agent' ? all.filter((o) => !o.retired) : all;
+        const retiredHidden = all.length - rows.length;
         if (isJsonMode()) {
-          printJson({ query: query ?? null, total: json.total ?? rows.length, services: rows });
+          printJson({
+            query: query ?? null,
+            scope,
+            total: scope.kind === 'agent' ? rows.length : (json.total ?? rows.length),
+            ...(retiredHidden > 0 ? { retiredHidden } : {}),
+            services: rows,
+          });
           return;
         }
         printBlank();
@@ -371,13 +447,32 @@ function registerDiscovery(command: Command, opts?: { deprecated?: boolean }) {
           printBlank();
         }
         if (rows.length === 0) {
-          printInfo(query ? `No services match "${query}".` : 'No services listed yet.');
+          printInfo(
+            scope.kind === 'agent'
+              ? `No active services for ${scopeLabel(scope)}.`
+              : scope.kind === 'search'
+                ? `No services match "${scope.q}".`
+                : 'No services listed yet.',
+          );
           printBlank();
           return;
         }
         for (const o of rows) {
           printService(o);
           printBlank();
+        }
+        if (retiredHidden > 0) {
+          printInfo(pc.dim(`${retiredHidden} retired omitted — t2 service list ${scope.kind === 'agent' ? scope.agent : ''}`));
+          printBlank();
+        }
+        // Name collisions (S.1017): a text search spanning sellers must say
+        // so — two near-identical names are two principals.
+        if (scope.kind === 'search') {
+          const sellers = new Set(rows.map((o) => o.agent)).size;
+          if (sellers >= 2) {
+            printInfo(pc.dim(`Results span ${sellers} sellers — scope to one with t2 services 0x… or #id.`));
+            printBlank();
+          }
         }
       } catch (error) {
         handleError(error);
