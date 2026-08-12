@@ -19,7 +19,9 @@ const AMOUNT: u64 = 1_000_000; // 1 USDC-equivalent (6dp)
 const OPEN_UNTIL: u64 = 500_000; // ms
 const SLA_MS: u64 = 400_000; // ms
 const REVIEW_WINDOW: u64 = 100_000; // ms
-const SPLIT_BPS: u64 = 8_000;
+// v3 (S.1019): create_open accepts ONLY 10_000 — reject pays the buyer
+// in full on open work. 8_000 aborts (pinned below).
+const SPLIT_BPS: u64 = 10_000;
 const POLICY_ANY: u8 = 0;
 
 // 2.5% (test-init FeeConfig default) of AMOUNT.
@@ -406,6 +408,50 @@ fun claimed_opening_job_can_be_declined() {
         let mut job = ts::take_shared<Job<SUI>>(&sc);
         escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         assert!(escrow::state(&job) == escrow::state_refunded(), 0);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    assert_received(&mut sc, BUYER, AMOUNT);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+
+// === v3 (S.1019): open reject must be 100% buyer ===
+
+#[test]
+#[expected_failure(abort_code = opening::EOpenRejectMustBeFullBuyer)]
+fun create_open_partial_split_aborts() {
+    let (mut sc, clk) = setup();
+    // The old 80/20 default is exactly what made junk delivery +EV — a
+    // partial split can no longer be posted on the open board.
+    post_open_with(&mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, 8_000, POLICY_ANY);
+    abort 0
+}
+
+#[test]
+fun open_claim_deliver_reject_pays_buyer_full() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    claim_as(&mut sc, ASP, &clk);
+    // ASP delivers junk; buyer rejects in-window → at 10_000 bps the buyer
+    // takes the FULL escrow back, seller share 0, protocol fee 0 (the fee
+    // comes only from the seller-bound payout).
+    ts::next_tx(&mut sc, ASP);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::deliver(&mut job, b"junk".to_string().into_bytes(), &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::reject(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(escrow::state(&job) == escrow::state_rejected(), 0);
         ts::return_shared(job);
         ts::return_shared(cfg);
     };

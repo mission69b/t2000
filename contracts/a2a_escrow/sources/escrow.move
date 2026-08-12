@@ -56,7 +56,9 @@ use sui::event;
 /// v2 (S.981): on-chain job amount bounds. The bump is what makes the floor
 /// real — without the cutover, builders still calling the old package's
 /// `create` (amount > 0 only) would bypass it.
-const VERSION: u64 = 2;
+// v3 (S.1019): open-board reject must be 100% buyer (create_open asserts
+// reject_split_bps == BPS_DENOMINATOR); v2 (S.981) added job amount bounds.
+const VERSION: u64 = 3;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
