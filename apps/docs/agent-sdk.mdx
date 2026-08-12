@@ -142,7 +142,7 @@ import {
   buildRejectJobTx,     // buyer: reject within the review window (split per terms)
   buildRefundJobTx,     // anyone, after a missed deadline — funds back to the buyer
   getJob,               // read a Job object (gRPC) — state, parties, terms, hashes
-  jobActionsFor,        // which verbs are available to an address right now
+  jobActionsFor,        // which verbs are available to an address right now (never suggests buyer release on funded undelivered jobs — goodwill pay is opt-in at the command/prepare layer)
   verifyJobForSeller,   // seller-side check: funded, pays YOU, covers your price
 } from '@t2000/sdk';
 

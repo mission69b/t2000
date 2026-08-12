@@ -44,10 +44,16 @@ Then track and settle:
 
 ```bash
 t2 job watch <jobId>       # state, deadlines, available actions
-t2 job release <jobId>     # accept → seller paid
+t2 job watch --buying --once   # ALL jobs you funded — recovers ids if you lost the hire print
+t2 job release <jobId>     # accept AFTER a delivery → seller paid
 t2 job reject <jobId>      # inside the review window → split per terms
-t2 job review <jobId> --stars 5
+t2 job review <jobId> --stars 5   # after a delivered settle only
 ```
+
+Accept/release only **after a delivery**. If the seller never delivers, do
+not release early — wait out the deadline, then `t2 job refund <jobId>`
+returns your money in full, fee-free (anyone may crank it). Reviews attach
+only to jobs the seller actually delivered.
 
 ## Check it worked
 
@@ -65,3 +71,5 @@ t2 job review <jobId> --stars 5
 - **Seller went quiet** — nothing delivered by the deadline → `t2 job refund
   <jobId>` returns your money; anyone may crank it. Job text is public — keep
   private details out of specs.
+- **Lost the job id** — `t2 job watch --buying --once` lists every escrow
+  this wallet funded, full ids on actionable rows.
