@@ -456,8 +456,11 @@ export function registerJob(program: Command) {
 The escrow is a Sui object, not a company: funds lock inside the Job object at
 create; release/refund are pure functions of (state, clock, caller). A ghosting
 buyer can't strand a delivering seller (anyone may release after the review
-window) and a no-show seller can never keep funds (anyone may refund after the
-deadline). v1 caps jobs at ${MAX_JOB_USDC} USDC.
+window), and a no-show seller cannot keep funds AS LONG AS the buyer uses the
+escrow's protections — wait out the deadline and refund (anyone may crank it),
+or reject a bad delivery in-window. Releasing early without a delivery
+(--pay-without-delivery) voluntarily waives that protection. v1 caps jobs at
+${MAX_JOB_USDC} USDC.
 
 Typical flow:
   buyer   $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h
@@ -826,12 +829,68 @@ no fund step; unclaimed openings refund fee-free):
       }
     });
 
+  // Release lives OUTSIDE the shared verb loop (S.1015): it alone carries
+  // the --pay-without-delivery goodwill flag, and it alone needs the
+  // funded-no-delivery preflight — attaching either to reject/refund/
+  // decline would be wrong.
+  group
+    .command('release')
+    .argument('<jobId>', 'The Job object id (0x…)')
+    .description('Accept delivery — funds go to the seller (buyer; or anyone once the review window lapses). On a FUNDED job with no delivery this pays the full escrow to the seller, terminally — refused unless --pay-without-delivery.')
+    .option('--pay-without-delivery', 'DELIBERATE goodwill: release the full escrow on a funded job with NO delivery (off-band delivery only — the seller keeps everything, no refund path)')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (jobId: string, opts: { payWithoutDelivery?: boolean; key?: string; api?: string }) => {
+      try {
+        // Preflight (same style as deliver, S.1003): read the chain before
+        // signing. Unreadable job → proceed; the prepare API runs the same
+        // gate server-side (S.1015 root fix) and the chain stays authority.
+        const existing = await getJob(getSuiClient(), jobId).catch(() => null);
+        const undelivered =
+          existing?.state === 'funded' && !existing.deliveryHash;
+        if (undelivered && !opts.payWithoutDelivery) {
+          throw new Error(
+            'This job is FUNDED with no delivery — releasing now pays the full escrow to the ' +
+              'seller with no recovery path. Wait for the delivery, refund after the deadline ' +
+              '(t2 job refund), or — only if the work arrived off-band — re-run with ' +
+              '--pay-without-delivery.',
+          );
+        }
+        if (undelivered && opts.payWithoutDelivery) {
+          printWarning(
+            'Paying WITHOUT an on-chain delivery: the full escrow goes to the seller, terminally. ' +
+              'No refund path exists after this.',
+          );
+        }
+        const { digest } = await sponsoredJobVerb({
+          base: opts.api ?? DEFAULT_API_BASE,
+          keyPath: opts.key,
+          action: 'release',
+          params: {
+            jobId,
+            ...(opts.payWithoutDelivery ? { payWithoutDelivery: true } : {}),
+          },
+        });
+        if (isJsonMode()) {
+          printJson({ jobId, action: 'release', digest, ...(undelivered ? { paidWithoutDelivery: true } : {}) });
+          return;
+        }
+        printBlank();
+        printSuccess('Funds released to the seller.');
+        if (digest) printKeyValue('Tx', digest);
+        // Review tip ONLY when a delivery existed — there is no work to
+        // rate after a goodwill pay, and no pre-filled star count ever
+        // (stars are API-mutable opinion, not a chain fact).
+        if (existing?.deliveryHash) {
+          printInfo(`Rate the work: t2 job review ${jobId} --stars <1-5>`);
+        }
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
   for (const [verb, description, note] of [
-    [
-      'release',
-      'Accept delivery — funds go to the seller (buyer; or anyone once the review window lapses)',
-      'Funds released to the seller.',
-    ],
     [
       'reject',
       'Reject a delivery within the review window — funds split per the create terms (buyer)',
@@ -869,9 +928,6 @@ no fund step; unclaimed openings refund fee-free):
           printBlank();
           printSuccess(note);
           if (digest) printKeyValue('Tx', digest);
-          if (verb === 'release') {
-            printInfo(`Rate the work (builds the seller's on-chain-backed reputation): t2 job review ${jobId} --stars 5`);
-          }
           printBlank();
         } catch (error) {
           handleError(error);
@@ -892,6 +948,16 @@ no fund step; unclaimed openings refund fee-free):
         const stars = Number.parseInt(opts.stars, 10);
         if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
           throw new Error(`--stars must be an integer 1–5 (got "${opts.stars}").`);
+        }
+        // S.1015: a review requires a DELIVERY — a goodwill-released job
+        // has no work to rate, and a sockpuppet ★5 on it would cost only
+        // the settle fee. Defense in depth: the API refuses too.
+        const reviewedJob = await getJob(getSuiClient(), jobId).catch(() => null);
+        if (reviewedJob && !reviewedJob.deliveryHash) {
+          throw new Error(
+            'This job has no on-chain delivery — there is no work to rate. Reviews attach only ' +
+              'to jobs the seller actually delivered.',
+          );
         }
         const base = opts.api ?? DEFAULT_API_BASE;
         const agent = await withAgent({ keyPath: opts.key });
