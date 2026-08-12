@@ -49,6 +49,10 @@ jobs:
       - run: pnpm --filter @t2000/sdk lint
       - run: pnpm --filter @t2000/cli lint
       - run: pnpm --filter @t2000/serve lint
+      # Skills shelf gate (S.1024): frontmatter + the feed.json ↔ skills/
+      # two-way sync — the apex well-known manifest reads feed.json, so
+      # drift here breaks t2000.ai/.well-known/agent-skills/index.json.
+      - run: npx tsx t2000-skills/validate.ts
 
   test:
     name: Unit Tests

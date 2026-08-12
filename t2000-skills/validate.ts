@@ -185,28 +185,35 @@ function main() {
     }
   }
 
-  // v4 Agent Wallet skill set (post-S.336 pivot — the v3 DeFi skills
-  // save/withdraw/borrow/repay were removed). Keep in sync when adding
-  // or removing a skill directory.
-  const expectedSkills = [
-    'deepbook',
-    'sui-grpc',
-    'suins',
-    't2000-check-balance',
-    't2000-connect',
-    't2000-pay',
-    't2000-receive',
-    't2000-send',
-    't2000-services',
-    't2000-setup',
-    't2000-swap',
-    'walrus',
-  ];
-
-  const missing = expectedSkills.filter(s => !skillDirs.includes(s));
-  if (missing.length > 0) {
-    for (const m of missing) {
-      console.error(`  ✗ ${m} → [missing] Expected skill directory not found`);
+  // feed.json ↔ skills/ two-way sync (S.1024). feed.json is the shelf
+  // ENUMERATOR: the apex well-known manifest (t2000.ai/.well-known/
+  // agent-skills/index.json) reads it over raw GitHub because raw GitHub
+  // cannot list a directory. Drift in either direction silently breaks the
+  // machine front door, so both directions fail here. This replaced the
+  // old hand-maintained expectedSkills list — feed.json IS the list now.
+  const feedPath = resolve(scriptDir, 'feed.json');
+  if (!existsSync(feedPath)) {
+    console.error('  ✗ feed.json → [missing] Shelf enumerator not found (the apex skills manifest 500s without it)');
+    totalErrors++;
+  } else {
+    let feedSlugs: string[] = [];
+    try {
+      const feed = JSON.parse(readFileSync(feedPath, 'utf-8')) as {
+        projects?: { skills?: { slug?: string }[] }[];
+      };
+      feedSlugs = (feed.projects ?? []).flatMap(p =>
+        (p.skills ?? []).map(s => s.slug).filter((s): s is string => Boolean(s))
+      );
+    } catch {
+      console.error('  ✗ feed.json → [parse] Not valid JSON');
+      totalErrors++;
+    }
+    for (const dir of skillDirs.filter(d => !feedSlugs.includes(d))) {
+      console.error(`  ✗ ${dir} → [feed] skills/${dir}/SKILL.md exists but feed.json does not list it`);
+      totalErrors++;
+    }
+    for (const slug of feedSlugs.filter(s => !skillDirs.includes(s))) {
+      console.error(`  ✗ ${slug} → [feed] feed.json lists it but skills/${slug}/SKILL.md does not exist`);
       totalErrors++;
     }
   }
