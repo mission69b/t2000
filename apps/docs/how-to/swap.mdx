@@ -21,7 +21,7 @@ t2 swap 0.5 USDC SUI --quote      # preview: price, route, impact
 t2 swap 0.5 USDC SUI              # execute via the best route
 ```
 
-In Claude (Passport Connect):
+With Passport Connect:
 
 ```text
 Quote a swap of 0.5 USDC to SUI — quoting is free. Show me the route,
@@ -39,7 +39,7 @@ t2 swap 0.25 USDC 0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb
 t2 swap 0.25 USDC 0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST
 ```
 
-In Claude — same pattern: paste the full coin type, quote first, execute only
+In your AI — same pattern: paste the full coin type, quote first, execute only
 if the impact is acceptable. Thin pairs move — treat the quote as mandatory.
 
 On Passport Connect the quote is **binding**: `t2000_swap_quote` returns a
