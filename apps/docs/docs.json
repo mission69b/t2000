@@ -54,6 +54,7 @@
               "cli-reference",
               "agent-sdk",
               "fees-and-limits",
+              "on-chain",
               "agent-id",
               "agent-wallet"
             ]
