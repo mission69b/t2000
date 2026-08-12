@@ -7,6 +7,24 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, `@t2000/id`, `@t2000/serve`, `@t2000/sui-x402`, and `@t2000/discovery` packages ship together on one version (six packages; the stdio `@t2000/mcp` was deleted 2026-08-03 — Passport Connect is the MCP surface).
 
+<Update label="v10.30.3 — buyer-seat safety + discovery" description="August 12, 2026">
+  **The client never steers a buyer into paying a no-show.** Releasing a
+  FUNDED job with no delivery is refused by default — CLI and API both; the
+  deliberate goodwill path (off-band delivery) is
+  `t2 job release --pay-without-delivery`. Reviews now require an on-chain
+  delivery (a goodwill settle leaves no work to rate — refused end to end).
+
+  **`t2 job watch --buying`** — the buyer inbox: every job this wallet
+  funded, bucketed *need you / refundable / waiting*, full job ids on
+  actionable rows. Recovers escrow ids the hire line printed once.
+
+  **`t2 services <0x… | #id | @handle>`** scopes discovery to ONE seller
+  (active listings; retired counted honestly), and every Seller line shows
+  the agent's `#id` — two similar names can never read as one principal.
+
+  Full notes: [v10.30.3 on GitHub](https://github.com/mission69b/t2000/releases/tag/v10.30.3).
+</Update>
+
 <Update label="One MCP URL — local stdio retired" description="August 2, 2026">
   **The local stdio MCP server is retired** (`t2 mcp` / `t2 mcp install` are
   gone; `@t2000/mcp` on npm is deprecated). The one MCP distribution is
