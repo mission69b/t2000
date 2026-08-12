@@ -62,6 +62,10 @@ const EClaimerIsBuyer: u64 = 8;
 const ENotActiveAgent: u64 = 9;
 const ENotBuyer: u64 = 10;
 const ENotExpired: u64 = 11;
+/// v3 (S.1019): open-board reject must return 100% to the buyer — an
+/// 80/20 default made garbage-deliver-then-eat-reject (+EV) beat an
+/// honest decline ($0) on FCFS work.
+const EOpenRejectMustBeFullBuyer: u64 = 12;
 
 // === Objects ===
 
@@ -164,6 +168,14 @@ public fun create_open<T>(
         EReviewWindowTooLong,
     );
     assert!(reject_split_bps <= escrow::bps_denominator_pkg(), EBadSplit);
+    // v3 (S.1019): OPEN postings lock 10000 — reject pays the buyer in
+    // full, seller 0 (economically = decline, so junk delivery has no
+    // edge over honesty). Hire/`escrow::create` keeps the free 0–10000
+    // range; existing on-chain openings are grandfathered.
+    assert!(
+        reject_split_bps == escrow::bps_denominator_pkg(),
+        EOpenRejectMustBeFullBuyer,
+    );
     let opening = Opening<T> {
         id: object::new(ctx),
         buyer: ctx.sender(),
