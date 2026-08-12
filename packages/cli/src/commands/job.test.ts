@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -36,10 +37,19 @@ describe('resolveSpecUpload (SPEC_ACP_JOB_SPEC_V1 §4.2 — upload by default)',
   const BASE = 'https://api.example.test/v1';
   const HASH64 = `0x${'a'.repeat(64)}`;
 
-  function mockPutSpec(hash = 'b'.repeat(64)) {
-    const fn = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ hash }) }));
+  function mockPutSpec() {
+    let stored = '';
+    let hash = '';
+    const fn = vi.fn(async (_url: unknown, init?: { body?: string }) => {
+      if (init?.body) {
+        stored = (JSON.parse(init.body) as { content: string }).content;
+        hash = createHash('sha256').update(stored, 'utf8').digest('hex');
+        return { ok: true, status: 200, json: async () => ({ hash }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ content: stored }) };
+    });
     vi.stubGlobal('fetch', fn);
-    return { fn, hash };
+    return { fn, hashOf: () => hash };
   }
   afterEach(() => vi.unstubAllGlobals());
 
@@ -50,20 +60,32 @@ describe('resolveSpecUpload (SPEC_ACP_JOB_SPEC_V1 §4.2 — upload by default)',
     expect(fn).not.toHaveBeenCalled();
   });
 
-  it('uploads file contents and pins the store hash', async () => {
-    const { fn, hash } = mockPutSpec();
+  it('uploads file contents, pins the store hash, and READ-BACK verifies (S.1020a)', async () => {
+    const { fn, hashOf } = mockPutSpec();
     const dir = await mkdtemp(join(tmpdir(), 't2-job-'));
     const file = join(dir, 'delivery.md');
     await writeFile(file, '# The report\n\nDone.');
     const result = await resolveSpecUpload(BASE, file);
-    expect(result).toEqual({ hash: `0x${hash}`, uploaded: true });
-    expect(fn).toHaveBeenCalledOnce();
+    expect(result).toEqual({ hash: `0x${hashOf()}`, uploaded: true });
+    expect(fn).toHaveBeenCalledTimes(2); // put + durability GET
+  });
+
+  it('S.1020a: a put the store cannot serve back pins NOTHING', async () => {
+    const fn = vi.fn(async (_url: unknown, init?: { body?: string }) =>
+      init?.body
+        ? { ok: true, status: 200, json: async () => ({ hash: 'b'.repeat(64) }) }
+        : { ok: false, status: 404, json: async () => ({ error: { message: 'No spec stored for this hash.' } }) },
+    );
+    vi.stubGlobal('fetch', fn);
+    await expect(resolveSpecUpload(BASE, 'inline delivery text')).rejects.toThrow(
+      /could not serve it back.*nothing was pinned/is,
+    );
   });
 
   it('uploads literal text when the arg is not a file', async () => {
-    const { hash } = mockPutSpec();
+    const { hashOf } = mockPutSpec();
     const result = await resolveSpecUpload(BASE, 'inline delivery text');
-    expect(result).toEqual({ hash: `0x${hash}`, uploaded: true });
+    expect(result).toEqual({ hash: `0x${hashOf()}`, uploaded: true });
   });
 
   it('rejects oversize content BEFORE any network call (16 KiB cap)', async () => {
@@ -134,10 +156,19 @@ describe('resolveHireSpecUpload (S.978 — CLI writes the t2-acp-custom@1 envelo
   const BASE = 'https://api.example.test/v1';
   const HASH64 = `0x${'a'.repeat(64)}`;
 
-  function mockPutSpec(hash = 'b'.repeat(64)) {
-    const fn = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ hash }) }));
+  function mockPutSpec() {
+    let stored = '';
+    let hash = '';
+    const fn = vi.fn(async (_url: unknown, init?: { body?: string }) => {
+      if (init?.body) {
+        stored = (JSON.parse(init.body) as { content: string }).content;
+        hash = createHash('sha256').update(stored, 'utf8').digest('hex');
+        return { ok: true, status: 200, json: async () => ({ hash }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ content: stored }) };
+    });
     vi.stubGlobal('fetch', fn);
-    return { fn, hash };
+    return { fn, hashOf: () => hash };
   }
   afterEach(() => vi.unstubAllGlobals());
 
