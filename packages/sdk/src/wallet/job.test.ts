@@ -255,13 +255,17 @@ describe('jobActionsFor', () => {
     expect(jobActionsFor(base, SELLER, 5_000)).toEqual(['deliver']);
   });
 
-  it('funded: buyer can voluntarily release', () => {
-    expect(jobActionsFor(base, BUYER, 5_000)).toEqual(['release']);
+  it('funded: buyer is NEVER steered to release before delivery (S.1015)', () => {
+    // Zero deliveries → releasing pays the full escrow to a no-show,
+    // terminally. Goodwill funded→release stays on-chain but is opt-in via
+    // `t2 job release --pay-without-delivery`, never a suggested action.
+    expect(jobActionsFor(base, BUYER, 5_000)).toEqual([]);
   });
 
-  it('funded past deadline: anyone can refund, seller cannot deliver', () => {
+  it('funded past deadline: anyone (incl. buyer) can refund, seller cannot deliver', () => {
     expect(jobActionsFor(base, STRANGER, 20_000)).toEqual(['refund']);
     expect(jobActionsFor(base, SELLER, 20_000)).toEqual(['refund']);
+    expect(jobActionsFor(base, BUYER, 20_000)).toEqual(['refund']);
   });
 
   it('delivered in-window: buyer can release or reject; stranger nothing', () => {

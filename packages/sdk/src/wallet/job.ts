@@ -381,7 +381,11 @@ export function jobActionsFor(
   const actions: string[] = [];
   if (job.state === 'funded') {
     if (isSeller && nowMs <= job.deliverByMs) actions.push('deliver');
-    if (isBuyer) actions.push('release');
+    // S.1015 (beta #93 round five): NEVER volunteer buyer release on a
+    // funded job — with zero deliveries it pays the full escrow to a
+    // no-show seller, terminally. The Move goodwill escape (funded→release
+    // by the buyer, for off-band delivery) stays on-chain but is opt-in at
+    // the command layer only (`t2 job release --pay-without-delivery`).
     if (nowMs > job.deliverByMs) actions.push('refund');
   } else if (job.state === 'delivered') {
     const windowClosesMs = (job.deliveredAtMs ?? 0) + job.reviewWindowMs;
