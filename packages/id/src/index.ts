@@ -21,12 +21,13 @@ import { deriveDynamicFieldID } from '@mysten/sui/utils';
 /** The published `agent_id` package id — pin the LATEST upgrade id ONLY
  *  (the S.1019 rule; event/type anchors stay on the original package
  *  `0x7669be20…be9a45e9`, which remains callable for its own functions).
- *  ⚠ S.1032 Phase 2: after the founder runs `sui client upgrade` +
- *  `registry::migrate`, bump this to the NEW package id in the same PR that
- *  updates contracts/agent_id/Published.toml. */
+ *  LATEST = the S.1032 v2 upgrade (2026-08-13, ownership deprecated;
+ *  Registry migrated to version 2 — upgrade digest 7ZUiRi48…, migrate
+ *  digest 97sNqgt9…). The previous id `0x78d36506…d15451` now aborts
+ *  EWrongVersion on every mutator. */
 export const AGENT_ID_PACKAGE_ID =
   process.env.AGENT_ID_PACKAGE_ID ??
-  '0x78d365066fb0e6468a9dcb49595e559434a53d7a12d845f776bcda76b4d15451';
+  '0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7';
 
 /** The shared `Registry` object id. */
 export const AGENT_ID_REGISTRY_ID =
