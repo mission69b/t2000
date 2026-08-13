@@ -1,12 +1,12 @@
 // `t2 agent create` — the composition umbrella (T1/A2, SPEC_COMPOSITION_MOMENT
 // §4): ensure a wallet (generate if the path is empty, reuse if not) →
 // register the Agent ID (idempotent, sponsored) → set the display profile
-// (name · description · category) → optionally propose a Passport owner.
-// One command from nothing to a named, listed agent. Unlike `t2 init`'s
+// (name · description · category). One command from nothing to a named,
+// listed agent. (`--owner` was removed in S.1032 — ownership left the
+// product; agents are autonomous Agent IDs.) Unlike `t2 init`'s
 // best-effort register, create is explicitly an online command — failures
 // are loud.
 
-import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { Command } from 'commander';
 import {
   generateKeypair,
@@ -16,7 +16,7 @@ import {
   walletExists,
 } from '@t2000/sdk';
 import { AGENT_CATEGORIES, parseCategory } from '../../lib/agent-category.js';
-import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
+import { registerWallet } from '../../lib/agent-register.js';
 import { withAgent } from '../../lib/with-agent.js';
 import {
   handleError,
@@ -62,7 +62,6 @@ export interface AgentCreateOptions {
   name: string;
   description?: string;
   category?: string;
-  owner?: string;
   key?: string;
   api?: string;
 }
@@ -71,17 +70,13 @@ export function registerAgentCreate(group: Command) {
   group
     .command('create')
     .description(
-      'Create an agent in one pass — wallet + on-chain Agent ID + profile (+ optional owner link). Sponsored, gasless.',
+      'Create an agent in one pass — wallet + on-chain Agent ID + profile. Sponsored, gasless.',
     )
     .requiredOption('--name <name>', 'Display name (shown in the store)')
     .option('--description <text>', 'Short description (what it does, for whom)')
     .option(
       '--category <category>',
       `Directory category: ${AGENT_CATEGORIES.join(' | ')}`,
-    )
-    .option(
-      '--owner <address>',
-      'Propose a Passport owner (confirm at t2000.ai → My agents)',
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -99,14 +94,6 @@ export function registerAgentCreate(group: Command) {
         let category: string | undefined;
         if (opts.category !== undefined) {
           category = parseCategory(opts.category);
-        }
-
-        let owner: string | undefined;
-        if (opts.owner !== undefined) {
-          owner = normalizeSuiAddress(opts.owner.trim());
-          if (!isValidSuiAddress(owner)) {
-            throw new Error('--owner must be a valid Sui address.');
-          }
         }
 
         // 1. Wallet — reuse the file if present (create "dresses" an existing
@@ -157,21 +144,6 @@ export function registerAgentCreate(group: Command) {
           },
         });
 
-        // 4. Optional owner link (agent-signed propose; the owner confirms in
-        // the console or with `t2 agent confirm`).
-        let ownerProposed = false;
-        if (owner) {
-          await runSponsoredTx({
-            keypair: agent.keypair,
-            actor: address,
-            prepareUrl: `${base}/agent/owner/propose`,
-            prepareBody: { address, owner },
-            submitUrl: `${base}/agent/owner/submit`,
-            intent: { action: 'link' },
-          });
-          ownerProposed = true;
-        }
-
         const storeUrl = `${STORE_BASE}/${address}`;
         if (isJsonMode()) {
           printJson({
@@ -181,7 +153,6 @@ export function registerAgentCreate(group: Command) {
             alreadyRegistered: reg.alreadyRegistered,
             name,
             ...(category ? { category } : {}),
-            ...(ownerProposed ? { ownerProposed: owner } : {}),
             storeUrl,
             keyPath: opts.key ?? '~/.t2000/wallet.key',
           });
@@ -198,12 +169,6 @@ export function registerAgentCreate(group: Command) {
             ? `created at ${opts.key ?? '~/.t2000/wallet.key'}`
             : `reused ${opts.key ?? '~/.t2000/wallet.key'}`,
         );
-        if (ownerProposed) {
-          printKeyValue(
-            'Owner',
-            `proposed ${owner} — confirm at ${STORE_BASE}/manage/agents`,
-          );
-        }
         printBlank();
         printLine('Next:');
         printLine('  t2 fund                      # add USDC (QR / card link)');

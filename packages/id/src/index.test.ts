@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   AGENT_ID_PACKAGE_ID,
-  buildConfirmOwnershipTx,
   buildRegisterTx,
-  buildRenounceOwnershipTx,
   buildSetActiveTx,
-  buildSetPendingOwnerTx,
   buildUpdateTx,
 } from './index.js';
 
@@ -25,25 +22,19 @@ describe('@t2000/id builders', () => {
     expect(cmds(buildUpdateTx({ did: 'did:key:z6Mk' }))).toContain('update');
   });
 
-  it('set_pending_owner targets set_pending_owner', () => {
-    expect(cmds(buildSetPendingOwnerTx('0x1'))).toContain('set_pending_owner');
-  });
-
-  it('confirm_ownership targets confirm_ownership', () => {
-    expect(cmds(buildConfirmOwnershipTx('0x2'))).toContain('confirm_ownership');
-  });
-
   it('set_active targets set_active', () => {
     expect(cmds(buildSetActiveTx('0x3', false))).toContain('set_active');
   });
 
-  it('renounce_ownership targets renounce_ownership (package v2)', () => {
-    const j = cmds(buildRenounceOwnershipTx('0x4'));
-    expect(j).toContain('renounce_ownership');
-    expect(j).toContain(AGENT_ID_PACKAGE_ID);
-  });
-
   it('register accepts empty registration (all-none)', () => {
     expect(() => buildRegisterTx()).not.toThrow();
+  });
+
+  // Ownership builders left the package in S.1032 — the registry mutators
+  // always abort since v2, so there is nothing to build. This pin keeps the
+  // surface from quietly returning.
+  it('exports no ownership builders (S.1032)', async () => {
+    const mod = await import('./index.js');
+    expect(Object.keys(mod).filter((k) => /[Oo]wner/.test(k))).toEqual([]);
   });
 });

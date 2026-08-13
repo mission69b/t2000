@@ -6,17 +6,24 @@ import { deriveDynamicFieldID } from '@mysten/sui/utils';
 /**
  * @t2000/id — client for the `agent_id::registry` Move package (Agent ID
  * Phase B). These builders construct UNSIGNED transactions calling the on-chain
- * registry; the caller signs (the agent's keypair for register/update/active;
- * the proposed owner for confirm) and may sponsor gas (the agent is the sender,
+ * registry; the caller signs (always the AGENT's keypair — every mutator is
+ * agent-signed since S.1032) and may sponsor gas (the agent is the sender,
  * so `sender == agent` auth holds; a SUI-funded t2000 account co-signs gas).
+ *
+ * Passport↔agent OWNERSHIP left the product (S.1032, 2026-08-13): the
+ * link/confirm/renounce builders are gone, and the on-chain mutators
+ * always abort (`EOwnershipDeprecated`) once the Registry is migrated.
+ * Historical `owner`/`pending_owner` record fields remain on-chain, inert.
  *
  * Deployed on Sui mainnet 2026-06-29. Override via env for testnet/dev.
  */
 
-/** The published `agent_id` package id — the LATEST version (v2, the
- *  2026-07-09 additive upgrade that added `renounce_ownership`; the shared
- *  Registry object is unchanged). The original v1 package
- *  (`0x7669be20…be9a45e9`) remains callable for its own functions. */
+/** The published `agent_id` package id — pin the LATEST upgrade id ONLY
+ *  (the S.1019 rule; event/type anchors stay on the original package
+ *  `0x7669be20…be9a45e9`, which remains callable for its own functions).
+ *  ⚠ S.1032 Phase 2: after the founder runs `sui client upgrade` +
+ *  `registry::migrate`, bump this to the NEW package id in the same PR that
+ *  updates contracts/agent_id/Published.toml. */
 export const AGENT_ID_PACKAGE_ID =
   process.env.AGENT_ID_PACKAGE_ID ??
   '0x78d365066fb0e6468a9dcb49595e559434a53d7a12d845f776bcda76b4d15451';
@@ -69,49 +76,9 @@ export function buildUpdateTx(reg: AgentRegistration = {}): Transaction {
   return tx;
 }
 
-/** The agent (signer) proposes an owner; nothing binds until the owner confirms. */
-export function buildSetPendingOwnerTx(owner: string): Transaction {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${AGENT_ID_PACKAGE_ID}::${MODULE}::set_pending_owner`,
-    arguments: [
-      tx.object(AGENT_ID_REGISTRY_ID),
-      tx.pure.address(owner),
-      tx.object(CLOCK_ID),
-    ],
-  });
-  return tx;
-}
-
-/** The proposed owner (signer) confirms ownership of `agent`. */
-export function buildConfirmOwnershipTx(agent: string): Transaction {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${AGENT_ID_PACKAGE_ID}::${MODULE}::confirm_ownership`,
-    arguments: [
-      tx.object(AGENT_ID_REGISTRY_ID),
-      tx.pure.address(agent),
-      tx.object(CLOCK_ID),
-    ],
-  });
-  return tx;
-}
-
-/** The confirmed owner (signer) renounces ownership of `agent` — the record
- *  returns to autonomous (`owner = none`). Re-linking is the normal two-sided
- *  flow (the agent proposes, the owner confirms). Requires package v2+. */
-export function buildRenounceOwnershipTx(agent: string): Transaction {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${AGENT_ID_PACKAGE_ID}::${MODULE}::renounce_ownership`,
-    arguments: [
-      tx.object(AGENT_ID_REGISTRY_ID),
-      tx.pure.address(agent),
-      tx.object(CLOCK_ID),
-    ],
-  });
-  return tx;
-}
+// Ownership builders (buildSetPendingOwnerTx / buildConfirmOwnershipTx /
+// buildRenounceOwnershipTx) were REMOVED in S.1032 — the on-chain mutators
+// always abort since registry v2. There is no ownership surface to build for.
 
 /** An agent's on-chain registry record (registry Table dynamic field),
  *  field names as stored by the Move package. */
@@ -170,7 +137,8 @@ export async function getAgentRecord(
   }
 }
 
-/** Toggle an agent's active flag (signer must be the agent or its owner). */
+/** Toggle an agent's active flag (signer must be the agent itself —
+ *  agent-only since registry v2 / S.1032). */
 export function buildSetActiveTx(agent: string, active: boolean): Transaction {
   const tx = new Transaction();
   tx.moveCall({

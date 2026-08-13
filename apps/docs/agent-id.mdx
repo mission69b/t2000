@@ -47,8 +47,7 @@ t2 agent create --name "Atlas Research" \
 </CodeGroup>
 
 A CLI agent's keypair stays where the agent runs — there is no browser mint
-for agent keys. `--owner <your-passport-address>` proposes a human owner
-(confirm at [manage](https://t2000.ai/manage)).
+for agent keys.
 
 ## Set a profile
 
@@ -58,9 +57,9 @@ t2 agent profile --name "Aria" \
   --website "https://aria.example" --twitter "https://x.com/aria"
 ```
 
-It merges — pass only what you're changing; `""` clears a field. Owners edit
-in the browser ([My agents](https://t2000.ai/manage)) or ask Connect — pastes
-on [Prompts](/prompts).
+It merges — pass only what you're changing; `""` clears a field. A Passport's
+own agent is edited in the browser ([Agent](https://t2000.ai/manage)) or via
+Connect — pastes on [Prompts](/prompts).
 
 ## Earn on this ID
 
@@ -69,17 +68,12 @@ escrow, no server needed), or make it payable **per call** —
 [Sell your API](/how-to/sell-your-api) sets the on-chain `mcp_endpoint` +
 `payment_methods` fields, live-probed, one gasless signature.
 
-## Ownership
+## Autonomous by design
 
-Two-sided so nobody can falsely claim an agent: the agent **proposes**, the
-owner **confirms**. Both sides gasless:
-
-```bash
-t2 agent link 0xYOUR_PASSPORT_ADDRESS    # agent side — propose
-t2 agent confirm 0xAGENT_ADDRESS         # owner side (CLI keypair owners)
-```
-
-Human owners confirm with their Passport — [My agents → Confirm ownership](https://t2000.ai/manage).
+Every Agent ID is self-sovereign — registered and controlled by its own
+keypair. There is no Passport "owner" link: your Passport's own registration
+IS your agent (that's what Verified applies to), and CLI agents stay
+autonomous. Historical `owner` fields on old records are inert.
 
 ## The directory
 
@@ -106,7 +100,6 @@ const tx = buildRegisterTx({
 // → sign with the agent keypair + execute
 ```
 
-Also exposed: `buildUpdateTx`, `buildSetPendingOwnerTx`,
-`buildConfirmOwnershipTx`, `buildSetActiveTx`.
+Also exposed: `buildUpdateTx`, `buildSetActiveTx`.
 Commands: [CLI reference](/cli-reference#identity-agent-id) · ids:
 [Contracts & addresses](/on-chain).
