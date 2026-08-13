@@ -20,14 +20,23 @@ use sui::table::{Self, Table};
 
 /// Bump on every breaking package upgrade; `migrate` advances a deployed
 /// `Registry` to match (the canonical Sui upgradeable-shared-object pattern).
-const VERSION: u64 = 1;
+/// v2 (S.1032): ownership mutators deprecated; set_active agent-only.
+const VERSION: u64 = 2;
 
 // === Errors ===
 const EAlreadyRegistered: u64 = 0;
 const ENotRegistered: u64 = 1;
 const ENotAuthorized: u64 = 2;
+#[allow(unused_const)]
 const ENoPendingOwner: u64 = 3;
 const EWrongVersion: u64 = 4;
+/// Passport↔agent ownership left the product (S.1032, founder lock
+/// 2026-08-13). The mutators below keep their signatures (compatible
+/// upgrade) but always abort with THIS code — a dedicated abort so ops can
+/// tell "deprecated surface" from a real auth failure. Historical
+/// `owner` / `pending_owner` fields stay on records (layout is frozen);
+/// they are inert chain cosmetics.
+const EOwnershipDeprecated: u64 = 5;
 
 // === Objects ===
 
@@ -169,74 +178,53 @@ public fun update(
     event::emit(AgentUpdated { agent, timestamp_ms: now });
 }
 
-// === Ownership link (two-sided: agent proposes, owner confirms) ===
+// === Ownership link — DEPRECATED (S.1032, v2) ===
+// Signatures survive (Sui compatible upgrades cannot remove or rename public
+// functions); bodies always abort. Event structs stay declared for type
+// compatibility — they simply never emit again. NOTE: the abort is only half
+// the cutover — until `migrate` bumps the shared Registry to v2, the OLD
+// package id still runs the v1 bodies. Same ritual as escrow S.981/S.1019.
 
-/// The agent declares a proposed owner. Nothing is bound until the owner
-/// confirms — so an agent can't unilaterally claim a famous Passport. Emits an
-/// event so the indexer can prompt the proposed owner to confirm.
+/// DEPRECATED — always aborts with `EOwnershipDeprecated`.
 public fun set_pending_owner(
     registry: &mut Registry,
-    owner: address,
-    clock: &Clock,
-    ctx: &mut TxContext,
+    _owner: address,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
 ) {
     assert_version(registry);
-    let agent = ctx.sender();
-    assert!(registry.agents.contains(agent), ENotRegistered);
-    let now = clock.timestamp_ms();
-    let record = registry.agents.borrow_mut(agent);
-    record.pending_owner = option::some(owner);
-    record.updated_at_ms = now;
-    event::emit(PendingOwnerSet { agent, pending_owner: owner, timestamp_ms: now });
+    abort EOwnershipDeprecated
 }
 
-/// The proposed owner confirms — `sender` must equal the pending owner.
+/// DEPRECATED — always aborts with `EOwnershipDeprecated`.
 public fun confirm_ownership(
     registry: &mut Registry,
-    agent: address,
-    clock: &Clock,
-    ctx: &mut TxContext,
+    _agent: address,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
 ) {
     assert_version(registry);
-    assert!(registry.agents.contains(agent), ENotRegistered);
-    let sender = ctx.sender();
-    let now = clock.timestamp_ms();
-    let record = registry.agents.borrow_mut(agent);
-    assert!(record.pending_owner.is_some(), ENoPendingOwner);
-    let pending = *record.pending_owner.borrow();
-    assert!(pending == sender, ENotAuthorized);
-    record.owner = option::some(pending);
-    record.pending_owner = option::none();
-    record.updated_at_ms = now;
-    event::emit(OwnerLinked { agent, owner: pending, timestamp_ms: now });
+    abort EOwnershipDeprecated
 }
 
-/// The confirmed owner walks away — clears `owner`, returning the record to
-/// autonomous. Owner-signed: the reverse of the two-sided link (added in the
-/// v1 additive upgrade, 2026-07-09 — before it, ownership was permanent
-/// unless the AGENT's key proposed a replacement). Does NOT touch
-/// `pending_owner`: an in-flight proposal to someone else survives, and the
-/// agent can re-propose this same owner later (re-link = propose + confirm).
+/// DEPRECATED — always aborts with `EOwnershipDeprecated`. Historical links
+/// (e.g. #74's) stay as inert record fields — founder lock: no forced
+/// renounce, the product simply ignores them.
 public fun renounce_ownership(
     registry: &mut Registry,
-    agent: address,
-    clock: &Clock,
-    ctx: &mut TxContext,
+    _agent: address,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
 ) {
     assert_version(registry);
-    assert!(registry.agents.contains(agent), ENotRegistered);
-    let sender = ctx.sender();
-    let now = clock.timestamp_ms();
-    let record = registry.agents.borrow_mut(agent);
-    assert!(record.owner.contains(&sender), ENotAuthorized);
-    record.owner = option::none();
-    record.updated_at_ms = now;
-    event::emit(OwnershipRenounced { agent, owner: sender, timestamp_ms: now });
+    abort EOwnershipDeprecated
 }
 
-// === Active toggle (the agent itself, or its confirmed owner) ===
+// === Active toggle (AGENT-ONLY since v2 — S.1032) ===
 /// Reversible — deactivate OR reactivate. (Replaces a one-way deactivate so an
 /// agent can't get stuck inactive: the record persists, blocking re-register.)
+/// v2 dropped the owner arm: a leftover linked owner must not be able to
+/// deactivate/reactivate an agent after ownership left the product.
 public fun set_active(
     registry: &mut Registry,
     agent: address,
@@ -249,7 +237,7 @@ public fun set_active(
     let sender = ctx.sender();
     let now = clock.timestamp_ms();
     let record = registry.agents.borrow_mut(agent);
-    assert!(sender == agent || record.owner.contains(&sender), ENotAuthorized);
+    assert!(sender == agent, ENotAuthorized);
     record.active = active;
     record.updated_at_ms = now;
     event::emit(AgentActiveSet { agent, active, timestamp_ms: now });
@@ -276,8 +264,19 @@ public fun is_active(record: &AgentRecord): bool { record.active }
 public fun mcp_endpoint(record: &AgentRecord): Option<String> { record.mcp_endpoint }
 public fun did(record: &AgentRecord): Option<String> { record.did }
 
-// === Test-only init ===
+// === Test-only hooks ===
 #[test_only]
 public fun init_for_testing(ctx: &mut TxContext) {
     init(ctx);
 }
+
+#[test_only]
+public fun set_version_for_testing(registry: &mut Registry, version: u64) {
+    registry.version = version;
+}
+
+#[test_only]
+public fun current_version(): u64 { VERSION }
+
+#[test_only]
+public fun version(registry: &Registry): u64 { registry.version }
