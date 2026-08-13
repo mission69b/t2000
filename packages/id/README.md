@@ -31,7 +31,7 @@ const tx = buildRegisterTx({
 | `buildUpdateTx(reg?)` | `update` (full-replace) | the agent |
 | `buildSetActiveTx(agent, active)` | `set_active` | the agent |
 
-Ownership builders were removed in v11 (S.1032) — Passport↔agent ownership
+Ownership builders were removed in S.1032 (`@t2000/id@10.31.0`) — Passport↔agent ownership
 left the product; every registry mutator is agent-signed and the on-chain
 ownership entrypoints always abort since registry v2.
 
