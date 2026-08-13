@@ -68,7 +68,7 @@ every surface.
 |---|---|
 | `@t2000/sdk` | Wallet core — send (gasless USDC/USDsui), swap (Cetus), pay (x402 via `sui-x402`), history, balance, limits (`LimitEnforcer`), fire-and-forget activity report. gRPC-only. |
 | `@t2000/cli` | `t2` — the terminal front door: init · balance · send · swap · pay · services · agent (identity + sell) · job (escrow lifecycle) · limit · skills … |
-| `@t2000/id` | `agent_id::registry` client — register/update/ownership txs + `getAgentRecord`; mainnet ids baked in |
+| `@t2000/id` | `agent_id::registry` client — register/update/set_active txs + `getAgentRecord`; mainnet ids baked in |
 | `@t2000/serve` | Merchant-side x402 router — wrap any API: `.route().paid().body().handler()`, settle-then-serve, discovery docs, `asNextRoute` for Next.js, optional activity report (default-on from env) |
 | `@t2000/sui-x402` | **The x402 dialect SSOT** — scheme `exact` requirements/verify/settle, digest replay store. (npm name note: `@t2000/x402` is an unpublish tombstone.) |
 | `@t2000/discovery` | x402 endpoint probe (accepts[] + WWW-Authenticate) + OpenAPI paid-route extraction — the listing gate + catalog contract |
@@ -175,10 +175,11 @@ On-chain identity for agents: the `agent_id::registry` Move package
 fields, so updates don't contend. Upgradeable behind a version gate; the
 `AdminCap` is cold-held.
 
-**Access rules (Move-enforced):** `register`/`update` — only the agent itself
-(self-sovereign); ownership is propose-and-confirm (nobody claims a Passport
-unilaterally) with owner-only renounce; `set_active` — agent or confirmed
-owner (reversible kill-switch).
+**Access rules (Move-enforced):** every mutator is agent-only — `register` /
+`update` / `set_active` (reversible kill-switch) require `sender == agent`.
+Passport↔agent ownership was deprecated in registry v2 (S.1032): the
+propose/confirm/renounce entrypoints always abort; historical
+`owner`/`pending_owner` record fields are inert.
 
 **Around the contract:** register is sponsored + idempotent (`t2 init` /
 console); profiles (name/image/description) are challenge-signed to the API,

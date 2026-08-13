@@ -1,4 +1,8 @@
-// `t2 agent` — Agent ID (on-chain identity: register · profile · ownership).
+// `t2 agent` — Agent ID (on-chain identity: register · profile · sell).
+// OWNERSHIP left the product 2026-08-13 (S.1032): `link` / `confirm` /
+// `unlink` and `create --owner` are gone — agents are autonomous Agent IDs;
+// a Passport's own registration IS its agent (Verified = paid Passport
+// self-agent). The registry mutators abort on-chain since v2.
 // The `handle` command (agent-id.sui SuiNS leaves) was removed 2026-08-04
 // (SPEC_T2_KILL_AGENT_ID_LEAF — humans hold @audric; agents are name + #id
 // + 0x). Identity only: the `onboard`/`topup` wallet-credit commands
@@ -8,7 +12,6 @@
 // `agent_capital` remains historical only).
 // Machines making one-off inference calls pay ASP x402 endpoints directly.
 
-import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { Command } from 'commander';
 import { truncateAddress } from '@t2000/sdk';
 import {
@@ -16,7 +19,7 @@ import {
   ensureSellerCategory,
   parseCategory,
 } from '../../lib/agent-category.js';
-import { registerWallet, runSponsoredTx } from '../../lib/agent-register.js';
+import { registerWallet } from '../../lib/agent-register.js';
 import {
   assertSigningHostAllowed,
   isAllowUntrustedApi,
@@ -59,7 +62,7 @@ async function fetchJson(
 export function registerAgent(program: Command) {
   const group = program
     .command('agent')
-    .description('Agent ID — on-chain identity for this wallet (register · profile · ownership)')
+    .description('Agent ID — on-chain identity for this wallet (register · profile · sell)')
     .addHelpText(
       'after',
       `
@@ -105,124 +108,6 @@ Subcommands:
         if (reg.digest) {
           printKeyValue('Tx', reg.digest);
         }
-        printBlank();
-      } catch (error) {
-        handleError(error);
-      }
-    });
-
-  group
-    .command('link')
-    .argument('<owner>', "The owner's Sui address (Passport) to propose")
-    .description(
-      "Propose an owner for this agent (two-sided — the owner must then confirm). Sponsored, gasless.",
-    )
-    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (owner: string, opts: { key?: string; api?: string }) => {
-      try {
-        const base = opts.api ?? DEFAULT_API_BASE;
-        const agent = await withAgent({ keyPath: opts.key });
-        const address = agent.address();
-        // Guard: `owner` is the human Passport, not the agent's own address — a
-        // self-link is the common mistake (and a no-op you'd then have to undo).
-        if (!isValidSuiAddress(owner)) {
-          throw new Error(
-            'Provide a valid Sui address for the owner (your Passport, e.g. 0x…).',
-          );
-        }
-        if (normalizeSuiAddress(owner) === normalizeSuiAddress(address)) {
-          throw new Error(
-            "That's this agent's own address. Pass YOUR Passport address (the human owner) — e.g. the one shown at t2000.ai/manage.",
-          );
-        }
-        const { digest } = await runSponsoredTx({
-          keypair: agent.keypair,
-          actor: address,
-          prepareUrl: `${base}/agent/owner/propose`,
-          prepareBody: { address, owner },
-          submitUrl: `${base}/agent/owner/submit`,
-          intent: { action: 'link' },
-        });
-        if (isJsonMode()) {
-          printJson({ agent: address, pendingOwner: owner, digest });
-          return;
-        }
-        printBlank();
-        printSuccess(`Proposed owner: ${truncateAddress(owner)}`);
-        printInfo(
-          `They must confirm: \`t2 agent confirm ${address}\` (or via the console).`,
-        );
-        printKeyValue('Tx', String(digest));
-        printBlank();
-      } catch (error) {
-        handleError(error);
-      }
-    });
-
-  group
-    .command('confirm')
-    .argument('<agent>', 'The agent Sui address to confirm ownership of')
-    .description(
-      'Confirm ownership of an agent that proposed you as its owner. Sponsored, gasless.',
-    )
-    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (agentAddress: string, opts: { key?: string; api?: string }) => {
-      try {
-        const base = opts.api ?? DEFAULT_API_BASE;
-        const owner = await withAgent({ keyPath: opts.key });
-        const address = owner.address();
-        const { digest } = await runSponsoredTx({
-          keypair: owner.keypair,
-          actor: address,
-          prepareUrl: `${base}/agent/owner/confirm`,
-          prepareBody: { owner: address, agent: agentAddress },
-          submitUrl: `${base}/agent/owner/submit`,
-          intent: { action: 'confirm' },
-        });
-        if (isJsonMode()) {
-          printJson({ owner: address, agent: agentAddress, digest });
-          return;
-        }
-        printBlank();
-        printSuccess(`Confirmed ownership of ${truncateAddress(agentAddress)}`);
-        printKeyValue('Tx', String(digest));
-        printBlank();
-      } catch (error) {
-        handleError(error);
-      }
-    });
-
-  group
-    .command('unlink')
-    .argument('<agent>', 'The agent Sui address to renounce ownership of')
-    .description(
-      'Renounce ownership of an agent you own — the record returns to autonomous (public, on-chain). Sponsored, gasless. Re-link = the agent proposes again.',
-    )
-    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (agentAddress: string, opts: { key?: string; api?: string }) => {
-      try {
-        const base = opts.api ?? DEFAULT_API_BASE;
-        const owner = await withAgent({ keyPath: opts.key });
-        const address = owner.address();
-        const { digest } = await runSponsoredTx({
-          keypair: owner.keypair,
-          actor: address,
-          prepareUrl: `${base}/agent/owner/renounce`,
-          prepareBody: { owner: address, agent: agentAddress },
-          submitUrl: `${base}/agent/owner/submit`,
-          intent: { action: 'confirm' },
-        });
-        if (isJsonMode()) {
-          printJson({ owner: address, agent: agentAddress, unlinked: true, digest });
-          return;
-        }
-        printBlank();
-        printSuccess(`Renounced ownership of ${truncateAddress(agentAddress)}`);
-        printInfo('The agent is autonomous again — it can re-propose you anytime.');
-        printKeyValue('Tx', String(digest));
         printBlank();
       } catch (error) {
         handleError(error);

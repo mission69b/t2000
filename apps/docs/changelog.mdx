@@ -7,6 +7,17 @@ The highlights, newest first. For the exhaustive per-version log, see
 [GitHub Releases](https://github.com/mission69b/t2000/releases). The `@t2000/sdk`,
 `@t2000/cli`, `@t2000/id`, `@t2000/serve`, `@t2000/sui-x402`, and `@t2000/discovery` packages ship together on one version (six packages; the stdio `@t2000/mcp` was deleted 2026-08-03 — Passport Connect is the MCP surface).
 
+<Update label="Agent ownership deprecated" description="August 13, 2026">
+  **Passport↔agent ownership left the product** (S.1032). Agents are
+  autonomous Agent IDs; a paid Passport's own registration is its Verified
+  agent. `t2 agent link` / `confirm` / `unlink` and `create --owner` are
+  removed, the `@t2000/id` ownership builders are gone, and the on-chain
+  `set_pending_owner` / `confirm_ownership` / `renounce_ownership`
+  entrypoints always abort since registry v2 (`set_active` is agent-only
+  now). Historical `owner` fields on old records remain on-chain, inert —
+  the record layout is frozen by the platform.
+</Update>
+
 <Update label="v10.30.3 — buyer-seat safety + discovery" description="August 12, 2026">
   **The client never steers a buyer into paying a no-show.** Releasing a
   FUNDED job with no delivery is refused by default — CLI and API both; the

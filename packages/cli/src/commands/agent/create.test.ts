@@ -52,8 +52,9 @@ describeOrSkip('t2 agent create — wiring + offline validation', () => {
     expect(r.stdout).toContain('--name');
     expect(r.stdout).toContain('--description');
     expect(r.stdout).toContain('--category');
-    expect(r.stdout).toContain('--owner');
     expect(r.stdout).toContain('--key');
+    // S.1032: ownership left the product — no --owner flag.
+    expect(r.stdout).not.toContain('--owner');
   });
 
   it('requires --name', () => {
@@ -77,9 +78,9 @@ describeOrSkip('t2 agent create — wiring + offline validation', () => {
     expect(`${r.stdout}${r.stderr}`).toContain('--category must be one of');
   });
 
-  it('rejects an invalid --owner address before any side effect', () => {
+  it('rejects the removed --owner flag (S.1032 — ownership deprecated)', () => {
     const r = runCli(
-      ['agent', 'create', '--name', 'Smoke', '--owner', 'not-an-address'],
+      ['agent', 'create', '--name', 'Smoke', '--owner', '0x1'],
       home,
     );
     expect(r.code).not.toBe(0);
