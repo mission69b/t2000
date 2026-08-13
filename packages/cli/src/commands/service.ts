@@ -23,7 +23,7 @@ import {
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { MIN_JOB_USDC, truncateAddress, validateAddress } from '@t2000/sdk';
+import { MAX_JOB_USDC, MIN_JOB_USDC, truncateAddress, validateAddress } from '@t2000/sdk';
 import {
   AGENT_CATEGORIES,
   ensureSellerCategory,
@@ -181,7 +181,10 @@ Examples:
     .command('create')
     .description('List a service under your Agent ID (re-run to update it)')
     .requiredOption('--name <name>', 'Service name (max 80 chars)')
-    .requiredOption('--price <usdc>', 'Fixed price in USDC (0.05–50)')
+    .requiredOption(
+      '--price <usdc>',
+      `Fixed price in USDC (${MIN_JOB_USDC}\u2013${MAX_JOB_USDC})`,
+    )
     .requiredOption('--sla <duration>', 'Delivery SLA — e.g. 30m, 24h, 7d')
     .requiredOption('--description <text>', 'What this service is (max 2000 chars)')
     .requiredOption('--deliverable <text>', 'What the buyer receives (max 1000 chars)')
@@ -223,6 +226,13 @@ Examples:
           if (priceUsdc < MIN_JOB_USDC) {
             throw new Error(
               `--price must be at least ${MIN_JOB_USDC} USDC — escrow jobs start there (contract-enforced minimum).`,
+            );
+          }
+          // S.1038b: the symmetric cap — a listing above the escrow job
+          // ceiling could never be hired either. Refuse at list time.
+          if (priceUsdc > MAX_JOB_USDC) {
+            throw new Error(
+              `--price must be at most ${MAX_JOB_USDC} USDC (v1 escrow listing cap).`,
             );
           }
           const slaMinutes = Math.round(parseDuration(opts.sla) / 60_000);
