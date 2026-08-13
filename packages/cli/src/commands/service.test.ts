@@ -60,3 +60,70 @@ describe('serviceSellerLabel (S.1017)', () => {
     expect(label).not.toContain('#');
   });
 });
+
+// [S.1038b] `t2 service create` price bounds — the symmetric max joined the
+// existing min preflight; both refuse BEFORE wallet load (dist harness,
+// same pattern as agent/create.test.ts). Bounds come from @t2000/sdk
+// MIN/MAX_JOB_USDC — never a second hardcoded number.
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterAll, beforeAll } from 'vitest';
+import { MAX_JOB_USDC, MIN_JOB_USDC } from '@t2000/sdk';
+
+const CLI = fileURLToPath(new URL('../../dist/index.js', import.meta.url));
+const describeOrSkip = existsSync(CLI) ? describe : describe.skip;
+
+function runCli(
+  args: string[],
+  home: string,
+): { stdout: string; stderr: string; code: number } {
+  const result = spawnSync('node', [CLI, ...args], {
+    env: { ...process.env, HOME: home },
+    encoding: 'utf-8',
+  });
+  return {
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    code: result.status ?? -1,
+  };
+}
+
+describeOrSkip('t2 service create — price bounds (S.1038b)', () => {
+  let home: string;
+  beforeAll(() => {
+    home = mkdtempSync(join(tmpdir(), 'cli-svc-'));
+  });
+  afterAll(() => {
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  const base = [
+    'service',
+    'create',
+    '--name',
+    'Smoke',
+    '--sla',
+    '24h',
+    '--description',
+    'd',
+    '--deliverable',
+    'x',
+    '--requirements',
+    'Topic and angle; target word count; tone; platform.',
+  ];
+
+  it(`rejects --price above MAX_JOB_USDC (${MAX_JOB_USDC}) before any side effect`, () => {
+    const r = runCli([...base, '--price', String(MAX_JOB_USDC + 1)], home);
+    expect(r.code).not.toBe(0);
+    expect(`${r.stdout}${r.stderr}`).toContain('at most');
+  });
+
+  it(`rejects --price below MIN_JOB_USDC (${MIN_JOB_USDC}) before any side effect`, () => {
+    const r = runCli([...base, '--price', String(MIN_JOB_USDC / 5)], home);
+    expect(r.code).not.toBe(0);
+    expect(`${r.stdout}${r.stderr}`).toContain('at least');
+  });
+});
