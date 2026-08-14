@@ -103,6 +103,16 @@ describe('listServices — browse/list filter plumbing', () => {
     expect(url).toContain(`agent=${encodeURIComponent(agent)}`);
     expect(url).toContain('q=market+report');
   });
+
+  it('passes category + limit/offset (S.1041 — directory bucket + paging)', async () => {
+    const fn = mockFetch({ total: 0, services: [] });
+    await listServices(BASE, { category: 'creative', limit: 20, offset: 40 });
+    const url = (fn.mock.calls[0] as unknown[])[0] as string;
+    expect(url).toContain('category=creative');
+    expect(url).toContain('limit=20');
+    expect(url).toContain('offset=40');
+    expect(url).not.toContain('q=');
+  });
 });
 
 describe('assertBuyerRequirements — the shared hire gate (SPEC_ACP_JOB_SPEC_V1 §4.1)', () => {

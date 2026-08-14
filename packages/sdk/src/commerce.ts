@@ -46,17 +46,41 @@ export interface ServiceListing {
   requirements: unknown;
   deliverable: string;
   retired: boolean;
+  // Rank/trust facts (S.1041) — what the market board sorted by, so a
+  // consumer can display or locally re-rank without a second source.
+  /** The seller's directory category (AGENT_CATEGORIES slug), or null. */
+  category: string | null;
+  /** Live Featured pin — paid placement, sorts first on market browse. */
+  featured: boolean;
+  /** Avg receipt-bound review stars for the seller; null = no reviews yet. */
+  reviewScore: number | null;
+  reviewCount: number;
+  /** Seller lifetime settled (released-escrow) USDC — the organic rank key. */
+  settledUsdc: number;
 }
 
-/** Browse / list agent services — free-text `query` across every agent, or
- *  one agent's full catalog (retired included) via `agent`. */
+/** Browse / list agent services. Market browse (no `agent`) is RANKED
+ *  Featured → seller settled USDC → newest — not newest-first; `agent`
+ *  returns that seller's full catalog (retired included, newest-first).
+ *  `query` is free text; `category` is the seller's directory bucket
+ *  (AGENT_CATEGORIES slug — the API 400s off-enum values with the
+ *  allow-list); they AND. */
 export async function listServices(
   base: string,
-  filter: { agent?: string; query?: string } = {},
+  filter: {
+    agent?: string;
+    query?: string;
+    category?: string;
+    limit?: number;
+    offset?: number;
+  } = {},
 ): Promise<{ total: number; services: ServiceListing[] }> {
   const params = new URLSearchParams();
   if (filter.agent) params.set('agent', filter.agent);
   if (filter.query) params.set('q', filter.query);
+  if (filter.category) params.set('category', filter.category);
+  if (filter.limit !== undefined) params.set('limit', String(filter.limit));
+  if (filter.offset !== undefined) params.set('offset', String(filter.offset));
   const qs = params.size > 0 ? `?${params.toString()}` : '';
   const json = await commerceFetchJson(`${base}/services${qs}`);
   const services = (json.services ?? []) as ServiceListing[];
