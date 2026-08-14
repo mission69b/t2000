@@ -1,6 +1,7 @@
 import { bcs } from '@mysten/sui/bcs';
 import { Transaction } from '@mysten/sui/transactions';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { MAINNET_AGENT_ID_PACKAGE_ID } from '@t2000/id';
 import { setSponsoredTxGuard } from '@t2000/sdk';
 import {
   MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
@@ -128,6 +129,27 @@ const ACTION_TARGETS: Record<
     module: 'opening',
     functions: ['refund_unclaimed'],
   },
+  // Agent ID registry verbs (S.1049) — these used to skip Move-target
+  // verification entirely via a HOST_PINNED_ONLY carve-out, which meant
+  // `register` signed host-prepared bytes blind. Same rule as escrow now:
+  // the allowlist pins the MAINNET literal from @t2000/id — deliberately
+  // NOT the env-overridable AGENT_ID_PACKAGE_ID, which an attacker's
+  // environment could point at their own package.
+  register: {
+    pkgs: [MAINNET_AGENT_ID_PACKAGE_ID],
+    module: 'registry',
+    functions: ['register'],
+  },
+  update: {
+    pkgs: [MAINNET_AGENT_ID_PACKAGE_ID],
+    module: 'registry',
+    functions: ['update'],
+  },
+  'set-active': {
+    pkgs: [MAINNET_AGENT_ID_PACKAGE_ID],
+    module: 'registry',
+    functions: ['set_active'],
+  },
 };
 
 /** The Sui framework package, in the padded form decoded PTBs report. */
@@ -162,11 +184,6 @@ const FRAMEWORK_PRELUDE: Record<string, ReadonlySet<string>> = {
   coin: new Set(['redeem_funds', 'into_balance', 'zero', 'destroy_zero']),
   balance: new Set(['redeem_funds', 'zero']),
 };
-
-/** Verbs that are NOT marketplace escrow calls and are verified by host pin
- *  alone — the registry package is not in the escrow allowlist, and its args
- *  aren't extractable here. Narrow and named rather than a silent fallthrough. */
-const HOST_PINNED_ONLY = new Set(['register', 'link', 'confirm']);
 
 export type TxIntent = {
   /** The verb the user typed, as sent to the prepare endpoint. */
@@ -244,9 +261,6 @@ export function assertTxMatchesIntent(
   // meaningless (a local chain publishes its own), so the host flag is the
   // only lock left. That is the operator's explicit choice.
   if (opts.allowUntrusted) {
-    return;
-  }
-  if (HOST_PINNED_ONLY.has(intent.action)) {
     return;
   }
 

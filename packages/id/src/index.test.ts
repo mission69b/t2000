@@ -38,3 +38,35 @@ describe('@t2000/id builders', () => {
     expect(Object.keys(mod).filter((k) => /[Oo]wner/.test(k))).toEqual([]);
   });
 });
+
+// S.1049 — MAINNET trust anchors: literals, never env-influenced. The
+// builder ids may follow AGENT_ID_PACKAGE_ID env for testnet/dev; the
+// MAINNET_* pair must not move, because signature-time verification (the
+// CLI intent guard) checks prepared bytes against THEM.
+describe('MAINNET trust anchors (S.1049)', () => {
+  it('are the pinned mainnet literals', async () => {
+    const mod = await import('./index.js');
+    expect(mod.MAINNET_AGENT_ID_PACKAGE_ID).toBe(
+      '0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7',
+    );
+    expect(mod.MAINNET_AGENT_ID_REGISTRY_ID).toBe(
+      '0xf41683aa9f4c121f34e4082c35180b0efdbd6d5293e3c88b1bcfa45ddf5c4119',
+    );
+  });
+
+  it('a poisoned env moves the BUILDER id, never the MAINNET literal', async () => {
+    const { vi } = await import('vitest');
+    vi.resetModules();
+    process.env.AGENT_ID_PACKAGE_ID = `0x${'e'.repeat(64)}`;
+    try {
+      const fresh = await import('./index.js');
+      expect(fresh.AGENT_ID_PACKAGE_ID).toBe(`0x${'e'.repeat(64)}`);
+      expect(fresh.MAINNET_AGENT_ID_PACKAGE_ID).toBe(
+        '0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7',
+      );
+    } finally {
+      delete process.env.AGENT_ID_PACKAGE_ID;
+      vi.resetModules();
+    }
+  });
+});

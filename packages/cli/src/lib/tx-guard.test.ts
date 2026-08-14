@@ -1,9 +1,10 @@
 import { Transaction } from '@mysten/sui/transactions';
+import { MAINNET_AGENT_ID_PACKAGE_ID } from '@t2000/id';
 import {
   MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID,
   MAINNET_A2A_ESCROW_PACKAGE_ID,
 } from '@t2000/sdk';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runSponsoredTx } from './agent-register.js';
 import {
   assertSigningHostAllowed,
@@ -472,5 +473,92 @@ describe('the funnel never signs what it refused', () => {
       }),
     ).resolves.toEqual({ digest: '0xdead' });
     expect(signTransaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── S.1049 — Agent ID verbs join the Move-target allowlist ─────────────────
+// `register` used to be a HOST_PINNED_ONLY carve-out that returned before
+// any package/module/function check — the wallet signed host-prepared
+// registry bytes blind. Now register/update/set-active verify against the
+// MAINNET agent_id literal, and the carve-out set is gone entirely.
+
+describe('B — Agent ID registry verbs (S.1049)', () => {
+  const REGISTRY = async (fn: string) =>
+    buildTxB64(`${MAINNET_AGENT_ID_PACKAGE_ID}::registry::${fn}`);
+
+  it('register allows the mainnet registry::register', async () => {
+    expect(() =>
+      assertTxMatchesIntent(awaited.register, { action: 'register' }),
+    ).not.toThrow();
+  });
+
+  it('update allows registry::update; set-active allows registry::set_active', async () => {
+    expect(() =>
+      assertTxMatchesIntent(awaited.update, { action: 'update' }),
+    ).not.toThrow();
+    expect(() =>
+      assertTxMatchesIntent(awaited.setActive, { action: 'set-active' }),
+    ).not.toThrow();
+  });
+
+  it('register refuses the wrong function, module, and package', async () => {
+    expect(() =>
+      assertTxMatchesIntent(awaited.setActive, { action: 'register' }),
+    ).toThrow(IntentMismatchError);
+    const escrowCreate = await buildTxB64(
+      `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`,
+    );
+    expect(() =>
+      assertTxMatchesIntent(escrowCreate, { action: 'register' }),
+    ).toThrow(IntentMismatchError);
+    const evil = await buildTxB64(`${EVIL_PACKAGE}::registry::register`);
+    expect(() =>
+      assertTxMatchesIntent(evil, { action: 'register' }),
+    ).toThrow(IntentMismatchError);
+  });
+
+  it('a poisoned AGENT_ID_PACKAGE_ID env cannot widen the allowlist', async () => {
+    // The guard pins the MAINNET literal at import time; the env-aware
+    // builder constant is deliberately not consulted. Re-evaluate both
+    // modules under a poisoned env and prove the fresh guard still refuses
+    // the poisoned package and still accepts mainnet.
+    vi.resetModules();
+    process.env.AGENT_ID_PACKAGE_ID = EVIL_PACKAGE;
+    try {
+      const freshGuard = await import('./tx-guard.js');
+      const evil = await buildTxB64(`${EVIL_PACKAGE}::registry::register`);
+      expect(() =>
+        freshGuard.assertTxMatchesIntent(evil, { action: 'register' }),
+      ).toThrow(freshGuard.IntentMismatchError);
+      expect(() =>
+        freshGuard.assertTxMatchesIntent(awaited.register, {
+          action: 'register',
+        }),
+      ).not.toThrow();
+    } finally {
+      delete process.env.AGENT_ID_PACKAGE_ID;
+      vi.resetModules();
+    }
+  });
+
+  it('link / confirm are unknown verbs now — refused, not silently host-pinned', async () => {
+    for (const action of ['link', 'confirm']) {
+      expect(() =>
+        assertTxMatchesIntent(awaited.register, { action }),
+      ).toThrow(/not a verb this wallet knows how to verify/);
+    }
+  });
+
+  // Built once — Transaction.build() is async and `it` bodies above want
+  // sync assertion shapes for the poisoned-env re-import.
+  const awaited: { register: string; update: string; setActive: string } = {
+    register: '',
+    update: '',
+    setActive: '',
+  };
+  beforeAll(async () => {
+    awaited.register = await REGISTRY('register');
+    awaited.update = await REGISTRY('update');
+    awaited.setActive = await REGISTRY('set_active');
   });
 });

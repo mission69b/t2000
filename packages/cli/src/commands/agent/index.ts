@@ -22,6 +22,7 @@ import {
 import { registerWallet } from '../../lib/agent-register.js';
 import {
   assertSigningHostAllowed,
+  assertTxMatchesIntent,
   isAllowUntrustedApi,
 } from '../../lib/tx-guard.js';
 import { withAgent } from '../../lib/with-agent.js';
@@ -262,11 +263,12 @@ Subcommands:
 
           // Two-phase sponsored flow, inline (not runSponsoredTx) so a failed
           // probe surfaces its per-check findings, not just one message.
-          // Inline does NOT mean unguarded: the host pin still applies, and
-          // it has to run before the address is sent (S.930). Intent checking
-          // stops at the host for this verb — it calls the registry package,
-          // which is outside the escrow allowlist, so claiming to verify its
-          // shape here would be theatre.
+          // Inline does NOT mean unguarded: the host pin runs before the
+          // address is sent (S.930), and since S.1049 the prepared bytes are
+          // intent-verified too — endpoint list/remove is a registry
+          // `update`, and the guard's allowlist pins the MAINNET agent_id
+          // package literal (the old comment calling that "theatre" predates
+          // the registry joining ACTION_TARGETS).
           assertSigningHostAllowed(base, isAllowUntrustedApi());
           const prepRes = await fetch(`${base}/agent/endpoint/prepare`, {
             method: 'POST',
@@ -324,6 +326,13 @@ Subcommands:
           if (!(prep.nonce && prep.txBytes)) {
             throw new Error('Failed to prepare the listing.');
           }
+          // S.1049: the server proposed; check it proposed a registry
+          // `update` (endpoint prepare builds buildUpdateTx) before signing.
+          assertTxMatchesIntent(
+            prep.txBytes,
+            { action: 'update' },
+            { allowUntrusted: isAllowUntrustedApi() },
+          );
           const bytes = new Uint8Array(Buffer.from(prep.txBytes, 'base64'));
           const { signature } = await agent.keypair.signTransaction(bytes);
           const sub = await fetchJson(`${base}/agent/endpoint/submit`, {
