@@ -18,21 +18,36 @@ import { deriveDynamicFieldID } from '@mysten/sui/utils';
  * Deployed on Sui mainnet 2026-06-29. Override via env for testnet/dev.
  */
 
-/** The published `agent_id` package id — pin the LATEST upgrade id ONLY
- *  (the S.1019 rule; event/type anchors stay on the original package
- *  `0x7669be20…be9a45e9`, which remains callable for its own functions).
- *  LATEST = the S.1032 v2 upgrade (2026-08-13, ownership deprecated;
- *  Registry migrated to version 2 — upgrade digest 7ZUiRi48…, migrate
- *  digest 97sNqgt9…). The previous id `0x78d36506…d15451` now aborts
+/** MAINNET trust anchor (S.1049 — the S.930 escrow pattern): the published
+ *  `agent_id` package id as a LITERAL, never `process.env`. Signature-time
+ *  verification (the CLI intent guard's allowlist) imports THIS — reading
+ *  the env-aware constant below would let an attacker who controls the
+ *  environment supply both the transaction and the yardstick.
+ *
+ *  Pin the LATEST upgrade id ONLY (the S.1019 rule; event/type anchors stay
+ *  on the original package `0x7669be20…be9a45e9`, which remains callable for
+ *  its own functions). LATEST = the S.1032 v2 upgrade (2026-08-13, ownership
+ *  deprecated; Registry migrated to version 2 — upgrade digest 7ZUiRi48…,
+ *  migrate digest 97sNqgt9…). The previous id `0x78d36506…d15451` now aborts
  *  EWrongVersion on every mutator. */
-export const AGENT_ID_PACKAGE_ID =
-  process.env.AGENT_ID_PACKAGE_ID ??
+export const MAINNET_AGENT_ID_PACKAGE_ID =
   '0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7';
 
-/** The shared `Registry` object id. */
-export const AGENT_ID_REGISTRY_ID =
-  process.env.AGENT_ID_REGISTRY_ID ??
+/** MAINNET trust anchor: the shared `Registry` object id (same rule —
+ *  literal, never env). */
+export const MAINNET_AGENT_ID_REGISTRY_ID =
   '0xf41683aa9f4c121f34e4082c35180b0efdbd6d5293e3c88b1bcfa45ddf5c4119';
+
+/** BUILDER id — env-overridable for testnet/dev. NOT a trust anchor:
+ *  transaction BUILDERS may read it so a dev chain works, but guards and
+ *  allowlists must use MAINNET_AGENT_ID_PACKAGE_ID (S.1049). */
+export const AGENT_ID_PACKAGE_ID =
+  process.env.AGENT_ID_PACKAGE_ID ?? MAINNET_AGENT_ID_PACKAGE_ID;
+
+/** BUILDER id — env-overridable for testnet/dev; same not-a-trust-anchor
+ *  rule as AGENT_ID_PACKAGE_ID. */
+export const AGENT_ID_REGISTRY_ID =
+  process.env.AGENT_ID_REGISTRY_ID ?? MAINNET_AGENT_ID_REGISTRY_ID;
 
 const CLOCK_ID = '0x6';
 const MODULE = 'registry';

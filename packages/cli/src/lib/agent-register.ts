@@ -39,8 +39,9 @@ async function postJson(
 
 /**
  * Generic sponsored-tx round-trip: prepare (server builds the tx) → sign the
- * returned bytes → submit (server sponsor-co-signs + executes). Shared by the
- * ownership-link commands (`link`/`confirm`). Returns the tx digest.
+ * returned bytes → submit (server sponsor-co-signs + executes). (The
+ * ownership-link callers left with S.1032; job verbs ride this today.)
+ * Returns the tx digest.
  */
 export async function runSponsoredTx(opts: {
   keypair: SigningKeypair;
