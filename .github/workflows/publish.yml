@@ -148,7 +148,19 @@ jobs:
               echo "…skipping @t2000/${PKG}@${VERSION} (already published before this run)"
               continue
             fi
-            if npm view "@t2000/${PKG}@${VERSION}" dist.attestations.url >/dev/null 2>&1 &&                [ -n "$(npm view "@t2000/${PKG}@${VERSION}" dist.attestations.url 2>/dev/null)" ]; then
+            # Registry attestation indexing lags the publish by a few seconds
+            # — the v10.32.1 run false-failed on the LAST-published package
+            # ~12s after its sigstore entry. Retry before declaring missing.
+            OK=0
+            for ATTEMPT in 1 2 3 4 5; do
+              if [ -n "$(npm view "@t2000/${PKG}@${VERSION}" dist.attestations.url 2>/dev/null)" ]; then
+                OK=1
+                break
+              fi
+              echo "…@t2000/${PKG}@${VERSION} attestations not visible yet (attempt ${ATTEMPT}/5)"
+              sleep 15
+            done
+            if [ "$OK" = "1" ]; then
               echo "✓ @t2000/${PKG}@${VERSION} has provenance attestations"
             else
               echo "✗ @t2000/${PKG}@${VERSION} published WITHOUT provenance attestations"
