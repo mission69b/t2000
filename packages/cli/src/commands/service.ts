@@ -382,15 +382,21 @@ export type ServicesScope =
  *  beta #93): a 0x address or agent ref (#N / @handle) is a PRINCIPAL scope
  *  and goes to `?agent=` — free-text `?q=` never matches hex, so the old
  *  path answered "No services match 0x…" for a seller with live listings.
- *  Anything else stays a text search. Pure except the one resolver hop for
+ *  Anything else stays a text search. An optional directory `category`
+ *  (S.1041) ANDs onto any scope. Pure except the one resolver hop for
  *  #N / @handle (the same endpoint the site uses). */
 export async function resolveServicesQuery(
   base: string,
   query: string | undefined,
+  category?: string,
 ): Promise<{ url: string; scope: ServicesScope }> {
+  const withCategory = (url: string): string =>
+    category
+      ? `${url}${url.includes('?') ? '&' : '?'}category=${encodeURIComponent(category)}`
+      : url;
   const q = query?.trim();
   if (!q) {
-    return { url: `${base}/services`, scope: { kind: 'all' } };
+    return { url: withCategory(`${base}/services`), scope: { kind: 'all' } };
   }
   if (q.startsWith('0x')) {
     // One address check for the whole CLI — validateAddress; invalid hex
@@ -398,7 +404,7 @@ export async function resolveServicesQuery(
     try {
       const agent = validateAddress(q);
       return {
-        url: `${base}/services?agent=${encodeURIComponent(agent)}`,
+        url: withCategory(`${base}/services?agent=${encodeURIComponent(agent)}`),
         scope: { kind: 'agent', agent },
       };
     } catch {
@@ -407,12 +413,12 @@ export async function resolveServicesQuery(
   } else if (looksLikeAgentRefValue(q)) {
     const ref = await resolveAgentRef(base, q);
     return {
-      url: `${base}/services?agent=${encodeURIComponent(ref.address)}`,
+      url: withCategory(`${base}/services?agent=${encodeURIComponent(ref.address)}`),
       scope: { kind: 'agent', agent: ref.address, numericId: ref.numericId },
     };
   }
   return {
-    url: `${base}/services?q=${encodeURIComponent(q)}`,
+    url: withCategory(`${base}/services?q=${encodeURIComponent(q)}`),
     scope: { kind: 'search', q },
   };
 }
@@ -428,12 +434,16 @@ function scopeLabel(scope: ServicesScope): string {
 
 function registerDiscovery(command: Command, opts?: { deprecated?: boolean }) {
   command
-    .argument('[query]', 'What you need — free text, or a SELLER scope: 0x… address, #id, or @handle (empty = everything)')
+    .argument('[query]', 'What you need — free text, or a SELLER scope: 0x… address, #id, or @handle (empty = everything, ranked featured → most settled → newest)')
+    .option('--category <category>', `Seller directory category (${AGENT_CATEGORIES.join(' | ')}) — ANDs with the query`)
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (query: string | undefined, cmdOpts: { api?: string }) => {
+    .action(async (query: string | undefined, cmdOpts: { api?: string; category?: string }) => {
       try {
         const base = cmdOpts.api ?? DEFAULT_API_BASE;
-        const { url, scope } = await resolveServicesQuery(base, query);
+        // Fail fast on an off-enum category (same local mirror the sell
+        // gate uses) — the API would 400 with the same allow-list.
+        const category = cmdOpts.category ? parseCategory(cmdOpts.category) : undefined;
+        const { url, scope } = await resolveServicesQuery(base, query, category);
         const json = await fetchJson(url);
         const all = (json.services ?? []) as ServiceListing[];
         // Buyer discovery is the ACTIVE board: `?agent=` serves the seller's
@@ -461,8 +471,10 @@ function registerDiscovery(command: Command, opts?: { deprecated?: boolean }) {
             scope.kind === 'agent'
               ? `No active services for ${scopeLabel(scope)}.`
               : scope.kind === 'search'
-                ? `No services match "${scope.q}".`
-                : 'No services listed yet.',
+                ? `No services match "${scope.q}"${category ? ` in ${category}` : ''}.`
+                : category
+                  ? `No services in ${category} yet.`
+                  : 'No services listed yet.',
           );
           printBlank();
           return;
@@ -494,7 +506,7 @@ export function registerServices(program: Command) {
   registerDiscovery(
     program
       .command('services')
-      .description('Find agent Services to buy — the t2000 A2A marketplace'),
+      .description('Find agent Services to buy — the t2000 A2A marketplace (ranked featured → most settled → newest; --category for directory buckets)'),
   );
 }
 

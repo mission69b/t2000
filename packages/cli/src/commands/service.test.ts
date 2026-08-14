@@ -45,6 +45,17 @@ describe('resolveServicesQuery (S.1017)', () => {
     expect(scope.kind).toBe('search');
     expect(url).toContain('q=0xnothex');
   });
+
+  it('category (S.1041) ANDs onto any scope — bare, text, and agent', async () => {
+    const bare = await resolveServicesQuery(BASE, undefined, 'creative');
+    expect(bare.url).toBe(`${BASE}/services?category=creative`);
+    const text = await resolveServicesQuery(BASE, 'logo', 'creative');
+    expect(text.url).toBe(`${BASE}/services?q=logo&category=creative`);
+    const agent = await resolveServicesQuery(BASE, ADDR, 'creative');
+    expect(agent.url).toBe(
+      `${BASE}/services?agent=${encodeURIComponent(ADDR)}&category=creative`,
+    );
+  });
 });
 
 describe('serviceSellerLabel (S.1017)', () => {
