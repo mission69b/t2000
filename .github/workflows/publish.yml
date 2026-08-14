@@ -74,7 +74,20 @@ jobs:
       # https://www.npmjs.com/package/@t2000/sdk?activeTab=provenance and
       # provide cryptographic linkage from the published tarball back to
       # the GitHub Actions run that produced it.
-      # HARD-FAIL on the dialect + discovery publishes — no continue-on-error.
+      #
+      # S.1049 (Aegis X-1): despite the --provenance flag, 10.32.0 shipped
+      # with NO dist.attestations — pnpm's recursive `--filter … publish`
+      # does not reliably forward the flag to the underlying npm publish
+      # (a direct `pnpm publish` does). Fixes: NPM_CONFIG_PROVENANCE env on
+      # every publish step (npm reads config regardless of flag routing);
+      # ALL six steps now hard-fail on anything but the already-published
+      # E409 (continue-on-error swallowed real errors); and a Verify step
+      # below fails the job when attestations did not attach to a version
+      # this run actually published. If verification still fails, the
+      # founder-ops fallback is npm Trusted Publishing: on npmjs.com, each
+      # @t2000/* package → Settings → Publishing access → add this repo's
+      # publish.yml as a Trusted Publisher (OIDC), then drop NPM_TOKEN.
+      # HARD-FAIL on every publish — no continue-on-error.
       # The @t2000/x402 v10.20.0 E409 (publishing onto an unpublish tombstone)
       # was swallowed by continue-on-error, so serve/sdk shipped depending on
       # a package that didn't exist. An already-published version is the ONLY
@@ -84,36 +97,68 @@ jobs:
           pnpm --filter @t2000/sui-x402 publish --no-git-checks --access public --provenance 2>&1 | tee /tmp/pub-sui-x402.log ||             grep -q "You cannot publish over the previously published versions" /tmp/pub-sui-x402.log
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish @t2000/discovery
         run: |
           pnpm --filter @t2000/discovery publish --no-git-checks --access public --provenance 2>&1 | tee /tmp/pub-discovery.log ||             grep -q "You cannot publish over the previously published versions" /tmp/pub-discovery.log
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish @t2000/sdk
-        run: pnpm --filter @t2000/sdk publish --no-git-checks --access public --provenance
+        run: |
+          pnpm --filter @t2000/sdk publish --no-git-checks --access public --provenance 2>&1 | tee /tmp/pub-sdk.log ||             grep -q "You cannot publish over the previously published versions" /tmp/pub-sdk.log
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish @t2000/cli
-        run: pnpm --filter @t2000/cli publish --no-git-checks --access public --provenance
+        run: |
+          pnpm --filter @t2000/cli publish --no-git-checks --access public --provenance 2>&1 | tee /tmp/pub-cli.log ||             grep -q "You cannot publish over the previously published versions" /tmp/pub-cli.log
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish @t2000/id
-        run: pnpm --filter @t2000/id publish --no-git-checks --access public --provenance
+        run: |
+          pnpm --filter @t2000/id publish --no-git-checks --access public --provenance 2>&1 | tee /tmp/pub-id.log ||             grep -q "You cannot publish over the previously published versions" /tmp/pub-id.log
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish @t2000/serve
-        run: pnpm --filter @t2000/serve publish --no-git-checks --access public --provenance
+        run: |
+          pnpm --filter @t2000/serve publish --no-git-checks --access public --provenance 2>&1 | tee /tmp/pub-serve.log ||             grep -q "You cannot publish over the previously published versions" /tmp/pub-serve.log
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true
+          NPM_CONFIG_PROVENANCE: 'true'
+
+      # S.1049 (Aegis X-1): provenance intent without registry attestations
+      # is false comfort — verify what npm actually serves. Fails the job
+      # for any package this run NEWLY published (its log lacks the E409
+      # marker) whose version has no dist.attestations. Idempotent re-runs
+      # of an old, pre-provenance version skip cleanly.
+      - name: Verify provenance attached
+        run: |
+          VERSION=$(node -p "require('./packages/sdk/package.json').version")
+          FAIL=0
+          for PKG in sui-x402 discovery sdk cli id serve; do
+            if grep -q "You cannot publish over the previously published versions" "/tmp/pub-${PKG}.log"; then
+              echo "…skipping @t2000/${PKG}@${VERSION} (already published before this run)"
+              continue
+            fi
+            if npm view "@t2000/${PKG}@${VERSION}" dist.attestations.url >/dev/null 2>&1 &&                [ -n "$(npm view "@t2000/${PKG}@${VERSION}" dist.attestations.url 2>/dev/null)" ]; then
+              echo "✓ @t2000/${PKG}@${VERSION} has provenance attestations"
+            else
+              echo "✗ @t2000/${PKG}@${VERSION} published WITHOUT provenance attestations"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" = "1" ]; then
+            echo "Provenance did not attach — see the S.1049 comment above (NPM_CONFIG_PROVENANCE / Trusted Publishing)."
+            exit 1
+          fi
 
   release:
     name: GitHub Release

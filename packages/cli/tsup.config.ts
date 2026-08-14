@@ -5,7 +5,7 @@ export default defineConfig({
   format: ['esm'],
   dts: false,
   clean: true,
-  sourcemap: true,
+  sourcemap: false,
   // Bundle ALL deps so the CLI is a self-contained binary. Fixes Node 25+ ESM
   // strictness when npm flattens transitive deps in global installs.
   noExternal: [/.*/],

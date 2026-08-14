@@ -56,8 +56,11 @@
     "vitest": "^3"
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "@t2000/id": "workspace:^",
+    "@t2000/id": "workspace:*",
     "qrcode": "^1.5.4"
   }
 }
