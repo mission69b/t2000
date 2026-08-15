@@ -43,11 +43,14 @@ module a2a_escrow::reputation;
 use a2a_escrow::escrow::{Self, AdminCap, FeeConfig, Job};
 use sui::clock::Clock;
 use sui::derived_object;
+use sui::dynamic_field as df;
 use sui::event;
 use sui::table::{Self, Table};
 
-// === Proven thresholds (S.1054 v1 — protocol constants, one SSOT) ===
-/// `claim_policy = 1` (and the floor of `2`): minimum on-chain reviews.
+// === Proven thresholds (protocol constants, one SSOT) ===
+/// `claim_policy = 1` (and the floor of `2`). Since S.1062 this is the
+/// DISTINCT-BUYER floor (was raw review count in v1) — the numeric value
+/// is unchanged at 3; the name survives for the published surface.
 const PROVEN_MIN_REVIEWS: u64 = 3;
 /// `claim_policy = 2`: minimum average stars, scaled ×10 (40 = 4.0★).
 const PROVEN_MIN_AVG_STARS_X10: u64 = 40;
@@ -98,6 +101,23 @@ public struct AgentScore has key {
     updated_at_ms: u64,
 }
 
+// === v2 distinct-buyer state (S.1062) — DFs on `AgentScore.id` ===
+// Live scores cannot grow struct fields under a compatible upgrade (the
+// FeeConfig-DF house rule), and `submit_review`'s frozen signature only
+// carries `&TxContext` — so instead of one Table-carrying DF (whose lazy
+// create would need `&mut TxContext`), membership + count are plain
+// dynamic fields on the score UID: same O(1)/unbounded properties (every
+// Table entry IS a DF), zero signature changes, no migrate of live
+// objects. NO GRANDFATHER: pre-S.1062 reviews never seed these — an
+// agent's distinct count starts at 0 and grows only from post-upgrade
+// review writes (founder lock: no AdminCap/backfill mint).
+
+/// DF key → `u64`: how many distinct buyer addresses have contributed a
+/// star review since S.1062. Missing ⇒ 0.
+public struct DistinctCountKey has copy, drop, store {}
+/// DF key → `bool`: this buyer has already counted toward distinct.
+public struct BuyerSeenKey has copy, drop, store { buyer: address }
+
 // === Events (the indexer's score read-model is built from these) ===
 public struct ScoreBoardCreated has copy, drop {
     board_id: ID,
@@ -110,6 +130,8 @@ public struct ScoreCreated has copy, drop {
 }
 /// Emitted on every review write, first OR edit — carries the post-write
 /// aggregates so the read-model never has to fetch the object.
+/// Layout FROZEN at v6 (event structs can't grow under compatible
+/// upgrade) — v2 consumers read the `ReviewSubmittedV2` sibling.
 public struct ReviewSubmitted has copy, drop {
     score_id: ID,
     agent: address,
@@ -120,6 +142,24 @@ public struct ReviewSubmitted has copy, drop {
     previous_stars: u8,
     review_count: u64,
     stars_sum: u64,
+    timestamp_ms: u64,
+}
+
+/// S.1062 sibling of `ReviewSubmitted` (same fields + `distinct_buyers`,
+/// emitted together on every write) — a NEW struct because the v6 event's
+/// layout is frozen. Defining id = the S.1062 upgrade package; indexers
+/// pin that id and prefer this event.
+public struct ReviewSubmittedV2 has copy, drop {
+    score_id: ID,
+    agent: address,
+    job_id: ID,
+    buyer: address,
+    stars: u8,
+    previous_stars: u8,
+    review_count: u64,
+    stars_sum: u64,
+    /// Post-write distinct-buyer count (S.1062 — the Proven gate input).
+    distinct_buyers: u64,
     timestamp_ms: u64,
 }
 
@@ -223,11 +263,23 @@ fun apply_review(score: &mut AgentScore, job_id: ID, buyer: address, stars: u8, 
         score.review_count = score.review_count + 1;
         0
     };
+    // S.1062: distinct-buyer tracking — first CONTRIBUTION for a job only
+    // (star edits never move distinct), and each buyer counts once ever.
+    if (previous_stars == 0 && !df::exists(&score.id, BuyerSeenKey { buyer })) {
+        df::add(&mut score.id, BuyerSeenKey { buyer }, true);
+        if (df::exists(&score.id, DistinctCountKey {})) {
+            let count: &mut u64 = df::borrow_mut(&mut score.id, DistinctCountKey {});
+            *count = *count + 1;
+        } else {
+            df::add(&mut score.id, DistinctCountKey {}, 1u64);
+        }
+    };
     score.job_stars.add(job_id, stars);
     score.stars_sum = score.stars_sum + (stars as u64);
     score.updated_at_ms = now;
+    let score_id = score.id.to_inner();
     event::emit(ReviewSubmitted {
-        score_id: score.id.to_inner(),
+        score_id,
         agent: score.agent,
         job_id,
         buyer,
@@ -237,24 +289,42 @@ fun apply_review(score: &mut AgentScore, job_id: ID, buyer: address, stars: u8, 
         stars_sum: score.stars_sum,
         timestamp_ms: now,
     });
+    event::emit(ReviewSubmittedV2 {
+        score_id,
+        agent: score.agent,
+        job_id,
+        buyer,
+        stars,
+        previous_stars,
+        review_count: score.review_count,
+        stars_sum: score.stars_sum,
+        distinct_buyers: distinct_buyers(score),
+        timestamp_ms: now,
+    });
 }
 
 // === Proven predicates (read by `opening::claim_proven`) ===
 
-/// `claim_policy = 1` — Proven: at least `PROVEN_MIN_REVIEWS` on-chain
-/// reviews. No score object ⇒ the claim entry can't even be called — the
-/// correct "count 0" outcome.
-public fun meets_min_reviews(score: &AgentScore): bool {
-    score.review_count >= PROVEN_MIN_REVIEWS
+/// `claim_policy = 1` — Proven (v2, S.1062): reviews from at least
+/// `PROVEN_MIN_REVIEWS` DISTINCT buyers — one friendly buyer ×3 no longer
+/// unlocks Proven. No score object ⇒ the claim entry can't even be
+/// called — the correct "zero" outcome. NO GRANDFATHER: distinct starts
+/// at 0 for pre-S.1062 scores and grows only from new review writes.
+public fun meets_proven(score: &AgentScore): bool {
+    distinct_buyers(score) >= PROVEN_MIN_REVIEWS
 }
 
-/// `claim_policy = 2` — Proven · 4★+: policy 1 AND average ≥ 4.0. Strictly
-/// stronger than plain Proven (the prompt's "require both" preset): an
-/// average over fewer than `PROVEN_MIN_REVIEWS` reviews is noise, and a gate
-/// labeled 4★+ must never admit an agent plain Proven would refuse. Integer
-/// math — `sum × 10 ≥ count × 40` — no division, no rounding.
+/// v1 name — kept because published public signatures are frozen; same
+/// predicate as `meets_proven` since S.1062 (never the old review_count
+/// floor: that would let old callers bypass distinct buyers).
+public fun meets_min_reviews(score: &AgentScore): bool { meets_proven(score) }
+
+/// `claim_policy = 2` — Proven · 4★+: Proven (distinct floor) AND average
+/// ≥ 4.0 over `review_count`/`stars_sum` (star math unchanged). Strictly
+/// stronger than plain Proven. Integer math — `sum × 10 ≥ count × 40` —
+/// no division, no rounding. (Distinct ≥ 3 implies review_count ≥ 3.)
 public fun meets_min_avg(score: &AgentScore): bool {
-    meets_min_reviews(score) &&
+    meets_proven(score) &&
         score.stars_sum * AVG_SCALE >= score.review_count * PROVEN_MIN_AVG_STARS_X10
 }
 
@@ -262,6 +332,21 @@ public fun meets_min_avg(score: &AgentScore): bool {
 public fun agent(score: &AgentScore): address { score.agent }
 public fun review_count(score: &AgentScore): u64 { score.review_count }
 public fun stars_sum(score: &AgentScore): u64 { score.stars_sum }
+
+/// Distinct buyer addresses that have contributed a review since S.1062
+/// (missing DF ⇒ 0 — pre-upgrade reviews never grandfather in).
+public fun distinct_buyers(score: &AgentScore): u64 {
+    if (df::exists(&score.id, DistinctCountKey {})) {
+        *df::borrow(&score.id, DistinctCountKey {})
+    } else {
+        0
+    }
+}
+
+/// Whether this buyer already counts toward the seller's distinct total.
+public fun has_buyer_reviewed(score: &AgentScore, buyer: address): bool {
+    df::exists(&score.id, BuyerSeenKey { buyer })
+}
 public fun has_job_review(score: &AgentScore, job_id: ID): bool {
     score.job_stars.contains(job_id)
 }

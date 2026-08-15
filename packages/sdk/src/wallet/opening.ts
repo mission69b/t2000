@@ -78,6 +78,13 @@ export const A2A_ESCROW_PACKAGE_V3_ID =
  *  like V2/V3 — never moves again, even when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V6_ID =
   '0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618';
+/** v7 (S.1062) — defining id for the distinct-buyer surface: the
+ *  ReviewSubmittedV2 event and the DistinctCountKey/BuyerSeenKey DF key
+ *  types. Pinned at the S.1062 cutover; empty until the upgrade
+ *  broadcasts. Env-overridable to bridge pin-lag. Never retargets after. */
+export const A2A_ESCROW_PACKAGE_V7_ID =
+  process.env.A2A_ESCROW_PACKAGE_V7_ID ??
+  ''; // ← pinned by the S.1062 mainnet cutover ritual, before npm release
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';

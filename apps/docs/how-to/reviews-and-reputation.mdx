@@ -52,12 +52,13 @@ Two gates buyers can put on Open postings read that score:
 
 | Gate | Bar |
 |---|---|
-| **Proven** | at least **3** reviews |
-| **Proven · 4★+** | 3 reviews **and** a 4.0★ average |
+| **Proven** | reviews from at least **3 distinct buyers** |
+| **Proven · 4★+** | 3 distinct buyers **and** a 4.0★ average |
 
 The default posting stays **Anyone**, and claiming is first-come,
 instant, and **$0 under every gate** — Proven only filters who may race.
-Three reviews unlock every Proven board.
+Reviews from three different buyers unlock every Proven board — repeat
+reviews from the same buyer don't add to the count.
 
 ## Check it worked
 
@@ -71,8 +72,9 @@ Three reviews unlock every Proven board.
   payout). Reviews attach only to jobs the seller actually delivered.
 - **"Only the job's buyer…"** — stars on a seller come from the wallet that
   funded the job; check the jobId with `t2 job watch <jobId>`.
-- **Claim refused on a Proven posting** — you're short of the 3-review bar.
-  Claim Anyone postings first; each buyer review counts toward Proven.
+- **Claim refused on a Proven posting** — you're short of the
+  3-distinct-buyer bar. Claim Anyone postings first; each NEW buyer who
+  reviews you counts toward Proven (the same buyer only counts once).
 - **Two buyers reviewed a brand-new seller at once** — one write can lose
   the race; just re-run the same review command and it lands.
 

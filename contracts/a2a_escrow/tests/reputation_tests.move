@@ -13,6 +13,10 @@ use sui::test_scenario as ts;
 const ADMIN: address = @0xAD; // deployer = AdminCap holder
 const BUYER: address = @0xA;
 const BUYER2: address = @0xF; // the first-review race loser in the retry test
+
+/// Distinct buyer pool for `reviewed_n` (S.1062: Proven counts DISTINCT
+/// buyers, so "n reviews" helpers mean n reviews from n different buyers).
+fun buyers(): vector<address> { vector[@0xA, @0xF, @0x1A, @0x2A] }
 const ASP: address = @0xB; // registered + active seller
 const STRANGER: address = @0xC; // neither party to any job
 const OTHER_ASP: address = @0xE; // a second registered seller
@@ -138,12 +142,16 @@ fun review_as(sc: &mut ts::Scenario, clk: &Clock, who: address, job_id: ID, star
     ts::return_shared(cfg);
 }
 
-/// Give `seller` `n` released-job reviews of `stars` each.
+/// Give `seller` `n` released-job reviews of `stars` each — from `n`
+/// DISTINCT buyers (S.1062: that's what Proven counts). Callers that need
+/// same-buyer repeats use `released_job_from` + `review_as` directly.
 fun reviewed_n(sc: &mut ts::Scenario, clk: &Clock, seller: address, n: u64, stars: u8) {
+    let pool = buyers();
     let mut i = 0;
     while (i < n) {
-        let job_id = released_job(sc, clk, seller);
-        review(sc, clk, job_id, stars);
+        let buyer = *pool.borrow(i);
+        let job_id = released_job_from(sc, clk, buyer, seller);
+        review_as(sc, clk, buyer, job_id, stars);
         i = i + 1;
     }
 }
@@ -453,33 +461,107 @@ fun duplicate_first_review_fails() {
 // === Proven predicates ===
 
 #[test]
-fun proven_predicates_track_thresholds() {
+fun proven_predicates_track_distinct_buyers() {
     let (mut sc, clk) = setup();
-    // 2 × 5★ — below the review floor: neither predicate passes.
+    let pool = buyers();
+    // 2 × 5★ from 2 distinct buyers — below the distinct floor.
     reviewed_n(&mut sc, &clk, ASP, 2, 5);
     ts::next_tx(&mut sc, BUYER);
     {
         let score = take_score(&sc);
-        assert!(!reputation::meets_min_reviews(&score), 0);
-        assert!(!reputation::meets_min_avg(&score), 1);
+        assert!(reputation::distinct_buyers(&score) == 2, 0);
+        assert!(!reputation::meets_proven(&score), 1);
+        assert!(!reputation::meets_min_avg(&score), 2);
         ts::return_shared(score);
     };
-    // A 3rd review (3★) crosses the floor: count passes; avg 13/3 ≈ 4.33 ≥ 4.
-    reviewed_n(&mut sc, &clk, ASP, 1, 3);
+    // A 3rd DISTINCT buyer (3★) crosses the floor: distinct 3; avg 13/3 ≥ 4.
+    let b3 = *pool.borrow(2);
+    let j3 = released_job_from(&mut sc, &clk, b3, ASP);
+    review_as(&mut sc, &clk, b3, j3, 3);
     ts::next_tx(&mut sc, BUYER);
     {
         let score = take_score(&sc);
-        assert!(reputation::meets_min_reviews(&score), 2);
-        assert!(reputation::meets_min_avg(&score), 3);
+        assert!(reputation::distinct_buyers(&score) == 3, 3);
+        assert!(reputation::meets_proven(&score), 4);
+        // v1 alias delegates to the same predicate — never the old floor.
+        assert!(reputation::meets_min_reviews(&score), 5);
+        assert!(reputation::meets_min_avg(&score), 6);
         ts::return_shared(score);
     };
-    // A 4th review (1★) drags avg to 14/4 = 3.5 < 4: count still passes.
-    reviewed_n(&mut sc, &clk, ASP, 1, 1);
+    // A 4th review (1★, 4th buyer) drags avg to 14/4 = 3.5 < 4: policy 2
+    // fails while plain Proven still passes.
+    let b4 = *pool.borrow(3);
+    let j4 = released_job_from(&mut sc, &clk, b4, ASP);
+    review_as(&mut sc, &clk, b4, j4, 1);
     ts::next_tx(&mut sc, BUYER);
     {
         let score = take_score(&sc);
-        assert!(reputation::meets_min_reviews(&score), 4);
-        assert!(!reputation::meets_min_avg(&score), 5);
+        assert!(reputation::distinct_buyers(&score) == 4, 7);
+        assert!(reputation::meets_proven(&score), 8);
+        assert!(!reputation::meets_min_avg(&score), 9);
+        ts::return_shared(score);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+// === S.1062 — distinct buyers ===
+
+#[test]
+fun three_reviews_one_buyer_not_proven() {
+    let (mut sc, clk) = setup();
+    // The soft-Sybil case v2 closes: one friendly buyer, three jobs.
+    let mut i = 0;
+    while (i < 3) {
+        let job_id = released_job(&mut sc, &clk, ASP); // BUYER every time
+        review(&mut sc, &clk, job_id, 5);
+        i = i + 1;
+    };
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let score = take_score(&sc);
+        assert!(reputation::review_count(&score) == 3, 0);
+        assert!(reputation::distinct_buyers(&score) == 1, 1);
+        assert!(reputation::has_buyer_reviewed(&score, BUYER), 2);
+        assert!(!reputation::has_buyer_reviewed(&score, BUYER2), 3);
+        assert!(!reputation::meets_proven(&score), 4);
+        assert!(!reputation::meets_min_avg(&score), 5); // floor gates avg too
+        ts::return_shared(score);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EClaimPolicyUnmet)]
+fun proven_claim_one_buyer_three_reviews_fails() {
+    let (mut sc, clk) = setup();
+    let mut i = 0;
+    while (i < 3) {
+        let job_id = released_job(&mut sc, &clk, ASP);
+        review(&mut sc, &clk, job_id, 5);
+        i = i + 1;
+    };
+    post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
+    claim_proven_as(&mut sc, ASP, &clk);
+    abort 0
+}
+
+#[test]
+fun edit_does_not_change_distinct() {
+    let (mut sc, clk) = setup();
+    let job_id = released_job(&mut sc, &clk, ASP);
+    review(&mut sc, &clk, job_id, 5);
+    // Same buyer re-rates the same job: distinct stays 1.
+    review(&mut sc, &clk, job_id, 2);
+    // Same buyer, a SECOND job: still distinct 1 (each buyer counts once).
+    let job_b = released_job(&mut sc, &clk, ASP);
+    review(&mut sc, &clk, job_b, 4);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let score = take_score(&sc);
+        assert!(reputation::review_count(&score) == 2, 0);
+        assert!(reputation::distinct_buyers(&score) == 1, 1);
         ts::return_shared(score);
     };
     ts::end(sc);

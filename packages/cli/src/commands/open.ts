@@ -257,7 +257,7 @@ export function registerOpenVerbs(group: Command) {
           const score = await getAgentScore(getSuiClient(), agent.address()).catch(() => null);
           if (!meetsClaimPolicy(score, live.claimPolicy)) {
             const have = score
-              ? `${score.reviewCount} review${score.reviewCount === 1 ? '' : 's'}, ${score.averageStars}★ avg`
+              ? `${score.reviewCount} review${score.reviewCount === 1 ? '' : 's'} from ${score.distinctBuyers} distinct buyer${score.distinctBuyers === 1 ? '' : 's'}, ${score.averageStars}★ avg`
               : 'no on-chain reviews yet';
             throw new Error(
               `${claimPolicyRequirement(live.claimPolicy)} Your wallet has ${have}. ` +

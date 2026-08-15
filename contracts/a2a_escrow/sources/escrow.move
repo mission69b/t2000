@@ -53,12 +53,13 @@ use sui::dynamic_field as df;
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
-/// v2 (S.981): on-chain job amount bounds. The bump is what makes the floor
-/// real — without the cutover, builders still calling the old package's
-/// `create` (amount > 0 only) would bypass it.
-// v3 (S.1019): open-board reject must be 100% buyer (create_open asserts
-// reject_split_bps == BPS_DENOMINATOR); v2 (S.981) added job amount bounds.
-const VERSION: u64 = 3;
+/// v4 (S.1062): Proven = DISTINCT buyers — without this cutover, the old
+/// package's `claim_proven` still enforces the v1 `review_count >= 3`
+/// predicate and would bypass distinct buyers (same reasoning as S.981's
+/// bounds bump). v3 (S.1019): open-board reject must be 100% buyer;
+/// v2 (S.981): job amount bounds. (S.1054's reputation module was purely
+/// additive — no bump needed then.)
+const VERSION: u64 = 4;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;

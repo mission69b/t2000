@@ -1,11 +1,15 @@
 import { bcs } from '@mysten/sui/bcs';
 import { Transaction } from '@mysten/sui/transactions';
-import { deriveObjectID } from '@mysten/sui/utils';
+import { deriveDynamicFieldID, deriveObjectID } from '@mysten/sui/utils';
 import { T2000Error } from '../errors.js';
 import { USDC_TYPE } from '../token-registry.js';
 import { validateAddress } from '../utils/sui.js';
 import type { SuiCoreClient } from '../utils/sui.js';
-import { A2A_ESCROW_LATEST_PACKAGE_ID, feeConfigArg } from './opening.js';
+import {
+  A2A_ESCROW_LATEST_PACKAGE_ID,
+  A2A_ESCROW_PACKAGE_V7_ID,
+  feeConfigArg,
+} from './opening.js';
 
 /**
  * On-chain reputation — client for `a2a_escrow::reputation` (S.1054,
@@ -41,7 +45,10 @@ const MODULE = 'reputation';
 const CLOCK_ID = '0x6';
 
 // === Proven thresholds — mirror `reputation.move`, never copy elsewhere ===
-/** Reviews required for Proven (`claim_policy` 1, and the floor of 2). */
+/** The Proven floor (`claim_policy` 1, and the floor of 2). Since S.1062
+ *  this counts DISTINCT BUYERS, not raw reviews — one friendly buyer ×3
+ *  no longer unlocks Proven. The name survives for the published surface;
+ *  the value is unchanged at 3. */
 export const PROVEN_MIN_REVIEWS = 3;
 /** Average-stars floor for Proven · 4★+ (`claim_policy` 2), scaled ×10. */
 export const PROVEN_MIN_AVG_STARS_X10 = 40;
@@ -79,6 +86,37 @@ export interface AgentScore {
   starsSum: number;
   /** Integer-safe average, rounded to 2dp for display (0 when no reviews). */
   averageStars: number;
+  /** Distinct buyer addresses that have reviewed since S.1062 — the
+   *  Proven gate input. 0 when the DF is absent (pre-S.1062 scores never
+   *  grandfather in). */
+  distinctBuyers: number;
+}
+
+/** Read the S.1062 distinct-buyer count DF off a score's UID (0 when the
+ *  DF is absent, when the V7 defining id isn't pinned yet, or on any read
+ *  hiccup — Move is the enforcement; this is display/preflight). */
+async function getDistinctBuyers(
+  client: SuiCoreClient,
+  scoreId: string,
+): Promise<number> {
+  if (!A2A_ESCROW_PACKAGE_V7_ID) return 0;
+  try {
+    // `DistinctCountKey has copy, drop, store {}` — an empty Move struct
+    // BCS-encodes as its implicit `dummy_field: bool = false` = [0x00].
+    const fieldId = deriveDynamicFieldID(
+      scoreId,
+      `${A2A_ESCROW_PACKAGE_V7_ID}::${MODULE}::DistinctCountKey`,
+      new Uint8Array([0]),
+    );
+    const resp = await client.core.getObject({
+      objectId: fieldId,
+      include: { json: true },
+    });
+    const json = resp?.object?.json as Record<string, unknown> | null | undefined;
+    return Number((json as { value?: unknown } | null)?.value ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 /** Read an agent's score (null = no reviews yet — the lazy-create means the
@@ -105,16 +143,18 @@ export async function getAgentScore(
     reviewCount,
     starsSum,
     averageStars: reviewCount > 0 ? Math.round((starsSum / reviewCount) * 100) / 100 : 0,
+    distinctBuyers: await getDistinctBuyers(client, scoreId),
   };
 }
 
 /** Does a score satisfy an Opening's claim policy? (`null` score = zero
- *  reviews.) Mirrors the Move predicates exactly — integer math, and
- *  policy 2 is strictly stronger than policy 1. */
+ *  reviews.) Mirrors the Move predicates exactly — S.1062: the Proven
+ *  floor counts DISTINCT BUYERS; integer avg math; policy 2 strictly
+ *  stronger than policy 1. */
 export function meetsClaimPolicy(score: AgentScore | null, claimPolicy: number): boolean {
   if (claimPolicy === 0) return true;
   if (!score) return false;
-  const proven = score.reviewCount >= PROVEN_MIN_REVIEWS;
+  const proven = score.distinctBuyers >= PROVEN_MIN_REVIEWS;
   if (claimPolicy === 1) return proven;
   if (claimPolicy === 2) {
     return proven && score.starsSum * 10 >= score.reviewCount * PROVEN_MIN_AVG_STARS_X10;
@@ -135,10 +175,10 @@ export function claimPolicyLabel(claimPolicy: number): string {
  *  this instead of surfacing a raw Move abort. */
 export function claimPolicyRequirement(claimPolicy: number): string {
   if (claimPolicy === 1) {
-    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} on-chain reviews.`;
+    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} reviews from distinct buyers.`;
   }
   if (claimPolicy === 2) {
-    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} on-chain reviews and a 4.0★ average.`;
+    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} reviews from distinct buyers and a 4.0★ average.`;
   }
   return 'Anyone can claim (active Agent ID required).';
 }
