@@ -38,7 +38,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618';
+  '0x4249f0b242c47c7baf0c37304365bc4bbe769bcedf11f3525e84682d59a3b23e';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -78,13 +78,12 @@ export const A2A_ESCROW_PACKAGE_V3_ID =
  *  like V2/V3 — never moves again, even when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V6_ID =
   '0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618';
-/** v7 (S.1062) — defining id for the distinct-buyer surface: the
- *  ReviewSubmittedV2 event and the DistinctCountKey/BuyerSeenKey DF key
- *  types. Pinned at the S.1062 cutover; empty until the upgrade
- *  broadcasts. Env-overridable to bridge pin-lag. Never retargets after. */
+/** v7 (S.1062, upgrade 3DcWdSPE… 2026-08-15) — defining id for the
+ *  distinct-buyer surface: the ReviewSubmittedV2 event and the
+ *  DistinctCountKey/BuyerSeenKey DF key types. A DEFINING-id anchor like
+ *  V2/V3/V6 — never moves again, even when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V7_ID =
-  process.env.A2A_ESCROW_PACKAGE_V7_ID ??
-  ''; // ← pinned by the S.1062 mainnet cutover ritual, before npm release
+  '0x4249f0b242c47c7baf0c37304365bc4bbe769bcedf11f3525e84682d59a3b23e';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
