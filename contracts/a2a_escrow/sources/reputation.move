@@ -41,6 +41,7 @@
 module a2a_escrow::reputation;
 
 use a2a_escrow::escrow::{Self, AdminCap, FeeConfig, Job};
+use agent_id::registry::{Self, Registry};
 use sui::clock::Clock;
 use sui::derived_object;
 use sui::dynamic_field as df;
@@ -71,6 +72,15 @@ const EWrongScore: u64 = 4;
 /// Structurally impossible (escrow::create asserts buyer != seller) —
 /// asserted anyway so this module's invariant never depends on a sibling's.
 const ESelfReview: u64 = 5;
+/// S.1063: the passed buyer `AgentScore` doesn't belong to this job's buyer.
+const EWrongBuyerScore: u64 = 6;
+/// S.1063: this buyer is a registered Agent ID — reject must go through
+/// `reject_v2_agent_buyer` (an agent buyer cannot dodge its own
+/// `as_buyer_rejected` counter by picking the Passport variant).
+const EBuyerIsAgent: u64 = 7;
+/// S.1063: this buyer is NOT a registered Agent ID — use `reject_v2`
+/// (Passport buyers never get a public chain counter).
+const EBuyerNotAgent: u64 = 8;
 
 // === Objects ===
 
@@ -118,6 +128,20 @@ public struct DistinctCountKey has copy, drop, store {}
 /// DF key → `bool`: this buyer has already counted toward distinct.
 public struct BuyerSeenKey has copy, drop, store { buyer: address }
 
+// === v2 protocol-outcome counters (S.1063) — DFs on `AgentScore.id` ===
+// Outcomes are NOT stars: they never touch stars_sum / review_count /
+// distinct buyers / meets_proven (display-only this rev — no gate reads
+// them). No grandfather, no AdminCap repair. Missing DF ⇒ 0.
+
+/// Seller was rejected AFTER delivering (buyer used `reject`).
+public struct RejectedAfterDeliveryKey has copy, drop, store {}
+/// Seller hit the deadline with NO delivery (permissionless `refund`).
+/// A seller's own pre-delivery `decline` never pads this — clean walk.
+public struct NoDeliveryKey has copy, drop, store {}
+/// This agent, as a BUYER, rejected delivered work (Agent-ID buyers only —
+/// Passport buyers never get a public chain counter: privacy lock).
+public struct AsBuyerRejectedKey has copy, drop, store {}
+
 // === Events (the indexer's score read-model is built from these) ===
 public struct ScoreBoardCreated has copy, drop {
     board_id: ID,
@@ -160,6 +184,24 @@ public struct ReviewSubmittedV2 has copy, drop {
     stars_sum: u64,
     /// Post-write distinct-buyer count (S.1062 — the Proven gate input).
     distinct_buyers: u64,
+    timestamp_ms: u64,
+}
+
+// Outcome kinds carried by `OutcomeRecorded` (S.1063).
+const OUTCOME_REJECTED_AFTER_DELIVERY: u8 = 0;
+const OUTCOME_NO_DELIVERY: u8 = 1;
+const OUTCOME_AS_BUYER_REJECTED: u8 = 2;
+
+/// S.1063 — one protocol outcome landed on a score. `value` is the
+/// POST-write counter, so the read-model mirrors without a fetch.
+/// Defining id = the S.1063 upgrade package (V8 pin).
+public struct OutcomeRecorded has copy, drop {
+    score_id: ID,
+    agent: address,
+    job_id: ID,
+    /// 0 = rejected_after_delivery · 1 = no_delivery · 2 = as_buyer_rejected
+    kind: u8,
+    value: u64,
     timestamp_ms: u64,
 }
 
@@ -238,6 +280,151 @@ public fun submit_review<T>(
     let seller = validate_review(job, stars, ctx);
     assert!(score.agent == seller, EWrongScore);
     apply_review(score, object::id(job), ctx.sender(), stars, clock.timestamp_ms());
+}
+
+// === Outcome settlement (S.1063) — the ONLY live reject/refund doors ===
+// Money moves in `escrow::{reject,refund}_settle_pkg` (single source for
+// coin/fee math + the frozen v1 events); the counters land here. Outcomes
+// never touch stars/distinct/Proven — display-only protocol facts.
+
+/// Lazily create an agent's zero score (permissionless — a zero score
+/// grants NOTHING: no stars, no distinct, no Proven; UI must not imply
+/// reviews from mere existence). Needed before an outcome verb when the
+/// agent has no score yet — a shared object can't be created and then
+/// passed as input inside one tx, so this is its own (sponsored) step.
+/// Aborts if the score already exists (`derived_object::claim`).
+public fun create_empty_score(
+    board: &mut ScoreBoard,
+    agent: address,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    escrow::assert_version_pkg(cfg);
+    let now = clock.timestamp_ms();
+    let score = AgentScore {
+        id: derived_object::claim(&mut board.id, agent),
+        agent,
+        review_count: 0,
+        stars_sum: 0,
+        job_stars: table::new(ctx),
+        created_at_ms: now,
+        updated_at_ms: now,
+    };
+    event::emit(ScoreCreated {
+        score_id: score.id.to_inner(),
+        agent,
+        timestamp_ms: now,
+    });
+    transfer::share_object(score);
+}
+
+/// Buyer rejects delivered work — PASSPORT (unregistered) buyer variant:
+/// settles the split and records `rejected_after_delivery` on the seller.
+/// Aborts `EBuyerIsAgent` for registered buyers — an Agent-ID buyer must
+/// use `reject_v2_agent_buyer` and accrue its own counter (no dodging).
+public fun reject_v2<T>(
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    registry: &Registry,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(!registry::is_registered(registry, escrow::buyer(job)), EBuyerIsAgent);
+    assert!(seller_score.agent == escrow::seller(job), EWrongScore);
+    escrow::reject_settle_pkg(job, cfg, clock, ctx); // auth: sender==buyer, DELIVERED, in-window
+    record_outcome(
+        seller_score,
+        object::id(job),
+        RejectedAfterDeliveryKey {},
+        OUTCOME_REJECTED_AFTER_DELIVERY,
+        clock.timestamp_ms(),
+    );
+}
+
+/// Buyer rejects delivered work — AGENT-ID buyer variant: same settle +
+/// seller counter, plus `as_buyer_rejected` on the buyer's OWN score
+/// (transparency cuts both ways — SPEC v2 §2.3).
+public fun reject_v2_agent_buyer<T>(
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    buyer_score: &mut AgentScore,
+    registry: &Registry,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let buyer = escrow::buyer(job);
+    assert!(registry::is_registered(registry, buyer), EBuyerNotAgent);
+    assert!(seller_score.agent == escrow::seller(job), EWrongScore);
+    assert!(buyer_score.agent == buyer, EWrongBuyerScore);
+    escrow::reject_settle_pkg(job, cfg, clock, ctx);
+    let now = clock.timestamp_ms();
+    let job_id = object::id(job);
+    record_outcome(
+        seller_score,
+        job_id,
+        RejectedAfterDeliveryKey {},
+        OUTCOME_REJECTED_AFTER_DELIVERY,
+        now,
+    );
+    record_outcome(
+        buyer_score,
+        job_id,
+        AsBuyerRejectedKey {},
+        OUTCOME_AS_BUYER_REJECTED,
+        now,
+    );
+}
+
+/// Deadline refund (no delivery) — permissionless crank, plus
+/// `no_delivery` on the seller. The seller's own pre-delivery `decline`
+/// never lands here (decline is a clean walk, no reputation write).
+public fun refund_v2<T>(
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(seller_score.agent == escrow::seller(job), EWrongScore);
+    escrow::refund_settle_pkg(job, cfg, clock, ctx); // auth: FUNDED, past deadline
+    record_outcome(
+        seller_score,
+        object::id(job),
+        NoDeliveryKey {},
+        OUTCOME_NO_DELIVERY,
+        clock.timestamp_ms(),
+    );
+}
+
+/// The ONLY outcome mutator — private; a counter can never move except
+/// through the settle-validated paths above.
+fun record_outcome<K: copy + drop + store>(
+    score: &mut AgentScore,
+    job_id: ID,
+    key: K,
+    kind: u8,
+    now: u64,
+) {
+    let value = if (df::exists(&score.id, key)) {
+        let count: &mut u64 = df::borrow_mut(&mut score.id, key);
+        *count = *count + 1;
+        *count
+    } else {
+        df::add(&mut score.id, key, 1u64);
+        1
+    };
+    score.updated_at_ms = now;
+    event::emit(OutcomeRecorded {
+        score_id: score.id.to_inner(),
+        agent: score.agent,
+        job_id,
+        kind,
+        value,
+        timestamp_ms: now,
+    });
 }
 
 /// The receipt gate — every review path funnels through here.
@@ -346,6 +533,25 @@ public fun distinct_buyers(score: &AgentScore): u64 {
 /// Whether this buyer already counts toward the seller's distinct total.
 public fun has_buyer_reviewed(score: &AgentScore, buyer: address): bool {
     df::exists(&score.id, BuyerSeenKey { buyer })
+}
+
+fun outcome_count<K: copy + drop + store>(score: &AgentScore, key: K): u64 {
+    if (df::exists(&score.id, key)) { *df::borrow(&score.id, key) } else { 0 }
+}
+
+/// Times this agent (as seller) was rejected after delivering (S.1063).
+public fun rejected_after_delivery(score: &AgentScore): u64 {
+    outcome_count(score, RejectedAfterDeliveryKey {})
+}
+
+/// Times this agent (as seller) hit the deadline with no delivery.
+public fun no_delivery(score: &AgentScore): u64 {
+    outcome_count(score, NoDeliveryKey {})
+}
+
+/// Jobs this agent (as an Agent-ID buyer) rejected after delivery.
+public fun as_buyer_rejected(score: &AgentScore): u64 {
+    outcome_count(score, AsBuyerRejectedKey {})
 }
 public fun has_job_review(score: &AgentScore, job_id: ID): bool {
     score.job_stars.contains(job_id)

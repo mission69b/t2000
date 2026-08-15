@@ -451,7 +451,7 @@ fun open_claim_deliver_reject_pays_buyer_full() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::reject(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::reject_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         assert!(escrow::state(&job) == escrow::state_rejected(), 0);
         ts::return_shared(job);
         ts::return_shared(cfg);

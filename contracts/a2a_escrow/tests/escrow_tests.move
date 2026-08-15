@@ -172,7 +172,7 @@ fun deadline_refund_by_stranger() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::refund(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::refund_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         assert!(escrow::state(&job) == escrow::state_refunded(), 0);
         ts::return_shared(job);
         ts::return_shared(cfg);
@@ -193,7 +193,7 @@ fun refund_before_deadline_fails() {
     ts::next_tx(&mut sc, BUYER);
     let cfg = ts::take_shared<FeeConfig>(&sc);
     let mut job = ts::take_shared<Job<SUI>>(&sc);
-    escrow::refund(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+    escrow::refund_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
     abort 99
 }
 
@@ -209,7 +209,7 @@ fun refund_after_delivery_fails() {
     ts::next_tx(&mut sc, BUYER);
     let cfg = ts::take_shared<FeeConfig>(&sc);
     let mut job = ts::take_shared<Job<SUI>>(&sc);
-    escrow::refund(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+    escrow::refund_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
     abort 99
 }
 
@@ -224,7 +224,7 @@ fun reject_splits_per_terms() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::reject(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::reject_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         assert!(escrow::state(&job) == escrow::state_rejected(), 0);
         assert!(escrow::escrow_value(&job) == 0, 1);
         ts::return_shared(job);
@@ -251,7 +251,7 @@ fun zero_split_reject_still_pays_fee() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::reject(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::reject_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         assert!(escrow::escrow_value(&job) == 0, 0);
         ts::return_shared(job);
         ts::return_shared(cfg);
@@ -276,7 +276,7 @@ fun reject_after_window_fails() {
     ts::next_tx(&mut sc, BUYER);
     let cfg = ts::take_shared<FeeConfig>(&sc);
     let mut job = ts::take_shared<Job<SUI>>(&sc);
-    escrow::reject(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+    escrow::reject_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
     abort 99
 }
 
@@ -291,7 +291,7 @@ fun stranger_reject_fails() {
     ts::next_tx(&mut sc, STRANGER);
     let cfg = ts::take_shared<FeeConfig>(&sc);
     let mut job = ts::take_shared<Job<SUI>>(&sc);
-    escrow::reject(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+    escrow::reject_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
     abort 99
 }
 

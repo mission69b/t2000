@@ -57,7 +57,19 @@ export async function runSponsoredTx(opts: {
   // Before the wallet address is even sent anywhere.
   assertSigningHostAllowed(opts.prepareUrl, allowUntrusted);
 
-  const prep = await postJson(opts.prepareUrl, opts.prepareBody);
+  // S.1063: some verbs need a PRECURSOR tx first (e.g. reject/refund lazily
+  // creating the seller's zero score — a shared object can't be created and
+  // used in one tx). The server flags it; we sign+submit the precursor and
+  // re-prepare the real verb. Bounded — never an unbounded loop. Every
+  // iteration's bytes still pass the SAME intent check (the precursor's
+  // target is allowlisted under the verb's own action).
+  let prep = await postJson(opts.prepareUrl, opts.prepareBody);
+  let hops = 0;
+  while (prep.precursor && hops < 3) {
+    hops += 1;
+    await signAndSubmit(prep, opts, allowUntrusted);
+    prep = await postJson(opts.prepareUrl, opts.prepareBody);
+  }
   const nonce = prep.nonce as string | undefined;
   const txBytes = prep.txBytes as string | undefined;
   if (!(nonce && txBytes)) {
@@ -75,6 +87,30 @@ export async function runSponsoredTx(opts: {
     signature,
   });
   return { digest: res.digest as string | undefined };
+}
+
+/** One precursor hop: intent-check, sign, submit (S.1063 lazy score
+ *  create). Shares the exact gate the main verb uses. */
+async function signAndSubmit(
+  prep: Record<string, unknown>,
+  opts: {
+    keypair: SigningKeypair;
+    actor: string;
+    prepareUrl: string;
+    submitUrl: string;
+    intent: TxIntent;
+  },
+  allowUntrusted: boolean,
+): Promise<void> {
+  const nonce = prep.nonce as string | undefined;
+  const txBytes = prep.txBytes as string | undefined;
+  if (!(nonce && txBytes)) {
+    throw new Error('Failed to prepare the transaction.');
+  }
+  assertTxMatchesIntent(txBytes, opts.intent, { allowUntrusted });
+  const bytes = new Uint8Array(Buffer.from(txBytes, 'base64'));
+  const { signature } = await opts.keypair.signTransaction(bytes);
+  await postJson(opts.submitUrl, { nonce, address: opts.actor, signature });
 }
 
 export interface RegisterResult {

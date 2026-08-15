@@ -8,6 +8,7 @@ import type { SuiCoreClient } from '../utils/sui.js';
 import {
   A2A_ESCROW_LATEST_PACKAGE_ID,
   A2A_ESCROW_PACKAGE_V7_ID,
+  A2A_ESCROW_PACKAGE_V8_ID,
   feeConfigArg,
 } from './opening.js';
 
@@ -90,22 +91,28 @@ export interface AgentScore {
    *  Proven gate input. 0 when the DF is absent (pre-S.1062 scores never
    *  grandfather in). */
   distinctBuyers: number;
+  /** S.1063 protocol outcomes — display-only facts, NEVER stars and never
+   *  part of any Proven predicate. 0 when the DF is absent. */
+  rejectedAfterDelivery: number;
+  noDelivery: number;
+  asBuyerRejected: number;
 }
 
-/** Read the S.1062 distinct-buyer count DF off a score's UID (0 when the
- *  DF is absent, when the V7 defining id isn't pinned yet, or on any read
- *  hiccup — Move is the enforcement; this is display/preflight). */
-async function getDistinctBuyers(
+/** Read one u64 counter DF off a score's UID (0 when the DF is absent,
+ *  when the defining id isn't pinned yet, or on any read hiccup — Move is
+ *  the enforcement; these reads are display/preflight). Empty Move key
+ *  structs BCS-encode as their implicit `dummy_field: bool = false`. */
+async function readCounterDf(
   client: SuiCoreClient,
   scoreId: string,
+  definingId: string,
+  keyStruct: string,
 ): Promise<number> {
-  if (!A2A_ESCROW_PACKAGE_V7_ID) return 0;
+  if (!definingId) return 0;
   try {
-    // `DistinctCountKey has copy, drop, store {}` — an empty Move struct
-    // BCS-encodes as its implicit `dummy_field: bool = false` = [0x00].
     const fieldId = deriveDynamicFieldID(
       scoreId,
-      `${A2A_ESCROW_PACKAGE_V7_ID}::${MODULE}::DistinctCountKey`,
+      `${definingId}::${MODULE}::${keyStruct}`,
       new Uint8Array([0]),
     );
     const resp = await client.core.getObject({
@@ -137,14 +144,50 @@ export async function getAgentScore(
   }
   const reviewCount = Number(json.review_count ?? 0);
   const starsSum = Number(json.stars_sum ?? 0);
+  const [distinctBuyers, rejectedAfterDelivery, noDelivery, asBuyerRejected] =
+    await Promise.all([
+      readCounterDf(client, scoreId, A2A_ESCROW_PACKAGE_V7_ID, 'DistinctCountKey'),
+      readCounterDf(client, scoreId, A2A_ESCROW_PACKAGE_V8_ID, 'RejectedAfterDeliveryKey'),
+      readCounterDf(client, scoreId, A2A_ESCROW_PACKAGE_V8_ID, 'NoDeliveryKey'),
+      readCounterDf(client, scoreId, A2A_ESCROW_PACKAGE_V8_ID, 'AsBuyerRejectedKey'),
+    ]);
   return {
     id: scoreId,
     agent: String(json.agent),
     reviewCount,
     starsSum,
     averageStars: reviewCount > 0 ? Math.round((starsSum / reviewCount) * 100) / 100 : 0,
-    distinctBuyers: await getDistinctBuyers(client, scoreId),
+    distinctBuyers,
+    rejectedAfterDelivery,
+    noDelivery,
+    asBuyerRejected,
   };
+}
+
+/** Lazily create an agent's zero score (S.1063) — needed before an outcome
+ *  verb (reject/refund) when the target agent has no score yet: a shared
+ *  object can't be created and then passed as input inside one tx. A zero
+ *  score grants NOTHING (no stars, no distinct, no Proven). The sponsored
+ *  rail chains this automatically. */
+export function buildCreateEmptyScoreTx({
+  agent,
+  boardId,
+}: {
+  agent: string;
+  boardId?: string;
+}): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::create_empty_score`,
+    typeArguments: [],
+    arguments: [
+      tx.object(boardIdOrThrow(boardId)),
+      tx.pure.address(validateAddress(agent)),
+      feeConfigArg(tx),
+      tx.object(CLOCK_ID),
+    ],
+  });
+  return tx;
 }
 
 /** Does a score satisfy an Opening's claim policy? (`null` score = zero

@@ -223,8 +223,22 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
     ['create', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`],
     ['deliver', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::deliver`],
     ['release', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::release`],
-    ['reject', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::reject`],
-    ['refund', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::refund`],
+    // S.1063: reject/refund settle through reputation (outcome counters);
+    // create_empty_score is the allowlisted precursor on both actions.
+    ['reject', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::reject_v2`],
+    [
+      'reject',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::reject_v2_agent_buyer`,
+    ],
+    [
+      'reject',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
+    ],
+    ['refund', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::refund_v2`],
+    [
+      'refund',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
+    ],
     // buildDeclineJobTx: OPENING package, `escrow` module — looks like a typo,
     // isn't. `decline` shipped in the v3 upgrade.
     ['decline', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::decline`],
@@ -293,6 +307,11 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       'job-review',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_score_board`,
     ],
+    // S.1063 phantoms: the deprecated escrow settle doors must be refused
+    // under their old actions (live path is reputation::*_v2).
+    ['reject', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::reject`],
+    ['refund', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::refund`],
+    ['reject', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::reject`],
   ];
 
   for (const [action, target] of PHANTOMS) {
