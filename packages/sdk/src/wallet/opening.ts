@@ -25,8 +25,9 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v6 upgrade
- *  2026-08-15, S.1054 — `reputation` module + `opening::claim_proven`;
+/** The LATEST published `a2a_escrow` package id on MAINNET (v8 upgrade
+ *  2026-08-15, S.1063 — outcome counters; v7 = distinct buyers (S.1062);
+ *  v6 = S.1054 — `reputation` module + `opening::claim_proven`;
  *  v5 locked open reject at 10000 (S.1019); v4 added amount bounds
  *  (S.981); v3 added `escrow::decline`; v2 the `opening` module).
  *  A literal, never an env read, so it can serve as a signature-time trust
@@ -38,7 +39,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x4249f0b242c47c7baf0c37304365bc4bbe769bcedf11f3525e84682d59a3b23e';
+  '0x1595b80bc05a03607f3908702c866ca63cf961025b4263b5ecbe419e07f8ff31';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -84,13 +85,12 @@ export const A2A_ESCROW_PACKAGE_V6_ID =
  *  V2/V3/V6 — never moves again, even when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V7_ID =
   '0x4249f0b242c47c7baf0c37304365bc4bbe769bcedf11f3525e84682d59a3b23e';
-/** v8 (S.1063) — defining id for the outcome surface: the OutcomeRecorded
- *  event and the RejectedAfterDeliveryKey/NoDeliveryKey/AsBuyerRejectedKey
- *  DF key types. Pinned at the S.1063 cutover; empty until the upgrade
- *  broadcasts. Env-overridable to bridge pin-lag. Never retargets after. */
+/** v8 (S.1063, upgrade HNphxqJx… 2026-08-15) — defining id for the
+ *  outcome surface: the OutcomeRecorded event and the
+ *  RejectedAfterDeliveryKey/NoDeliveryKey/AsBuyerRejectedKey DF key types.
+ *  A DEFINING-id anchor like V2/V3/V6/V7 — never moves again. */
 export const A2A_ESCROW_PACKAGE_V8_ID =
-  process.env.A2A_ESCROW_PACKAGE_V8_ID ??
-  ''; // ← pinned by the S.1063 mainnet cutover ritual, before npm release
+  '0x1595b80bc05a03607f3908702c866ca63cf961025b4263b5ecbe419e07f8ff31';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
