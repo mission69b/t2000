@@ -309,9 +309,10 @@ fun refund_unclaimed_before_expiry_fails() {
 
 #[test]
 #[expected_failure(abort_code = opening::EBadClaimPolicy)]
-fun create_open_nonzero_policy_aborts() {
+fun create_open_undefined_policy_aborts() {
     let (mut sc, clk) = setup();
-    post_open_with(&mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, SPLIT_BPS, 1);
+    // S.1054: 1/2 (Proven) are live — 3+ stays undefined and must abort.
+    post_open_with(&mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, SPLIT_BPS, 3);
     abort 0
 }
 

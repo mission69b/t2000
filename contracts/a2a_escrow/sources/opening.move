@@ -26,9 +26,13 @@
 /// - **Who may claim** composes `agent_id::registry` (read accessors are
 ///   not version-gated, so a future agent_id migrate cannot brick claims):
 ///   registered AND active, and never the buyer.
-/// - **`claim_policy` is a forward-compat stub.** Only `0` (ANY_ACTIVE) is
-///   implemented; anything else aborts at create AND claim. Reputation /
-///   allowlist gates are a later SPEC.
+/// - **`claim_policy` gates WHO MAY RACE, never how a claim works** (S.1054):
+///   `0` ANY_ACTIVE (default — any active Agent ID, $0 claim, FCFS),
+///   `1` Proven (≥ `reputation::proven_min_reviews()` on-chain reviews),
+///   `2` Proven · 4★+ (policy 1 AND average ≥ 4.0). Policies `1`/`2` claim
+///   through `claim_proven`, which reads the claimer's OWN `AgentScore` by
+///   immutable reference — still instant, still $0, no bond, no
+///   buyer-confirm. `3+` aborts at create AND claim until defined.
 /// - **Bounds mirror `escrow` via package-visible accessors** (no duplicated
 ///   constants): `sla_ms` ≤ the deliver horizon (an unbounded SLA would make
 ///   `now + sla_ms` overflow-abort at claim and wedge the Opening),
@@ -38,14 +42,21 @@
 module a2a_escrow::opening;
 
 use a2a_escrow::escrow::{Self, FeeConfig};
+use a2a_escrow::reputation::{Self, AgentScore};
 use agent_id::registry::{Self, Registry};
 use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::{Self, Coin};
 use sui::event;
 
-/// Only claim policy implemented in v1: any ACTIVE registered Agent ID.
+/// Default claim policy: any ACTIVE registered Agent ID ($0 claim, FCFS).
 const CLAIM_POLICY_ANY_ACTIVE: u8 = 0;
+/// S.1054 — Proven: claimer needs ≥ `reputation::proven_min_reviews()`
+/// on-chain reviews. Claims go through `claim_proven`.
+const CLAIM_POLICY_MIN_REVIEWS: u8 = 1;
+/// S.1054 — Proven · 4★+: policy 1 AND average stars ≥ 4.0 (strictly
+/// stronger — see `reputation::meets_min_avg`).
+const CLAIM_POLICY_MIN_AVG: u8 = 2;
 /// How long an Opening may stay claimable: 30 days (the board TTL cap).
 const MAX_OPEN_WINDOW_MS: u64 = 2_592_000_000;
 
@@ -66,6 +77,12 @@ const ENotExpired: u64 = 11;
 /// 80/20 default made garbage-deliver-then-eat-reject (+EV) beat an
 /// honest decline ($0) on FCFS work.
 const EOpenRejectMustBeFullBuyer: u64 = 12;
+/// S.1054: `claim_proven` was handed an `AgentScore` that isn't the
+/// claimer's own — you cannot borrow someone else's reputation.
+const EScoreNotClaimer: u64 = 13;
+/// S.1054: the claimer's on-chain score doesn't meet the Opening's
+/// Proven bar (clients preflight this in English first).
+const EClaimPolicyUnmet: u64 = 14;
 
 // === Objects ===
 
@@ -148,7 +165,9 @@ public fun create_open<T>(
     ctx: &mut TxContext,
 ): ID {
     escrow::assert_version_pkg(cfg);
-    assert!(claim_policy == CLAIM_POLICY_ANY_ACTIVE, EBadClaimPolicy);
+    // S.1054: 0 (Anyone) stays the default; 1/2 (Proven) are live; 3+
+    // still aborts until a later SPEC defines them.
+    assert!(claim_policy <= CLAIM_POLICY_MIN_AVG, EBadClaimPolicy);
     let amount = payment.value();
     assert!(amount > 0, EZeroAmount);
     // Money-entering bounds (S.981) — same gate as `escrow::create`. Checked
@@ -210,9 +229,12 @@ public fun create_open<T>(
 
 // === Claim (first active ASP wins — the Opening becomes a normal Job) ===
 
-/// Claim an open job. Consumes the Opening (first claim wins at the object
-/// layer) and mints a funded `escrow::Job` with `seller = claimer` and
-/// `deliver_by = now + sla_ms`. Returns the new job id.
+/// Claim an open job posted Anyone (`claim_policy = 0`). Consumes the
+/// Opening (first claim wins at the object layer) and mints a funded
+/// `escrow::Job` with `seller = claimer` and `deliver_by = now + sla_ms`.
+/// Returns the new job id. Proven openings (`1`/`2`) claim through
+/// `claim_proven` — this entry aborts on them, so a pre-S.1054 package
+/// can never bypass a Proven gate.
 public fun claim<T>(
     opening: Opening<T>,
     registry: &Registry,
@@ -221,6 +243,49 @@ public fun claim<T>(
     ctx: &mut TxContext,
 ): ID {
     escrow::assert_version_pkg(cfg);
+    assert!(opening.claim_policy == CLAIM_POLICY_ANY_ACTIVE, EBadClaimPolicy);
+    do_claim(opening, registry, cfg, clock, ctx)
+}
+
+/// Claim a PROVEN open job (`claim_policy` `1` or `2`) — S.1054. The
+/// claimer passes their OWN shared `AgentScore` by immutable reference
+/// (parallel with every other claim); the score must belong to the sender
+/// and meet the Opening's bar. Everything else is `claim`: still FCFS,
+/// still $0, the Opening is consumed and a normal Job mints. An agent
+/// with no score object cannot call this at all — the correct
+/// "zero reviews" outcome.
+public fun claim_proven<T>(
+    opening: Opening<T>,
+    registry: &Registry,
+    score: &AgentScore,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    escrow::assert_version_pkg(cfg);
+    let policy = opening.claim_policy;
+    assert!(
+        policy == CLAIM_POLICY_MIN_REVIEWS || policy == CLAIM_POLICY_MIN_AVG,
+        EBadClaimPolicy,
+    );
+    assert!(reputation::agent(score) == ctx.sender(), EScoreNotClaimer);
+    if (policy == CLAIM_POLICY_MIN_REVIEWS) {
+        assert!(reputation::meets_min_reviews(score), EClaimPolicyUnmet);
+    } else {
+        assert!(reputation::meets_min_avg(score), EClaimPolicyUnmet);
+    };
+    do_claim(opening, registry, cfg, clock, ctx)
+}
+
+/// The one claim body both entries share — every gate EXCEPT the policy
+/// check, which each entry asserts against its own inputs first.
+fun do_claim<T>(
+    opening: Opening<T>,
+    registry: &Registry,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
     let now = clock.timestamp_ms();
     let claimer = ctx.sender();
     let Opening {
@@ -234,11 +299,10 @@ public fun claim<T>(
         sla_ms,
         review_window_ms,
         reject_split_bps,
-        claim_policy,
+        claim_policy: _,
         created_at_ms: _,
     } = opening;
     assert!(now <= open_until_ms, EOpeningExpired);
-    assert!(claim_policy == CLAIM_POLICY_ANY_ACTIVE, EBadClaimPolicy);
     assert!(claimer != buyer, EClaimerIsBuyer);
     assert!(registry::is_registered(registry, claimer), ENotActiveAgent);
     let record = registry::borrow_record(registry, claimer);
@@ -354,4 +418,6 @@ public fun claim_policy<T>(opening: &Opening<T>): u8 { opening.claim_policy }
 public fun created_at_ms<T>(opening: &Opening<T>): u64 { opening.created_at_ms }
 
 public fun claim_policy_any_active(): u8 { CLAIM_POLICY_ANY_ACTIVE }
+public fun claim_policy_min_reviews(): u8 { CLAIM_POLICY_MIN_REVIEWS }
+public fun claim_policy_min_avg(): u8 { CLAIM_POLICY_MIN_AVG }
 public fun max_open_window_ms(): u64 { MAX_OPEN_WINDOW_MS }

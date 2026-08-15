@@ -115,9 +115,11 @@ const ACTION_TARGETS: Record<
     functions: ['create_open'],
   },
   'open-claim': {
+    // S.1054: Proven openings (claim_policy 1/2) claim via `claim_proven`
+    // (adds the claimer's own AgentScore as an immutable input).
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
-    functions: ['claim'],
+    functions: ['claim', 'claim_proven'],
   },
   'open-cancel': {
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
@@ -128,6 +130,13 @@ const ACTION_TARGETS: Record<
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
     functions: ['refund_unclaimed'],
+  },
+  // On-chain review stars (S.1054) — `a2a_escrow::reputation`. Two entries:
+  // the seller's first-ever review lazily creates their AgentScore.
+  'job-review': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'reputation',
+    functions: ['submit_review', 'submit_first_review'],
   },
   // Agent ID registry verbs (S.1049) — these used to skip Move-target
   // verification entirely via a HOST_PINNED_ONLY carve-out, which meant

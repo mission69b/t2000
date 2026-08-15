@@ -22,12 +22,21 @@ import {
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import {
+  A2A_SCORE_BOARD_ID,
   cancelOpenJob,
   claimOpenJob,
+  claimPolicyLabel,
+  claimPolicyRequirement,
+  getAgentScore,
+  getOpening,
   getSuiClient,
   listOpenJobs,
+  meetsClaimPolicy,
   postOpenJob,
   MAX_JOB_USDC,
+  OPENING_CLAIM_POLICY_ANY_ACTIVE,
+  OPENING_CLAIM_POLICY_PROVEN,
+  PROVEN_MIN_REVIEWS,
   type OpenJobRow,
   resolveCreatedObjectId,
 } from '@t2000/sdk';
@@ -104,6 +113,10 @@ export function registerOpenVerbs(group: Command) {
     .requiredOption('--max <usdc>', `Budget escrowed AT POST (max ${MAX_JOB_USDC})`)
     .option('--sla <duration>', 'Delivery window once claimed (e.g. 30m, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
+    .option(
+      '--proven',
+      `Only Proven agents (≥${PROVEN_MIN_REVIEWS} on-chain reviews) may claim — default is Anyone; claiming stays instant and $0 either way`,
+    )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -113,6 +126,7 @@ export function registerOpenVerbs(group: Command) {
         max: string;
         sla: string;
         openFor: string;
+        proven?: boolean;
         key?: string;
         api?: string;
       }) => {
@@ -134,6 +148,9 @@ export function registerOpenVerbs(group: Command) {
             maxUsdc,
             slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
             openHours: parseDuration(opts.openFor) / 3_600_000,
+            claimPolicy: opts.proven
+              ? OPENING_CLAIM_POLICY_PROVEN
+              : OPENING_CLAIM_POLICY_ANY_ACTIVE,
           });
           recordSpendIfLanded(maxUsdc, digest);
           const openingId = await resolveCreated(digest, '::opening::Opening<');
@@ -145,6 +162,11 @@ export function registerOpenVerbs(group: Command) {
           printSuccess(
             `Posted — $${maxUsdc.toFixed(2)} USDC escrowed on-chain in the opening.`,
           );
+          if (opts.proven) {
+            printInfo(
+              `Proven gate on: only agents with ≥${PROVEN_MIN_REVIEWS} on-chain reviews can claim.`,
+            );
+          }
           printBlank();
           if (openingId) printKeyValue('Opening', openingId);
           printKeyValue('Tx', digest);
@@ -191,8 +213,13 @@ export function registerOpenVerbs(group: Command) {
           return;
         }
         for (const row of rows) {
+          // Surface the claim gate BEFORE anyone burns a claim attempt on it.
+          const gate =
+            (row.claimPolicy ?? 0) !== 0
+              ? `  ${pc.magenta(claimPolicyLabel(row.claimPolicy ?? 0))}`
+              : '';
           printLine(
-            `  ${pc.bold(row.title ?? 'Untitled opening')}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}  ${statusColor(row.status)}` +
+            `  ${pc.bold(row.title ?? 'Untitled opening')}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}  ${statusColor(row.status)}${gate}` +
               (row.status === 'open' ? pc.dim(`  ${fmtLeft(row.openUntilMs)} left`) : ''),
           );
           const brief = (row.brief ?? '').replace(/\s+/g, ' ');
@@ -221,6 +248,23 @@ export function registerOpenVerbs(group: Command) {
       try {
         const base = opts.api ?? DEFAULT_API_BASE;
         const agent = await withAgent({ keyPath: opts.key });
+        // Proven preflight (S.1054): refuse in English before the sponsored
+        // rail instead of surfacing a raw Move abort. Best-effort — a
+        // missing opening or unconfigured board falls through to the
+        // server's own checks.
+        const live = await getOpening(getSuiClient(), id.trim()).catch(() => null);
+        if (live && live.claimPolicy !== 0 && A2A_SCORE_BOARD_ID) {
+          const score = await getAgentScore(getSuiClient(), agent.address()).catch(() => null);
+          if (!meetsClaimPolicy(score, live.claimPolicy)) {
+            const have = score
+              ? `${score.reviewCount} review${score.reviewCount === 1 ? '' : 's'}, ${score.averageStars}★ avg`
+              : 'no on-chain reviews yet';
+            throw new Error(
+              `${claimPolicyRequirement(live.claimPolicy)} Your wallet has ${have}. ` +
+                'Earn reviews on Anyone openings first: t2 job board',
+            );
+          }
+        }
         const digest = await claimOpenJob(base, agent.signer, id.trim());
         const jobId = await resolveCreated(digest, '::escrow::Job<');
         if (isJsonMode()) {
