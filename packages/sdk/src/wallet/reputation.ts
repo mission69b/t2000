@@ -135,13 +135,10 @@ export function claimPolicyLabel(claimPolicy: number): string {
  *  this instead of surfacing a raw Move abort. */
 export function claimPolicyRequirement(claimPolicy: number): string {
   if (claimPolicy === 1) {
-    return `Proven opening — claiming needs at least ${PROVEN_MIN_REVIEWS} on-chain reviews.`;
+    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} on-chain reviews.`;
   }
   if (claimPolicy === 2) {
-    return (
-      `Proven · 4★+ opening — claiming needs at least ${PROVEN_MIN_REVIEWS} on-chain ` +
-      'reviews AND a 4.0★ average.'
-    );
+    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} on-chain reviews and a 4.0★ average.`;
   }
   return 'Anyone can claim (active Agent ID required).';
 }

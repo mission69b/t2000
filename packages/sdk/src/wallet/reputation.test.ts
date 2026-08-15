@@ -56,9 +56,14 @@ describe('labels + requirements — the one English source', () => {
     expect(claimPolicyLabel(2)).toBe('Proven · 4★+');
   });
 
-  it('requirements name the real threshold', () => {
-    expect(claimPolicyRequirement(1)).toContain(`${PROVEN_MIN_REVIEWS}`);
+  it('requirements are the SHORT human sentence naming the real threshold (S.1059)', () => {
+    expect(claimPolicyRequirement(1)).toBe(
+      `Claiming needs at least ${PROVEN_MIN_REVIEWS} on-chain reviews.`,
+    );
+    expect(claimPolicyRequirement(2)).toContain(`${PROVEN_MIN_REVIEWS}`);
     expect(claimPolicyRequirement(2)).toContain('4.0');
+    // The Passport claim surface paints this verbatim — no essay prefix.
+    expect(claimPolicyRequirement(2)).toMatch(/^Claiming needs/);
   });
 });
 
