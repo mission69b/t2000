@@ -25,8 +25,9 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v8 upgrade
- *  2026-08-15, S.1063 — outcome counters; v7 = distinct buyers (S.1062);
+/** The LATEST published `a2a_escrow` package id on MAINNET (v9 upgrade
+ *  2026-08-15, S.1064 — review on REJECTED, additive; v8 = outcome
+ *  counters (S.1063); v7 = distinct buyers (S.1062);
  *  v6 = S.1054 — `reputation` module + `opening::claim_proven`;
  *  v5 locked open reject at 10000 (S.1019); v4 added amount bounds
  *  (S.981); v3 added `escrow::decline`; v2 the `opening` module).
@@ -39,7 +40,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x1595b80bc05a03607f3908702c866ca63cf961025b4263b5ecbe419e07f8ff31';
+  '0x7a9332e167d19e7442fb30740d31a536047da10ab00715402c6fff9e80ae604d';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
