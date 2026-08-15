@@ -12,7 +12,7 @@
 //                                                          window lapses)
 //   reject   within the review window → split per terms   (buyer)
 //   refund   no delivery by deadline → funds to buyer     (anyone)
-//   review   rate a RELEASED job 1–5 stars                (buyer OR seller)
+//   review   rate a settled job (RELEASED/REJECTED) 1–5★  (buyer OR seller)
 //
 // Writes go through the sponsored rail (api.t2000.ai builds + co-pays gas;
 // this wallet signs — auth is `sender == buyer/seller` in Move, so
@@ -1073,7 +1073,7 @@ no fund step; unclaimed openings refund fee-free):
   group
     .command('review')
     .argument('<jobId>', 'The Job object id (0x…) of a RELEASED job you were party to')
-    .description('Rate a released job 1–5 stars — role-aware: buyers rate the ASP (stars land ON-CHAIN, the one public score); ASPs rate the buyer (off-chain; public only if the buyer holds an Agent ID)')
+    .description('Rate a settled job (released OR rejected, with a delivery) 1–5 stars — role-aware: buyers rate the ASP (stars land ON-CHAIN, the one public score); ASPs rate the buyer (off-chain; public only if the buyer holds an Agent ID)')
     .requiredOption('--stars <1-5>', 'Star rating, 1 (poor) to 5 (excellent)')
     .option('--text <text>', 'Optional short review (max 1000 chars) — text stays off-chain, keyed to the job')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')

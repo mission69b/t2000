@@ -178,7 +178,8 @@ export function postOpenJob(
   return sponsoredOpeningVerb(base, signer, 'open-create', input);
 }
 
-/** Review a RELEASED job you bought — writes the STARS ON-CHAIN (S.1054:
+/** Review a settled job you bought — RELEASED or REJECTED (S.1064),
+ *  always with a real delivery — writes the STARS ON-CHAIN (S.1054:
  *  the one public score SSOT; `a2a_escrow::reputation`). Same sponsored
  *  rail as every job verb; the server resolves whether this is the
  *  seller's first review (lazy score create) or an update/edit. Rare race
