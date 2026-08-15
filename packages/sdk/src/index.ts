@@ -174,8 +174,12 @@ export {
   MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID,
   A2A_ESCROW_PACKAGE_V2_ID,
   A2A_ESCROW_PACKAGE_V3_ID,
+  A2A_ESCROW_PACKAGE_V6_ID,
   MAX_OPEN_WINDOW_MS,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
+  OPENING_CLAIM_POLICY_PROVEN,
+  OPENING_CLAIM_POLICY_PROVEN_4STAR,
+  OPENING_CLAIM_POLICIES,
   buildCancelOpeningTx,
   buildClaimOpeningTx,
   buildCreateOpeningTx,
@@ -184,6 +188,22 @@ export {
   preflightCreateOpening,
 } from './wallet/opening.js';
 export type { Opening, OpeningTerms } from './wallet/opening.js';
+export {
+  A2A_SCORE_BOARD_ID,
+  MAINNET_A2A_SCORE_BOARD_ID,
+  PROVEN_MIN_REVIEWS,
+  PROVEN_MIN_AVG_STARS_X10,
+  REVIEW_MIN_STARS,
+  REVIEW_MAX_STARS,
+  buildSubmitFirstReviewTx,
+  buildSubmitReviewTx,
+  claimPolicyLabel,
+  claimPolicyRequirement,
+  deriveAgentScoreId,
+  getAgentScore,
+  meetsClaimPolicy,
+} from './wallet/reputation.js';
+export type { AgentScore } from './wallet/reputation.js';
 export {
   assertBuyerRequirements,
   DEFAULT_COMMERCE_API_BASE,
@@ -206,6 +226,7 @@ export {
   setSponsoredTxGuard,
   type SponsoredTxGuard,
   refundOpenJob,
+  submitJobReview,
 } from './open-jobs.js';
 export type { OpenJobFilter, OpenJobRow } from './open-jobs.js';
 // Digest → created-object resolution (S.906 SSOT — CLI + console + Connect).

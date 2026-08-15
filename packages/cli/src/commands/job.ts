@@ -36,6 +36,7 @@ import {
   getJob,
   getSuiClient,
   jobActionsFor,
+  submitJobReview,
   truncateAddress,
   validateAddress,
   verifyJobForSeller,
@@ -139,6 +140,33 @@ export async function loadSpecText(
  *  same bytes. ~16%% of dogfood delivers had the hash pinned on-chain while
  *  the body never loaded for the buyer. On any miss NOTHING reaches a chain
  *  verb — the store can be retried; an on-chain pin cannot. */
+/** The signed-mutation POST to /job/review (challenge nonce +
+ *  personal-message signature over sha256 of the payload — same
+ *  construction as `t2 service`). After S.1054 this path carries review
+ *  TEXT and seller→buyer ratings; buyer STARS are on-chain. */
+async function postSignedReview(
+  base: string,
+  agent: Awaited<ReturnType<typeof withAgent>>,
+  address: string,
+  payload: { jobId: string; stars: number; text: string | null },
+): Promise<Record<string, unknown>> {
+  const challenge = await fetchJson(`${base}/agent/challenge`, {
+    method: 'POST',
+    body: { address },
+  });
+  const nonce = challenge.nonce as string | undefined;
+  if (!nonce) throw new Error('Failed to get a challenge nonce.');
+  const payloadHash = createHash('sha256')
+    .update(JSON.stringify(payload), 'utf8')
+    .digest('hex');
+  const message = new TextEncoder().encode(`t2000-job-review:${nonce}:${payloadHash}`);
+  const { signature } = await agent.keypair.signPersonalMessage(message);
+  return fetchJson(`${base}/job/review`, {
+    method: 'POST',
+    body: { address, nonce, signature, payload },
+  });
+}
+
 async function putAndVerifySpec(base: string, content: string): Promise<string> {
   const hash = await putJobSpec(base, content);
   let roundTrip: string;
@@ -1045,9 +1073,9 @@ no fund step; unclaimed openings refund fee-free):
   group
     .command('review')
     .argument('<jobId>', 'The Job object id (0x…) of a RELEASED job you were party to')
-    .description('Rate a released job 1–5 stars — role-aware: buyers rate the ASP (public); ASPs rate the buyer (public only if the buyer holds an Agent ID)')
+    .description('Rate a released job 1–5 stars — role-aware: buyers rate the ASP (stars land ON-CHAIN, the one public score); ASPs rate the buyer (off-chain; public only if the buyer holds an Agent ID)')
     .requiredOption('--stars <1-5>', 'Star rating, 1 (poor) to 5 (excellent)')
-    .option('--text <text>', 'Optional short review (max 400 chars)')
+    .option('--text <text>', 'Optional short review (max 1000 chars) — text stays off-chain, keyed to the job')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (jobId: string, opts: { stars: string; text?: string; key?: string; api?: string }) => {
@@ -1056,11 +1084,16 @@ no fund step; unclaimed openings refund fee-free):
         if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
           throw new Error(`--stars must be an integer 1–5 (got "${opts.stars}").`);
         }
+        // Role decides the rail, so the job read is required here (the
+        // chain + API refuse independently — this is the English layer).
+        const reviewedJob = await getJob(getSuiClient(), jobId).catch(() => null);
+        if (!reviewedJob) {
+          throw new Error('Could not read that job on-chain — check the id and retry.');
+        }
         // S.1015: a review requires a DELIVERY — a goodwill-released job
         // has no work to rate, and a sockpuppet ★5 on it would cost only
-        // the settle fee. Defense in depth: the API refuses too.
-        const reviewedJob = await getJob(getSuiClient(), jobId).catch(() => null);
-        if (reviewedJob && !reviewedJob.deliveryHash) {
+        // the settle fee. Move + API refuse too; defense in depth.
+        if (!reviewedJob.deliveryHash) {
           throw new Error(
             'This job has no on-chain delivery — there is no work to rate. Reviews attach only ' +
               'to jobs the seller actually delivered.',
@@ -1069,45 +1102,51 @@ no fund step; unclaimed openings refund fee-free):
         const base = opts.api ?? DEFAULT_API_BASE;
         const agent = await withAgent({ keyPath: opts.key });
         const address = agent.address();
+        const text = opts.text?.trim() || null;
 
-        // Same signed-mutation construction as `t2 service`: challenge
-        // nonce + personal-message signature over sha256 of the payload.
-        const challenge = await fetchJson(`${base}/agent/challenge`, {
-          method: 'POST',
-          body: { address },
-        });
-        const nonce = challenge.nonce as string | undefined;
-        if (!nonce) throw new Error('Failed to get a challenge nonce.');
-        const payload = {
+        if (address === reviewedJob.buyer) {
+          // Buyer → seller: STARS GO ON-CHAIN (S.1054 — the one public
+          // score SSOT; `a2a_escrow::reputation`). Sponsored rail, same as
+          // every job verb. Re-running edits the stars in place.
+          const digest = await submitJobReview(base, agent.signer, { jobId, stars });
+          // Optional text rides the existing signed API path — text is
+          // not the score; it stays off-chain keyed by jobId.
+          let textSaved = false;
+          if (text) {
+            await postSignedReview(base, agent, address, { jobId: validateAddress(jobId), stars, text });
+            textSaved = true;
+          }
+          if (isJsonMode()) {
+            printJson({ jobId: validateAddress(jobId), stars, digest, textSaved });
+            return;
+          }
+          printBlank();
+          printSuccess(
+            `Review on-chain — ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} on job ${truncateAddress(validateAddress(jobId))}.`,
+          );
+          printKeyValue('Tx', digest);
+          if (textSaved) printInfo('Your review text is saved off-chain with the job.');
+          printKeyValue('Seller page', `https://t2000.ai/${reviewedJob.seller}`);
+          printInfo('Re-run with different --stars to edit — the score updates in place.');
+          printBlank();
+          return;
+        }
+
+        // Seller → buyer rating: stays on the signed API path (off-chain by
+        // design — buyer ratings never gate Open claims).
+        const response = await postSignedReview(base, agent, address, {
           jobId: validateAddress(jobId),
           stars,
-          text: opts.text?.trim() || null,
-        };
-        const payloadHash = createHash('sha256')
-          .update(JSON.stringify(payload), 'utf8')
-          .digest('hex');
-        const message = new TextEncoder().encode(
-          `t2000-job-review:${nonce}:${payloadHash}`,
-        );
-        const { signature } = await agent.keypair.signPersonalMessage(message);
-        const response = await fetchJson(`${base}/job/review`, {
-          method: 'POST',
-          body: { address, nonce, signature, payload },
+          text,
         });
-
         if (isJsonMode()) {
           printJson(response);
           return;
         }
         printBlank();
-        printSuccess(`Review saved — ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} on job ${truncateAddress(payload.jobId)}.`);
-        const review = response.review as { seller?: string } | undefined;
-        if (review?.seller) {
-          printKeyValue('Seller page', `https://t2000.ai/${review.seller}`);
-        }
-        // Seller path (you rated the buyer): surface the privacy status the
-        // rating was written under — Agent-ID buyers are public, Passport
-        // buyers stay private, always.
+        printSuccess(`Review saved — ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} on job ${truncateAddress(validateAddress(jobId))}.`);
+        // Surface the privacy status the rating was written under —
+        // Agent-ID buyers are public, Passport buyers stay private, always.
         const rating = response.rating as { visibility?: string } | undefined;
         if (rating?.visibility) {
           printInfo(

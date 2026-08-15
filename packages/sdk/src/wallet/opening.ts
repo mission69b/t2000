@@ -72,17 +72,33 @@ export const A2A_ESCROW_PACKAGE_V2_ID =
   '0x860288d789dc617f6474a0a6801d6011e53bf30d5fb801cdad47b9bc6adb098b';
 export const A2A_ESCROW_PACKAGE_V3_ID =
   '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
+/** v6 (S.1054) — defining id for the `reputation` module: the
+ *  ScoreBoardCreated/ScoreCreated/ReviewSubmitted events and the
+ *  ScoreBoard/AgentScore object types. Pinned at the S.1054 cutover;
+ *  empty until the upgrade broadcasts. Env-overridable so hosts can
+ *  bridge the pin-lag window without waiting for an npm release. */
+export const A2A_ESCROW_PACKAGE_V6_ID =
+  process.env.A2A_ESCROW_PACKAGE_V6_ID ??
+  ''; // ← pinned by the S.1054 mainnet cutover ritual, before npm release
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
 const SHA256_HEX_RE = /^(0x)?[0-9a-fA-F]{64}$/;
 
-/** v1 claim policy: any ACTIVE registered Agent ID. */
+/** Default claim policy: any ACTIVE registered Agent ID ($0 claim, FCFS). */
 export const OPENING_CLAIM_POLICY_ANY_ACTIVE = 0;
+/** S.1054 — Proven: claimer needs ≥ PROVEN_MIN_REVIEWS on-chain reviews
+ *  (see `wallet/reputation.ts`). Claims route through `claim_proven`. */
+export const OPENING_CLAIM_POLICY_PROVEN = 1;
+/** S.1054 — Proven · 4★+: Proven AND average stars ≥ 4.0 (strictly
+ *  stronger than policy 1). */
+export const OPENING_CLAIM_POLICY_PROVEN_4STAR = 2;
 /** Max time an opening may stay claimable (contract cap): 30 days. */
 export const MAX_OPEN_WINDOW_MS = 2_592_000_000;
 
-function feeConfigArg(tx: Transaction) {
+/** Shared, package-internal: the immutable FeeConfig ref every escrow call
+ *  takes (also used by `wallet/reputation.ts` — single source). */
+export function feeConfigArg(tx: Transaction) {
   return tx.sharedObjectRef({
     objectId: A2A_ESCROW_FEE_CONFIG_ID,
     initialSharedVersion: A2A_ESCROW_FEE_CONFIG_VERSION,
@@ -113,7 +129,18 @@ export interface OpeningTerms {
    *  full (contract-asserted; a partial split made junk delivery +EV over
    *  an honest decline). Hire/`escrow::create` keeps the 0–10000 range. */
   rejectSplitBps: number;
+  /** S.1054 — who may race to claim: 0 Anyone (default), 1 Proven,
+   *  2 Proven · 4★+. Never changes HOW a claim works: still FCFS, still
+   *  $0. 3+ aborts on-chain until defined. */
+  claimPolicy?: number;
 }
+
+/** Every claim policy `create_open` accepts (S.1054). */
+export const OPENING_CLAIM_POLICIES = [
+  OPENING_CLAIM_POLICY_ANY_ACTIVE,
+  OPENING_CLAIM_POLICY_PROVEN,
+  OPENING_CLAIM_POLICY_PROVEN_4STAR,
+] as const;
 
 /** The only reject split `create_open` accepts since v5 (S.1019). */
 export const OPEN_REJECT_SPLIT_BPS = 10_000;
@@ -164,6 +191,16 @@ export function preflightCreateOpening(terms: OpeningTerms): {
         'contract-enforced since v5) — reject is economically a decline, so junk delivery has no edge.',
     };
   }
+  const policy = terms.claimPolicy ?? OPENING_CLAIM_POLICY_ANY_ACTIVE;
+  if (!(OPENING_CLAIM_POLICIES as readonly number[]).includes(policy)) {
+    return {
+      valid: false,
+      code: 'INVALID_INPUT',
+      error:
+        'claimPolicy must be 0 (Anyone), 1 (Proven) or 2 (Proven · 4★+) — ' +
+        'anything else aborts on-chain.',
+    };
+  }
   return { valid: true };
 }
 
@@ -194,7 +231,7 @@ export async function buildCreateOpeningTx({
       tx.pure.u64(terms.slaMs),
       tx.pure.u64(terms.reviewWindowMs),
       tx.pure.u64(terms.rejectSplitBps),
-      tx.pure.u8(OPENING_CLAIM_POLICY_ANY_ACTIVE),
+      tx.pure.u8(terms.claimPolicy ?? OPENING_CLAIM_POLICY_ANY_ACTIVE),
       feeConfigArg(tx),
       tx.object(CLOCK_ID),
     ],
@@ -204,24 +241,40 @@ export async function buildCreateOpeningTx({
 
 /** Claim an opening (ASP side) — consumes it and mints the funded Job.
  *  `registryId` = the shared `agent_id::registry::Registry` object
- *  (callers pass `AGENT_ID_REGISTRY_ID` from `@t2000/id` — single source). */
+ *  (callers pass `AGENT_ID_REGISTRY_ID` from `@t2000/id` — single source).
+ *
+ *  S.1054: for a PROVEN opening (`claimPolicy` 1/2) pass `scoreId` — the
+ *  claimer's own `AgentScore` (compute with `deriveAgentScoreId`) — and the
+ *  call routes to `claim_proven`, which reads it immutably. Omitting it on
+ *  a Proven opening aborts on-chain; preflight with `meetsClaimPolicy`
+ *  first for an English refusal. */
 export function buildClaimOpeningTx({
   openingId,
   registryId,
+  scoreId,
 }: {
   openingId: string;
   registryId: string;
+  scoreId?: string;
 }): Transaction {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::claim`,
+    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::${scoreId ? 'claim_proven' : 'claim'}`,
     typeArguments: [USDC_TYPE],
-    arguments: [
-      tx.object(openingId),
-      tx.object(registryId),
-      feeConfigArg(tx),
-      tx.object(CLOCK_ID),
-    ],
+    arguments: scoreId
+      ? [
+          tx.object(openingId),
+          tx.object(registryId),
+          tx.object(scoreId),
+          feeConfigArg(tx),
+          tx.object(CLOCK_ID),
+        ]
+      : [
+          tx.object(openingId),
+          tx.object(registryId),
+          feeConfigArg(tx),
+          tx.object(CLOCK_ID),
+        ],
   });
   return tx;
 }

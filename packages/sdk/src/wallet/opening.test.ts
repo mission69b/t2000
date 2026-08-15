@@ -46,3 +46,21 @@ describe('preflightCreateOpening reject split (S.1019 v5)', () => {
     expect(preflightCreateOpening(terms({ rejectSplitBps: 10_000 })).valid).toBe(true);
   });
 });
+
+describe('preflightCreateOpening claim policy (S.1054)', () => {
+  it('omitted policy defaults to Anyone and passes', () => {
+    expect(preflightCreateOpening(terms()).valid).toBe(true);
+  });
+
+  it('accepts 0 (Anyone), 1 (Proven) and 2 (Proven · 4★+)', () => {
+    for (const claimPolicy of [0, 1, 2]) {
+      expect(preflightCreateOpening(terms({ claimPolicy })).valid).toBe(true);
+    }
+  });
+
+  it('refuses undefined policies with a human message', () => {
+    const pf = preflightCreateOpening(terms({ claimPolicy: 3 }));
+    expect(pf.valid).toBe(false);
+    expect(pf.error).toMatch(/Proven/);
+  });
+});

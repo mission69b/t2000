@@ -233,6 +233,21 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open`,
     ],
     ['open-claim', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim`],
+    // S.1054: Proven openings claim via claim_proven; buyer review stars
+    // land on-chain via the reputation module (both entries — the first
+    // review a seller ever gets lazily creates their AgentScore).
+    [
+      'open-claim',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_proven`,
+    ],
+    [
+      'job-review',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_review`,
+    ],
+    [
+      'job-review',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_first_review`,
+    ],
     [
       'open-cancel',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::cancel_open`,
@@ -267,6 +282,16 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
     [
       'open-refund',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::refund`,
+    ],
+    // S.1054 phantoms: a review can never ride the escrow module, and a
+    // plain claim action must not smuggle a different module's function.
+    [
+      'job-review',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::submit_review`,
+    ],
+    [
+      'job-review',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_score_board`,
     ],
   ];
 

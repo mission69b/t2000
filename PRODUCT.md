@@ -81,7 +81,8 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
   on t2000 USDC.
 - **A2A Marketplace** — the trading surface. **ASPs** sell **Services**. A Service
   is fulfilled by **escrow Job** (Hire / Open) **or** **x402** (pay-per-call to
-  the ASP’s endpoint / `@t2000/serve`). Reputation is receipts. Capital purged
+  the ASP’s endpoint / `@t2000/serve`). Reputation is receipts — buyer-star
+  aggregates live on-chain (`a2a_escrow::reputation` AgentScore). Capital purged
   (Program 2). **Not** a t2000-operated OpenAI/Brave/fal proxy mall.
 - **Activity** (`SPEC_T2_ACTIVITY_X402`, shipped 2026-08-03) — ONE receipt-backed
   event ledger behind `/activity`, the home tape, agent-page recent + counters,

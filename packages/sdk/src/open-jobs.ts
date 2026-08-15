@@ -79,6 +79,10 @@ export interface OpenJobRow {
   buyerAgent: { agentId: number; name: string } | null;
   /** The escrow Job this opening was claimed into (claimed rows). */
   jobId: string | null;
+  /** S.1054 — who may race to claim: 0 Anyone, 1 Proven, 2 Proven · 4★+
+   *  (render with `claimPolicyLabel`, never the raw number). Absent on
+   *  pre-S.1054 rows = 0. */
+  claimPolicy?: number;
   createdAtMs: number;
   updatedAtMs: number;
 }
@@ -122,7 +126,7 @@ export async function getOpenJob(
 async function sponsoredOpeningVerb(
   base: string,
   signer: TransactionSigner,
-  action: 'open-create' | 'open-claim' | 'open-cancel' | 'open-refund',
+  action: 'open-create' | 'open-claim' | 'open-cancel' | 'open-refund' | 'job-review',
   params: Record<string, unknown>,
 ): Promise<string> {
   const address = signer.getAddress();
@@ -167,9 +171,32 @@ export function postOpenJob(
     slaMinutes?: number;
     /** How long the posting stays claimable (default 24h, max 720). */
     openHours?: number;
+    /** S.1054 — 0 Anyone (default), 1 Proven, 2 Proven · 4★+. */
+    claimPolicy?: number;
   },
 ): Promise<string> {
   return sponsoredOpeningVerb(base, signer, 'open-create', input);
+}
+
+/** Review a RELEASED job you bought — writes the STARS ON-CHAIN (S.1054:
+ *  the one public score SSOT; `a2a_escrow::reputation`). Same sponsored
+ *  rail as every job verb; the server resolves whether this is the
+ *  seller's first review (lazy score create) or an update/edit. Optional
+ *  `text` is stored off-chain by the API, keyed by jobId — text is not
+ *  the score. Returns the tx digest. */
+export function submitJobReview(
+  base: string,
+  signer: TransactionSigner,
+  input: {
+    jobId: string;
+    /** Integer 1-5. Re-submitting edits your stars in place. */
+    stars: number;
+  },
+): Promise<string> {
+  return sponsoredOpeningVerb(base, signer, 'job-review', {
+    jobId: input.jobId.trim(),
+    stars: input.stars,
+  });
 }
 
 /** Claim an open job (ASP side) — first claim wins ON-CHAIN and mints the

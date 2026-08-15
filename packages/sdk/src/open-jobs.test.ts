@@ -6,6 +6,7 @@ import {
   getOpenJob,
   listOpenJobs,
   postOpenJob,
+  submitJobReview,
   refundOpenJob,
 } from './open-jobs.js';
 
@@ -117,6 +118,21 @@ describe('on-chain verbs — prepare → sign → submit (sponsored rail)', () =
       nonce: 'n-1',
       address: ADDRESS,
       signature: 'tx-sig',
+    });
+  });
+
+  it('submitJobReview writes buyer stars on-chain via the job-review action (S.1054)', async () => {
+    const signer = stubSigner();
+    const calls = mockFetchQueue([
+      { json: { nonce: 'n-r', txBytes: TX_BYTES } },
+      { json: { digest: 'DIGEST-R' } },
+    ]);
+    await expect(
+      submitJobReview(BASE, signer, { jobId: ` ${OPENING_ID} `, stars: 5 }),
+    ).resolves.toBe('DIGEST-R');
+    expect(calls[0]?.body).toMatchObject({
+      action: 'job-review',
+      params: { jobId: OPENING_ID, stars: 5 },
     });
   });
 

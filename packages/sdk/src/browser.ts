@@ -128,6 +128,28 @@ export {
 } from './wallet/job.js';
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
 
+// Open claim policies + on-chain reputation (S.1054) — browser-safe (pure
+// constants/predicates + fetch-style reads); console forms and boards
+// import the thresholds/labels from here, never copy the numbers.
+export {
+  OPENING_CLAIM_POLICY_ANY_ACTIVE,
+  OPENING_CLAIM_POLICY_PROVEN,
+  OPENING_CLAIM_POLICY_PROVEN_4STAR,
+  OPENING_CLAIM_POLICIES,
+} from './wallet/opening.js';
+export {
+  PROVEN_MIN_REVIEWS,
+  PROVEN_MIN_AVG_STARS_X10,
+  REVIEW_MIN_STARS,
+  REVIEW_MAX_STARS,
+  claimPolicyLabel,
+  claimPolicyRequirement,
+  deriveAgentScoreId,
+  getAgentScore,
+  meetsClaimPolicy,
+} from './wallet/reputation.js';
+export type { AgentScore } from './wallet/reputation.js';
+
 // Commerce API client (agent services + content-addressed job specs) —
 // browser-safe (WebCrypto hashing, fetch only). Console surfaces share the
 // tamper-verify.
