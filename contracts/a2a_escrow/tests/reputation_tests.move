@@ -991,6 +991,85 @@ fun create_empty_score_twice_aborts() {
     abort 0
 }
 
+// === S.1064 — review on REJECTED ===
+
+/// Deliver + buyer-reject a funded job (through the live v2 door).
+fun reject_job(
+    sc: &mut ts::Scenario,
+    clk: &Clock,
+    buyer: address,
+    seller: address,
+    job_id: ID,
+    seller_sid: ID,
+) {
+    deliver_job(sc, clk, seller, job_id);
+    ts::next_tx(sc, buyer);
+    {
+        let cfg = ts::take_shared<FeeConfig>(sc);
+        let reg = ts::take_shared<Registry>(sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
+        let mut score = ts::take_shared_by_id<AgentScore>(sc, seller_sid);
+        reputation::reject_v2(&mut job, &mut score, &reg, &cfg, clk, ts::ctx(sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+}
+
+#[test]
+fun rejected_job_is_reviewable_and_counts_distinct() {
+    let (mut sc, clk) = setup();
+    let sid = empty_score_for(&mut sc, &clk, ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    reject_job(&mut sc, &clk, BUYER, ASP, job_id, sid);
+    // The rejecting buyer leaves the honest 1★ — a real star, real distinct.
+    review(&mut sc, &clk, job_id, 1);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        assert!(reputation::review_count(&score) == 1, 0);
+        assert!(reputation::stars_sum(&score) == 1, 1);
+        assert!(reputation::distinct_buyers(&score) == 1, 2);
+        // The S.1063 outcome landed at reject and does NOT double here.
+        assert!(reputation::rejected_after_delivery(&score) == 1, 3);
+        ts::return_shared(score);
+    };
+    // Edit-in-place still works on the rejected job's review.
+    review(&mut sc, &clk, job_id, 2);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        assert!(reputation::review_count(&score) == 1, 4);
+        assert!(reputation::stars_sum(&score) == 2, 5);
+        assert!(reputation::rejected_after_delivery(&score) == 1, 6);
+        ts::return_shared(score);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::ENotReleased)]
+fun funded_job_still_not_reviewable() {
+    let (mut sc, clk) = setup();
+    empty_score_for(&mut sc, &clk, ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    review(&mut sc, &clk, job_id, 3);
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::ENotReleased)]
+fun delivered_pre_reject_still_not_reviewable() {
+    let (mut sc, clk) = setup();
+    empty_score_for(&mut sc, &clk, ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    deliver_job(&mut sc, &clk, ASP, job_id);
+    review(&mut sc, &clk, job_id, 3);
+    abort 0
+}
+
 // === create_open policy bounds (S.1054) ===
 
 #[test]

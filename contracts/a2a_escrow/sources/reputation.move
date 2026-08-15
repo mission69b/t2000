@@ -31,7 +31,8 @@
 /// additive escrow upgrade. The SPEC/prompt explicitly allow this shape.
 ///
 /// Write authority (all Move-enforced — reputation is receipts):
-/// - sender == `Job.buyer` and `Job.state == RELEASED`
+/// - sender == `Job.buyer` and `Job.state == RELEASED` **or REJECTED**
+///   (S.1064 — both settled money paths on delivered work)
 /// - the job was actually DELIVERED (`delivered_at_ms > 0`): a goodwill
 ///   release of an undelivered job is not a reviewable receipt (the on-chain
 ///   form of the API's no-goodwill-review rule)
@@ -63,6 +64,8 @@ const MAX_STARS: u8 = 5;
 
 // === Errors ===
 const ENotBuyer: u64 = 0;
+/// Not a reviewable state — reviews attach to RELEASED or (since S.1064)
+/// REJECTED jobs only. Name kept from v1 for the stable abort code 1.
 const ENotReleased: u64 = 1;
 /// RELEASED but never DELIVERED = goodwill settle — not reviewable.
 const ENotDelivered: u64 = 2;
@@ -427,14 +430,24 @@ fun record_outcome<K: copy + drop + store>(
     });
 }
 
-/// The receipt gate — every review path funnels through here.
+/// The receipt gate — every review path funnels through here. S.1064:
+/// RELEASED **or REJECTED** (both are settled money paths on delivered
+/// work — a buyer who rejected junk may still leave the honest 1★; the
+/// S.1063 outcome counter already landed at reject and never doubles
+/// here). Goodwill RELEASED with no delivery stays unreviewable, and a
+/// REJECTED job structurally always has a delivery (reject requires
+/// DELIVERED) — the delivered check stays as belt + suspenders.
 fun validate_review<T>(job: &Job<T>, stars: u8, ctx: &TxContext): address {
     assert!(stars >= MIN_STARS && stars <= MAX_STARS, EBadStars);
     let buyer = escrow::buyer(job);
     let seller = escrow::seller(job);
     assert!(ctx.sender() == buyer, ENotBuyer);
     assert!(buyer != seller, ESelfReview);
-    assert!(escrow::state(job) == escrow::state_released(), ENotReleased);
+    let state = escrow::state(job);
+    assert!(
+        state == escrow::state_released() || state == escrow::state_rejected(),
+        ENotReleased, // abort code 1 unchanged — "not a reviewable state"
+    );
     assert!(escrow::delivered_at_ms(job) > 0, ENotDelivered);
     seller
 }
