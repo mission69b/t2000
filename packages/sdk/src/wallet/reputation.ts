@@ -31,7 +31,7 @@ import { A2A_ESCROW_LATEST_PACKAGE_ID, feeConfigArg } from './opening.js';
  *  FeeConfig and a second create aborts). This pin MUST equal
  *  `escrow::config_score_board_id(FeeConfig)` — verify at cutover. */
 export const MAINNET_A2A_SCORE_BOARD_ID =
-  ''; // ← pinned by the S.1054 mainnet cutover ritual, before npm release
+  '0x7506f01e01b1c48d73832949a2808929b80dec2f7104889e012f8a4f09719f6e'; // create digest DxrhQniY…, verified == FeeConfig ScoreBoardKey DF
 
 /** Env-overridable board id for testnet/dev (NOT a trust anchor). */
 export const A2A_SCORE_BOARD_ID =

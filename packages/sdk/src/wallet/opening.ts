@@ -25,10 +25,10 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v5 upgrade
- *  2026-08-12, S.1019 — create_open requires reject_split 10000; v4 added
- *  amount bounds (S.981); v3 added `escrow::decline`; v2 the `opening`
- *  module).
+/** The LATEST published `a2a_escrow` package id on MAINNET (v6 upgrade
+ *  2026-08-15, S.1054 — `reputation` module + `opening::claim_proven`;
+ *  v5 locked open reject at 10000 (S.1019); v4 added amount bounds
+ *  (S.981); v3 added `escrow::decline`; v2 the `opening` module).
  *  A literal, never an env read, so it can serve as a signature-time trust
  *  anchor (S.930). Must match the Move upgrade publish notes.
  *
@@ -38,7 +38,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0xc84fc8a6d7e8766e36abb16acf5f0c0d15444797137274bbbe027ac7972c56a7';
+  '0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -72,14 +72,12 @@ export const A2A_ESCROW_PACKAGE_V2_ID =
   '0x860288d789dc617f6474a0a6801d6011e53bf30d5fb801cdad47b9bc6adb098b';
 export const A2A_ESCROW_PACKAGE_V3_ID =
   '0x69ad93c555519de520a5c7f7f2963ad6f8b91cefc098fc2eed75942dcb5bcbe7';
-/** v6 (S.1054) — defining id for the `reputation` module: the
- *  ScoreBoardCreated/ScoreCreated/ReviewSubmitted events and the
- *  ScoreBoard/AgentScore object types. Pinned at the S.1054 cutover;
- *  empty until the upgrade broadcasts. Env-overridable so hosts can
- *  bridge the pin-lag window without waiting for an npm release. */
+/** v6 (S.1054, upgrade FHcn7KCB… 2026-08-15) — defining id for the
+ *  `reputation` module: the ScoreBoardCreated/ScoreCreated/ReviewSubmitted
+ *  events and the ScoreBoard/AgentScore object types. A DEFINING-id anchor
+ *  like V2/V3 — never moves again, even when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V6_ID =
-  process.env.A2A_ESCROW_PACKAGE_V6_ID ??
-  ''; // ← pinned by the S.1054 mainnet cutover ritual, before npm release
+  '0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';

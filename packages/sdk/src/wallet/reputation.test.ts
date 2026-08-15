@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  MAINNET_A2A_SCORE_BOARD_ID,
   PROVEN_MIN_REVIEWS,
   buildSubmitFirstReviewTx,
   buildSubmitReviewTx,
@@ -69,8 +70,11 @@ describe('deriveAgentScoreId', () => {
     expect(deriveAgentScoreId(`0x${'3'.repeat(64)}`, BOARD)).not.toBe(a);
   });
 
-  it('throws a clear error when no board id is configured', () => {
-    expect(() => deriveAgentScoreId(AGENT)).toThrow(/ScoreBoard/);
+  it('defaults to the pinned mainnet ScoreBoard (S.1054 cutover)', () => {
+    expect(MAINNET_A2A_SCORE_BOARD_ID).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(deriveAgentScoreId(AGENT)).toBe(
+      deriveAgentScoreId(AGENT, MAINNET_A2A_SCORE_BOARD_ID),
+    );
   });
 });
 
