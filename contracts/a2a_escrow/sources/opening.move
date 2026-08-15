@@ -269,8 +269,9 @@ public fun claim_proven<T>(
         EBadClaimPolicy,
     );
     assert!(reputation::agent(score) == ctx.sender(), EScoreNotClaimer);
+    // S.1062: Proven = distinct buyers, not raw review count.
     if (policy == CLAIM_POLICY_MIN_REVIEWS) {
-        assert!(reputation::meets_min_reviews(score), EClaimPolicyUnmet);
+        assert!(reputation::meets_proven(score), EClaimPolicyUnmet);
     } else {
         assert!(reputation::meets_min_avg(score), EClaimPolicyUnmet);
     };
