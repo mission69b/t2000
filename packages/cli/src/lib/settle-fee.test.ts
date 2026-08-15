@@ -39,6 +39,15 @@ describe('settlementSplit', () => {
     expect(s.feeMicro + s.payoutMicro).toBe(50_000);
   });
 
+  it('one-cent job (S.1053): 10,000 → 500 fee + 9,500 payout, no rounded-up display', () => {
+    const s = settlementSplit(0.01);
+    expect(s.escrow).toBe('$0.01');
+    expect(s.feeMicro).toBe(500);
+    expect(s.payoutMicro).toBe(9_500);
+    expect(s.fee).toBe('$0.0005'); // not $0.00-rounded-away, not $0.001
+    expect(s.payout).toBe('$0.0095'); // never displayed as $0.01
+  });
+
   it('never loses a micro to rounding, at any size', () => {
     for (const price of [0.01, 0.05, 0.1, 1, 5, 12.34, 50]) {
       const s = settlementSplit(price);

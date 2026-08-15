@@ -20,7 +20,7 @@ describe('preflightCreateOpening amount bounds (S.981)', () => {
   });
 
   it('rejects a budget under the contract minimum with a human message', () => {
-    const pf = preflightCreateOpening(terms({ amountUsdc: 0.04 }));
+    const pf = preflightCreateOpening(terms({ amountUsdc: MIN_JOB_USDC - 0.000001 }));
     expect(pf.valid).toBe(false);
     expect(pf.error).toContain(`${MIN_JOB_USDC}`);
   });

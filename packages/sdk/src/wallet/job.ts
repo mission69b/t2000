@@ -76,11 +76,14 @@ function feeConfigArg(tx: Transaction) {
  *  v4 upgrade (`MAX_JOB_AMOUNT_DEFAULT`, AdminCap-tunable ≤ 100 USDC). */
 export const MAX_JOB_USDC = 50;
 
-/** Job-value floor in USDC (S.981 product lock, founder 2026-08-09) —
- *  on-chain as `MIN_JOB_AMOUNT_DEFAULT` (AdminCap-tunable, hard floor 0.01).
- *  This mirror is the preflight's human error; the chain is the SSOT — an
- *  admin move between releases surfaces as the on-chain abort instead. */
-export const MIN_JOB_USDC = 0.05;
+/** Job-value floor in USDC — the CURRENT contract-configured minimum, not an
+ *  immutable code fact (S.1053, founder 2026-08-15: one-cent micro-work).
+ *  On-chain SSOT is the live `FeeConfig` min-amount DF (AdminCap
+ *  `set_min_job_amount`, package hard floor 0.01); this mirror is the
+ *  preflight's human error, and an admin retune between releases surfaces
+ *  as the on-chain abort instead. Every consumer (CLI, console, Connect)
+ *  must import this — never copy the number. */
+export const MIN_JOB_USDC = 0.01;
 
 /** Contract-enforced create bounds (mirror `escrow.move` — the caps that
  *  close the v1 unbounded-window overflow lock). */

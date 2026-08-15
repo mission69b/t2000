@@ -82,7 +82,7 @@ describe('preflightCreateJob', () => {
   });
 
   it('rejects amounts under the contract minimum with a human message (S.981)', () => {
-    const pf = preflightCreateJob(terms({ amountUsdc: 0.04 }));
+    const pf = preflightCreateJob(terms({ amountUsdc: MIN_JOB_USDC - 0.000001 }));
     expect(pf.valid).toBe(false);
     expect(pf.valid === false && pf.error).toContain(`${MIN_JOB_USDC}`);
   });
