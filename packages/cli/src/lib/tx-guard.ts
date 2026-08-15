@@ -92,15 +92,18 @@ const ACTION_TARGETS: Record<
     module: 'escrow',
     functions: ['release'],
   },
+  // S.1063: reject/refund settle through the reputation module so protocol
+  // outcomes land on scores; `create_empty_score` is the allowlisted
+  // PRECURSOR (lazy zero-score create) the same action may prepare first.
   reject: {
-    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
-    module: 'escrow',
-    functions: ['reject'],
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'reputation',
+    functions: ['reject_v2', 'reject_v2_agent_buyer', 'create_empty_score'],
   },
   refund: {
-    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
-    module: 'escrow',
-    functions: ['refund'],
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'reputation',
+    functions: ['refund_v2', 'create_empty_score'],
   },
   // v3 opening package — note the `escrow` module.
   decline: {

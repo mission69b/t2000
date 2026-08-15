@@ -53,13 +53,14 @@ use sui::dynamic_field as df;
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
-/// v4 (S.1062): Proven = DISTINCT buyers — without this cutover, the old
-/// package's `claim_proven` still enforces the v1 `review_count >= 3`
-/// predicate and would bypass distinct buyers (same reasoning as S.981's
-/// bounds bump). v3 (S.1019): open-board reject must be 100% buyer;
-/// v2 (S.981): job amount bounds. (S.1054's reputation module was purely
-/// additive — no bump needed then.)
-const VERSION: u64 = 4;
+/// v5 (S.1063): reject/refund settle THROUGH `reputation::reject_v2` /
+/// `refund_v2` so protocol outcomes hit the seller's (and an Agent-ID
+/// buyer's) score — the frozen-signature `reject`/`refund` entries below
+/// are deprecated aborts, and the version cutover kills the v7 bytecode
+/// that would still settle without counters. v4 (S.1062): Proven =
+/// distinct buyers. v3 (S.1019): open reject 100% buyer. v2 (S.981):
+/// amount bounds.
+const VERSION: u64 = 5;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
@@ -116,6 +117,11 @@ const EAmountTooLarge: u64 = 16;
 const EBadAmountBounds: u64 = 17;
 /// S.1054b: the canonical ScoreBoard already exists — one per chain, ever.
 const EScoreBoardExists: u64 = 18;
+/// S.1063: reject/refund moved to `reputation::reject_v2`/`refund_v2`
+/// (outcome counters ride settlement). These frozen-signature entries
+/// abort with THIS code — a dedicated abort so ops can tell "deprecated
+/// surface" from a real auth failure (the S.1032 registry pattern).
+const EUseSettleV2: u64 = 19;
 
 // === Objects ===
 
@@ -505,9 +511,28 @@ public fun release<T>(
 }
 
 // === Reject (buyer, within the review window — split per create terms) ===
-/// The buyer's share is fee-free; the protocol fee applies to the
-/// seller-bound share only (so a 0-split reject can't dodge the fee).
+/// DEPRECATED (S.1063) — always aborts `EUseSettleV2`. The live path is
+/// `reputation::reject_v2` / `reject_v2_agent_buyer`, which settles via
+/// `reject_settle_pkg` below AND records the protocol outcome on the
+/// seller's (and an Agent-ID buyer's) score. Signature survives (Sui
+/// compatible upgrades cannot remove public functions); the body is dead.
 public fun reject<T>(
+    _job: &mut Job<T>,
+    cfg: &FeeConfig,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
+) {
+    assert_version(cfg);
+    abort EUseSettleV2
+}
+
+/// The reject settlement body (S.1063: package-visible so
+/// `reputation::reject_v2*` — the only live callers — settle the money
+/// HERE; coin/fee math never leaves this module). The buyer's share is
+/// fee-free; the protocol fee applies to the seller-bound share only (so
+/// a 0-split reject can't dodge the fee). Emits `JobRejected` exactly as
+/// v1 did — defining id unchanged, indexers keep working.
+public(package) fun reject_settle_pkg<T>(
     job: &mut Job<T>,
     cfg: &FeeConfig,
     clock: &Clock,
@@ -579,10 +604,25 @@ public fun decline<T>(
 }
 
 // === Refund (ANYONE, after the deadline with no delivery — funds → buyer) ===
-/// Permissionless crank: funds can only ever go back to the buyer, so open
-/// authorship is safe. A broken/absent seller can never keep committed funds.
-/// Always fee-free — the protocol never earns on a failed job.
+/// DEPRECATED (S.1063) — always aborts `EUseSettleV2`. The live path is
+/// `reputation::refund_v2` (deadline no-delivery is a protocol outcome on
+/// the seller's score). Signature survives; the body is dead.
 public fun refund<T>(
+    _job: &mut Job<T>,
+    cfg: &FeeConfig,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
+) {
+    assert_version(cfg);
+    abort EUseSettleV2
+}
+
+/// The deadline-refund body (S.1063: package-visible — `reputation::
+/// refund_v2` is the only live caller). Permissionless crank: funds can
+/// only ever go back to the buyer, so open authorship is safe. Always
+/// fee-free — the protocol never earns on a failed job. Emits
+/// `JobRefunded` exactly as v1 did.
+public(package) fun refund_settle_pkg<T>(
     job: &mut Job<T>,
     cfg: &FeeConfig,
     clock: &Clock,

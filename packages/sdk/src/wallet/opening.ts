@@ -84,6 +84,13 @@ export const A2A_ESCROW_PACKAGE_V6_ID =
  *  V2/V3/V6 — never moves again, even when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V7_ID =
   '0x4249f0b242c47c7baf0c37304365bc4bbe769bcedf11f3525e84682d59a3b23e';
+/** v8 (S.1063) — defining id for the outcome surface: the OutcomeRecorded
+ *  event and the RejectedAfterDeliveryKey/NoDeliveryKey/AsBuyerRejectedKey
+ *  DF key types. Pinned at the S.1063 cutover; empty until the upgrade
+ *  broadcasts. Env-overridable to bridge pin-lag. Never retargets after. */
+export const A2A_ESCROW_PACKAGE_V8_ID =
+  process.env.A2A_ESCROW_PACKAGE_V8_ID ??
+  ''; // ← pinned by the S.1063 mainnet cutover ritual, before npm release
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';

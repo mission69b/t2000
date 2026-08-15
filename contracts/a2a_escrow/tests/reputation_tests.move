@@ -706,6 +706,291 @@ fun proven_claim_still_requires_active_agent() {
     abort 0
 }
 
+// === S.1063 — protocol outcome counters ===
+
+/// Escrow a Hire job buyer→seller (FUNDED).
+fun funded_job(sc: &mut ts::Scenario, clk: &Clock, buyer: address, seller: address): ID {
+    ts::next_tx(sc, buyer);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(sc));
+    let id = escrow::create<SUI>(
+        seller,
+        payment,
+        b"spec-hash",
+        clk.timestamp_ms() + SLA_MS,
+        REVIEW_WINDOW,
+        8_000, // hire keeps the free split range
+        &cfg,
+        clk,
+        ts::ctx(sc),
+    );
+    ts::return_shared(cfg);
+    id
+}
+
+fun deliver_job(sc: &mut ts::Scenario, clk: &Clock, seller: address, job_id: ID) {
+    ts::next_tx(sc, seller);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
+    escrow::deliver(&mut job, b"delivery-hash", &cfg, clk, ts::ctx(sc));
+    ts::return_shared(job);
+    ts::return_shared(cfg);
+}
+
+/// Permissionless zero-score create for `agent`; returns the score id.
+fun empty_score_for(sc: &mut ts::Scenario, clk: &Clock, agent: address): ID {
+    ts::next_tx(sc, STRANGER); // anyone may lazily create — grants nothing
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let mut board = ts::take_shared<ScoreBoard>(sc);
+    reputation::create_empty_score(&mut board, agent, &cfg, clk, ts::ctx(sc));
+    let sid = reputation::score_address(&board, agent).to_id();
+    ts::return_shared(board);
+    ts::return_shared(cfg);
+    sid
+}
+
+#[test]
+fun reject_records_seller_outcome_only() {
+    let (mut sc, clk) = setup();
+    let sid = empty_score_for(&mut sc, &clk, ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    deliver_job(&mut sc, &clk, ASP, job_id);
+    // Passport buyer rejects in-window through the live v2 door.
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        reputation::reject_v2(&mut job, &mut score, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(escrow::state(&job) == escrow::state_rejected(), 0);
+        // The outcome landed — and NOTHING star-shaped moved.
+        assert!(reputation::rejected_after_delivery(&score) == 1, 1);
+        assert!(reputation::no_delivery(&score) == 0, 2);
+        assert!(reputation::as_buyer_rejected(&score) == 0, 3);
+        assert!(reputation::review_count(&score) == 0, 4);
+        assert!(reputation::stars_sum(&score) == 0, 5);
+        assert!(reputation::distinct_buyers(&score) == 0, 6);
+        assert!(!reputation::meets_proven(&score), 7);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun agent_buyer_reject_records_both_sides() {
+    let (mut sc, clk) = setup();
+    // OTHER_ASP (registered) buys from ASP; both scores pre-created.
+    let seller_sid = empty_score_for(&mut sc, &clk, ASP);
+    let buyer_sid = empty_score_for(&mut sc, &clk, OTHER_ASP);
+    let job_id = funded_job(&mut sc, &clk, OTHER_ASP, ASP);
+    deliver_job(&mut sc, &clk, ASP, job_id);
+    ts::next_tx(&mut sc, OTHER_ASP);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut seller_score = ts::take_shared_by_id<AgentScore>(&sc, seller_sid);
+        let mut buyer_score = ts::take_shared_by_id<AgentScore>(&sc, buyer_sid);
+        reputation::reject_v2_agent_buyer(
+            &mut job,
+            &mut seller_score,
+            &mut buyer_score,
+            &reg,
+            &cfg,
+            &clk,
+            ts::ctx(&mut sc),
+        );
+        assert!(reputation::rejected_after_delivery(&seller_score) == 1, 0);
+        assert!(reputation::as_buyer_rejected(&buyer_score) == 1, 1);
+        assert!(reputation::as_buyer_rejected(&seller_score) == 0, 2);
+        assert!(reputation::rejected_after_delivery(&buyer_score) == 0, 3);
+        ts::return_shared(buyer_score);
+        ts::return_shared(seller_score);
+        ts::return_shared(job);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EBuyerIsAgent)]
+fun agent_buyer_cannot_dodge_own_counter() {
+    let (mut sc, clk) = setup();
+    let seller_sid = empty_score_for(&mut sc, &clk, ASP);
+    let job_id = funded_job(&mut sc, &clk, OTHER_ASP, ASP);
+    deliver_job(&mut sc, &clk, ASP, job_id);
+    ts::next_tx(&mut sc, OTHER_ASP);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = ts::take_shared_by_id<AgentScore>(&sc, seller_sid);
+        // Registered buyer picking the Passport variant = dodging.
+        reputation::reject_v2(&mut job, &mut score, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EBuyerNotAgent)]
+fun passport_buyer_cannot_use_agent_variant() {
+    let (mut sc, clk) = setup();
+    let seller_sid = empty_score_for(&mut sc, &clk, ASP);
+    let buyer_sid = empty_score_for(&mut sc, &clk, BUYER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    deliver_job(&mut sc, &clk, ASP, job_id);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut seller_score = ts::take_shared_by_id<AgentScore>(&sc, seller_sid);
+        let mut buyer_score = ts::take_shared_by_id<AgentScore>(&sc, buyer_sid);
+        reputation::reject_v2_agent_buyer(
+            &mut job,
+            &mut seller_score,
+            &mut buyer_score,
+            &reg,
+            &cfg,
+            &clk,
+            ts::ctx(&mut sc),
+        );
+        ts::return_shared(buyer_score);
+        ts::return_shared(seller_score);
+        ts::return_shared(job);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+fun deadline_refund_records_no_delivery() {
+    let (mut sc, mut clk) = setup();
+    let sid = empty_score_for(&mut sc, &clk, ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    let past_deadline = clk.timestamp_ms() + SLA_MS + 1;
+    clk.set_for_testing(past_deadline);
+    // Permissionless crank — a stranger runs it; the counter still lands.
+    ts::next_tx(&mut sc, STRANGER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        reputation::refund_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(escrow::state(&job) == escrow::state_refunded(), 0);
+        assert!(reputation::no_delivery(&score) == 1, 1);
+        assert!(reputation::rejected_after_delivery(&score) == 0, 2);
+        assert!(reputation::review_count(&score) == 0, 3);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun decline_writes_no_outcome() {
+    let (mut sc, clk) = setup();
+    let sid = empty_score_for(&mut sc, &clk, ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    // Seller walks cleanly before delivering — full refund, NO counter.
+    ts::next_tx(&mut sc, ASP);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    ts::next_tx(&mut sc, ASP);
+    {
+        let score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        assert!(reputation::no_delivery(&score) == 0, 0);
+        assert!(reputation::rejected_after_delivery(&score) == 0, 1);
+        ts::return_shared(score);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EWrongScore)]
+fun refund_with_wrong_seller_score_fails() {
+    let (mut sc, mut clk) = setup();
+    let wrong_sid = empty_score_for(&mut sc, &clk, OTHER_ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    let past_deadline = clk.timestamp_ms() + SLA_MS + 1;
+    clk.set_for_testing(past_deadline);
+    ts::next_tx(&mut sc, STRANGER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = ts::take_shared_by_id<AgentScore>(&sc, wrong_sid);
+        reputation::refund_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EUseSettleV2)]
+fun deprecated_escrow_reject_aborts() {
+    let (mut sc, clk) = setup();
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    deliver_job(&mut sc, &clk, ASP, job_id);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        escrow::reject(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EUseSettleV2)]
+fun deprecated_escrow_refund_aborts() {
+    let (mut sc, mut clk) = setup();
+    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    let past_deadline = clk.timestamp_ms() + SLA_MS + 1;
+    clk.set_for_testing(past_deadline);
+    ts::next_tx(&mut sc, STRANGER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        escrow::refund(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure] // derived_object::claim: score already exists
+fun create_empty_score_twice_aborts() {
+    let (mut sc, clk) = setup();
+    empty_score_for(&mut sc, &clk, ASP);
+    empty_score_for(&mut sc, &clk, ASP);
+    abort 0
+}
+
 // === create_open policy bounds (S.1054) ===
 
 #[test]

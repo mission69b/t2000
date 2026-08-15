@@ -284,12 +284,68 @@ export function buildDeclineJobTx(jobId: string): Transaction {
   return tx;
 }
 
-function jobCall(jobId: string, fn: 'release' | 'refund' | 'reject'): Transaction {
+function jobCall(jobId: string, fn: 'release'): Transaction {
   const tx = new Transaction();
   tx.moveCall({
     target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::${fn}`,
     typeArguments: [USDC_TYPE],
     arguments: [tx.object(jobId), feeConfigArg(tx), tx.object(CLOCK_ID)],
+  });
+  return tx;
+}
+
+/** Buyer rejects delivered work — S.1063: settles through
+ *  `reputation::reject_v2` (Passport buyer) or `reject_v2_agent_buyer`
+ *  (registered Agent-ID buyer, who also accrues `as_buyer_rejected`), so
+ *  the protocol outcome lands on the seller's score. Score ids derive
+ *  locally (`deriveAgentScoreId`); pass `buyerScoreId` exactly when the
+ *  buyer is a registered agent — the contract refuses a mismatched
+ *  variant, so a registered buyer can't dodge its own counter. */
+export function buildRejectJobTx(
+  jobId: string,
+  v2: { sellerScoreId: string; registryId: string; buyerScoreId?: string },
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::${v2.buyerScoreId ? 'reject_v2_agent_buyer' : 'reject_v2'}`,
+    typeArguments: [USDC_TYPE],
+    arguments: v2.buyerScoreId
+      ? [
+          tx.object(jobId),
+          tx.object(v2.sellerScoreId),
+          tx.object(v2.buyerScoreId),
+          tx.object(v2.registryId),
+          feeConfigArg(tx),
+          tx.object(CLOCK_ID),
+        ]
+      : [
+          tx.object(jobId),
+          tx.object(v2.sellerScoreId),
+          tx.object(v2.registryId),
+          feeConfigArg(tx),
+          tx.object(CLOCK_ID),
+        ],
+  });
+  return tx;
+}
+
+/** Deadline refund (no delivery) — S.1063: settles through
+ *  `reputation::refund_v2` so `no_delivery` lands on the seller's score.
+ *  Still permissionless: funds only ever return to the buyer. */
+export function buildRefundJobTx(
+  jobId: string,
+  v2: { sellerScoreId: string },
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::refund_v2`,
+    typeArguments: [USDC_TYPE],
+    arguments: [
+      tx.object(jobId),
+      tx.object(v2.sellerScoreId),
+      feeConfigArg(tx),
+      tx.object(CLOCK_ID),
+    ],
   });
   return tx;
 }
@@ -313,16 +369,6 @@ export function buildDeliverJobTx(jobId: string, deliveryHash: string): Transact
 /** Buyer accepts (or anyone, once the review window lapsed) → funds to seller. */
 export function buildReleaseJobTx(jobId: string): Transaction {
   return jobCall(jobId, 'release');
-}
-
-/** Buyer rejects within the review window → split per the create terms. */
-export function buildRejectJobTx(jobId: string): Transaction {
-  return jobCall(jobId, 'reject');
-}
-
-/** Anyone, after the deadline with no delivery → funds back to the buyer. */
-export function buildRefundJobTx(jobId: string): Transaction {
-  return jobCall(jobId, 'refund');
 }
 
 // ---------------------------------------------------------------------------

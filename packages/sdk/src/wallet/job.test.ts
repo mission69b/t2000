@@ -159,12 +159,13 @@ describe('buildCreateJobTx', () => {
   });
 });
 
+const SCORE_ID = `0x${'e'.repeat(64)}`;
+const REGISTRY_ID = `0x${'f'.repeat(64)}`;
+
 describe('single-object verb builders', () => {
   it.each([
     ['deliver', () => buildDeliverJobTx(JOB_ID, '0xabcd')],
     ['release', () => buildReleaseJobTx(JOB_ID)],
-    ['reject', () => buildRejectJobTx(JOB_ID)],
-    ['refund', () => buildRefundJobTx(JOB_ID)],
   ])('%s targets the escrow module', (fn, build) => {
     const tx = build();
     const calls = tx
@@ -174,6 +175,35 @@ describe('single-object verb builders', () => {
     }>;
     expect(calls).toHaveLength(1);
     expect(calls[0].MoveCall.module).toBe('escrow');
+    expect(calls[0].MoveCall.function).toBe(fn);
+  });
+
+  // S.1063: reject/refund settle through the reputation module (outcome
+  // counters) — never the deprecated escrow doors.
+  it.each([
+    [
+      'reject_v2',
+      () => buildRejectJobTx(JOB_ID, { sellerScoreId: SCORE_ID, registryId: REGISTRY_ID }),
+    ],
+    [
+      'reject_v2_agent_buyer',
+      () =>
+        buildRejectJobTx(JOB_ID, {
+          sellerScoreId: SCORE_ID,
+          registryId: REGISTRY_ID,
+          buyerScoreId: `0x${'d'.repeat(64)}`,
+        }),
+    ],
+    ['refund_v2', () => buildRefundJobTx(JOB_ID, { sellerScoreId: SCORE_ID })],
+  ])('%s targets the reputation module (S.1063)', (fn, build) => {
+    const tx = build();
+    const calls = tx
+      .getData()
+      .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Array<{
+      MoveCall: { module: string; function: string };
+    }>;
+    expect(calls).toHaveLength(1);
+    expect(calls[0].MoveCall.module).toBe('reputation');
     expect(calls[0].MoveCall.function).toBe(fn);
   });
 

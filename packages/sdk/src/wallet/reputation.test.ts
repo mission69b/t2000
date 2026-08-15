@@ -27,6 +27,9 @@ function score(
     starsSum,
     averageStars: 0,
     distinctBuyers,
+    rejectedAfterDelivery: 0,
+    noDelivery: 0,
+    asBuyerRejected: 0,
   };
 }
 
