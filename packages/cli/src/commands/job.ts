@@ -1108,7 +1108,22 @@ no fund step; unclaimed openings refund fee-free):
           // Buyer → seller: STARS GO ON-CHAIN (S.1054 — the one public
           // score SSOT; `a2a_escrow::reputation`). Sponsored rail, same as
           // every job verb. Re-running edits the stars in place.
-          const digest = await submitJobReview(base, agent.signer, { jobId, stars });
+          let digest: string;
+          try {
+            digest = await submitJobReview(base, agent.signer, { jobId, stars });
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            // S.1054b: lost first-review race — two buyers created a
+            // brand-new seller's score at once; the derived claim aborts
+            // "already claimed". The retry re-routes to a normal review.
+            if (/already claimed/i.test(msg)) {
+              throw new Error(
+                "Another buyer just created this seller's score in a simultaneous first review — " +
+                  're-run the same command; your review lands as a normal update.',
+              );
+            }
+            throw error;
+          }
           // Optional text rides the existing signed API path — text is
           // not the score; it stays off-chain keyed by jobId.
           let textSaved = false;

@@ -26,8 +26,10 @@ import { A2A_ESCROW_LATEST_PACKAGE_ID, feeConfigArg } from './opening.js';
 
 /** The shared `reputation::ScoreBoard` object id on MAINNET — the derived-
  *  address namespace parent every `AgentScore` hangs off. Created ONCE by
- *  the S.1054 cutover (`create_score_board`); pinned here like the other
- *  mainnet literals. */
+ *  the S.1054 cutover (`create_score_board`); single instance is
+ *  chain-enforced (S.1054b: the id records into the `ScoreBoardKey` DF on
+ *  FeeConfig and a second create aborts). This pin MUST equal
+ *  `escrow::config_score_board_id(FeeConfig)` — verify at cutover. */
 export const MAINNET_A2A_SCORE_BOARD_ID =
   ''; // ← pinned by the S.1054 mainnet cutover ritual, before npm release
 

@@ -12,6 +12,7 @@ use sui::test_scenario as ts;
 
 const ADMIN: address = @0xAD; // deployer = AdminCap holder
 const BUYER: address = @0xA;
+const BUYER2: address = @0xF; // the first-review race loser in the retry test
 const ASP: address = @0xB; // registered + active seller
 const STRANGER: address = @0xC; // neither party to any job
 const OTHER_ASP: address = @0xE; // a second registered seller
@@ -34,18 +35,20 @@ fun setup(): (ts::Scenario, Clock) {
     // trip the goodwill (never-delivered) review gate on honest deliveries.
     clk.set_for_testing(1_000);
     // The ScoreBoard is created ONCE by the AdminCap holder (upgrade can't
-    // run init) — mirror that ritual here.
-    ts::next_tx(&mut sc, ADMIN);
-    {
-        let cap = ts::take_from_sender<AdminCap>(&sc);
-        let cfg = ts::take_shared<FeeConfig>(&sc);
-        reputation::create_score_board(&cap, &cfg, &clk, ts::ctx(&mut sc));
-        ts::return_shared(cfg);
-        ts::return_to_sender(&sc, cap);
-    };
+    // run init) — single instance chain-enforced via the FeeConfig DF.
+    create_board(&mut sc, &clk);
     register_agent(&mut sc, &clk, ASP);
     register_agent(&mut sc, &clk, OTHER_ASP);
     (sc, clk)
+}
+
+fun create_board(sc: &mut ts::Scenario, clk: &Clock) {
+    ts::next_tx(sc, ADMIN);
+    let cap = ts::take_from_sender<AdminCap>(sc);
+    let mut cfg = ts::take_shared<FeeConfig>(sc);
+    reputation::create_score_board(&cap, &mut cfg, clk, ts::ctx(sc));
+    ts::return_shared(cfg);
+    ts::return_to_sender(sc, cap);
 }
 
 fun register_agent(sc: &mut ts::Scenario, clk: &Clock, who: address) {
@@ -66,7 +69,16 @@ fun register_agent(sc: &mut ts::Scenario, clk: &Clock, who: address) {
 /// Run one full Hire job BUYER→seller to RELEASED (deliver + buyer accept).
 /// Returns the job id — the receipt a review needs.
 fun released_job(sc: &mut ts::Scenario, clk: &Clock, seller: address): ID {
-    ts::next_tx(sc, BUYER);
+    released_job_from(sc, clk, BUYER, seller)
+}
+
+fun released_job_from(
+    sc: &mut ts::Scenario,
+    clk: &Clock,
+    buyer: address,
+    seller: address,
+): ID {
+    ts::next_tx(sc, buyer);
     let job_id = {
         let cfg = ts::take_shared<FeeConfig>(sc);
         let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(sc));
@@ -92,7 +104,7 @@ fun released_job(sc: &mut ts::Scenario, clk: &Clock, seller: address): ID {
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
-    ts::next_tx(sc, BUYER);
+    ts::next_tx(sc, buyer);
     {
         let cfg = ts::take_shared<FeeConfig>(sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
@@ -138,6 +150,32 @@ fun reviewed_n(sc: &mut ts::Scenario, clk: &Clock, seller: address, n: u64, star
 
 fun take_score(sc: &ts::Scenario): AgentScore {
     ts::take_shared<AgentScore>(sc)
+}
+
+// === ScoreBoard single instance (S.1054b) ===
+
+#[test]
+fun score_board_id_recorded_on_fee_config() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let board = ts::take_shared<ScoreBoard>(&sc);
+        let recorded = escrow::config_score_board_id(&cfg);
+        assert!(recorded == option::some(object::id(&board)), 0);
+        ts::return_shared(board);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EScoreBoardExists)]
+fun second_score_board_aborts() {
+    let (mut sc, clk) = setup(); // setup already created the one board
+    create_board(&mut sc, &clk);
+    abort 0
 }
 
 // === Review happy paths ===
@@ -360,6 +398,35 @@ fun review_into_wrong_agents_score_fails() {
         ts::return_shared(cfg);
     };
     abort 0
+}
+
+// The first-review race, both halves (S.1054b). Two buyers race
+// `submit_first_review` for the same brand-new seller: the winner shares
+// the score; the LOSER aborts on `derived_object::claim` (the test below)
+// and must retry with `submit_review` against the now-existing score (the
+// test after it) — which succeeds, because per-job uniqueness is keyed by
+// job_id, not by reviewer.
+
+#[test]
+fun first_review_race_loser_retries_with_submit_review() {
+    let (mut sc, clk) = setup();
+    // BUYER wins the race: their review creates ASP's score.
+    let won = released_job(&mut sc, &clk, ASP);
+    review(&mut sc, &clk, won, 5);
+    // BUYER2 (the race loser) holds their own RELEASED receipt; the retry
+    // path — plain submit_review against the existing score — lands.
+    let lost = released_job_from(&mut sc, &clk, BUYER2, ASP);
+    review_as(&mut sc, &clk, BUYER2, lost, 3);
+    ts::next_tx(&mut sc, BUYER2);
+    {
+        let score = take_score(&sc);
+        assert!(reputation::review_count(&score) == 2, 0);
+        assert!(reputation::stars_sum(&score) == 8, 1);
+        assert!(reputation::job_stars(&score, lost) == 3, 2);
+        ts::return_shared(score);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
 }
 
 #[test]

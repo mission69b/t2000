@@ -7,9 +7,18 @@
 /// Proven claims abort). Aggregates only — `review_count` + `stars_sum` —
 /// review TEXT stays off-chain (jobId-keyed); an average is integer math over
 /// the two counters. Per-job stars live in a `Table` under the seller's own
-/// score, so storage growth and write contention are per-agent, never global:
-/// reviews for agent A and agent B touch different shared objects, and a
-/// Proven claim only ever takes the claimer's score by IMMUTABLE reference.
+/// score, so storage growth is per-agent, never global.
+///
+/// Parallelism, honestly (S.1054b): review EDITS and later reviews touch
+/// only that seller's score (parallel across sellers), and Proven claims
+/// take the claimer's score by IMMUTABLE reference (parallel with
+/// everything). The exception is the FIRST review a seller ever gets:
+/// `submit_first_review` needs `&mut ScoreBoard` for
+/// `derived_object::claim`, so all new-score creates serialize on the one
+/// board — an accepted v1 scale limit (first reviews are rare relative to
+/// reviews). Two racers creating the same seller's score: one wins, the
+/// loser aborts on the derived claim and retries with `submit_review`
+/// against the score that now exists.
 ///
 /// **Placement (documented deviation from SPEC_AGENT_ID_REPUTATION §3's
 /// "prefer agent_id"):** the review writer must see `&Job<T>` to verify the
@@ -64,9 +73,11 @@ const ESelfReview: u64 = 5;
 
 /// The one shared namespace parent for derived `AgentScore` addresses.
 /// Created ONCE post-upgrade via `create_score_board` (module `init` does not
-/// re-run on package upgrade); its id is pinned in client constants. Holds no
-/// table — `derived_object::claim` markers on its UID are the per-agent
-/// uniqueness guarantee, and it is only `&mut` on an agent's FIRST review.
+/// re-run on package upgrade) — single instance is CHAIN-ENFORCED via the
+/// `ScoreBoardKey` DF on `FeeConfig` (S.1054b); the pinned client constant
+/// mirrors `escrow::config_score_board_id`. Holds no table —
+/// `derived_object::claim` markers on its UID are the per-agent uniqueness
+/// guarantee, and it is only `&mut` on an agent's FIRST review.
 public struct ScoreBoard has key {
     id: UID,
 }
@@ -114,15 +125,25 @@ public struct ReviewSubmitted has copy, drop {
 
 // === One-time setup (AdminCap — upgrade can't run `init`) ===
 
-/// Share the score namespace parent. Called ONCE in the S.1054 cutover
-/// ritual; the resulting id is pinned client-side. AdminCap-gated so a
-/// stranger can't share a decoy board — but note the cap grants NO star
-/// authority: every star still requires a RELEASED job receipt.
-public fun create_score_board(_: &AdminCap, cfg: &FeeConfig, clock: &Clock, ctx: &mut TxContext) {
+/// Share the score namespace parent — ONCE, chain-enforced (S.1054b): the
+/// board id records into the `ScoreBoardKey` DF on `FeeConfig`, and a
+/// second call aborts `escrow::EScoreBoardExists` (a second board would
+/// split the derived-address namespace and fork the score SSOT).
+/// AdminCap-gated so a stranger can't share a decoy board — but the cap
+/// grants NO star authority: every star still requires a RELEASED job
+/// receipt, and this function mints none.
+public fun create_score_board(
+    _: &AdminCap,
+    cfg: &mut FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
     escrow::assert_version_pkg(cfg);
     let board = ScoreBoard { id: object::new(ctx) };
+    let board_id = board.id.to_inner();
+    escrow::record_score_board_pkg(cfg, board_id); // aborts if one exists
     event::emit(ScoreBoardCreated {
-        board_id: board.id.to_inner(),
+        board_id,
         timestamp_ms: clock.timestamp_ms(),
     });
     transfer::share_object(board);

@@ -181,9 +181,11 @@ export function postOpenJob(
 /** Review a RELEASED job you bought — writes the STARS ON-CHAIN (S.1054:
  *  the one public score SSOT; `a2a_escrow::reputation`). Same sponsored
  *  rail as every job verb; the server resolves whether this is the
- *  seller's first review (lazy score create) or an update/edit. Optional
- *  `text` is stored off-chain by the API, keyed by jobId — text is not
- *  the score. Returns the tx digest. */
+ *  seller's first review (lazy score create) or an update/edit. Rare race
+ *  (brand-new seller, two simultaneous first reviews): the loser aborts
+ *  on-chain — just call this again; the retry re-reads the score and
+ *  lands as a normal review. Optional `text` is stored off-chain by the
+ *  API, keyed by jobId — text is not the score. Returns the tx digest. */
 export function submitJobReview(
   base: string,
   signer: TransactionSigner,

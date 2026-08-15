@@ -113,6 +113,8 @@ const ENotUpgrade: u64 = 14;
 const EAmountTooSmall: u64 = 15;
 const EAmountTooLarge: u64 = 16;
 const EBadAmountBounds: u64 = 17;
+/// S.1054b: the canonical ScoreBoard already exists — one per chain, ever.
+const EScoreBoardExists: u64 = 18;
 
 // === Objects ===
 
@@ -139,6 +141,12 @@ public struct FeeConfig has key {
 /// changes on the live shared object.
 public struct MinJobAmountKey has copy, drop, store {}
 public struct MaxJobAmountKey has copy, drop, store {}
+/// DF key for the canonical `reputation::ScoreBoard` id on `FeeConfig.id`
+/// (S.1054b). Value is the board `ID`. Its EXISTENCE is the single-instance
+/// lock: `reputation::create_score_board` records it and aborts if it is
+/// already set, so a second board (which would split the derived-address
+/// score namespace) can never be shared.
+public struct ScoreBoardKey has copy, drop, store {}
 
 /// One escrowed job. Shared so buyer, seller, and cranks can all touch it;
 /// the escrow balance is inside the object.
@@ -414,6 +422,15 @@ public(package) fun assert_amount_in_bounds_pkg(cfg: &FeeConfig, amount: u64) {
     assert_amount_in_bounds(cfg, amount)
 }
 
+/// One-shot record of the canonical ScoreBoard id (S.1054b) — called only
+/// by `reputation::create_score_board`. The abort-if-set is the on-chain
+/// single-instance guarantee; the runbook's "call once" is now enforced,
+/// not just documented.
+public(package) fun record_score_board_pkg(cfg: &mut FeeConfig, board_id: ID) {
+    assert!(!df::exists(&cfg.id, ScoreBoardKey {}), EScoreBoardExists);
+    df::add(&mut cfg.id, ScoreBoardKey {}, board_id);
+}
+
 // === Deliver (seller posts proof before the deadline) ===
 public fun deliver<T>(
     job: &mut Job<T>,
@@ -653,6 +670,16 @@ public fun created_at_ms<T>(job: &Job<T>): u64 { job.created_at_ms }
 public fun config_version(cfg: &FeeConfig): u64 { cfg.version }
 public fun config_fee_bps(cfg: &FeeConfig): u64 { cfg.fee_bps }
 public fun config_fee_receiver(cfg: &FeeConfig): address { cfg.fee_receiver }
+
+/// The canonical reputation ScoreBoard id, once created (S.1054b) — clients
+/// and ops can resolve the board from FeeConfig instead of trusting a pin.
+public fun config_score_board_id(cfg: &FeeConfig): Option<ID> {
+    if (df::exists(&cfg.id, ScoreBoardKey {})) {
+        option::some(*df::borrow(&cfg.id, ScoreBoardKey {}))
+    } else {
+        option::none()
+    }
+}
 
 public fun state_funded(): u8 { STATE_FUNDED }
 public fun state_delivered(): u8 { STATE_DELIVERED }
