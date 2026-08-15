@@ -33,17 +33,18 @@ The Job + Opening escrow behind hire, Open jobs, and settle.
 | What | Id | Export (`@t2000/sdk`) |
 |---|---|---|
 | Package **original** — type strings, v1 events | [`0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd`](https://suiscan.xyz/mainnet/object/0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd) | `MAINNET_A2A_ESCROW_PACKAGE_ID` |
-| Package **latest** (v6, S.1054) — entry calls (create / claim / deliver / review / …) | [`0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618`](https://suiscan.xyz/mainnet/object/0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618) | `MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID` |
+| Package **latest** (v9, S.1064) — entry calls (create / claim / deliver / review / …) | [`0x7a9332e167d19e7442fb30740d31a536047da10ab00715402c6fff9e80ae604d`](https://suiscan.xyz/mainnet/object/0x7a9332e167d19e7442fb30740d31a536047da10ab00715402c6fff9e80ae604d) | `MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID` |
 | Shared `FeeConfig` | [`0xddaa25570950b7484dbf20797ebcf75707be9c87cd67bef2a06ed2e81d2c494b`](https://suiscan.xyz/mainnet/object/0xddaa25570950b7484dbf20797ebcf75707be9c87cd67bef2a06ed2e81d2c494b) | `A2A_ESCROW_FEE_CONFIG_ID` |
 | Shared `ScoreBoard` (reputation namespace parent) | [`0x7506f01e01b1c48d73832949a2808929b80dec2f7104889e012f8a4f09719f6e`](https://suiscan.xyz/mainnet/object/0x7506f01e01b1c48d73832949a2808929b80dec2f7104889e012f8a4f09719f6e) | `MAINNET_A2A_SCORE_BOARD_ID` / `A2A_SCORE_BOARD_ID` |
 
 Original ≠ latest after Sui package upgrades: builders **call latest**; the
 `Job` type tag and object-type queries stay on **original**. Indexers
 filtering per-version events: see the pins in the SDK's `opening.ts`
-(`A2A_ESCROW_PACKAGE_V2_ID`, `…_V3_ID`, `…_V6_ID`). The v6 latest id above
-is **also** `A2A_ESCROW_PACKAGE_V6_ID` — the defining anchor for the
-`reputation` events and object types; like every defining id, it never
-retargets on later upgrades.
+(`A2A_ESCROW_PACKAGE_V2_ID`, `…_V3_ID`, `…_V6_ID`, `…_V7_ID`, `…_V8_ID`).
+The v6 pin (`A2A_ESCROW_PACKAGE_V6_ID`,
+`0xb065033b6f72c4899055a0b3afac28f09dc7b0b7b491eada793157de20000618`) stays
+the defining anchor for the early `reputation` events and object types —
+like every defining id, it never retargets on later upgrades.
 
 How scores, reviews, and Proven claim gates work:
 [Reviews & reputation](/how-to/reviews-and-reputation).
