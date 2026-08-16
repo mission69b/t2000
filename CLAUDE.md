@@ -6,12 +6,26 @@
 
 ## Architecture — The Big Picture
 
-### Three brands, three repos
+### What this monorepo is (product first)
+
+**t2000 the product** = the **agent marketplace** (hire · work · earn in USDC) at
+`t2000.ai` + Passport Connect at `mcp.t2000.ai`. **Stage: traction / live mainnet.**
+
+**This repo** ships the open rails: `@t2000/{cli,sdk,id,serve,sui-x402,discovery}`,
+Move contracts (`agent_id`, `a2a_escrow` + reputation), and Mintlify docs.
+The **Next.js apps** that render the marketplace UI and host Connect deploy from
+the **audric** monorepo — hosting split, **same product**, not “infra without a
+storefront.” Audric the *brand* is also private AI at `audric.ai` (credit).
+
+Do not describe this repo to outsiders as “CLI/SDK only” or “stage unclear.”
+Public pitch copy: root `README.md` · `PRODUCT.md` · `brandkit/VOICE.md`.
+
+### Three brands / repos
 
 ```
-t2000 (this repo)    → Infrastructure: CLI, SDK, MCP, gateway, contracts
-audric (separate)    → Consumer product: audric.ai website, app, Chrome extension
-suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
+t2000 (this repo)  → Marketplace rails: CLI, SDK, contracts, docs (+ PRODUCT.md)
+audric (separate)  → Hosts t2000.ai + mcp.t2000.ai apps; also Audric AI (audric.ai)
+suimpp (separate)  → Protocol mirrors (historical / @suimpp/*)
 ```
 
 ### This repo structure
@@ -21,21 +35,26 @@ t2000/
 ├── apps/docs        ← Mintlify developer docs (docs.t2000.ai)
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
-├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client (added 2026-06-29)
-├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router — wrap any API for agent payments (added 2026-07-20)
-├── packages/x402    ← @t2000/sui-x402 (npm) ← The x402 payment dialect for Sui — absorbed from @suimpp/mpp 2026-08-03 (B1)
-├── packages/discovery ← @t2000/discovery (npm) ← x402 endpoint probe + OpenAPI extract — absorbed from @suimpp/discovery 2026-08-03
-├── packages/store   ← @t2000/store (PLANNED, H1 — Agent Store: commerce engine, Move+Seal+Walrus)
-├── packages/models  ← @t2000/models (PLANNED, H2 — Agent Models: OpenAI-compatible gateway to self-hosted Qwen + resold frontier)
+├── packages/id      ← @t2000/id (npm)    ← Agent ID — agent_id::registry client
+├── packages/serve   ← @t2000/serve (npm) ← Merchant-side x402 router
+├── packages/x402    ← @t2000/sui-x402 (npm) ← x402 dialect for Sui
+├── packages/discovery ← @t2000/discovery (npm) ← x402 probe + OpenAPI extract
+├── contracts/       ← Move (agent_id, a2a_escrow, …)
 ├── t2000-skills/    ← Agent skill definitions
-└── PRODUCT_ROADMAP.md ← Whole-product master roadmap (t2000 + Audric)
+└── PRODUCT.md       ← Product map SSOT
 ```
+
+> Planned package names (`store`, `models`) may appear in internal roadmaps —
+> they are **not** shipped and must not be described as half-built product.
 
 ### Two brand layers
 
-**t2000** = infra + the agent economy. Names the marketplace (t2000.ai), Passport Connect (mcp.t2000.ai), and the stack (SDK, CLI, serve, the sui-x402 dialect, Agent ID, contracts). Used in technical docs, package names, READMEs, dev-facing surfaces. (The `@t2000/engine` harness package was retired 2026-06-14.)
+**t2000** = agent marketplace + economy rails (SDK, CLI, serve, sui-x402, Agent ID,
+contracts). Names the marketplace (`t2000.ai`) and Passport Connect (`mcp.t2000.ai`).
+(`@t2000/engine` was retired 2026-06-14.)
 
-**Audric** = consumer. The product a user touches at audric.ai.
+**Audric** = consumer private AI at audric.ai — and the deploy home for t2000’s
+web/Connect apps.
 
 #### Audric v3 — the current product (the canon)
 

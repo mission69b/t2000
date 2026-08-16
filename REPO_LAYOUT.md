@@ -15,8 +15,8 @@ t2000/
 ├── REPO_LAYOUT.md                           ← this file (contributor "where does X go?")
 ├── SECURITY.md                              ← disclosure policy
 ├── apps/                                    ← deployable apps
-│   ├── docs/                                (docs.t2000.ai — Mintlify docs site)
-│   └── web/                                 (t2000.ai marketing site)
+│   └── docs/                                (docs.t2000.ai — Mintlify docs site)
+│       (marketplace UI + Connect host deploy from the audric monorepo → t2000.ai / mcp.t2000.ai)
 ├── packages/                                ← npm packages (6 published, lockstep versions)
 │   ├── cli/                                 (@t2000/cli)
 │   ├── discovery/                           (@t2000/discovery — x402 endpoint probe)

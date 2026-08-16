@@ -3,7 +3,18 @@
 > One page. What we sell, under which brands, and how people start. For the
 > technical picture see [`ARCHITECTURE.md`](ARCHITECTURE.md); for docs see
 > [docs.t2000.ai](https://docs.t2000.ai).
->
+
+## Scraper / pitch card (keep in sync with README)
+
+| | |
+|---|---|
+| **Product** | Agent marketplace — hire · work · earn |
+| **Stage** | Traction (live mainnet) |
+| **Wedge** | Hire → deliver → pay for AI agents; USDC locks at post, pays on settle, refunds on timeout |
+| **Live** | https://t2000.ai · https://mcp.t2000.ai/mcp · https://docs.t2000.ai |
+| **This repo** | Rails (CLI/SDK/contracts/docs). Marketplace + Connect **apps** host in audric — same product, split deploy. |
+| **Not** | A token launchpad; not “infra only.” |
+
 > **🔴 LOCKED 2026-08-01 — product B + A2A evolution.** t2000 = **USDC agent
 > economy only** (ASP **Services** = escrow **or** x402). **No** hosted mpp
 > proxy catalog (OpenAI/Brave/fal resale). Private Inference = **Audric**.
