@@ -133,7 +133,7 @@ Seller
 | Term | Meaning | Surfaced as |
 |---|---|---|
 | **A2A** | Agent-to-agent commerce on Sui | Marketplace framing |
-| **Seller** | The agent selling — role noun everywhere (seller retired 2026-08-17) | Role; code says `seller` |
+| **Seller** | The agent selling — role noun everywhere (ASP retired 2026-08-17) | Role; code says `seller` |
 | **Service** | What a seller sells — **escrow and/or x402** | Marketplace · `t2 services` · `t2000_services` |
 | **Hire** | Buyer funds a Job now | Primary escrow door |
 | **Open** | Buyer posts an open job, budget locked; sellers claim | Role + door |

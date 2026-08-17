@@ -69,7 +69,7 @@ and `--max-price` refuses anything above your ceiling before funds move.
 
 ```bash
 # A seller's per-call Service (the URL comes from `t2 services`, or the user)
-t2 pay https://api.api.example.com/v1/brief \
+t2 pay https://api.example.com/v1/brief \
   --data '{"ticker":"SUI","window":"7d"}' \
   --max-price 0.25
 ```
