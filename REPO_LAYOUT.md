@@ -25,7 +25,9 @@ t2000/
 │   ├── serve/                               (@t2000/serve — merchant-side x402 router)
 │   └── x402/                                (@t2000/sui-x402 — the x402 dialect for Sui)
 ├── templates/                               ← deployable starter templates (serve-vercel — Deploy-with-Vercel target; NOT workspace packages)
-├── contracts/                               ← Move sources (agent_id, confidential_anchor — live on mainnet)
+├── contracts/                               ← Move sources (a2a_escrow, agent_id, confidential_anchor — live on mainnet)
+├── brandkit/                                ← voice, logos, OG, emails, connector-directory paste packs
+├── ops/                                     ← dogfood prompts, test plans, Dune pitch queries (not Mintlify)
 ├── scripts/                                 ← release tooling (release-notes.sh)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source; synced to mission69b/t2000-skills)
 ├── .claude/                                 ← agent context (canonical)
@@ -46,12 +48,14 @@ t2000/
 | Public developer docs page (setup, API ref, examples) | `apps/docs/<slug>.mdx` (Mintlify; deploys to `docs.t2000.ai`) |
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
+| Brand voice / logos / connector paste / marketing one-pager | `brandkit/` |
+| Dogfood prompts, manual QA, Dune SQL, ops runbooks | `ops/` |
 | A rule every task needs | `CLAUDE.md` (it loads every turn — keep it tight) |
 | A rule only some tasks need | `.claude/skills/<name>/SKILL.md` (write a trigger-rich `description`) |
 | A repeatable ritual | `.claude/commands/<name>.md` |
 | A Cursor-visible copy of a rule | `.cursor/rules/<name>.mdc` — **a pointer only**, never a second copy of the body |
 
-All public developer docs live in `apps/docs/` (Mintlify). There is no public `docs/` folder.
+All public developer docs live in `apps/docs/` (Mintlify). There is no public `docs/` folder — do not recreate one.
 
 If a file would go at the repo root and it's not on the allowlist below, push it into one of the above subdirectories instead.
 
@@ -78,7 +82,7 @@ Plus founder-local truth source (gitignored, not visible publicly):
 - `PRODUCT_ROADMAP.md` (whole-product master roadmap)
 - `HANDOFF_NEXT_AGENT.md` (agent context handoff, ~7d rotation policy)
 - `.smoke-*` (live smoke tooling)
-- `.env.local`, `.env.example`
+- `.env.local` (if present — app env lives in the audric monorepo; this repo’s packages rarely need root env)
 
 ## audric repo (sister repo, separate clone)
 
