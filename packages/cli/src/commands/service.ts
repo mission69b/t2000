@@ -30,7 +30,8 @@ import {
   parseCategory,
 } from '../lib/agent-category.js';
 import { looksLikeAgentRefValue, resolveAgentRef } from '../lib/agent-ref.js';
-import { fetchJson, type ServiceListing } from '../lib/services.js';
+import { mergeServiceUpsert } from '../lib/service-upsert.js';
+import { fetchJson, listServices, type ServiceListing } from '../lib/services.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
   handleError,
@@ -215,8 +216,17 @@ Examples:
         category?: string;
         key?: string;
         api?: string;
-      }) => {
+      }, cmd?: { getOptionValueSource?: (key: string) => string | undefined }) => {
         try {
+          // S.1083 (Connect S.1048 twin): Commander fills the defaults even
+          // when the flags are omitted — sending them on a same-slug re-run
+          // RESET a customized listing. Only treat a flag as set when it
+          // actually came from the argv. (No source API → old always-send
+          // behavior, never a silent omit.)
+          const reviewExplicit =
+            cmd?.getOptionValueSource?.('review') !== 'default';
+          const splitExplicit =
+            cmd?.getOptionValueSource?.('split') !== 'default';
           const priceUsdc = Number.parseFloat(opts.price);
           if (!Number.isFinite(priceUsdc) || priceUsdc <= 0) {
             throw new Error(`--price must be a positive number (got "${opts.price}").`);
@@ -248,26 +258,62 @@ Examples:
             ? await resolveRequirements(opts.requirements)
             : null;
 
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const agent = await withAgent({ keyPath: opts.key });
+
           // Listings become browsable cards — a category is part of listing
           // (the directory-drift guard; retire skips it).
           await ensureSellerCategory({
-            base: opts.api ?? DEFAULT_API_BASE,
-            agent: await withAgent({ keyPath: opts.key }),
+            base,
+            agent,
             category,
           });
 
-          const payload = {
-            slug,
-            name: opts.name.trim(),
-            description: opts.description.trim(),
-            priceUsdc,
-            slaMinutes,
-            reviewWindowMinutes,
-            rejectSplitBps,
-            requirements,
-            deliverable: opts.deliverable.trim(),
-          };
-          const base = opts.api ?? DEFAULT_API_BASE;
+          // S.1083: the signed API is a FULL upsert — read this wallet's
+          // live row first and merge, so omitted --review/--split keep the
+          // live values. FAIL CLOSED on a read blip: writing create-defaults
+          // over a listing we couldn't read is exactly the wipe this fixes.
+          let live: ServiceListing | null = null;
+          try {
+            const { services: mine } = await listServices(base, {
+              agent: agent.address(),
+            });
+            live = mine.find((s) => s.slug === slug) ?? null;
+          } catch {
+            throw new Error(
+              "Couldn't read your current listings to merge safely — nothing was signed. Try again in a moment.",
+            );
+          }
+          const { payload, created, changed } = mergeServiceUpsert(
+            {
+              slug,
+              name: opts.name,
+              description: opts.description,
+              priceUsdc,
+              slaMinutes,
+              deliverable: opts.deliverable,
+              requirements,
+              reviewWindowMinutes: reviewExplicit
+                ? reviewWindowMinutes
+                : undefined,
+              rejectSplitBps: splitExplicit ? rejectSplitBps : undefined,
+            },
+            live,
+          );
+          // Identical re-run: nothing to write, nothing to sign (Connect
+          // honesty — S.1048).
+          if (!created && changed.length === 0) {
+            if (isJsonMode()) {
+              printJson({ address: agent.address(), slug, noop: true });
+              return;
+            }
+            printBlank();
+            printInfo(
+              `"${payload.name}" is already listed exactly like this — nothing changed, nothing signed.`,
+            );
+            printBlank();
+            return;
+          }
           const { address } = await signedServiceAction({
             base,
             keyPath: opts.key,
