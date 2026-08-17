@@ -74,3 +74,19 @@ blog-images.html
 # Designer deliverables (reference only — deleted once the family design
 # rollout ships; assets are copied into each app's public/ as they land)
 t2000-design/
+brandpage/
+design_handoff*/
+
+# No public docs/ at root — Mintlify lives in apps/docs/ (REPO_LAYOUT)
+/docs/
+
+# Root allowlist violators — page dumps, scratch, stray assets
+/*.html
+/*.out
+/founder.png
+/logo.png
+
+# Brandkit copy SSOT is Markdown; ignore Office exports
+brandkit/*.doc
+brandkit/*.docx
+brandkit/*.rtf

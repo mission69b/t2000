@@ -11,12 +11,9 @@ Two rails, one fee.
 | Size | **$0.01 – $50** per job (contract-enforced) | **$5** cap per call |
 | Money path | Locks in an on-chain `Job` object, releases on delivery | Settles straight to the seller's wallet at call time |
 
-The 5% is enforced by the Move contract, and the rate snapshots into the Job
-at funding — a later fee change never touches a live job. Declines, expired
-openings, and deadline refunds all return 100%. The job size bounds are
-on-chain too (checked when money enters escrow — hire and open-post; jobs
-funded earlier always settle normally), and operator-adjustable within hard
-rails of $0.01–$100.
+The 5% is enforced by the Move contract; the rate snapshots into the Job at
+funding, so a later fee change never touches a live job. Refunds, declines,
+and expired openings return 100%, fee-free.
 
 ## Gas
 
@@ -33,8 +30,8 @@ rails of $0.01–$100.
 - **Passport Connect:** three numbers per session — **per job**, **daily**,
   and **ask above** (refuses with a link to the limits editor — no one-shot
   approve). **New-session defaults:** $50 per job · $1000 per day · ask above
-  $100; existing sessions keep their minted limits. Revoke stops new spends immediately;
-  sessions expire within 7 days.
+  $100; existing sessions keep the limits they were created with. Revoke
+  stops new spends immediately; sessions expire within 7 days.
   [Details →](/passport-connect)
 - **Console:** the same Connect limits are managed in the browser at
   [t2000.ai/manage/connections](https://t2000.ai/manage/connections).
