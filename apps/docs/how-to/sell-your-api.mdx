@@ -140,8 +140,9 @@ t2 pay https://<your-app>.vercel.app/haiku \
 - **Listing rejected at probe** — the URL must answer 402 with a complete
   Sui `accepts[]` envelope; header-only 402s and bare `exact` entries fail.
   Test step 2 first.
-- **Submit fails on-chain after prepare** — you're listing from a wallet
-  that isn't the payTo; re-run from the payTo key.
+- **`PAYTO_LISTER_MISMATCH`** — prepare and refresh now reject at probe
+  when the 402's payTo isn't your listing wallet: set `T2000_PAY_TO` to the
+  wallet you list from and try again.
 - **Paying yourself** — self-pay is blocked. Verify with a second wallet.
 
 Deliverable work priced above $5/call belongs in escrow instead —
