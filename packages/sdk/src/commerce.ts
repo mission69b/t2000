@@ -33,6 +33,8 @@ async function commerceFetchJson(
 
 /** The shape the API returns from GET /v1/services. */
 export interface ServiceListing {
+  /** Row discriminator (S.1084) — hire rows; absent on pre-S.1084 servers. */
+  kind?: 'hire';
   agent: string;
   agentName: string | null;
   agentNumericId: number | null;
@@ -59,6 +61,34 @@ export interface ServiceListing {
   settledUsdc: number;
 }
 
+/** One live pay-per-call x402 route (S.1084 — `kind: "api"` rows from
+ *  GET /v1/services?rail=api|all). Paid with `t2 pay` / `agent.pay` at
+ *  `url` — NEVER hired (no slug, no SLA, no escrow fields). Ranked by the
+ *  seller's paid-call volume, never escrow settledUsdc. */
+export interface ApiRouteListing {
+  kind: 'api';
+  agent: string;
+  agentName: string | null;
+  agentNumericId: number | null;
+  method: string;
+  path: string;
+  /** Absolute endpoint URL (origin + path) — what `t2 pay` takes. */
+  url: string;
+  priceUsdc: number;
+  summary: string | null;
+  category: string | null;
+  probeOk: boolean;
+  paidCalls?: number;
+  paidVolumeUsdc?: number;
+}
+
+export type ServicesRow = ServiceListing | ApiRouteListing;
+
+/** Rail selector for listServices (S.1084): omitted = hire only (the
+ *  compat default old callers rely on) · api = pay-per-call routes ·
+ *  all = both blocks, hire first, kind-discriminated. */
+export type ServicesRail = 'hire' | 'api' | 'all';
+
 /** Browse / list agent services. Market browse (no `agent`) is RANKED
  *  Featured → seller settled USDC → newest — not newest-first; `agent`
  *  returns that seller's full catalog (retired included, newest-first).
@@ -71,20 +101,33 @@ export async function listServices(
     agent?: string;
     query?: string;
     category?: string;
+    /** S.1084: omit = hire only (compat); 'api' = x402 routes; 'all' = both. */
+    rail?: ServicesRail;
     limit?: number;
     offset?: number;
   } = {},
-): Promise<{ total: number; services: ServiceListing[] }> {
+): Promise<{
+  total: number;
+  hireTotal?: number;
+  apiTotal?: number;
+  services: ServicesRow[];
+}> {
   const params = new URLSearchParams();
   if (filter.agent) params.set('agent', filter.agent);
   if (filter.query) params.set('q', filter.query);
   if (filter.category) params.set('category', filter.category);
+  if (filter.rail) params.set('rail', filter.rail);
   if (filter.limit !== undefined) params.set('limit', String(filter.limit));
   if (filter.offset !== undefined) params.set('offset', String(filter.offset));
   const qs = params.size > 0 ? `?${params.toString()}` : '';
   const json = await commerceFetchJson(`${base}/services${qs}`);
-  const services = (json.services ?? []) as ServiceListing[];
-  return { total: (json.total as number | undefined) ?? services.length, services };
+  const services = (json.services ?? []) as ServicesRow[];
+  return {
+    total: (json.total as number | undefined) ?? services.length,
+    hireTotal: json.hireTotal as number | undefined,
+    apiTotal: json.apiTotal as number | undefined,
+    services,
+  };
 }
 
 /** Fetch one agent's live service by slug (the buy-path resolver). */
@@ -93,7 +136,12 @@ export async function fetchService(
   agent: string,
   slug: string,
 ): Promise<ServiceListing> {
-  const { services: rows } = await listServices(base, { agent });
+  const { services } = await listServices(base, { agent });
+  // Default rail is hire-only; the kind filter keeps this hire-safe even
+  // against a future rail=all caller (S.1084: never hire a kind:"api" row).
+  const rows = services.filter(
+    (o): o is ServiceListing => o.kind !== 'api',
+  );
   const match = rows.find((o) => o.slug === slug.trim().toLowerCase());
   if (!match) {
     const live = rows.filter((o) => !o.retired).map((o) => o.slug);
