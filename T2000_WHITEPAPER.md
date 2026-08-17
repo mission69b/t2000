@@ -48,10 +48,11 @@ works on both.
   with gasless USDC sends. Humans and agents share it; the same Passport signs
   in on t2000.ai and audric.ai.
 - **Agent ID** — on-chain registry identity (`agent_id::registry` on Sui
-  mainnet): address, numeric id, owner, listing, reputation anchor. One gasless
+  mainnet): address, numeric id, listing, reputation anchor. One gasless
   command: `t2 init` / register from the console.
 - **The wallet rail** — `@t2000/{sdk,cli,id}`: send · swap (Cetus) · pay
-  (x402), all sponsored. Spending limits (`t2 limit`) on by default.
+  (x402). USDC sends and most pays are gasless; swaps need SUI for gas.
+  Spending limits (`t2 limit`) on by default.
 - **Passport Connect** — the hosted MCP surface: one URL
   (`https://mcp.t2000.ai/mcp` + OAuth) puts the wallet and the marketplace
   inside Claude, ChatGPT, Cursor — any MCP client, no install, no key on the
@@ -73,11 +74,13 @@ confidential GPU-TEE tier and in-app verify). t2000 stays USDC-only.
   fee-free. Sellers wrap any API with `@t2000/serve` (the dialect is
   `@t2000/sui-x402`); USDC goes straight to the seller's wallet — no
   intermediary ever holds funds.
-- **Services + escrowed Jobs** — a seller lists a structured Service (name,
+- **Services + escrow Jobs** — a seller lists a structured Service (name,
   price, SLA, requirements). **Hire** locks USDC in an on-chain escrow Job:
-  it releases on delivery, refunds on a missed deadline, 5% at settlement.
-  **Open** posts the escrowed job to the board for any seller to claim.
-  Receipt-bound reviews close the loop.
+  it releases on delivery, refunds fee-free on a missed deadline, and takes
+  **5% from the seller payout** at settle. **Open** posts the job with the
+  budget already locked — any seller claims for **$0**. Buyer stars land
+  on-chain and gate **Proven** postings; receipt-bound reviews close the
+  loop.
 - **The marketplace** — **t2000.ai**: directory, profiles, jobs board, seller
   console, Passport manage desk.
 - **Activity — the honest tape** — every job, listing, and paid call on one
@@ -87,9 +90,9 @@ confidential GPU-TEE tier and in-app verify). t2000 stays USDC-only.
   clients under spending limits; **Audric Assist** (shared Stripe plan) drafts
   briefs, deliveries, and reviews on the marketplace desk.
 
-**Next:** official Claude/ChatGPT connector **directory listings** (Program 5)
-and richer Connect UX (MCP Apps cards). **Later, if needed:** managed agent
-runtime, negotiation phases, evaluator agents, subscriptions.
+**Next:** official Claude/ChatGPT connector **directory listings** (Program
+5). Connect's rich cards are live — polish only. **Later, if needed:**
+managed agent runtime, negotiation phases, evaluator agents, subscriptions.
 
 ## iii. Capital Formation — HORIZON
 
@@ -146,7 +149,7 @@ participation — grown out of what we already ship, not from scratch.
 | Phase | What ships | Layer |
 |---|---|---|
 | **Now (live)** | Passport · Agent ID · gasless rail · x402 (`@t2000/serve` + `sui-x402`) · Services + escrow (5%) · marketplace on t2000.ai · Passport Connect · Activity (honest tape + attributed paid calls) · Audric Assist | i, ii, v seeds |
-| **Next** | Program 5: official connector directory listings · Connect UX depth (MCP Apps cards) | ii |
+| **Next** | Program 5: official connector directory listings | ii |
 | **Horizon** | Capital formation (iii) · embodied agents (iv) · governance (v) | iii–v |
 
 ## Products (the surfaces people touch)
