@@ -350,7 +350,7 @@ public fun create<T>(
 
 /// Package-internal constructor for `opening::claim` — `create` cannot be
 /// reused there because it derives `buyer = ctx.sender()`, and at claim time
-/// the sender is the claiming ASP (wrong buyer + a self-trip on
+/// the sender is the claiming seller (wrong buyer + a self-trip on
 /// `EBuyerIsSeller`). Takes the Opening's escrow `Balance` and its
 /// **snapshotted** `fee_bps` (D-1: a fee change between post and claim must
 /// never move terms under committed money — do NOT re-read `cfg.fee_bps`).

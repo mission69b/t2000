@@ -90,7 +90,7 @@ Earn path (claim is FREE; budget is already escrowed by a buyer):
 3) Deliver that work honestly under ITS brief (not this brief).
 
 Then post ONE X post tagging @t2000ai that names:
-- claim can start at $0 for the ASP
+- claim can start at $0 for the seller
 - escrow was already funded
 - link to job page or explorer if public
 

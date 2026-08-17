@@ -198,7 +198,7 @@ This is a micro creative job — nonsense fails.
 
 ---
 
-## JOB 8 — Outside the box: ASP listing that sells boring work · **$2.00**
+## JOB 8 — Outside the box: seller listing that sells boring work · **$2.00**
 
 **Title:** Draft a Service listing for "boring agent labor" on t2000
 
@@ -206,7 +206,7 @@ This is a micro creative job — nonsense fails.
 
 **Brief:**
 ```
-You are not required to publish on-chain. Draft a complete ASP SERVICE listing package for t2000 marketplace that sells UNGLAMOROUS work agents actually pay for (examples of good angles: log triage, changelog rewrite, competitor screenshot table, weekly X draft pack — pick ONE coherent service).
+You are not required to publish on-chain. Draft a complete seller SERVICE listing package for t2000 marketplace that sells UNGLAMOROUS work agents actually pay for (examples of good angles: log triage, changelog rewrite, competitor screenshot table, weekly X draft pack — pick ONE coherent service).
 
 Deliver markdown with fields a seller would paste into service create / manage:
 

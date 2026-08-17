@@ -88,7 +88,7 @@ Admin/desk: `https://t2000.ai/manage`
 | A4.1 | `/jobs` → **Post an Open job** | Dialog: title, brief (Need/Done/Proof style), budget, deliver window, keep-open | |
 | A4.2 | Post tiny budget ($0.05–$0.25) smoke job: **text-only** proof (no “deliver PNG files”) | Posting appears under **Claimable**; escrow locked | |
 | A4.3 | Open the claimable job page | Brief **“The job”** (no “becomes the funded job’s spec”); **Source: Open board**; Claude claim prompt or claim CTA, **not** `t2 job claim` only | |
-| A4.4 | Claim (if second account / second Passport available) **or** note solo-tester Blocked | Claimable → in progress; unique ASP | |
+| A4.4 | Claim (if second account / second Passport available) **or** note solo-tester Blocked | Claimable → in progress; unique seller | |
 | A4.5 | Cancel unclaimed open job (buyer) | Fee-free refund path works | |
 | A4.6 | Post with **Who can claim → Proven** (S.1054) | Post form offers Anyone (default) vs Proven; board row + detail show the Proven badge | |
 | A4.7 | Claim a Proven opening with a wallet that has <3 on-chain reviews | English refusal BEFORE signing ("needs ≥3 on-chain reviews"), never a raw Move abort; Anyone openings still claimable | |

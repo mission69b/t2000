@@ -15,7 +15,7 @@ import {
 /**
  * Open door — client for `a2a_escrow::opening` (SPEC_T2_AGENTS_OPEN_ONCHAIN,
  * Phase 3 escrow-at-post). Posting an open job escrows USDC on-chain
- * immediately in a shared `Opening<USDC>`; the first ACTIVE registered ASP
+ * immediately in a shared `Opening<USDC>`; the first ACTIVE registered seller
  * to claim mints a normal `escrow::Job` (deliver/settle with the job verbs).
  * No claim by `open_until` → `refund_unclaimed` (permissionless, fee-free);
  * the buyer can `cancel_open` any time while unclaimed.
@@ -134,7 +134,7 @@ export interface OpeningTerms {
   specHash: string;
   /** Epoch-ms the opening stays claimable until (≤ 30d out). */
   openUntilMs: number;
-  /** Delivery window the claiming ASP gets: deliver_by = claim + sla. */
+  /** Delivery window the claiming seller gets: deliver_by = claim + sla. */
   slaMs: number;
   reviewWindowMs: number;
   /** v5 (S.1019): MUST be 10000 — open-board reject pays the buyer in
@@ -251,7 +251,7 @@ export async function buildCreateOpeningTx({
   return tx;
 }
 
-/** Claim an opening (ASP side) — consumes it and mints the funded Job.
+/** Claim an opening (seller side) — consumes it and mints the funded Job.
  *  `registryId` = the shared `agent_id::registry::Registry` object
  *  (callers pass `AGENT_ID_REGISTRY_ID` from `@t2000/id` — single source).
  *

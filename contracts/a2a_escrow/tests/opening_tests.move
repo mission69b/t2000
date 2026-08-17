@@ -11,9 +11,9 @@ use sui::test_scenario as ts;
 
 const ADMIN: address = @0xAD; // deployer = initial fee receiver
 const BUYER: address = @0xA;
-const ASP: address = @0xB; // registered + active claimer
+const SELLER: address = @0xB; // registered + active claimer
 const LURKER: address = @0xC; // never registered
-const IDLE_ASP: address = @0xD; // registered, then deactivated
+const IDLE_SELLER: address = @0xD; // registered, then deactivated
 
 const AMOUNT: u64 = 1_000_000; // 1 USDC-equivalent (6dp)
 const OPEN_UNTIL: u64 = 500_000; // ms
@@ -32,14 +32,14 @@ fun setup(): (ts::Scenario, Clock) {
     escrow::init_for_testing(ts::ctx(&mut sc));
     registry::init_for_testing(ts::ctx(&mut sc));
     let clk = clock::create_for_testing(ts::ctx(&mut sc));
-    // ASP registers itself (self-sovereign) and stays active.
-    register_agent(&mut sc, &clk, ASP);
-    // IDLE_ASP registers, then flips itself inactive.
-    register_agent(&mut sc, &clk, IDLE_ASP);
-    ts::next_tx(&mut sc, IDLE_ASP);
+    // SELLER registers itself (self-sovereign) and stays active.
+    register_agent(&mut sc, &clk, SELLER);
+    // IDLE_SELLER registers, then flips itself inactive.
+    register_agent(&mut sc, &clk, IDLE_SELLER);
+    ts::next_tx(&mut sc, IDLE_SELLER);
     {
         let mut reg = ts::take_shared<Registry>(&sc);
-        registry::set_active(&mut reg, IDLE_ASP, false, &clk, ts::ctx(&mut sc));
+        registry::set_active(&mut reg, IDLE_SELLER, false, &clk, ts::ctx(&mut sc));
         ts::return_shared(reg);
     };
     (sc, clk)
@@ -113,20 +113,20 @@ fun assert_received(sc: &mut ts::Scenario, who: address, expect: u64) {
 // === Happy path ===
 
 #[test]
-fun post_claim_deliver_release_pays_asp_minus_fee() {
+fun post_claim_deliver_release_pays_seller_minus_fee() {
     let (mut sc, mut clk) = setup();
     post_open(&mut sc, &clk);
     clk.set_for_testing(10_000);
-    let job_id = claim_as(&mut sc, ASP, &clk);
+    let job_id = claim_as(&mut sc, SELLER, &clk);
 
     // The minted Job carries the Opening's terms: buyer/seller bound, amount
     // conserved, deliver_by = claim time + SLA, fee from the post snapshot.
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let job = ts::take_shared<Job<SUI>>(&sc);
         assert!(object::id(&job) == job_id, 0);
         assert!(escrow::buyer(&job) == BUYER, 1);
-        assert!(escrow::seller(&job) == ASP, 2);
+        assert!(escrow::seller(&job) == SELLER, 2);
         assert!(escrow::amount(&job) == AMOUNT, 3);
         assert!(escrow::escrow_value(&job) == AMOUNT, 4);
         assert!(escrow::deliver_by_ms(&job) == 10_000 + SLA_MS, 5);
@@ -136,7 +136,7 @@ fun post_claim_deliver_release_pays_asp_minus_fee() {
     };
 
     // Normal Job lifecycle from here: deliver then buyer-accept release.
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
@@ -152,7 +152,7 @@ fun post_claim_deliver_release_pays_asp_minus_fee() {
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
-    assert_received(&mut sc, ASP, AMOUNT - FEE);
+    assert_received(&mut sc, SELLER, AMOUNT - FEE);
     assert_received(&mut sc, ADMIN, FEE); // fee receiver = deployer in tests
     ts::end(sc);
     clk.destroy_for_testing();
@@ -166,7 +166,7 @@ fun second_claim_fails() {
     let (mut sc, mut clk) = setup();
     post_open(&mut sc, &clk);
     clk.set_for_testing(10_000);
-    claim_as(&mut sc, ASP, &clk);
+    claim_as(&mut sc, SELLER, &clk);
     register_agent(&mut sc, &clk, LURKER);
     claim_as(&mut sc, LURKER, &clk);
     abort 0
@@ -196,7 +196,7 @@ fun unregistered_claim_fails() {
 fun inactive_agent_claim_fails() {
     let (mut sc, clk) = setup();
     post_open(&mut sc, &clk);
-    claim_as(&mut sc, IDLE_ASP, &clk);
+    claim_as(&mut sc, IDLE_SELLER, &clk);
     abort 0
 }
 
@@ -206,7 +206,7 @@ fun claim_after_open_until_fails() {
     let (mut sc, mut clk) = setup();
     post_open(&mut sc, &clk);
     clk.set_for_testing(OPEN_UNTIL + 1);
-    claim_as(&mut sc, ASP, &clk);
+    claim_as(&mut sc, SELLER, &clk);
     abort 0
 }
 
@@ -226,8 +226,8 @@ fun fee_bps_snapshots_at_post_not_claim() {
         ts::return_to_sender(&sc, cap);
     };
     clk.set_for_testing(10_000);
-    claim_as(&mut sc, ASP, &clk);
-    ts::next_tx(&mut sc, ASP);
+    claim_as(&mut sc, SELLER, &clk);
+    ts::next_tx(&mut sc, SELLER);
     {
         let job = ts::take_shared<Job<SUI>>(&sc);
         // The Job carries the POST-time snapshot, not the raised fee.
@@ -399,11 +399,11 @@ fun claimed_opening_job_can_be_declined() {
     let (mut sc, mut clk) = setup();
     post_open(&mut sc, &clk);
     clk.set_for_testing(10_000);
-    claim_as(&mut sc, ASP, &clk);
-    // The claiming ASP backs out pre-delivery — full fee-free refund. The
+    claim_as(&mut sc, SELLER, &clk);
+    // The claiming SELLER backs out pre-delivery — full fee-free refund. The
     // Opening was consumed at claim, so the board posting does NOT
     // resurrect; the buyer re-posts if they still want the work.
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
@@ -435,11 +435,11 @@ fun open_claim_deliver_reject_pays_buyer_full() {
     let (mut sc, mut clk) = setup();
     post_open(&mut sc, &clk);
     clk.set_for_testing(10_000);
-    claim_as(&mut sc, ASP, &clk);
-    // ASP delivers junk; buyer rejects in-window → at 10_000 bps the buyer
+    claim_as(&mut sc, SELLER, &clk);
+    // SELLER delivers junk; buyer rejects in-window → at 10_000 bps the buyer
     // takes the FULL escrow back, seller share 0, protocol fee 0 (the fee
     // comes only from the seller-bound payout).
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);

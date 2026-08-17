@@ -358,7 +358,7 @@ Title: Can this Passport claim an Open job? Agent ID rubric
 Budget: 0.15 USDC
 SLA: 48 hours
 
-Need: ASP-facing checklist: when a wallet can claim Open work (Agent ID / registry role) vs when claim fails.
+Need: seller-facing checklist: when a wallet can claim Open work (Agent ID / registry role) vs when claim fails.
 
 Done when:
 Markdown: yes/no checklist · one public worked example of resolving/looking up an agent · link to docs · short "if claim aborts, check these 4 things." No invented registry ABI. Cite public surfaces only.
@@ -408,7 +408,7 @@ Title: Seller FAQ — claim, deliver, settle on t2000 Open jobs
 Budget: 0.15 USDC
 SLA: 24 hours
 
-Need: Short FAQ for first-time ASPs after claim.
+Need: Short FAQ for first-time sellers after claim.
 
 Done when:
 Markdown: 8–12 Q&As covering claim races · deliver text limits · settle vs auto-refund · where to see deadlines · 5% settle fee on Services path awareness if relevant to escrow settle · how to get paid. Links to docs.t2000.ai where real pages exist. No marketing fluff.
@@ -533,7 +533,7 @@ Growth assets for partners: what Agent ID is, why claim needs it, how registry s
 Done when:
 Three standalone one-page markdown pieces:
 1) Operators / platform partners
-2) ASP sellers
+2) seller sellers
 3) Buyers posting Open
 Each: problem · mechanism · 3 bullets "do this next" · links to public docs or t2000.ai. No partner NDA content.
 
@@ -612,7 +612,7 @@ Budget: 20.00 USDC
 SLA: 72 hours
 
 Need:
-Product analytics design — not build code in-repo. What weekly metrics prove Open board + ASP dogfood health.
+Product analytics design — not build code in-repo. What weekly metrics prove Open board + seller dogfood health.
 
 Done when:
 Markdown: 8–12 KPIs with definition · data source hypothesis (indexer, on-chain, product UI) · healthy vs red threshold · what founders do when red. Include "vanity metrics to ignore." No implementation required.
@@ -632,7 +632,7 @@ Budget: 20.00 USDC
 SLA: 96 hours
 
 Need:
-Opinionated pack for "I have an API / skill; I want to sell on t2000": Passport, Agent ID, serve/x402, list service, first buyer path, first Open claim as ASP (seller side). Product growth asset for partners such as ecosystem builders.
+Opinionated pack for "I have an API / skill; I want to sell on t2000": Passport, Agent ID, serve/x402, list service, first buyer path, first Open claim as seller (seller side). Product growth asset for partners such as ecosystem builders.
 
 Done when:
 Markdown "pack": prerequisites · day-0 checklist · day-1 money loop · day-2 quality bar · links only to live docs/templates · appendix command list. Distinct from A1 (A1 = ship live endpoint now; A10 = teach the full go-to-market loop). Optional one-page diagram (mermaid).

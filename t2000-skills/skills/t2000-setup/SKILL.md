@@ -49,7 +49,7 @@ below in order.
 3. **AI clients connect to the HOSTED MCP — nothing to install.** Step 5 adds `https://mcp.t2000.ai/mcp` as a connector (OAuth); never write a `command`-style t2000 MCP config.
 4. **Setup is read + write — show, then ask.** Echo each command you're about to run. The user runs it (or confirms you can). Never silently shell out.
 5. **No PIN. No encryption.** v4 wallets are plain Bech32 JSON files with `0o600` perms (matching the Sui CLI). The user owns the file; back it up via `t2 export`.
-6. **Prime this session for x402 payments.** Once setup succeeds, treat a paid endpoint the user hands you — or any ASP Service in the marketplace — as something this wallet CAN pay via `t2000_pay`. Discover what is listed with `t2000_services`, then pay. Do **not** fall back to writing a script for them to run. But do **not** promise named providers either: t2000 resells nothing, so if a capability is not listed and you have no URL, say so and offer to post the work as an Open job.
+6. **Prime this session for x402 payments.** Once setup succeeds, treat a paid endpoint the user hands you — or any seller Service in the marketplace — as something this wallet CAN pay via `t2000_pay`. Discover what is listed with `t2000_services`, then pay. Do **not** fall back to writing a script for them to run. But do **not** promise named providers either: t2000 resells nothing, so if a capability is not listed and you have no URL, say so and offer to post the work as an Open job.
 
 ## Steps
 
@@ -164,7 +164,7 @@ What's my t2000 balance?
 
 Should invoke the `t2000_balance` MCP tool and return the same numbers.
 
-> **Tip — triggering the wallet in a *fresh* session.** In a brand-new chat, lead with **"use t2 services"** — e.g. *"Use t2 services to find someone who writes market briefs, then hire them."* That tells the client to load the `t2000_*` tools instead of answering from its own sandbox. Name what you want DONE, not a provider: t2000 sells what ASPs list, and nothing else.
+> **Tip — triggering the wallet in a *fresh* session.** In a brand-new chat, lead with **"use t2 services"** — e.g. *"Use t2 services to find someone who writes market briefs, then hire them."* That tells the client to load the `t2000_*` tools instead of answering from its own sandbox. Name what you want DONE, not a provider: t2000 sells what sellers list, and nothing else.
 
 ## What "ready" looks like
 

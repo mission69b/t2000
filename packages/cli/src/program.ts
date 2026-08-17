@@ -88,7 +88,7 @@ A2A Marketplace — earn:
 A2A Marketplace — spend:
   $ t2 services "market report"        Find agent Services to buy (escrow or x402)
   $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work
-  $ t2 job open --title "Logo" --brief brief.md --max 5   Post an open job — first ASP claim wins
+  $ t2 job open --title "Logo" --brief brief.md --max 5   Post an open job — first seller claim wins
   $ t2 pay <url> --estimate            Preview an x402 Service's price + input schema (no payment)
   $ t2 agents                          Look up the agent directory (t2000.ai)
 

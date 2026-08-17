@@ -1,14 +1,14 @@
 // The OPEN door of `t2 job` (SPEC_T2_AGENTS_OPEN_ONCHAIN — escrow-at-post).
-// ONE JOB, TWO DOORS: `t2 job hire` = you pick the ASP; the verbs here post
-// the job with NO ASP picked — and the budget ESCROWS ON-CHAIN AT POST in a
-// shared `Opening`. The first active registered ASP to claim mints a normal
+// ONE JOB, TWO DOORS: `t2 job hire` = you pick the seller; the verbs here post
+// the job with NO seller picked — and the budget ESCROWS ON-CHAIN AT POST in a
+// shared `Opening`. The first active registered seller to claim mints a normal
 // a2a_escrow Job on the spot (work starts immediately — no fund step). An
 // unclaimed opening refunds fee-free: buyer cancel any time, or the
 // permissionless crank after the open window.
 //
 //   open     post an opening — ESCROWS THE BUDGET NOW      (buyer)
 //   board    read the open board (public, no wallet)       (anyone)
-//   claim    first active ASP wins → funded Job, work on   (ASP)
+//   claim    first active seller wins → funded Job, work on   (seller)
 //   cancel   withdraw an unclaimed opening — full refund   (buyer)
 //
 // All writes ride the sponsored rail (gasless; Move authorizes on sender).
@@ -57,7 +57,7 @@ const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const MAX_BRIEF_BYTES = 16 * 1024;
 
 /** Brief input: a file path if one exists, else the literal text. PUBLIC
- *  either way — the board shows it to every ASP. */
+ *  either way — the board shows it to every seller. */
 export async function resolveBrief(input: string): Promise<string> {
   let bytes: Buffer;
   try {
@@ -107,9 +107,9 @@ function resolveCreated(
 export function registerOpenVerbs(group: Command) {
   group
     .command('open')
-    .description('Open — post the job to the public board with no ASP picked (buyer); ESCROWS the budget on-chain now, first claim starts work. Reject on open work returns 100% to you (contract-locked) — junk delivery earns the seller nothing.')
+    .description('Open — post the job to the public board with no seller picked (buyer); ESCROWS the budget on-chain now, first claim starts work. Reject on open work returns 100% to you (contract-locked) — junk delivery earns the seller nothing.')
     .requiredOption('--title <text>', "The job's public name (up to 80 chars)")
-    .requiredOption('--brief <file-or-text>', 'What you want delivered — PUBLIC, every ASP on the board reads it')
+    .requiredOption('--brief <file-or-text>', 'What you want delivered — PUBLIC, every seller on the board reads it')
     .requiredOption('--max <usdc>', `Budget escrowed AT POST (max ${MAX_JOB_USDC})`)
     .option('--sla <duration>', 'Delivery window once claimed (e.g. 30m, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
@@ -172,7 +172,7 @@ export function registerOpenVerbs(group: Command) {
           printKeyValue('Tx', digest);
           printBlank();
           printInfo(
-            'The first active ASP to claim starts work immediately. No claim ' +
+            'The first active seller to claim starts work immediately. No claim ' +
               `in ${opts.openFor} → full fee-free refund` +
               (openingId ? ` (or cancel now: t2 job cancel ${openingId})` : '.'),
           );
@@ -241,7 +241,7 @@ export function registerOpenVerbs(group: Command) {
   group
     .command('claim')
     .argument('<id>', 'The opening object id (0x…, from t2 job board)')
-    .description('Claim an open job (ASP) — first claim wins and the funded Job starts immediately')
+    .description('Claim an open job (seller) — first claim wins and the funded Job starts immediately')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (id: string, opts: { key?: string; api?: string }) => {
