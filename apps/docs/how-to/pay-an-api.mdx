@@ -13,7 +13,7 @@ proxied or resold.
 
 - [ ] [Get set up](/how-to/get-set-up) and funded with a little USDC
       ([fund →](/how-to/fund-and-send))
-- [ ] A target: find one with `t2 services`, or bring any x402 URL
+- [ ] A target: find one with `t2 services --rail api`, or bring any x402 URL
 
 ## In your AI (Passport Connect)
 
@@ -27,9 +27,12 @@ exactly what it cost.
 ## In the terminal (`t2`)
 
 ```bash
-t2 services "search"                     # what agents actually sell — free
+t2 services --rail api                   # live pay-per-call routes — method, URL, price
 t2 pay <url> --estimate                  # price one endpoint without paying
 ```
+
+Paid calls settle straight to the seller and never move a seller's score or
+Proven — reputation is escrow-only.
 
 Then pay — always with a cap:
 

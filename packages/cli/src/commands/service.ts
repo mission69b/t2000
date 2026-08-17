@@ -31,7 +31,13 @@ import {
 } from '../lib/agent-category.js';
 import { looksLikeAgentRefValue, resolveAgentRef } from '../lib/agent-ref.js';
 import { mergeServiceUpsert } from '../lib/service-upsert.js';
-import { fetchJson, listServices, type ServiceListing } from '../lib/services.js';
+import {
+  type ApiRouteListing,
+  fetchJson,
+  listServices,
+  type ServiceListing,
+  type ServicesRow,
+} from '../lib/services.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
   handleError,
@@ -123,6 +129,25 @@ function formatSla(minutes: number): string {
 export function serviceSellerLabel(o: Pick<ServiceListing, 'agentName' | 'agentNumericId' | 'agent'>): string {
   const id = o.agentNumericId != null ? ` #${o.agentNumericId}` : '';
   return `${o.agentName ?? 'unnamed'}${id} ${truncateAddress(o.agent)}`;
+}
+
+/** A kind:"api" row (S.1084) — pay-per-call; paid with `t2 pay`, never a
+ *  hire verb (no slug, no escrow fields). */
+function printApiRoute(o: ApiRouteListing) {
+  printLine(`${pc.bold(`${o.method} ${o.path}`)} ${pc.dim('· pay per call')}`);
+  printKeyValue('Price', `$${o.priceUsdc.toFixed(2)} USDC / call`);
+  {
+    const id = o.agentNumericId != null ? ` #${o.agentNumericId}` : '';
+    printKeyValue(
+      'Seller',
+      `${o.agentName ?? 'unnamed'}${pc.bold(id)} ${pc.dim(truncateAddress(o.agent))}`,
+    );
+  }
+  if (o.summary) {
+    printKeyValue('What', o.summary);
+  }
+  printKeyValue('URL', o.url);
+  printKeyValue('Pay', `t2 pay ${o.url} --estimate`);
 }
 
 function printService(o: ServiceListing) {
@@ -278,7 +303,10 @@ Examples:
             const { services: mine } = await listServices(base, {
               agent: agent.address(),
             });
-            live = mine.find((s) => s.slug === slug) ?? null;
+            live =
+              mine.find(
+                (s): s is ServiceListing => s.kind !== 'api' && s.slug === slug,
+              ) ?? null;
           } catch {
             throw new Error(
               "Couldn't read your current listings to merge safely — nothing was signed. Try again in a moment.",
@@ -435,11 +463,17 @@ export async function resolveServicesQuery(
   base: string,
   query: string | undefined,
   category?: string,
+  rail?: 'hire' | 'api' | 'all',
 ): Promise<{ url: string; scope: ServicesScope }> {
-  const withCategory = (url: string): string =>
-    category
+  const withCategory = (url: string): string => {
+    const withCat = category
       ? `${url}${url.includes('?') ? '&' : '?'}category=${encodeURIComponent(category)}`
       : url;
+    // S.1084: omitted rail stays hire-only (the compat default).
+    return rail
+      ? `${withCat}${withCat.includes('?') ? '&' : '?'}rail=${rail}`
+      : withCat;
+  };
   const q = query?.trim();
   if (!q) {
     return { url: withCategory(`${base}/services`), scope: { kind: 'all' } };
@@ -482,20 +516,40 @@ function registerDiscovery(command: Command, opts?: { deprecated?: boolean }) {
   command
     .argument('[query]', 'What you need — free text, or a SELLER scope: 0x… address, #id, or @handle (empty = everything, ranked featured → most settled → newest)')
     .option('--category <category>', `Seller directory category (${AGENT_CATEGORIES.join(' | ')}) — ANDs with the query`)
+    .option(
+      '--rail <rail>',
+      'hire = escrow services (default) · api = instant pay-per-call x402 routes · all = both',
+    )
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (query: string | undefined, cmdOpts: { api?: string; category?: string }) => {
+    .action(async (query: string | undefined, cmdOpts: { api?: string; category?: string; rail?: string }) => {
       try {
         const base = cmdOpts.api ?? DEFAULT_API_BASE;
         // Fail fast on an off-enum category (same local mirror the sell
         // gate uses) — the API would 400 with the same allow-list.
         const category = cmdOpts.category ? parseCategory(cmdOpts.category) : undefined;
-        const { url, scope } = await resolveServicesQuery(base, query, category);
+        // S.1084: the x402 rail. Off-enum fails fast, same as the API would.
+        const rail = cmdOpts.rail?.trim().toLowerCase();
+        if (rail && !['hire', 'api', 'all'].includes(rail)) {
+          throw new Error(
+            `--rail must be hire, api, or all (got "${cmdOpts.rail}").`,
+          );
+        }
+        const { url, scope } = await resolveServicesQuery(
+          base,
+          query,
+          category,
+          rail as 'hire' | 'api' | 'all' | undefined,
+        );
         const json = await fetchJson(url);
-        const all = (json.services ?? []) as ServiceListing[];
+        const all = (json.services ?? []) as ServicesRow[];
         // Buyer discovery is the ACTIVE board: `?agent=` serves the seller's
         // management view retired-included — hide retired here with an
         // honest note (`t2 service list` keeps the full management dump).
-        const rows = scope.kind === 'agent' ? all.filter((o) => !o.retired) : all;
+        // (kind:"api" rows are live-only and carry no retired flag.)
+        const rows =
+          scope.kind === 'agent'
+            ? all.filter((o) => o.kind === 'api' || !o.retired)
+            : all;
         const retiredHidden = all.length - rows.length;
         if (isJsonMode()) {
           printJson({
@@ -526,7 +580,11 @@ function registerDiscovery(command: Command, opts?: { deprecated?: boolean }) {
           return;
         }
         for (const o of rows) {
-          printService(o);
+          if (o.kind === 'api') {
+            printApiRoute(o);
+          } else {
+            printService(o);
+          }
           printBlank();
         }
         if (retiredHidden > 0) {

@@ -8,12 +8,14 @@
 // (used by the signed-mutation flows in `t2 service` / `t2 job review`).
 
 export {
+  type ApiRouteListing,
   assertBuyerRequirements,
   fetchService,
   getJobSpec,
   listServices,
   putJobSpec,
   type ServiceListing,
+  type ServicesRow,
 } from '@t2000/sdk';
 
 export async function fetchJson(

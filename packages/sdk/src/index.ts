@@ -215,7 +215,12 @@ export {
   listServices,
   putJobSpec,
 } from './commerce.js';
-export type { ServiceListing } from './commerce.js';
+export type {
+  ApiRouteListing,
+  ServiceListing,
+  ServicesRail,
+  ServicesRow,
+} from './commerce.js';
 export {
   customHireEnvelope,
   isCustomHireEnvelope,
