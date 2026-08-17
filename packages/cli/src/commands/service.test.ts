@@ -138,3 +138,72 @@ describeOrSkip('t2 service create — price bounds (S.1038b)', () => {
     expect(`${r.stdout}${r.stderr}`).toContain('at least');
   });
 });
+
+// [S.1083 — Connect S.1048 twin] omit-safe upsert: Commander defaults must
+// not wipe a live listing's customized review window / reject split.
+import { mergeServiceUpsert } from '../lib/service-upsert.js';
+
+const LIVE = {
+  name: 'Sui market report',
+  description: 'Daily report',
+  priceUsdc: 5,
+  slaMinutes: 1440,
+  reviewWindowMinutes: 2880, // customized 48h
+  rejectSplitBps: 9000, // customized 90/10
+  requirements: { topic: 'what to cover' },
+  deliverable: 'A PDF',
+  retired: false,
+};
+
+const ARGS = {
+  slug: 'sui-market-report',
+  name: 'Sui market report',
+  description: 'Daily report',
+  priceUsdc: 5,
+  slaMinutes: 1440,
+  deliverable: 'A PDF',
+  requirements: { topic: 'what to cover' },
+};
+
+describe('mergeServiceUpsert (S.1083)', () => {
+  it('omitted --review/--split on an update keep the LIVE values', () => {
+    const { payload, created, changed } = mergeServiceUpsert(
+      { ...ARGS, priceUsdc: 6 },
+      LIVE,
+    );
+    expect(created).toBe(false);
+    expect(payload.reviewWindowMinutes).toBe(2880);
+    expect(payload.rejectSplitBps).toBe(9000);
+    expect(changed).toEqual(['priceUsdc']);
+  });
+
+  it('explicit flags override the live values', () => {
+    const { payload, changed } = mergeServiceUpsert(
+      { ...ARGS, reviewWindowMinutes: 1440, rejectSplitBps: 8000 },
+      LIVE,
+    );
+    expect(payload.reviewWindowMinutes).toBe(1440);
+    expect(payload.rejectSplitBps).toBe(8000);
+    expect(changed).toEqual(['reviewWindowMinutes', 'rejectSplitBps']);
+  });
+
+  it('create (no live row) keeps the 24h / 8000 defaults', () => {
+    const { payload, created } = mergeServiceUpsert(ARGS, null);
+    expect(created).toBe(true);
+    expect(payload.reviewWindowMinutes).toBe(1440);
+    expect(payload.rejectSplitBps).toBe(8000);
+  });
+
+  it('identical re-run diffs to nothing (requirements key order ignored)', () => {
+    const { changed } = mergeServiceUpsert(
+      { ...ARGS, requirements: { topic: 'what to cover' } },
+      { ...LIVE, requirements: { topic: 'what to cover' } },
+    );
+    expect(changed).toEqual([]);
+  });
+
+  it('a retired live row is never a no-op — the upsert revives it', () => {
+    const { changed } = mergeServiceUpsert(ARGS, { ...LIVE, retired: true });
+    expect(changed).toEqual(['relisted']);
+  });
+});
