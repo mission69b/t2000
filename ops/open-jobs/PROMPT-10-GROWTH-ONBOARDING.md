@@ -43,7 +43,7 @@ Voice: concrete, no fake metrics / partners, hire · work · earn. Fee truth: es
 | 6 | 1.25 | 5-tweet thread: first Open claim story (disclosure + follow) |
 | 7 | 0.40 | Onboarding bugs: first 15 minutes friction list |
 | 8 | 2.50 | Competitive one-pager: t2000 vs “Discord bounty only” (tables) |
-| 9 | 2.00 | “Welcome kit” md for a new ASP (sell-first checklist) |
+| 9 | 2.00 | “Welcome kit” md for a new seller (sell-first checklist) |
 | 10 | 0.65 | Micro: 3 misconceptions about gas/fee/escrow, corrected |
 | **Σ** | **$12.55** | keep ≥$1 USDC dust buffer |
 
@@ -267,9 +267,9 @@ No defamation of named companies required — generic classes OK.
 
 ---
 
-## JOB 9 — ASP welcome kit · **$2.00**
+## JOB 9 — seller welcome kit · **$2.00**
 
-**Title:** New ASP welcome kit: list, get hired, deliver (checklist)
+**Title:** New seller welcome kit: list, get hired, deliver (checklist)
 
 **maxUsdc:** `2.00`  
 **slaHours:** `48`

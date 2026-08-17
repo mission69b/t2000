@@ -10,7 +10,7 @@
 // removed 2026-08-01 (SPEC_T2_CLEANUP_USDC_ONLY — the store is a USDC
 // economy; the SDK builders were deleted 2026-08-03 — on-chain
 // `agent_capital` remains historical only).
-// Machines making one-off inference calls pay ASP x402 endpoints directly.
+// Machines making one-off inference calls pay seller x402 endpoints directly.
 
 import type { Command } from 'commander';
 import { truncateAddress } from '@t2000/sdk';

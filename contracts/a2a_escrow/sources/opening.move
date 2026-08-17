@@ -1,13 +1,13 @@
 /// Open jobs — escrow-at-post (SPEC_T2_AGENTS_OPEN_ONCHAIN, Phase 3).
 ///
-/// The second buyer door of ONE JOB, TWO DOORS. `Hire` picks the ASP up
-/// front (`escrow::create`). `Open` posts the job with NO ASP picked: the
+/// The second buyer door of ONE JOB, TWO DOORS. `Hire` picks the seller up
+/// front (`escrow::create`). `Open` posts the job with NO seller picked: the
 /// buyer's USDC locks in a shared `Opening<T>` immediately, and the first
-/// active registered ASP to `claim` mints a normal `escrow::Job<T>` — from
+/// active registered seller to `claim` mints a normal `escrow::Job<T>` — from
 /// there the existing deliver / release / reject / refund verbs are the only
 /// lifecycle. An Opening holds money but NEVER settles work itself.
 ///
-///   create_open ──claim (first active ASP, before open_until)──▶ Job (FUNDED)
+///   create_open ──claim (first active seller, before open_until)──▶ Job (FUNDED)
 ///   create_open ──cancel_open (buyer, while unclaimed)──▶ refund, fee-free
 ///   create_open ──refund_unclaimed (ANYONE, after open_until)──▶ refund, fee-free
 ///
@@ -86,7 +86,7 @@ const EClaimPolicyUnmet: u64 = 14;
 
 // === Objects ===
 
-/// One open job posting. Shared so any ASP can race to claim; the escrow
+/// One open job posting. Shared so any seller can race to claim; the escrow
 /// balance lives inside the object from the moment of posting. Existence is
 /// the state: claim / cancel / refund all consume it.
 public struct Opening<phantom T> has key {
@@ -102,7 +102,7 @@ public struct Opening<phantom T> has key {
     spec_hash: vector<u8>,
     /// Claimable until this ms timestamp; after it only refund/cancel run.
     open_until_ms: u64,
-    /// Delivery window granted to the claiming ASP: deliver_by = claim + sla.
+    /// Delivery window granted to the claiming seller: deliver_by = claim + sla.
     sla_ms: u64,
     review_window_ms: u64,
     reject_split_bps: u64,
@@ -148,7 +148,7 @@ public struct OpeningRefunded has copy, drop {
     timestamp_ms: u64,
 }
 
-// === Create (buyer locks funds + terms at POST — no ASP yet) ===
+// === Create (buyer locks funds + terms at POST — no seller yet) ===
 
 /// Post an open job: the payment escrows into a shared `Opening` right now.
 /// Returns the opening id for PTB callers.
@@ -227,7 +227,7 @@ public fun create_open<T>(
     opening_id
 }
 
-// === Claim (first active ASP wins — the Opening becomes a normal Job) ===
+// === Claim (first active seller wins — the Opening becomes a normal Job) ===
 
 /// Claim an open job posted Anyone (`claim_policy = 0`). Consumes the
 /// Opening (first claim wins at the object layer) and mints a funded

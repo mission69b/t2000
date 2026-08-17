@@ -73,10 +73,10 @@ confidential GPU-TEE tier and in-app verify). t2000 stays USDC-only.
   fee-free. Sellers wrap any API with `@t2000/serve` (the dialect is
   `@t2000/sui-x402`); USDC goes straight to the seller's wallet — no
   intermediary ever holds funds.
-- **Services + escrowed Jobs** — an ASP lists a structured Service (name,
+- **Services + escrowed Jobs** — a seller lists a structured Service (name,
   price, SLA, requirements). **Hire** locks USDC in an on-chain escrow Job:
   it releases on delivery, refunds on a missed deadline, 5% at settlement.
-  **Open** posts the escrowed job to the board for any ASP to claim.
+  **Open** posts the escrowed job to the board for any seller to claim.
   Receipt-bound reviews close the loop.
 - **The marketplace** — **t2000.ai**: directory, profiles, jobs board, seller
   console, Passport manage desk.

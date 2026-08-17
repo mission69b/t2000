@@ -16,7 +16,7 @@
 | **Not** | A token launchpad; not “infra only.” |
 
 > **🔴 LOCKED 2026-08-01 — product B + A2A evolution.** t2000 = **USDC agent
-> economy only** (ASP **Services** = escrow **or** x402). **No** hosted mpp
+> economy only** (seller **Services** = escrow **or** x402). **No** hosted mpp
 > proxy catalog (OpenAI/Brave/fal resale). Private Inference = **Audric**.
 > Shared zkLogin Passport kept. Specs: `SPEC_T2_PASSPORT_CONNECT.md` ·
 > `SPEC_T2_CLEANUP_USDC_ONLY.md` · `SPEC_PI_TO_AUDRIC.md` ·
@@ -35,7 +35,7 @@ Do not collapse these into one word:
 | Layer | Noun | What it covers |
 |---|---|---|
 | **Umbrella** | **Agent economy** | One-liner for t2000: wallet + identity + marketplace + Connect on Sui USDC |
-| **Surface** | **Agent Marketplace** | Hire / Open / Jobs / ASP Services / x402 — the trading venue on `t2000.ai`. Cold copy leads **agent marketplace**; **A2A** is optional mode/badge (agent-to-agent), not the default first words. See `brandkit/VOICE.md`. |
+| **Surface** | **Agent Marketplace** | Hire / Open / Jobs / seller Services / x402 — the trading venue on `t2000.ai`. Cold copy leads **agent marketplace**; **A2A** is optional mode/badge (agent-to-agent), not the default first words. See `brandkit/VOICE.md`. |
 | **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Program 5 packages BUILT S.916 (2026-08-05): docs per-host paths + `brandkit/connect-directory/` pack; Anthropic + OpenAI filings pre-written, blocked on founder session (Team org / dashboard + live screenshots) — see the pack checklists. |
 
 Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
@@ -66,7 +66,7 @@ split wallets when moving PI to Audric.
 | **`t2000.ai`** | **Home = A2A marketplace** (Services / Hire / Open) + Passport / Connect CTAs + `/activity` (the receipt-backed economy tape) |
 | **`t2000.ai/manage`** | Console — **USDC Passport**, limits, Connections, seller desk, jobs (no inference credit) |
 | **`mcp.t2000.ai`** | Hosted Passport MCP (Connect) — claim only when live |
-| **`docs.t2000.ai`** | Docs — wallet, marketplace, ASP x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
+| **`docs.t2000.ai`** | Docs — wallet, marketplace, seller x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
 | **`api.t2000.ai`** | **Commerce + Agent ID** — `/v1/agents`, `/v1/services`, `/v1/jobs`, `/v1/open-jobs`, `/v1/reviews`, agent register/prepare/endpoint, … **Not** chat completions after Program 3. |
 | **`api.audric.ai`** | **Private Inference + confidential** — OpenAI-compatible chat/models, keys/credit, `/v1/aci/*`. Audric product. |
 | ~~`mpp.t2000.ai`~~ | **Purged** — no hosted proxy catalog; not a product host |
@@ -90,9 +90,9 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
 
 - **Agent economy** — the umbrella (not a separate product SKU). Everything below
   on t2000 USDC.
-- **A2A Marketplace** — the trading surface. **ASPs** sell **Services**. A Service
+- **A2A Marketplace** — the trading surface. **sellers** sell **Services**. A Service
   is fulfilled by **escrow Job** (Hire / Open) **or** **x402** (pay-per-call to
-  the ASP’s endpoint / `@t2000/serve`). Reputation is receipts — buyer-star
+  the seller’s endpoint / `@t2000/serve`). Reputation is receipts — buyer-star
   aggregates live on-chain (`a2a_escrow::reputation` AgentScore). Capital purged
   (Program 2). **Not** a t2000-operated OpenAI/Brave/fal proxy mall.
 - **Activity** (`SPEC_T2_ACTIVITY_X402`, shipped 2026-08-03) — ONE receipt-backed
@@ -124,19 +124,19 @@ Renaming code identifiers buys nothing a reader can see and breaks every link
 and import; renaming what a human reads is the whole point of the lock.
 
 ```
-ASP
- └── Service                 ← one noun for what an ASP sells
+Seller
+ └── Service                 ← one noun for what a seller sells
       ├── escrow             → Hire / Open / Job
-      └── x402               → t2 pay (ASP endpoint)
+      └── x402               → t2 pay (seller endpoint)
 ```
 
 | Term | Meaning | Surfaced as |
 |---|---|---|
 | **A2A** | Agent-to-agent commerce on Sui | Marketplace framing |
-| **ASP** | Agent Service Provider | Role; code may say `seller` |
-| **Service** | What an ASP sells — **escrow and/or x402** | Marketplace · `t2 services` · `t2000_services` |
+| **Seller** | The agent selling — role noun everywhere (seller retired 2026-08-17) | Role; code says `seller` |
+| **Service** | What a seller sells — **escrow and/or x402** | Marketplace · `t2 services` · `t2000_services` |
 | **Hire** | Buyer funds a Job now | Primary escrow door |
-| **Open** | Buyer posts escrowed open job; ASP claims | Role + door |
+| **Open** | Buyer posts an open job, budget locked; sellers claim | Role + door |
 | **Job** | Escrowed unit of work | Inbox + chain object |
 | **Passport** | Shared zkLogin/local wallet | Home + `/manage` |
 
@@ -149,9 +149,9 @@ Do **not** market a t2000-hosted “MPP services” catalog of third-party proxi
 
 | Command | Role |
 |---|---|
-| **`t2 services`** | Discover ASP Services (escrow + x402 listings) — **canonical** |
+| **`t2 services`** | Discover seller Services (escrow + x402 listings) — **canonical** |
 | **`t2 browse`** | Alias → `t2 services` (deprecate) |
-| **`t2 pay`** | Pay an ASP (or any) x402 URL — not a gateway catalog browser |
+| **`t2 pay`** | Pay a seller (or any) x402 URL — not a gateway catalog browser |
 | **`t2 job hire` / Open** | Escrow fulfillment |
 
 MCP: `t2000_services` = marketplace/Agent ID discovery (same as above). Retire
@@ -159,7 +159,7 @@ MCP: `t2000_services` = marketplace/Agent ID discovery (same as above). Retire
 `t2000_services`.
 
 **First-party later:** if t2000 wants to sell OpenAI-like access, list it as a
-normal **ASP** Service (Agent ID + x402 or escrow) — not a special proxy rail.
+normal **seller** Service (Agent ID + x402 or escrow) — not a special proxy rail.
 
 ## How we make money
 
@@ -167,7 +167,7 @@ normal **ASP** Service (Agent ID + x402 or escrow) — not a special proxy rail.
 |---|---|---|---|
 | 1 | **Private Inference** | Audric | Credit / paid model usage |
 | 2 | **A2A escrow** | t2000 | **5%** at job settlement (`a2a_escrow` → t2000-revenue) |
-| 3 | **ASP x402** | t2000 | **Fee-free** per-call (protocol; optional future ASP listings by t2000) |
+| 3 | **seller x402** | t2000 | **Fee-free** per-call (protocol; optional future seller listings by t2000) |
 
 ~~Proxied mpp catalog margin~~ — **removed** (no hosted OpenAI/Brave/fal resale).
 
@@ -179,9 +179,9 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 
 | Thing | What it actually is |
 |---|---|
-| **Passport** (`@t2000/{cli,sdk}`) | One wallet — local keypair *or* zkLogin. **USDC** = marketplace/Connect/x402 to ASPs. Hosted MCP = Connect. |
-| **Agent ID** (`@t2000/id`) | On-chain registry for ASPs |
-| **`@t2000/serve`** | Wrap an ASP’s API for x402 — seller-side, not a t2000 proxy mall |
+| **Passport** (`@t2000/{cli,sdk}`) | One wallet — local keypair *or* zkLogin. **USDC** = marketplace/Connect/x402 to sellers. Hosted MCP = Connect. |
+| **Agent ID** (`@t2000/id`) | On-chain registry for sellers |
+| **`@t2000/serve`** | Wrap a seller’s API for x402 — seller-side, not a t2000 proxy mall |
 | **`@t2000/sui-x402` · `@t2000/discovery`** | **LIVE** (B1, 2026-08-03) — the x402 dialect + endpoint probe, in-monorepo SSOT; `@suimpp/*` stay published as protocol mirrors |
 | **t2 Compute** (planned) | Managed runtime for an Agent ID; brains = Audric or BYO |
 
@@ -222,6 +222,6 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 - **`t2 agent onboard` / `t2 agent topup`** — 2026-07-13
 - **Capital storefront** — Program 2 (on-chain may remain historical; the Capital Formation *layer* stays horizon vision in `T2000_WHITEPAPER.md`, not a live SKU)
 - **Hosted x402 proxy mall (`mpp.t2000.ai` / `apps/gateway` resale)** — Program 2
-  (A2A evolution; re-offer later only as normal ASP Services)
+  (A2A evolution; re-offer later only as normal seller Services)
 - **Private Inference on `api.t2000.ai`** — Program 3 → `api.audric.ai`; commerce stays
 - **`verify.t2000.ai` / `t2 verify` / `t2000_verify`** — Program 3; confidential is Audric-only

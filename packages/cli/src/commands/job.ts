@@ -611,11 +611,11 @@ Hiring a LISTING (t2 ACP) — price + terms come from the listing:
               --requirements '{"token":"DEEP"}'
   seller  $ t2 job spec 0xJOB              (read the buyer's requirements)
 
-No ASP picked at all? Open the job to the board instead (the budget
-escrows on-chain AT POST; the first active ASP claim starts the job —
+No seller picked at all? Open the job to the board instead (the budget
+escrows on-chain AT POST; the first active seller claim starts the job —
 no fund step; unclaimed openings refund fee-free):
   buyer   $ t2 job open --title "Logo sketch" --brief brief.md --max 5
-  ASP     $ t2 job board · t2 job claim <openingId>
+  seller     $ t2 job board · t2 job claim <openingId>
 `,
     );
 
@@ -623,13 +623,13 @@ no fund step; unclaimed openings refund fee-free):
     .command('hire')
     .alias('create')
     .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when hiring a --service listing)`)
-    .argument('[seller]', "The ASP's Sui address (omit when hiring a --service listing)")
+    .argument('[seller]', "The seller's Sui address (omit when hiring a --service listing)")
     .description('Hire — fund an escrow job in one transaction (buyer): a listing (--agent + --service) or your own terms (amount + seller + --spec)')
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED as the public t2-acp-custom@1 title+brief envelope so the seller and the store can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading, no envelope)')
     .option('--title <text>', 'Public job title (≤80 chars). Custom/direct hire only; derived from the brief\'s first line if omitted')
     .option(
       '--agent <address|#id|@handle>',
-      "Hire a listing: the ASP's agent address, #id, or @handle",
+      "Hire a listing: the seller's agent address, #id, or @handle",
     )
     .option('--service <slug>', 'The service slug (see t2 services / t2 service list <agent>)')
     .option('--requirements <file-or-json-or-text>', 'What the seller asked buyers to provide — if the listing lists JSON keys, fill EVERY key (JSON object; extra keys OK)')
@@ -1073,7 +1073,7 @@ no fund step; unclaimed openings refund fee-free):
   group
     .command('review')
     .argument('<jobId>', 'The Job object id (0x…) of a RELEASED job you were party to')
-    .description('Rate a settled job (released OR rejected, with a delivery) 1–5 stars — role-aware: buyers rate the ASP (stars land ON-CHAIN, the one public score); ASPs rate the buyer (off-chain; public only if the buyer holds an Agent ID)')
+    .description('Rate a settled job (released OR rejected, with a delivery) 1–5 stars — role-aware: buyers rate the seller (stars land ON-CHAIN, the one public score); sellers rate the buyer (off-chain; public only if the buyer holds an Agent ID)')
     .requiredOption('--stars <1-5>', 'Star rating, 1 (poor) to 5 (excellent)')
     .option('--text <text>', 'Optional short review (max 1000 chars) — text stays off-chain, keyed to the job')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
@@ -1424,7 +1424,7 @@ no fund step; unclaimed openings refund fee-free):
             printInfo(`Opening ${truncateAddress(watchId)} became Job ${truncateAddress(row.jobId)} at claim — watching the Job.`);
             watchId = row.jobId;
           } else if (row) {
-            printInfo(`This is an opening (status: ${row.status}) — no Job exists until an ASP claims it. Board: t2 job board`);
+            printInfo(`This is an opening (status: ${row.status}) — no Job exists until a seller claims it. Board: t2 job board`);
             return;
           }
         }

@@ -1,7 +1,7 @@
 // Open jobs API client (SPEC_T2_AGENTS_OPEN_ONCHAIN, Phase 3) — the second
-// door of ONE JOB, TWO DOORS. Hire = you pick the ASP. Open = post the job
-// with NO ASP picked: the budget ESCROWS ON-CHAIN AT POST (a shared
-// `Opening`), the first active registered ASP to claim mints a normal
+// door of ONE JOB, TWO DOORS. Hire = you pick the seller. Open = post the job
+// with NO seller picked: the budget ESCROWS ON-CHAIN AT POST (a shared
+// `Opening`), the first active registered seller to claim mints a normal
 // a2a_escrow Job, and an unclaimed opening refunds fee-free (buyer cancel
 // any time, or the permissionless crank after `open_until`).
 //
@@ -41,7 +41,7 @@ async function fetchJson(
 
 /** The public row shape /v1/open-jobs returns — the indexer read-model of
  *  on-chain Openings. `id` is the Opening OBJECT id (0x…). Buyer addresses
- *  never appear (registered-agent buyers surface by id); the claiming ASP
+ *  never appear (registered-agent buyers surface by id); the claiming seller
  *  is public. Title + brief are public by design. */
 /** A host-installed veto on sponsored open-board transactions (S.930).
  *
@@ -157,7 +157,7 @@ async function sponsoredOpeningVerb(
 }
 
 /** Post an open job — THE BUDGET ESCROWS ON-CHAIN NOW. `title` + `brief`
- *  are PUBLIC (every ASP on the board reads them; they become the funded
+ *  are PUBLIC (every seller on the board reads them; they become the funded
  *  job's spec verbatim). Returns the tx digest; the Opening object id
  *  resolves from the digest (see the CLI/MCP helpers) or the board. */
 export function postOpenJob(
@@ -202,7 +202,7 @@ export function submitJobReview(
   });
 }
 
-/** Claim an open job (ASP side) — first claim wins ON-CHAIN and mints the
+/** Claim an open job (seller side) — first claim wins ON-CHAIN and mints the
  *  funded Job immediately; work starts now. Requires an active registered
  *  Agent ID. Returns the claim tx digest. */
 export function claimOpenJob(

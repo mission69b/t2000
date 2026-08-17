@@ -279,9 +279,9 @@ Write a short honest product note (markdown) from real Connect tool text / cards
 (quote them). Cover:
 
 1) Open-board reject: 100% buyer / 0% seller (junk delivery earns nothing)
-2) Hire/listing reject default: 80/20 (and fee from ASP share if stated)
+2) Hire/listing reject default: 80/20 (and fee from seller share if stated)
 3) t2000_send confirmTo: required; Always-allow does not bypass
-4) One thing still confusing for a new ASP or buyer
+4) One thing still confusing for a new seller or buyer
 
 Cite tool names and short quotes. No fake screenshots. If you cannot open a new
 job, quote live tool descriptions from tools/list / prior cards.

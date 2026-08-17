@@ -17,9 +17,9 @@ const BUYER2: address = @0xF; // the first-review race loser in the retry test
 /// Distinct buyer pool for `reviewed_n` (S.1062: Proven counts DISTINCT
 /// buyers, so "n reviews" helpers mean n reviews from n different buyers).
 fun buyers(): vector<address> { vector[@0xA, @0xF, @0x1A, @0x2A] }
-const ASP: address = @0xB; // registered + active seller
+const SELLER: address = @0xB; // registered + active seller
 const STRANGER: address = @0xC; // neither party to any job
-const OTHER_ASP: address = @0xE; // a second registered seller
+const OTHER_SELLER: address = @0xE; // a second registered seller
 
 const AMOUNT: u64 = 1_000_000; // 1 USDC-equivalent (6dp)
 const OPEN_UNTIL: u64 = 500_000; // ms
@@ -41,8 +41,8 @@ fun setup(): (ts::Scenario, Clock) {
     // The ScoreBoard is created ONCE by the AdminCap holder (upgrade can't
     // run init) — single instance chain-enforced via the FeeConfig DF.
     create_board(&mut sc, &clk);
-    register_agent(&mut sc, &clk, ASP);
-    register_agent(&mut sc, &clk, OTHER_ASP);
+    register_agent(&mut sc, &clk, SELLER);
+    register_agent(&mut sc, &clk, OTHER_SELLER);
     (sc, clk)
 }
 
@@ -191,24 +191,24 @@ fun second_score_board_aborts() {
 #[test]
 fun first_review_creates_score_at_derived_address() {
     let (mut sc, clk) = setup();
-    let job_id = released_job(&mut sc, &clk, ASP);
+    let job_id = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_id, 5);
     ts::next_tx(&mut sc, BUYER);
     {
         let board = ts::take_shared<ScoreBoard>(&sc);
         let score = take_score(&sc);
-        assert!(reputation::agent(&score) == ASP, 0);
+        assert!(reputation::agent(&score) == SELLER, 0);
         assert!(reputation::review_count(&score) == 1, 1);
         assert!(reputation::stars_sum(&score) == 5, 2);
         assert!(reputation::has_job_review(&score, job_id), 3);
         assert!(reputation::job_stars(&score, job_id) == 5, 4);
         // The score lives at its deterministic derived address.
         assert!(
-            object::id(&score).to_address() == reputation::score_address(&board, ASP),
+            object::id(&score).to_address() == reputation::score_address(&board, SELLER),
             5,
         );
-        assert!(reputation::has_score(&board, ASP), 6);
-        assert!(!reputation::has_score(&board, OTHER_ASP), 7);
+        assert!(reputation::has_score(&board, SELLER), 6);
+        assert!(!reputation::has_score(&board, OTHER_SELLER), 7);
         ts::return_shared(score);
         ts::return_shared(board);
     };
@@ -219,9 +219,9 @@ fun first_review_creates_score_at_derived_address() {
 #[test]
 fun two_jobs_accumulate() {
     let (mut sc, clk) = setup();
-    let job_a = released_job(&mut sc, &clk, ASP);
+    let job_a = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_a, 5);
-    let job_b = released_job(&mut sc, &clk, ASP);
+    let job_b = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_b, 3);
     ts::next_tx(&mut sc, BUYER);
     {
@@ -237,7 +237,7 @@ fun two_jobs_accumulate() {
 #[test]
 fun edit_review_updates_in_place() {
     let (mut sc, clk) = setup();
-    let job_id = released_job(&mut sc, &clk, ASP);
+    let job_id = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_id, 5);
     // The buyer re-rates the same job: sum adjusts, count does NOT.
     review(&mut sc, &clk, job_id, 2);
@@ -259,7 +259,7 @@ fun edit_review_updates_in_place() {
 #[expected_failure(abort_code = reputation::ENotBuyer)]
 fun stranger_review_fails() {
     let (mut sc, clk) = setup();
-    let job_id = released_job(&mut sc, &clk, ASP);
+    let job_id = released_job(&mut sc, &clk, SELLER);
     review_as(&mut sc, &clk, STRANGER, job_id, 5);
     abort 0
 }
@@ -268,8 +268,8 @@ fun stranger_review_fails() {
 #[expected_failure(abort_code = reputation::ENotBuyer)]
 fun seller_reviews_own_job_fails() {
     let (mut sc, clk) = setup();
-    let job_id = released_job(&mut sc, &clk, ASP);
-    review_as(&mut sc, &clk, ASP, job_id, 5);
+    let job_id = released_job(&mut sc, &clk, SELLER);
+    review_as(&mut sc, &clk, SELLER, job_id, 5);
     abort 0
 }
 
@@ -282,7 +282,7 @@ fun review_funded_job_fails() {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(&mut sc));
         let id = escrow::create<SUI>(
-            ASP,
+            SELLER,
             payment,
             b"spec-hash",
             clk.timestamp_ms() + SLA_MS,
@@ -308,7 +308,7 @@ fun review_delivered_unreleased_job_fails() {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(&mut sc));
         let id = escrow::create<SUI>(
-            ASP,
+            SELLER,
             payment,
             b"spec-hash",
             clk.timestamp_ms() + SLA_MS,
@@ -321,7 +321,7 @@ fun review_delivered_unreleased_job_fails() {
         ts::return_shared(cfg);
         id
     };
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
@@ -343,7 +343,7 @@ fun goodwill_release_not_reviewable() {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(&mut sc));
         let id = escrow::create<SUI>(
-            ASP,
+            SELLER,
             payment,
             b"spec-hash",
             clk.timestamp_ms() + SLA_MS,
@@ -372,7 +372,7 @@ fun goodwill_release_not_reviewable() {
 #[expected_failure(abort_code = reputation::EBadStars)]
 fun zero_stars_fails() {
     let (mut sc, clk) = setup();
-    let job_id = released_job(&mut sc, &clk, ASP);
+    let job_id = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_id, 0);
     abort 0
 }
@@ -381,7 +381,7 @@ fun zero_stars_fails() {
 #[expected_failure(abort_code = reputation::EBadStars)]
 fun six_stars_fails() {
     let (mut sc, clk) = setup();
-    let job_id = released_job(&mut sc, &clk, ASP);
+    let job_id = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_id, 6);
     abort 0
 }
@@ -390,16 +390,16 @@ fun six_stars_fails() {
 #[expected_failure(abort_code = reputation::EWrongScore)]
 fun review_into_wrong_agents_score_fails() {
     let (mut sc, clk) = setup();
-    // ASP earns a score; then a released OTHER_ASP job tries to land its
-    // review into ASP's score object.
-    let asp_job = released_job(&mut sc, &clk, ASP);
-    review(&mut sc, &clk, asp_job, 5);
-    let other_job = released_job(&mut sc, &clk, OTHER_ASP);
+    // SELLER earns a score; then a released OTHER_SELLER job tries to land its
+    // review into SELLER's score object.
+    let seller_job = released_job(&mut sc, &clk, SELLER);
+    review(&mut sc, &clk, seller_job, 5);
+    let other_job = released_job(&mut sc, &clk, OTHER_SELLER);
     ts::next_tx(&mut sc, BUYER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let job = ts::take_shared_by_id<Job<SUI>>(&sc, other_job);
-        let mut score = take_score(&sc); // ASP's score — the only one
+        let mut score = take_score(&sc); // SELLER's score — the only one
         reputation::submit_review(&mut score, &job, 5, &cfg, &clk, ts::ctx(&mut sc));
         ts::return_shared(score);
         ts::return_shared(job);
@@ -418,12 +418,12 @@ fun review_into_wrong_agents_score_fails() {
 #[test]
 fun first_review_race_loser_retries_with_submit_review() {
     let (mut sc, clk) = setup();
-    // BUYER wins the race: their review creates ASP's score.
-    let won = released_job(&mut sc, &clk, ASP);
+    // BUYER wins the race: their review creates SELLER's score.
+    let won = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, won, 5);
     // BUYER2 (the race loser) holds their own RELEASED receipt; the retry
     // path — plain submit_review against the existing score — lands.
-    let lost = released_job_from(&mut sc, &clk, BUYER2, ASP);
+    let lost = released_job_from(&mut sc, &clk, BUYER2, SELLER);
     review_as(&mut sc, &clk, BUYER2, lost, 3);
     ts::next_tx(&mut sc, BUYER2);
     {
@@ -441,9 +441,9 @@ fun first_review_race_loser_retries_with_submit_review() {
 #[expected_failure] // derived_object::claim aborts: score already exists
 fun duplicate_first_review_fails() {
     let (mut sc, clk) = setup();
-    let job_a = released_job(&mut sc, &clk, ASP);
+    let job_a = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_a, 5);
-    let job_b = released_job(&mut sc, &clk, ASP);
+    let job_b = released_job(&mut sc, &clk, SELLER);
     // Force the lazy-create path a second time for the same seller.
     ts::next_tx(&mut sc, BUYER);
     {
@@ -465,7 +465,7 @@ fun proven_predicates_track_distinct_buyers() {
     let (mut sc, clk) = setup();
     let pool = buyers();
     // 2 × 5★ from 2 distinct buyers — below the distinct floor.
-    reviewed_n(&mut sc, &clk, ASP, 2, 5);
+    reviewed_n(&mut sc, &clk, SELLER, 2, 5);
     ts::next_tx(&mut sc, BUYER);
     {
         let score = take_score(&sc);
@@ -476,7 +476,7 @@ fun proven_predicates_track_distinct_buyers() {
     };
     // A 3rd DISTINCT buyer (3★) crosses the floor: distinct 3; avg 13/3 ≥ 4.
     let b3 = *pool.borrow(2);
-    let j3 = released_job_from(&mut sc, &clk, b3, ASP);
+    let j3 = released_job_from(&mut sc, &clk, b3, SELLER);
     review_as(&mut sc, &clk, b3, j3, 3);
     ts::next_tx(&mut sc, BUYER);
     {
@@ -491,7 +491,7 @@ fun proven_predicates_track_distinct_buyers() {
     // A 4th review (1★, 4th buyer) drags avg to 14/4 = 3.5 < 4: policy 2
     // fails while plain Proven still passes.
     let b4 = *pool.borrow(3);
-    let j4 = released_job_from(&mut sc, &clk, b4, ASP);
+    let j4 = released_job_from(&mut sc, &clk, b4, SELLER);
     review_as(&mut sc, &clk, b4, j4, 1);
     ts::next_tx(&mut sc, BUYER);
     {
@@ -513,7 +513,7 @@ fun three_reviews_one_buyer_not_proven() {
     // The soft-Sybil case v2 closes: one friendly buyer, three jobs.
     let mut i = 0;
     while (i < 3) {
-        let job_id = released_job(&mut sc, &clk, ASP); // BUYER every time
+        let job_id = released_job(&mut sc, &clk, SELLER); // BUYER every time
         review(&mut sc, &clk, job_id, 5);
         i = i + 1;
     };
@@ -538,24 +538,24 @@ fun proven_claim_one_buyer_three_reviews_fails() {
     let (mut sc, clk) = setup();
     let mut i = 0;
     while (i < 3) {
-        let job_id = released_job(&mut sc, &clk, ASP);
+        let job_id = released_job(&mut sc, &clk, SELLER);
         review(&mut sc, &clk, job_id, 5);
         i = i + 1;
     };
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
-    claim_proven_as(&mut sc, ASP, &clk);
+    claim_proven_as(&mut sc, SELLER, &clk);
     abort 0
 }
 
 #[test]
 fun edit_does_not_change_distinct() {
     let (mut sc, clk) = setup();
-    let job_id = released_job(&mut sc, &clk, ASP);
+    let job_id = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_id, 5);
     // Same buyer re-rates the same job: distinct stays 1.
     review(&mut sc, &clk, job_id, 2);
     // Same buyer, a SECOND job: still distinct 1 (each buyer counts once).
-    let job_b = released_job(&mut sc, &clk, ASP);
+    let job_b = released_job(&mut sc, &clk, SELLER);
     review(&mut sc, &clk, job_b, 4);
     ts::next_tx(&mut sc, BUYER);
     {
@@ -605,14 +605,14 @@ fun claim_proven_as(sc: &mut ts::Scenario, who: address, clk: &Clock): ID {
 #[test]
 fun proven_claim_succeeds_with_three_reviews() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 3, 5);
+    reviewed_n(&mut sc, &clk, SELLER, 3, 5);
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
-    let job_id = claim_proven_as(&mut sc, ASP, &clk);
+    let job_id = claim_proven_as(&mut sc, SELLER, &clk);
     // A normal funded Job minted — same as an Anyone claim, still $0.
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
-        assert!(escrow::seller(&job) == ASP, 0);
+        assert!(escrow::seller(&job) == SELLER, 0);
         assert!(escrow::state(&job) == escrow::state_funded(), 1);
         ts::return_shared(job);
     };
@@ -623,9 +623,9 @@ fun proven_claim_succeeds_with_three_reviews() {
 #[test]
 fun proven_4star_claim_succeeds_when_avg_holds() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 3, 4); // avg exactly 4.0
+    reviewed_n(&mut sc, &clk, SELLER, 3, 4); // avg exactly 4.0
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN_4STAR);
-    claim_proven_as(&mut sc, ASP, &clk);
+    claim_proven_as(&mut sc, SELLER, &clk);
     ts::end(sc);
     clk.destroy_for_testing();
 }
@@ -634,9 +634,9 @@ fun proven_4star_claim_succeeds_when_avg_holds() {
 #[expected_failure(abort_code = opening::EClaimPolicyUnmet)]
 fun proven_claim_below_review_floor_fails() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 2, 5); // only 2 reviews
+    reviewed_n(&mut sc, &clk, SELLER, 2, 5); // only 2 reviews
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
-    claim_proven_as(&mut sc, ASP, &clk);
+    claim_proven_as(&mut sc, SELLER, &clk);
     abort 0
 }
 
@@ -644,9 +644,9 @@ fun proven_claim_below_review_floor_fails() {
 #[expected_failure(abort_code = opening::EClaimPolicyUnmet)]
 fun proven_4star_claim_below_avg_fails() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 3, 3); // count OK, avg 3.0 < 4.0
+    reviewed_n(&mut sc, &clk, SELLER, 3, 3); // count OK, avg 3.0 < 4.0
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN_4STAR);
-    claim_proven_as(&mut sc, ASP, &clk);
+    claim_proven_as(&mut sc, SELLER, &clk);
     abort 0
 }
 
@@ -654,10 +654,10 @@ fun proven_4star_claim_below_avg_fails() {
 #[expected_failure(abort_code = opening::EScoreNotClaimer)]
 fun proven_claim_with_someone_elses_score_fails() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 3, 5); // ASP is Proven
+    reviewed_n(&mut sc, &clk, SELLER, 3, 5); // SELLER is Proven
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
-    // OTHER_ASP (no reviews) tries to claim by passing ASP's score.
-    claim_proven_as(&mut sc, OTHER_ASP, &clk);
+    // OTHER_SELLER (no reviews) tries to claim by passing SELLER's score.
+    claim_proven_as(&mut sc, OTHER_SELLER, &clk);
     abort 0
 }
 
@@ -665,9 +665,9 @@ fun proven_claim_with_someone_elses_score_fails() {
 #[expected_failure(abort_code = opening::EBadClaimPolicy)]
 fun plain_claim_on_proven_opening_fails() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 3, 5);
+    reviewed_n(&mut sc, &clk, SELLER, 3, 5);
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let reg = ts::take_shared<Registry>(&sc);
@@ -683,9 +683,9 @@ fun plain_claim_on_proven_opening_fails() {
 #[expected_failure(abort_code = opening::EBadClaimPolicy)]
 fun claim_proven_on_anyone_opening_fails() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 3, 5);
+    reviewed_n(&mut sc, &clk, SELLER, 3, 5);
     post_open_with_policy(&mut sc, &clk, POLICY_ANY);
-    claim_proven_as(&mut sc, ASP, &clk);
+    claim_proven_as(&mut sc, SELLER, &clk);
     abort 0
 }
 
@@ -693,16 +693,16 @@ fun claim_proven_on_anyone_opening_fails() {
 #[expected_failure(abort_code = opening::ENotActiveAgent)]
 fun proven_claim_still_requires_active_agent() {
     let (mut sc, clk) = setup();
-    reviewed_n(&mut sc, &clk, ASP, 3, 5);
-    // ASP goes inactive AFTER earning Proven — the registry gate still holds.
-    ts::next_tx(&mut sc, ASP);
+    reviewed_n(&mut sc, &clk, SELLER, 3, 5);
+    // SELLER goes inactive AFTER earning Proven — the registry gate still holds.
+    ts::next_tx(&mut sc, SELLER);
     {
         let mut reg = ts::take_shared<Registry>(&sc);
-        registry::set_active(&mut reg, ASP, false, &clk, ts::ctx(&mut sc));
+        registry::set_active(&mut reg, SELLER, false, &clk, ts::ctx(&mut sc));
         ts::return_shared(reg);
     };
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
-    claim_proven_as(&mut sc, ASP, &clk);
+    claim_proven_as(&mut sc, SELLER, &clk);
     abort 0
 }
 
@@ -752,9 +752,9 @@ fun empty_score_for(sc: &mut ts::Scenario, clk: &Clock, agent: address): ID {
 #[test]
 fun reject_records_seller_outcome_only() {
     let (mut sc, clk) = setup();
-    let sid = empty_score_for(&mut sc, &clk, ASP);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
-    deliver_job(&mut sc, &clk, ASP, job_id);
+    let sid = empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
     // Passport buyer rejects in-window through the live v2 door.
     ts::next_tx(&mut sc, BUYER);
     {
@@ -784,12 +784,12 @@ fun reject_records_seller_outcome_only() {
 #[test]
 fun agent_buyer_reject_records_both_sides() {
     let (mut sc, clk) = setup();
-    // OTHER_ASP (registered) buys from ASP; both scores pre-created.
-    let seller_sid = empty_score_for(&mut sc, &clk, ASP);
-    let buyer_sid = empty_score_for(&mut sc, &clk, OTHER_ASP);
-    let job_id = funded_job(&mut sc, &clk, OTHER_ASP, ASP);
-    deliver_job(&mut sc, &clk, ASP, job_id);
-    ts::next_tx(&mut sc, OTHER_ASP);
+    // OTHER_SELLER (registered) buys from SELLER; both scores pre-created.
+    let seller_sid = empty_score_for(&mut sc, &clk, SELLER);
+    let buyer_sid = empty_score_for(&mut sc, &clk, OTHER_SELLER);
+    let job_id = funded_job(&mut sc, &clk, OTHER_SELLER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
+    ts::next_tx(&mut sc, OTHER_SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let reg = ts::take_shared<Registry>(&sc);
@@ -823,10 +823,10 @@ fun agent_buyer_reject_records_both_sides() {
 #[expected_failure(abort_code = reputation::EBuyerIsAgent)]
 fun agent_buyer_cannot_dodge_own_counter() {
     let (mut sc, clk) = setup();
-    let seller_sid = empty_score_for(&mut sc, &clk, ASP);
-    let job_id = funded_job(&mut sc, &clk, OTHER_ASP, ASP);
-    deliver_job(&mut sc, &clk, ASP, job_id);
-    ts::next_tx(&mut sc, OTHER_ASP);
+    let seller_sid = empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, OTHER_SELLER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
+    ts::next_tx(&mut sc, OTHER_SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let reg = ts::take_shared<Registry>(&sc);
@@ -846,10 +846,10 @@ fun agent_buyer_cannot_dodge_own_counter() {
 #[expected_failure(abort_code = reputation::EBuyerNotAgent)]
 fun passport_buyer_cannot_use_agent_variant() {
     let (mut sc, clk) = setup();
-    let seller_sid = empty_score_for(&mut sc, &clk, ASP);
+    let seller_sid = empty_score_for(&mut sc, &clk, SELLER);
     let buyer_sid = empty_score_for(&mut sc, &clk, BUYER);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
-    deliver_job(&mut sc, &clk, ASP, job_id);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
     ts::next_tx(&mut sc, BUYER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
@@ -878,8 +878,8 @@ fun passport_buyer_cannot_use_agent_variant() {
 #[test]
 fun deadline_refund_records_no_delivery() {
     let (mut sc, mut clk) = setup();
-    let sid = empty_score_for(&mut sc, &clk, ASP);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    let sid = empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
     let past_deadline = clk.timestamp_ms() + SLA_MS + 1;
     clk.set_for_testing(past_deadline);
     // Permissionless crank — a stranger runs it; the counter still lands.
@@ -904,10 +904,10 @@ fun deadline_refund_records_no_delivery() {
 #[test]
 fun decline_writes_no_outcome() {
     let (mut sc, clk) = setup();
-    let sid = empty_score_for(&mut sc, &clk, ASP);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    let sid = empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
     // Seller walks cleanly before delivering — full refund, NO counter.
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
@@ -915,7 +915,7 @@ fun decline_writes_no_outcome() {
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
-    ts::next_tx(&mut sc, ASP);
+    ts::next_tx(&mut sc, SELLER);
     {
         let score = ts::take_shared_by_id<AgentScore>(&sc, sid);
         assert!(reputation::no_delivery(&score) == 0, 0);
@@ -930,8 +930,8 @@ fun decline_writes_no_outcome() {
 #[expected_failure(abort_code = reputation::EWrongScore)]
 fun refund_with_wrong_seller_score_fails() {
     let (mut sc, mut clk) = setup();
-    let wrong_sid = empty_score_for(&mut sc, &clk, OTHER_ASP);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    let wrong_sid = empty_score_for(&mut sc, &clk, OTHER_SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
     let past_deadline = clk.timestamp_ms() + SLA_MS + 1;
     clk.set_for_testing(past_deadline);
     ts::next_tx(&mut sc, STRANGER);
@@ -951,8 +951,8 @@ fun refund_with_wrong_seller_score_fails() {
 #[expected_failure(abort_code = escrow::EUseSettleV2)]
 fun deprecated_escrow_reject_aborts() {
     let (mut sc, clk) = setup();
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
-    deliver_job(&mut sc, &clk, ASP, job_id);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
     ts::next_tx(&mut sc, BUYER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
@@ -968,7 +968,7 @@ fun deprecated_escrow_reject_aborts() {
 #[expected_failure(abort_code = escrow::EUseSettleV2)]
 fun deprecated_escrow_refund_aborts() {
     let (mut sc, mut clk) = setup();
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
     let past_deadline = clk.timestamp_ms() + SLA_MS + 1;
     clk.set_for_testing(past_deadline);
     ts::next_tx(&mut sc, STRANGER);
@@ -986,8 +986,8 @@ fun deprecated_escrow_refund_aborts() {
 #[expected_failure] // derived_object::claim: score already exists
 fun create_empty_score_twice_aborts() {
     let (mut sc, clk) = setup();
-    empty_score_for(&mut sc, &clk, ASP);
-    empty_score_for(&mut sc, &clk, ASP);
+    empty_score_for(&mut sc, &clk, SELLER);
+    empty_score_for(&mut sc, &clk, SELLER);
     abort 0
 }
 
@@ -1020,9 +1020,9 @@ fun reject_job(
 #[test]
 fun rejected_job_is_reviewable_and_counts_distinct() {
     let (mut sc, clk) = setup();
-    let sid = empty_score_for(&mut sc, &clk, ASP);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
-    reject_job(&mut sc, &clk, BUYER, ASP, job_id, sid);
+    let sid = empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    reject_job(&mut sc, &clk, BUYER, SELLER, job_id, sid);
     // The rejecting buyer leaves the honest 1★ — a real star, real distinct.
     review(&mut sc, &clk, job_id, 1);
     ts::next_tx(&mut sc, BUYER);
@@ -1053,8 +1053,8 @@ fun rejected_job_is_reviewable_and_counts_distinct() {
 #[expected_failure(abort_code = reputation::ENotReleased)]
 fun funded_job_still_not_reviewable() {
     let (mut sc, clk) = setup();
-    empty_score_for(&mut sc, &clk, ASP);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
+    empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
     review(&mut sc, &clk, job_id, 3);
     abort 0
 }
@@ -1063,9 +1063,9 @@ fun funded_job_still_not_reviewable() {
 #[expected_failure(abort_code = reputation::ENotReleased)]
 fun delivered_pre_reject_still_not_reviewable() {
     let (mut sc, clk) = setup();
-    empty_score_for(&mut sc, &clk, ASP);
-    let job_id = funded_job(&mut sc, &clk, BUYER, ASP);
-    deliver_job(&mut sc, &clk, ASP, job_id);
+    empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
     review(&mut sc, &clk, job_id, 3);
     abort 0
 }

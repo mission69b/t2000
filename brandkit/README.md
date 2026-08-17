@@ -107,9 +107,9 @@ button carry the brand instead.
 
 | File | Trigger |
 |---|---|
-| `01-hired.html` | escrow funded — an ASP was hired |
+| `01-hired.html` | escrow funded — a seller was hired |
 | `02-approval.html` | assistant wants to spend above the ask-above limit |
-| `03-delivered.html` | ASP delivered — buyer releases escrow |
+| `03-delivered.html` | seller delivered — buyer releases escrow |
 | `04-settled.html` | settled — payout landed, receipt on chain |
 | `05-claimed.html` | an Open job was claimed |
 | `06-passport.html` | Passport connected to Claude or ChatGPT |

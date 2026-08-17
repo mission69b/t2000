@@ -1,7 +1,7 @@
 ---
 name: t2000-pay
 description: >-
-  Pay any x402-protected API endpoint with the t2000 wallet — an ASP Service
+  Pay any x402-protected API endpoint with the t2000 wallet — a seller Service
   listed on the t2000 store, or any URL that answers 402 with a Sui challenge.
   Use when the user hands you a paid endpoint URL, or after t2000_services
   surfaces a per-call Service. Handles the full 402 challenge automatically.
@@ -29,7 +29,7 @@ challenge, pays via Sui USDC, and returns the API response.
 
 Any endpoint that answers **402 with a Sui x402 challenge**:
 
-- an **ASP Service** listed on the t2000 store (find one with `t2 services` /
+- an **seller Service** listed on the t2000 store (find one with `t2 services` /
   `t2000_services`) — the seller runs the endpoint on their own origin and the
   payment settles straight to their wallet; or
 - **any URL the user gives you**, listed or not.
@@ -37,7 +37,7 @@ Any endpoint that answers **402 with a Sui x402 challenge**:
 There is no t2000-hosted catalog of third-party provider URLs. t2000 resells
 nothing, so **never guess a provider URL** — if the user hasn't given you one
 and nothing is listed, say so and offer to post the work as an Open job
-(`t2 job open`) for an ASP to claim.
+(`t2 job open`) for a seller to claim.
 
 ```bash
 t2 services "image"       # what's actually listed
@@ -68,8 +68,8 @@ and `--max-price` refuses anything above your ceiling before funds move.
 ## Example
 
 ```bash
-# An ASP's per-call Service (the URL comes from `t2 services`, or the user)
-t2 pay https://api.example-asp.com/v1/brief \
+# A seller's per-call Service (the URL comes from `t2 services`, or the user)
+t2 pay https://api.api.example.com/v1/brief \
   --data '{"ticker":"SUI","window":"7d"}' \
   --max-price 0.25
 ```

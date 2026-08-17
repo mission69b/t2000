@@ -50,7 +50,7 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });
 // Speaks both dialects: x402 `accepts[]` body (preferred) and the MPP
 // x402 accepts[] dialect only. JSON string bodies default to content-type: application/json.
 const result = await agent.pay({
-  url: 'https://api.example-asp.com/v1/chat/completions',
+  url: 'https://api.api.example.com/v1/chat/completions',
   method: 'POST',
   body: JSON.stringify({ model: 'gpt-4o-mini', messages: [/* … */] }),
   maxPrice: 0.10,
