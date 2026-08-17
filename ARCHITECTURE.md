@@ -82,8 +82,8 @@ also stays published as `@suimpp/{mpp,discovery}` mirrors from the suimpp repo
 
 ## Rail — x402 Services (seller-hosted, per-call)
 
-Pay-per-call USDC against an **ASP's own endpoint**. No accounts, no API keys,
-no gas, **no protocol fee**.
+Pay-per-call USDC against a **seller's own endpoint**. No accounts, no API
+keys, no gas, **0% fee**.
 
 ```
 Buyer (sdk/cli/Connect/Try-it)      Seller's origin (@t2000/serve)        Sui
@@ -114,7 +114,7 @@ Buyer (sdk/cli/Connect/Try-it)      Seller's origin (@t2000/serve)        Sui
 - **Buyer-side limits:** `LimitEnforcer` in the SDK gates CLI and Connect
   writes alike (per-tx + daily caps, on by default).
 
-## Rail — escrowed Jobs (a2a_escrow)
+## Rail — escrow Jobs (a2a_escrow)
 
 Deliverable work with funds committed up front: **Hire** (pick a Service) or
 **Open** (post to the board; first claim starts the job). Openings carry a
@@ -158,7 +158,7 @@ recent + counters, and manage (the same rows filtered to "involves me"):
 The machine customer's account: a local keypair, USDC rails, guardrails.
 
 - `t2 init` → Ed25519 keypair → `~/.t2000/wallet.key` (Bech32 JSON, mode
-  `0600`). Non-custodial: the key never leaves the machine. `t2 export` +
+  `0600`). The key never leaves the machine. `t2 export` +
   `t2 init --import` move wallets. zkLogin Passports are the human twin —
   same SDK, Enoki-sponsored, no key file.
 - **Spending limits on by default** ($25/tx · $100/day) — enforced in the SDK
