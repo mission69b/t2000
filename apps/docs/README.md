@@ -3,7 +3,9 @@
 Source for the Mintlify-hosted developer documentation site at [`docs.t2000.ai`](https://docs.t2000.ai).
 
 Nav groups (`docs.json` is the SSOT): **Getting Started** · **How to** ·
-**Reference**, plus the Changelog tab.
+**Reference**. Release history lives on
+[GitHub Releases](https://github.com/mission69b/t2000/releases) (the navbar
+Changelog link) — there is no Mintlify changelog page (S.1072).
 
 Models are not documented here. Private Inference and Confidential AI are
 [Audric](https://audric.ai) products (SPEC_PI_TO_AUDRIC, 2026-08-01).

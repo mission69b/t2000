@@ -12,13 +12,12 @@ import { createProgram } from './program.js';
 // Names are machine-checkable; this test makes that class of drift fail CI.
 //
 // Deliberately NOT checked (would be a false-positive machine): counts in
-// prose, prices, behavior descriptions, changelog history.
+// prose, prices, behavior descriptions.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../../..');
 
-/** Durable doc surfaces that teach commands. Marketing components and the
- *  changelog (historical by design) are deliberately excluded. */
+/** Durable doc surfaces that teach commands. */
 const DOC_FILES: string[] = [
   'README.md',
   'packages/cli/README.md',
@@ -32,7 +31,7 @@ function collectMdx(dir: string, out: string[]): void {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) {
       collectMdx(full, out);
-    } else if (entry.endsWith('.mdx') && entry !== 'changelog.mdx') {
+    } else if (entry.endsWith('.mdx')) {
       out.push(full);
     }
   }
