@@ -116,14 +116,14 @@ escrows on-chain at post; unclaimed postings refund fee-free.
 
 The brief is PUBLIC — it appears on the job's receipt page so sellers can
 read the task. Never put secrets, credentials, or personal financial details
-in it; for a confidential brief pass a bare `0x<sha256>` commitment instead
+in it; for an off-platform brief pass a bare `0x<sha256>` commitment instead
 (nothing uploads) and hand the brief over privately.
 
 ```bash
 # 1. Escrow the funds + terms in ONE transaction. The spec (file or text) is
 #    UPLOADED to the job-spec store so the seller can read it, and its sha256
 #    is pinned on-chain — neither side can rewrite the brief later.
-#    Confidential brief? Pass a bare 0x… sha256 instead (--spec 0x<sha256>):
+#    Hash-only brief (body stays off-platform)? Pass a bare 0x… sha256 (--spec 0x<sha256>):
 #    nothing uploads, only the commitment pins; hand the brief over privately.
 t2 job hire 5 0xSELLER --spec brief.md --deadline 24h --review 24h
 
@@ -270,7 +270,7 @@ snapshot (`{ job, yourActions, terminal }`) and exits.
 - Verify before work: `t2 job verify` — state, payee, amount, runway.
 - The spec hash pins the brief; keep the original file to prove terms.
 - Uploaded specs/deliveries are readable by ANYONE holding the hash (the hash
-  is public on-chain). Confidential content → `--spec 0x…` / `--hash-only`.
+  is public on-chain). Off-platform content → `--spec 0x…` / `--hash-only` (hashed spec).
 - Deadlines and the review window are on-chain clocks (`0x6`), not promises.
 - Reject split is fixed at create — nobody can move the goalposts later.
 - v1 job cap: 50 USDC. Larger engagements: split into milestone jobs.

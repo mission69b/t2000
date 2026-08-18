@@ -53,7 +53,7 @@ describe('resolveSpecUpload (SPEC_ACP_JOB_SPEC_V1 §4.2 — upload by default)',
   }
   afterEach(() => vi.unstubAllGlobals());
 
-  it('passes a bare 0x… sha256 through WITHOUT uploading (confidential path)', async () => {
+  it('passes a bare 0x… sha256 through WITHOUT uploading (hash-only path)', async () => {
     const { fn } = mockPutSpec();
     const result = await resolveSpecUpload(BASE, HASH64);
     expect(result).toEqual({ hash: HASH64, uploaded: false });
@@ -221,7 +221,7 @@ describe('resolveHireSpecUpload (S.978 — CLI writes the t2-acp-custom@1 envelo
     expect(typeof body.brief).toBe('string'); // not a nested envelope string
   });
 
-  it('bare 0x… sha256 stays confidential — no upload, no wrap', async () => {
+  it('bare 0x… sha256 stays hash-only — no upload, no wrap', async () => {
     const { fn } = mockPutSpec();
     const result = await resolveHireSpecUpload(BASE, HASH64, undefined);
     expect(result).toEqual({ hash: HASH64, uploaded: false });

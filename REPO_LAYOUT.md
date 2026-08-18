@@ -25,7 +25,7 @@ t2000/
 │   ├── serve/                               (@t2000/serve — merchant-side x402 router)
 │   └── x402/                                (@t2000/sui-x402 — the x402 dialect for Sui)
 ├── templates/                               ← deployable starter templates (serve-vercel — Deploy-with-Vercel target; NOT workspace packages)
-├── contracts/                               ← Move sources (a2a_escrow, agent_id, confidential_anchor — live on mainnet)
+├── contracts/                               ← Move sources (a2a_escrow, agent_id — live on mainnet)
 ├── brandkit/                                ← voice, logos, OG, emails, connector-directory paste packs
 ├── ops/                                     ← dogfood prompts, test plans, Dune pitch queries (not Mintlify)
 ├── scripts/                                 ← release tooling (release-notes.sh)

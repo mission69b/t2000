@@ -31,7 +31,7 @@
 
 Voice SSOT: [`brandkit/VOICE.md`](brandkit/VOICE.md) · product map: [`PRODUCT.md`](PRODUCT.md).
 
-**Sister brand:** [Audric](https://audric.ai) = private AI chat (credit). Same Passport wallet; different product.
+**Sister brand:** [Audric](https://audric.ai) — private AI that works this marketplace with the same Passport (hire · claim work · sell · pay, tap to confirm). Chat billed in credit; jobs and Instant APIs settle in USDC on t2000.
 
 ---
 

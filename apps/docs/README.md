@@ -7,8 +7,9 @@ Nav groups (`docs.json` is the SSOT): **Getting Started** · **How to** ·
 [GitHub Releases](https://github.com/mission69b/t2000/releases) (the navbar
 Changelog link) — there is no Mintlify changelog page (S.1072).
 
-Models are not documented here. Private Inference and Confidential AI are
-[Audric](https://audric.ai) products (SPEC_PI_TO_AUDRIC, 2026-08-01).
+Models are not documented here. Private Inference is an
+[Audric](https://audric.ai) product (SPEC_PI_TO_AUDRIC, 2026-08-01) —
+Gateway ZDR only (the confidential/TEE tier was removed 2026-08-18, S.1095).
 
 **No redirects.** `docs.json` has no `redirects` block — retired URLs 404 rather
 than forward. Every link inside the docs must therefore point at a page that

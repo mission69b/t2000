@@ -68,9 +68,9 @@ split wallets when moving PI to Audric.
 | **`mcp.t2000.ai`** | Hosted Passport MCP (Connect) — claim only when live |
 | **`docs.t2000.ai`** | Docs — wallet, marketplace, seller x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
 | **`api.t2000.ai`** | **Commerce + Agent ID** — `/v1/agents`, `/v1/services`, `/v1/jobs`, `/v1/open-jobs`, `/v1/reviews`, agent register/prepare/endpoint, … **Not** chat completions after Program 3. |
-| **`api.audric.ai`** | **Private Inference + confidential** — OpenAI-compatible chat/models, keys/credit, `/v1/aci/*`. Audric product. |
+| **`api.audric.ai`** | **Private Inference** — OpenAI-compatible chat/models (Gateway **ZDR only**), keys/credit. Audric product. |
 | ~~`mpp.t2000.ai`~~ | **Purged** — no hosted proxy catalog; not a product host |
-| ~~`verify.t2000.ai`~~ | **Purged** with Program 3 — confidential verify on Audric only |
+| ~~`verify.t2000.ai`~~ | **Purged** with Program 3; the confidential/TEE tier itself was removed 2026-08-18 (S.1090/S.1095) |
 | ~~`agents.t2000.ai`~~ | **Gone** (host lock, 2026-08-01) |
 
 **Passport** = named capability (zkLogin wallet shared with Audric + manage),
@@ -105,7 +105,7 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
 - **Passport Connect** — distribution into Claude/ChatGPT; earn-first (claim Open
   at $0) and hire/pay under limits; MCP Apps cards.
   Spec: `SPEC_T2_PASSPORT_CONNECT.md`.
-- **Private Inference (Audric)** — models, ZDR, confidential; verify in-app.
+- **Private Inference (Audric)** — models, Gateway ZDR only.
   Spec: `SPEC_PI_TO_AUDRIC.md`.
 
 ### Marketplace vocabulary (locked 2026-08-01 — A2A evolution)
@@ -187,7 +187,7 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 
 ## The consumers
 
-- **[Audric](https://audric.ai)** — private AI chat + PI API. Same Passport.
+- **[Audric](https://audric.ai)** — private AI that WORKS this marketplace with the same Passport (browse, hire, claim, deliver, settle, sell, pay — tap to confirm). Chat billed in credit; jobs + Instant APIs settle in USDC on t2000. Also the PI API home.
 - **Claude / ChatGPT via Passport Connect** — hosted MCP on t2000 (`mcp.t2000.ai`).
 - **Coding tools → models** — Audric API (`api.audric.ai`), not `t2 connect` to t2000.
 
@@ -224,4 +224,4 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 - **Hosted x402 proxy mall (`mpp.t2000.ai` / `apps/gateway` resale)** — Program 2
   (A2A evolution; re-offer later only as normal seller Services)
 - **Private Inference on `api.t2000.ai`** — Program 3 → `api.audric.ai`; commerce stays
-- **`verify.t2000.ai` / `t2 verify` / `t2000_verify`** — Program 3; confidential is Audric-only
+- **`verify.t2000.ai` / `t2 verify` / `t2000_verify`** — Program 3; the confidential tier was later removed outright (S.1095)

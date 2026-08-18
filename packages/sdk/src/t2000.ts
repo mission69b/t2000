@@ -53,7 +53,6 @@ import {
   type ChatParams,
   type ChatResult,
 } from './inference.js';
-import { verifyReceipt, type VerifyOptions, type VerifyResult } from './verify.js';
 import { SUPPORTED_ASSETS, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
@@ -218,23 +217,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     return chatCompletion(params);
   }
 
-  /** Streaming chat completion — async-iterate the assistant text deltas;
-   *  the generator returns `{ receiptId }` (confidential attestation) at the end. */
-  chatStream(
-    params: ChatParams
-  ): AsyncGenerator<string, { receiptId?: string }, unknown> {
+  /** Streaming chat completion — async-iterate the assistant text deltas. */
+  chatStream(params: ChatParams): AsyncGenerator<string, void, unknown> {
     return chatCompletionStream(params);
   }
 
   /** The Private Inference model catalog (`GET /v1/models`). */
   async models(opts?: { apiKey?: string; apiBase?: string }): Promise<ApiModel[]> {
     return listModels(opts);
-  }
-
-  /** Verify a confidential response by receipt id — checks the signed receipt
-   *  + its trustless on-chain Sui anchor. Fails closed on any mismatch. */
-  async verify(receiptId: string, opts?: VerifyOptions): Promise<VerifyResult> {
-    return verifyReceipt(receiptId, opts);
   }
 
   // -- Swap --

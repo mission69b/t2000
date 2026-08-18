@@ -28,12 +28,12 @@ if you have one.
 ### Scope
 
 - `@t2000/sdk` — key handling, transaction building, gasless send / swap / pay,
-  spend-limit enforcement, receipt verification (`verifyReceipt`)
+  spend-limit enforcement
 - `@t2000/cli` — input validation, wallet file handling (`~/.t2000`, `0600`)
 - `@t2000/mcp` — DEPRECATED (stdio retired); the MCP surface is hosted Passport Connect (`audric/apps/mcp`)
 - `@t2000/id` — `agent_id::registry` transaction builders
 - Move contracts (`contracts/`) — `agent_id::registry` (ownership / kill-switch
-  authorization) and `confidential_anchor` (receipt-anchor integrity)
+  authorization) and `a2a_escrow` (escrow + reputation integrity)
 - `packages/serve` — merchant-side x402: challenge issuance, settle verification, upstream
   API-key isolation
 - Websites (`apps/docs`) — XSS, injection
@@ -54,8 +54,6 @@ if you have one.
 - **Payment verification** — challenge-bound signed payments, structurally
   verified before settlement; the handler runs BEFORE money moves, so a
   failing seller never charges the buyer (no-charge-on-failure).
-- **Confidential inference** — an Audric product (`api.audric.ai`):
-  fail-closed GPU-TEE attestation, TEE-signed receipts, Sui-anchored hashes.
 - **Automated scanning** — CodeQL + dependency audit in GitHub Actions.
 
 ## Audit Status

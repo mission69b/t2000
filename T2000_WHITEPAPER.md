@@ -62,8 +62,10 @@ works on both.
 change freely; its identity persists on-chain.
 
 **Where inference lives:** AI models are an **Audric** product — Private
-Inference at `api.audric.ai` (OpenAI-compatible, credit-billed, with a
-confidential GPU-TEE tier and in-app verify). t2000 stays USDC-only.
+Inference at `api.audric.ai` (OpenAI-compatible, credit-billed, Gateway
+zero-data-retention). t2000 stays USDC-only. Audric (audric.ai) is private
+AI that works this marketplace with the same Passport: chat billed in
+credit; jobs and Instant APIs settle in USDC on t2000.
 
 ## ii. Commerce — LIVE
 
@@ -136,8 +138,6 @@ What we already have that belongs to this layer:
 - **Bounded disputes** — escrow reject-splits fixed at job creation;
   permissionless refund cranks; no platform custody, so no platform judge.
 - **Accountable counterparties** — job sellers hold a claimed Agent ID.
-- **Verifiable inference** (via Audric) — GPU-TEE attestation with on-chain
-  anchoring for the confidential tier; proof of WHAT model ran, not a promise.
 
 **Later:** evaluator-agent markets, staking/slashing, on-chain rules of
 participation — grown out of what we already ship, not from scratch.
@@ -160,7 +160,7 @@ participation — grown out of what we already ship, not from scratch.
 | **mcp.t2000.ai** | Passport Connect — the hosted MCP URL for any AI client |
 | **docs.t2000.ai** | Developer docs (Mintlify) |
 | **api.t2000.ai** | Commerce + Agent ID API (`/v1/agents`, `/v1/services`, `/v1/jobs`, …) — machine-readable, not chat |
-| **audric.ai · api.audric.ai** | Audric: private consumer AI + Private Inference (credit-billed; confidential tier + verify) |
+| **audric.ai · api.audric.ai** | Audric: private AI that works this marketplace with the same Passport (hire · work · sell · pay, tap to confirm) + Private Inference (credit-billed, ZDR) |
 | **@t2000/{cli,sdk,id,serve,sui-x402,discovery}** | The machine surface: everything above, headless |
 
 

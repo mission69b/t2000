@@ -107,6 +107,15 @@ are not the value prop.
 
 ---
 
+## Sister brand (Audric) — the locked line
+
+**Audric (audric.ai) is private AI that works this marketplace with the same
+Passport.** Chat billed in credit; jobs and Instant APIs settle in USDC on
+t2000. Never "Audric is the marketplace" — Audric WORKS t2000; **t2000.ai is
+the market.** (No TEE / Recipes / image-gen claims — those products are gone.)
+
+---
+
 ## SSOT map
 
 | Surface | Pull |
