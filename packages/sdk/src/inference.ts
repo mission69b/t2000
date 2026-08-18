@@ -34,9 +34,6 @@ export interface ChatResult {
   content: string;
   model: string;
   usage?: ChatUsage;
-  /** Confidential calls (`phala/*`) return a TEE attestation receipt id —
-   *  fetch + verify it at `/v1/aci/receipts/{id}`. Absent for ZDR models. */
-  receiptId?: string;
   /** The verbatim OpenAI-shaped response body. */
   raw: unknown;
 }
@@ -102,8 +99,7 @@ function body(params: ChatParams, stream: boolean): string {
   return JSON.stringify({
     model: params.model,
     messages: params.messages,
-    // include_usage → the final stream chunk carries usage + x_receipt_id
-    // (the confidential attestation receipt) so we can surface it after a stream.
+    // include_usage → the final stream chunk carries usage.
     ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
     ...(params.maxTokens != null ? { max_tokens: params.maxTokens } : {}),
     ...(params.temperature != null ? { temperature: params.temperature } : {}),
@@ -123,7 +119,6 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResult> {
   if (!res.ok) {
     await failBody(res);
   }
-  const receiptId = res.headers.get('x-receipt-id') ?? undefined;
   const raw = await res.json();
   const content =
     (raw as { choices?: { message?: { content?: string } }[] })?.choices?.[0]
@@ -132,7 +127,6 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResult> {
     content,
     model: (raw as { model?: string })?.model ?? params.model,
     usage: usageOf(raw),
-    receiptId,
     raw,
   };
 }
@@ -141,7 +135,7 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResult> {
  *  (parses the OpenAI SSE `data:` frames). */
 export async function* chatCompletionStream(
   params: ChatParams,
-): AsyncGenerator<string, { receiptId?: string }, unknown> {
+): AsyncGenerator<string, void, unknown> {
   const key = resolveApiKey(params.apiKey);
   const base = params.apiBase ?? DEFAULT_API_BASE;
   const res = await fetch(`${base}/chat/completions`, {
@@ -151,12 +145,11 @@ export async function* chatCompletionStream(
   });
   if (!(res.ok && res.body)) {
     await failBody(res);
-    return {};
+    return;
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let receiptId: string | undefined;
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
@@ -172,17 +165,12 @@ export async function* chatCompletionStream(
       }
       const data = trimmed.slice(5).trim();
       if (data === '[DONE]') {
-        return { receiptId };
+        return;
       }
       try {
         const json = JSON.parse(data) as {
           choices?: { delta?: { content?: string } }[];
-          x_receipt_id?: string;
         };
-        // The confidential TEE receipt rides the final usage chunk.
-        if (json.x_receipt_id) {
-          receiptId = json.x_receipt_id;
-        }
         const delta = json.choices?.[0]?.delta?.content;
         if (typeof delta === 'string' && delta) {
           yield delta;
@@ -192,7 +180,6 @@ export async function* chatCompletionStream(
       }
     }
   }
-  return { receiptId };
 }
 
 /** List Private Inference model catalog (`GET /v1/models`). The key is sent when

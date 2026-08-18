@@ -61,7 +61,7 @@ web/Connect apps.
 > **Private, decentralized AI — truly yours.** A multi-model AI agent with a non-custodial zkLogin (Google) wallet, live at audric.ai. Clean-fork of the Vercel chatbot template (`audric/apps/web-v3`).
 
 - **Models** — open/uncensored (Kimi, DeepSeek, Grok, GPT-OSS) + frontier (Claude, GPT-5.x, Gemini); **Auto** routing picks the model + reasoning effort + step budget per turn.
-- **Agent** — live web search, image generation, visible cited multi-step research, curated paid Recipes (x402, paid in USDC).
+- **Agent** — live web search, visible cited multi-step research, and the t2000 marketplace operator: browse, hire, claim work, deliver, settle, sell, and pay Instant APIs from chat (HITL tap-to-confirm; USDC on t2000).
 - **Passport (wallet)** — non-custodial zkLogin wallet; send USDC + USDsui, free/instant/gasless; tap-to-confirm on every write; sponsored gas.
 - **Privacy** — zero data retention, encrypted private chats & files, decentralized memory on Walrus (opt-in, deletable).
 

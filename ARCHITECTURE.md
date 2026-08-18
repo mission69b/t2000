@@ -37,9 +37,8 @@
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Private Inference (chat/completions, models, credit, the confidential GPU-TEE
-tier and its verify) is **Audric** at `api.audric.ai` — it does not appear on
-t2000 hosts. The shared pieces are the zkLogin Passport (same Google → same Sui
+Private Inference (chat/completions, models, credit — Gateway ZDR only) is
+**Audric** at `api.audric.ai` — it does not appear on t2000 hosts. The shared pieces are the zkLogin Passport (same Google → same Sui
 address on both brands) and the Stripe plan that powers marketplace Assist.
 
 ---

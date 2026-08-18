@@ -95,10 +95,10 @@ const SPEC_STORE_MAX_BYTES = 16 * 1024;
 
 // Spec/delivery commitment (SPEC_ACP_JOB_SPEC_V1 §4.2): bodies UPLOAD by
 // default so the counterparty can actually read them; a bare `0x…` sha256
-// is the confidential path (nothing leaves your machine).
+// is the hash-only spec path (nothing leaves your machine).
 
 /** Read + guard the spec/delivery input WITHOUT uploading: a bare `0x…`
- *  sha256 passes through as the confidential hash; anything else resolves
+ *  sha256 passes through as the hash-only commitment; anything else resolves
  *  (file path, else literal text) to UTF-8 text under the store's 16 KiB
  *  cap. Shared by hire (which wraps text in the custom envelope, S.978)
  *  and deliver (which uploads raw — proofs are never wrapped). */
@@ -202,7 +202,7 @@ export async function resolveSpecUpload(
  *  `t2-acp-custom@1` envelope — the same write shape as console + Connect —
  *  so manage / the public page / the feed title the job without derive
  *  fallbacks. Idempotent (an input that already IS the envelope uploads
- *  as-is); a bare 0x… sha stays the confidential path, never wrapped. */
+ *  as-is); a bare 0x… sha stays the hash-only path, never wrapped. */
 export async function resolveHireSpecUpload(
   base: string,
   input: string,
@@ -625,7 +625,7 @@ no fund step; unclaimed openings refund fee-free):
     .argument('[amount]', `USDC to escrow (max ${MAX_JOB_USDC}; omit when hiring a --service listing)`)
     .argument('[seller]', "The seller's Sui address (omit when hiring a --service listing)")
     .description('Hire — fund an escrow job in one transaction (buyer): a listing (--agent + --service) or your own terms (amount + seller + --spec)')
-    .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED as the public t2-acp-custom@1 title+brief envelope so the seller and the store can read it; sha256 pinned on-chain), or a bare 0x… sha256 (confidential: pins without uploading, no envelope)')
+    .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED as the public t2-acp-custom@1 title+brief envelope so the seller and the store can read it; sha256 pinned on-chain), or a bare 0x… sha256 (hash-only: pins without uploading, no envelope — the body stays off-platform)')
     .option('--title <text>', 'Public job title (≤80 chars). Custom/direct hire only; derived from the brief\'s first line if omitted')
     .option(
       '--agent <address|#id|@handle>',
@@ -752,7 +752,7 @@ no fund step; unclaimed openings refund fee-free):
             );
             // Uploads as the t2-acp-custom@1 envelope (S.978) unless the
             // input is already a 0x… sha256 — the bare hash stays the
-            // confidential path (nothing leaves the machine).
+            // hash-only path (nothing leaves the machine).
             ({ hash: specHash } = await resolveHireSpecUpload(
               base,
               opts.spec,
@@ -903,7 +903,7 @@ no fund step; unclaimed openings refund fee-free):
     .argument('<jobId>', 'The Job object id (0x…)')
     .argument('<proof>', 'Delivery body — a file path or text (UPLOADED so the buyer can read it; sha256 pinned on-chain), or a bare 0x… sha256')
     .description('Post your delivery before the deadline (seller) — ONE SHOT: the sha256 pins on-chain permanently and cannot be replaced. Fix mistakes via buyer reject (inside the review window) or out-of-band — never a second deliver. Decline is only possible BEFORE delivery.')
-    .option('--hash-only', "Pin <proof> as a precomputed 0x… sha256 WITHOUT uploading a body — the confidential / large-artifact path (the buyer can't read it on-platform; hand the artifact over out-of-band)")
+    .option('--hash-only', "Pin <proof> as a precomputed 0x… sha256 WITHOUT uploading a body — the hashed-spec / large-artifact path (the buyer can't read it on-platform; hand the artifact over out-of-band)")
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(async (jobId: string, proof: string, opts: { hashOnly?: boolean; key?: string; api?: string }) => {

@@ -6,8 +6,8 @@ import { handleError, isJsonMode, printBlank, printJson, printLine } from '../ou
 // `t2 models` — the Private Inference catalog listing. Interactive CLI chat
 // (`t2 chat`) was removed — use `t2 connect` or any OpenAI-compatible client.
 // Private Inference is an AUDRIC product (SPEC_PI_TO_AUDRIC, 2026-08-01):
-// this reads api.audric.ai. Receipt verification left the CLI with it —
-// confidential verify is Audric in-app now.
+// this reads api.audric.ai — Gateway ZDR models only (the confidential/TEE
+// tier was removed 2026-08-18, S.1095).
 
 export function registerModels(program: Command): void {
   program
