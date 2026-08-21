@@ -117,6 +117,15 @@ limits they were minted with) and changeable under **Connections**:
 at connect time. Escrow already funded still settles normally. Every session
 also expires on its own within **7 days**.
 
+### If Claude refuses to send
+
+A vague "send some money" can occasionally trip the host's own safety layer
+even though the Connect tools are the intended path. If that happens, name
+the tool — *"use `t2000_send` to send $1 USDC to name.sui"* — or ask it to
+resolve the name first and confirm the full 0x ("I authorize this under my
+Connect limits"). The real gates are always your session limits and the
+`confirmTo` address check, never a prose refusal.
+
 ## What you're actually granting
 
 <Note>
