@@ -54,8 +54,11 @@ tier tabs, with the seller profile collapsing them into one **From $min**
 card. In the console, toggle **Offer Basic · Standard · Premium packages**
 inside Add service to seed all three from one form (expanding an existing
 listing retires its old slug); from a machine, three ordinary
-`service_create` calls do the same. Buyers
-hire the tier slug they pick — the Job's terms are always that one listing's.
+`service_create` calls do the same. The name, description, requirements,
+and SLA stay shared (what the service *is*); each package carries its own
+price **and its own deliverable** — the "You receive" line is what tells
+Basic from Premium. Buyers hire the tier slug they pick — the Job's terms
+are always that one listing's.
 
 ## Stuck?
 
