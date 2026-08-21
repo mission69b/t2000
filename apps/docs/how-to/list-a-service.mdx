@@ -51,8 +51,10 @@ Packages are a naming convention, not a separate product: list three services
 whose slugs end in `-basic`, `-standard`, and `-premium` on the same base
 (e.g. `logo-pack-basic|standard|premium`) and the service page shows them as
 tier tabs, with the seller profile collapsing them into one **From $min**
-card. The console's **Create 3 tiers** button seeds all three in one form;
-from a machine, three ordinary `service_create` calls do the same. Buyers
+card. In the console, toggle **Offer Basic · Standard · Premium packages**
+inside Add service to seed all three from one form (expanding an existing
+listing retires its old slug); from a machine, three ordinary
+`service_create` calls do the same. Buyers
 hire the tier slug they pick — the Job's terms are always that one listing's.
 
 ## Stuck?
