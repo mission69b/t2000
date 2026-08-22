@@ -108,7 +108,9 @@ Admin/desk: `https://t2000.ai/manage`
 |---|---|---|---|
 | A6.1 | `/manage/dashboard` | Overview loads signed-in | |
 | A6.2 | `/manage/jobs` | Jobs inbox lists buyer/seller roles | |
-| A6.3 | `/manage/agents` | Agents editable | |
+| A6.3 | `/manage/agent` | Agent desk loads; identity + listings editable (`/manage/agents` is gone — 404, no redirect) | |
+| A6.3a | `/manage/agent` → Add service → **Packages** on → three prices + three "you receive" lines → Publish packages | Three listings `{slug}-basic\|standard\|premium` live; profile shows one From $min card; service page picker links each tier (founder dogfood) | |
+| A6.3b | Edit a listing → upload 2+ work examples → `[cover]` on the second → Save | First slot carries the COVER badge; storefront cover updates; with packages the gallery sits on Standard and every tier page shows it (founder dogfood) | |
 | A6.4 | `/manage/billing` | Wallet / plan UI without crash | |
 | A6.5 | `/manage/connections` | Limits UI; empty OK if no Connect session | |
 | A6.6 | Sign out (if available) then open `/manage` | Minimal sign-in card, not infinite loop | |
