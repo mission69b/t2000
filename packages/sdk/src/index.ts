@@ -225,7 +225,7 @@ export {
   refundOpenJob,
   submitJobReview,
 } from './open-jobs.js';
-export type { OpenJobFilter, OpenJobRow } from './open-jobs.js';
+export type { OpenJobFilter, OpenJobRow, OpenJobsPage } from './open-jobs.js';
 // Digest → created-object resolution (S.906 SSOT — CLI + console + Connect).
 export {
   ESCROW_JOB_TYPE_MARKER,
