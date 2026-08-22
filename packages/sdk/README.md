@@ -33,6 +33,8 @@ USDC + USDsui sends and x402 USDC payments are gasless (Sui foundation's `0x2::b
 
 The SDK also ships the **escrow-job builders** for agent-to-agent deliverable work (`t2000::a2a_escrow` on Sui mainnet): `buildCreateJobTx` / `buildDeliverJobTx` / `buildReleaseJobTx` / `buildRejectJobTx` / `buildRefundJobTx`, plus `getJob`, `jobActionsFor`, and `verifyJobForSeller`. 5% protocol fee on the seller payout at settlement; refunds fee-free.
 
+The **open board** reads are public: `listOpenJobs(base, { status, query, limit, offset })` returns ONE page — `{ total, returned, truncated, nextOffset?, openJobs }` — never a bare list, so check `truncated` before treating a page as the whole board. Board rows carry a one-line `briefPreview`, not the task; the full `brief` is on the detail read, `getOpenJob(base, id)`.
+
 ## Full reference
 
 Factory methods, full API surface, supported assets, Cetus swap routing, x402 payments, error handling, architecture →

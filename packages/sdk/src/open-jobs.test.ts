@@ -13,10 +13,12 @@ import {
 const BASE = 'https://api.example.test/v1';
 const ADDRESS = `0x${'a'.repeat(64)}`;
 const OPENING_ID = `0x${'f'.repeat(64)}`;
+// S.1156: BOARD rows carry a one-line briefPreview, never `brief` — the
+// full brief lives on the detail route only.
 const ROW = {
   id: OPENING_ID,
   title: 'Logo sketch',
-  brief: 'Three concepts, PNG',
+  briefPreview: 'Three concepts, PNG',
   maxUsdc: 5,
   slaMinutes: 1440,
   status: 'open',
@@ -64,20 +66,74 @@ afterEach(() => {
 });
 
 describe('listOpenJobs / getOpenJob — public board reads', () => {
-  it('builds the query string from the filter', async () => {
-    const calls = mockFetchQueue([{ json: { openJobs: [ROW] } }]);
-    const rows = await listOpenJobs(BASE, {
+  it('builds the query string from the filter and returns the page envelope (S.1156)', async () => {
+    const calls = mockFetchQueue([
+      {
+        json: {
+          total: 544,
+          returned: 1,
+          truncated: true,
+          nextOffset: 49,
+          openJobs: [ROW],
+        },
+      },
+    ]);
+    const page = await listOpenJobs(BASE, {
       status: 'open',
       query: 'logo',
       limit: 10,
+      offset: 48,
     });
-    expect(rows).toEqual([ROW]);
-    expect(calls[0]?.url).toBe(`${BASE}/open-jobs?status=open&q=logo&limit=10`);
+    expect(page).toEqual({
+      total: 544,
+      returned: 1,
+      truncated: true,
+      nextOffset: 49,
+      openJobs: [ROW],
+    });
+    expect(page.openJobs[0]).not.toHaveProperty('brief');
+    expect(page.openJobs[0]?.briefPreview).toBe('Three concepts, PNG');
+    expect(calls[0]?.url).toBe(
+      `${BASE}/open-jobs?status=open&q=logo&limit=10&offset=48`,
+    );
   });
 
-  it('getOpenJob unwraps the row', async () => {
-    mockFetchQueue([{ json: { openJob: ROW } }]);
-    await expect(getOpenJob(BASE, OPENING_ID)).resolves.toEqual(ROW);
+  it('omits offset from the query when unset; last page is not truncated', async () => {
+    const calls = mockFetchQueue([
+      { json: { total: 1, returned: 1, truncated: false, openJobs: [ROW] } },
+    ]);
+    const page = await listOpenJobs(BASE);
+    expect(page).toEqual({
+      total: 1,
+      returned: 1,
+      truncated: false,
+      openJobs: [ROW],
+    });
+    expect(page).not.toHaveProperty('nextOffset');
+    expect(calls[0]?.url).toBe(`${BASE}/open-jobs`);
+  });
+
+  it('degraded body (no counts) → total = returned, never invented', async () => {
+    mockFetchQueue([{ json: { openJobs: [ROW, ROW] } }]);
+    await expect(listOpenJobs(BASE)).resolves.toEqual({
+      total: 2,
+      returned: 2,
+      truncated: false,
+      openJobs: [ROW, ROW],
+    });
+    mockFetchQueue([{ json: {} }]);
+    await expect(listOpenJobs(BASE)).resolves.toEqual({
+      total: 0,
+      returned: 0,
+      truncated: false,
+      openJobs: [],
+    });
+  });
+
+  it('getOpenJob unwraps the row — the detail keeps the full brief', async () => {
+    const detail = { ...ROW, brief: 'Three concepts, PNG — transparent background.' };
+    mockFetchQueue([{ json: { openJob: detail } }]);
+    await expect(getOpenJob(BASE, OPENING_ID)).resolves.toEqual(detail);
   });
 
   it('surfaces the API error message', async () => {

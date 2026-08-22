@@ -69,7 +69,12 @@ export function setSponsoredTxGuard(guard: SponsoredTxGuard | null): void {
 export interface OpenJobRow {
   id: string;
   title: string | null;
-  brief: string | null;
+  /** The full task — DETAIL-ROUTE ONLY (S.1156): present on `getOpenJob`,
+   *  absent on `listOpenJobs` rows (the board stays bounded). */
+  brief?: string | null;
+  /** One bounded line of the brief (≤140 chars) on BOARD rows — a gist for
+   *  picking which opening to read, never the task itself. */
+  briefPreview?: string | null;
   maxUsdc: number;
   slaMinutes: number;
   status: 'open' | 'claimed' | 'cancelled' | 'refunded' | 'expired';
@@ -92,21 +97,63 @@ export interface OpenJobFilter {
   query?: string;
   buyer?: string;
   limit?: number;
+  /** Page start (0-based) — feed a page's `nextOffset` back in. */
+  offset?: number;
 }
 
-/** Browse the Open board (GET /v1/open-jobs — public, no key needed). */
+/** One page of the board (S.1156) — HONEST about the rest: `total` counts
+ *  every matching opening, `returned` the rows in this page, `truncated` +
+ *  `nextOffset` say how to page. One page is never the whole board. */
+export interface OpenJobsPage {
+  total: number;
+  returned: number;
+  truncated: boolean;
+  nextOffset?: number;
+  openJobs: OpenJobRow[];
+}
+
+/** Browse the Open board (GET /v1/open-jobs — public, no key needed).
+ *  Returns the page envelope, not a bare list — read `truncated` before
+ *  treating the rows as the whole board. A degraded body (no counts)
+ *  normalizes to `total = returned`, never an invented total. */
 export async function listOpenJobs(
   base: string,
   filter: OpenJobFilter = {},
-): Promise<OpenJobRow[]> {
+): Promise<OpenJobsPage> {
   const params = new URLSearchParams();
   if (filter.status) params.set('status', filter.status);
   if (filter.query) params.set('q', filter.query);
   if (filter.buyer) params.set('buyer', filter.buyer);
   if (filter.limit) params.set('limit', String(filter.limit));
+  if (filter.offset) params.set('offset', String(filter.offset));
   const qs = params.size > 0 ? `?${params.toString()}` : '';
   const json = await fetchJson(`${base}/open-jobs${qs}`);
-  return (json.openJobs ?? []) as OpenJobRow[];
+  const openJobs = Array.isArray(json.openJobs)
+    ? (json.openJobs as OpenJobRow[])
+    : [];
+  const returned = openJobs.length;
+  const total =
+    typeof json.total === 'number' && json.total >= returned
+      ? json.total
+      : returned;
+  const startAt = filter.offset ?? 0;
+  const truncated =
+    typeof json.truncated === 'boolean'
+      ? json.truncated
+      : startAt + returned < total;
+  const nextOffset =
+    typeof json.nextOffset === 'number'
+      ? json.nextOffset
+      : truncated
+        ? startAt + returned
+        : undefined;
+  return {
+    total,
+    returned,
+    truncated,
+    ...(nextOffset === undefined ? {} : { nextOffset }),
+    openJobs,
+  };
 }
 
 /** Fetch one opening by id (0x… object id; legacy UUIDs still resolve

@@ -188,18 +188,24 @@ export function registerOpenVerbs(group: Command) {
     .argument('[query]', 'Free-text filter across titles + briefs')
     .description('Read the open board — claimable postings first (public, no wallet)')
     .option('--status <status>', 'open | claimed | cancelled | refunded', 'open')
-    .option('--limit <n>', 'Max rows (default 24)', '24')
+    .option('--limit <n>', 'Rows per page (default 24)', '24')
+    .option('--offset <n>', 'Page start — feed a page\'s nextOffset back in', '0')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (query: string | undefined, opts: { status: string; limit: string; api?: string }) => {
+    .action(async (query: string | undefined, opts: { status: string; limit: string; offset: string; api?: string }) => {
       try {
         const base = opts.api ?? DEFAULT_API_BASE;
-        const rows = await listOpenJobs(base, {
+        const offset = Number(opts.offset) || 0;
+        // S.1156: ONE page with honest counts — the API says what it holds
+        // (total / truncated / nextOffset); the CLI never invents a total.
+        const page = await listOpenJobs(base, {
           status: opts.status as OpenJobRow['status'] & OpenJobRow['status'],
           query,
           limit: Number(opts.limit),
+          offset,
         } as never);
+        const rows = page.openJobs;
         if (isJsonMode()) {
-          printJson({ total: rows.length, openJobs: rows });
+          printJson(page);
           return;
         }
         printBlank();
@@ -212,6 +218,12 @@ export function registerOpenVerbs(group: Command) {
           printBlank();
           return;
         }
+        if (page.truncated) {
+          printInfo(
+            `Showing ${offset + 1}–${offset + rows.length} of ${page.total} ${opts.status} jobs`,
+          );
+          printBlank();
+        }
         for (const row of rows) {
           // Surface the claim gate BEFORE anyone burns a claim attempt on it.
           const gate =
@@ -222,9 +234,11 @@ export function registerOpenVerbs(group: Command) {
             `  ${pc.bold(row.title ?? 'Untitled opening')}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}  ${statusColor(row.status)}${gate}` +
               (row.status === 'open' ? pc.dim(`  ${fmtLeft(row.openUntilMs)} left`) : ''),
           );
-          const brief = (row.brief ?? '').replace(/\s+/g, ' ');
-          if (brief) {
-            printLine(`    ${pc.dim(brief.length > 100 ? `${brief.slice(0, 100)}…` : brief)}`);
+          // Board rows carry a one-line preview (S.1156), never the task —
+          // the full brief is GET /v1/open-jobs/:id (`getOpenJob`).
+          const preview = (row.briefPreview ?? '').replace(/\s+/g, ' ').trim();
+          if (preview) {
+            printLine(`    ${pc.dim(preview)}`);
           }
           printLine(`    ${pc.dim(row.id)}`);
           printBlank();
@@ -232,6 +246,17 @@ export function registerOpenVerbs(group: Command) {
         printInfo(
           'Claim one: t2 job claim <id> — the budget is already escrowed; claiming starts the job.',
         );
+        if (page.nextOffset != null) {
+          // The hint reproduces the page's own filters — following it must
+          // land on the SAME board, not the default one.
+          const flags = [
+            ...(query ? [JSON.stringify(query)] : []),
+            ...(opts.status !== 'open' ? [`--status ${opts.status}`] : []),
+            ...(opts.limit !== '24' ? [`--limit ${opts.limit}`] : []),
+            `--offset ${page.nextOffset}`,
+          ];
+          printInfo(`Next page: t2 job board ${flags.join(' ')}`);
+        }
         printBlank();
       } catch (error) {
         handleError(error);
