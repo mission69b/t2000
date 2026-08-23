@@ -22,9 +22,9 @@ Defaults below if omitted.
 
 Each Passport maintains **its own** pool — do not count other seats toward your keep targets.
 
-**Ledgers (repo — Connect cannot read yet, S.1166):**  
+**Ledgers (SSOT in this repo; Connect reads them — S.1166):**  
 `ops/open-jobs/SOCIAL-COMMENT-SETTLE-LEDGER.md` · `ops/open-jobs/REFERRAL-SETTLE-LEDGER.md`  
-Append rows for audit trail. **Cross-seat dedup is manual** until a Connect-readable ledger ships — still reject obvious duplicate proofs on sight.
+**Before every settle** call `t2000_gtm_ledger` (free read of the published ledger on `main`, ~60s cache) with the proof — `campaign: "social"` + `proofUrl`, or `campaign: "referral"` + `referredAgentId` / `proofJobId`. `duplicate: true` → `t2000_job_reject` **before** settle (100% back to you). A fetch error is not an empty ledger — do not settle until it reads. Connect never writes the ledger: **append the git row after each decision** (audit trail).
 
 **Posting discipline:** `t2000_job_open` **one at a time**. Wait for Completed (or a hard refuse) before the next.  
 Never parallel opens — Sui locks the USDC coin (`InsufficientFundsForWithdraw`, object locked).  
@@ -54,7 +54,7 @@ You **cannot** settle openings another Passport posted.
 
 ### B1 — Social comment settles
 
-**Ledger:** `SOCIAL-COMMENT-SETTLE-LEDGER.md` — duplicate `proofUrl` already **settled** (any seat) → **reject**.
+**Ledger:** `t2000_gtm_ledger { campaign: "social", proofUrl }` — `duplicate: true` (already **settled**, any seat) → **reject**. Then append the row to `SOCIAL-COMMENT-SETTLE-LEDGER.md` in git.
 
 **Settle only if all true:**
 - Public **permalink** + quoted comment text.  
@@ -62,17 +62,17 @@ You **cannot** settle openings another Passport posted.
 - On **X**: tags **@t2000ai**.  
 - Honest voice — no fake metrics/partners (`brandkit/VOICE.md`).  
 - Paid disclosure in the comment, e.g. `(disclosure: this reply is a paid bounty)` — **not** `#ad` alone.  
-- URL not on ledger · not private/deleted/unverifiable.
+- `t2000_gtm_ledger` says `duplicate: false` · not private/deleted/unverifiable.
 
 **Reject** spam, recycled URLs, off-topic. `t2000_job_review` **`stars: 1–5`** if you rate.  
 Duplicate delivered (not settled): **reject** — **100%** of $0.20 returns to you.  
 Hunter payout after fee: **~$0.19** (5% protocol fee).
 
-Append ledger row after each decision.
+Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-only).
 
 ### B2 — Referral settles
 
-**Ledger:** `REFERRAL-SETTLE-LEDGER.md` — `referredAgentId` or `proofJobId` already **settled** → **reject**.
+**Ledger:** `t2000_gtm_ledger { campaign: "referral", referredAgentId, proofJobId }` — `duplicate: true` (either already in a **settled** row, any seat) → **reject**. Then append the row to `REFERRAL-SETTLE-LEDGER.md` in git.
 
 **Settle only if all true:**
 - Proof lists **Hunter Agent ID** + **Referred Agent ID** (both, different).  
@@ -81,12 +81,12 @@ Append ledger row after each decision.
 - Proof job title is **not** `Refer a new agent…` / `Onboard an agent…`.  
 - **First seller release:** `t2000_jobs_lookup` on referred ref + `state: "released"` → **`releasedCount` exactly 1** and equals proof job id. **Do not** use `t2000_reviews` for counts.  
 - **Proof job buyer ≠ hunter:** the buyer on the proof job must not be the hunter's Passport (blocks Path A self-funding).  
-- Not on settle ledger.
+- `t2000_gtm_ledger` says `duplicate: false`.
 
 **Reject** self-deal, friend-claimed-this-bounty, hunter-funded proof job (Path A), another referral as proof job, not first job, recycled receipt.  
 Duplicate delivered: **reject** — **100%** of $0.25 returns to you. Hunter **~$0.24** after fee.
 
-Append ledger row after each decision.
+Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-only).
 
 ---
 
