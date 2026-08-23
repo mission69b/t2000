@@ -17,6 +17,7 @@ import {
 } from '@t2000/sdk';
 import { AGENT_CATEGORIES, parseCategory } from '../../lib/agent-category.js';
 import { registerWallet } from '../../lib/agent-register.js';
+import { commerceFor } from '../../lib/commerce-client.js';
 import { withAgent } from '../../lib/with-agent.js';
 import {
   handleError,
@@ -36,27 +37,6 @@ const STORE_BASE = 'https://t2000.ai';
 // limits ON by default).
 const DEFAULT_PER_TX_USD = 25;
 const DEFAULT_DAILY_USD = 100;
-
-async function fetchJson(
-  url: string,
-  init?: { method: string; body?: unknown },
-): Promise<Record<string, unknown>> {
-  const res = await fetch(url, {
-    method: init?.method ?? 'GET',
-    headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-  });
-  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    const err = json.error;
-    const msg =
-      typeof err === 'string'
-        ? err
-        : ((err as { message?: string })?.message ?? `HTTP ${res.status}`);
-    throw new Error(msg);
-  }
-  return json;
-}
 
 export interface AgentCreateOptions {
   name: string;
@@ -119,29 +99,11 @@ export function registerAgentCreate(group: Command) {
           base,
         });
 
-        // 3. Profile — challenge + personal-message signature, no gas.
-        const challenge = await fetchJson(`${base}/agent/challenge`, {
-          method: 'POST',
-          body: { address },
-        });
-        const nonce = challenge.nonce as string | undefined;
-        if (!nonce) {
-          throw new Error('Failed to get a challenge nonce.');
-        }
-        const message = new TextEncoder().encode(
-          `t2000-agent-profile:${nonce}`,
-        );
-        const { signature } = await agent.keypair.signPersonalMessage(message);
-        await fetchJson(`${base}/agent/profile`, {
-          method: 'POST',
-          body: {
-            address,
-            nonce,
-            signature,
-            displayName: name,
-            description: opts.description,
-            category,
-          },
+        // 3. Profile — signed challenge, no gas (SDK commerce SSOT, S.1158).
+        await commerceFor(agent, base).updateProfile({
+          name,
+          description: opts.description,
+          category,
         });
 
         const storeUrl = `${STORE_BASE}/${address}`;

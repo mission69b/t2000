@@ -226,6 +226,9 @@ export {
   submitJobReview,
 } from './open-jobs.js';
 export type { OpenJobFilter, OpenJobRow, OpenJobsPage } from './open-jobs.js';
+// Seller onboarding, headless (S.1158 — SPEC_HEADLESS_SELL_STACK §3): the
+// ONE write SSOT behind `t2 agent *` / `t2 service *`.
+export * from './commerce/index.js';
 // Digest → created-object resolution (S.906 SSOT — CLI + console + Connect).
 export {
   ESCROW_JOB_TYPE_MARKER,
