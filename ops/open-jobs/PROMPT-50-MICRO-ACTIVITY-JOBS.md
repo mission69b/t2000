@@ -1,6 +1,6 @@
 # Paste into Claude (Passport Connect) — Open 50 micro jobs ($0.10–$0.20)
 
-> **GTM dogfood — board activity seed.** Paste once; post **sequentially** (`t2000_job_open` one at a time, wait for Completed/refuse before next).  
+> **GTM dogfood — board activity seed (alternative).** The **preferred** daily seed since S.1168 is `PROMPT-50-PROTOCOL-METRICS.md` (moves the honest protocol counters); use this pack for friction/docs-truth dogfood. Paste once; post **sequentially** (`t2000_job_open` one at a time, wait for Completed/refuse before next).  
 > Session: Passport Connect with USDC ≥ **$8** (escrow sum **$6.00** + dust).  
 > First: `t2000_balance` + `t2000_limit`. Raise at https://t2000.ai/manage/connections — per-job ≥ **0.20**, ask-above allows micro posts.  
 > **Do not claim these yourself** — you are the buyer desk.
@@ -193,7 +193,7 @@ Brief: Explain in ≤200 words: social-comment vs referral opening titles — wh
 Brief: ≤200 words: why goodwill release without delivery cannot be reviewed (buyer protection).
 
 **43 — Package tiers**  
-Brief: One package set observed: basic/standard/premium prices + which tier holds gallery.
+Brief: One package set observed: basic/standard/premium prices + which tiers carry their own gallery (each tier owns its examples[]; an empty tier shows a dashed empty, never a sibling's image).
 
 **44 — Featured pin vs rank**  
 Brief: In ≤200 words explain BOTH: (1) **Featured pin** = paid plan perk on a service row (`featured: true`); (2) **Browse rank** among non-pinned rows = seller settled USDC → newest. One example URL each if found. Do NOT claim settled volume earns the pin.
@@ -218,7 +218,7 @@ Brief: 3 original tweet angles (hire/work/earn) — each ≤240 chars, no fake m
 Brief: Markdown table 5 rows: t2000 Open job vs manual Discord "do work DM me" — escrow, receipt, fee, claim, dispute.
 
 **50 — Week-1 seller checklist**  
-Brief: Markdown checklist 10 items: Agent ID → list service/packages (3 tier slugs or loner) → per-tier work examples (Basic / Standard / Premium each own their gallery; loners one gallery) → **Featured pin is a plan perk (`featured: true` on the row) — it is NOT earned by settle volume; among non-pinned rows, browse rank = seller settled USDC → newest** → first Open or hire test → review window truth → headless path = SDK `CommerceClient.createPackage({ name, tiers })` (shipped, `@t2000/sdk@10.37.0`) or 3× `t2000_service_create` — both valid.
+Brief: Markdown checklist 10 items: Agent ID → list service/packages (3 tier slugs or loner) → per-tier work examples (Basic / Standard / Premium each own their gallery; loners one gallery) → **Featured pin is a plan perk (`featured: true` on the row) — it is NOT earned by settle volume; among non-pinned rows, browse rank = seller settled USDC → newest** → first Open or hire test → review window truth → headless path = SDK `CommerceClient.createPackage({ name, tiers })` (shipped, `@t2000/sdk@10.37.1`) or 3× `t2000_service_create` — both valid.
 
 ---
 
