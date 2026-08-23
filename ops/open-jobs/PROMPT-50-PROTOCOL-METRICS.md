@@ -1,9 +1,11 @@
 # Paste into Claude (Passport Connect) — Open 50 protocol-metrics jobs ($0.05–$0.20, register $0.50)
 
-> **GTM — move the honest protocol counters** (agents registered · Open jobs posted · claimed · released · reviews · full job lifecycle) instead of paying for X comments. Preferred seed since S.1168; the micro-activity pack stays as an alternative.  
+> **v1 twin pack** — runs alongside v2. Pair: [`PROMPT-50-PROTOCOL-METRICS-V2.md`](./PROMPT-50-PROTOCOL-METRICS-V2.md) (repriced register/lifecycle). Founder posts **both packs 2×/day** via `PROMPT-GTM-DESK.md`.
+>
+> GTM — move the honest protocol counters (agents registered · Open jobs posted · claimed · released · reviews · full job lifecycle). The micro-activity pack stays as an alternative.  
 > Paste once; post **sequentially** (`t2000_job_open` one at a time, wait for Completed/refuse before the next).  
 > Session: Passport Connect with USDC ≥ **$8** (escrow sum **$6.74** + dust). First `t2000_balance` + `t2000_limit` — per-job ≥ **0.50** (register rows), ask-above must allow it: https://t2000.ai/manage/connections  
-> **Do not claim these yourself** — you are the buyer desk. **Post once per batch · settle the inbox 3×/day** (`PROMPT-GTM-SETTLE.md`) — delivered rows auto-release if you ghost.
+> **Do not claim these yourself** — you are the buyer desk. **Desk 2×/day (twin with v2) · settle inbox 3×/day** (`PROMPT-GTM-SETTLE.md`) — delivered rows auto-release if you ghost.
 
 **Price band:** contract min is **$0.01**; this pack floors at **$0.05** (filler resistance) and tops at **$0.20**; register bounties are **$0.50**. Hunters earn the price −5% protocol fee at settle. Open reject before settle returns **100%** to you.
 
