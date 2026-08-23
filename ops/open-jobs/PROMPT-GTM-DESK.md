@@ -42,7 +42,7 @@ Founder cadence: **post both packs 2×/day** (morning + evening desk runs). Hunt
 
 Each Passport maintains **its own** pool — do not count other seats toward your keep targets.
 
-**Ledgers (SSOT in this repo):** `AGENT-REGISTER-SETTLE-LEDGER.md` (register bounties — read the file + directory by hand until `t2000_gtm_ledger` covers it) · `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` (both readable via `t2000_gtm_ledger`). Connect never writes a ledger: **append the git row after each decision**.
+**Ledgers (SSOT in this repo):** `AGENT-REGISTER-SETTLE-LEDGER.md` (register bounties — read the file + directory by hand; no embedded check covers it) · `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` (both deduped by the `ledgerCampaign` fields on `t2000_job_settle` / `t2000_job_reject` — S.1187; the standalone `t2000_gtm_ledger` tool never surfaced in Connect). Connect never writes a ledger: **append the git row after each decision**.
 
 **Posting discipline:** `t2000_job_open` **one at a time**. Wait for Completed (or a hard refuse) before the next.  
 Never parallel opens — Sui locks the USDC coin (`InsufficientFundsForWithdraw`, object locked).  
@@ -168,12 +168,57 @@ Social comment ($0.20) and referral ($0.25) bounties still work exactly as befor
 
 **Ledgers (SSOT in this repo; Connect reads them — S.1166):**  
 `ops/open-jobs/SOCIAL-COMMENT-SETTLE-LEDGER.md` · `ops/open-jobs/REFERRAL-SETTLE-LEDGER.md`  
-**The dedup is embedded in settle/reject (S.1186).** Pass the ledger fields ON the verb — `t2000_job_settle { jobId, ledgerCampaign, proofUrl }` (social) or `{ …, ledgerCampaign: "referral", referredAgentId, proofJobId }`, same fields on `t2000_job_reject`. It reads the published ledger on `main` (~60s cache) FIRST and **refuses** the verb when `duplicate: true`; a fetch error holds it (never a silent settle). The standalone `t2000_gtm_ledger` tool is directory-only — it never surfaced in Connect Customize, so do not rely on a separate call. Connect never writes the ledger: **append the git row after each decision** (audit trail).
+**The dedup is embedded in settle/reject (S.1186), and all five fields are REQUIRED (S.1187)** — Connect hides optional parameters from the agent.
+
+**Every settle/reject call carries FIVE fields (S.1187).** Connect hides
+optional parameters from the agent, so the ledger fields are **required** —
+`ledgerCampaign: "off"` + empty strings means *no dedup* (the plain verb).
+
+**Metrics · micro · general — no ledger dedup:**
+
+```
+t2000_job_settle {
+  jobId,
+  ledgerCampaign: "off",
+  proofUrl: "",
+  referredAgentId: "",
+  proofJobId: ""
+}
+```
+
+**Social bounty:**
+
+```
+t2000_job_settle {
+  jobId,
+  ledgerCampaign: "social",
+  proofUrl: "<permalink>",
+  referredAgentId: "",
+  proofJobId: ""
+}
+```
+
+**Referral bounty:**
+
+```
+t2000_job_settle {
+  jobId,
+  ledgerCampaign: "referral",
+  proofUrl: "",
+  referredAgentId: "<#id>",
+  proofJobId: "<0x…>"
+}
+```
+
+`t2000_job_reject` takes the same five fields. A campaign with no proof is
+**held**, never silently settled.
+
+It reads the published ledger on `main` (~60s cache) FIRST and **refuses** the verb when `duplicate: true`; a fetch error, or a campaign with no proof, holds it (never a silent settle). The standalone `t2000_gtm_ledger` tool is directory-only — it never surfaced in Connect Customize, so do not rely on a separate call. Connect never writes the ledger: **append the git row after each decision** (audit trail).
 
 
 ### Appendix B1 — Social comment settles
 
-**Ledger (embedded — S.1186):** `t2000_job_settle { jobId, ledgerCampaign: "social", proofUrl }` (or `t2000_job_reject { … }`) — refuses when `duplicate: true` (already **settled**, any seat). Then append the row to `SOCIAL-COMMENT-SETTLE-LEDGER.md` in git.
+**Ledger (embedded — S.1186/S.1187):** `ledgerCampaign: "social"` + the `proofUrl` permalink (`referredAgentId` / `proofJobId` as `""`) on `t2000_job_settle` or `t2000_job_reject` — refuses when `duplicate: true` (already **settled**, any seat). Then append the row to `SOCIAL-COMMENT-SETTLE-LEDGER.md` in git.
 
 **Settle only if all true:**
 - Public **permalink** + quoted comment text.  
@@ -191,7 +236,7 @@ Append the ledger row in git after each decision (the embedded check is read-onl
 
 ### Appendix B2 — Referral settles
 
-**Ledger (embedded — S.1186):** `t2000_job_settle { jobId, ledgerCampaign: "referral", referredAgentId, proofJobId }` (or `t2000_job_reject { … }`) — refuses when `duplicate: true` (either already in a **settled** row, any seat). Then append the row to `REFERRAL-SETTLE-LEDGER.md` in git.
+**Ledger (embedded — S.1186/S.1187):** `ledgerCampaign: "referral"` + real `referredAgentId` / `proofJobId` (`proofUrl` as `""`) on `t2000_job_settle` or `t2000_job_reject` — refuses when `duplicate: true` (either already in a **settled** row, any seat). Then append the row to `REFERRAL-SETTLE-LEDGER.md` in git.
 
 **Settle only if all true:**
 - Proof lists **Hunter Agent ID** + **Referred Agent ID** (both, different).  
