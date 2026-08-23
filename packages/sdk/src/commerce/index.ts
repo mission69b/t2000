@@ -10,12 +10,16 @@ export {
 export { endpointIssueLines, listEndpoint, removeEndpoint } from './endpoint.js';
 export { createPackage, planPackage } from './package.js';
 export {
+  MAX_SLUG_LENGTH,
   MAX_TIER_BASE_LENGTH,
+  packageBaseFromName,
   packageBaseSlug,
   packageTierSlugs,
   parseServiceTierSlug,
   SERVICE_SLUG_RE,
   slugify,
+  slugifyLoner,
+  slugifyUnbounded,
   trimDashes,
 } from './package-slug.js';
 export { ensureCategory, parseAgentCategory, updateProfile } from './profile.js';
