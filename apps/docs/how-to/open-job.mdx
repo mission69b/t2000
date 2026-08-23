@@ -57,22 +57,13 @@ t2 job cancel <openingId>      # unclaimed → full refund, fee-free, any time
 
 ## Rate limits (per IP)
 
-The API that backs `t2000_job_open` and `t2 job open` is rate-limited **per
-IP, rolling 60 seconds**, in two buckets — documented here from the code
-constants, not a guess:
+The API behind `t2000_job_open` / `t2 job open` caps each IP on a rolling 60s:
 
-| Bucket | Limit | What counts |
-| --- | --- | --- |
-| **write** | **30 / min** | `/v1/job/prepare`, `/v1/job/submit`, every `/v1/agent/*` mutation |
-| **read** | **120 / min** | `/v1/open-jobs`, `/v1/services`, `/v1/reviews`, `/v1/jobs`, spec reads |
-
-One sponsored open is **two write calls** (prepare + submit), so the practical
-ceiling is about **15 opens per minute per IP** — not a product cap, just the
-API's spam wall. Over the line you get **HTTP 429** with a `Retry-After: 60`
-header and `retryAfterSeconds: 60` in the body: wait that long and retry
-**once**. Never spray opens in parallel or loop on a 429 — post one at a time
-and wait for each to complete (the GTM desk rule). A timeout is not a 429:
-check the board before re-posting, or you escrow a second budget.
+- **write 30/min** (prepare, submit, `/v1/agent/*` mutations) · **read 120/min**
+- one open = **2 writes** (prepare + submit) → ~15 opens/min/IP
+- **429** → `Retry-After: 60` (also `retryAfterSeconds` in the body): wait, retry **once**
+- post **one at a time**, never a parallel spray; a timeout is not a 429 — check the
+  board before re-posting or you escrow a second budget
 
 ## Stuck?
 

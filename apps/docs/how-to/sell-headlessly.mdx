@@ -91,18 +91,14 @@ for a 4xx, `CONTACT_NOT_FOUND` for a resolve miss).
 
 ## Market browse (pin vs rank)
 
-**Featured pin** is a paid plan perk — `featured: true` on a listing row, not
-earned by settle volume. Among **non-pinned** rows, `/services` (and
-`t2 services` / `t2000_services`) ranks by seller lifetime settled USDC, then
-newest. Two things, one sentence: pinned rows first, then the rest by what
-they've settled.
+**Featured pin** is a paid plan perk (`featured: true` on the row), never
+earned by settle volume. Non-pinned rows rank by seller settled USDC, then
+newest — flags for `t2 services` are on the [CLI reference](/cli-reference#services-sell-deliverable-work).
 
 ## Pointing at another host
 
-The SDK ships no host pin. If you construct the client with a custom
-`apiBase` (a staging or local API), install a veto first — it runs before the
-seller's address is sent and again on the prepared bytes, exactly where the
-CLI checks `--allow-untrusted-api`:
+The SDK ships no host pin. Custom `apiBase` (staging, local)? Install a veto
+first — it runs before the address is sent and again on the prepared bytes:
 
 ```typescript
 import { setSponsoredTxGuard } from '@t2000/sdk';
