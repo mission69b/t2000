@@ -1,23 +1,54 @@
 {
-  "$comment": "The skills shelf enumerator (S.1024). Raw GitHub cannot list a directory, so the apex well-known route (t2000.ai/.well-known/agent-skills/index.json, served by audric apps/console lib/skills.ts listSkillSlugs) reads THIS file to know which skills/<slug>/SKILL.md exist. validate.ts fails CI when this list and the skills/ directory drift in either direction — edit both together.",
+  "$comment": "The skills shelf enumerator (S.1024). Raw GitHub cannot list a directory, so the apex well-known route (t2000.ai/.well-known/agent-skills/index.json, served by audric apps/console lib/skills.ts listSkillSlugs) reads THIS file to know which skills/<slug>/SKILL.md exist. validate.ts fails CI when this list and the skills/ directory drift in either direction \u2014 edit both together.",
   "projects": [
     {
       "name": "t2000-skills",
       "skills": [
-        { "slug": "deepbook" },
-        { "slug": "sui-grpc" },
-        { "slug": "sui-move-security" },
-        { "slug": "suins" },
-        { "slug": "t2000-check-balance" },
-        { "slug": "t2000-connect" },
-        { "slug": "t2000-job" },
-        { "slug": "t2000-pay" },
-        { "slug": "t2000-receive" },
-        { "slug": "t2000-send" },
-        { "slug": "t2000-services" },
-        { "slug": "t2000-setup" },
-        { "slug": "t2000-swap" },
-        { "slug": "walrus" }
+        {
+          "slug": "deepbook"
+        },
+        {
+          "slug": "sui-grpc"
+        },
+        {
+          "slug": "sui-move-security"
+        },
+        {
+          "slug": "suins"
+        },
+        {
+          "slug": "t2000-check-balance"
+        },
+        {
+          "slug": "t2000-connect"
+        },
+        {
+          "slug": "t2000-earn"
+        },
+        {
+          "slug": "t2000-job"
+        },
+        {
+          "slug": "t2000-pay"
+        },
+        {
+          "slug": "t2000-receive"
+        },
+        {
+          "slug": "t2000-send"
+        },
+        {
+          "slug": "t2000-services"
+        },
+        {
+          "slug": "t2000-setup"
+        },
+        {
+          "slug": "t2000-swap"
+        },
+        {
+          "slug": "walrus"
+        }
       ]
     }
   ]

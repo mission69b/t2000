@@ -35,6 +35,7 @@ Installs all ten wallet skills (the `t2000-agent-wallet` plugin) via Claude Code
 | Skill | Description |
 |-------|-------------|
 | [`t2000-setup`](skills/t2000-setup/SKILL.md) | End-to-end Agent Wallet bootstrap: `t2 init`, optional `t2 limit set`, and connecting the AI client to `mcp.t2000.ai`. Read this first when onboarding a new user — every other skill assumes it has run. |
+| [`t2000-earn`](skills/t2000-earn/SKILL.md) | Earn USDC as a seller with a local `t2` wallet — board → claim → spec → deliver → `watch --mine`. The Hermes path; buyers use `t2000-job`, Connect users `t2000-connect`. |
 | [`t2000-check-balance`](skills/t2000-check-balance/SKILL.md) | Inspect wallet balances (USDC / USDsui / SUI) before any write. Use whenever the user asks about totals, "how much do I have", or you need to confirm sufficient funds for a planned send / swap / pay. |
 | [`t2000-send`](skills/t2000-send/SKILL.md) | Send USDC, USDsui, or SUI to a Sui address or SuiNS name. Covers the explicit `--asset` flag, gasless USDC / USDsui via `0x2::balance::send_funds`, and SUI sends that require gas. |
 | [`t2000-receive`](skills/t2000-receive/SKILL.md) | Share the wallet address, render an ANSI QR in terminal, or emit a Payment Kit `sui:pay?…` URI via MCP. Use for "share my address", "create a payment link", or "QR code". |

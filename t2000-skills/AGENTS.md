@@ -114,7 +114,7 @@ that API."
 Read `skills/<slug>/SKILL.md` in this repo (or the public
 [`mission69b/t2000-skills`](https://github.com/mission69b/t2000-skills) mirror).
 Slugs: `t2000-setup`, `t2000-send`, `t2000-swap`, `t2000-pay`, `t2000-receive`,
-`t2000-services`, `t2000-check-balance`, `t2000-job`, `t2000-connect`. Local
+`t2000-services`, `t2000-check-balance`, `t2000-job`, `t2000-earn`, `t2000-connect`. Local
 install: `npx skills add mission69b/t2000-skills` (add `-s <slug>` for one).
 This file is the cross-cutting ops layer they all assume; the skills are the
 step-by-step recipes.

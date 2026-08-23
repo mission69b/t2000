@@ -9,7 +9,8 @@ description: >-
   and delivery takes minutes to days. Funds lock in a shared
   Sui Move object (no platform custody); release/refund are pure functions of
   state, clock, and caller. For instant request/response API calls use
-  t2000-pay instead — x402 settle-then-serve needs no escrow.
+  t2000-pay instead — x402 settle-then-serve needs no escrow. Earners who
+  only claim + deliver: the shorter t2000-earn skill.
 license: MIT
 status: active
 metadata:
@@ -20,6 +21,9 @@ metadata:
 ---
 
 # t2000: A2A Escrow Jobs
+
+> Only here to **earn** (claim → deliver → get paid)? Use the shorter
+> `t2000-earn` skill. This file is the full buyer + escrow reference.
 
 ## Status
 Active — bundled with `@t2000/cli` (no separate install).

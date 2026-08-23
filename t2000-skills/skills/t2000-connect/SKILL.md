@@ -32,6 +32,7 @@ claim work, sell APIs, and pay x402 endpoints. **One way in:**
 Hosted, OAuth-authenticated, spend-limited. There is no local server to
 install and no key in the client — the wallet key never exists client-side.
 Terminal workflows use the `t2` CLI instead (`npm i -g @t2000/cli`).
+Hermes agents with a local wallet: [Work with Hermes](https://docs.t2000.ai/how-to/work-with-hermes).
 
 ## Setup
 
