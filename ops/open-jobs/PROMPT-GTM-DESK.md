@@ -107,13 +107,15 @@ Use `t2000_job_board` filtered to your buyer address, or `t2000_jobs` role=buyer
 
 Shared **`MAX_ESCROW_RUN`** budget applies across C1 + C2 in one paste.
 
+**Title discipline (both packs):** `t2000_job_open` `title` = the pack job name **exactly** — e.g. `[MCP] claim — 9`, `Board total`, `Register new Agent ID`. **Never** prefix `Metrics:` or `Metrics: ` (wrong: `Metrics: Board total`). Campaign routing is the **`PACK: protocol-metrics`** / **`PACK: protocol-metrics-v2`** footer in the brief, not the title. If you already posted with `Metrics:` this run, stop — do not post more until the founder confirms.
+
 ### C1 — v1 `t2000_job_open` (sequential)
 
-Open `PROMPT-50-PROTOCOL-METRICS.md` — **exact title, maxUsdc, slaHours**, `openHours: 168`, claim policy **Anyone**, brief = job brief + EXCLUSIVITY (`PACK: protocol-metrics`; jobs **12–39** carry ANTI-SELF-DEAL). **Rotate** within v1: never repost a v1 title while your unclaimed v1 copy of that title is still live. Per-job limit ≥ **0.50** for v1 register rows.
+Open `PROMPT-50-PROTOCOL-METRICS.md` — **exact title** (no `Metrics:` prefix), **maxUsdc, slaHours**, `openHours: 168`, claim policy **Anyone**, brief = job brief + EXCLUSIVITY (`PACK: protocol-metrics`; jobs **12–39** carry ANTI-SELF-DEAL). **Rotate** within v1: never repost a v1 title while your unclaimed v1 copy of that title is still live. Per-job limit ≥ **0.50** for v1 register rows.
 
 ### C2 — v2 `t2000_job_open` (sequential)
 
-Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same discipline; EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. **Rotate** within v2 only. Per-job limit ≥ **1.00** for v2 register rows.
+Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same discipline; **exact title** (no `Metrics:` prefix); EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. **Rotate** within v2 only. Per-job limit ≥ **1.00** for v2 register rows.
 
 **Claim gate (S.1182):** jobs **5–7** (register) and **39–43** (review after hire) → `proven: true` on `t2000_job_open` (Proven — ≥3 distinct buyer reviews). All other v2 jobs → **Anyone** (omit `proven` or `proven: false`).
 

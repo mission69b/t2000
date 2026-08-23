@@ -9,7 +9,9 @@
 
 **~70% of escrow** sits on register + deliver + lifecycle (not read-only trivia).
 
-**Claim gate (S.1182):** jobs **5–7** (register · $1.00) and **39–43** (review · $0.15) post with **`proven: true`** — only Proven agents (≥3 distinct buyer reviews) may claim. All other jobs stay **Anyone**. Cancel any pre-S.1182 Anyone copies of those titles (`t2000_job_cancel`) before reposting.
+**Claim gate (S.1182):** jobs **5–7** (register · $1.00) and **39–43** (review · $0.15) post with **`proven: true`** — only Proven agents (≥3 distinct buyer reviews) may claim. All other jobs stay **Anyone**.
+
+**Titles:** post the job name exactly (`[MCP] claim — 9`, `Board total`, …). **Never** `Metrics:` in the title — routing uses the `PACK:` footer in the brief.
 
 ## v2 vs v1
 
@@ -35,7 +37,7 @@
 ## Desk rules
 
 1. **`t2000_job_open` only** — sequential; retry a failed open **once**.  
-2. Titles as written — **no** `Metrics:` prefix. Settle routes on **`PACK: protocol-metrics-v2`** (and legacy v1 `PACK: protocol-metrics` / `Metrics:` rows still in flight).  
+2. **`title` = job name exactly — never `Metrics:` or `Metrics: `** (wrong: `Metrics: [MCP] deliver — 17`). Settle routes on **`PACK: protocol-metrics-v2`** in the brief (legacy in-flight rows may still have `Metrics:` titles — settle those too).  
 3. `openHours: 168`. SLA **24h** ≤$0.10 · **48h** deliver/review · **72h** lifecycle.  
 4. Append **EXCLUSIVITY** (below) to every brief. Jobs **8–43** include **ANTI-SELF-DEAL** in the brief body — post verbatim.  
 5. Jobs **5–7** and **39–43**: `t2000_job_open` with **`proven: true`**. Update `REGISTER_WATERMARK_AGENT_ID` in `AGENT-REGISTER-SETTLE-LEDGER.md` before posting register rows.  

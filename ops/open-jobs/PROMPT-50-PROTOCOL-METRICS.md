@@ -25,7 +25,7 @@
 ## Desk rules
 
 1. **`t2000_job_open` only** — sequential; retry a failed open **once**. Never parallel (Sui locks the USDC coin).  
-2. Title + brief as written (typo fixes OK). Titles carry **no** `Metrics:` prefix — the settle desk routes on the brief's **`PACK: protocol-metrics`** tag (from EXCLUSIVITY) and on the `[MCP]` / `Register` / pack-stem titles; legacy `Metrics:` rows still in flight settle under the same § rules.  
+2. **`title` = job name exactly — never `Metrics:` or `Metrics: `** (wrong: `Metrics: Board total`). Typo fixes OK elsewhere. Settle routes on **`PACK: protocol-metrics`** in the brief and on `[MCP]` / `Register` / pack-stem titles; legacy in-flight `Metrics:` titles still settle under the same § rules.  
 3. `openHours: 168`. SLA **24h** for ≤$0.10 jobs; **48h** for ≥$0.12; **72h** for lifecycle released (30–39 — the hunter waits on the buyer's settle).  
 4. Append **EXCLUSIVITY** (below) to every posted brief. Jobs **12–39** already carry the **ANTI-SELF-DEAL** sentence in their brief — post it as written.  
 5. Do not repost a title while your own unclaimed copy of it is still live (rotate which of the 50 you post).  
