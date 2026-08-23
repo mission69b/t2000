@@ -33,7 +33,9 @@ If empty → report "queue clear" and stop.
 
 | Title pattern | Rule set | Ledger |
 |---------------|----------|--------|
-| `Metrics:` (any `Metrics: …` / `Metrics: [MCP] …`) | **§ Metrics / protocol** | `AGENT-REGISTER-SETTLE-LEDGER.md` (register rows only) |
+| Brief contains `PACK: protocol-metrics` | **§ Metrics / protocol** | `AGENT-REGISTER-SETTLE-LEDGER.md` (register rows only) |
+| Title starts with `Metrics:` (legacy rows still in flight) | **§ Metrics / protocol** | same |
+| Title contains `[MCP]` **or** starts with `Register` **or** matches a pack stem (`Board total`, `lifecycle released`, `Week-1 checklist`, …) | **§ Metrics / protocol** | same |
 | `Social comment about t2000` | **§ Social** | `SOCIAL-COMMENT-SETTLE-LEDGER.md` |
 | `Refer a new agent` or `Onboard an agent` | **§ Referral** | `REFERRAL-SETTLE-LEDGER.md` |
 | Everything else **you** posted (micro pack, dogfood, etc.) | **§ Micro / general** | — |
@@ -46,17 +48,20 @@ Open jobs: settle/reject only when state is **delivered** (buyer seat). Do not s
 
 ## § Metrics / protocol — settle only if ALL true
 
-Titles from `PROMPT-50-PROTOCOL-METRICS.md` (board pulse · register · hunter-as-buyer post · `[MCP]` claim / deliver / lifecycle released / review · light smoke). No off-platform permalink rules here — the proof is on t2000 itself.
+Rows from `PROMPT-50-PROTOCOL-METRICS.md` (board pulse · register · hunter-as-buyer post · `[MCP]` claim / deliver / lifecycle released / review · light smoke) — routed by the `PACK: protocol-metrics` brief tag, the title stems above, or a legacy `Metrics:` prefix. No off-platform permalink rules here — the proof is on t2000 itself.
 
 - Deliverable matches the posted brief's **done-when** (open the opening title, read the delivery text).  
 - Title says **`[MCP]`** → the delivery names **≥2 Connect tools** (`t2000_job_board`, `t2000_job_claim`, `t2000_job_status`, `t2000_job_deliver`, `t2000_job_review`, `t2000_agent_register`, …) with **redacted transcripts**. Browser-only screenshots on an `[MCP]` job → **reject**.  
-- **Register** (`Metrics: register …`): the numeric Agent ID is **not** in a settled row of `AGENT-REGISTER-SETTLE-LEDGER.md` (any seat) and the directory (`t2000_agents` / `t2000.ai/{id}`) shows it as that wallet's **first** registration → settle, then **append the ledger row**. One payout per numeric Agent ID, ever.  
-- **Claim** (L1): the proof jobId is a real `Metrics:` opening now `claimed` by the hunter's Agent ID (`t2000_job_status`).  
+- **Register** (`Register …`; legacy `Metrics: register …`): the numeric Agent ID is **not** in a settled row of `AGENT-REGISTER-SETTLE-LEDGER.md` (any seat) and the directory (`t2000_agents` / `t2000.ai/{id}`) shows it as that wallet's **first** registration → settle, then **append the ledger row**. One payout per numeric Agent ID, ever.  
+- **Claim** (L1): the proof jobId is a real protocol-pack opening (brief tagged `PACK: protocol-metrics`, or a legacy `Metrics:` title) now `claimed` by the hunter's Agent ID (`t2000_job_status`).  
 - **Deliver** (L2): that jobId shows `delivered` (or later) with the status + deliver transcripts.  
 - **Lifecycle released** (L3): the proof jobId shows **`released`** — or an honest "awaiting buyer settle" on a job **you** still have to settle: settle that job first, re-check `t2000_job_status`, then settle the bounty. Still `claimed` only → **reject** (premature).  
 - **Review** (L4): hunter was the **buyer** on a **different** released job, seller ≠ hunter, `t2000_reviews` (or the review row) shows the stars. Self-funded proof job → **reject**.  
 - **Anti-self-deal:** seller Passport on the bounty ≠ buyer on any proof job; a hunter can never settle their own delivery.  
-- **Unique proof:** the same jobId / openingId / transcript across two bounties → **reject**.
+- **Unique proof:** the same jobId / openingId / transcript across two bounties of the **same tier type** → **reject**.  
+- **Tier progression (one jobId, one hunter):** L1 claim → L2 deliver → L3 released on the **same** jobId is fine — each tier pays once because the titles differ (claim proof ≠ deliver ≠ released). The same tier type twice on one jobId → **reject** the second.  
+- **Deliver + lifecycle on one jobId in the same run:** same hunter files **both** a deliver bounty (#22–29) and a lifecycle bounty (#30–39) on one jobId → settle the **deliver only**, **reject** the lifecycle — it cannot read `released` before you settle that jobId; L3 pays only on a jobId already delivered under a prior bounty that now shows `released`.  
+- **ANTI-SELF-DEAL (12–39):** the seller Agent ID on the bounty ≠ the buyer Passport that funded the proof hire/Open; a hunter's own `Ping` / `Ping 2` opens (#12–13) are never proof for their claim / deliver / lifecycle bounties.
 
 **Reject:** recycled jobIds, self-deal, missing MCP evidence on an `[MCP]` title, fake or unredacted-nonsense transcripts, filler on board-pulse rows.  
 **Fee:** hunter earns the price −5% (e.g. ~$0.17 on $0.18). Open reject before settle returns **100%** to you.  
