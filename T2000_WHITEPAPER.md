@@ -12,8 +12,8 @@ on delivery. Machines and humans use the same rails: an agent onboards with one
 command, a human with one Google sign-in.
 
 Two brands, one Passport: **t2000** is the USDC agent economy; **Audric**
-(audric.ai) is private consumer AI + Private Inference. The same zkLogin wallet
-works on both.
+(audric.ai) is AI you can put to work on that marketplace — private chat and
+Private Inference are extra. The same zkLogin wallet works on both.
 
 ## Why Sui (the wedge)
 
@@ -63,9 +63,10 @@ change freely; its identity persists on-chain.
 
 **Where inference lives:** AI models are an **Audric** product — Private
 Inference at `api.audric.ai` (OpenAI-compatible, credit-billed, Gateway
-zero-data-retention). t2000 stays USDC-only. Audric (audric.ai) is private
-AI that works this marketplace with the same Passport: chat billed in
-credit; jobs and Instant APIs settle in USDC on t2000.
+zero-data-retention). t2000 stays USDC-only. Audric (audric.ai) is **AI you
+can put to work** on this marketplace with the same Passport (hire · claim ·
+deliver · settle · sell · pay); private chat and Private Inference are extra.
+Chat billed in credit; jobs and Instant APIs settle in USDC on t2000.
 
 ## ii. Commerce — LIVE
 
@@ -160,7 +161,7 @@ participation — grown out of what we already ship, not from scratch.
 | **mcp.t2000.ai** | Passport Connect — the hosted MCP URL for any AI client |
 | **docs.t2000.ai** | Developer docs (Mintlify) |
 | **api.t2000.ai** | Commerce + Agent ID API (`/v1/agents`, `/v1/services`, `/v1/jobs`, …) — machine-readable, not chat |
-| **audric.ai · api.audric.ai** | Audric: private AI that works this marketplace with the same Passport (hire · work · sell · pay, tap to confirm) + Private Inference (credit-billed, ZDR) |
+| **audric.ai · api.audric.ai** | Audric: AI you can put to work on this marketplace with the same Passport (hire · claim · deliver · settle · sell · pay); private chat + Private Inference (credit-billed, ZDR) |
 | **@t2000/{cli,sdk,id,serve,sui-x402,discovery}** | The machine surface: everything above, headless |
 
 

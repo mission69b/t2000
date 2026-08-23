@@ -1,6 +1,6 @@
 # Marketing one-pager — t2000 + Audric  
 **Audience:** marketing / partners / events  
-**Date:** 2026-08
+**Date:** 2026-08-19
 
 ---
 
@@ -8,12 +8,12 @@
 
 **t2000** is the **agent marketplace** on Sui. Hire agents, put yours to work, **earn on delivery** — USDC in escrow or per-call x402, with on-chain receipts.
 
-**Audric** is private AI with a wallet — talk, send, swap, hire agents. Chat that can move money and work the agent marketplace. Your assistant. Your Passport. USDC when it counts.
+**Audric** is **AI you can put to work** — put it on the t2000 marketplace (hire, claim, deliver, settle in USDC). Private chat and Private Inference are extra. Same Passport. USDC when it counts.
 
 | | **t2000** | **Audric** |
 |---|---|---|
 | **URL** | [t2000.ai](https://t2000.ai) | [audric.ai](https://audric.ai) |
-| **One line** | Agent marketplace — hire · work · earn | Private AI with a wallet |
+| **One line** | Agent marketplace — hire · work · earn | AI you can put to work |
 | **Money** | **USDC** only | **Credit / Stripe** for models · **USDC** on Passport when it counts |
 | **Who** | Builders, agents, operators, buyers of agent work | People who want an assistant that can also act |
 
@@ -87,16 +87,17 @@ What's my Passport USDC balance?
 
 ## Audric
 
-### Lines (locked)
+### Lines (locked 2026-08-19)
 
-- Private AI with a wallet — talk, send, swap, hire agents.  
-- Chat that can move money and work the agent marketplace.  
-- Your assistant. Your Passport. USDC when it counts.
+- **AI you can put to work.**  
+- Put it on the t2000 marketplace — hire, claim, deliver, settle in USDC.  
+- Private chat and Private Inference are extra. Same Passport. USDC when it counts.
 
 ### Also true
 
 - Multi-model private chat + **Private Inference** API for developers (credit / Stripe for inference).  
-- Same Passport as t2000 when acting on-chain. Jobs and marketplace settlement stay **USDC** on t2000 rails.
+- Same Passport as t2000 when acting on-chain. Jobs and marketplace settlement stay **USDC** on t2000 rails.  
+- Do not lead with “Private AI with a wallet.” Privacy is a second beat, not the H1.
 
 ### URLs
 
@@ -107,12 +108,14 @@ What's my Passport USDC balance?
 
 ### Talk track
 
-> “**Audric** is private AI with a wallet — talk, send, swap, hire agents. Your assistant. Your Passport. USDC when it counts. The agent marketplace itself is **t2000** — same Google Passport if you use both.”
+> “**Audric** is AI you can put to work — put it on the **t2000** marketplace: hire, claim, deliver, settle in USDC. Private chat and Private Inference are extra. Same Google Passport if you use both.”
 
 ### Don’t say
 
 - That Audric *is* the agent marketplace (that’s t2000).  
 - That marketplace job escrow settles in Stripe credit.  
+- “Private AI with a wallet” as the lead (privacy stays; it just isn’t the headline).  
+- “AI that takes jobs” (theft connotation — say put to work / claim).  
 - DeFi / save / borrow (not the product).
 
 ---
@@ -127,20 +130,21 @@ What's my Passport USDC balance?
         ┌──────────────┴──────────────┐
         ▼                             ▼
    t2000.ai                      audric.ai
-   Agent marketplace             Private AI + wallet
-   USDC · jobs · receipts        Chat · send · swap · hire
-   Hire · work · earn            Your assistant. Your Passport.
+   Agent marketplace             AI you can put to work
+   USDC · jobs · receipts        Marketplace from chat · private AI extra
+   Hire · work · earn            Same Passport. USDC when it counts.
 ```
 
 | Angle | Lead | Secondary |
 |---|---|---|
 | Agent economy | t2000 marketplace + Connect | Audric — same Passport |
-| Private AI | Audric | t2000 — hire & get paid |
+| AI you can put to work | Audric | t2000 — the market it works |
+| Private AI / inference | Audric (second beat) | t2000 — hire & get paid |
 | Full stack | Both (split board) | QR pair |
 
 **Crypto / protocol room:** t2000 (escrow, USDC, receipts).  
 **Agents / AI room:** t2000 + Claude via Connect, or Audric for consumers.  
-**Consumer room:** Audric first.
+**Consumer room:** Audric first (lead put-to-work, then privacy).
 
 ---
 
@@ -150,6 +154,7 @@ What's my Passport USDC balance?
 |---|---|
 | Agent marketplace | Store (as product name) |
 | Hire · work · earn | Hire-only |
+| AI you can put to work | Private AI with a wallet (as H1); AI that takes jobs |
 | USDC · escrow · receipt | Invented APYs; “crypto casino” |
 | Passport / Google sign-in | Seed phrases; “we hold your keys” |
 | Passport Connect (after the market) | Connect as the whole product |
@@ -171,6 +176,6 @@ Keep Terms and Privacy honest — no FDIC, no agent quality guarantees.
 
 ```
 t2000  →  t2000.ai     Agent marketplace
-Audric →  audric.ai    Private AI with a wallet
+Audric →  audric.ai    AI you can put to work
 Docs   →  docs.t2000.ai
 ```

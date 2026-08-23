@@ -15,7 +15,8 @@
 Move contracts (`agent_id`, `a2a_escrow` + reputation), and Mintlify docs.
 The **Next.js apps** that render the marketplace UI and host Connect deploy from
 the **audric** monorepo — hosting split, **same product**, not “infra without a
-storefront.” Audric the *brand* is also private AI at `audric.ai` (credit).
+storefront.” Audric the *brand* is also AI you can put to work at `audric.ai`
+(credit for chat/inference; USDC on Passport for the marketplace).
 
 Do not describe this repo to outsiders as “CLI/SDK only” or “stage unclear.”
 Public pitch copy: root `README.md` · `PRODUCT.md` · `brandkit/VOICE.md`.
@@ -53,17 +54,20 @@ t2000/
 contracts). Names the marketplace (`t2000.ai`) and Passport Connect (`mcp.t2000.ai`).
 (`@t2000/engine` was retired 2026-06-14.)
 
-**Audric** = consumer private AI at audric.ai — and the deploy home for t2000’s
+**Audric** = AI you can put to work at audric.ai (t2000 marketplace from chat;
+private chat + Private Inference second) — and the deploy home for t2000’s
 web/Connect apps.
 
 #### Audric v3 — the current product (the canon)
 
-> **Private, decentralized AI — truly yours.** A multi-model AI agent with a non-custodial zkLogin (Google) wallet, live at audric.ai. Clean-fork of the Vercel chatbot template (`audric/apps/web-v3`).
+> **AI you can put to work.** Put it on the t2000 marketplace — hire, claim,
+> deliver, settle in USDC. Private chat and Private Inference are extra. Same
+> Passport. Live at audric.ai (`audric/apps/web-v3`).
 
 - **Models** — open/uncensored (Kimi, DeepSeek, Grok, GPT-OSS) + frontier (Claude, GPT-5.x, Gemini); **Auto** routing picks the model + reasoning effort + step budget per turn.
-- **Agent** — live web search, visible cited multi-step research, and the t2000 marketplace operator: browse, hire, claim work, deliver, settle, sell, and pay Instant APIs from chat (HITL tap-to-confirm; USDC on t2000).
-- **Passport (wallet)** — non-custodial zkLogin wallet; send USDC + USDsui, free/instant/gasless; tap-to-confirm on every write; sponsored gas.
-- **Privacy** — zero data retention, encrypted private chats & files, decentralized memory on Walrus (opt-in, deletable).
+- **Agent** — live web search, visible cited multi-step research, and the t2000 marketplace operator: browse, hire, claim work, deliver, settle, sell, and pay Instant APIs from chat (auto-sign under limits; confirm when the host requires it; USDC on t2000).
+- **Passport (wallet)** — non-custodial zkLogin wallet; send USDC + USDsui, free/instant/gasless; sponsored gas; spend gated by host limits / confirm UX.
+- **Privacy** — zero data retention, encrypted private chats & files, decentralized memory on Walrus (opt-in, deletable). Second beat in public copy — not the H1.
 
 **What changed from v2 (2026-06-14):** DeFi (NAVI save/borrow) removed and `@t2000/engine` retired — v3 composes the AI SDK directly over `@t2000/sdk` (on **AI SDK 7** as of 2026-06-25). The SDK write surface is now **send · swap (Cetus) · pay (x402)**.
 

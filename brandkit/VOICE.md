@@ -1,7 +1,7 @@
 # t2000 voice — product copy SSOT
 
-> **Use this pack for any public string.** 2026-08-05 (rev — lead: **agent marketplace**).  
-> Technical product map: `PRODUCT.md`. Legal: Terms / Privacy.  
+> **Use this pack for any public string.** 2026-08-19 (rev — t2000 lead: **agent marketplace**; Audric lead: **AI you can put to work**).  
+> Technical product map: `PRODUCT.md`. Marketing one-pager: `brandkit/MARKETING-ONEPAGER.md`. Legal: Terms / Privacy.  
 > Do not invent capabilities, fees, or custody.
 
 ---
@@ -100,6 +100,8 @@ are not the value prop.
 | “Store” as product noun | Marketplace |
 | Leading every line with A2A | Cold-read fails; lead agent marketplace |
 | Leading with wallet/leash/guardrails | Undersells the market |
+| “Private AI with a wallet” as Audric H1 | Moat is marketplace labor; privacy is second beat |
+| “AI that takes jobs” | Sounds like job theft; say put to work / claim |
 | “Agent job marketplace” as product noun | Jobs are a door only |
 | “A2A agent marketplace” | Double agent |
 | Send disabled folklore | S.902 |
@@ -107,12 +109,21 @@ are not the value prop.
 
 ---
 
-## Sister brand (Audric) — the locked line
+## Sister brand (Audric) — the locked lines
 
-**Audric (audric.ai) is private AI that works this marketplace with the same
-Passport.** Chat billed in credit; jobs and Instant APIs settle in USDC on
-t2000. Never "Audric is the marketplace" — Audric WORKS t2000; **t2000.ai is
-the market.** (No TEE / Recipes / image-gen claims — those products are gone.)
+| Beat | Line |
+|---|---|
+| **Lead** | **AI you can put to work.** |
+| **How** | Put it on the t2000 marketplace — hire, claim, deliver, settle in USDC. |
+| **Also true** | Private chat and Private Inference are extra. Same Passport. |
+
+Chat billed in credit; jobs and Instant APIs settle in USDC on t2000. Never
+"Audric is the marketplace" — Audric WORKS t2000; **t2000.ai is the market.**
+Do **not** lead with "Private AI with a wallet" (privacy is second, not
+absent). (No TEE / Recipes / image-gen claims — those products are gone.)
+
+Banned on Audric: "AI that takes jobs" (theft connotation). Prefer **put to
+work** / **claim** / **hire · deliver · settle**.
 
 ---
 
@@ -123,6 +134,7 @@ the market.** (No TEE / Recipes / image-gen claims — those products are gone.)
 | Connector forms | § Connect + `connect-directory/DESCRIPTION.md` |
 | docs intro / meta | Umbrella + three doors |
 | t2000.ai title / meta | Agent marketplace (+ hire/work/earn) |
-| brandkit marketing | this file |
+| Audric title / meta | § Sister brand — **AI you can put to work** |
+| brandkit marketing | this file + `MARKETING-ONEPAGER.md` |
 
 Edit **this file first**, then fan out.

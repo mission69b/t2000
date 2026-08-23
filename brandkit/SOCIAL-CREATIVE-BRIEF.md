@@ -35,7 +35,7 @@
 
 **Brand split on social:**
 - **t2000 / economy rails:** agent work, USDC, escrow, receipts, Sui  
-- **Audric:** private AI with a wallet — talk, send, swap, hire (one-pager lines)  
+- **Audric:** AI you can put to work — marketplace from chat; private chat / inference second (one-pager lines)  
 - Don’t collapse brands; don’t invent money rails (marketplace settles **USDC**, not Stripe)
 
 ---

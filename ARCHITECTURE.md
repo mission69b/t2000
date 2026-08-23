@@ -268,7 +268,7 @@ chain), which AI client is used. The SDK and CLI have zero telemetry.
 | x402 payments | Structural verify of buyer-signed bytes (framework-package allowlist, challenge-bound nonce) + on-chain settle check; digest-once + challenge-once replay guards |
 | Escrow | Funds in shared Move objects; splits fixed at creation; permissionless refund cranks — no platform custody, no platform judge |
 | Activity | Chain-verify-or-drop on every attributed report; ledger rows are append-only and idempotent |
-| Consumer writes (Audric) | Tap-to-confirm on every write; Enoki-sponsored gas — host-layer, see the audric repo |
+| Consumer writes (Audric) | Auto-sign under host limits; confirm when required; Enoki-sponsored gas — host-layer, see the audric repo |
 
 ---
 

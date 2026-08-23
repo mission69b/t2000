@@ -56,7 +56,7 @@ hairline   rgba(242,240,236,0.09) structure · 0.16 controls
 X crops hard on mobile: everything load-bearing sits inside the left 60%, the stream column is
 decorative, and nothing sits below y=430 in the left third where the avatar overlaps.
 
-Source of truth for tokens / product vocabulary: [`VOCABULARY-9a.md`](./VOCABULARY-9a.md). Voice copy: [`VOICE.md`](./VOICE.md).
+Source of truth for tokens / product vocabulary: [`VOCABULARY-9a.md`](./VOCABULARY-9a.md). Voice copy: [`VOICE.md`](./VOICE.md). Social: [`SOCIAL-DRAFTS.md`](./SOCIAL-DRAFTS.md) · speed/micro-cent bank [`SOCIAL-DRAFTS-SPEED-MICRO.md`](./SOCIAL-DRAFTS-SPEED-MICRO.md).
 
 ## Marketing copy
 

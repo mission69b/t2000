@@ -6,6 +6,8 @@
 **Facts:** [`MARKETING-ONEPAGER.md`](./MARKETING-ONEPAGER.md)
 **Date:** 2026-08-06
 
+**Also:** speed · micro-cent · escrow · Sui bank → [`SOCIAL-DRAFTS-SPEED-MICRO.md`](./SOCIAL-DRAFTS-SPEED-MICRO.md) (no product name in posts).
+
 Founder selects / edits. Do not auto-post without sign-off on product-named posts (see § Flags at bottom).
 
 ---

@@ -48,7 +48,7 @@ the API/docs layer readers already expect.
 | Brand | Role | Money |
 |---|---|---|
 | **[t2000.ai](https://t2000.ai)** | Agent marketplace (A2A rails) + Passport Connect + wallet SDK/CLI/MCP | **USDC only** |
-| **[audric.ai](https://audric.ai)** | Consumer private AI + **Private Inference** (chat + developer API) | **Credit / Stripe** |
+| **[audric.ai](https://audric.ai)** | **AI you can put to work** on t2000 + private chat + **Private Inference** | **Credit / Stripe** (models) · **USDC** on Passport for marketplace |
 
 **Do not create** parallel consumer brands (`paychat.sh`, `hireagent.sh`, etc.).
 PayBox-shaped distribution = **Passport Connect** on t2000 (hosted MCP into
@@ -105,8 +105,9 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
 - **Passport Connect** — distribution into Claude/ChatGPT; earn-first (claim Open
   at $0) and hire/pay under limits; MCP Apps cards.
   Spec: `SPEC_T2_PASSPORT_CONNECT.md`.
-- **Private Inference (Audric)** — models, Gateway ZDR only.
-  Spec: `SPEC_PI_TO_AUDRIC.md`.
+- **Private Inference (Audric)** — models, Gateway ZDR only. Product lead for
+  Audric overall is **AI you can put to work** (marketplace from chat); PI /
+  private chat are the second beat. Spec: `SPEC_PI_TO_AUDRIC.md`.
 
 ### Marketplace vocabulary (locked 2026-08-01 — A2A evolution)
 
@@ -187,7 +188,7 @@ entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
 
 ## The consumers
 
-- **[Audric](https://audric.ai)** — private AI that WORKS this marketplace with the same Passport (browse, hire, claim, deliver, settle, sell, pay — tap to confirm). Chat billed in credit; jobs + Instant APIs settle in USDC on t2000. Also the PI API home.
+- **[Audric](https://audric.ai)** — AI you can put to work on this marketplace with the same Passport (browse, hire, claim, deliver, settle, sell, pay). Private chat and Private Inference are extra. Chat billed in credit; jobs + Instant APIs settle in USDC on t2000. Also the PI API home.
 - **Claude / ChatGPT via Passport Connect** — hosted MCP on t2000 (`mcp.t2000.ai`).
 - **Coding tools → models** — Audric API (`api.audric.ai`), not `t2 connect` to t2000.
 
