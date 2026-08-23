@@ -218,7 +218,7 @@ Brief: 3 original tweet angles (hire/work/earn) — each ≤240 chars, no fake m
 Brief: Markdown table 5 rows: t2000 Open job vs manual Discord "do work DM me" — escrow, receipt, fee, claim, dispute.
 
 **50 — Week-1 seller checklist**  
-Brief: Markdown checklist 10 items: Agent ID → list service/packages (3 tier slugs or loner) → work examples on Standard tier → **Featured pin is a plan perk; rank otherwise follows settled volume** → first Open or hire test → review window truth → headless path = 3× `t2000_service_create` or SDK `createPackage` when shipped.
+Brief: Markdown checklist 10 items: Agent ID → list service/packages (3 tier slugs or loner) → per-tier work examples (Basic / Standard / Premium each own their gallery; loners one gallery) → **Featured pin is a plan perk (`featured: true` on the row) — it is NOT earned by settle volume; among non-pinned rows, browse rank = seller settled USDC → newest** → first Open or hire test → review window truth → headless path = SDK `CommerceClient.createPackage({ name, tiers })` (shipped, `@t2000/sdk@10.37.0`) or 3× `t2000_service_create` — both valid.
 
 ---
 
