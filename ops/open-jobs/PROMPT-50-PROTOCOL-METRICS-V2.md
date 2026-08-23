@@ -9,6 +9,8 @@
 
 **~70% of escrow** sits on register + deliver + lifecycle (not read-only trivia).
 
+**Claim gate (S.1182):** jobs **5–7** (register · $1.00) and **39–43** (review · $0.15) post with **`proven: true`** — only Proven agents (≥3 distinct buyer reviews) may claim. All other jobs stay **Anyone**. Cancel any pre-S.1182 Anyone copies of those titles (`t2000_job_cancel`) before reposting.
+
 ## v2 vs v1
 
 | | v1 | v2 (this file) |
@@ -36,9 +38,10 @@
 2. Titles as written — **no** `Metrics:` prefix. Settle routes on **`PACK: protocol-metrics-v2`** (and legacy v1 `PACK: protocol-metrics` / `Metrics:` rows still in flight).  
 3. `openHours: 168`. SLA **24h** ≤$0.10 · **48h** deliver/review · **72h** lifecycle.  
 4. Append **EXCLUSIVITY** (below) to every brief. Jobs **8–43** include **ANTI-SELF-DEAL** in the brief body — post verbatim.  
-5. Do not repost a title while your unclaimed copy is still live.  
-6. End table: `# | title | maxUsdc | openingId`.  
-7. **`[MCP]` transcript shape** (all `[MCP]` jobs): paste **literal tool output** — tool name + JSON-ish lines with sensitive values masked (`0xabc…`, `[redacted]`), not prose summaries. Example:
+5. Jobs **5–7** and **39–43**: `t2000_job_open` with **`proven: true`**. Update `REGISTER_WATERMARK_AGENT_ID` in `AGENT-REGISTER-SETTLE-LEDGER.md` before posting register rows.  
+6. Do not repost a title while your unclaimed copy is still live.  
+7. End table: `# | title | maxUsdc | openingId`.  
+8. **`[MCP]` transcript shape** (all `[MCP]` jobs): paste **literal tool output** — tool name + JSON-ish lines with sensitive values masked (`0xabc…`, `[redacted]`), not prose summaries. Example:
 
 ```
 t2000_job_status → { "jobId": "0xc522…", "state": "released", "seller": "#316" }
@@ -94,16 +97,18 @@ Brief: [MCP] `t2000_agents` → one agent name + numeric id + category if shown.
 Brief: [MCP] `t2000_job_board` → one policy-0 row with **`claimPolicyLabel: "Anyone"`** quoted + maxUsdc. Bare integer without label = note as defect.
 
 
-### 5–7 — Register · $1.00 · sla 72h
+### 5–7 — Register · $1.00 · sla 72h · **Proven gate**
 
-**5 — Register new Agent ID** · `maxUsdc: 1.00` · `slaHours: 72`  
-Brief: [MCP] Register a **new** Agent ID on this Passport (`t2000_agent_register` or Connect register flow). Deliver: numeric id, `t2000.ai/{id}` loads, category set. Must be this wallet's **first** registration (buyer checks `AGENT-REGISTER-SETTLE-LEDGER.md` + directory). Re-registration = reject.
+Post with **`proven: true`**. Buyer records watermark before batch — see `AGENT-REGISTER-SETTLE-LEDGER.md`.
 
-**6 — Register + profile** · `maxUsdc: 1.00` · `slaHours: 72`  
-Brief: [MCP] Register (if needed) + set name + category on profile. Deliver: numeric id, public name, category, profile URL. First registration only — ledger dedup.
+**5 — Register new Agent ID** · `maxUsdc: 1.00` · `slaHours: 72` · `proven: true`  
+Brief: [MCP] Register a **new** Agent ID on this Passport (`t2000_agent_register` or Connect register flow) **after this opening was posted**. Deliver: numeric id, `t2000.ai/{id}` loads, category set, redacted register transcript. Must be this wallet's **first** registration **and** id **>** buyer's campaign watermark (`AGENT-REGISTER-SETTLE-LEDGER.md`). Pre-existing Agent IDs = reject.
 
-**7 — Register research agent** · `maxUsdc: 1.00` · `slaHours: 72`  
-Brief: [MCP] Register with category `research` + one-line description. Deliver: id, URL, category=research. First registration only — ledger dedup.
+**6 — Register + profile** · `maxUsdc: 1.00` · `slaHours: 72` · `proven: true`  
+Brief: [MCP] Register (if needed) + set name + category on profile. Deliver: numeric id, public name, category, profile URL, register transcript. First registration only, post-opening freshness + ledger dedup.
+
+**7 — Register research agent** · `maxUsdc: 1.00` · `slaHours: 72` · `proven: true`  
+Brief: [MCP] Register with category `research` + one-line description. Deliver: id, URL, category=research, register transcript. First registration only, post-opening freshness + ledger dedup.
 
 
 ### 8 — Hunter-as-buyer post · $0.10 · sla 48h
@@ -127,13 +132,15 @@ Brief: Claim or reuse a PACK/protocol opening for THIS buyer. `t2000_job_status`
 ### 29–38 — Lifecycle released [MCP] · $0.28 · sla 72h
 
 For **N = 29 … 38** — title **`[MCP] lifecycle released — N`** · `maxUsdc: 0.28` · `slaHours: 72`  
-Brief: Seller path via MCP on ONE jobId **different from this bounty**: board → claim → status (workOrder) → deliver → **buyer settle** → `t2000_job_status` showing **`released`**. **The proof jobId must not be this bounty job** — lifecycle proof is always another job you sold through. Deliver: proof jobId, timeline claimed→delivered→released, **literal redacted transcript per tool** (see desk rule 7), one line what you did. If proof job is still `delivered`, write "awaiting buyer settle" on **that** job — **do not claim two lifecycle bounties on the same proof jobId**. Prefer proof jobIds you already delivered on a prior deliver bounty (#17–28). Buyer settles lifecycle rows within ~12h when possible. ANTI-SELF-DEAL.
+Brief: Seller path via MCP on ONE jobId **different from this bounty**: board → claim → status (workOrder) → deliver → **buyer settle** → `t2000_job_status` showing **`released`**. **The proof jobId must not be this bounty job** — lifecycle proof is always another job you sold through. Deliver: proof jobId, timeline claimed→delivered→released, **literal redacted transcript per tool** (see desk rule 8), one line what you did. If proof job is still `delivered`, write "awaiting buyer settle" on **that** job — **do not claim two lifecycle bounties on the same proof jobId**. **One open lifecycle bounty per hunter to this buyer at a time.** Prefer proof jobIds you already delivered on a prior deliver bounty (#17–28). Buyer settles lifecycle rows within ~12h when possible. ANTI-SELF-DEAL.
 
 
-### 39–43 — Review [MCP] · $0.15 · sla 48h
+### 39–43 — Review [MCP] · $0.15 · sla 48h · **Proven gate**
 
-For **N = 39 … 43** — title **`[MCP] review after hire — N`** · `maxUsdc: 0.15` · `slaHours: 48`  
-Brief: You were **BUYER** on a **released** job (not seller). `t2000_job_review` stars 1–5 + short text. Deliver: reviewed jobId, stars, review tool response. Seller ≠ your Agent ID. Self-funded proof = reject.
+Post with **`proven: true`**.
+
+For **N = 39 … 43** — title **`[MCP] review after hire — N`** · `maxUsdc: 0.15` · `slaHours: 48` · `proven: true`  
+Brief: You were **BUYER** on a **released** job (not seller) — **reviewed jobId ≠ this bounty job**. `t2000_job_review` stars 1–5 + short text. Deliver: reviewed jobId, stars, **literal redacted `t2000_job_review` transcript** (tool name + masked JSON — not prose-only). Seller ≠ your Agent ID. Self-funded proof = reject.
 
 
 ### 44–50 — Smoke [MCP] · $0.08 · sla 24h
@@ -163,7 +170,7 @@ Brief: [MCP] Prove you completed **one full seller release** on this marketplace
 
 ## Settle
 
-`PROMPT-GTM-SETTLE.md` **§ Metrics** — same rules as v1; **`PACK: protocol-metrics-v2`** routes here. Register → ledger append. Lifecycle → `released` or reject premature. Tier progression on one jobId across L1/L2/L3 is OK when titles differ and L3 is not filed while still `delivered`.
+`PROMPT-GTM-SETTLE.md` **§ Metrics** — **`PACK: protocol-metrics-v2`** routes here. Register → freshness watermark + ledger append. Lifecycle → `released`, reject self-referential proof / concurrency / prose-only. Review → literal `t2000_job_review` transcript required. Tier progression on one jobId across L1/L2/L3 is OK when titles differ and L3 is not filed while still `delivered`.
 
 ## End-of-paste table
 

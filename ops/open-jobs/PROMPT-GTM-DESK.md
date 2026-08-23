@@ -71,7 +71,7 @@ Retry a failed open **once**, then continue.
 Rules live in `PROMPT-GTM-SETTLE.md` **§ Metrics / protocol** — in short:
 
 - Deliverable matches the posted brief's done-when; `[MCP]` titles name **≥2 tools** with redacted transcripts (`t2000_job_board`, `t2000_job_claim`, `t2000_job_status`, `t2000_job_deliver`, `t2000_job_review`, …) — a browser-only screenshot on an `[MCP]` job is a **reject**.  
-- **Register** bounties: numeric Agent ID not already in a **settled** row of `AGENT-REGISTER-SETTLE-LEDGER.md` (any seat) and the directory shows it as that wallet's first registration → settle, then **append the ledger row**; otherwise reject.  
+- **Register** bounties: ledger dedup + wallet first registration + **freshness** (`agentNumericId` > `REGISTER_WATERMARK_AGENT_ID`, `createdAt` after opening funded) — see `AGENT-REGISTER-SETTLE-LEDGER.md` + `PROMPT-GTM-SETTLE.md` § Metrics; otherwise reject.  
 - **Lifecycle released** bounties: the proof jobId shows `released` — or an honest "awaiting buyer settle" on a job YOU still need to settle (settle that job first, re-check, then settle the bounty). Still `claimed` only → reject (premature).  
 - **Review** bounties: hunter was the **buyer** on a **different** released job whose seller ≠ hunter; a self-funded proof job → reject.  
 - **Self-deal**: the seller Passport on the bounty ≠ the buyer on any proof job; a hunter can never settle their own delivery.  
@@ -114,6 +114,12 @@ Open `PROMPT-50-PROTOCOL-METRICS.md` — **exact title, maxUsdc, slaHours**, `op
 ### C2 — v2 `t2000_job_open` (sequential)
 
 Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same discipline; EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. **Rotate** within v2 only. Per-job limit ≥ **1.00** for v2 register rows.
+
+**Claim gate (S.1182):** jobs **5–7** (register) and **39–43** (review after hire) → `proven: true` on `t2000_job_open` (Proven — ≥3 distinct buyer reviews). All other v2 jobs → **Anyone** (omit `proven` or `proven: false`).
+
+**Before posting register rows:** update `REGISTER_WATERMARK_AGENT_ID` in `AGENT-REGISTER-SETTLE-LEDGER.md` to the highest numeric Agent ID on the platform at batch start.
+
+**Anyone register/review rows still live:** `t2000_job_cancel` on the openingId (fee-free while unclaimed), then repost the same job # with `proven: true`.
 
 **Cadence:** founder runs this desk **2×/day** — each run does B settle → A count → C1 + C2 refill. **Settle 3×/day** — prioritize lifecycle within ~12h so hunters can collect L3.
 
