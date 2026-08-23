@@ -63,7 +63,7 @@ export interface AgentProfile {
 /** POST /v1/agent/service action "upsert" — a FULL upsert (omitted
  *  optionals take the server defaults: review 1440 min, split 8000 bps). */
 export interface ServiceUpsertInput {
-  /** 2–48 chars of [a-z0-9-]; derive one with `slugify`. */
+  /** 2–48 chars of [a-z0-9-]; derive one with `slugify` (loner, 48-cap). */
   slug: string;
   /** ≤80 chars. */
   name: string;
@@ -118,7 +118,8 @@ export interface CreatePackageInput {
   slaMinutes: number;
   /** All three tiers, in any order; each tier at most once. */
   tiers: PackageTierInput[];
-  /** Override the derived base slug (`packageBaseSlug(slugify(name))`). */
+  /** Override the derived base slug (default: `packageBaseFromName(name)` =
+   *  `packageBaseSlug(slugifyUnbounded(name))` — never a 48-capped slug first). */
   baseSlug?: string;
   reviewWindowMinutes?: number;
   rejectSplitBps?: number;

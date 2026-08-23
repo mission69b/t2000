@@ -2,9 +2,15 @@
 // three ordinary service rows `{base}-basic|standard|premium` on the same
 // agent — no schema field, every row a normal listing + Hire target.
 //
-// COPIED (not imported) from audric `apps/console/lib/service-tiers.ts` —
-// the SDK cannot depend on `@audric/*`; keep the two in step (the unit
-// tests here mirror the console's budget/parse cases).
+// COPIED (not imported) from audric `apps/console/lib/service-tiers.ts` +
+// `service-slug.ts` (S.1161) — the SDK cannot depend on `@audric/*`; keep
+// the two in step (the unit tests here mirror the console's cases).
+//
+// ORDER MATTERS (S.1171, the console's S.1161 lesson):
+//   loner    → slugifyUnbounded(name).slice(0, 48)        = slugify / slugifyLoner
+//   package  → packageBaseSlug(slugifyUnbounded(name))    = packageBaseFromName
+// Capping at 48 BEFORE the 39-char tier-base budget cut long names twice and
+// shipped mangled tier slugs (`…cryptocurrenc-basic`). Never do that.
 
 import { SERVICE_TIERS, type ServiceTier } from './types.js';
 
@@ -21,10 +27,25 @@ export function trimDashes(s: string): string {
   return s.slice(start, end);
 }
 
-/** The CLI's name → slug rule (lowercase, runs of non-alphanumerics → `-`,
- *  trimmed, 48-char cap). */
+/** The API's slug cap (SERVICE_SLUG_RE: 2–48 chars). */
+export const MAX_SLUG_LENGTH = 48;
+
+/** Lowercase kebab, edge dashes trimmed, NO length cap — the input to BOTH
+ *  budgets below. */
+export function slugifyUnbounded(name: string): string {
+  return trimDashes(name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-'));
+}
+
+/** Single-listing (loner) slug — the full 48-char budget. */
+export function slugifyLoner(name: string): string {
+  return slugifyUnbounded(name).slice(0, MAX_SLUG_LENGTH);
+}
+
+/** The CLI's name → slug rule for LONERS (`t2 service create`): lowercase,
+ *  runs of non-alphanumerics → `-`, trimmed, 48-char cap. Loner-only — a
+ *  package base must come from `packageBaseFromName`, never from this. */
 export function slugify(name: string): string {
-  return trimDashes(name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')).slice(0, 48);
+  return slugifyLoner(name);
 }
 
 // Suffix must be the FINAL segment: `logo-pack-basic` parses,
@@ -53,6 +74,13 @@ export function packageBaseSlug(slugified: string): string {
   let end = cut.length;
   while (end > 0 && cut.charCodeAt(end - 1) === 45) end -= 1;
   return cut.slice(0, end);
+}
+
+/** Package base from a display name — unbounded kebab, THEN the tier-base
+ *  budget (trailing dashes shed), so every `{base}-{tier}` is a valid slug
+ *  with its suffix intact. Mirrors console `packageBaseFromName`. */
+export function packageBaseFromName(name: string): string {
+  return packageBaseSlug(slugifyUnbounded(name));
 }
 
 /** The three tier slugs for a base, Basic → Standard → Premium. */

@@ -7,10 +7,10 @@
 import type { TransactionSigner } from '../signer.js';
 import { invalidInput } from './http.js';
 import {
+  packageBaseFromName,
   packageBaseSlug,
   packageTierSlugs,
   SERVICE_SLUG_RE,
-  slugify,
 } from './package-slug.js';
 import { upsertService } from './service.js';
 import {
@@ -31,7 +31,13 @@ export function planPackage(input: CreatePackageInput): {
   if (!name) {
     throw invalidInput('name is required.');
   }
-  const base = packageBaseSlug((input.baseSlug ?? slugify(name)).trim().toLowerCase());
+  // S.1171: the base is the UNBOUNDED kebab run through the 39-char tier
+  // budget — never a 48-capped slug first (that shipped `…cryptocurrenc-basic`
+  // from the console until S.1161). A caller-supplied baseSlug is trusted as
+  // given (trimmed + budgeted, not re-kebabed).
+  const base = input.baseSlug
+    ? packageBaseSlug(input.baseSlug.trim().toLowerCase())
+    : packageBaseFromName(name);
   if (!base || !SERVICE_SLUG_RE.test(`${base}-basic`)) {
     throw invalidInput(
       'Could not derive a package slug from the name — pass baseSlug (a-z, 0-9, dashes).',
