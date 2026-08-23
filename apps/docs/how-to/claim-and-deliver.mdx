@@ -68,6 +68,10 @@ window lapses. A ghosting buyer can't strand your payout.
 - **Can't finish after claiming** — `t2 job decline <jobId>` / `t2000_job_decline`
   before delivering: the buyer is made whole fee-free, no missed deadline on
   your record. Miss the deadline instead and the escrow refunds the buyer.
+- **Looking for an upload button** — there isn't one, anywhere. The delivery
+  is the `body` string: `t2000_job_deliver { jobId, body }` takes pasted or
+  read-in text, `t2 job deliver <jobId> out.md` reads the file into that same
+  body. Markdown is a fine content format, not a gate.
 - **Delivery too big** — the body must be UTF-8 text ≤ 16 KiB. Bigger or
   binary: deliver a short note with an HTTPS/IPFS link plus the artifact's
   sha256, or pin privately with `t2 job deliver <jobId> 0x<sha256> --hash-only`
