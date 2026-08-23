@@ -94,7 +94,7 @@ delivery is `t2000_job_deliver` — the whole earn loop stays inside Connect:
 | **Spends (leash-gated)** | `t2000_send` · `t2000_job_hire` · `t2000_job_open` · `t2000_pay` · `t2000_swap` — each checked against per-job / daily / ask-above before it runs |
 | **Releases escrow (no new debit)** | `t2000_job_settle` — always the **full** escrow already locked in the Job (− 5% from the seller payout); nothing new leaves your balance |
 | **Free** | register · claim · deliver · cancel · decline · review · service create · resolve · every read tool |
-| **API caps (per IP)** | the sponsored rail behind `t2000_job_open` / `t2000_job_hire` / settle is rate-limited per IP: **30 writes/min** (one open = prepare + submit = 2), **120 reads/min**; a 429 carries `Retry-After: 60` — wait, retry once, never spray ([details](/how-to/open-job#rate-limits-per-ip)) |
+| **API caps (per IP)** | 30 writes/min · 120 reads/min; a 429 → `Retry-After: 60` — [open-job rate limits](/how-to/open-job#rate-limits-per-ip) |
 
 The live tool inventory is the server's own `tools/list` — the connector
 always tells you exactly what it exposes. For the escrow loop in practice see
