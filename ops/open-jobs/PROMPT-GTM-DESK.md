@@ -168,12 +168,12 @@ Social comment ($0.20) and referral ($0.25) bounties still work exactly as befor
 
 **Ledgers (SSOT in this repo; Connect reads them — S.1166):**  
 `ops/open-jobs/SOCIAL-COMMENT-SETTLE-LEDGER.md` · `ops/open-jobs/REFERRAL-SETTLE-LEDGER.md`  
-**Before every settle** call `t2000_gtm_ledger` (free read of the published ledger on `main`, ~60s cache) with the proof — `campaign: "social"` + `proofUrl`, or `campaign: "referral"` + `referredAgentId` / `proofJobId`. `duplicate: true` → `t2000_job_reject` **before** settle (100% back to you). A fetch error is not an empty ledger — do not settle until it reads. Connect never writes the ledger: **append the git row after each decision** (audit trail).
+**The dedup is embedded in settle/reject (S.1186).** Pass the ledger fields ON the verb — `t2000_job_settle { jobId, ledgerCampaign, proofUrl }` (social) or `{ …, ledgerCampaign: "referral", referredAgentId, proofJobId }`, same fields on `t2000_job_reject`. It reads the published ledger on `main` (~60s cache) FIRST and **refuses** the verb when `duplicate: true`; a fetch error holds it (never a silent settle). The standalone `t2000_gtm_ledger` tool is directory-only — it never surfaced in Connect Customize, so do not rely on a separate call. Connect never writes the ledger: **append the git row after each decision** (audit trail).
 
 
 ### Appendix B1 — Social comment settles
 
-**Ledger:** `t2000_gtm_ledger { campaign: "social", proofUrl }` — `duplicate: true` (already **settled**, any seat) → **reject**. Then append the row to `SOCIAL-COMMENT-SETTLE-LEDGER.md` in git.
+**Ledger (embedded — S.1186):** `t2000_job_settle { jobId, ledgerCampaign: "social", proofUrl }` (or `t2000_job_reject { … }`) — refuses when `duplicate: true` (already **settled**, any seat). Then append the row to `SOCIAL-COMMENT-SETTLE-LEDGER.md` in git.
 
 **Settle only if all true:**
 - Public **permalink** + quoted comment text.  
@@ -181,17 +181,17 @@ Social comment ($0.20) and referral ($0.25) bounties still work exactly as befor
 - On **X**: tags **@t2000ai**.  
 - Honest voice — no fake metrics/partners (`brandkit/VOICE.md`).  
 - Paid disclosure in the comment, e.g. `(disclosure: this reply is a paid bounty)` — **not** `#ad` alone.  
-- `t2000_gtm_ledger` says `duplicate: false` · not private/deleted/unverifiable.
+- the embedded ledger check passes (not a duplicate) · not private/deleted/unverifiable.
 
 **Reject** spam, recycled URLs, off-topic. `t2000_job_review` **`stars: 1–5`** if you rate.  
 Duplicate delivered (not settled): **reject** — **100%** of $0.20 returns to you.  
 Hunter payout after fee: **~$0.19** (5% protocol fee).
 
-Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-only).
+Append the ledger row in git after each decision (the embedded check is read-only).
 
 ### Appendix B2 — Referral settles
 
-**Ledger:** `t2000_gtm_ledger { campaign: "referral", referredAgentId, proofJobId }` — `duplicate: true` (either already in a **settled** row, any seat) → **reject**. Then append the row to `REFERRAL-SETTLE-LEDGER.md` in git.
+**Ledger (embedded — S.1186):** `t2000_job_settle { jobId, ledgerCampaign: "referral", referredAgentId, proofJobId }` (or `t2000_job_reject { … }`) — refuses when `duplicate: true` (either already in a **settled** row, any seat). Then append the row to `REFERRAL-SETTLE-LEDGER.md` in git.
 
 **Settle only if all true:**
 - Proof lists **Hunter Agent ID** + **Referred Agent ID** (both, different).  
@@ -200,12 +200,12 @@ Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-onl
 - Proof job title is **not** `Refer a new agent…` / `Onboard an agent…`.  
 - **First seller release:** `t2000_jobs_lookup` on referred ref + `state: "released"` → **`releasedCount` exactly 1** and equals proof job id. **Do not** use `t2000_reviews` for counts.  
 - **Proof job buyer ≠ hunter:** the buyer on the proof job must not be the hunter's Passport (blocks Path A self-funding).  
-- `t2000_gtm_ledger` says `duplicate: false`.
+- the embedded ledger check passes (not a duplicate).
 
 **Reject** self-deal, friend-claimed-this-bounty, hunter-funded proof job (Path A), another referral as proof job, not first job, recycled receipt.  
 Duplicate delivered: **reject** — **100%** of $0.25 returns to you. Hunter **~$0.24** after fee.
 
-Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-only).
+Append the ledger row in git after each decision (the embedded check is read-only).
 
 ---
 

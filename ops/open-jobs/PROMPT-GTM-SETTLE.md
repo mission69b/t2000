@@ -71,24 +71,24 @@ After settle: append the **register** ledger row when applicable (register rows 
 
 ## § Social comment — settle only if ALL true
 
-**Ledger:** `t2000_gtm_ledger { campaign: "social", proofUrl }` first — `duplicate: true` (already **settled**, any seat) → **reject**; a fetch error means do not settle yet.
+**Ledger (embedded — S.1186):** the dedup rides ON the settle/reject call — `t2000_job_settle { jobId, ledgerCampaign: "social", proofUrl }` (or `t2000_job_reject { jobId, ledgerCampaign: "social", proofUrl }`). It reads the published ledger FIRST and **refuses** the verb when `duplicate: true` (already **settled**, any seat); a fetch error holds the verb (never a silent settle). No standalone `t2000_gtm_ledger` call — that tool is directory-only and never surfaced in Connect Customize.
 
 - Public **permalink** + quoted comment text.  
 - Clearly mentions **t2000** (marketplace / hire · work · earn).  
 - On **X**: tags **@t2000ai**.  
 - Honest voice — no fake metrics/partners (`brandkit/VOICE.md`).  
 - Paid disclosure in comment, e.g. `(disclosure: this reply is a paid bounty)` — **not** `#ad` alone.  
-- `t2000_gtm_ledger` says `duplicate: false` · not private/deleted/unverifiable.
+- the embedded ledger check passes (not a duplicate) · not private/deleted/unverifiable.
 
 **Reject:** spam, recycled URLs, off-topic, duplicate delivered.  
 **Fee:** hunter ~$0.19 on $0.20 (5% protocol).  
-Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-only; Connect never writes the ledger).
+Append the ledger row in git after each decision (the embedded check is read-only; Connect never writes the ledger).
 
 ---
 
 ## § Referral — settle only if ALL true
 
-**Ledger:** `t2000_gtm_ledger { campaign: "referral", referredAgentId, proofJobId }` first — `duplicate: true` (either already in a **settled** row, any seat) → **reject**; a fetch error means do not settle yet.
+**Ledger (embedded — S.1186):** the dedup rides ON the call — `t2000_job_settle { jobId, ledgerCampaign: "referral", referredAgentId, proofJobId }` (or `t2000_job_reject { … }`). It refuses when `duplicate: true` (either already in a **settled** row, any seat); a fetch error holds the verb. No standalone `t2000_gtm_ledger` call.
 
 - Proof lists **Hunter Agent ID** + **Referred Agent ID** (different).  
 - Referred has active Agent ID.  
@@ -96,11 +96,11 @@ Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-onl
 - Proof job is **not** another referral bounty title.  
 - **`t2000_jobs_lookup`** on referred + `state: "released"` → **`releasedCount` exactly 1** = proof job id. **Not** `t2000_reviews`.  
 - **Proof job buyer ≠ hunter** — reject hunter-funded micro hires (Path A).  
-- `t2000_gtm_ledger` says `duplicate: false`.
+- the embedded ledger check passes (not a duplicate).
 
 **Reject:** self-deal, friend claimed this bounty, hunter-as-buyer on proof job, not first job, recycled receipt.  
 **Fee:** hunter ~$0.24 on $0.25 (5% protocol).  
-Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-only; Connect never writes the ledger).
+Append the ledger row in git after each decision (the embedded check is read-only; Connect never writes the ledger).
 
 ---
 
