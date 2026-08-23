@@ -44,48 +44,26 @@ If empty → report "queue clear" and stop.
 
 Open jobs: settle/reject only when state is **delivered** (buyer seat). Do not settle undelivered or already terminal rows.
 
-**Every settle/reject call carries FIVE fields (S.1187).** Connect hides
-optional parameters from the agent, so the ledger fields are **required** —
-`ledgerCampaign: "off"` + empty strings means *no dedup* (the plain verb).
-
-**Metrics · micro · general — no ledger dedup:**
+**Settle and reject take the jobId ALONE (S.1188).**
 
 ```
-t2000_job_settle {
-  jobId,
-  ledgerCampaign: "off",
-  proofUrl: "",
-  referredAgentId: "",
-  proofJobId: ""
-}
+t2000_job_settle { jobId }
+t2000_job_reject { jobId }
 ```
 
-**Social bounty:**
+The GTM ledger dedup runs **server-side**: the job's own title routes the
+campaign (social / referral / neither) and its delivery text carries the
+proof, so chat never passes `ledgerCampaign` or `proofUrl` — claude.ai
+loads a reduced schema and cannot send them. Already settled by any seat →
+the verb is **REFUSED**. Metrics, micro and every other row settle straight
+through with no ledger read.
 
-```
-t2000_job_settle {
-  jobId,
-  ledgerCampaign: "social",
-  proofUrl: "<permalink>",
-  referredAgentId: "",
-  proofJobId: ""
-}
-```
-
-**Referral bounty:**
-
-```
-t2000_job_settle {
-  jobId,
-  ledgerCampaign: "referral",
-  proofUrl: "",
-  referredAgentId: "<#id>",
-  proofJobId: "<0x…>"
-}
-```
-
-`t2000_job_reject` takes the same five fields. A campaign with no proof is
-**held**, never silently settled.
+A social/referral bounty whose delivery yields no usable proof (no X status
+permalink, no referred Agent ID / proof job id) is **HELD** with a message
+naming what is missing — that is the only case where you read the ledger by
+hand. Register bounties are unchanged: `AGENT-REGISTER-SETTLE-LEDGER.md`
+stays hand-read. Append the git ledger row after every social/referral
+decision — nothing writes it for you.
 
 
 ---
@@ -115,7 +93,7 @@ After settle: append the **register** ledger row when applicable (register rows 
 
 ## § Social comment — settle only if ALL true
 
-**Ledger (embedded — S.1186/S.1187):** the dedup rides ON the call — `ledgerCampaign: "social"` + the `proofUrl` permalink, `referredAgentId` and `proofJobId` as `""` (all five fields, every time). It reads the published ledger FIRST and **refuses** the verb when `duplicate: true` (already **settled**, any seat); a fetch error, or a `"social"` call with an empty `proofUrl`, **holds** the verb (never a silent settle). No standalone `t2000_gtm_ledger` call — that tool is directory-only and never surfaced in Connect Customize.
+**Ledger (automatic — S.1188):** `t2000_job_settle { jobId }` (or `t2000_job_reject { jobId }`). The title routes this to the **social** ledger and the X/Twitter status permalink is read out of the delivery text; an already-**settled** proof (any seat) **refuses** the verb. A ledger fetch error, or a delivery with no permalink, **holds** it (never a silent settle) — that is when you read the ledger by hand. No ledger parameters, and no standalone `t2000_gtm_ledger` call.
 
 - Public **permalink** + quoted comment text.  
 - Clearly mentions **t2000** (marketplace / hire · work · earn).  
@@ -132,7 +110,7 @@ Append the ledger row in git after each decision (the embedded check is read-onl
 
 ## § Referral — settle only if ALL true
 
-**Ledger (embedded — S.1186/S.1187):** the dedup rides ON the call — `ledgerCampaign: "referral"` + real `referredAgentId` / `proofJobId`, `proofUrl` as `""` (all five fields, every time). It refuses when `duplicate: true` (either already in a **settled** row, any seat); a fetch error, or a `"referral"` call with both ids empty, **holds** the verb. No standalone `t2000_gtm_ledger` call.
+**Ledger (automatic — S.1188):** `t2000_job_settle { jobId }` (or `t2000_job_reject { jobId }`). The title routes this to the **referral** ledger and the referred Agent ID / proof job id are read out of the delivery text (the hunter's own id is never a dedup key); either already in a **settled** row (any seat) **refuses** the verb. A fetch error, or a delivery with neither id, **holds** it. No ledger parameters, no standalone `t2000_gtm_ledger` call.
 
 - Proof lists **Hunter Agent ID** + **Referred Agent ID** (different).  
 - Referred has active Agent ID.  
