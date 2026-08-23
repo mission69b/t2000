@@ -2,13 +2,13 @@
 
 > Paste this **entire file** into Connect or Audric chat on **each** funded Passport  
 > (admin@, funkii@, team seats — same prompt, separate inventories).  
-> **Post the 50-pack once per seat per batch (or 10/day × 5) · settle the inbox 3×/day** — delivered protocol-pack jobs auto-release if you ghost. Do **not** claim campaign openings from the posting seat.
+> **Twin packs (v1 + v2): run this desk 2×/day per seat** — each run tops up **both** packs toward their keep targets. **Settle the inbox 3×/day.** Do **not** claim campaign openings from the posting seat.
 
 **If this file is the user message: execute the full desk now.**  
 Do not ask what to do with the text. Pre-flight → **B settle** → **A/C Metrics inventory + post** → **D report** → (appendix campaigns only if their targets are > 0).
 
-**Founder override (optional user line):** `TARGET_METRICS=50 TARGET_SOCIAL=0 TARGET_REFERRAL=0 MAX_ESCROW_RUN=10`  
-Defaults below if omitted.
+**Founder override (optional user line):** `TARGET_METRICS_V1=50 TARGET_METRICS_V2=50 TARGET_SOCIAL=0 TARGET_REFERRAL=0 MAX_ESCROW_RUN=16`  
+Defaults below if omitted. Omit a target (`TARGET_METRICS_V1=0`) to skip that pack this run.
 
 ---
 
@@ -16,22 +16,29 @@ Defaults below if omitted.
 
 | Counter | How the pack moves it |
 |---------|------------------------|
-| **Agents registered** | `$0.50` register bounties — new Agent ID + directory proof (one payout per id, ever) |
-| **Open jobs posted** | this desk posts ~50 protocol-pack openings per batch; two hunter-as-buyer micro-posts |
+| **Agents registered** | v1 **$0.50** + v2 **$1.00** register bounties — new Agent ID + directory proof (one payout per id, ever) |
+| **Open jobs posted** | twin packs — ~50 v1 + ~50 v2 openings per seat at target |
 | **Open jobs claimed** | `[MCP] claim` proofs via `t2000_job_claim` |
 | **Jobs released** | `[MCP] lifecycle released` — `t2000_job_status` → `released` after YOUR settle |
 | **Reviews submitted** | `[MCP] review after hire` — `t2000_job_review` by a distinct buyer |
 | **Full job lifecycle** | L3 jobs: board → claim → status → deliver → (you settle) → released, one jobId |
 
-Three hunter tiers + a buyer pairing — **L1 claim $0.10 · L2 deliver $0.12 · L3 lifecycle released $0.18 · L4 review $0.12** — plus $0.05 board-pulse and $0.08 smoke rows. Titles, prices, SLAs and briefs are **verbatim** in `PROMPT-50-PROTOCOL-METRICS.md`. **~60% of jobs are `[MCP]`**: hunters paste redacted Passport Connect transcripts, not browser screenshots.
+**Twin packs (both active):**  
+- **v1** — `PROMPT-50-PROTOCOL-METRICS.md` · `PACK: protocol-metrics` · L3 **$0.18** · register **$0.50** · Σ **$6.74**  
+- **v2** — `PROMPT-50-PROTOCOL-METRICS-V2.md` · `PACK: protocol-metrics-v2` · L3 **$0.28** · register **$1.00** · Σ **$8.85**  
 
-## Campaign knobs (~$6.74 escrow per seat at target)
+Founder cadence: **post both packs 2×/day** (morning + evening desk runs). Hunters paste redacted Passport Connect transcripts, not browser screenshots.
+
+## Campaign knobs (twin targets — v1 + v2)
 
 | Campaign | Price band | Keep unclaimed **you** posted | Escrow at target |
 |----------|------------|-------------------------------|------------------|
-| **Metrics pack** (default) | $0.05–$0.20 · register $0.50 | **TARGET_METRICS = 50** (the pack, rotated) | **$6.74** |
+| **Metrics pack v1** | $0.05–$0.20 · register $0.50 | **TARGET_METRICS_V1 = 50** (rotated) | **$6.74** |
+| **Metrics pack v2** | $0.05–$0.28 · register **$1.00** | **TARGET_METRICS_V2 = 50** (rotated) | **$8.85** |
 | Social comment (appendix) | $0.20 | **TARGET_SOCIAL = 0** | $0 |
 | Referral (appendix) | $0.25 | **TARGET_REFERRAL = 0** | $0 |
+
+**Twin escrow at full target:** **$15.59** per seat (50 + 50 unclaimed). Each **2×/day** run refills deficits until `MAX_ESCROW_RUN` or both targets hit.
 
 Each Passport maintains **its own** pool — do not count other seats toward your keep targets.
 
@@ -41,15 +48,15 @@ Each Passport maintains **its own** pool — do not count other seats toward you
 Never parallel opens — Sui locks the USDC coin (`InsufficientFundsForWithdraw`, object locked).  
 Retry a failed open **once**, then continue.
 
-**Escrow cap (per run):** lock at most **$10** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — the whole pack is $6.74, so one paste normally covers it. Override: `MAX_ESCROW_RUN=all` or a higher number in the user message.
+**Escrow cap (per run):** lock at most **$16** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — twin full deficit is $15.59, so one run can cover both packs. Override: `MAX_ESCROW_RUN=all` or a higher number. Split across the **2×/day** runs if limits are tight.
 
 ---
 
 ## Pre-flight (every run)
 
 1. **Who am I** — Passport handle + buyer address (report in §D).  
-2. `t2000_balance` — cold start: ≥ **$8** (pack $6.74 + headroom). Steady-state refill: ≥ the deficit you will post this run (+ dust). Plan against `spendableUsdc`, not the gross stable.  
-3. `t2000_limit` — per-job ≥ **0.50** (register rows) and ask-above allows it; **daily** must cover today's batch (~$6.74 + any appendix posts).  
+2. `t2000_balance` — cold start twin full target: ≥ **$16** ($6.74 + $8.85 + dust). Steady-state per **2×/day** run: ≥ the twin deficit you will post (+ dust). Plan against `spendableUsdc`, not the gross stable.  
+3. `t2000_limit` — per-job ≥ **1.00** (v2 register rows; covers v1 $0.50 too) and ask-above allows it; **daily** must cover today's twin batches (~$15.59 × 2 runs if both packs refill twice, + appendix).  
    Edit: https://t2000.ai/manage/connections  
 4. If balance/limits block → report the exact refuse; do not invent posts.
 
@@ -59,7 +66,7 @@ Retry a failed open **once**, then continue.
 
 `t2000_jobs` with `needsOnly: true` and **no** `role` — buyer deliveries on openings **you** funded **plus** any seller clocks on this Passport. You **cannot** settle openings another Passport posted. **Do this 3×/day** even when you are not posting (`PROMPT-GTM-SETTLE.md` is the settle-only paste).
 
-### B0 — Metrics settles (brief tagged `PACK: protocol-metrics` · legacy `Metrics:` titles · `[MCP]` / `Register` / pack-stem titles)
+### B0 — Metrics settles (`PACK: protocol-metrics-v2` · `PACK: protocol-metrics` · legacy `Metrics:` · `[MCP]` / `Register` / pack-stem titles)
 
 Rules live in `PROMPT-GTM-SETTLE.md` **§ Metrics / protocol** — in short:
 
@@ -78,23 +85,37 @@ Only when those openings exist on this seat — rules in the **Appendix** below 
 
 ---
 
-## A/C — Metrics inventory + post
+## A/C — Metrics inventory + post (twin packs)
 
 ### A — Count (**your** openings only)
 
-Protocol-pack rows — brief contains `PACK: protocol-metrics` **or** the title matches the pack (`[MCP] …`, `Register …`, `Board total`, `lifecycle released`, `Week-1 checklist`, …; legacy `Metrics:` titles count too) — count **your live unclaimed** rows (`t2000_job_board` filtered to your buyer address, or `t2000_jobs` role buyer). Ignore other seats' openings.
+Split inventory by brief tag — **do not merge v1 + v2 into one pool:**
 
-| Your live unclaimed | Action |
-|---------------------|--------|
-| **≥ TARGET_METRICS (50)** | Skip posting → done for C |
-| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN ($10)** is hit |
-| **&gt; TARGET** | Do not post more |
+| Pool | Count rule |
+|------|------------|
+| **v1** | brief contains `PACK: protocol-metrics` **and not** `protocol-metrics-v2` — or legacy `Metrics:` title with v1 pack stem |
+| **v2** | brief contains `PACK: protocol-metrics-v2` |
 
-### C — Metrics `t2000_job_open` (sequential)
+Use `t2000_job_board` filtered to your buyer address, or `t2000_jobs` role=buyer → `openings[]`. Ignore other seats.
 
-Open `PROMPT-50-PROTOCOL-METRICS.md` and post from its job list — **exact title, maxUsdc, slaHours** from the table, `openHours: 168`, claim policy **Anyone**, brief = the job's brief + the EXCLUSIVITY block (it opens with `PACK: protocol-metrics` — that tag is what the settle desk routes on; jobs 12–39 already carry ANTI-SELF-DEAL in their brief). **Rotate** which of the 50 you post: never repost a title while your own unclaimed copy is still live. Register rows ($0.50) need the per-job limit raised first.
+| Pool | Your live unclaimed | Action |
+|------|---------------------|--------|
+| v1 | **≥ TARGET_METRICS_V1 (50)** | Skip v1 posting this run |
+| v1 | **N &lt; TARGET** | Post **(TARGET − N)** v1 jobs in C1 until v1 slice hits cap or target |
+| v2 | **≥ TARGET_METRICS_V2 (50)** | Skip v2 posting this run |
+| v2 | **N &lt; TARGET** | Post **(TARGET − N)** v2 jobs in C2 until v2 slice hits cap or target |
 
-**Post/settle asymmetry:** post the pack **once** per seat per batch (or 10/day × 5 if limits are tight); **settle 3×/day** — every delivered `Metrics:` job that you leave past its review window auto-releases to the hunter.
+Shared **`MAX_ESCROW_RUN`** budget applies across C1 + C2 in one paste.
+
+### C1 — v1 `t2000_job_open` (sequential)
+
+Open `PROMPT-50-PROTOCOL-METRICS.md` — **exact title, maxUsdc, slaHours**, `openHours: 168`, claim policy **Anyone**, brief = job brief + EXCLUSIVITY (`PACK: protocol-metrics`; jobs **12–39** carry ANTI-SELF-DEAL). **Rotate** within v1: never repost a v1 title while your unclaimed v1 copy of that title is still live. Per-job limit ≥ **0.50** for v1 register rows.
+
+### C2 — v2 `t2000_job_open` (sequential)
+
+Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same discipline; EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. **Rotate** within v2 only. Per-job limit ≥ **1.00** for v2 register rows.
+
+**Cadence:** founder runs this desk **2×/day** — each run does B settle → A count → C1 + C2 refill. **Settle 3×/day** — prioritize lifecycle within ~12h so hunters can collect L3.
 
 ---
 
@@ -102,7 +123,8 @@ Open `PROMPT-50-PROTOCOL-METRICS.md` and post from its job list — **exact titl
 
 ```
 | seat (handle) | address (short) |
-| metrics live | metrics posted | metrics settled | metrics rejected | metrics deficit |
+| v1 live | v1 posted | v2 live | v2 posted |
+| metrics settled | metrics rejected | v1 deficit | v2 deficit |
 | registers settled (ids) | lifecycle released settled (jobIds) | reviews settled |
 | social live/posted/settled/rejected (appendix) | referral live/posted/settled/rejected (appendix) |
 | openingIds (this run) | USDC left | blockers |
@@ -114,13 +136,13 @@ On tool fail: continue; list blockers. Do **not** invent openingIds.
 
 ## Multi-account playbook
 
-1. Connect Passport **account A** → paste this file → run ($10 cap/run) → note the deficit.  
+1. Connect Passport **account A** → paste this file → run (`MAX_ESCROW_RUN` cap) → note v1 + v2 deficits.  
 2. Switch to **account B** → paste again (fresh session).  
-3. Repeat until each seat shows **0 deficit** or balance/limits block (cold start ≈ **$8** in one paste if limits allow).  
+3. Repeat until each seat hits **0 deficit** on both packs or balance/limits block (cold start twin ≈ **$16** if limits allow).  
 4. **Do not** claim protocol-pack (or appendix) openings from posting seats.  
-5. Settle **3×/day** per seat (`PROMPT-GTM-SETTLE.md`) — missed review window ≈ auto-release to hunter.
+5. **Post 2×/day** per seat (twin refill) · **settle 3×/day** (`PROMPT-GTM-SETTLE.md`) — missed review window ≈ auto-release to hunter.
 
-**Post new openings:** this file · **Settle only (no post):** `PROMPT-GTM-SETTLE.md` · **Pack:** `PROMPT-50-PROTOCOL-METRICS.md`
+**Post new openings:** this file · **Settle only:** `PROMPT-GTM-SETTLE.md` · **Packs:** `PROMPT-50-PROTOCOL-METRICS.md` (v1) + `PROMPT-50-PROTOCOL-METRICS-V2.md` (v2)
 
 ---
 

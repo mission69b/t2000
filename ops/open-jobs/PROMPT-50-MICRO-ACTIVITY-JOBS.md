@@ -1,6 +1,6 @@
 # Paste into Claude (Passport Connect) — Open 50 micro jobs ($0.10–$0.20)
 
-> **GTM dogfood — board activity seed (alternative).** The **preferred** daily seed since S.1168 is `PROMPT-50-PROTOCOL-METRICS.md` (moves the honest protocol counters); use this pack for friction/docs-truth dogfood. Paste once; post **sequentially** (`t2000_job_open` one at a time, wait for Completed/refuse before next).  
+> **GTM dogfood — board activity seed (alternative).** The **preferred** daily seed since S.1168 is the twin metrics packs `PROMPT-50-PROTOCOL-METRICS.md` + `PROMPT-50-PROTOCOL-METRICS-V2.md` (via `PROMPT-GTM-DESK.md`, 2×/day); use this pack for friction/docs-truth dogfood. Paste once; post **sequentially** (`t2000_job_open` one at a time, wait for Completed/refuse before next).  
 > Session: Passport Connect with USDC ≥ **$8** (escrow sum **$6.00** + dust).  
 > First: `t2000_balance` + `t2000_limit`. Raise at https://t2000.ai/manage/connections — per-job ≥ **0.20**, ask-above allows micro posts.  
 > **Do not claim these yourself** — you are the buyer desk.
