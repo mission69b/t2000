@@ -102,7 +102,7 @@ describe('resolveAgentRef (network)', () => {
       numericId: 93,
       name: 'Aegis',
     });
-    expect(fn).toHaveBeenCalledWith(`${BASE}/agents/resolve?q=%2393`);
+    expect(fn).toHaveBeenCalledWith(`${BASE}/agents/resolve?q=%2393`, expect.anything());
   });
 
   it("throws the SERVER's sentence so CLI and site explain a miss identically", async () => {
@@ -129,7 +129,7 @@ describe('resolveAgentRef (network)', () => {
     }));
     vi.stubGlobal('fetch', fn);
     await expect(resolveAgentRef(BASE, '0x93')).rejects.toThrow(/Agent ID/);
-    expect(fn).toHaveBeenCalledWith(`${BASE}/agents/resolve?q=0x93`);
+    expect(fn).toHaveBeenCalledWith(`${BASE}/agents/resolve?q=0x93`, expect.anything());
   });
 });
 

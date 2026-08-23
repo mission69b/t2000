@@ -13,7 +13,6 @@
 // Mutations are signed: challenge nonce + personal-message signature bound to
 // sha256 of the exact payload (same construction as the services catalog).
 
-import { createHash } from 'node:crypto';
 import {
   sellerReceivesLine,
   SERVICES_SETTLE_FEE_BPS,
@@ -23,13 +22,21 @@ import {
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { MAX_JOB_USDC, MIN_JOB_USDC, truncateAddress, validateAddress } from '@t2000/sdk';
+import {
+  MAX_JOB_USDC,
+  MIN_JOB_USDC,
+  type ServiceUpsertInput,
+  slugify,
+  truncateAddress,
+  validateAddress,
+} from '@t2000/sdk';
 import {
   AGENT_CATEGORIES,
   ensureSellerCategory,
   parseCategory,
 } from '../lib/agent-category.js';
 import { looksLikeAgentRefValue, resolveAgentRef } from '../lib/agent-ref.js';
+import { commerceFor } from '../lib/commerce-client.js';
 import { mergeServiceUpsert } from '../lib/service-upsert.js';
 import {
   type ApiRouteListing,
@@ -53,7 +60,8 @@ import { parseDuration } from './job.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 
-/** Signed service mutation: challenge → sign nonce+payload-hash → POST. */
+/** Signed service mutation — the SDK commerce SSOT (S.1158): challenge →
+ *  sign nonce + payload-hash → POST. */
 async function signedServiceAction(opts: {
   base: string;
   keyPath?: string;
@@ -61,33 +69,12 @@ async function signedServiceAction(opts: {
   payload: Record<string, unknown>;
 }): Promise<{ address: string; response: Record<string, unknown> }> {
   const agent = await withAgent({ keyPath: opts.keyPath });
-  const address = agent.address();
-  const challenge = await fetchJson(`${opts.base}/agent/challenge`, {
-    method: 'POST',
-    body: { address },
-  });
-  const nonce = challenge.nonce as string | undefined;
-  if (!nonce) {
-    throw new Error('Failed to get a challenge nonce.');
-  }
-  const payloadHash = createHash('sha256')
-    .update(JSON.stringify(opts.payload), 'utf8')
-    .digest('hex');
-  const message = new TextEncoder().encode(
-    `t2000-agent-service:${nonce}:${payloadHash}`,
-  );
-  const { signature } = await agent.keypair.signPersonalMessage(message);
-  const response = await fetchJson(`${opts.base}/agent/service`, {
-    method: 'POST',
-    body: {
-      address,
-      nonce,
-      signature,
-      action: opts.action,
-      payload: opts.payload,
-    },
-  });
-  return { address, response };
+  const client = commerceFor(agent, opts.base);
+  const result =
+    opts.action === 'retire'
+      ? await client.retireService(String(opts.payload.slug))
+      : await client.upsertService(opts.payload as unknown as ServiceUpsertInput);
+  return { address: result.address, response: result.response };
 }
 
 /** `--requirements` input: a readable file path, inline JSON, or free text. */
@@ -107,14 +94,6 @@ async function resolveRequirements(input: string): Promise<unknown> {
     // not JSON — free text
   }
   return text.trim();
-}
-
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replaceAll(/^-+|-+$/g, '')
-    .slice(0, 48);
 }
 
 function formatSla(minutes: number): string {

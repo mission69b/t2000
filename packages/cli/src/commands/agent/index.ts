@@ -20,11 +20,7 @@ import {
   parseCategory,
 } from '../../lib/agent-category.js';
 import { registerWallet } from '../../lib/agent-register.js';
-import {
-  assertSigningHostAllowed,
-  assertTxMatchesIntent,
-  isAllowUntrustedApi,
-} from '../../lib/tx-guard.js';
+import { commerceFor } from '../../lib/commerce-client.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
 import {
@@ -38,27 +34,6 @@ import {
 } from '../../output.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
-
-async function fetchJson(
-  url: string,
-  init: { method: string; body?: unknown },
-): Promise<Record<string, unknown>> {
-  const res = await fetch(url, {
-    method: init.method,
-    headers: init.body ? { 'Content-Type': 'application/json' } : undefined,
-    body: init.body ? JSON.stringify(init.body) : undefined,
-  });
-  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    const err = json.error;
-    const msg =
-      typeof err === 'string'
-        ? err
-        : ((err as { message?: string })?.message ?? `HTTP ${res.status}`);
-    throw new Error(msg);
-  }
-  return json;
-}
 
 export function registerAgent(program: Command) {
   const group = program
@@ -168,31 +143,15 @@ Subcommands:
           const agent = await withAgent({ keyPath: opts.key });
           const address = agent.address();
 
-          const challenge = await fetchJson(`${base}/agent/challenge`, {
-            method: 'POST',
-            body: { address },
-          });
-          const nonce = challenge.nonce as string | undefined;
-          if (!nonce) {
-            throw new Error('Failed to get a challenge nonce.');
-          }
-          const message = new TextEncoder().encode(`t2000-agent-profile:${nonce}`);
-          const { signature } = await agent.keypair.signPersonalMessage(message);
-
-          await fetchJson(`${base}/agent/profile`, {
-            method: 'POST',
-            body: {
-              address,
-              nonce,
-              signature,
-              displayName: opts.name,
-              imageUrl: opts.image,
-              description: opts.description,
-              category,
-              website: opts.website,
-              twitter: opts.twitter,
-              github: opts.github,
-            },
+          // Signed challenge, no gas — the SDK commerce SSOT (S.1158).
+          await commerceFor(agent, base).updateProfile({
+            name: opts.name,
+            imageUrl: opts.image,
+            description: opts.description,
+            category,
+            website: opts.website,
+            twitter: opts.twitter,
+            github: opts.github,
           });
 
           if (isJsonMode()) {
@@ -261,96 +220,29 @@ Subcommands:
             await ensureSellerCategory({ base, agent, category });
           }
 
-          // Two-phase sponsored flow, inline (not runSponsoredTx) so a failed
-          // probe surfaces its per-check findings, not just one message.
-          // Inline does NOT mean unguarded: the host pin runs before the
-          // address is sent (S.930), and since S.1049 the prepared bytes are
-          // intent-verified too — endpoint list/remove is a registry
-          // `update`, and the guard's allowlist pins the MAINNET agent_id
-          // package literal (the old comment calling that "theatre" predates
-          // the registry joining ACTION_TARGETS).
-          assertSigningHostAllowed(base, isAllowUntrustedApi());
-          const prepRes = await fetch(`${base}/agent/endpoint/prepare`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              address,
-              endpoint: target,
-              ...(opts.primary ? { primary: opts.primary } : {}),
-            }),
-          });
-          const prep = (await prepRes.json().catch(() => ({}))) as {
-            nonce?: string;
-            txBytes?: string;
-            probe?: {
-              ok?: boolean;
-              amount?: string | null;
-              currency?: string | null;
-              issues?: { message?: string; code?: string }[];
-            } | null;
-            origin?: string | null;
-            primary?: { path?: string; url?: string } | null;
-            routes?: {
-              method?: string;
-              path?: string;
-              url?: string;
-              priceUsdc?: string | null;
-              summary?: string | null;
-              probeOk?: boolean;
-              issues?: { message?: string; code?: string }[];
-            }[];
-            issues?: { message?: string; code?: string }[];
-            error?: { message?: string } | string;
-          };
-          if (!prepRes.ok) {
-            const msg =
-              typeof prep.error === 'string'
-                ? prep.error
-                : (prep.error?.message ?? `HTTP ${prepRes.status}`);
-            // Origin expands carry per-route findings; single probes the
-            // flat issue list. Show whichever came back.
-            const lines: string[] = (prep.probe?.issues ?? []).map(
-              (i) => `  ✗ ${i.message ?? i.code}`,
-            );
-            for (const r of prep.routes ?? []) {
-              if (r.probeOk === false) {
-                lines.push(`  ✗ ${r.method ?? 'POST'} ${r.path}`);
-                for (const i of r.issues ?? []) {
-                  lines.push(`      ${i.message ?? i.code}`);
-                }
-              }
-            }
-            const detail = lines.join('\n');
-            throw new Error(detail ? `${msg}\n${detail}` : msg);
-          }
-          if (!(prep.nonce && prep.txBytes)) {
-            throw new Error('Failed to prepare the listing.');
-          }
-          // S.1049: the server proposed; check it proposed a registry
-          // `update` (endpoint prepare builds buildUpdateTx) before signing.
-          assertTxMatchesIntent(
-            prep.txBytes,
-            { action: 'update' },
-            { allowUntrusted: isAllowUntrustedApi() },
-          );
-          const bytes = new Uint8Array(Buffer.from(prep.txBytes, 'base64'));
-          const { signature } = await agent.keypair.signTransaction(bytes);
-          const sub = await fetchJson(`${base}/agent/endpoint/submit`, {
-            method: 'POST',
-            body: { nonce: prep.nonce, address, signature },
-          });
-
-          const primaryUrl = prep.primary?.url ?? target;
+          // SDK commerce SSOT (S.1158): prepare (live probe) → guard → sign
+          // → submit. A failed probe surfaces its per-route findings in the
+          // error message. The S.930 locks run through the installed
+          // sponsored-tx guard — host pin before the address is sent, and the
+          // bytes intent-checked as a registry `update` (the allowlist pins
+          // the MAINNET agent_id package literal).
+          const client = commerceFor(agent, base);
+          const listing = opts.remove
+            ? await client.removeEndpoint()
+            : await client.listEndpoint(target, {
+                ...(opts.primary ? { primary: opts.primary } : {}),
+              });
+          const primaryUrl = listing.endpoint ?? target;
           if (isJsonMode()) {
             printJson({
               address,
               endpoint: opts.remove ? null : primaryUrl,
               listed: !opts.remove,
-              probe: prep.probe ?? null,
-              origin: prep.origin ?? null,
-              primary: prep.primary ?? null,
-              routes: prep.routes ?? [],
-              digest: sub.digest,
+              probe: listing.probe ?? null,
+              origin: listing.origin ?? null,
+              primary: listing.primary ?? null,
+              routes: listing.routes ?? [],
+              digest: listing.digest,
             });
             return;
           }
@@ -358,13 +250,13 @@ Subcommands:
           if (opts.remove) {
             printSuccess('Listing removed.');
           } else {
-            const routes = prep.routes ?? [];
+            const routes = listing.routes ?? [];
             if (routes.length > 1) {
               printSuccess(
                 `Listed — ${routes.length} paid routes are live on your public profile.`,
               );
               for (const r of routes) {
-                const mark = r.path === prep.primary?.path ? '  (primary)' : '';
+                const mark = r.path === listing.primary?.path ? '  (primary)' : '';
                 const price = r.priceUsdc ? `${r.priceUsdc} USDC` : '?';
                 printKeyValue(
                   `  ${r.method ?? 'POST'} ${r.path}`,
@@ -375,15 +267,15 @@ Subcommands:
               printSuccess(
                 'Listed — your endpoint is live on your public profile.',
               );
-              if (prep.probe?.amount) {
-                printKeyValue('Price', `${prep.probe.amount} USDC per call`);
+              if (listing.probe?.amount) {
+                printKeyValue('Price', `${listing.probe.amount} USDC per call`);
               }
             }
             printKeyValue('Endpoint', primaryUrl);
             printInfo(`Buyers pay it with: t2 pay ${primaryUrl}`);
             printKeyValue('Profile', `https://t2000.ai/${address}`);
           }
-          printKeyValue('Tx', String(sub.digest));
+          printKeyValue('Tx', String(listing.digest));
           printBlank();
         } catch (error) {
           handleError(error);

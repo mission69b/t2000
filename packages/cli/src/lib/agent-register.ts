@@ -5,12 +5,14 @@ import {
   isAllowUntrustedApi,
   type TxIntent,
 } from './tx-guard.js';
+import { registerAgent, type TransactionSigner } from '@t2000/sdk';
 import { printLine } from '../output.js';
 
-// Shared sponsored-registration helper (Agent ID B.1 gate 5b). Used by
-// `t2 agent register`, `t2 agent create`, and `t2 init`
-// (best-effort). Two-phase: prepare (server builds the sponsored tx) → the
-// wallet signs the bytes → submit (server sponsor-co-signs + executes).
+// Sponsored-tx helpers. `runSponsoredTx` is the CLI-generic two-phase
+// round-trip the job verbs ride (prepare → sign → submit, with the S.930
+// locks + the S.1063 precursor hop). `registerWallet` (used by `t2 agent
+// register`, `t2 agent create`, `t2 init`) delegates to the SDK's
+// `registerAgent` since S.1158 — the one register implementation.
 
 interface SigningKeypair {
   signTransaction(bytes: Uint8Array): Promise<{ signature: string }>;
@@ -119,8 +121,11 @@ export interface RegisterResult {
 }
 
 /**
- * Register `address` on-chain via the sponsored flow. Throws on failure (the
- * caller decides whether that's fatal — `register` surfaces it; `create`/`init`
+ * Register `address` on-chain via the sponsored flow — the SDK's
+ * `registerAgent` (S.1158 SSOT). The S.930 locks run inside the SDK through
+ * the installed sponsored-tx guard (host pin before the address is sent,
+ * `register` intent check on the bytes). Throws on failure (the caller
+ * decides whether that's fatal — `register` surfaces it; `create`/`init`
  * treat it as best-effort).
  */
 export async function registerWallet(opts: {
@@ -128,30 +133,16 @@ export async function registerWallet(opts: {
   address: string;
   base: string;
 }): Promise<RegisterResult> {
-  const allowUntrusted = isAllowUntrustedApi();
-  assertSigningHostAllowed(opts.base, allowUntrusted);
-  const prep = await postJson(`${opts.base}/agent/register/prepare`, {
-    address: opts.address,
-  });
-  // Idempotent: already on-chain → nothing to sign.
-  if (prep.alreadyRegistered === true) {
-    return { alreadyRegistered: true };
-  }
-  const regNonce = prep.regNonce as string | undefined;
-  const txBytes = prep.txBytes as string | undefined;
-  if (!(regNonce && txBytes)) {
-    throw new Error('Failed to prepare registration.');
-  }
-  assertTxMatchesIntent(txBytes, { action: 'register' }, { allowUntrusted });
-  const bytes = new Uint8Array(Buffer.from(txBytes, 'base64'));
-  const { signature } = await opts.keypair.signTransaction(bytes);
-  const res = await postJson(`${opts.base}/agent/register/submit`, {
-    regNonce,
-    address: opts.address,
-    agentSignature: signature,
-  });
+  const signer: TransactionSigner = {
+    getAddress: () => opts.address,
+    signTransaction: (bytes) => opts.keypair.signTransaction(bytes),
+    signPersonalMessage: () => {
+      throw new Error('registerWallet signs transactions only.');
+    },
+  };
+  const res = await registerAgent(opts.base, signer);
   return {
-    digest: res.digest as string | undefined,
-    alreadyRegistered: Boolean(res.alreadyRegistered),
+    ...(res.digest ? { digest: res.digest } : {}),
+    alreadyRegistered: res.alreadyRegistered,
   };
 }

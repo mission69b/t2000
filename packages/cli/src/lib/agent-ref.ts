@@ -10,6 +10,8 @@
 // purpose: the CLI cannot depend on `@audric/*`. Keep the two in step — the
 // unit tests here mirror the console's case-for-case.
 
+import { resolveAgentRef as sdkResolveAgentRef } from '@t2000/sdk';
+
 /** `#93` — the hash makes it unambiguous wherever it appears. */
 const HASH_ID_RE = /^#\d{1,10}$/;
 /** `93` — bare digits. Could equally be an SLA, a retry count or a score, so
@@ -75,26 +77,15 @@ export function agentRefFields(requirements: unknown): [string, string][] {
 
 /** `#93` · `93` · `@handle` · `0x…` → the agent's wallet address.
  *
- *  One network hop to the same endpoint the site uses, so there is no second
- *  source of truth for Agent ID numbers here. Throws with the server's own
- *  sentence so the CLI and the site explain a miss identically. */
+ *  The SDK's `resolveAgentRef` (S.1158 SSOT) — one network hop to the same
+ *  endpoint the site uses, so there is no second source of truth for Agent
+ *  ID numbers. Throws with the server's own sentence so the CLI and the
+ *  site explain a miss identically. */
 export async function resolveAgentRef(
   base: string,
   q: string,
 ): Promise<AgentRef> {
-  const res = await fetch(
-    `${base}/agents/resolve?q=${encodeURIComponent(q.trim())}`,
-  );
-  const json = (await res.json().catch(() => ({}))) as {
-    address?: string;
-    numericId?: number | null;
-    name?: string;
-    error?: string;
-  };
-  if (!(res.ok && json.address)) {
-    throw new Error(json.error ?? FALLBACK_MISS);
-  }
-  return { address: json.address, numericId: json.numericId, name: json.name };
+  return sdkResolveAgentRef(q, base);
 }
 
 /** Resolve every agent-ref value in a requirements object, returning a copy
