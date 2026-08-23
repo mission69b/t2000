@@ -36,7 +36,10 @@ export class CommerceClient {
 
   constructor(options: CommerceClientOptions) {
     this.signer = options.signer;
-    this.apiBase = (options.apiBase ?? DEFAULT_COMMERCE_API_BASE).replace(/\/+$/, '');
+    let base = options.apiBase ?? DEFAULT_COMMERCE_API_BASE;
+    // Linear trailing-slash strip (a `/\/+$/` regex is polynomial — CodeQL).
+    while (base.endsWith('/')) base = base.slice(0, -1);
+    this.apiBase = base;
   }
 
   /** This signer's wallet address. */

@@ -16,6 +16,7 @@ export {
   parseServiceTierSlug,
   SERVICE_SLUG_RE,
   slugify,
+  trimDashes,
 } from './package-slug.js';
 export { ensureCategory, parseAgentCategory, updateProfile } from './profile.js';
 export { registerAgent } from './register.js';

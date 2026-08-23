@@ -33,6 +33,9 @@ describe('package slug math (parity with console service-tiers)', () => {
 
   it('slugify matches the CLI rule and every tier slug passes the API grammar', () => {
     expect(slugify('  Sui Market Report!! ')).toBe('sui-market-report');
+    expect(slugify('---')).toBe('');
+    expect(slugify('a')).toBe('a');
+    expect(packageBaseSlug('---')).toBe('');
     const base = packageBaseSlug(slugify('Brand kit — logos, colours & type, the full identity system'));
     for (const { slug } of packageTierSlugs(base)) {
       expect(slug).toMatch(SERVICE_SLUG_RE);

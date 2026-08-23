@@ -11,14 +11,20 @@ import { SERVICE_TIERS, type ServiceTier } from './types.js';
 /** The API's slug grammar: 2–48 chars of [a-z0-9-], alphanumeric first. */
 export const SERVICE_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,47}$/;
 
+/** Strip leading/trailing dashes in linear time (a `^-+|-+$` regex is
+ *  polynomial on dash runs — CodeQL js/polynomial-redos). */
+export function trimDashes(s: string): string {
+  let start = 0;
+  let end = s.length;
+  while (start < end && s.charCodeAt(start) === 45) start += 1;
+  while (end > start && s.charCodeAt(end - 1) === 45) end -= 1;
+  return s.slice(start, end);
+}
+
 /** The CLI's name → slug rule (lowercase, runs of non-alphanumerics → `-`,
  *  trimmed, 48-char cap). */
 export function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replaceAll(/^-+|-+$/g, '')
-    .slice(0, 48);
+  return trimDashes(name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')).slice(0, 48);
 }
 
 // Suffix must be the FINAL segment: `logo-pack-basic` parses,
@@ -43,7 +49,10 @@ export function parseServiceTierSlug(
  *  shed so `{base}-basic` never carries `--`). Empty in → empty out —
  *  callers validate. */
 export function packageBaseSlug(slugified: string): string {
-  return slugified.slice(0, MAX_TIER_BASE_LENGTH).replace(/-+$/, '');
+  const cut = slugified.slice(0, MAX_TIER_BASE_LENGTH);
+  let end = cut.length;
+  while (end > 0 && cut.charCodeAt(end - 1) === 45) end -= 1;
+  return cut.slice(0, end);
 }
 
 /** The three tier slugs for a base, Basic → Standard → Premium. */
