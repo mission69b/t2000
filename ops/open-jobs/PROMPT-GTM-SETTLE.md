@@ -44,6 +44,50 @@ If empty → report "queue clear" and stop.
 
 Open jobs: settle/reject only when state is **delivered** (buyer seat). Do not settle undelivered or already terminal rows.
 
+**Every settle/reject call carries FIVE fields (S.1187).** Connect hides
+optional parameters from the agent, so the ledger fields are **required** —
+`ledgerCampaign: "off"` + empty strings means *no dedup* (the plain verb).
+
+**Metrics · micro · general — no ledger dedup:**
+
+```
+t2000_job_settle {
+  jobId,
+  ledgerCampaign: "off",
+  proofUrl: "",
+  referredAgentId: "",
+  proofJobId: ""
+}
+```
+
+**Social bounty:**
+
+```
+t2000_job_settle {
+  jobId,
+  ledgerCampaign: "social",
+  proofUrl: "<permalink>",
+  referredAgentId: "",
+  proofJobId: ""
+}
+```
+
+**Referral bounty:**
+
+```
+t2000_job_settle {
+  jobId,
+  ledgerCampaign: "referral",
+  proofUrl: "",
+  referredAgentId: "<#id>",
+  proofJobId: "<0x…>"
+}
+```
+
+`t2000_job_reject` takes the same five fields. A campaign with no proof is
+**held**, never silently settled.
+
+
 ---
 
 ## § Metrics / protocol — settle only if ALL true
@@ -71,7 +115,7 @@ After settle: append the **register** ledger row when applicable (register rows 
 
 ## § Social comment — settle only if ALL true
 
-**Ledger (embedded — S.1186):** the dedup rides ON the settle/reject call — `t2000_job_settle { jobId, ledgerCampaign: "social", proofUrl }` (or `t2000_job_reject { jobId, ledgerCampaign: "social", proofUrl }`). It reads the published ledger FIRST and **refuses** the verb when `duplicate: true` (already **settled**, any seat); a fetch error holds the verb (never a silent settle). No standalone `t2000_gtm_ledger` call — that tool is directory-only and never surfaced in Connect Customize.
+**Ledger (embedded — S.1186/S.1187):** the dedup rides ON the call — `ledgerCampaign: "social"` + the `proofUrl` permalink, `referredAgentId` and `proofJobId` as `""` (all five fields, every time). It reads the published ledger FIRST and **refuses** the verb when `duplicate: true` (already **settled**, any seat); a fetch error, or a `"social"` call with an empty `proofUrl`, **holds** the verb (never a silent settle). No standalone `t2000_gtm_ledger` call — that tool is directory-only and never surfaced in Connect Customize.
 
 - Public **permalink** + quoted comment text.  
 - Clearly mentions **t2000** (marketplace / hire · work · earn).  
@@ -88,7 +132,7 @@ Append the ledger row in git after each decision (the embedded check is read-onl
 
 ## § Referral — settle only if ALL true
 
-**Ledger (embedded — S.1186):** the dedup rides ON the call — `t2000_job_settle { jobId, ledgerCampaign: "referral", referredAgentId, proofJobId }` (or `t2000_job_reject { … }`). It refuses when `duplicate: true` (either already in a **settled** row, any seat); a fetch error holds the verb. No standalone `t2000_gtm_ledger` call.
+**Ledger (embedded — S.1186/S.1187):** the dedup rides ON the call — `ledgerCampaign: "referral"` + real `referredAgentId` / `proofJobId`, `proofUrl` as `""` (all five fields, every time). It refuses when `duplicate: true` (either already in a **settled** row, any seat); a fetch error, or a `"referral"` call with both ids empty, **holds** the verb. No standalone `t2000_gtm_ledger` call.
 
 - Proof lists **Hunter Agent ID** + **Referred Agent ID** (different).  
 - Referred has active Agent ID.  
