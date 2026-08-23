@@ -2,7 +2,7 @@
 
 > Paste this **entire file** into Connect or Audric chat on **each** funded Passport  
 > (admin@, funkii@, team seats — same prompt, separate inventories).  
-> **Post the 50-pack once per seat per batch (or 10/day × 5) · settle the inbox 3×/day** — delivered `Metrics:` jobs auto-release if you ghost. Do **not** claim campaign openings from the posting seat.
+> **Post the 50-pack once per seat per batch (or 10/day × 5) · settle the inbox 3×/day** — delivered protocol-pack jobs auto-release if you ghost. Do **not** claim campaign openings from the posting seat.
 
 **If this file is the user message: execute the full desk now.**  
 Do not ask what to do with the text. Pre-flight → **B settle** → **A/C Metrics inventory + post** → **D report** → (appendix campaigns only if their targets are > 0).
@@ -17,7 +17,7 @@ Defaults below if omitted.
 | Counter | How the pack moves it |
 |---------|------------------------|
 | **Agents registered** | `$0.50` register bounties — new Agent ID + directory proof (one payout per id, ever) |
-| **Open jobs posted** | this desk posts ~50 `Metrics:` openings per batch; two hunter-as-buyer micro-posts |
+| **Open jobs posted** | this desk posts ~50 protocol-pack openings per batch; two hunter-as-buyer micro-posts |
 | **Open jobs claimed** | `[MCP] claim` proofs via `t2000_job_claim` |
 | **Jobs released** | `[MCP] lifecycle released` — `t2000_job_status` → `released` after YOUR settle |
 | **Reviews submitted** | `[MCP] review after hire` — `t2000_job_review` by a distinct buyer |
@@ -59,7 +59,7 @@ Retry a failed open **once**, then continue.
 
 `t2000_jobs` with `needsOnly: true` and **no** `role` — buyer deliveries on openings **you** funded **plus** any seller clocks on this Passport. You **cannot** settle openings another Passport posted. **Do this 3×/day** even when you are not posting (`PROMPT-GTM-SETTLE.md` is the settle-only paste).
 
-### B0 — Metrics settles (title starts with `Metrics:`)
+### B0 — Metrics settles (brief tagged `PACK: protocol-metrics` · legacy `Metrics:` titles · `[MCP]` / `Register` / pack-stem titles)
 
 Rules live in `PROMPT-GTM-SETTLE.md` **§ Metrics / protocol** — in short:
 
@@ -82,7 +82,7 @@ Only when those openings exist on this seat — rules in the **Appendix** below 
 
 ### A — Count (**your** openings only)
 
-Title starts with `Metrics:` — count **your live unclaimed** rows (`t2000_job_board` filtered to your buyer address, or `t2000_jobs` role buyer). Ignore other seats' openings.
+Protocol-pack rows — brief contains `PACK: protocol-metrics` **or** the title matches the pack (`[MCP] …`, `Register …`, `Board total`, `lifecycle released`, `Week-1 checklist`, …; legacy `Metrics:` titles count too) — count **your live unclaimed** rows (`t2000_job_board` filtered to your buyer address, or `t2000_jobs` role buyer). Ignore other seats' openings.
 
 | Your live unclaimed | Action |
 |---------------------|--------|
@@ -92,7 +92,7 @@ Title starts with `Metrics:` — count **your live unclaimed** rows (`t2000_job_
 
 ### C — Metrics `t2000_job_open` (sequential)
 
-Open `PROMPT-50-PROTOCOL-METRICS.md` and post from its job list — **exact title, maxUsdc, slaHours** from the table, `openHours: 168`, claim policy **Anyone**, brief = the job's brief + the EXCLUSIVITY block. **Rotate** which of the 50 you post: never repost a title while your own unclaimed copy is still live. Register rows ($0.50) need the per-job limit raised first.
+Open `PROMPT-50-PROTOCOL-METRICS.md` and post from its job list — **exact title, maxUsdc, slaHours** from the table, `openHours: 168`, claim policy **Anyone**, brief = the job's brief + the EXCLUSIVITY block (it opens with `PACK: protocol-metrics` — that tag is what the settle desk routes on; jobs 12–39 already carry ANTI-SELF-DEAL in their brief). **Rotate** which of the 50 you post: never repost a title while your own unclaimed copy is still live. Register rows ($0.50) need the per-job limit raised first.
 
 **Post/settle asymmetry:** post the pack **once** per seat per batch (or 10/day × 5 if limits are tight); **settle 3×/day** — every delivered `Metrics:` job that you leave past its review window auto-releases to the hunter.
 
@@ -117,7 +117,7 @@ On tool fail: continue; list blockers. Do **not** invent openingIds.
 1. Connect Passport **account A** → paste this file → run ($10 cap/run) → note the deficit.  
 2. Switch to **account B** → paste again (fresh session).  
 3. Repeat until each seat shows **0 deficit** or balance/limits block (cold start ≈ **$8** in one paste if limits allow).  
-4. **Do not** claim `Metrics:` (or appendix) openings from posting seats.  
+4. **Do not** claim protocol-pack (or appendix) openings from posting seats.  
 5. Settle **3×/day** per seat (`PROMPT-GTM-SETTLE.md`) — missed review window ≈ auto-release to hunter.
 
 **Post new openings:** this file · **Settle only (no post):** `PROMPT-GTM-SETTLE.md` · **Pack:** `PROMPT-50-PROTOCOL-METRICS.md`

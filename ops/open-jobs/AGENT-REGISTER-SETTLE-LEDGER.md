@@ -1,6 +1,6 @@
 # Agent-register settle ledger (cross-seat)
 
-> **SSOT for "this Agent ID was already paid a register bounty."** Every seat that settles a `Metrics: register …` bounty appends a row **before** ending the settle run.  
+> **SSOT for "this Agent ID was already paid a register bounty."** Every seat that settles a `Register …` bounty (legacy `Metrics: register …` titles included) appends a row **before** ending the settle run.  
 > Pack: `PROMPT-50-PROTOCOL-METRICS.md` (jobs 9–11) · Desk: `PROMPT-GTM-DESK.md` / `PROMPT-GTM-SETTLE.md`
 
 ## Rules
