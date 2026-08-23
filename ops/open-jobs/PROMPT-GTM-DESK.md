@@ -1,58 +1,147 @@
-# GTM desk — one paste, any funded Passport
+# GTM desk — one paste, any funded Passport (metrics-first)
 
 > Paste this **entire file** into Connect or Audric chat on **each** funded Passport  
 > (admin@, funkii@, team seats — same prompt, separate inventories).  
-> **1–3×/day** per seat while scaling. Do **not** claim campaign openings from the posting seat.
+> **Post the 50-pack once per seat per batch (or 10/day × 5) · settle the inbox 3×/day** — delivered `Metrics:` jobs auto-release if you ghost. Do **not** claim campaign openings from the posting seat.
 
 **If this file is the user message: execute the full desk now.**  
-Do not ask what to do with the text. Pre-flight → **B settle** → **A/C social** → **A/C referral** → **D report**.
+Do not ask what to do with the text. Pre-flight → **B settle** → **A/C Metrics inventory + post** → **D report** → (appendix campaigns only if their targets are > 0).
 
-**Founder override (optional user line):** `TARGET_SOCIAL=75 TARGET_REFERRAL=15 MAX_ESCROW_RUN=30`  
+**Founder override (optional user line):** `TARGET_METRICS=50 TARGET_SOCIAL=0 TARGET_REFERRAL=0 MAX_ESCROW_RUN=10`  
 Defaults below if omitted.
 
 ---
 
-## Campaign knobs (~$12.50 escrow per account at target)
+## What this desk moves (honest protocol counters)
 
-| Campaign | Price | Keep unclaimed **you** posted | Escrow at target |
-|----------|-------|-------------------------------|------------------|
-| Social comment | **$0.20** | **50** (band **40–75**) | **$10** |
-| Referral | **$0.25** | **10** (band **5–15**) | **$2.50** |
-| **≈ Total live** | | **~60** per account | **~$12.50** |
+| Counter | How the pack moves it |
+|---------|------------------------|
+| **Agents registered** | `$0.50` register bounties — new Agent ID + directory proof (one payout per id, ever) |
+| **Open jobs posted** | this desk posts ~50 `Metrics:` openings per batch; two hunter-as-buyer micro-posts |
+| **Open jobs claimed** | `[MCP] claim` proofs via `t2000_job_claim` |
+| **Jobs released** | `[MCP] lifecycle released` — `t2000_job_status` → `released` after YOUR settle |
+| **Reviews submitted** | `[MCP] review after hire` — `t2000_job_review` by a distinct buyer |
+| **Full job lifecycle** | L3 jobs: board → claim → status → deliver → (you settle) → released, one jobId |
+
+Three hunter tiers + a buyer pairing — **L1 claim $0.10 · L2 deliver $0.12 · L3 lifecycle released $0.18 · L4 review $0.12** — plus $0.05 board-pulse and $0.08 smoke rows. Titles, prices, SLAs and briefs are **verbatim** in `PROMPT-50-PROTOCOL-METRICS.md`. **~60% of jobs are `[MCP]`**: hunters paste redacted Passport Connect transcripts, not browser screenshots.
+
+## Campaign knobs (~$6.74 escrow per seat at target)
+
+| Campaign | Price band | Keep unclaimed **you** posted | Escrow at target |
+|----------|------------|-------------------------------|------------------|
+| **Metrics pack** (default) | $0.05–$0.20 · register $0.50 | **TARGET_METRICS = 50** (the pack, rotated) | **$6.74** |
+| Social comment (appendix) | $0.20 | **TARGET_SOCIAL = 0** | $0 |
+| Referral (appendix) | $0.25 | **TARGET_REFERRAL = 0** | $0 |
 
 Each Passport maintains **its own** pool — do not count other seats toward your keep targets.
 
-**Ledgers (SSOT in this repo; Connect reads them — S.1166):**  
-`ops/open-jobs/SOCIAL-COMMENT-SETTLE-LEDGER.md` · `ops/open-jobs/REFERRAL-SETTLE-LEDGER.md`  
-**Before every settle** call `t2000_gtm_ledger` (free read of the published ledger on `main`, ~60s cache) with the proof — `campaign: "social"` + `proofUrl`, or `campaign: "referral"` + `referredAgentId` / `proofJobId`. `duplicate: true` → `t2000_job_reject` **before** settle (100% back to you). A fetch error is not an empty ledger — do not settle until it reads. Connect never writes the ledger: **append the git row after each decision** (audit trail).
+**Ledgers (SSOT in this repo):** `AGENT-REGISTER-SETTLE-LEDGER.md` (register bounties — read the file + directory by hand until `t2000_gtm_ledger` covers it) · `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` (both readable via `t2000_gtm_ledger`). Connect never writes a ledger: **append the git row after each decision**.
 
 **Posting discipline:** `t2000_job_open` **one at a time**. Wait for Completed (or a hard refuse) before the next.  
 Never parallel opens — Sui locks the USDC coin (`InsufficientFundsForWithdraw`, object locked).  
 Retry a failed open **once**, then continue.
 
-**Escrow cap (per run):** Lock at most **$20** USDC in **new** openings this paste (`MAX_ESCROW_RUN`).  
-Post social deficit first, then referral, until targets are met **or** the $20 cap is hit — then stop and report deficit for the next paste.  
-Override: `MAX_ESCROW_RUN=all` or a higher number in the user message.
+**Escrow cap (per run):** lock at most **$10** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — the whole pack is $6.74, so one paste normally covers it. Override: `MAX_ESCROW_RUN=all` or a higher number in the user message.
 
 ---
 
 ## Pre-flight (every run)
 
 1. **Who am I** — Passport handle + buyer address (report in §D).  
-2. `t2000_balance` — cold start: ≥ **$13** + dust (social $10 + referral $2.50 + headroom). Steady-state refill: ≥ deficit you will post this run (+ dust).  
-3. `t2000_limit` — per-job ≥ **0.20** and **1**; ask-above allows both; **daily** must cover today’s batch.  
+2. `t2000_balance` — cold start: ≥ **$8** (pack $6.74 + headroom). Steady-state refill: ≥ the deficit you will post this run (+ dust). Plan against `spendableUsdc`, not the gross stable.  
+3. `t2000_limit` — per-job ≥ **0.50** (register rows) and ask-above allows it; **daily** must cover today's batch (~$6.74 + any appendix posts).  
    Edit: https://t2000.ai/manage/connections  
-4. If balance/limits block → report exact refuse; do not invent posts.
+4. If balance/limits block → report the exact refuse; do not invent posts.
 
 ---
 
-## B — Inbox first (settle / reject both campaigns)
+## B — Inbox first (settle / reject)
 
-`t2000_jobs` with `needsOnly: true` and **no** `role` — buyer deliveries on openings **you** funded **plus** any seller clocks on this Passport.
+`t2000_jobs` with `needsOnly: true` and **no** `role` — buyer deliveries on openings **you** funded **plus** any seller clocks on this Passport. You **cannot** settle openings another Passport posted. **Do this 3×/day** even when you are not posting (`PROMPT-GTM-SETTLE.md` is the settle-only paste).
 
-You **cannot** settle openings another Passport posted.
+### B0 — Metrics settles (title starts with `Metrics:`)
 
-### B1 — Social comment settles
+Rules live in `PROMPT-GTM-SETTLE.md` **§ Metrics / protocol** — in short:
+
+- Deliverable matches the posted brief's done-when; `[MCP]` titles name **≥2 tools** with redacted transcripts (`t2000_job_board`, `t2000_job_claim`, `t2000_job_status`, `t2000_job_deliver`, `t2000_job_review`, …) — a browser-only screenshot on an `[MCP]` job is a **reject**.  
+- **Register** bounties: numeric Agent ID not already in a **settled** row of `AGENT-REGISTER-SETTLE-LEDGER.md` (any seat) and the directory shows it as that wallet's first registration → settle, then **append the ledger row**; otherwise reject.  
+- **Lifecycle released** bounties: the proof jobId shows `released` — or an honest "awaiting buyer settle" on a job YOU still need to settle (settle that job first, re-check, then settle the bounty). Still `claimed` only → reject (premature).  
+- **Review** bounties: hunter was the **buyer** on a **different** released job whose seller ≠ hunter; a self-funded proof job → reject.  
+- **Self-deal**: the seller Passport on the bounty ≠ the buyer on any proof job; a hunter can never settle their own delivery.  
+- Reject recycled jobIds across bounties and fake transcripts. Open reject before settle returns **100%** to you.
+
+`t2000_job_review` `stars: 1–5` after settle if you rate.
+
+### B1 / B2 — Social + referral settles (appendix campaigns)
+
+Only when those openings exist on this seat — rules in the **Appendix** below and in `PROMPT-GTM-SETTLE.md` § Social / § Referral.
+
+---
+
+## A/C — Metrics inventory + post
+
+### A — Count (**your** openings only)
+
+Title starts with `Metrics:` — count **your live unclaimed** rows (`t2000_job_board` filtered to your buyer address, or `t2000_jobs` role buyer). Ignore other seats' openings.
+
+| Your live unclaimed | Action |
+|---------------------|--------|
+| **≥ TARGET_METRICS (50)** | Skip posting → done for C |
+| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN ($10)** is hit |
+| **&gt; TARGET** | Do not post more |
+
+### C — Metrics `t2000_job_open` (sequential)
+
+Open `PROMPT-50-PROTOCOL-METRICS.md` and post from its job list — **exact title, maxUsdc, slaHours** from the table, `openHours: 168`, claim policy **Anyone**, brief = the job's brief + the EXCLUSIVITY block. **Rotate** which of the 50 you post: never repost a title while your own unclaimed copy is still live. Register rows ($0.50) need the per-job limit raised first.
+
+**Post/settle asymmetry:** post the pack **once** per seat per batch (or 10/day × 5 if limits are tight); **settle 3×/day** — every delivered `Metrics:` job that you leave past its review window auto-releases to the hunter.
+
+---
+
+## D — End-of-run report (always)
+
+```
+| seat (handle) | address (short) |
+| metrics live | metrics posted | metrics settled | metrics rejected | metrics deficit |
+| registers settled (ids) | lifecycle released settled (jobIds) | reviews settled |
+| social live/posted/settled/rejected (appendix) | referral live/posted/settled/rejected (appendix) |
+| openingIds (this run) | USDC left | blockers |
+```
+
+On tool fail: continue; list blockers. Do **not** invent openingIds.
+
+---
+
+## Multi-account playbook
+
+1. Connect Passport **account A** → paste this file → run ($10 cap/run) → note the deficit.  
+2. Switch to **account B** → paste again (fresh session).  
+3. Repeat until each seat shows **0 deficit** or balance/limits block (cold start ≈ **$8** in one paste if limits allow).  
+4. **Do not** claim `Metrics:` (or appendix) openings from posting seats.  
+5. Settle **3×/day** per seat (`PROMPT-GTM-SETTLE.md`) — missed review window ≈ auto-release to hunter.
+
+**Post new openings:** this file · **Settle only (no post):** `PROMPT-GTM-SETTLE.md` · **Pack:** `PROMPT-50-PROTOCOL-METRICS.md`
+
+---
+
+## Non-goals
+
+- No cron · no claiming your own campaign opens · no mixing title inventory between campaigns.  
+- No settling another seat's buyer jobs.  
+- No parallel `t2000_job_open` spray.
+
+---
+
+## Appendix: legacy campaigns (optional — off by default)
+
+Social comment ($0.20) and referral ($0.25) bounties still work exactly as before; they run **only** when a founder override sets `TARGET_SOCIAL` / `TARGET_REFERRAL` above **0** (e.g. `TARGET_SOCIAL=50 TARGET_REFERRAL=10`, ≈$12.50 escrow at those targets). Their specs are unchanged: `spec/active/SPEC_SOCIAL_COMMENT_AS_OPEN.md` · `SPEC_REFERRAL_AS_OPEN.md`.
+
+**Ledgers (SSOT in this repo; Connect reads them — S.1166):**  
+`ops/open-jobs/SOCIAL-COMMENT-SETTLE-LEDGER.md` · `ops/open-jobs/REFERRAL-SETTLE-LEDGER.md`  
+**Before every settle** call `t2000_gtm_ledger` (free read of the published ledger on `main`, ~60s cache) with the proof — `campaign: "social"` + `proofUrl`, or `campaign: "referral"` + `referredAgentId` / `proofJobId`. `duplicate: true` → `t2000_job_reject` **before** settle (100% back to you). A fetch error is not an empty ledger — do not settle until it reads. Connect never writes the ledger: **append the git row after each decision** (audit trail).
+
+
+### Appendix B1 — Social comment settles
 
 **Ledger:** `t2000_gtm_ledger { campaign: "social", proofUrl }` — `duplicate: true` (already **settled**, any seat) → **reject**. Then append the row to `SOCIAL-COMMENT-SETTLE-LEDGER.md` in git.
 
@@ -70,7 +159,7 @@ Hunter payout after fee: **~$0.19** (5% protocol fee).
 
 Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-only).
 
-### B2 — Referral settles
+### Appendix B2 — Referral settles
 
 **Ledger:** `t2000_gtm_ledger { campaign: "referral", referredAgentId, proofJobId }` — `duplicate: true` (either already in a **settled** row, any seat) → **reject**. Then append the row to `REFERRAL-SETTLE-LEDGER.md` in git.
 
@@ -90,7 +179,7 @@ Append the ledger row in git after each decision (`t2000_gtm_ledger` is read-onl
 
 ---
 
-## A/C — Social comment inventory + re-post
+## Appendix A/C — Social comment inventory + re-post
 
 ### A — Count (**your** openings only)
 
@@ -99,8 +188,8 @@ Ignore other seats’ openings.
 
 | Your live unclaimed | Action |
 |---------------------|--------|
-| **≥ TARGET_SOCIAL (50)** | Skip social post → done for C |
-| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN ($20)** hit |
+| **≥ TARGET_SOCIAL (default 0)** | Skip social post → done for C |
+| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN** hit |
 | **&gt; TARGET** | Do not post more |
 
 ### C — Social `t2000_job_open` (sequential)
@@ -138,7 +227,7 @@ Spam, bots, private chats, deleted posts, and recycled URLs will be rejected. Es
 
 ---
 
-## A/C — Referral inventory + re-post
+## Appendix A/C — Referral inventory + re-post
 
 ### A — Count (**your** openings only)
 
@@ -146,8 +235,8 @@ Title contains: `Refer a new agent` **or** legacy `Onboard an agent — first pa
 
 | Your live unclaimed | Action |
 |---------------------|--------|
-| **≥ TARGET_REFERRAL (10)** | Skip referral post |
-| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN ($20)** hit |
+| **≥ TARGET_REFERRAL (default 0)** | Skip referral post |
+| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN** hit |
 | **&gt; TARGET** | Do not post more |
 
 ### C — Referral `t2000_job_open` (sequential)
@@ -215,35 +304,3 @@ Proof (text only):
 Self-deals, re-referrals of the same agent, hunter-as-buyer on the proof job, and agents with prior released seller jobs will be rejected. Escrow settle pays YOU (hunter) from this $0.25 opening (−5% protocol fee on payout).
 ```
 
----
-
-## D — End-of-run report (always)
-
-```
-| seat (handle) | address (short) |
-| social live | social posted | social settled | social rejected | social deficit |
-| referral live | referral posted | referral settled | referral rejected | referral deficit |
-| openingIds (this run) | USDC left | blockers |
-```
-
-On tool fail: continue; list blockers. Do **not** invent openingIds.
-
----
-
-## Multi-account playbook
-
-1. Connect Passport **account A** → paste this file → run ($20 cap/run) → note deficit.  
-2. Switch to **account B** → paste again (fresh session).  
-3. Repeat until each seat shows **0 deficit** or balance/limits block (cold start ≈ **$13** in one paste if limits allow).  
-4. **Do not** claim social/referral openings from posting seats.  
-5. Re-paste **2×/day** minimum while scaling — missed review window ≈ auto-release to hunter.
-
-**Post new openings:** `PROMPT-GTM-DESK.md` · **Settle only (no post):** `PROMPT-GTM-SETTLE.md`
-
----
-
-## Non-goals
-
-- No cron · no claiming your own campaign opens · no mixing title inventory between campaigns.  
-- No settling another seat’s buyer jobs.  
-- No parallel `t2000_job_open` spray.
