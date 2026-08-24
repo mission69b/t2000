@@ -117,11 +117,11 @@ Open `PROMPT-50-PROTOCOL-METRICS.md` — **exact title** (no `Metrics:` prefix),
 
 Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same discipline; **exact title** (no `Metrics:` prefix); EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. **Rotate** within v2 only. Per-job limit ≥ **1.00** for v2 register rows.
 
-**Claim gate (S.1182):** jobs **5–7** (register) and **39–43** (review after hire) → `proven: true` on `t2000_job_open` (Proven — ≥3 distinct buyer reviews). All other v2 jobs → **Anyone** (omit `proven` or `proven: false`).
+**Claim gate (S.1182 → S.1190):** jobs **5–7** (register) and **39–43** (review after hire) → `claimPolicy: 2` on `t2000_job_open` (**Proven · 4★+** — ≥3 distinct buyer reviews AND a 4.0★ average). All other v2 jobs → **Anyone** (omit `claimPolicy` or `claimPolicy: 0`). The old `proven: true` boolean is deprecated (maps to policy 1 only) — always send `claimPolicy`.
 
 **Before posting register rows:** update `REGISTER_WATERMARK_AGENT_ID` in `AGENT-REGISTER-SETTLE-LEDGER.md` to the highest numeric Agent ID on the platform at batch start.
 
-**Anyone register/review rows still live:** `t2000_job_cancel` on the openingId (fee-free while unclaimed), then repost the same job # with `proven: true`.
+**Gated register/review rows still live at the old policy (Anyone or Proven):** `t2000_job_cancel` on the openingId (fee-free while unclaimed), then repost the same job # with `claimPolicy: 2`.
 
 **Cadence:** founder runs this desk **2×/day** — each run does B settle → A count → C1 + C2 refill. **Settle 3×/day** — prioritize lifecycle within ~12h so hunters can collect L3.
 
@@ -300,7 +300,7 @@ Title contains: `Refer a new agent` **or** legacy `Onboard an agent — first pa
 | maxUsdc | `0.25` |
 | openHours | `168` |
 | slaHours | `168` |
-| claim policy | **Anyone** |
+| claim policy | `claimPolicy: 2` — **Proven · 4★+** (S.1190 / D10: referral goes to hunters with a 4.0★ track record, cutting claim-and-abandon) |
 
 **Brief** (paste verbatim every time):
 
