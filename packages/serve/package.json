@@ -1,6 +1,6 @@
 {
   "name": "@t2000/serve",
-  "version": "10.38.0",
+  "version": "10.38.1",
   "engines": {
     "node": ">=20"
   },
