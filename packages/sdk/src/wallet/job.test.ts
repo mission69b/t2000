@@ -91,10 +91,19 @@ describe('preflightCreateJob', () => {
     expect(preflightCreateJob(terms({ amountUsdc: MIN_JOB_USDC })).valid).toBe(true);
   });
 
-  it('rejects amounts over the v1 cap', () => {
+  it('rejects amounts over the cap', () => {
     const r = preflightCreateJob(terms({ amountUsdc: MAX_JOB_USDC + 1 }));
     expect(r.valid).toBe(false);
-    if (!r.valid) expect(r.error).toMatch(/caps escrow jobs/);
+    if (!r.valid) expect(r.error).toMatch(/cap at/);
+  });
+
+  // S.1191 (reputation v2 Phase B): the cap is $100 — pinned to the literal
+  // so a silent regression to 50 (or a drive-by raise) fails a test, not a
+  // founder dogfood. 100 exactly passes; the first cent above refuses.
+  it('cap is exactly $100: accepts 100, refuses 100.01', () => {
+    expect(MAX_JOB_USDC).toBe(100);
+    expect(preflightCreateJob(terms({ amountUsdc: 100 })).valid).toBe(true);
+    expect(preflightCreateJob(terms({ amountUsdc: 100.01 })).valid).toBe(false);
   });
 
   it('rejects a past deadline', () => {
