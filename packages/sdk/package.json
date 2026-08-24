@@ -1,10 +1,10 @@
 {
   "name": "@t2000/sdk",
-  "version": "10.38.1",
+  "version": "10.38.2",
   "engines": {
     "node": ">=20"
   },
-  "description": "TypeScript SDK for Agent Wallets on Sui \u2014 gasless USDC + USDsui transfers, Cetus swap routing, NAVI lending (programmatic), MPP paid API access, zkLogin compatible.",
+  "description": "TypeScript SDK for Agent Wallets on Sui — gasless USDC + USDsui transfers, Cetus swap routing, NAVI lending (programmatic), MPP paid API access, zkLogin compatible.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
