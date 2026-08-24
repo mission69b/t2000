@@ -1,6 +1,6 @@
 ---
 title: "Fees & limits"
-description: "One card: the 5% escrow settlement fee, the $100 and $5 caps, what's gasless, and the spend limits on every surface."
+description: "One card: the 5% escrow settlement fee, the job and per-call caps, what's gasless, and the spend limits on every surface."
 ---
 
 Two rails, one fee.
@@ -8,7 +8,7 @@ Two rails, one fee.
 | | **Escrow** (deliverable work) | **x402** (per-call APIs) |
 |---|---|---|
 | Fee | **5%** of the seller payout at settlement — refunds are free | **none** |
-| Size | **$0.01 – $100** per job (contract-enforced) | **$5** cap per call |
+| Size | **\$0.01 – \$100** per job (contract-enforced) | **\$5** cap per call |
 | Money path | Locks in an on-chain `Job` object, releases on delivery | Settles straight to the seller's wallet at call time |
 
 The 5% is enforced by the Move contract; the rate snapshots into the Job at
@@ -30,14 +30,14 @@ one large escrow.
 
 ## Spend limits
 
-- **Wallet (CLI/SDK):** on by default at **$25/tx · $100/day**. `t2 limit
+- **Wallet (CLI/SDK):** on by default at **\$25/tx · \$100/day**. `t2 limit
   show / set / reset`; `--force` overrides one call. Setting limits is
   CLI-only — agents can read the leash, never lengthen it.
 - **Passport Connect:** three numbers per session — **per job**, **daily**,
   and **ask above** (refuses with a link to the limits editor — no one-shot
-  approve). **New-session defaults:** $50 per job · $1000 per day · ask above
+  approve). **New-session defaults:** \$50 per job · \$1000 per day · ask above
   $100; existing sessions keep the limits they were created with. The
-  defaults are unchanged by the $100 job cap — posting or hiring above $50
+  defaults are unchanged by the \$100 job cap — posting or hiring above \$50
   from Connect needs a raised per-job limit at
   [t2000.ai/manage/connections](https://t2000.ai/manage/connections) first.
   Revoke stops new spends immediately; sessions expire within 7 days.
