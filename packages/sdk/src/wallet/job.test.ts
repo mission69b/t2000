@@ -172,23 +172,24 @@ const SCORE_ID = `0x${'e'.repeat(64)}`;
 const REGISTRY_ID = `0x${'f'.repeat(64)}`;
 
 describe('single-object verb builders', () => {
-  it.each([
-    ['deliver', () => buildDeliverJobTx(JOB_ID, '0xabcd')],
-    ['release', () => buildReleaseJobTx(JOB_ID)],
-  ])('%s targets the escrow module', (fn, build) => {
-    const tx = build();
-    const calls = tx
-      .getData()
-      .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Array<{
-      MoveCall: { module: string; function: string };
-    }>;
-    expect(calls).toHaveLength(1);
-    expect(calls[0].MoveCall.module).toBe('escrow');
-    expect(calls[0].MoveCall.function).toBe(fn);
-  });
+  it.each([['deliver', () => buildDeliverJobTx(JOB_ID, '0xabcd')]])(
+    '%s targets the escrow module',
+    (fn, build) => {
+      const tx = build();
+      const calls = tx
+        .getData()
+        .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Array<{
+        MoveCall: { module: string; function: string };
+      }>;
+      expect(calls).toHaveLength(1);
+      expect(calls[0].MoveCall.module).toBe('escrow');
+      expect(calls[0].MoveCall.function).toBe(fn);
+    },
+  );
 
   // S.1063: reject/refund settle through the reputation module (outcome
-  // counters) — never the deprecated escrow doors.
+  // counters); S.1192 adds release_v2 (the active counter rides the
+  // money) — never the deprecated escrow doors.
   it.each([
     [
       'reject_v2',
@@ -204,7 +205,8 @@ describe('single-object verb builders', () => {
         }),
     ],
     ['refund_v2', () => buildRefundJobTx(JOB_ID, { sellerScoreId: SCORE_ID })],
-  ])('%s targets the reputation module (S.1063)', (fn, build) => {
+    ['release_v2', () => buildReleaseJobTx(JOB_ID, { sellerScoreId: SCORE_ID })],
+  ])('%s targets the reputation module (S.1063/S.1192)', (fn, build) => {
     const tx = build();
     const calls = tx
       .getData()

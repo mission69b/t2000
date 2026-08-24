@@ -33,6 +33,8 @@ import {
   listOpenJobs,
   meetsClaimPolicy,
   postOpenJob,
+  preflightClaimOpening,
+  sellerLevelLabel,
   MAX_JOB_USDC,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
   OPENING_CLAIM_POLICY_PROVEN,
@@ -100,6 +102,18 @@ export function resolveClaimPolicyFlags(opts: {
     : OPENING_CLAIM_POLICY_ANY_ACTIVE;
 }
 
+/** S.1192 — `--min-seller-level 1|2|3|4` (absent = 0, no floor). Strict
+ *  digit match, same guard class as the claim-policy flag. */
+export function resolveMinSellerLevelFlag(raw?: string): number {
+  if (raw === undefined) {
+    return 0;
+  }
+  if (!/^[1-4]$/.test(raw.trim())) {
+    throw new Error('--min-seller-level must be 1, 2, 3 or 4 (omit for no floor).');
+  }
+  return Number(raw.trim());
+}
+
 function statusColor(status: OpenJobRow['status']): string {
   if (status === 'open') return pc.green(status);
   if (status === 'claimed') return pc.cyan(status);
@@ -140,6 +154,10 @@ export function registerOpenVerbs(group: Command) {
       `Who may claim: 0 Anyone (default) · 1 Proven (≥${PROVEN_MIN_REVIEWS} distinct buyers' reviews) · 2 Proven · 4★+ (adds a 4.0★ average); claiming stays instant and $0 under every policy`,
     )
     .option('--proven', 'DEPRECATED — same as --claim-policy 1')
+    .option(
+      '--min-seller-level <level>',
+      'Minimum seller Level to claim: 1–4 (default none) — Level 2 = Proven, 3 = 4.0★+ average, 4 = 20+ reviews; independent of --claim-policy (S.1192)',
+    )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -151,6 +169,7 @@ export function registerOpenVerbs(group: Command) {
         openFor: string;
         claimPolicy?: string;
         proven?: boolean;
+        minSellerLevel?: string;
         key?: string;
         api?: string;
       }) => {
@@ -162,6 +181,7 @@ export function registerOpenVerbs(group: Command) {
           }
           const brief = await resolveBrief(opts.brief);
           const claimPolicy = resolveClaimPolicyFlags(opts);
+          const minSellerLevel = resolveMinSellerLevelFlag(opts.minSellerLevel);
           // The budget escrows ON-CHAIN at post — a real outflow from the
           // buyer's wallet, so it belongs under the same cap as a hire.
           // (Claiming is free and is never recorded as spend.)
@@ -174,6 +194,7 @@ export function registerOpenVerbs(group: Command) {
             slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
             openHours: parseDuration(opts.openFor) / 3_600_000,
             claimPolicy,
+            ...(minSellerLevel > 0 ? { minSellerLevel } : {}),
           });
           recordSpendIfLanded(maxUsdc, digest);
           const openingId = await resolveCreated(digest, '::opening::Opening<');
@@ -188,6 +209,11 @@ export function registerOpenVerbs(group: Command) {
           if (claimPolicy !== OPENING_CLAIM_POLICY_ANY_ACTIVE) {
             printInfo(
               `${claimPolicyLabel(claimPolicy)} gate on: ${claimPolicyRequirement(claimPolicy)}`,
+            );
+          }
+          if (minSellerLevel > 0) {
+            printInfo(
+              `${sellerLevelLabel(minSellerLevel)}+ floor on: only sellers at that effective Level can claim.`,
             );
           }
           printBlank();
@@ -301,15 +327,20 @@ export function registerOpenVerbs(group: Command) {
         // missing opening or unconfigured board falls through to the
         // server's own checks.
         const live = await getOpening(getSuiClient(), id.trim()).catch(() => null);
-        if (live && live.claimPolicy !== 0 && A2A_SCORE_BOARD_ID) {
+        if (live && A2A_SCORE_BOARD_ID) {
+          // S.1192: one preflight covers all three gates — claim policy,
+          // the active-job cap on the claimer's effective Level, and the
+          // opening's Level floor. Best-effort: a read hiccup falls
+          // through to the server's own checks.
           const score = await getAgentScore(getSuiClient(), agent.address()).catch(() => null);
-          if (!meetsClaimPolicy(score, live.claimPolicy)) {
+          const pf = preflightClaimOpening(score, live);
+          if (!pf.valid) {
             const have = score
-              ? `${score.reviewCount} review${score.reviewCount === 1 ? '' : 's'} from ${score.distinctBuyers} distinct buyer${score.distinctBuyers === 1 ? '' : 's'}, ${score.averageStars}★ avg`
+              ? `${score.reviewCount} review${score.reviewCount === 1 ? '' : 's'} from ${score.distinctBuyers} distinct buyer${score.distinctBuyers === 1 ? '' : 's'}, ${score.averageStars}★ avg, ${score.activeSellerJobs} active claimed job${score.activeSellerJobs === 1 ? '' : 's'}`
               : 'no on-chain reviews yet';
             throw new Error(
-              `${claimPolicyRequirement(live.claimPolicy)} Your wallet has ${have}. ` +
-                'Earn reviews on Anyone openings first: t2 job board',
+              `${pf.error} Your wallet has ${have}. ` +
+                'Find claimable work: t2 job board',
             );
           }
         }

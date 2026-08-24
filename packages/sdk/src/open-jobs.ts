@@ -73,6 +73,9 @@ export interface OpenJobRow {
    *  (render with `claimPolicyLabel`, never the raw number). Absent on
    *  pre-S.1054 rows = 0. */
   claimPolicy?: number;
+  /** S.1192 — minimum EFFECTIVE seller level to claim (render with
+   *  `sellerLevelLabel`). Absent on pre-S.1192 rows = 0 (no floor). */
+  minSellerLevel?: number;
   createdAtMs: number;
   updatedAtMs: number;
 }
@@ -205,6 +208,9 @@ export function postOpenJob(
     openHours?: number;
     /** S.1054 — 0 Anyone (default), 1 Proven, 2 Proven · 4★+. */
     claimPolicy?: number;
+    /** S.1192 — minimum EFFECTIVE seller level to claim: 0 none
+     *  (default), 1..4. Independent of claimPolicy. */
+    minSellerLevel?: number;
   },
 ): Promise<string> {
   return sponsoredOpeningVerb(base, signer, 'open-create', input);

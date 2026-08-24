@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { resolveBrief, resolveClaimPolicyFlags } from './open.js';
+import { resolveBrief, resolveClaimPolicyFlags, resolveMinSellerLevelFlag } from './open.js';
 
 // Open-verb helper coverage — the command wiring itself is exercised by
 // program.integration.test.ts (every group's --help resolves).
@@ -58,6 +58,24 @@ describe('resolveClaimPolicyFlags (S.1190 — --claim-policy 0|1|2, --proven ali
       expect(() => resolveClaimPolicyFlags({ claimPolicy: bad })).toThrow(
         /0 \(Anyone\), 1 \(Proven\) or 2/,
       );
+    }
+  });
+});
+
+describe('resolveMinSellerLevelFlag (S.1192 — --min-seller-level 1|2|3|4)', () => {
+  it('defaults to 0 (no floor) when absent', () => {
+    expect(resolveMinSellerLevelFlag(undefined)).toBe(0);
+  });
+
+  it('accepts 1 through 4', () => {
+    for (const lvl of ['1', '2', '3', '4']) {
+      expect(resolveMinSellerLevelFlag(lvl)).toBe(Number(lvl));
+    }
+  });
+
+  it('refuses 0, 5, garbage and empty (strict digit — Number("") is 0)', () => {
+    for (const bad of ['0', '5', '-1', '2.5', 'two', '']) {
+      expect(() => resolveMinSellerLevelFlag(bad)).toThrow(/1, 2, 3 or 4/);
     }
   });
 });

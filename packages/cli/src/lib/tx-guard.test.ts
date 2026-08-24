@@ -184,7 +184,7 @@ describe('B — intent assert', () => {
     // opening never existed in the original package — a tx claiming it does
     // is not ours.
     const b64 = await buildTxB64(
-      `${MAINNET_A2A_ESCROW_PACKAGE_ID}::opening::claim`,
+      `${MAINNET_A2A_ESCROW_PACKAGE_ID}::opening::claim_v2`,
     );
     expect(() => assertTxMatchesIntent(b64, { action: 'open-claim' })).toThrow(
       /targets package/,
@@ -193,7 +193,7 @@ describe('B — intent assert', () => {
 
   it('accepts the open-board verbs against the opening package', async () => {
     const b64 = await buildTxB64(
-      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim`,
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_v2`,
     );
     expect(() =>
       assertTxMatchesIntent(b64, { action: 'open-claim' }),
@@ -222,7 +222,13 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
   const REAL_TARGETS: [string, string][] = [
     ['create', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::create`],
     ['deliver', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::deliver`],
-    ['release', `${MAINNET_A2A_ESCROW_PACKAGE_ID}::escrow::release`],
+    // S.1192: release settles through reputation::release_v2 (active
+    // counter rides the money); create_empty_score is its precursor too.
+    ['release', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::release_v2`],
+    [
+      'release',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
+    ],
     // S.1063: reject/refund settle through reputation (outcome counters);
     // create_empty_score is the allowlisted precursor on both actions.
     ['reject', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::reject_v2`],
@@ -244,15 +250,20 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
     ['decline', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::decline`],
     [
       'open-create',
-      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open`,
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open_v2`,
     ],
-    ['open-claim', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim`],
-    // S.1054: Proven openings claim via claim_proven; buyer review stars
-    // land on-chain via the reputation module (both entries — the first
-    // review a seller ever gets lazily creates their AgentScore).
+    ['open-claim', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_v2`],
+    // S.1192: Proven openings claim via claim_proven_v2; the scoreless
+    // claimer's precursor rides the same action cross-module. Buyer review
+    // stars land on-chain via the reputation module (both entries — the
+    // first review a seller ever gets lazily creates their AgentScore).
     [
       'open-claim',
-      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_proven`,
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_proven_v2`,
+    ],
+    [
+      'open-claim',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
     ],
     [
       'job-review',
@@ -365,7 +376,7 @@ describe('B — framework coin prelude around a funded create (S.980)', () => {
     const b64 = await buildMultiTxB64((tx) => {
       tx.moveCall({ target: '0x2::coin::redeem_funds', arguments: [] });
       tx.moveCall({
-        target: `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open`,
+        target: `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open_v2`,
         arguments: [],
       });
     });

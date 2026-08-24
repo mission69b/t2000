@@ -166,6 +166,7 @@ export {
   A2A_ESCROW_PACKAGE_V6_ID,
   A2A_ESCROW_PACKAGE_V7_ID,
   A2A_ESCROW_PACKAGE_V8_ID,
+  A2A_ESCROW_PACKAGE_V10_ID,
   MAX_OPEN_WINDOW_MS,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
   OPENING_CLAIM_POLICY_PROVEN,
@@ -194,8 +195,18 @@ export {
   deriveAgentScoreId,
   getAgentScore,
   meetsClaimPolicy,
+  SELLER_LEVEL_ACTIVE_CAPS,
+  NO_DELIVERY_REGRESSION_FLOOR,
+  LEVEL4_MIN_REVIEWS,
+  LEVEL4_MAX_NO_DELIVERY,
+  sellerLevel,
+  effectiveSellerLevel,
+  activeCapForLevel,
+  meetsMinSellerLevel,
+  sellerLevelLabel,
+  preflightClaimOpening,
 } from './wallet/reputation.js';
-export type { AgentScore } from './wallet/reputation.js';
+export type { AgentScore, SellerLevel } from './wallet/reputation.js';
 export {
   assertBuyerRequirements,
   DEFAULT_COMMERCE_API_BASE,

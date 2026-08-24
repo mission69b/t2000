@@ -53,14 +53,18 @@ use sui::dynamic_field as df;
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
-/// v5 (S.1063): reject/refund settle THROUGH `reputation::reject_v2` /
-/// `refund_v2` so protocol outcomes hit the seller's (and an Agent-ID
-/// buyer's) score — the frozen-signature `reject`/`refund` entries below
-/// are deprecated aborts, and the version cutover kills the v7 bytecode
-/// that would still settle without counters. v4 (S.1062): Proven =
-/// distinct buyers. v3 (S.1019): open reject 100% buyer. v2 (S.981):
-/// amount bounds.
-const VERSION: u64 = 5;
+/// v6 (S.1192): seller levels + active caps — claims and release settle
+/// through `opening::claim_v2`/`claim_proven_v2` and
+/// `reputation::release_v2` (all take the seller's `&mut AgentScore` so
+/// the in-flight counter moves with the money); the frozen-signature
+/// `claim`/`claim_proven`/`create_open`/`release` entries are deprecated
+/// aborts, and the version cutover kills the v9 bytecode that would still
+/// claim/release without the capacity gates. v5 (S.1063): reject/refund
+/// settle THROUGH `reputation::reject_v2` / `refund_v2` so protocol
+/// outcomes hit the seller's (and an Agent-ID buyer's) score. v4
+/// (S.1062): Proven = distinct buyers. v3 (S.1019): open reject 100%
+/// buyer. v2 (S.981): amount bounds.
+const VERSION: u64 = 6;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
@@ -96,6 +100,21 @@ const MIN_JOB_AMOUNT_FLOOR: u64 = 10_000;
 /// Hard rail: the admin can never set the max above 100 USDC.
 const MAX_JOB_AMOUNT_CEILING: u64 = 100_000_000;
 
+// === Seller-level active caps (S.1192) — defaults when the DF is unset ===
+// How many in-flight CLAIMED jobs (funded + delivered) a seller may hold,
+// by `reputation::seller_level` 1..4. AdminCap-tunable per level via
+// `TierActiveCapKey` DFs on `FeeConfig.id` — same house as the amount
+// bounds above. Hire jobs never count (the buyer picked that seller
+// deliberately; the cap exists to stop FCFS claim-hoarding).
+const TIER1_ACTIVE_CAP_DEFAULT: u64 = 4;
+const TIER2_ACTIVE_CAP_DEFAULT: u64 = 10;
+const TIER3_ACTIVE_CAP_DEFAULT: u64 = 20;
+const TIER4_ACTIVE_CAP_DEFAULT: u64 = 30;
+/// `no_delivery >= floor` regresses a seller's EFFECTIVE level to 1
+/// (`reputation::effective_seller_level`). AdminCap-tunable via
+/// `NoDeliveryRegressionFloorKey`.
+const NO_DELIVERY_REGRESSION_FLOOR_DEFAULT: u64 = 3;
+
 // === Errors ===
 const ENotAuthorized: u64 = 0;
 const EWrongState: u64 = 1;
@@ -122,6 +141,13 @@ const EScoreBoardExists: u64 = 18;
 /// abort with THIS code — a dedicated abort so ops can tell "deprecated
 /// surface" from a real auth failure (the S.1032 registry pattern).
 const EUseSettleV2: u64 = 19;
+/// S.1192: `release` moved to `reputation::release_v2` (the active-job
+/// counter rides settlement). Dedicated code, same S.1032/S.1063 pattern.
+const EUseReleaseV2: u64 = 20;
+/// S.1192: tier args out of range — level must be 1..4, a cap must be > 0
+/// (cap 0 would freeze a level entirely), the regression floor > 0 (floor
+/// 0 would regress everyone forever).
+const EBadTierBounds: u64 = 21;
 
 // === Objects ===
 
@@ -148,6 +174,21 @@ public struct FeeConfig has key {
 /// changes on the live shared object.
 public struct MinJobAmountKey has copy, drop, store {}
 public struct MaxJobAmountKey has copy, drop, store {}
+/// S.1192 — per-level active-cap override on `FeeConfig.id` (value `u64`).
+/// Missing ⇒ the `TIER*_ACTIVE_CAP_DEFAULT` package constant for that level.
+public struct TierActiveCapKey has copy, drop, store { level: u8 }
+/// S.1192 — regression-floor override on `FeeConfig.id` (value `u64`).
+/// Missing ⇒ `NO_DELIVERY_REGRESSION_FLOOR_DEFAULT`.
+public struct NoDeliveryRegressionFloorKey has copy, drop, store {}
+/// S.1192 — marker DF on `Job.id`, set by `create_claimed` only: this Job
+/// entered through the open board, so it counted +1 into the seller's
+/// `active_seller_jobs` and must count −1 at terminal settle
+/// (release/reject/refund). Hire jobs never carry it — they never
+/// incremented, and an unconditional decrement would let a colluding
+/// buyer reset a hunter's counter with a dust hire + instant release.
+/// Pre-S.1192 claimed jobs also lack it, which IS the soft start: they
+/// never incremented, so their settles must not decrement.
+public struct ClaimedJobKey has copy, drop, store {}
 /// DF key for the canonical `reputation::ScoreBoard` id on `FeeConfig.id`
 /// (S.1054b). Value is the board `ID`. Its EXISTENCE is the single-instance
 /// lock: `reputation::create_score_board` records it and aborts if it is
@@ -272,6 +313,39 @@ public fun config_max_job_amount(cfg: &FeeConfig): u64 {
     }
 }
 
+/// Live active-job cap for a seller level (1..4): the per-level DF when
+/// set, else the package default. S.1192 — read at claim by
+/// `reputation::active_cap_for_level`.
+public fun config_tier_active_cap(cfg: &FeeConfig, level: u8): u64 {
+    assert!(level >= 1 && level <= 4, EBadTierBounds);
+    if (df::exists(&cfg.id, TierActiveCapKey { level })) {
+        *df::borrow(&cfg.id, TierActiveCapKey { level })
+    } else if (level == 1) {
+        TIER1_ACTIVE_CAP_DEFAULT
+    } else if (level == 2) {
+        TIER2_ACTIVE_CAP_DEFAULT
+    } else if (level == 3) {
+        TIER3_ACTIVE_CAP_DEFAULT
+    } else {
+        TIER4_ACTIVE_CAP_DEFAULT
+    }
+}
+
+/// Live no-delivery regression floor: the DF when set, else the default.
+public fun config_no_delivery_regression_floor(cfg: &FeeConfig): u64 {
+    if (df::exists(&cfg.id, NoDeliveryRegressionFloorKey {})) {
+        *df::borrow(&cfg.id, NoDeliveryRegressionFloorKey {})
+    } else {
+        NO_DELIVERY_REGRESSION_FLOOR_DEFAULT
+    }
+}
+
+/// Whether this Job was minted from a claimed Opening (S.1192) — the
+/// active-counter settle paths decrement ONLY these.
+public fun is_claimed_job<T>(job: &Job<T>): bool {
+    df::exists(&job.id, ClaimedJobKey {})
+}
+
 /// Bounds gate for money ENTERING escrow — `create` and (via the package
 /// accessor) `opening::create_open` only. Settlement verbs and
 /// `create_claimed` never re-check: an Opening fixed its amount at post,
@@ -379,7 +453,7 @@ public(package) fun create_claimed<T>(
     assert!(deliver_by_ms <= now + MAX_DELIVER_HORIZON_MS, EDeadlineTooFar);
     assert!(review_window_ms <= MAX_REVIEW_WINDOW_MS, EReviewWindowTooLong);
     assert!(reject_split_bps <= BPS_DENOMINATOR, EBadSplit);
-    let job = Job<T> {
+    let mut job = Job<T> {
         id: object::new(ctx),
         buyer,
         seller,
@@ -395,6 +469,9 @@ public(package) fun create_claimed<T>(
         delivered_at_ms: 0,
         created_at_ms: now,
     };
+    // S.1192: brand the Job as board-claimed so terminal settles know to
+    // decrement the seller's active counter (hire jobs stay unbranded).
+    df::add(&mut job.id, ClaimedJobKey {}, true);
     let job_id = job.id.to_inner();
     event::emit(JobCreated {
         job_id,
@@ -463,14 +540,33 @@ public fun deliver<T>(
 }
 
 // === Release (funds → seller, minus the protocol fee) ===
-/// Three legitimate callers:
+/// DEPRECATED (S.1192) — always aborts `EUseReleaseV2`. The live path is
+/// `reputation::release_v2`, which settles via `release_settle_pkg` below
+/// AND decrements the seller's active-job counter on board-claimed jobs.
+/// Signature survives (Sui compatible upgrades cannot remove public
+/// functions); the body is dead.
+public fun release<T>(
+    _job: &mut Job<T>,
+    cfg: &FeeConfig,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
+) {
+    assert_version(cfg);
+    abort EUseReleaseV2
+}
+
+/// The release settlement body (S.1192: package-visible so
+/// `reputation::release_v2` — the only live caller — settles the money
+/// HERE; coin/fee math never leaves this module). Three legitimate
+/// callers, unchanged from v1 `release`:
 /// 1. The buyer accepting a DELIVERED job.
 /// 2. The buyer voluntarily paying a FUNDED job (goodwill / late-accept after
 ///    an off-band delivery) — it's the buyer's own money moving to the agreed
 ///    seller, always safe.
 /// 3. ANYONE, once a DELIVERED job's review window has lapsed — the
 ///    permissionless crank that stops a ghosting buyer stranding the seller.
-public fun release<T>(
+/// Emits `JobReleased` exactly as v1 did — defining id unchanged.
+public(package) fun release_settle_pkg<T>(
     job: &mut Job<T>,
     cfg: &FeeConfig,
     clock: &Clock,
@@ -682,6 +778,32 @@ public fun set_max_job_amount(_: &AdminCap, cfg: &mut FeeConfig, max_amount: u64
         *df::borrow_mut(&mut cfg.id, MaxJobAmountKey {}) = max_amount;
     } else {
         df::add(&mut cfg.id, MaxJobAmountKey {}, max_amount);
+    }
+}
+
+/// S.1192 — set (add or update) one level's live active cap. Level 1..4,
+/// cap > 0 (a 0 cap would freeze the level entirely — deactivate agents
+/// via the registry, not via capacity).
+public fun set_tier_active_cap(_: &AdminCap, cfg: &mut FeeConfig, level: u8, cap: u64) {
+    assert_version(cfg);
+    assert!(level >= 1 && level <= 4, EBadTierBounds);
+    assert!(cap > 0, EBadTierBounds);
+    if (df::exists(&cfg.id, TierActiveCapKey { level })) {
+        *df::borrow_mut(&mut cfg.id, TierActiveCapKey { level }) = cap;
+    } else {
+        df::add(&mut cfg.id, TierActiveCapKey { level }, cap);
+    }
+}
+
+/// S.1192 — set (add or update) the live no-delivery regression floor.
+/// Must be > 0 (a 0 floor would regress every seller forever).
+public fun set_no_delivery_regression_floor(_: &AdminCap, cfg: &mut FeeConfig, n: u64) {
+    assert_version(cfg);
+    assert!(n > 0, EBadTierBounds);
+    if (df::exists(&cfg.id, NoDeliveryRegressionFloorKey {})) {
+        *df::borrow_mut(&mut cfg.id, NoDeliveryRegressionFloorKey {}) = n;
+    } else {
+        df::add(&mut cfg.id, NoDeliveryRegressionFloorKey {}, n);
     }
 }
 

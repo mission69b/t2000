@@ -47,6 +47,7 @@ use agent_id::registry::{Self, Registry};
 use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::{Self, Coin};
+use sui::dynamic_field as df;
 use sui::event;
 
 /// Default claim policy: any ACTIVE registered Agent ID ($0 claim, FCFS).
@@ -83,12 +84,33 @@ const EScoreNotClaimer: u64 = 13;
 /// S.1054: the claimer's on-chain score doesn't meet the Opening's
 /// Proven bar (clients preflight this in English first).
 const EClaimPolicyUnmet: u64 = 14;
+/// S.1192: the claimer is at their level's active-job cap — finish or
+/// settle an in-flight claimed job first (clients preflight in English).
+const EActiveJobCap: u64 = 15;
+/// S.1192: the claimer's effective seller level is below the Opening's
+/// `min_seller_level` floor.
+const EMinSellerLevelUnmet: u64 = 16;
+/// S.1192: `create_open`/`claim`/`claim_proven` moved to their `_v2`
+/// entries (the active-cap + level gates ride the claim; posts carry
+/// `min_seller_level`). Dedicated code, same S.1032/S.1063 pattern —
+/// shared by all three dead stubs, documented in RUNBOOK_S1192.
+const EUseClaimV2: u64 = 17;
+/// S.1192: `min_seller_level` must be 0 (no floor) or 1..4.
+const EBadMinSellerLevel: u64 = 18;
 
 // === Objects ===
 
 /// One open job posting. Shared so any seller can race to claim; the escrow
 /// balance lives inside the object from the moment of posting. Existence is
 /// the state: claim / cancel / refund all consume it.
+/// S.1192 — optional seller-level floor on `Opening.id` (value `u8`,
+/// 1..4). A DF, NEVER a struct field: live openings can't grow layout
+/// under a compatible upgrade, and missing ⇒ 0 (no floor) makes every
+/// pre-S.1192 opening claimable unchanged. Written by `create_open_v2`
+/// at post (when > 0), removed at claim/cancel/refund before the UID
+/// deletes (storage rebate).
+public struct MinSellerLevelKey has copy, drop, store {}
+
 public struct Opening<phantom T> has key {
     id: UID,
     buyer: address,
@@ -125,6 +147,26 @@ public struct OpeningCreated has copy, drop {
     claim_policy: u8,
     timestamp_ms: u64,
 }
+/// S.1192 sibling of `OpeningCreated` (same fields + `min_seller_level`,
+/// emitted together on every v2 post) — a NEW struct because the v1
+/// event's layout is frozen under compatible upgrade. Defining id = the
+/// S.1192 upgrade package (V10 pin); indexers pin that id and prefer
+/// this event.
+public struct OpeningCreatedV2 has copy, drop {
+    opening_id: ID,
+    buyer: address,
+    amount: u64,
+    fee_bps: u64,
+    spec_hash: vector<u8>,
+    open_until_ms: u64,
+    sla_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    claim_policy: u8,
+    /// 0 = no floor · 1..4 = minimum EFFECTIVE seller level to claim.
+    min_seller_level: u8,
+    timestamp_ms: u64,
+}
 /// The opening→job edge — keeps the "one job" identity continuous for the
 /// indexer and the receipt page.
 public struct OpeningClaimed has copy, drop {
@@ -150,9 +192,34 @@ public struct OpeningRefunded has copy, drop {
 
 // === Create (buyer locks funds + terms at POST — no seller yet) ===
 
-/// Post an open job: the payment escrows into a shared `Opening` right now.
-/// Returns the opening id for PTB callers.
+/// DEPRECATED (S.1192) — always aborts `EUseClaimV2`. The live post door
+/// is `create_open_v2` (adds `min_seller_level`); all new posts go
+/// through v2 so the board's floor field is uniform. Signature survives
+/// (compatible upgrades can't remove public functions); the body is dead
+/// — the unconsumed `payment` is fine on a diverging path, the abort
+/// reverts the whole tx.
 public fun create_open<T>(
+    _payment: Coin<T>,
+    _spec_hash: vector<u8>,
+    _open_until_ms: u64,
+    _sla_ms: u64,
+    _review_window_ms: u64,
+    _reject_split_bps: u64,
+    _claim_policy: u8,
+    cfg: &FeeConfig,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
+): ID {
+    escrow::assert_version_pkg(cfg);
+    abort EUseClaimV2
+}
+
+/// Post an open job: the payment escrows into a shared `Opening` right now.
+/// Returns the opening id for PTB callers. S.1192: `min_seller_level`
+/// (0 = no floor, 1..4) writes the `MinSellerLevelKey` DF — enforced at
+/// claim on the claimer's EFFECTIVE level, independent of `claim_policy`
+/// (a post can require Proven · 4★+ AND Level 2+, or either alone).
+public fun create_open_v2<T>(
     payment: Coin<T>,
     spec_hash: vector<u8>,
     open_until_ms: u64,
@@ -160,14 +227,17 @@ public fun create_open<T>(
     review_window_ms: u64,
     reject_split_bps: u64,
     claim_policy: u8,
+    min_seller_level: u8,
     cfg: &FeeConfig,
     clock: &Clock,
     ctx: &mut TxContext,
 ): ID {
     escrow::assert_version_pkg(cfg);
     // S.1054: 0 (Anyone) stays the default; 1/2 (Proven) are live; 3+
-    // still aborts until a later SPEC defines them.
+    // still aborts until a later SPEC defines them (min_seller_level is
+    // the level floor — NEVER a claim_policy 3+).
     assert!(claim_policy <= CLAIM_POLICY_MIN_AVG, EBadClaimPolicy);
+    assert!(min_seller_level <= 4, EBadMinSellerLevel);
     let amount = payment.value();
     assert!(amount > 0, EZeroAmount);
     // Money-entering bounds (S.981) — same gate as `escrow::create`. Checked
@@ -195,7 +265,7 @@ public fun create_open<T>(
         reject_split_bps == escrow::bps_denominator_pkg(),
         EOpenRejectMustBeFullBuyer,
     );
-    let opening = Opening<T> {
+    let mut opening = Opening<T> {
         id: object::new(ctx),
         buyer: ctx.sender(),
         escrow: payment.into_balance(),
@@ -208,6 +278,11 @@ public fun create_open<T>(
         reject_split_bps,
         claim_policy,
         created_at_ms: now,
+    };
+    // S.1192: the level floor is a DF, never a struct field — absent
+    // means 0, so old openings and floor-less posts read identically.
+    if (min_seller_level > 0) {
+        df::add(&mut opening.id, MinSellerLevelKey {}, min_seller_level);
     };
     let opening_id = opening.id.to_inner();
     event::emit(OpeningCreated {
@@ -223,41 +298,91 @@ public fun create_open<T>(
         claim_policy,
         timestamp_ms: now,
     });
+    event::emit(OpeningCreatedV2 {
+        opening_id,
+        buyer: opening.buyer,
+        amount,
+        fee_bps: opening.fee_bps,
+        spec_hash: opening.spec_hash,
+        open_until_ms,
+        sla_ms,
+        review_window_ms,
+        reject_split_bps,
+        claim_policy,
+        min_seller_level,
+        timestamp_ms: now,
+    });
     transfer::share_object(opening);
     opening_id
 }
 
 // === Claim (first active seller wins — the Opening becomes a normal Job) ===
 
-/// Claim an open job posted Anyone (`claim_policy = 0`). Consumes the
-/// Opening (first claim wins at the object layer) and mints a funded
-/// `escrow::Job` with `seller = claimer` and `deliver_by = now + sla_ms`.
-/// Returns the new job id. Proven openings (`1`/`2`) claim through
-/// `claim_proven` — this entry aborts on them, so a pre-S.1054 package
-/// can never bypass a Proven gate.
+/// DEPRECATED (S.1192) — always aborts `EUseClaimV2`. The live path is
+/// `claim_v2`, which takes the claimer's `&mut AgentScore` for the
+/// active-cap + level-floor gates. Signature survives; the body is dead
+/// (the by-value Opening needs no consumption on a diverging path — the
+/// abort reverts the whole tx and the object stays shared + claimable
+/// through v2).
 public fun claim<T>(
+    _opening: Opening<T>,
+    _registry: &Registry,
+    cfg: &FeeConfig,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
+): ID {
+    escrow::assert_version_pkg(cfg);
+    abort EUseClaimV2
+}
+
+/// DEPRECATED (S.1192) — always aborts `EUseClaimV2`. Live path:
+/// `claim_proven_v2`.
+public fun claim_proven<T>(
+    _opening: Opening<T>,
+    _registry: &Registry,
+    _score: &AgentScore,
+    cfg: &FeeConfig,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
+): ID {
+    escrow::assert_version_pkg(cfg);
+    abort EUseClaimV2
+}
+
+/// Claim an open job posted Anyone (`claim_policy = 0`) — S.1192 v2.
+/// Consumes the Opening (first claim wins at the object layer) and mints
+/// a funded `escrow::Job` with `seller = claimer` and `deliver_by = now +
+/// sla_ms`. Returns the new job id. The claimer passes their OWN shared
+/// `AgentScore` by MUTABLE reference — policy 0 included — because every
+/// claim now moves the active-job counter and reads the capacity gates;
+/// an agent with no score yet chains the permissionless
+/// `create_empty_score` in the same PTB (the S.1063 precursor pattern —
+/// an empty score grants nothing and reads as Level 1). Proven openings
+/// (`1`/`2`) claim through `claim_proven_v2` — this entry aborts on them,
+/// so the Proven gate can never be bypassed.
+public fun claim_v2<T>(
     opening: Opening<T>,
     registry: &Registry,
+    score: &mut AgentScore,
     cfg: &FeeConfig,
     clock: &Clock,
     ctx: &mut TxContext,
 ): ID {
     escrow::assert_version_pkg(cfg);
     assert!(opening.claim_policy == CLAIM_POLICY_ANY_ACTIVE, EBadClaimPolicy);
-    do_claim(opening, registry, cfg, clock, ctx)
+    do_claim(opening, registry, score, cfg, clock, ctx)
 }
 
-/// Claim a PROVEN open job (`claim_policy` `1` or `2`) — S.1054. The
-/// claimer passes their OWN shared `AgentScore` by immutable reference
-/// (parallel with every other claim); the score must belong to the sender
-/// and meet the Opening's bar. Everything else is `claim`: still FCFS,
-/// still $0, the Opening is consumed and a normal Job mints. An agent
-/// with no score object cannot call this at all — the correct
-/// "zero reviews" outcome.
-public fun claim_proven<T>(
+/// Claim a PROVEN open job (`claim_policy` `1` or `2`) — S.1192 v2 of the
+/// S.1054 entry. The score must belong to the sender and meet the
+/// Opening's bar; the same object then feeds the capacity gates and the
+/// counter write in `do_claim`. Still FCFS, still $0, no bond, no
+/// buyer-confirm. Mutability note: `&mut` serializes same-SELLER claims
+/// on their own score (that IS the cap); different sellers stay parallel.
+public fun claim_proven_v2<T>(
     opening: Opening<T>,
     registry: &Registry,
-    score: &AgentScore,
+    score: &mut AgentScore,
     cfg: &FeeConfig,
     clock: &Clock,
     ctx: &mut TxContext,
@@ -275,14 +400,20 @@ public fun claim_proven<T>(
     } else {
         assert!(reputation::meets_min_avg(score), EClaimPolicyUnmet);
     };
-    do_claim(opening, registry, cfg, clock, ctx)
+    do_claim(opening, registry, score, cfg, clock, ctx)
 }
 
-/// The one claim body both entries share — every gate EXCEPT the policy
-/// check, which each entry asserts against its own inputs first.
+/// The one claim body both v2 entries share — every gate EXCEPT the
+/// policy check, which each entry asserts against its own inputs first.
+/// S.1192 adds the capacity gates: the claimer's own score (ownership
+/// re-asserted here so a policy-0 claim can't ride a stranger's score),
+/// the per-level active cap on the EFFECTIVE level, and the Opening's
+/// optional `min_seller_level` floor. The counter increments AFTER the
+/// Job mints (same tx — atomic either way; the event wants the job id).
 fun do_claim<T>(
     opening: Opening<T>,
     registry: &Registry,
+    score: &mut AgentScore,
     cfg: &FeeConfig,
     clock: &Clock,
     ctx: &mut TxContext,
@@ -290,7 +421,7 @@ fun do_claim<T>(
     let now = clock.timestamp_ms();
     let claimer = ctx.sender();
     let Opening {
-        id,
+        mut id,
         buyer,
         escrow: escrow_balance,
         amount,
@@ -308,6 +439,24 @@ fun do_claim<T>(
     assert!(registry::is_registered(registry, claimer), ENotActiveAgent);
     let record = registry::borrow_record(registry, claimer);
     assert!(registry::is_active(record), ENotActiveAgent);
+    // S.1192 capacity gates — clients preflight both in English first.
+    assert!(reputation::agent(score) == claimer, EScoreNotClaimer);
+    let level = reputation::effective_seller_level(score, cfg);
+    let cap = reputation::active_cap_for_level(cfg, level);
+    assert!(reputation::active_seller_jobs(score) < cap, EActiveJobCap);
+    // The floor DF comes OFF the UID here (missing ⇒ 0) — removed, not
+    // just read, so the deleted UID leaves no orphaned storage behind.
+    let min_level: u8 = if (df::exists(&id, MinSellerLevelKey {})) {
+        df::remove(&mut id, MinSellerLevelKey {})
+    } else {
+        0
+    };
+    if (min_level > 0) {
+        assert!(
+            reputation::meets_min_seller_level(score, cfg, min_level),
+            EMinSellerLevelUnmet,
+        );
+    };
     let opening_id = id.to_inner();
     id.delete();
     let job_id = escrow::create_claimed(
@@ -323,6 +472,7 @@ fun do_claim<T>(
         clock,
         ctx,
     );
+    reputation::increment_active(score, job_id, now);
     event::emit(OpeningClaimed {
         opening_id,
         job_id,
@@ -381,7 +531,7 @@ public fun refund_unclaimed<T>(
 /// Consume an Opening and return its full balance to the buyer, fee-free.
 fun repay_buyer<T>(opening: Opening<T>, ctx: &mut TxContext): (ID, address, u64) {
     let Opening {
-        id,
+        mut id,
         buyer,
         escrow: mut escrow_balance,
         amount,
@@ -394,6 +544,10 @@ fun repay_buyer<T>(opening: Opening<T>, ctx: &mut TxContext): (ID, address, u64)
         claim_policy: _,
         created_at_ms: _,
     } = opening;
+    // S.1192: reclaim the floor DF (if any) before the UID deletes.
+    if (df::exists(&id, MinSellerLevelKey {})) {
+        let _floor: u8 = df::remove(&mut id, MinSellerLevelKey {});
+    };
     let opening_id = id.to_inner();
     id.delete();
     let payout = coin::from_balance(escrow_balance.withdraw_all(), ctx);
@@ -417,6 +571,16 @@ public fun reject_split_bps<T>(opening: &Opening<T>): u64 {
 }
 public fun claim_policy<T>(opening: &Opening<T>): u8 { opening.claim_policy }
 public fun created_at_ms<T>(opening: &Opening<T>): u64 { opening.created_at_ms }
+
+/// S.1192 — the opening's seller-level floor (DF read; missing ⇒ 0, which
+/// covers every pre-S.1192 opening and every floor-less v2 post).
+public fun min_seller_level<T>(opening: &Opening<T>): u8 {
+    if (df::exists(&opening.id, MinSellerLevelKey {})) {
+        *df::borrow(&opening.id, MinSellerLevelKey {})
+    } else {
+        0
+    }
+}
 
 public fun claim_policy_any_active(): u8 { CLAIM_POLICY_ANY_ACTIVE }
 public fun claim_policy_min_reviews(): u8 { CLAIM_POLICY_MIN_REVIEWS }

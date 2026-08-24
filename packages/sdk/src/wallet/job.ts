@@ -290,15 +290,6 @@ export function buildDeclineJobTx(jobId: string): Transaction {
   return tx;
 }
 
-function jobCall(jobId: string, fn: 'release'): Transaction {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::${fn}`,
-    typeArguments: [USDC_TYPE],
-    arguments: [tx.object(jobId), feeConfigArg(tx), tx.object(CLOCK_ID)],
-  });
-  return tx;
-}
 
 /** Buyer rejects delivered work — S.1063: settles through
  *  `reputation::reject_v2` (Passport buyer) or `reject_v2_agent_buyer`
@@ -372,9 +363,29 @@ export function buildDeliverJobTx(jobId: string, deliveryHash: string): Transact
   return tx;
 }
 
-/** Buyer accepts (or anyone, once the review window lapsed) → funds to seller. */
-export function buildReleaseJobTx(jobId: string): Transaction {
-  return jobCall(jobId, 'release');
+/** Buyer accepts (or anyone, once the review window lapsed) → funds to
+ *  seller. S.1192: settles through `reputation::release_v2` — the
+ *  SELLER's score (derive with `deriveAgentScoreId`) rides along so a
+ *  board-claimed job frees its active seat with the money. Hire jobs pass
+ *  the same score; the contract's `ClaimedJobKey` marker decides whether
+ *  a decrement lands. A scoreless seller needs the `create_empty_score`
+ *  precursor first (same hop as reject/refund since S.1063). */
+export function buildReleaseJobTx(
+  jobId: string,
+  v2: { sellerScoreId: string },
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::release_v2`,
+    typeArguments: [USDC_TYPE],
+    arguments: [
+      tx.object(jobId),
+      tx.object(v2.sellerScoreId),
+      feeConfigArg(tx),
+      tx.object(CLOCK_ID),
+    ],
+  });
+  return tx;
 }
 
 // ---------------------------------------------------------------------------

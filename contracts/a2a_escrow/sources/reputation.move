@@ -62,6 +62,16 @@ const AVG_SCALE: u64 = 10;
 const MIN_STARS: u8 = 1;
 const MAX_STARS: u8 = 5;
 
+// === Seller levels (S.1192) — protocol constants, one SSOT ===
+/// Level 4 additionally needs this many reviews…
+const LEVEL4_MIN_REVIEWS: u64 = 20;
+/// …and at most this many no-delivery outcomes.
+const LEVEL4_MAX_NO_DELIVERY: u64 = 2;
+/// `ActiveSellerJobsChanged.delta` values (u8 — Move has no signed ints;
+/// same encoding house as `OutcomeRecorded.kind`).
+const ACTIVE_DELTA_CLAIM: u8 = 0; // +1
+const ACTIVE_DELTA_SETTLE: u8 = 1; // −1
+
 // === Errors ===
 const ENotBuyer: u64 = 0;
 /// Not a reviewable state — reviews attach to RELEASED or (since S.1064)
@@ -145,6 +155,18 @@ public struct NoDeliveryKey has copy, drop, store {}
 /// Passport buyers never get a public chain counter: privacy lock).
 public struct AsBuyerRejectedKey has copy, drop, store {}
 
+// === v2 active-job counter (S.1192) — DF on `AgentScore.id` ===
+// In-flight BOARD-CLAIMED jobs (funded + delivered) this seller holds.
+// +1 in `opening::do_claim` (via `increment_active`), −1 on the terminal
+// settles of jobs carrying `escrow::ClaimedJobKey` (release_v2 /
+// reject_v2* / refund_v2). Hire jobs never move it — they never
+// incremented, and an unconditional decrement would let a colluding
+// buyer reset a hunter's counter with a dust hire + instant release.
+// Missing ⇒ 0 (soft start — no backfill, pre-upgrade claims never count).
+
+/// DF key → `u64`: this seller's live claimed-job count. Missing ⇒ 0.
+public struct ActiveSellerJobsKey has copy, drop, store {}
+
 // === Events (the indexer's score read-model is built from these) ===
 public struct ScoreBoardCreated has copy, drop {
     board_id: ID,
@@ -205,6 +227,20 @@ public struct OutcomeRecorded has copy, drop {
     /// 0 = rejected_after_delivery · 1 = no_delivery · 2 = as_buyer_rejected
     kind: u8,
     value: u64,
+    timestamp_ms: u64,
+}
+
+/// S.1192 — the seller's in-flight claimed-job counter moved.
+/// `active_seller_jobs` is the POST-write value (read-model mirrors
+/// without a fetch); `delta` is 0 = +1 (claim) · 1 = −1 (terminal
+/// settle). Defining id = the S.1192 upgrade package (V10 pin).
+public struct ActiveSellerJobsChanged has copy, drop {
+    score_id: ID,
+    agent: address,
+    job_id: ID,
+    active_seller_jobs: u64,
+    /// 0 = +1 (claim) · 1 = −1 (release/reject/refund of a claimed job)
+    delta: u8,
     timestamp_ms: u64,
 }
 
@@ -337,13 +373,19 @@ public fun reject_v2<T>(
     assert!(!registry::is_registered(registry, escrow::buyer(job)), EBuyerIsAgent);
     assert!(seller_score.agent == escrow::seller(job), EWrongScore);
     escrow::reject_settle_pkg(job, cfg, clock, ctx); // auth: sender==buyer, DELIVERED, in-window
+    let now = clock.timestamp_ms();
+    let job_id = object::id(job);
     record_outcome(
         seller_score,
-        object::id(job),
+        job_id,
         RejectedAfterDeliveryKey {},
         OUTCOME_REJECTED_AFTER_DELIVERY,
-        clock.timestamp_ms(),
+        now,
     );
+    // S.1192: a board-claimed job leaving flight frees a seat.
+    if (escrow::is_claimed_job(job)) {
+        decrement_active(seller_score, job_id, now);
+    };
 }
 
 /// Buyer rejects delivered work — AGENT-ID buyer variant: same settle +
@@ -379,6 +421,11 @@ public fun reject_v2_agent_buyer<T>(
         OUTCOME_AS_BUYER_REJECTED,
         now,
     );
+    // S.1192: seller seat frees (the SELLER's counter only — a buyer's
+    // as_buyer facts never touch capacity).
+    if (escrow::is_claimed_job(job)) {
+        decrement_active(seller_score, job_id, now);
+    };
 }
 
 /// Deadline refund (no delivery) — permissionless crank, plus
@@ -393,13 +440,42 @@ public fun refund_v2<T>(
 ) {
     assert!(seller_score.agent == escrow::seller(job), EWrongScore);
     escrow::refund_settle_pkg(job, cfg, clock, ctx); // auth: FUNDED, past deadline
+    let now = clock.timestamp_ms();
+    let job_id = object::id(job);
     record_outcome(
         seller_score,
-        object::id(job),
+        job_id,
         NoDeliveryKey {},
         OUTCOME_NO_DELIVERY,
-        clock.timestamp_ms(),
+        now,
     );
+    // S.1192: the abandoned claimed job frees its seat (the no_delivery
+    // counter above is what costs the seller — via level regression).
+    if (escrow::is_claimed_job(job)) {
+        decrement_active(seller_score, job_id, now);
+    };
+}
+
+/// Release — funds → seller minus the protocol fee (S.1192: the ONLY live
+/// release door). Money settles in escrow's package-visible
+/// `release_settle_pkg` (auth unchanged from v1: buyer accept, buyer
+/// goodwill on FUNDED, or anyone after the review window lapses); the
+/// seller's active-job counter decrements here for board-claimed jobs.
+/// The permissionless-crank property survives: any sender may call this —
+/// the score input is the SELLER's (verified against the job), not the
+/// caller's.
+public fun release_v2<T>(
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(seller_score.agent == escrow::seller(job), EWrongScore);
+    escrow::release_settle_pkg(job, cfg, clock, ctx);
+    if (escrow::is_claimed_job(job)) {
+        decrement_active(seller_score, object::id(job), clock.timestamp_ms());
+    };
 }
 
 /// The ONLY outcome mutator — private; a counter can never move except
@@ -426,6 +502,60 @@ fun record_outcome<K: copy + drop + store>(
         job_id,
         kind,
         value,
+        timestamp_ms: now,
+    });
+}
+
+// === Active-job counter (S.1192) — package-private mutators ===
+// Only `opening::do_claim` increments; only the three terminal settle
+// paths above decrement (claimed jobs only). Package-private, so the
+// counter can never move except with the money.
+
+/// +1 — called by `opening::do_claim` after the Job mints. Serializes
+/// same-seller claims on the score object (correct: that IS the cap);
+/// different sellers touch different scores and stay parallel (S.1054
+/// model preserved across agents).
+public(package) fun increment_active(score: &mut AgentScore, job_id: ID, now: u64) {
+    let value = if (df::exists(&score.id, ActiveSellerJobsKey {})) {
+        let count: &mut u64 = df::borrow_mut(&mut score.id, ActiveSellerJobsKey {});
+        *count = *count + 1;
+        *count
+    } else {
+        df::add(&mut score.id, ActiveSellerJobsKey {}, 1u64);
+        1
+    };
+    score.updated_at_ms = now;
+    event::emit(ActiveSellerJobsChanged {
+        score_id: score.id.to_inner(),
+        agent: score.agent,
+        job_id,
+        active_seller_jobs: value,
+        delta: ACTIVE_DELTA_CLAIM,
+        timestamp_ms: now,
+    });
+}
+
+/// −1, saturating at 0 — belt + suspenders: the `ClaimedJobKey` guard at
+/// every call site already scopes decrements to jobs that incremented, so
+/// the 0 branch is a silent no-op (no event) rather than an abort that
+/// could wedge a settlement.
+public(package) fun decrement_active(score: &mut AgentScore, job_id: ID, now: u64) {
+    if (!df::exists(&score.id, ActiveSellerJobsKey {})) {
+        return
+    };
+    let count: &mut u64 = df::borrow_mut(&mut score.id, ActiveSellerJobsKey {});
+    if (*count == 0) {
+        return
+    };
+    *count = *count - 1;
+    let value = *count;
+    score.updated_at_ms = now;
+    event::emit(ActiveSellerJobsChanged {
+        score_id: score.id.to_inner(),
+        agent: score.agent,
+        job_id,
+        active_seller_jobs: value,
+        delta: ACTIVE_DELTA_SETTLE,
         timestamp_ms: now,
     });
 }
@@ -528,6 +658,52 @@ public fun meets_min_avg(score: &AgentScore): bool {
         score.stars_sum * AVG_SCALE >= score.review_count * PROVEN_MIN_AVG_STARS_X10
 }
 
+// === Seller levels (S.1192) — capacity labels, separate from claim policy ===
+
+/// Computed Level 1..4 (SPEC_MARKETPLACE_REPUTATION_V2_TIERS, locked):
+/// 1 default · 2 Proven (≥3 distinct buyers) · 3 4.0★+ average ·
+/// 4 = Level 3 + ≥20 reviews + ≤2 no-delivery. Levels reuse the SAME
+/// predicates the claim policies read — one SSOT for every threshold.
+public fun seller_level(score: &AgentScore): u8 {
+    if (meets_min_avg(score)) {
+        if (
+            score.review_count >= LEVEL4_MIN_REVIEWS &&
+            no_delivery(score) <= LEVEL4_MAX_NO_DELIVERY
+        ) { 4 } else { 3 }
+    } else if (meets_proven(score)) {
+        2
+    } else {
+        1
+    }
+}
+
+/// The level capacity actually gates on: `no_delivery >= floor` (default
+/// 3, AdminCap-tunable on `FeeConfig`) regresses to Level 1 regardless of
+/// stars — reliability caps capacity without touching star math (display
+/// ≠ gate). Takes `cfg` because the floor is a live FeeConfig DF, not a
+/// package constant (spec sketch showed score-only; the tunable floor
+/// requires the config).
+public fun effective_seller_level(score: &AgentScore, cfg: &FeeConfig): u8 {
+    if (no_delivery(score) >= escrow::config_no_delivery_regression_floor(cfg)) {
+        1
+    } else {
+        seller_level(score)
+    }
+}
+
+/// The live active-job cap for a level — thin wrapper over the FeeConfig
+/// read so claim-side callers stay in one module's vocabulary.
+public fun active_cap_for_level(cfg: &FeeConfig, level: u8): u64 {
+    escrow::config_tier_active_cap(cfg, level)
+}
+
+/// Whether this seller clears an opening's `min_seller_level` floor —
+/// on the EFFECTIVE level, so a regressed seller cannot pass a Level 2+
+/// floor on stars alone (takes `cfg` for the tunable regression floor).
+public fun meets_min_seller_level(score: &AgentScore, cfg: &FeeConfig, min_level: u8): bool {
+    effective_seller_level(score, cfg) >= min_level
+}
+
 // === Read accessors (clients, indexer, composing modules) ===
 public fun agent(score: &AgentScore): address { score.agent }
 public fun review_count(score: &AgentScore): u64 { score.review_count }
@@ -566,6 +742,17 @@ public fun no_delivery(score: &AgentScore): u64 {
 public fun as_buyer_rejected(score: &AgentScore): u64 {
     outcome_count(score, AsBuyerRejectedKey {})
 }
+
+/// This seller's live board-claimed job count (S.1192). Missing DF ⇒ 0 —
+/// the soft start: pre-upgrade claims never counted in, and their settles
+/// never count out (no `ClaimedJobKey` marker).
+public fun active_seller_jobs(score: &AgentScore): u64 {
+    if (df::exists(&score.id, ActiveSellerJobsKey {})) {
+        *df::borrow(&score.id, ActiveSellerJobsKey {})
+    } else {
+        0
+    }
+}
 public fun has_job_review(score: &AgentScore, job_id: ID): bool {
     score.job_stars.contains(job_id)
 }
@@ -585,6 +772,8 @@ public fun score_address(board: &ScoreBoard, agent: address): address {
 
 public fun proven_min_reviews(): u64 { PROVEN_MIN_REVIEWS }
 public fun proven_min_avg_stars_x10(): u64 { PROVEN_MIN_AVG_STARS_X10 }
+public fun level4_min_reviews(): u64 { LEVEL4_MIN_REVIEWS }
+public fun level4_max_no_delivery(): u64 { LEVEL4_MAX_NO_DELIVERY }
 public fun avg_scale(): u64 { AVG_SCALE }
 public fun min_stars(): u8 { MIN_STARS }
 public fun max_stars(): u8 { MAX_STARS }

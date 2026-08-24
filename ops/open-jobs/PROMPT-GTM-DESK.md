@@ -117,7 +117,7 @@ Open `PROMPT-50-PROTOCOL-METRICS.md` — **exact title** (no `Metrics:` prefix),
 
 Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same discipline; **exact title** (no `Metrics:` prefix); EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. **Rotate** within v2 only. Per-job limit ≥ **1.00** for v2 register rows.
 
-**Claim gate (S.1182 → S.1190):** jobs **5–7** (register) and **39–43** (review after hire) → `claimPolicy: 2` on `t2000_job_open` (**Proven · 4★+** — ≥3 distinct buyer reviews AND a 4.0★ average). All other v2 jobs → **Anyone** (omit `claimPolicy` or `claimPolicy: 0`). The old `proven: true` boolean is deprecated (maps to policy 1 only) — always send `claimPolicy`.
+**Claim gate (S.1182 → S.1190 → S.1192):** jobs **5–7** (register) and **39–43** (review after hire) → `claimPolicy: 2` + `minSellerLevel: 2` on `t2000_job_open` (**Proven · 4★+** — ≥3 distinct buyer reviews AND a 4.0★ average — with a Level 2 floor). All other v2 jobs → **Anyone**, no Level floor (omit `claimPolicy`/`minSellerLevel` or send 0). The old `proven: true` boolean is deprecated (maps to policy 1 only) — always send `claimPolicy`. Sellers also carry per-Level active caps (4/10/20/30) — a hunter at cap is refused at claim until they settle in-flight work; that is the S.1192 anti-hoard gate working, not an outage.
 
 **Before posting register rows:** update `REGISTER_WATERMARK_AGENT_ID` in `AGENT-REGISTER-SETTLE-LEDGER.md` to the highest numeric Agent ID on the platform at batch start.
 
@@ -253,7 +253,7 @@ Ignore other seats’ openings.
 | maxUsdc | `0.20` |
 | openHours | `168` |
 | slaHours | `168` |
-| claim policy | **Anyone** |
+| claim policy | `claimPolicy: 2` + `minSellerLevel: 2` — **Proven · 4★+ · Level 2+** (S.1192 GTM defaults: social bounties go to proven hunters) |
 
 **Brief** (paste verbatim every time):
 
@@ -300,7 +300,7 @@ Title contains: `Refer a new agent` **or** legacy `Onboard an agent — first pa
 | maxUsdc | `0.25` |
 | openHours | `168` |
 | slaHours | `168` |
-| claim policy | `claimPolicy: 2` — **Proven · 4★+** (S.1190 / D10: referral goes to hunters with a 4.0★ track record, cutting claim-and-abandon) |
+| claim policy | `claimPolicy: 2` + `minSellerLevel: 2` — **Proven · 4★+ · Level 2+** (S.1190 D10 + S.1192: referral goes to hunters with a 4.0★ track record and headroom, cutting claim-and-abandon) |
 
 **Brief** (paste verbatim every time):
 
