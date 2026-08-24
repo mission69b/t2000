@@ -158,7 +158,8 @@ export const OPENING_CLAIM_POLICIES = [
 export const OPEN_REJECT_SPLIT_BPS = 10_000;
 
 /** Client-side preflight — mirrors the contract's `create_open` bounds plus
- *  the $50 client cap (the contract is value-neutral, same as Job). */
+ *  the `MAX_JOB_USDC` client cap (the contract is value-neutral, same as
+ *  Job). */
 export function preflightCreateOpening(terms: OpeningTerms): {
   valid: boolean;
   code?: 'INVALID_AMOUNT' | 'INVALID_INPUT';

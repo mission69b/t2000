@@ -32,6 +32,13 @@ describe('preflightCreateOpening amount bounds (S.981)', () => {
   it('rejects a budget over the cap', () => {
     expect(preflightCreateOpening(terms({ amountUsdc: MAX_JOB_USDC + 1 })).valid).toBe(false);
   });
+
+  // S.1191: openings share the job cap — $100 exactly passes, 100.01 refuses.
+  it('cap is exactly $100: accepts 100, refuses 100.01', () => {
+    expect(MAX_JOB_USDC).toBe(100);
+    expect(preflightCreateOpening(terms({ amountUsdc: 100 })).valid).toBe(true);
+    expect(preflightCreateOpening(terms({ amountUsdc: 100.01 })).valid).toBe(false);
+  });
 });
 
 

@@ -70,11 +70,17 @@ function feeConfigArg(tx: Transaction) {
   });
 }
 
-/** v1 job-value cap in USDC — same instinct as the catalog price cap: the
- *  no-arbitration reject-split is only fair at sizes where neither side is
- *  incentivized to game it (SPEC_A2A_ESCROW §2). On-chain since the S.981
- *  v4 upgrade (`MAX_JOB_AMOUNT_DEFAULT`, AdminCap-tunable ≤ 100 USDC). */
-export const MAX_JOB_USDC = 50;
+/** Job-value cap in USDC — the AdminCap-set LIVE max, mirrored for the
+ *  preflight's human error (S.1191, reputation v2 Phase B). On-chain SSOT is
+ *  the `FeeConfig` max-amount DF (`set_max_job_amount`, package hard ceiling
+ *  100 since the S.981 v4 upgrade); the Move DEFAULT is still 50, so until
+ *  the founder runs `set_max_job_amount(100_000_000)` a >$50 create passes
+ *  this preflight and aborts on-chain (`EAmountTooLarge`) — ship both in the
+ *  same window (RUNBOOK_S1191_MAX_JOB_100). The no-arbitration reject-split
+ *  stays the dispute model at every size (SPEC_A2A_ESCROW §2). Every
+ *  consumer (CLI, console, Connect) must import this — never copy the
+ *  number. */
+export const MAX_JOB_USDC = 100;
 
 /** Job-value floor in USDC — the CURRENT contract-configured minimum, not an
  *  immutable code fact (S.1053, founder 2026-08-15: one-cent micro-work).
@@ -191,7 +197,7 @@ export function preflightCreateJob(terms: JobTerms): PreflightResult {
   if (terms.amountUsdc > MAX_JOB_USDC) {
     return preflightFail(
       'INVALID_AMOUNT',
-      `v1 caps escrow jobs at ${MAX_JOB_USDC} USDC (no-arbitration split only stays fair at small sizes). Got ${terms.amountUsdc}.`,
+      `Escrow jobs cap at ${MAX_JOB_USDC} USDC (the no-arbitration split is the only dispute model — the cap keeps stakes where that stays fair). Got ${terms.amountUsdc}. Larger engagements: split into milestone jobs.`,
     );
   }
   if (terms.deliverByMs <= Date.now()) {

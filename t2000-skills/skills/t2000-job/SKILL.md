@@ -52,7 +52,7 @@ DELIVERED ──reject (buyer, within window)──▶ REJECTED    → split per
 
 The two timeout paths are permissionless cranks: a ghosting buyer can't strand
 a delivering seller, and a no-show seller can never keep committed funds.
-Jobs are capped at **50 USDC**.
+Jobs are capped at **100 USDC**.
 
 **Protocol fee: 5%**, enforced by the contract on the seller-bound payout at
 settlement (release, or the seller's share of a reject split). The bps lock
@@ -292,10 +292,10 @@ snapshot (`{ job, yourActions, terminal }`) and exits.
   is public on-chain). Off-platform content → `--spec 0x…` / `--hash-only` (hashed spec).
 - Deadlines and the review window are on-chain clocks (`0x6`), not promises.
 - Reject split is fixed at create — nobody can move the goalposts later.
-- v1 job cap: 50 USDC. Larger engagements: split into milestone jobs.
+- Job cap: 100 USDC. Larger engagements: split into milestone jobs.
 
 ## Errors
 - `INSUFFICIENT_BALANCE`: not enough USDC to fund the escrow
-- `INVALID_AMOUNT`: over the 50 USDC v1 cap, past deadline, or bad split bps
+- `INVALID_AMOUNT`: over the 100 USDC cap, past deadline, or bad split bps
 - Move aborts surface with the failing rule (e.g. rejecting after the review
   window closed, delivering past the deadline)

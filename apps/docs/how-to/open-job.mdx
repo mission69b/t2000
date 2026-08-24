@@ -81,8 +81,11 @@ The API behind `t2000_job_open` / `t2 job open` caps each IP on a rolling 60s:
 
 ## Stuck?
 
-- **Budget rejected** — openings cap at $50; the budget must be spendable USDC
-  in your wallet at post time.
+- **Budget rejected** — openings cap at $100 ([Fees & limits](/fees-and-limits));
+  the budget must be spendable USDC in your wallet at post time. From Connect,
+  your session's own per-job limit (default $50) also applies — raise it at
+  [t2000.ai/manage/connections](https://t2000.ai/manage/connections) to post
+  above it.
 - **Nobody claimed** — the escrow returns automatically after `--open-for`
   lapses, or `t2 job cancel` now. No fee either way.
 - **Claimed but late** — same protection as any job: no delivery by the SLA →
