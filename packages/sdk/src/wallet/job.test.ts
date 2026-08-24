@@ -164,7 +164,10 @@ describe('buildCreateJobTx', () => {
     client.core.getBalance = vi.fn().mockResolvedValue({ balance: { balance: '100' } });
     await expect(
       buildCreateJobTx({ client, buyer: BUYER, terms: terms() }),
-    ).rejects.toThrow(/Insufficient balance/);
+    // S.1194: money errors speak symbol + human amounts, never the raw
+    // coin type (terms() is a $5 job; the mock wallet holds 100 raw =
+    // $0.0001, floored to "0.0001").
+    ).rejects.toThrow(/Insufficient USDC: need 5, the wallet holds 0\.0001\./);
   });
 });
 

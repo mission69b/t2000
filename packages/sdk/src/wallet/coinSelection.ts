@@ -33,6 +33,20 @@ import {
 } from '@mysten/sui/transactions';
 import type { SuiCoreClient } from '../utils/sui.js';
 import { T2000Error } from '../errors.js';
+import { getDecimalsForCoinType, resolveSymbol } from '../token-registry.js';
+
+/** Raw units → exact display string for error copy (S.1194): decimal point
+ *  inserted via string math (no float loss), truncated to the display
+ *  precision — truncation IS the floor rule for positive amounts (the
+ *  t2000-financial-amounts law: shown ≤ actual, never rounded up). */
+function formatRawAmount(raw: bigint, coinType: string): string {
+  const decimals = getDecimalsForCoinType(coinType);
+  const dp = Math.min(decimals, 8);
+  const s = raw.toString().padStart(decimals + 1, '0');
+  const whole = s.slice(0, s.length - decimals);
+  const frac = s.slice(s.length - decimals).slice(0, dp).replace(/0+$/, '');
+  return frac ? `${whole}.${frac}` : whole;
+}
 
 export interface CoinPage {
   ids: string[];
@@ -153,17 +167,32 @@ export async function selectAndSplitCoin(
   const balanceResp = await client.core.getBalance({ owner, coinType });
   const totalBalance = BigInt(balanceResp.balance.balance);
 
+  // S.1194: money errors speak SYMBOL + human amounts, never the raw
+  // coin type — `0xdba3…::usdc::USDC` is machine data and was reaching
+  // console/CLI error lines verbatim. Raw units stay in `details`.
+  const symbol = resolveSymbol(coinType);
   if (totalBalance === 0n) {
-    throw new T2000Error('INSUFFICIENT_BALANCE', `No balance found for ${coinType}`);
+    throw new T2000Error(
+      'INSUFFICIENT_BALANCE',
+      amount === 'all'
+        ? `No ${symbol} in this wallet.`
+        : `Insufficient ${symbol}: need ${formatRawAmount(amount, coinType)}, the wallet holds 0.`,
+      { available: '0', required: amount === 'all' ? '0' : amount.toString(), coinType },
+    );
   }
 
   const allowSwapAll = options.allowSwapAll ?? true;
 
   if (amount !== 'all' && amount > totalBalance && !allowSwapAll) {
-    throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance for ${coinType}`, {
-      available: totalBalance.toString(),
-      required: amount.toString(),
-    });
+    throw new T2000Error(
+      'INSUFFICIENT_BALANCE',
+      `Insufficient ${symbol}: need ${formatRawAmount(amount, coinType)}, the wallet holds ${formatRawAmount(totalBalance, coinType)}.`,
+      {
+        available: totalBalance.toString(),
+        required: amount.toString(),
+        coinType,
+      },
+    );
   }
 
   const requested = amount === 'all' ? totalBalance : amount;
@@ -235,7 +264,7 @@ async function selectCoinObjectsOnly(
     if (cached.remaining === 0n || requested > cached.remaining) {
       throw new T2000Error(
         'ADDRESS_BALANCE_UNSPONSORABLE',
-        `Not enough ${coinType} in coin objects to cover all legs of this ` +
+        `Not enough ${resolveSymbol(coinType)} in coin objects to cover all legs of this ` +
           `sponsored bundle. The remaining funds are in your address balance, ` +
           `which sponsored transactions can't access yet.`,
         { remaining: cached.remaining.toString(), requested: requested.toString(), coinType },
@@ -360,7 +389,7 @@ export function buildCoinToAddressBalanceMigration(args: {
   }
 
   if (migratedRaw < minAmount) {
-    throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${coinType} coin objects to migrate`, {
+    throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${resolveSymbol(coinType)} coin objects to migrate`, {
       available: migratedRaw.toString(),
       required: minAmount.toString(),
     });
