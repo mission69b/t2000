@@ -47,11 +47,11 @@ export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
  *    buildDeclineJobTx      → OPENING pkg :: escrow  :: decline   (v3)
  *    buildCancelOpeningTx   → OPENING pkg :: opening :: cancel_open
  *    buildRefundUnclaimedTx → OPENING pkg :: opening :: refund_unclaimed
- *    buildOpenJobTx         → OPENING pkg :: opening :: create_open
- *    buildClaimOpeningTx    → OPENING pkg :: opening :: claim
+ *    buildOpenJobTx         → OPENING pkg :: opening :: create_open_v2
+ *    buildClaimOpeningTx    → OPENING pkg :: opening :: claim_v2|claim_proven_v2
  *    buildCreateJobTx       → ESCROW  pkg :: escrow  :: create
  *    buildDeliverJobTx      → ESCROW  pkg :: escrow  :: deliver
- *    jobCall                → ESCROW  pkg :: escrow  :: release|refund|reject
+ *    buildReleaseJobTx      → OPENING pkg :: reputation :: release_v2
  *
  *  `decline` is the one that looks like a typo and isn't: it lives in the
  *  OPENING package but the `escrow` module, because it shipped in the v3
@@ -87,10 +87,13 @@ const ACTION_TARGETS: Record<
     module: 'escrow',
     functions: ['deliver'],
   },
+  // S.1192: release settles through `reputation::release_v2` (the active
+  // counter rides the money); `create_empty_score` is the allowlisted
+  // precursor for a scoreless seller — same hop as reject/refund.
   release: {
-    pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
-    module: 'escrow',
-    functions: ['release'],
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'reputation',
+    functions: ['release_v2', 'create_empty_score'],
   },
   // S.1063: reject/refund settle through the reputation module so protocol
   // outcomes land on scores; `create_empty_score` is the allowlisted
@@ -113,16 +116,20 @@ const ACTION_TARGETS: Record<
   },
   // Open board.
   'open-create': {
+    // S.1192: every post rides create_open_v2 (adds the min_seller_level
+    // DF write); the v1 door is a dead abort stub.
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
-    functions: ['create_open'],
+    functions: ['create_open_v2'],
   },
   'open-claim': {
-    // S.1054: Proven openings (claim_policy 1/2) claim via `claim_proven`
-    // (adds the claimer's own AgentScore as an immutable input).
+    // S.1192: every claim carries the claimer's own &mut AgentScore
+    // (claim_v2 for Anyone, claim_proven_v2 for Proven 1/2), with
+    // `create_empty_score` as the allowlisted precursor when the score
+    // doesn't exist yet.
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
-    functions: ['claim', 'claim_proven'],
+    functions: ['claim_v2', 'claim_proven_v2', 'reputation::create_empty_score'],
   },
   'open-cancel': {
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
@@ -326,12 +333,13 @@ export function assertTxMatchesIntent(
   let foundIntent = false;
   for (const call of calls) {
     if (expectedPkgs.includes(normalizeSuiAddress(call.pkg))) {
-      if (call.module !== expected.module) {
-        throw new IntentMismatchError(
-          `Refusing to sign: "${intent.action}" should call ${expected.module}, but the transaction calls ${call.module}.`,
-        );
-      }
-      if (!expected.functions.includes(call.fn)) {
+      // S.1192: `functions` entries are bare names in the action's module,
+      // or `module::fn`-qualified for cross-module precursors (open-claim's
+      // `reputation::create_empty_score` hop rides an `opening` action).
+      const matches =
+        expected.functions.includes(`${call.module}::${call.fn}`) ||
+        (call.module === expected.module && expected.functions.includes(call.fn));
+      if (!matches) {
         throw new IntentMismatchError(
           `Refusing to sign: "${intent.action}" should call ${expected.module}::${expected.functions.join('|')}, but the transaction calls ${call.module}::${call.fn}.`,
         );

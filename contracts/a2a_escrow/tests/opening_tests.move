@@ -3,6 +3,7 @@ module a2a_escrow::opening_tests;
 
 use a2a_escrow::escrow::{Self, AdminCap, FeeConfig, Job};
 use a2a_escrow::opening::{Self, Opening};
+use a2a_escrow::reputation::{Self, AgentScore, ScoreBoard};
 use agent_id::registry::{Self, Registry};
 use sui::clock::{Self, Clock};
 use sui::coin::{Self, Coin};
@@ -32,6 +33,16 @@ fun setup(): (ts::Scenario, Clock) {
     escrow::init_for_testing(ts::ctx(&mut sc));
     registry::init_for_testing(ts::ctx(&mut sc));
     let clk = clock::create_for_testing(ts::ctx(&mut sc));
+    // S.1192: claims need the claimer's AgentScore — the board is the
+    // derived-address namespace parent (one per chain, AdminCap-created).
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let mut cfg = ts::take_shared<FeeConfig>(&sc);
+        reputation::create_score_board(&cap, &mut cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
     // SELLER registers itself (self-sovereign) and stays active.
     register_agent(&mut sc, &clk, SELLER);
     // IDLE_SELLER registers, then flips itself inactive.
@@ -43,6 +54,36 @@ fun setup(): (ts::Scenario, Clock) {
         ts::return_shared(reg);
     };
     (sc, clk)
+}
+
+/// S.1192: the client-shape precursor — a claimer with no score yet
+/// creates their permissionless zero score first (empty ⇒ Level 1).
+fun ensure_score(sc: &mut ts::Scenario, clk: &Clock, who: address) {
+    ts::next_tx(sc, who);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let mut board = ts::take_shared<ScoreBoard>(sc);
+    if (!reputation::has_score(&board, who)) {
+        reputation::create_empty_score(&mut board, who, &cfg, clk, ts::ctx(sc));
+    };
+    ts::return_shared(board);
+    ts::return_shared(cfg);
+}
+
+/// Take `who`'s score by its DERIVED id — `take_shared<AgentScore>` grabs
+/// the most recent one, which is wrong the moment two sellers have scores.
+fun take_score(sc: &ts::Scenario, who: address): AgentScore {
+    let board = ts::take_shared<ScoreBoard>(sc);
+    let addr = reputation::score_address(&board, who);
+    ts::return_shared(board);
+    ts::take_shared_by_id<AgentScore>(sc, object::id_from_address(addr))
+}
+
+fun active_of(sc: &mut ts::Scenario, who: address): u64 {
+    ts::next_tx(sc, who);
+    let score = take_score(sc, who);
+    let n = reputation::active_seller_jobs(&score);
+    ts::return_shared(score);
+    n
 }
 
 fun register_agent(sc: &mut ts::Scenario, clk: &Clock, who: address) {
@@ -74,10 +115,34 @@ fun post_open_with(
     reject_split_bps: u64,
     claim_policy: u8,
 ) {
+    post_open_with_level(
+        sc,
+        clk,
+        amount,
+        open_until_ms,
+        sla_ms,
+        review_window_ms,
+        reject_split_bps,
+        claim_policy,
+        0,
+    )
+}
+
+fun post_open_with_level(
+    sc: &mut ts::Scenario,
+    clk: &Clock,
+    amount: u64,
+    open_until_ms: u64,
+    sla_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    claim_policy: u8,
+    min_seller_level: u8,
+) {
     ts::next_tx(sc, BUYER);
     let cfg = ts::take_shared<FeeConfig>(sc);
     let payment = coin::mint_for_testing<SUI>(amount, ts::ctx(sc));
-    opening::create_open<SUI>(
+    opening::create_open_v2<SUI>(
         payment,
         b"open-spec-hash",
         open_until_ms,
@@ -85,6 +150,7 @@ fun post_open_with(
         review_window_ms,
         reject_split_bps,
         claim_policy,
+        min_seller_level,
         &cfg,
         clk,
         ts::ctx(sc),
@@ -92,12 +158,16 @@ fun post_open_with(
     ts::return_shared(cfg);
 }
 
+/// v2 claim as `who` — ensures the score precursor first (client shape).
 fun claim_as(sc: &mut ts::Scenario, who: address, clk: &Clock): ID {
+    ensure_score(sc, clk, who);
     ts::next_tx(sc, who);
     let cfg = ts::take_shared<FeeConfig>(sc);
     let reg = ts::take_shared<Registry>(sc);
+    let mut score = take_score(sc, who);
     let op = ts::take_shared<Opening<SUI>>(sc);
-    let job_id = opening::claim(op, &reg, &cfg, clk, ts::ctx(sc));
+    let job_id = opening::claim_v2(op, &reg, &mut score, &cfg, clk, ts::ctx(sc));
+    ts::return_shared(score);
     ts::return_shared(reg);
     ts::return_shared(cfg);
     job_id
@@ -135,6 +205,9 @@ fun post_claim_deliver_release_pays_seller_minus_fee() {
         ts::return_shared(job);
     };
 
+    // S.1192: the claim seated one active job on the seller's score.
+    assert!(active_of(&mut sc, SELLER) == 1, 8);
+
     // Normal Job lifecycle from here: deliver then buyer-accept release.
     ts::next_tx(&mut sc, SELLER);
     {
@@ -148,10 +221,14 @@ fun post_claim_deliver_release_pays_seller_minus_fee() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::release(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        let mut score = take_score(&sc, SELLER);
+        reputation::release_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
+    // …and the release freed it (decrement rides the money, exactly once).
+    assert!(active_of(&mut sc, SELLER) == 0, 9);
     assert_received(&mut sc, SELLER, AMOUNT - FEE);
     assert_received(&mut sc, ADMIN, FEE); // fee receiver = deployer in tests
     ts::end(sc);
@@ -459,4 +536,235 @@ fun open_claim_deliver_reject_pays_buyer_full() {
     assert_received(&mut sc, BUYER, AMOUNT);
     ts::end(sc);
     clk.destroy_for_testing();
+}
+
+// === S.1192: active caps + min seller level + dead v1 entries ===
+
+#[test]
+#[expected_failure(abort_code = opening::EActiveJobCap)]
+fun level1_cap_four_claims_fifth_refused() {
+    let (mut sc, mut clk) = setup();
+    // Five identical Anyone posts; a fresh (empty-score = Level 1) seller
+    // seats 4 claims, and the 5th hits the cap while all 4 stay in flight.
+    post_open(&mut sc, &clk);
+    post_open(&mut sc, &clk);
+    post_open(&mut sc, &clk);
+    post_open(&mut sc, &clk);
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    claim_as(&mut sc, SELLER, &clk);
+    claim_as(&mut sc, SELLER, &clk);
+    claim_as(&mut sc, SELLER, &clk);
+    claim_as(&mut sc, SELLER, &clk);
+    assert!(active_of(&mut sc, SELLER) == 4, 0);
+    claim_as(&mut sc, SELLER, &clk);
+    abort 0
+}
+
+#[test]
+fun refund_v2_frees_the_seat_and_lands_no_delivery() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    let job_id = claim_as(&mut sc, SELLER, &clk);
+    assert!(active_of(&mut sc, SELLER) == 1, 0);
+    // Deadline lapses undelivered — permissionless crank refunds, the
+    // no_delivery outcome lands AND the seat frees (once).
+    clk.set_for_testing(10_000 + SLA_MS + 1);
+    ts::next_tx(&mut sc, LURKER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = take_score(&sc, SELLER);
+        reputation::refund_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(reputation::no_delivery(&score) == 1, 1);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    assert!(active_of(&mut sc, SELLER) == 0, 2);
+    assert_received(&mut sc, BUYER, AMOUNT);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun reject_v2_frees_the_seat() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    let job_id = claim_as(&mut sc, SELLER, &clk);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        escrow::deliver(&mut job, b"junk", &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    // Passport (unregistered) buyer rejects in-window: outcome + seat free.
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = take_score(&sc, SELLER);
+        reputation::reject_v2(&mut job, &mut score, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(reputation::rejected_after_delivery(&score) == 1, 0);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    assert!(active_of(&mut sc, SELLER) == 0, 1);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun decline_never_touches_the_active_counter() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    let job_id = claim_as(&mut sc, SELLER, &clk);
+    assert!(active_of(&mut sc, SELLER) == 1, 0);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    // LOCKED (master spec D-table): decline is a clean walk for outcomes
+    // AND never decrements — the declined claim keeps its seat occupied.
+    // Named consequence: claim→decline churn burns capacity permanently
+    // (documented in RUNBOOK_S1192; anti-abandon by design).
+    assert!(active_of(&mut sc, SELLER) == 1, 1);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun min_level_one_passes_for_fresh_seller() {
+    let (mut sc, mut clk) = setup();
+    // Floor 1: every registered agent with a score qualifies (empty = L1).
+    post_open_with_level(
+        &mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, SPLIT_BPS, POLICY_ANY, 1,
+    );
+    clk.set_for_testing(10_000);
+    claim_as(&mut sc, SELLER, &clk);
+    assert!(active_of(&mut sc, SELLER) == 1, 0);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EMinSellerLevelUnmet)]
+fun min_level_two_refuses_fresh_seller() {
+    let (mut sc, mut clk) = setup();
+    post_open_with_level(
+        &mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, SPLIT_BPS, POLICY_ANY, 2,
+    );
+    clk.set_for_testing(10_000);
+    claim_as(&mut sc, SELLER, &clk); // empty score = Level 1 < floor 2
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EBadMinSellerLevel)]
+fun min_level_five_aborts_at_post() {
+    let (mut sc, clk) = setup();
+    post_open_with_level(
+        &mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, SPLIT_BPS, POLICY_ANY, 5,
+    );
+    abort 0
+}
+
+#[test]
+fun cancel_reclaims_the_min_level_df() {
+    let (mut sc, clk) = setup();
+    // A floored post cancels cleanly — repay_buyer removes the DF before
+    // the UID deletes (no orphaned storage), full fee-free refund.
+    post_open_with_level(
+        &mut sc, &clk, AMOUNT, OPEN_UNTIL, SLA_MS, REVIEW_WINDOW, SPLIT_BPS, POLICY_ANY, 3,
+    );
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let op = ts::take_shared<Opening<SUI>>(&sc);
+        assert!(opening::min_seller_level(&op) == 3, 0);
+        opening::cancel_open(op, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(cfg);
+    };
+    assert_received(&mut sc, BUYER, AMOUNT);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EUseClaimV2)]
+fun deprecated_create_open_aborts() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(&mut sc));
+        opening::create_open<SUI>(
+            payment,
+            b"open-spec-hash",
+            OPEN_UNTIL,
+            SLA_MS,
+            REVIEW_WINDOW,
+            SPLIT_BPS,
+            POLICY_ANY,
+            &cfg,
+            &clk,
+            ts::ctx(&mut sc),
+        );
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EUseClaimV2)]
+fun deprecated_claim_aborts() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let op = ts::take_shared<Opening<SUI>>(&sc);
+        opening::claim(op, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EScoreNotClaimer)]
+fun claim_v2_with_borrowed_score_fails() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    // LURKER registers and tries to claim on SELLER's score — the
+    // ownership assert stops both the cap dodge and the counter graffiti.
+    register_agent(&mut sc, &clk, LURKER);
+    ensure_score(&mut sc, &clk, SELLER);
+    ts::next_tx(&mut sc, LURKER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut score = take_score(&sc, SELLER);
+        let op = ts::take_shared<Opening<SUI>>(&sc);
+        opening::claim_v2(op, &reg, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    abort 0
 }

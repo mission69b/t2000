@@ -69,7 +69,9 @@ fun release_as(sc: &mut ts::Scenario, who: address, clk: &Clock) {
     ts::next_tx(sc, who);
     let cfg = ts::take_shared<FeeConfig>(sc);
     let mut job = ts::take_shared<Job<SUI>>(sc);
-    escrow::release(&mut job, &cfg, clk, ts::ctx(sc));
+    // S.1192: the money path under `reputation::release_v2` — same auth,
+    // in-package direct call (the reject/refund settle tests' pattern).
+    escrow::release_settle_pkg(&mut job, &cfg, clk, ts::ctx(sc));
     ts::return_shared(job);
     ts::return_shared(cfg);
 }
@@ -864,6 +866,122 @@ fun set_max_above_hard_ceiling_fails() {
 fun set_max_below_live_min_fails() {
     let (mut sc, clk) = setup();
     set_max_as_admin(&mut sc, escrow::default_min_job_amount() - 1);
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+// === S.1192: deprecated release + tier-cap tunables ===
+
+#[test]
+#[expected_failure(abort_code = escrow::EUseReleaseV2)]
+fun deprecated_escrow_release_aborts() {
+    let (mut sc, clk) = setup();
+    create_job(&mut sc, &clk);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::release(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+fun tier_caps_default_then_admin_override() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        // Soft-start defaults with no DF set: 4 / 10 / 20 / 30, floor 3.
+        assert!(escrow::config_tier_active_cap(&cfg, 1) == 4, 0);
+        assert!(escrow::config_tier_active_cap(&cfg, 2) == 10, 1);
+        assert!(escrow::config_tier_active_cap(&cfg, 3) == 20, 2);
+        assert!(escrow::config_tier_active_cap(&cfg, 4) == 30, 3);
+        assert!(escrow::config_no_delivery_regression_floor(&cfg) == 3, 4);
+        ts::return_shared(cfg);
+    };
+    // Admin retunes Level 2 → 8 (the spec's own example) and updates it
+    // again in place; other levels stay on their defaults.
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let mut cfg = ts::take_shared<FeeConfig>(&sc);
+        escrow::set_tier_active_cap(&cap, &mut cfg, 2, 8);
+        assert!(escrow::config_tier_active_cap(&cfg, 2) == 8, 5);
+        escrow::set_tier_active_cap(&cap, &mut cfg, 2, 12);
+        assert!(escrow::config_tier_active_cap(&cfg, 2) == 12, 6);
+        assert!(escrow::config_tier_active_cap(&cfg, 1) == 4, 7);
+        escrow::set_no_delivery_regression_floor(&cap, &mut cfg, 5);
+        assert!(escrow::config_no_delivery_regression_floor(&cfg) == 5, 8);
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadTierBounds)]
+fun set_tier_cap_level_zero_fails() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let mut cfg = ts::take_shared<FeeConfig>(&sc);
+        escrow::set_tier_active_cap(&cap, &mut cfg, 0, 4);
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadTierBounds)]
+fun set_tier_cap_level_five_fails() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let mut cfg = ts::take_shared<FeeConfig>(&sc);
+        escrow::set_tier_active_cap(&cap, &mut cfg, 5, 4);
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadTierBounds)]
+fun set_tier_cap_zero_cap_fails() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let mut cfg = ts::take_shared<FeeConfig>(&sc);
+        escrow::set_tier_active_cap(&cap, &mut cfg, 1, 0);
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
+    clock::destroy_for_testing(clk);
+    abort 99
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EBadTierBounds)]
+fun set_regression_floor_zero_fails() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let mut cfg = ts::take_shared<FeeConfig>(&sc);
+        escrow::set_no_delivery_regression_floor(&cap, &mut cfg, 0);
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
     clock::destroy_for_testing(clk);
     abort 99
 }

@@ -147,8 +147,18 @@ export {
   deriveAgentScoreId,
   getAgentScore,
   meetsClaimPolicy,
+  SELLER_LEVEL_ACTIVE_CAPS,
+  NO_DELIVERY_REGRESSION_FLOOR,
+  LEVEL4_MIN_REVIEWS,
+  LEVEL4_MAX_NO_DELIVERY,
+  sellerLevel,
+  effectiveSellerLevel,
+  activeCapForLevel,
+  meetsMinSellerLevel,
+  sellerLevelLabel,
+  preflightClaimOpening,
 } from './wallet/reputation.js';
-export type { AgentScore } from './wallet/reputation.js';
+export type { AgentScore, SellerLevel } from './wallet/reputation.js';
 
 // Commerce API client (agent services + content-addressed job specs) —
 // browser-safe (WebCrypto hashing, fetch only). Console surfaces share the

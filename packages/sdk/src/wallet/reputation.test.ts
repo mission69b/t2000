@@ -8,6 +8,14 @@ import {
   claimPolicyRequirement,
   deriveAgentScoreId,
   meetsClaimPolicy,
+  activeCapForLevel,
+  effectiveSellerLevel,
+  meetsMinSellerLevel,
+  NO_DELIVERY_REGRESSION_FLOOR,
+  preflightClaimOpening,
+  SELLER_LEVEL_ACTIVE_CAPS,
+  sellerLevel,
+  sellerLevelLabel,
   type AgentScore,
 } from './reputation.js';
 
@@ -30,6 +38,7 @@ function score(
     rejectedAfterDelivery: 0,
     noDelivery: 0,
     asBuyerRejected: 0,
+    activeSellerJobs: 0,
   };
 }
 
@@ -123,5 +132,79 @@ describe('review tx builders', () => {
     for (const stars of [0, 6, 4.5, Number.NaN]) {
       expect(() => buildSubmitReviewTx({ scoreId: BOARD, jobId: JOB, stars })).toThrow(/1-5/);
     }
+  });
+});
+
+describe('seller levels (S.1192) — mirror the Move bars', () => {
+  it('null / empty score = Level 1', () => {
+    expect(sellerLevel(null)).toBe(1);
+    expect(sellerLevel(score(0, 0))).toBe(1);
+    expect(effectiveSellerLevel(null)).toBe(1);
+  });
+
+  it('Level 2 = Proven (3 distinct), Level 3 = 4.0★+, Level 4 = 20 reviews + ≤2 no-delivery', () => {
+    expect(sellerLevel(score(3, 9))).toBe(2); // 3.0★ avg, proven
+    expect(sellerLevel(score(3, 12))).toBe(3); // exactly 4.0★
+    expect(sellerLevel(score(20, 80))).toBe(4); // 20 reviews at 4.0★
+    expect(sellerLevel({ ...score(20, 80), noDelivery: 3 })).toBe(3); // reliability bar
+    expect(sellerLevel(score(19, 76))).toBe(3); // one review short of L4
+  });
+
+  it('regression: no_delivery >= 3 floors the EFFECTIVE level to 1', () => {
+    const regressed = { ...score(20, 100), noDelivery: NO_DELIVERY_REGRESSION_FLOOR };
+    expect(sellerLevel(regressed)).toBe(3); // stars still say 3 (L4 bar needs ≤2)
+    expect(effectiveSellerLevel(regressed)).toBe(1);
+    expect(meetsMinSellerLevel(regressed, 2)).toBe(false);
+    expect(meetsMinSellerLevel(regressed, 1)).toBe(true);
+  });
+
+  it('caps ladder 4/10/20/30 + labels', () => {
+    expect(SELLER_LEVEL_ACTIVE_CAPS).toEqual([4, 10, 20, 30]);
+    expect(activeCapForLevel(1)).toBe(4);
+    expect(activeCapForLevel(4)).toBe(30);
+    expect(sellerLevelLabel(2)).toBe('Level 2');
+  });
+});
+
+describe('preflightClaimOpening (S.1192) — English before the rail', () => {
+  it('fresh seller on a floor-less Anyone opening passes', () => {
+    expect(preflightClaimOpening(null, { claimPolicy: 0 }).valid).toBe(true);
+    expect(preflightClaimOpening(score(0, 0), { claimPolicy: 0 }).valid).toBe(true);
+  });
+
+  it('at the cap: refuses with Active: N/cap capacity language, not a ban', () => {
+    const capped = { ...score(0, 0), activeSellerJobs: 4 };
+    const pf = preflightClaimOpening(capped, { claimPolicy: 0 });
+    expect(pf.valid).toBe(false);
+    expect(pf.error).toMatch(/Active: 4\/4/);
+    expect(pf.error).toMatch(/Finish|deadline refund/);
+    // One under the cap still claims.
+    expect(
+      preflightClaimOpening({ ...score(0, 0), activeSellerJobs: 3 }, { claimPolicy: 0 }).valid,
+    ).toBe(true);
+  });
+
+  it('the cap follows the EFFECTIVE level (a Level 2 seller gets 10 seats)', () => {
+    const proven = { ...score(3, 9), activeSellerJobs: 9 };
+    expect(preflightClaimOpening(proven, { claimPolicy: 0 }).valid).toBe(true);
+    expect(
+      preflightClaimOpening({ ...proven, activeSellerJobs: 10 }, { claimPolicy: 0 }).valid,
+    ).toBe(false);
+  });
+
+  it('min level floor refuses below-floor sellers by name', () => {
+    const pf = preflightClaimOpening(score(0, 0), { claimPolicy: 0, minSellerLevel: 2 });
+    expect(pf.valid).toBe(false);
+    expect(pf.error).toMatch(/Level 2\+/);
+    expect(pf.error).toMatch(/Level 1/);
+    expect(
+      preflightClaimOpening(score(3, 9), { claimPolicy: 0, minSellerLevel: 2 }).valid,
+    ).toBe(true);
+  });
+
+  it('claim policy still gates first (S.1054 order preserved)', () => {
+    const pf = preflightClaimOpening(null, { claimPolicy: 2 });
+    expect(pf.valid).toBe(false);
+    expect(pf.error).toMatch(/distinct buyers and a 4\.0★ average/);
   });
 });

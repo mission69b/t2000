@@ -112,7 +112,7 @@ fun released_job_from(
     {
         let cfg = ts::take_shared<FeeConfig>(sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
-        escrow::release(&mut job, &cfg, clk, ts::ctx(sc));
+        escrow::release_settle_pkg(&mut job, &cfg, clk, ts::ctx(sc));
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
@@ -147,7 +147,7 @@ fun review_as(sc: &mut ts::Scenario, clk: &Clock, who: address, job_id: ID, star
 /// same-buyer repeats use `released_job_from` + `review_as` directly.
 fun reviewed_n(sc: &mut ts::Scenario, clk: &Clock, seller: address, n: u64, stars: u8) {
     let pool = buyers();
-    let mut i = 0;
+    let mut i = 0u64;
     while (i < n) {
         let buyer = *pool.borrow(i);
         let job_id = released_job_from(sc, clk, buyer, seller);
@@ -360,7 +360,7 @@ fun goodwill_release_not_reviewable() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
-        escrow::release(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::release_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
@@ -511,7 +511,7 @@ fun proven_predicates_track_distinct_buyers() {
 fun three_reviews_one_buyer_not_proven() {
     let (mut sc, clk) = setup();
     // The soft-Sybil case v2 closes: one friendly buyer, three jobs.
-    let mut i = 0;
+    let mut i = 0u64;
     while (i < 3) {
         let job_id = released_job(&mut sc, &clk, SELLER); // BUYER every time
         review(&mut sc, &clk, job_id, 5);
@@ -536,7 +536,7 @@ fun three_reviews_one_buyer_not_proven() {
 #[expected_failure(abort_code = opening::EClaimPolicyUnmet)]
 fun proven_claim_one_buyer_three_reviews_fails() {
     let (mut sc, clk) = setup();
-    let mut i = 0;
+    let mut i = 0u64;
     while (i < 3) {
         let job_id = released_job(&mut sc, &clk, SELLER);
         review(&mut sc, &clk, job_id, 5);
@@ -574,7 +574,7 @@ fun post_open_with_policy(sc: &mut ts::Scenario, clk: &Clock, policy: u8) {
     ts::next_tx(sc, BUYER);
     let cfg = ts::take_shared<FeeConfig>(sc);
     let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(sc));
-    opening::create_open<SUI>(
+    opening::create_open_v2<SUI>(
         payment,
         b"open-spec-hash",
         clk.timestamp_ms() + OPEN_UNTIL,
@@ -582,6 +582,7 @@ fun post_open_with_policy(sc: &mut ts::Scenario, clk: &Clock, policy: u8) {
         REVIEW_WINDOW,
         SPLIT_BPS,
         policy,
+        0,
         &cfg,
         clk,
         ts::ctx(sc),
@@ -594,8 +595,8 @@ fun claim_proven_as(sc: &mut ts::Scenario, who: address, clk: &Clock): ID {
     let cfg = ts::take_shared<FeeConfig>(sc);
     let reg = ts::take_shared<Registry>(sc);
     let op = ts::take_shared<Opening<SUI>>(sc);
-    let score = ts::take_shared<AgentScore>(sc);
-    let job_id = opening::claim_proven(op, &reg, &score, &cfg, clk, ts::ctx(sc));
+    let mut score = ts::take_shared<AgentScore>(sc);
+    let job_id = opening::claim_proven_v2(op, &reg, &mut score, &cfg, clk, ts::ctx(sc));
     ts::return_shared(score);
     ts::return_shared(reg);
     ts::return_shared(cfg);
@@ -672,7 +673,9 @@ fun plain_claim_on_proven_opening_fails() {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let reg = ts::take_shared<Registry>(&sc);
         let op = ts::take_shared<Opening<SUI>>(&sc);
-        opening::claim(op, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        let mut score = ts::take_shared<AgentScore>(&sc);
+        opening::claim_v2(op, &reg, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
         ts::return_shared(reg);
         ts::return_shared(cfg);
     };
@@ -1092,5 +1095,225 @@ fun create_open_accepts_proven_policies() {
 fun create_open_policy_three_aborts() {
     let (mut sc, clk) = setup();
     post_open_with_policy(&mut sc, &clk, 3);
+    abort 0
+}
+
+// === S.1192 — seller levels, regression, active counter on hire jobs ===
+
+/// `n` released+reviewed jobs of `stars` each, buyers CYCLING the 4-buyer
+/// pool — review_count grows per JOB, so this builds the Level 4 bar
+/// (≥20 reviews) without needing 20 distinct addresses.
+fun reviewed_n_cycling(sc: &mut ts::Scenario, clk: &Clock, seller: address, n: u64, stars: u8) {
+    let pool = buyers();
+    let mut i = 0u64;
+    while (i < n) {
+        let buyer = *pool.borrow((i % pool.length()) as u64);
+        let job_id = released_job_from(sc, clk, buyer, seller);
+        review_as(sc, clk, buyer, job_id, stars);
+        i = i + 1;
+    }
+}
+
+fun seller_score(sc: &ts::Scenario): AgentScore {
+    let board = ts::take_shared<ScoreBoard>(sc);
+    let addr = reputation::score_address(&board, SELLER);
+    ts::return_shared(board);
+    ts::take_shared_by_id<AgentScore>(sc, object::id_from_address(addr))
+}
+
+#[test]
+fun seller_levels_climb_the_locked_bars() {
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, ADMIN);
+    // Level 1: empty score (soft-start: active reads 0 with no DF).
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut board = ts::take_shared<ScoreBoard>(&sc);
+        reputation::create_empty_score(&mut board, SELLER, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(board);
+        ts::return_shared(cfg);
+    };
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let score = seller_score(&sc);
+        assert!(reputation::seller_level(&score) == 1, 0);
+        assert!(reputation::effective_seller_level(&score, &cfg) == 1, 1);
+        assert!(reputation::active_seller_jobs(&score) == 0, 2);
+        assert!(reputation::meets_min_seller_level(&score, &cfg, 1), 3);
+        assert!(!reputation::meets_min_seller_level(&score, &cfg, 2), 4);
+        ts::return_shared(score);
+        ts::return_shared(cfg);
+    };
+    // Level 2: Proven (3 distinct buyers) but avg 3.0 < 4.0.
+    reviewed_n(&mut sc, &clk, SELLER, 3, 3);
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let score = seller_score(&sc);
+        assert!(reputation::seller_level(&score) == 2, 5);
+        ts::return_shared(score);
+    };
+    // Level 3: 5★ jobs pull the average over 4.0 (8 reviews < 20 → not 4).
+    reviewed_n_cycling(&mut sc, &clk, SELLER, 5, 5);
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let score = seller_score(&sc);
+        assert!(reputation::seller_level(&score) == 3, 6);
+        ts::return_shared(score);
+    };
+    // Level 4: ≥20 reviews, avg still ≥4.0, no_delivery 0 ≤ 2.
+    reviewed_n_cycling(&mut sc, &clk, SELLER, 12, 5); // total 20
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let score = seller_score(&sc);
+        assert!(reputation::review_count(&score) == 20, 7);
+        assert!(reputation::seller_level(&score) == 4, 8);
+        assert!(reputation::meets_min_seller_level(&score, &cfg, 4), 9);
+        ts::return_shared(score);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun no_delivery_regression_floors_effective_level_to_one() {
+    let (mut sc, mut clk) = setup();
+    // A Proven·4★+ (Level 3) seller…
+    reviewed_n(&mut sc, &clk, SELLER, 3, 5);
+    // …ghosts three funded jobs past the deadline (refund_v2 each).
+    let mut i = 0u64;
+    while (i < 3) {
+        let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+        let past = clk.timestamp_ms() + SLA_MS + 1;
+        clk.set_for_testing(past);
+        ts::next_tx(&mut sc, STRANGER);
+        {
+            let cfg = ts::take_shared<FeeConfig>(&sc);
+            let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+            let mut score = seller_score(&sc);
+            reputation::refund_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+            ts::return_shared(score);
+            ts::return_shared(job);
+            ts::return_shared(cfg);
+        };
+        i = i + 1;
+    };
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let score = seller_score(&sc);
+        assert!(reputation::no_delivery(&score) == 3, 0);
+        // Stars still say Level 3; the regression floor (default 3) says 1.
+        assert!(reputation::seller_level(&score) == 3, 1);
+        assert!(reputation::effective_seller_level(&score, &cfg) == 1, 2);
+        // …so a Level 2+ floor refuses them despite the stars.
+        assert!(!reputation::meets_min_seller_level(&score, &cfg, 2), 3);
+        ts::return_shared(score);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EMinSellerLevelUnmet)]
+fun min_level_three_refuses_level_two_seller() {
+    let (mut sc, clk) = setup();
+    // Proven (3 distinct) at 3★ avg = Level 2 — below a Level 3 floor.
+    reviewed_n(&mut sc, &clk, SELLER, 3, 3);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(&mut sc));
+        opening::create_open_v2<SUI>(
+            payment,
+            b"open-spec-hash",
+            clk.timestamp_ms() + OPEN_UNTIL,
+            SLA_MS,
+            REVIEW_WINDOW,
+            SPLIT_BPS,
+            POLICY_ANY,
+            3,
+            &cfg,
+            &clk,
+            ts::ctx(&mut sc),
+        );
+        ts::return_shared(cfg);
+    };
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let op = ts::take_shared<Opening<SUI>>(&sc);
+        let mut score = seller_score(&sc);
+        opening::claim_v2(op, &reg, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+fun hire_release_v2_never_decrements_active() {
+    let (mut sc, clk) = setup();
+    // Seller has one seat occupied from a BOARD claim…
+    reviewed_n(&mut sc, &clk, SELLER, 3, 5);
+    post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
+    claim_proven_as(&mut sc, SELLER, &clk);
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let score = seller_score(&sc);
+        assert!(reputation::active_seller_jobs(&score) == 1, 0);
+        ts::return_shared(score);
+    };
+    // …then a HIRE job (never incremented) releases through release_v2:
+    // no ClaimedJobKey marker → no decrement. A dust hire + instant
+    // release can NOT reset a hunter's counter.
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = seller_score(&sc);
+        assert!(!escrow::is_claimed_job(&job), 1);
+        reputation::release_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(reputation::active_seller_jobs(&score) == 1, 2);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EWrongScore)]
+fun release_v2_with_wrong_score_fails() {
+    let (mut sc, clk) = setup();
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    deliver_job(&mut sc, &clk, SELLER, job_id);
+    // OTHER_SELLER's score is not this job's seller — refuse before money.
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut board = ts::take_shared<ScoreBoard>(&sc);
+        reputation::create_empty_score(&mut board, OTHER_SELLER, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(board);
+        ts::return_shared(cfg);
+    };
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = ts::take_shared<AgentScore>(&sc);
+        reputation::release_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
     abort 0
 }

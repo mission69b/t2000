@@ -1,4 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
+import { deriveDynamicFieldID } from '@mysten/sui/utils';
 import { T2000Error } from '../errors.js';
 import { USDC_DECIMALS } from '../constants.js';
 import { USDC_TYPE } from '../token-registry.js';
@@ -92,6 +93,15 @@ export const A2A_ESCROW_PACKAGE_V7_ID =
  *  A DEFINING-id anchor like V2/V3/V6/V7 — never moves again. */
 export const A2A_ESCROW_PACKAGE_V8_ID =
   '0x1595b80bc05a03607f3908702c866ca63cf961025b4263b5ecbe419e07f8ff31';
+/** v10 (S.1192) — defining id for the seller-level surface: the
+ *  ActiveSellerJobsChanged/OpeningCreatedV2 events and the
+ *  ActiveSellerJobsKey/MinSellerLevelKey/TierActiveCapKey/ClaimedJobKey
+ *  DF key types. ⚠️ PLACEHOLDER '' until the founder upgrade broadcasts
+ *  (RUNBOOK_S1192 §4 pins the real id in the cutover commit, BEFORE the
+ *  npm release) — while empty, every V10-pinned DF read returns 0, which
+ *  is the honest pre-cutover value. Never moves again after pinning. */
+export const A2A_ESCROW_PACKAGE_V10_ID =
+  process.env.A2A_ESCROW_PACKAGE_V10_ID ?? '';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
@@ -145,6 +155,11 @@ export interface OpeningTerms {
    *  2 Proven · 4★+. Never changes HOW a claim works: still FCFS, still
    *  $0. 3+ aborts on-chain until defined. */
   claimPolicy?: number;
+  /** S.1192 — minimum EFFECTIVE seller level to claim: 0 none (default),
+   *  1..4 (Level floor, independent of claimPolicy — a post can require
+   *  Proven · 4★+ AND Level 2+, or either alone). Stored as a DF on the
+   *  Opening, enforced on-chain at claim. */
+  minSellerLevel?: number;
 }
 
 /** Every claim policy `create_open` accepts (S.1054). */
@@ -214,6 +229,16 @@ export function preflightCreateOpening(terms: OpeningTerms): {
         'anything else aborts on-chain.',
     };
   }
+  const minLevel = terms.minSellerLevel ?? 0;
+  if (!Number.isInteger(minLevel) || minLevel < 0 || minLevel > 4) {
+    return {
+      valid: false,
+      code: 'INVALID_INPUT',
+      error:
+        'minSellerLevel must be 0 (no floor) or 1–4 (Level 1–4) — ' +
+        'anything else aborts on-chain (S.1192).',
+    };
+  }
   return { valid: true };
 }
 
@@ -235,7 +260,9 @@ export async function buildCreateOpeningTx({
     allowSwapAll: false,
   });
   tx.moveCall({
-    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::create_open`,
+    // S.1192: create_open is a dead abort stub after the v10 migrate —
+    // every post rides v2 (adds the min_seller_level DF write).
+    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::create_open_v2`,
     typeArguments: [USDC_TYPE],
     arguments: [
       coin,
@@ -245,6 +272,7 @@ export async function buildCreateOpeningTx({
       tx.pure.u64(terms.reviewWindowMs),
       tx.pure.u64(terms.rejectSplitBps),
       tx.pure.u8(terms.claimPolicy ?? OPENING_CLAIM_POLICY_ANY_ACTIVE),
+      tx.pure.u8(terms.minSellerLevel ?? 0),
       feeConfigArg(tx),
       tx.object(CLOCK_ID),
     ],
@@ -256,38 +284,47 @@ export async function buildCreateOpeningTx({
  *  `registryId` = the shared `agent_id::registry::Registry` object
  *  (callers pass `AGENT_ID_REGISTRY_ID` from `@t2000/id` — single source).
  *
- *  S.1054: for a PROVEN opening (`claimPolicy` 1/2) pass `scoreId` — the
- *  claimer's own `AgentScore` (compute with `deriveAgentScoreId`) — and the
- *  call routes to `claim_proven`, which reads it immutably. Omitting it on
- *  a Proven opening aborts on-chain; preflight with `meetsClaimPolicy`
- *  first for an English refusal. */
+ *  S.1192: EVERY claim — policy 0 included — passes `scoreId`, the
+ *  claimer's own `AgentScore` (compute with `deriveAgentScoreId`): the
+ *  active-cap + level-floor gates read it and the in-flight counter
+ *  writes to it. A claimer with no score yet runs the permissionless
+ *  `buildCreateEmptyScoreTx` as its own PRECURSOR tx first (a shared
+ *  object cannot be created and used in one tx — the S.1063 sponsored
+ *  precursor hop; an empty score grants nothing and reads as Level 1).
+ *  `claimPolicy` (the OPENING's policy, from the board row or
+ *  `getOpening`) routes 0 → `claim_v2`, 1/2 → `claim_proven_v2`.
+ *  Preflight with `preflightClaimOpening` first for English refusals. */
 export function buildClaimOpeningTx({
   openingId,
   registryId,
   scoreId,
+  claimPolicy = OPENING_CLAIM_POLICY_ANY_ACTIVE,
 }: {
   openingId: string;
   registryId: string;
-  scoreId?: string;
+  scoreId: string;
+  claimPolicy?: number;
 }): Transaction {
+  if (!scoreId) {
+    throw new T2000Error(
+      'INVALID_INPUT',
+      "Claiming needs the claimer's own AgentScore id (S.1192 — every claim " +
+        'moves the active-job counter). Derive it with deriveAgentScoreId; ' +
+        'create it first with buildCreateEmptyScoreTx when it does not exist yet.',
+    );
+  }
+  const proven = claimPolicy !== OPENING_CLAIM_POLICY_ANY_ACTIVE;
   const tx = new Transaction();
   tx.moveCall({
-    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::${scoreId ? 'claim_proven' : 'claim'}`,
+    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::${proven ? 'claim_proven_v2' : 'claim_v2'}`,
     typeArguments: [USDC_TYPE],
-    arguments: scoreId
-      ? [
-          tx.object(openingId),
-          tx.object(registryId),
-          tx.object(scoreId),
-          feeConfigArg(tx),
-          tx.object(CLOCK_ID),
-        ]
-      : [
-          tx.object(openingId),
-          tx.object(registryId),
-          feeConfigArg(tx),
-          tx.object(CLOCK_ID),
-        ],
+    arguments: [
+      tx.object(openingId),
+      tx.object(registryId),
+      tx.object(scoreId),
+      feeConfigArg(tx),
+      tx.object(CLOCK_ID),
+    ],
   });
   return tx;
 }
@@ -324,7 +361,35 @@ export interface Opening {
   reviewWindowMs: number;
   rejectSplitBps: number;
   claimPolicy: number;
+  /** S.1192 — minimum EFFECTIVE seller level to claim (0 = none; DF read,
+   *  best-effort: 0 for every pre-S.1192 opening, when the V10 pin isn't
+   *  set yet, or on a read hiccup — Move is the enforcement). */
+  minSellerLevel: number;
   createdAtMs: number;
+}
+
+/** Best-effort read of the `MinSellerLevelKey` DF off an Opening's UID —
+ *  same shape as reputation's counter reads: 0 when absent/unpinned. */
+async function readMinSellerLevelDf(
+  client: SuiCoreClient,
+  openingId: string,
+): Promise<number> {
+  if (!A2A_ESCROW_PACKAGE_V10_ID) return 0;
+  try {
+    const fieldId = deriveDynamicFieldID(
+      openingId,
+      `${A2A_ESCROW_PACKAGE_V10_ID}::${MODULE}::MinSellerLevelKey`,
+      new Uint8Array([0]),
+    );
+    const resp = await client.core.getObject({
+      objectId: fieldId,
+      include: { json: true },
+    });
+    const json = resp?.object?.json as { value?: unknown } | null | undefined;
+    return Number(json?.value ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 function bytesToHex(bytes: number[] | Uint8Array): string {
@@ -346,6 +411,7 @@ export async function getOpening(
   if (!json || !objType.includes(`::${MODULE}::Opening<`)) {
     return null;
   }
+  const minSellerLevel = await readMinSellerLevelDf(client, openingId);
   return {
     id: openingId,
     buyer: String(json.buyer),
@@ -357,6 +423,7 @@ export async function getOpening(
     reviewWindowMs: Number(json.review_window_ms),
     rejectSplitBps: Number(json.reject_split_bps),
     claimPolicy: Number(json.claim_policy ?? 0),
+    minSellerLevel,
     createdAtMs: Number(json.created_at_ms ?? 0),
   };
 }
