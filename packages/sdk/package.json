@@ -4,7 +4,7 @@
   "engines": {
     "node": ">=20"
   },
-  "description": "TypeScript SDK for Agent Wallets on Sui — gasless USDC + USDsui transfers, Cetus swap routing, NAVI lending (programmatic), MPP paid API access, zkLogin compatible.",
+  "description": "TypeScript SDK for Agent Wallets on Sui \u2014 gasless USDC + USDsui transfers, Cetus swap routing, NAVI lending (programmatic), MPP paid API access, zkLogin compatible.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -17,7 +17,8 @@
     },
     "./browser": {
       "types": "./dist/browser.d.ts",
-      "import": "./dist/browser.js"
+      "import": "./dist/browser.js",
+      "require": "./dist/browser.cjs"
     }
   },
   "files": [
