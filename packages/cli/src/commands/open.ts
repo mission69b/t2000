@@ -78,6 +78,28 @@ export async function resolveBrief(input: string): Promise<string> {
   }
 }
 
+/** S.1190 — one resolver for the two claim-gate flags: an explicit
+ *  `--claim-policy 0|1|2` always wins; `--proven` stays a deprecated alias
+ *  for policy 1 (one release). Default: Anyone (0). */
+export function resolveClaimPolicyFlags(opts: {
+  claimPolicy?: string;
+  proven?: boolean;
+}): number {
+  if (opts.claimPolicy !== undefined) {
+    // Strict digit match — Number('') is 0, which would silently post an
+    // Anyone opening off an empty flag value.
+    if (!/^[012]$/.test(opts.claimPolicy.trim())) {
+      throw new Error(
+        '--claim-policy must be 0 (Anyone), 1 (Proven) or 2 (Proven · 4★+).',
+      );
+    }
+    return Number(opts.claimPolicy.trim());
+  }
+  return opts.proven
+    ? OPENING_CLAIM_POLICY_PROVEN
+    : OPENING_CLAIM_POLICY_ANY_ACTIVE;
+}
+
 function statusColor(status: OpenJobRow['status']): string {
   if (status === 'open') return pc.green(status);
   if (status === 'claimed') return pc.cyan(status);
@@ -114,9 +136,10 @@ export function registerOpenVerbs(group: Command) {
     .option('--sla <duration>', 'Delivery window once claimed (e.g. 30m, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
     .option(
-      '--proven',
-      `Only Proven agents (≥${PROVEN_MIN_REVIEWS} on-chain reviews) may claim — default is Anyone; claiming stays instant and $0 either way`,
+      '--claim-policy <policy>',
+      `Who may claim: 0 Anyone (default) · 1 Proven (≥${PROVEN_MIN_REVIEWS} distinct buyers' reviews) · 2 Proven · 4★+ (adds a 4.0★ average); claiming stays instant and $0 under every policy`,
     )
+    .option('--proven', 'DEPRECATED — same as --claim-policy 1')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -126,6 +149,7 @@ export function registerOpenVerbs(group: Command) {
         max: string;
         sla: string;
         openFor: string;
+        claimPolicy?: string;
         proven?: boolean;
         key?: string;
         api?: string;
@@ -137,6 +161,7 @@ export function registerOpenVerbs(group: Command) {
             throw new Error(`--max must be between 0.01 and ${MAX_JOB_USDC} USDC.`);
           }
           const brief = await resolveBrief(opts.brief);
+          const claimPolicy = resolveClaimPolicyFlags(opts);
           // The budget escrows ON-CHAIN at post — a real outflow from the
           // buyer's wallet, so it belongs under the same cap as a hire.
           // (Claiming is free and is never recorded as spend.)
@@ -148,9 +173,7 @@ export function registerOpenVerbs(group: Command) {
             maxUsdc,
             slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
             openHours: parseDuration(opts.openFor) / 3_600_000,
-            claimPolicy: opts.proven
-              ? OPENING_CLAIM_POLICY_PROVEN
-              : OPENING_CLAIM_POLICY_ANY_ACTIVE,
+            claimPolicy,
           });
           recordSpendIfLanded(maxUsdc, digest);
           const openingId = await resolveCreated(digest, '::opening::Opening<');
@@ -162,9 +185,9 @@ export function registerOpenVerbs(group: Command) {
           printSuccess(
             `Posted — $${maxUsdc.toFixed(2)} USDC escrowed on-chain in the opening.`,
           );
-          if (opts.proven) {
+          if (claimPolicy !== OPENING_CLAIM_POLICY_ANY_ACTIVE) {
             printInfo(
-              `Proven gate on: only agents with ≥${PROVEN_MIN_REVIEWS} on-chain reviews can claim.`,
+              `${claimPolicyLabel(claimPolicy)} gate on: ${claimPolicyRequirement(claimPolicy)}`,
             );
           }
           printBlank();
