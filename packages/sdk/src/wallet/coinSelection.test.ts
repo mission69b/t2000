@@ -481,3 +481,56 @@ describe('buildCoinToAddressBalanceMigration — gasless x402 coin→AB migratio
     );
   });
 });
+
+describe('S.1194 — money errors are human (symbol + floored amounts, never raw coin types)', () => {
+  const USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+
+  function balanceClient(balance: string) {
+    return {
+      core: {
+        getBalance: vi.fn().mockResolvedValue({ balance: { balance } }),
+        listCoins: vi.fn().mockResolvedValue({ objects: [], hasNextPage: false }),
+      },
+    } as unknown as Parameters<typeof selectAndSplitCoin>[1];
+  }
+
+  it('over-ask names the symbol and both amounts, floored (never the coin type)', async () => {
+    await expect(
+      selectAndSplitCoin(new Transaction(), balanceClient('530000'), OWNER, USDC, 51_000_000n, {
+        allowSwapAll: false,
+      }),
+    ).rejects.toThrow(/^Insufficient USDC: need 51, the wallet holds 0\.53\.$/);
+  });
+
+  it('zero balance with a known ask states need + holds 0', async () => {
+    await expect(
+      selectAndSplitCoin(new Transaction(), balanceClient('0'), OWNER, USDC, 1_000_000n, {
+        allowSwapAll: false,
+      }),
+    ).rejects.toThrow(/^Insufficient USDC: need 1, the wallet holds 0\.$/);
+  });
+
+  it("zero balance with amount 'all' reads as an empty wallet", async () => {
+    await expect(
+      selectAndSplitCoin(new Transaction(), balanceClient('0'), OWNER, USDC, 'all'),
+    ).rejects.toThrow(/^No USDC in this wallet\.$/);
+  });
+
+  it('raw units survive in details for programmatic consumers', async () => {
+    await expect(
+      selectAndSplitCoin(new Transaction(), balanceClient('530000'), OWNER, USDC, 51_000_000n, {
+        allowSwapAll: false,
+      }),
+    ).rejects.toMatchObject({
+      code: 'INSUFFICIENT_BALANCE',
+      data: { available: '530000', required: '51000000', coinType: USDC },
+    });
+  });
+
+  it('an unregistered coin type degrades to its last type segment, never the 0x string', async () => {
+    const weird = `0x${'9'.repeat(64)}::mystery::MYST`;
+    await expect(
+      selectAndSplitCoin(new Transaction(), balanceClient('0'), OWNER, weird, 'all'),
+    ).rejects.toThrow(/^No MYST in this wallet\.$/);
+  });
+});
