@@ -26,8 +26,10 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v9 upgrade
- *  2026-08-15, S.1064 — review on REJECTED, additive; v8 = outcome
+/** The LATEST published `a2a_escrow` package id on MAINNET (v10 upgrade
+ *  2026-08-24, S.1192 — seller levels + active caps, VERSION 6 cutover:
+ *  claim_v2/claim_proven_v2/create_open_v2/release_v2;
+ *  v9 = S.1064 review on REJECTED, additive; v8 = outcome
  *  counters (S.1063); v7 = distinct buyers (S.1062);
  *  v6 = S.1054 — `reputation` module + `opening::claim_proven`;
  *  v5 locked open reject at 10000 (S.1019); v4 added amount bounds
@@ -41,7 +43,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x7a9332e167d19e7442fb30740d31a536047da10ab00715402c6fff9e80ae604d';
+  '0x5c90ec07da01bf885a4e65247ce98b75ab8a042cd965d30d7213856d579c4afa';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -93,15 +95,14 @@ export const A2A_ESCROW_PACKAGE_V7_ID =
  *  A DEFINING-id anchor like V2/V3/V6/V7 — never moves again. */
 export const A2A_ESCROW_PACKAGE_V8_ID =
   '0x1595b80bc05a03607f3908702c866ca63cf961025b4263b5ecbe419e07f8ff31';
-/** v10 (S.1192) — defining id for the seller-level surface: the
- *  ActiveSellerJobsChanged/OpeningCreatedV2 events and the
- *  ActiveSellerJobsKey/MinSellerLevelKey/TierActiveCapKey/ClaimedJobKey
- *  DF key types. ⚠️ PLACEHOLDER '' until the founder upgrade broadcasts
- *  (RUNBOOK_S1192 §4 pins the real id in the cutover commit, BEFORE the
- *  npm release) — while empty, every V10-pinned DF read returns 0, which
- *  is the honest pre-cutover value. Never moves again after pinning. */
+/** v10 (S.1192, upgrade 1Am9J7H5… 2026-08-24) — defining id for the
+ *  seller-level surface: the ActiveSellerJobsChanged/OpeningCreatedV2
+ *  events and the ActiveSellerJobsKey/MinSellerLevelKey/TierActiveCapKey/
+ *  ClaimedJobKey DF key types. A DEFINING-id anchor like V2/V3/V6/V7/V8 —
+ *  never moves again, even when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V10_ID =
-  process.env.A2A_ESCROW_PACKAGE_V10_ID ?? '';
+  process.env.A2A_ESCROW_PACKAGE_V10_ID ??
+  '0x5c90ec07da01bf885a4e65247ce98b75ab8a042cd965d30d7213856d579c4afa';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
