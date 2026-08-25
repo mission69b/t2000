@@ -26,8 +26,10 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v10 upgrade
- *  2026-08-24, S.1192 — seller levels + active caps, VERSION 6 cutover:
+/** The LATEST published `a2a_escrow` package id on MAINNET (v11 upgrade
+ *  2026-08-25, S.1193 — batch openings, additive, NO migrate:
+ *  `batch` module + `set_max_batch_slots`;
+ *  v10 = S.1192 seller levels + active caps, VERSION 6 cutover:
  *  claim_v2/claim_proven_v2/create_open_v2/release_v2;
  *  v9 = S.1064 review on REJECTED, additive; v8 = outcome
  *  counters (S.1063); v7 = distinct buyers (S.1062);
@@ -43,7 +45,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x5c90ec07da01bf885a4e65247ce98b75ab8a042cd965d30d7213856d579c4afa';
+  '0x2a928916c859a159e6d6f4841073a31397d01336c1ea689ce74344e456463c8d';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -103,15 +105,14 @@ export const A2A_ESCROW_PACKAGE_V8_ID =
 export const A2A_ESCROW_PACKAGE_V10_ID =
   process.env.A2A_ESCROW_PACKAGE_V10_ID ??
   '0x5c90ec07da01bf885a4e65247ce98b75ab8a042cd965d30d7213856d579c4afa';
-/** v11 (S.1193) — defining id for the batch surface: the
- *  BatchOpeningCreated/BatchSlotClaimed/BatchOpeningCancelled/
- *  BatchOpeningRefunded events and the BatchOpening object type.
- *  ⚠️ PLACEHOLDER '' until the founder upgrade broadcasts
- *  (RUNBOOK_S1193 §2 pins the real id in the cutover commit, BEFORE the
- *  npm release) — while empty, batch event walks are a no-op, which is
- *  the honest pre-cutover value. Never moves again after pinning. */
+/** v11 (S.1193, upgrade 2y3g17rv… 2026-08-25) — defining id for the batch
+ *  surface: the BatchOpeningCreated/BatchSlotClaimed/BatchOpeningCancelled/
+ *  BatchOpeningRefunded events and the BatchOpening object type. A
+ *  DEFINING-id anchor like V2/V3/V6/V7/V8/V10 — never moves again, even
+ *  when LATEST does. */
 export const A2A_ESCROW_PACKAGE_V11_ID =
-  process.env.A2A_ESCROW_PACKAGE_V11_ID ?? '';
+  process.env.A2A_ESCROW_PACKAGE_V11_ID ??
+  '0x2a928916c859a159e6d6f4841073a31397d01336c1ea689ce74344e456463c8d';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
