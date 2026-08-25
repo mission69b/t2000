@@ -277,6 +277,24 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       'open-cancel',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::cancel_open`,
     ],
+    // S.1193: the batch (wave) family — new module, same package.
+    [
+      'batch-open-create',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::create_batch_open`,
+    ],
+    ['batch-open-claim', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_claim`],
+    [
+      'batch-open-claim',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
+    ],
+    [
+      'batch-open-cancel',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::cancel_batch_open`,
+    ],
+    [
+      'batch-open-refund',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::refund_batch_expired`,
+    ],
     [
       'open-refund',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::refund_unclaimed`,

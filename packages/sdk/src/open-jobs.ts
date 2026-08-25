@@ -76,6 +76,16 @@ export interface OpenJobRow {
   /** S.1192 — minimum EFFECTIVE seller level to claim (render with
    *  `sellerLevelLabel`). Absent on pre-S.1192 rows = 0 (no floor). */
   minSellerLevel?: number;
+  /** S.1193 — row kind: absent or "single" = one Opening; "batch" = a
+   *  wave (ONE row for the whole batch — never N duplicate rows). */
+  kind?: 'single' | 'batch';
+  /** S.1193 — wave size (batch rows only). */
+  slotsTotal?: number;
+  /** S.1193 — unclaimed slots left (batch rows only; a batch row is
+   *  claimable while status is open AND slotsRemaining > 0). */
+  slotsRemaining?: number;
+  /** S.1193 — slots one agent may claim of this wave (batch rows only). */
+  maxClaimsPerAgent?: number;
   createdAtMs: number;
   updatedAtMs: number;
 }
@@ -161,7 +171,17 @@ export async function getOpenJob(
 async function sponsoredOpeningVerb(
   base: string,
   signer: TransactionSigner,
-  action: 'open-create' | 'open-claim' | 'open-cancel' | 'open-refund' | 'job-review',
+  action:
+    | 'open-create'
+    | 'open-claim'
+    | 'open-cancel'
+    | 'open-refund'
+    | 'job-review'
+    // S.1193 — batch (wave) verbs, mirroring the open-* family.
+    | 'batch-open-create'
+    | 'batch-open-claim'
+    | 'batch-open-cancel'
+    | 'batch-open-refund',
   params: Record<string, unknown>,
 ): Promise<string> {
   const address = signer.getAddress();
@@ -274,5 +294,66 @@ export function refundOpenJob(
 ): Promise<string> {
   return sponsoredOpeningVerb(base, signer, 'open-refund', {
     openingId: openingId.trim(),
+  });
+}
+
+/** S.1193 — post a WAVE: N homogeneous slots, one tx, one escrow of
+ *  `slots × maxUsdc`. Each claimed slot becomes a normal Job. `maxUsdc`
+ *  is PER SLOT (the live job bounds apply per slot); the wave total is
+ *  bounded by your wallet, not the protocol. */
+export function postBatchOpenJob(
+  base: string,
+  signer: TransactionSigner,
+  input: {
+    title: string;
+    brief: string;
+    /** PER-SLOT budget in USDC. */
+    maxUsdc: number;
+    /** Slots in the wave (1..live max, default max 250). */
+    slots: number;
+    slaMinutes?: number;
+    openHours?: number;
+    claimPolicy?: number;
+    minSellerLevel?: number;
+    /** Slots one agent may claim of this wave (default 1). */
+    maxClaimsPerAgent?: number;
+  },
+): Promise<string> {
+  return sponsoredOpeningVerb(base, signer, 'batch-open-create', input);
+}
+
+/** S.1193 — claim ONE slot of a wave (v1 lock: one claim per tx; a
+ *  `maxClaimsPerAgent > 1` wave means calling this again). Same $0 FCFS
+ *  and the same Phase C gates as a single claim. */
+export function claimBatchOpenJob(
+  base: string,
+  signer: TransactionSigner,
+  batchId: string,
+): Promise<string> {
+  return sponsoredOpeningVerb(base, signer, 'batch-open-claim', {
+    batchId: batchId.trim(),
+  });
+}
+
+/** S.1193 — withdraw a wave's UNCLAIMED remainder — fee-free, any time.
+ *  Already-claimed slots are normal Jobs and are untouched. */
+export function cancelBatchOpenJob(
+  base: string,
+  signer: TransactionSigner,
+  batchId: string,
+): Promise<string> {
+  return sponsoredOpeningVerb(base, signer, 'batch-open-cancel', {
+    batchId: batchId.trim(),
+  });
+}
+
+/** S.1193 — permissionless remainder refund once the wave expires. */
+export function refundBatchOpenJob(
+  base: string,
+  signer: TransactionSigner,
+  batchId: string,
+): Promise<string> {
+  return sponsoredOpeningVerb(base, signer, 'batch-open-refund', {
+    batchId: batchId.trim(),
   });
 }

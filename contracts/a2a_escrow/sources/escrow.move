@@ -115,6 +115,14 @@ const TIER4_ACTIVE_CAP_DEFAULT: u64 = 30;
 /// `NoDeliveryRegressionFloorKey`.
 const NO_DELIVERY_REGRESSION_FLOOR_DEFAULT: u64 = 3;
 
+// === Batch openings (S.1193) — slots-per-post bounds ===
+/// Default max slots one `batch::create_batch_open` may post. Live value
+/// is AdminCap-tunable via `MaxBatchSlotsKey` (founder posts 100–200
+/// waves today, may want more tomorrow — never a frozen const alone).
+const MAX_BATCH_SLOTS_DEFAULT: u64 = 250;
+/// Hard ceiling the admin can never exceed (raising it needs an upgrade).
+const MAX_BATCH_SLOTS_CEILING: u64 = 512;
+
 // === Errors ===
 const ENotAuthorized: u64 = 0;
 const EWrongState: u64 = 1;
@@ -148,6 +156,8 @@ const EUseReleaseV2: u64 = 20;
 /// (cap 0 would freeze a level entirely), the regression floor > 0 (floor
 /// 0 would regress everyone forever).
 const EBadTierBounds: u64 = 21;
+/// S.1193: batch-slot args out of range — the live max must be 1..ceiling.
+const EBadBatchSlots: u64 = 22;
 
 // === Objects ===
 
@@ -180,6 +190,9 @@ public struct TierActiveCapKey has copy, drop, store { level: u8 }
 /// S.1192 — regression-floor override on `FeeConfig.id` (value `u64`).
 /// Missing ⇒ `NO_DELIVERY_REGRESSION_FLOOR_DEFAULT`.
 public struct NoDeliveryRegressionFloorKey has copy, drop, store {}
+/// S.1193 — max batch slots override on `FeeConfig.id` (value `u64`).
+/// Missing ⇒ `MAX_BATCH_SLOTS_DEFAULT`.
+public struct MaxBatchSlotsKey has copy, drop, store {}
 /// S.1192 — marker DF on `Job.id`, set by `create_claimed` only: this Job
 /// entered through the open board, so it counted +1 into the seller's
 /// `active_seller_jobs` and must count −1 at terminal settle
@@ -337,6 +350,16 @@ public fun config_no_delivery_regression_floor(cfg: &FeeConfig): u64 {
         *df::borrow(&cfg.id, NoDeliveryRegressionFloorKey {})
     } else {
         NO_DELIVERY_REGRESSION_FLOOR_DEFAULT
+    }
+}
+
+/// Live max slots per batch post (S.1193): the DF when set, else the
+/// package default. Read at `batch::create_batch_open`.
+public fun config_max_batch_slots(cfg: &FeeConfig): u64 {
+    if (df::exists(&cfg.id, MaxBatchSlotsKey {})) {
+        *df::borrow(&cfg.id, MaxBatchSlotsKey {})
+    } else {
+        MAX_BATCH_SLOTS_DEFAULT
     }
 }
 
@@ -807,6 +830,19 @@ public fun set_no_delivery_regression_floor(_: &AdminCap, cfg: &mut FeeConfig, n
     }
 }
 
+/// S.1193 — set (add or update) the live max batch slots. Rails: 1..
+/// package hard ceiling (a 0 max would brick batch posting; raising the
+/// ceiling itself needs a future upgrade).
+public fun set_max_batch_slots(_: &AdminCap, cfg: &mut FeeConfig, n: u64) {
+    assert_version(cfg);
+    assert!(n >= 1 && n <= MAX_BATCH_SLOTS_CEILING, EBadBatchSlots);
+    if (df::exists(&cfg.id, MaxBatchSlotsKey {})) {
+        *df::borrow_mut(&mut cfg.id, MaxBatchSlotsKey {}) = n;
+    } else {
+        df::add(&mut cfg.id, MaxBatchSlotsKey {}, n);
+    }
+}
+
 /// Version cutover after an in-place package upgrade: bumps the shared
 /// config to the new package's VERSION, which makes every entry in the OLD
 /// package abort with EWrongVersion.
@@ -891,3 +927,7 @@ public fun default_max_job_amount(): u64 { MAX_JOB_AMOUNT_DEFAULT }
 public fun min_job_amount_floor(): u64 { MIN_JOB_AMOUNT_FLOOR }
 #[test_only]
 public fun max_job_amount_ceiling(): u64 { MAX_JOB_AMOUNT_CEILING }
+#[test_only]
+public fun default_max_batch_slots(): u64 { MAX_BATCH_SLOTS_DEFAULT }
+#[test_only]
+public fun max_batch_slots_ceiling(): u64 { MAX_BATCH_SLOTS_CEILING }

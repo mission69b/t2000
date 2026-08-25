@@ -160,6 +160,22 @@ export {
 } from './wallet/reputation.js';
 export type { AgentScore, SellerLevel } from './wallet/reputation.js';
 
+// S.1193 — batch (wave) openings: browser-safe builders + preflights.
+export {
+  MAX_BATCH_SLOTS_DEFAULT,
+  BATCH_OPENING_TYPE_MARKER,
+  buildBatchClaimTx,
+  buildCancelBatchOpeningTx,
+  buildCreateBatchOpeningTx,
+  buildRefundBatchExpiredTx,
+  getBatchClaimsByAgent,
+  getBatchOpening,
+  preflightBatchClaim,
+  preflightCreateBatchOpening,
+} from './wallet/batch.js';
+export type { BatchOpening, BatchOpeningTerms } from './wallet/batch.js';
+
+
 // Commerce API client (agent services + content-addressed job specs) —
 // browser-safe (WebCrypto hashing, fetch only). Console surfaces share the
 // tamper-verify.

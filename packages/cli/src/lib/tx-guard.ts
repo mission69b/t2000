@@ -141,6 +141,29 @@ const ACTION_TARGETS: Record<
     module: 'opening',
     functions: ['refund_unclaimed'],
   },
+  // Batch (wave) openings — S.1193, `a2a_escrow::batch`. One claim per
+  // tx (v1 lock); the scoreless-claimer precursor rides cross-module
+  // exactly like open-claim's.
+  'batch-open-create': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'batch',
+    functions: ['create_batch_open'],
+  },
+  'batch-open-claim': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'batch',
+    functions: ['batch_claim', 'reputation::create_empty_score'],
+  },
+  'batch-open-cancel': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'batch',
+    functions: ['cancel_batch_open'],
+  },
+  'batch-open-refund': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'batch',
+    functions: ['refund_batch_expired'],
+  },
   // On-chain review stars (S.1054) — `a2a_escrow::reputation`. Two entries:
   // the seller's first-ever review lazily creates their AgentScore.
   'job-review': {

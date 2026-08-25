@@ -47,6 +47,7 @@ import {
   type Job,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
+import { registerBatchVerbs } from './batch.js';
 import { registerOpenVerbs } from './open.js';
 import {
   assertBuyerRequirements,
@@ -1456,4 +1457,5 @@ no fund step; unclaimed openings refund fee-free):
 
   // The OPEN door — board verbs live flat on this same group (one noun).
   registerOpenVerbs(group);
+  registerBatchVerbs(group);
 }

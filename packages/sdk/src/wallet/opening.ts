@@ -103,6 +103,15 @@ export const A2A_ESCROW_PACKAGE_V8_ID =
 export const A2A_ESCROW_PACKAGE_V10_ID =
   process.env.A2A_ESCROW_PACKAGE_V10_ID ??
   '0x5c90ec07da01bf885a4e65247ce98b75ab8a042cd965d30d7213856d579c4afa';
+/** v11 (S.1193) — defining id for the batch surface: the
+ *  BatchOpeningCreated/BatchSlotClaimed/BatchOpeningCancelled/
+ *  BatchOpeningRefunded events and the BatchOpening object type.
+ *  ⚠️ PLACEHOLDER '' until the founder upgrade broadcasts
+ *  (RUNBOOK_S1193 §2 pins the real id in the cutover commit, BEFORE the
+ *  npm release) — while empty, batch event walks are a no-op, which is
+ *  the honest pre-cutover value. Never moves again after pinning. */
+export const A2A_ESCROW_PACKAGE_V11_ID =
+  process.env.A2A_ESCROW_PACKAGE_V11_ID ?? '';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
