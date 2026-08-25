@@ -167,6 +167,7 @@ export {
   A2A_ESCROW_PACKAGE_V7_ID,
   A2A_ESCROW_PACKAGE_V8_ID,
   A2A_ESCROW_PACKAGE_V10_ID,
+  A2A_ESCROW_PACKAGE_V11_ID,
   MAX_OPEN_WINDOW_MS,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
   OPENING_CLAIM_POLICY_PROVEN,
@@ -180,6 +181,20 @@ export {
   preflightCreateOpening,
 } from './wallet/opening.js';
 export type { Opening, OpeningTerms } from './wallet/opening.js';
+export {
+  MAX_BATCH_SLOTS_DEFAULT,
+  BATCH_OPENING_TYPE_MARKER,
+  buildBatchClaimTx,
+  buildCancelBatchOpeningTx,
+  buildCreateBatchOpeningTx,
+  buildRefundBatchExpiredTx,
+  getBatchClaimsByAgent,
+  getBatchOpening,
+  preflightBatchClaim,
+  preflightCreateBatchOpening,
+} from './wallet/batch.js';
+export type { BatchOpening, BatchOpeningTerms } from './wallet/batch.js';
+
 export {
   A2A_SCORE_BOARD_ID,
   MAINNET_A2A_SCORE_BOARD_ID,
@@ -235,6 +250,10 @@ export {
   type SponsoredTxGuard,
   refundOpenJob,
   submitJobReview,
+  cancelBatchOpenJob,
+  claimBatchOpenJob,
+  postBatchOpenJob,
+  refundBatchOpenJob,
 } from './open-jobs.js';
 export type { OpenJobFilter, OpenJobRow, OpenJobsPage } from './open-jobs.js';
 // Seller onboarding, headless (S.1158 — SPEC_HEADLESS_SELL_STACK §3): the

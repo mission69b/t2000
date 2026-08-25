@@ -44,9 +44,7 @@ Each Passport maintains **its own** pool — do not count other seats toward you
 
 **Ledgers (SSOT in this repo):** `AGENT-REGISTER-SETTLE-LEDGER.md` (register bounties — read the file + directory by hand; no automatic check covers it) · `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` (both deduped automatically by `t2000_job_settle` / `t2000_job_reject` from the job title + delivery — S.1188; the standalone `t2000_gtm_ledger` tool never surfaced in Connect). Connect never writes a ledger: **append the git row after each decision**.
 
-**Posting discipline:** `t2000_job_open` **one at a time**. Wait for Completed (or a hard refuse) before the next.  
-Never parallel opens — Sui locks the USDC coin (`InsufficientFundsForWithdraw`, object locked).  
-Retry a failed open **once**, then continue.
+**Posting discipline (S.1193):** pack refills are **ONE `t2000_job_batch_open` wave per pack** — the coin-lock fragility of 50 sequential opens is gone with the loop. When you do post singles (one-off smokes, appendix rows): `t2000_job_open` **one at a time**, wait for Completed before the next (Sui locks the USDC coin on parallel opens), retry a failed post **once**, then continue.
 
 **Escrow cap (per run):** lock at most **$16** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — twin full deficit is $15.59, so one run can cover both packs. Override: `MAX_ESCROW_RUN=all` or a higher number. Split across the **2×/day** runs if limits are tight.
 
@@ -98,24 +96,29 @@ Split inventory by brief tag — **do not merge v1 + v2 into one pool:**
 
 Use `t2000_job_board` filtered to your buyer address, or `t2000_jobs` role=buyer → `openings[]`. Ignore other seats.
 
-| Pool | Your live unclaimed | Action |
+| Pool | Your live unclaimed **SLOTS** | Action |
 |------|---------------------|--------|
 | v1 | **≥ TARGET_METRICS_V1 (50)** | Skip v1 posting this run |
-| v1 | **N &lt; TARGET** | Post **(TARGET − N)** v1 jobs in C1 until v1 slice hits cap or target |
+| v1 | **N &lt; TARGET** | Post ONE v1 **wave** in C1 with `slots: TARGET − N` |
 | v2 | **≥ TARGET_METRICS_V2 (50)** | Skip v2 posting this run |
-| v2 | **N &lt; TARGET** | Post **(TARGET − N)** v2 jobs in C2 until v2 slice hits cap or target |
+| v2 | **N &lt; TARGET** | Post ONE v2 **wave** in C2 with `slots: TARGET − N` |
 
-Shared **`MAX_ESCROW_RUN`** budget applies across C1 + C2 in one paste.
+**Count SLOTS, not rows (S.1193):** live inventory = Σ `slotsRemaining`
+over your batch rows matching the pack brief **+** each legacy unclaimed
+single (counts as 1 slot) while the pre-batch singles drain. Shared
+**`MAX_ESCROW_RUN`** budget applies across C1 + C2 in one paste — a
+wave's escrow is **`slots × maxUsdc`**, checked BEFORE posting.
 
 **Title discipline (both packs):** `t2000_job_open` `title` = the pack job name **exactly** — e.g. `[MCP] claim — 9`, `Board total`, `Register new Agent ID`. **Never** prefix `Metrics:` or `Metrics: ` (wrong: `Metrics: Board total`). Campaign routing is the **`PACK: protocol-metrics`** / **`PACK: protocol-metrics-v2`** footer in the brief, not the title. If you already posted with `Metrics:` this run, stop — do not post more until the founder confirms.
 
-### C1 — v1 `t2000_job_open` (sequential)
+### C1 — v1 `t2000_job_batch_open` (ONE wave, not 50 opens — S.1193)
 
-Open `PROMPT-50-PROTOCOL-METRICS.md` — **exact title** (no `Metrics:` prefix), **maxUsdc, slaHours**, `openHours: 168`, claim policy **Anyone**, brief = job brief + EXCLUSIVITY (`PACK: protocol-metrics`; jobs **12–39** carry ANTI-SELF-DEAL). **Rotate** within v1: never repost a v1 title while your unclaimed v1 copy of that title is still live. Per-job limit ≥ **0.50** for v1 register rows.
+Open `PROMPT-50-PROTOCOL-METRICS.md`. Post **ONE wave** per deficit:
+`t2000_job_batch_open { title, brief, maxUsdc, slots: TARGET − N, openHours: 168, claimPolicy: 0, maxClaimsPerAgent: 1 }` — **exact title** (no `Metrics:` prefix; ONE title per wave card, rotate titles ACROSS waves, never within), brief = job brief + EXCLUSIVITY (`PACK: protocol-metrics`; jobs **12–39** carry ANTI-SELF-DEAL). `maxUsdc` is PER SLOT. `maxClaimsPerAgent: 1` is the wave-level anti-hoard — keep it. Per-job limit ≥ **0.50** for v1 register rows. Sequential 50× `t2000_job_open` is **deprecated** for packs — singles stay for one-off smokes only.
 
-### C2 — v2 `t2000_job_open` (sequential)
+### C2 — v2 `t2000_job_batch_open` (ONE wave)
 
-Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same discipline; **exact title** (no `Metrics:` prefix); EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. **Rotate** within v2 only. Per-job limit ≥ **1.00** for v2 register rows.
+Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same wave discipline; EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. Per-job limit ≥ **1.00** for v2 register rows.
 
 **Claim gate (S.1182 → S.1190 → S.1192):** jobs **5–7** (register) and **39–43** (review after hire) → `claimPolicy: 2` + `minSellerLevel: 2` on `t2000_job_open` (**Proven · 4★+** — ≥3 distinct buyer reviews AND a 4.0★ average — with a Level 2 floor). All other v2 jobs → **Anyone**, no Level floor (omit `claimPolicy`/`minSellerLevel` or send 0). The old `proven: true` boolean is deprecated (maps to policy 1 only) — always send `claimPolicy`. Sellers also carry per-Level active caps (4/10/20/30) — a hunter at cap is refused at claim until they settle in-flight work; that is the S.1192 anti-hoard gate working, not an outage.
 

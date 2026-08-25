@@ -130,7 +130,15 @@ carry a per-level cap on in-flight BOARD-CLAIMED jobs (4/10/20/30,
 AdminCap-tunable) — the counter rides claim (+1) and release/reject/refund
 (−1, `ClaimedJobKey`-marked jobs only, so hires never move it); the dead
 v1 entries (`claim`/`claim_proven`/`create_open`/`release`) abort with
-dedicated codes. USDC locks in a
+dedicated codes. **Batch openings** (S.1193, additive v11 — no VERSION
+bump): one `a2a_escrow::batch::BatchOpening` post = N homogeneous slots
+backed by a single escrow of `amount × slots` (invariant asserted every
+mutation), ONE board row with a live slot count; `batch_claim` (one slot
+per tx) stacks the same policy/level/cap gates plus a per-wave
+`max_claims_per_agent` (default 1), and each claimed slot is a normal
+ClaimedJobKey'd Job. Unclaimed remainders refund fee-free (buyer cancel
+or permissionless expiry crank); max slots per wave is AdminCap-tunable
+(default 250, hard ceiling 512). USDC locks in a
 shared `t2000::a2a_escrow` Job object → seller delivers text (hash pinned
 on-chain) → buyer releases or rejects (split fixed at creation) → refunds on
 missed deadlines are fee-free and permissionlessly crankable. **5% protocol
