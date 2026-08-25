@@ -62,7 +62,9 @@ export interface OpenJobRow {
   briefPreview?: string | null;
   maxUsdc: number;
   slaMinutes: number;
-  status: 'open' | 'claimed' | 'cancelled' | 'refunded' | 'expired';
+  /** S.1193 adds `filled` — a batch row whose every slot is claimed
+   *  (terminal; the escrow moved onto the slot Jobs, never refunded). */
+  status: 'open' | 'claimed' | 'cancelled' | 'refunded' | 'expired' | 'filled';
   openUntilMs: number;
   seller: string | null;
   sellerAgent: { agentId: number; name: string } | null;
