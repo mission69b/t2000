@@ -75,6 +75,16 @@ fun take_score(sc: &ts::Scenario, who: address): AgentScore {
     ts::take_shared_by_id<AgentScore>(sc, object::id_from_address(addr))
 }
 
+/// Resolve a score's id in its own tx — for blocks that must hold TWO
+/// scores at once (the board can't be re-taken twice in one tx).
+fun score_id_of(sc: &mut ts::Scenario, who: address): ID {
+    ts::next_tx(sc, who);
+    let board = ts::take_shared<ScoreBoard>(sc);
+    let addr = reputation::score_address(&board, who);
+    ts::return_shared(board);
+    object::id_from_address(addr)
+}
+
 fun active_of(sc: &mut ts::Scenario, who: address): u64 {
     ts::next_tx(sc, who);
     let score = take_score(sc, who);
@@ -131,6 +141,61 @@ fun claim_as(sc: &mut ts::Scenario, who: address, clk: &Clock): ID {
     ts::return_shared(reg);
     ts::return_shared(cfg);
     job_id
+}
+
+/// Claim from a SPECIFIC batch (multi-batch scenarios can't take_shared).
+fun claim_from(sc: &mut ts::Scenario, who: address, clk: &Clock, batch_id: ID): ID {
+    ensure_score(sc, clk, who);
+    ts::next_tx(sc, who);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let reg = ts::take_shared<Registry>(sc);
+    let mut score = take_score(sc, who);
+    let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(sc, batch_id);
+    let job_id = batch::batch_claim(&mut b, &reg, &mut score, &cfg, clk, ts::ctx(sc));
+    ts::return_shared(b);
+    ts::return_shared(score);
+    ts::return_shared(reg);
+    ts::return_shared(cfg);
+    job_id
+}
+
+fun deliver_job(sc: &mut ts::Scenario, who: address, clk: &Clock, job_id: ID) {
+    ts::next_tx(sc, who);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
+    escrow::deliver(&mut job, b"delivery", &cfg, clk, ts::ctx(sc));
+    ts::return_shared(job);
+    ts::return_shared(cfg);
+}
+
+/// Settle a batch-origin Job through `batch_release` as `sender`
+/// (`seller` names whose score rides along — always the Job's seller).
+fun batch_release_as(
+    sc: &mut ts::Scenario,
+    sender: address,
+    clk: &Clock,
+    batch_id: ID,
+    job_id: ID,
+    seller: address,
+) {
+    ts::next_tx(sc, sender);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(sc, batch_id);
+    let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
+    let mut score = take_score(sc, seller);
+    batch::batch_release(&mut b, &mut job, &mut score, &cfg, clk, ts::ctx(sc));
+    ts::return_shared(score);
+    ts::return_shared(job);
+    ts::return_shared(b);
+    ts::return_shared(cfg);
+}
+
+fun wave_claims_of(sc: &mut ts::Scenario, batch_id: ID, who: address): u8 {
+    ts::next_tx(sc, who);
+    let b = ts::take_shared_by_id<BatchOpening<SUI>>(sc, batch_id);
+    let n = batch::claims_by_agent(&b, who);
+    ts::return_shared(b);
+    n
 }
 
 fun assert_received(sc: &mut ts::Scenario, who: address, expect: u64) {
@@ -364,12 +429,13 @@ fun proven_policy_refuses_unproven_claimer() {
 }
 
 #[test]
-#[expected_failure(abort_code = batch::EActiveJobCap)]
-fun global_active_cap_counts_batch_slots() {
+#[expected_failure(abort_code = batch::EMaxClaimsReached)]
+fun wave_cap_is_level_scaled_min_of_ceiling_and_level_cap() {
     let (mut sc, mut clk) = setup();
-    // Level 1 cap is 4 — with maxClaimsPerAgent 10 on a single wave, the
-    // 5th slot claim hits the GLOBAL cap, not the wave limit.
-    post_batch(&mut sc, &clk, SLOTS, 10);
+    // S.1202 (D15) / acceptance 1: buyer ceiling 30, Level-1 cap 4 → the
+    // wave cap is min(30, 4) = 4; the 5th claim of the SAME wave aborts
+    // on the WAVE gate (asserted before the global EActiveJobCap).
+    post_batch(&mut sc, &clk, SLOTS, 30);
     clk.set_for_testing(10_000);
     claim_as(&mut sc, SELLER, &clk);
     claim_as(&mut sc, SELLER, &clk);
@@ -377,6 +443,25 @@ fun global_active_cap_counts_batch_slots() {
     claim_as(&mut sc, SELLER, &clk);
     assert!(active_of(&mut sc, SELLER) == 4, 0);
     claim_as(&mut sc, SELLER, &clk);
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = batch::EActiveJobCap)]
+fun global_active_cap_counts_batch_slots_across_waves() {
+    let (mut sc, mut clk) = setup();
+    // Level-1 global cap is 4 across ALL waves: 2 + 2 holds on two waves,
+    // then a 3rd claim of wave A passes its wave gate (2 < min(3, 4)) and
+    // hits the GLOBAL cap.
+    let a = post_batch(&mut sc, &clk, SLOTS, 3);
+    let b = post_batch(&mut sc, &clk, SLOTS, 3);
+    clk.set_for_testing(10_000);
+    claim_from(&mut sc, SELLER, &clk, a);
+    claim_from(&mut sc, SELLER, &clk, a);
+    claim_from(&mut sc, SELLER, &clk, b);
+    claim_from(&mut sc, SELLER, &clk, b);
+    assert!(active_of(&mut sc, SELLER) == 4, 0);
+    claim_from(&mut sc, SELLER, &clk, a);
     abort 0
 }
 
@@ -402,36 +487,432 @@ fun claim_on_borrowed_score_aborts() {
     abort 0
 }
 
-// === A claimed slot settles like any Job (release frees the seat) ===
+// === S.1202 — batch-aware settle frees the wave hold with the money ===
 
 #[test]
-fun claimed_slot_releases_via_release_v2_and_frees_the_seat() {
+fun batch_release_pays_seller_and_frees_both_counters() {
     let (mut sc, mut clk) = setup();
-    post_batch(&mut sc, &clk, SLOTS, 1);
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
     clk.set_for_testing(10_000);
     let job_id = claim_as(&mut sc, SELLER, &clk);
     assert!(active_of(&mut sc, SELLER) == 1, 0);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 1);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job_id);
+    clk.set_for_testing(30_000);
+    batch_release_as(&mut sc, BUYER, &clk, bid, job_id, SELLER);
+    // Global seat AND wave hold freed; the one-shot marker is stamped;
+    // row removed at 0 (reads back as 0).
+    assert!(active_of(&mut sc, SELLER) == 0, 2);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 0, 3);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        assert!(escrow::is_batch_hold_released(&job), 4);
+        ts::return_shared(job);
+    };
+    // Seller got the slot minus the 2.5% test-default fee.
+    assert_received(&mut sc, SELLER, SLOT_AMOUNT - SLOT_AMOUNT * 250 / 10_000);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun settle_frees_wave_hold_and_fifth_claim_succeeds() {
+    let (mut sc, mut clk) = setup();
+    // Acceptance 2: ceiling 30, L1 holds 4 → settle one → a 5th claim of
+    // the SAME wave lands (both the wave and global counters dropped).
+    let bid = post_batch(&mut sc, &clk, SLOTS, 30);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    claim_as(&mut sc, SELLER, &clk);
+    claim_as(&mut sc, SELLER, &clk);
+    claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    clk.set_for_testing(30_000);
+    batch_release_as(&mut sc, BUYER, &clk, bid, job1, SELLER);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 3, 0);
+    assert!(active_of(&mut sc, SELLER) == 3, 1);
+    clk.set_for_testing(40_000);
+    claim_from(&mut sc, SELLER, &clk, bid);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 4, 2);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        assert!(batch::slots_remaining(&b) == 5, 3);
+        ts::return_shared(b);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun ceiling_one_finisher_reclaims_same_wave_after_settle() {
+    let (mut sc, mut clk) = setup();
+    // Acceptance 4: buyer ceiling 1 — claim → settle → claim AGAIN of the
+    // same wave (active semantics alone, no Level scaling involved).
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    clk.set_for_testing(30_000);
+    batch_release_as(&mut sc, BUYER, &clk, bid, job1, SELLER);
+    clk.set_for_testing(40_000);
+    claim_from(&mut sc, SELLER, &clk, bid);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 0);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = batch::EMaxClaimsReached)]
+fun decline_does_not_free_wave_hold() {
+    let (mut sc, mut clk) = setup();
+    // Acceptance 3 (D13): decline burns the wave seat — claim→decline
+    // churn cannot farm slots of a ceiling-1 wave.
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
     ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
-        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
-        escrow::deliver(&mut job, b"delivery", &cfg, &clk, ts::ctx(&mut sc));
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 0);
+    claim_from(&mut sc, SELLER, &clk, bid);
+    abort 0
+}
+
+#[test]
+fun timeout_release_crank_with_correct_batch_frees_wave_hold() {
+    let (mut sc, mut clk) = setup();
+    // Acceptance 10: after the review window lapses ANYONE may settle —
+    // the crank passes the origin batch and the wave hold frees.
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    clk.set_for_testing(120_001); // delivered 20_000 + review 100_000, lapsed
+    batch_release_as(&mut sc, LURKER, &clk, bid, job1, SELLER);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 0, 0);
+    assert!(active_of(&mut sc, SELLER) == 0, 1);
+    assert_received(&mut sc, SELLER, SLOT_AMOUNT - SLOT_AMOUNT * 250 / 10_000);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = batch::EWrongBatch)]
+fun settle_with_wrong_batch_aborts() {
+    let (mut sc, mut clk) = setup();
+    // Acceptance 10: a crank attaching a DIFFERENT wave than the Job's
+    // origin aborts — no stranger-table mutation.
+    let a = post_batch(&mut sc, &clk, SLOTS, 1);
+    let b = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_from(&mut sc, SELLER, &clk, a);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    batch_release_as(&mut sc, BUYER, &clk, b, job1, SELLER);
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = batch::ENotBatchJob)]
+fun batch_settle_on_non_batch_job_aborts() {
+    let (mut sc, mut clk) = setup();
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    // A hire job (escrow::create) has no BatchOriginKey — the batch door
+    // refuses it.
+    ensure_score(&mut sc, &clk, SELLER);
+    ts::next_tx(&mut sc, BUYER);
+    let hire_id = {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let coin = coin::mint_for_testing<SUI>(SLOT_AMOUNT, ts::ctx(&mut sc));
+        let id = escrow::create<SUI>(
+            SELLER, coin, b"hire", 410_000, REVIEW_WINDOW, 5_000,
+            &cfg, &clk, ts::ctx(&mut sc),
+        );
+        ts::return_shared(cfg);
+        id
+    };
+    batch_release_as(&mut sc, BUYER, &clk, bid, hire_id, SELLER);
+    abort 0
+}
+
+#[test]
+fun batch_reject_passport_buyer_pays_buyer_and_records_outcome() {
+    let (mut sc, mut clk) = setup();
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
     ts::next_tx(&mut sc, BUYER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
-        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        let mut score = take_score(&sc, SELLER);
+        batch::batch_reject(&mut b, &mut job, &mut score, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        // Outcome landed with the money.
+        assert!(reputation::rejected_after_delivery(&score) == 1, 0);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(b);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    // Open-board lock: reject = 100% buyer, fee-free; both counters freed.
+    assert_received(&mut sc, BUYER, SLOT_AMOUNT);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 0, 1);
+    assert!(active_of(&mut sc, SELLER) == 0, 2);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = batch::EBuyerIsAgent)]
+fun batch_reject_with_agent_buyer_routes_to_agent_variant() {
+    let (mut sc, mut clk) = setup();
+    register_agent(&mut sc, &clk, BUYER);
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        let mut score = take_score(&sc, SELLER);
+        batch::batch_reject(&mut b, &mut job, &mut score, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(b);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+fun batch_reject_agent_buyer_lands_both_outcomes() {
+    let (mut sc, mut clk) = setup();
+    register_agent(&mut sc, &clk, BUYER);
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    ensure_score(&mut sc, &clk, BUYER);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    let seller_score_id = score_id_of(&mut sc, SELLER);
+    let buyer_score_id = score_id_of(&mut sc, BUYER);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        let mut seller_score = ts::take_shared_by_id<AgentScore>(&sc, seller_score_id);
+        let mut buyer_score = ts::take_shared_by_id<AgentScore>(&sc, buyer_score_id);
+        batch::batch_reject_agent_buyer(
+            &mut b, &mut job, &mut seller_score, &mut buyer_score,
+            &reg, &cfg, &clk, ts::ctx(&mut sc),
+        );
+        assert!(reputation::rejected_after_delivery(&seller_score) == 1, 0);
+        assert!(reputation::as_buyer_rejected(&buyer_score) == 1, 1);
+        ts::return_shared(buyer_score);
+        ts::return_shared(seller_score);
+        ts::return_shared(job);
+        ts::return_shared(b);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 0, 2);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun batch_refund_after_deadline_records_no_delivery_and_frees_hold() {
+    let (mut sc, mut clk) = setup();
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(410_001); // claim SLA 400_000 lapsed, no delivery
+    ts::next_tx(&mut sc, LURKER); // permissionless crank
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        let mut score = take_score(&sc, SELLER);
+        batch::batch_refund(&mut b, &mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(reputation::no_delivery(&score) == 1, 0);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(b);
+        ts::return_shared(cfg);
+    };
+    assert_received(&mut sc, BUYER, SLOT_AMOUNT);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 0, 1);
+    assert!(active_of(&mut sc, SELLER) == 0, 2);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+// === S.1202 — the bare v2 settle doors refuse batch-origin Jobs ===
+
+#[test]
+#[expected_failure(abort_code = reputation::EUseBatchSettle)]
+fun release_v2_on_batch_origin_job_aborts() {
+    let (mut sc, mut clk) = setup();
+    post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
         let mut score = take_score(&sc, SELLER);
         reputation::release_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
         ts::return_shared(score);
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
-    assert!(active_of(&mut sc, SELLER) == 0, 1);
-    // Seller got the slot minus the 2.5% test-default fee.
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EUseBatchSettle)]
+fun reject_v2_on_batch_origin_job_aborts() {
+    let (mut sc, mut clk) = setup();
+    post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, job1);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let reg = ts::take_shared<Registry>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        let mut score = take_score(&sc, SELLER);
+        reputation::reject_v2(&mut job, &mut score, &reg, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(reg);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EUseBatchSettle)]
+fun refund_v2_on_batch_origin_job_aborts() {
+    let (mut sc, mut clk) = setup();
+    post_batch(&mut sc, &clk, SLOTS, 1);
+    clk.set_for_testing(10_000);
+    let job1 = claim_as(&mut sc, SELLER, &clk);
+    clk.set_for_testing(410_001);
+    ts::next_tx(&mut sc, LURKER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        let mut score = take_score(&sc, SELLER);
+        reputation::refund_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+fun non_batch_job_still_settles_via_release_v2() {
+    let (mut sc, mut clk) = setup();
+    // Acceptance 5: a hire job (no BatchOriginKey) settles through the
+    // unchanged v2 door.
+    ensure_score(&mut sc, &clk, SELLER);
+    clk.set_for_testing(10_000);
+    ts::next_tx(&mut sc, BUYER);
+    let hire_id = {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let coin = coin::mint_for_testing<SUI>(SLOT_AMOUNT, ts::ctx(&mut sc));
+        let id = escrow::create<SUI>(
+            SELLER, coin, b"hire", 410_000, REVIEW_WINDOW, 5_000,
+            &cfg, &clk, ts::ctx(&mut sc),
+        );
+        ts::return_shared(cfg);
+        id
+    };
+    clk.set_for_testing(20_000);
+    deliver_job(&mut sc, SELLER, &clk, hire_id);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, hire_id);
+        let mut score = take_score(&sc, SELLER);
+        reputation::release_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
     assert_received(&mut sc, SELLER, SLOT_AMOUNT - SLOT_AMOUNT * 250 / 10_000);
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+// === S.1202 (D21) — legacy batches refuse NEW claims, keep exits ===
+
+#[test]
+#[expected_failure(abort_code = batch::ELegacyBatch)]
+fun legacy_batch_claim_aborts() {
+    let (mut sc, mut clk) = setup();
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        // Simulate a pre-S.1202 wave (no semantics marker).
+        let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        batch::strip_active_claims_semantics_for_testing(&mut b);
+        ts::return_shared(b);
+    };
+    clk.set_for_testing(10_000);
+    claim_as(&mut sc, SELLER, &clk);
+    abort 0
+}
+
+#[test]
+fun legacy_batch_cancel_still_works() {
+    let (mut sc, clk) = setup();
+    let bid = post_batch(&mut sc, &clk, SLOTS, 1);
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        batch::strip_active_claims_semantics_for_testing(&mut b);
+        ts::return_shared(b);
+    };
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(&sc, bid);
+        batch::cancel_batch_open(&mut b, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(b);
+        ts::return_shared(cfg);
+    };
+    assert_received(&mut sc, BUYER, SLOT_AMOUNT * SLOTS);
     ts::end(sc);
     clk.destroy_for_testing();
 }

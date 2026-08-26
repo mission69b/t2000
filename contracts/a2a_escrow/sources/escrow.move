@@ -158,6 +158,10 @@ const EUseReleaseV2: u64 = 20;
 const EBadTierBounds: u64 = 21;
 /// S.1193: batch-slot args out of range — the live max must be 1..ceiling.
 const EBadBatchSlots: u64 = 22;
+/// S.1202: this batch Job's wave hold was already freed — the one-shot
+/// `BatchHoldReleasedKey` is belt + suspenders over the state machine
+/// (a second settle already aborts `EWrongState` inside the settle body).
+const EBatchHoldReleased: u64 = 23;
 
 // === Objects ===
 
@@ -202,6 +206,19 @@ public struct MaxBatchSlotsKey has copy, drop, store {}
 /// Pre-S.1192 claimed jobs also lack it, which IS the soft start: they
 /// never incremented, so their settles must not decrement.
 public struct ClaimedJobKey has copy, drop, store {}
+/// S.1202 — origin DF on `Job.id` (value = the `BatchOpening`'s `ID`), set
+/// by `create_claimed_from_batch` only: this Job was minted from a batch
+/// slot, so its terminal settle MUST go through the batch-aware doors in
+/// `batch` (which free the per-wave hold in the same tx) — the bare
+/// `reputation::release_v2` / `reject_v2*` / `refund_v2` abort on it.
+/// Single-opening and hire Jobs never carry it. Defining id = the S.1202
+/// upgrade package (V12 pin).
+public struct BatchOriginKey has copy, drop, store {}
+/// S.1202 — one-shot marker on `Job.id`: this batch Job's per-wave hold
+/// was freed (set by the batch settle doors via
+/// `mark_batch_hold_released_pkg`). A second free aborts. Defining id =
+/// the S.1202 upgrade package (V12 pin).
+public struct BatchHoldReleasedKey has copy, drop, store {}
 /// DF key for the canonical `reputation::ScoreBoard` id on `FeeConfig.id`
 /// (S.1054b). Value is the board `ID`. Its EXISTENCE is the single-instance
 /// lock: `reputation::create_score_board` records it and aborts if it is
@@ -369,6 +386,37 @@ public fun is_claimed_job<T>(job: &Job<T>): bool {
     df::exists(&job.id, ClaimedJobKey {})
 }
 
+/// Whether this Job was minted from a batch slot (S.1202). True ⇒ its
+/// terminal settle must go through the batch-aware doors in `batch`.
+public fun is_batch_origin_job<T>(job: &Job<T>): bool {
+    df::exists(&job.id, BatchOriginKey {})
+}
+
+/// The `BatchOpening` id this Job was claimed from, when batch-origin
+/// (S.1202) — clients read this at prepare time to attach the right batch
+/// to the settle PTB. None for single-opening and hire Jobs.
+public fun batch_origin<T>(job: &Job<T>): Option<ID> {
+    if (df::exists(&job.id, BatchOriginKey {})) {
+        option::some(*df::borrow(&job.id, BatchOriginKey {}))
+    } else {
+        option::none()
+    }
+}
+
+/// Whether this batch Job's per-wave hold has been freed (S.1202).
+public fun is_batch_hold_released<T>(job: &Job<T>): bool {
+    df::exists(&job.id, BatchHoldReleasedKey {})
+}
+
+/// One-shot hold-released stamp (S.1202) — called only by the batch
+/// settle doors after they free the wave hold. Abort-on-second-free is
+/// the idempotency lock the SPEC asks for (loud, never a silent double
+/// decrement).
+public(package) fun mark_batch_hold_released_pkg<T>(job: &mut Job<T>) {
+    assert!(!df::exists(&job.id, BatchHoldReleasedKey {}), EBatchHoldReleased);
+    df::add(&mut job.id, BatchHoldReleasedKey {}, true);
+}
+
 /// Bounds gate for money ENTERING escrow — `create` and (via the package
 /// accessor) `opening::create_open` only. Settlement verbs and
 /// `create_claimed` never re-check: an Opening fixed its amount at post,
@@ -466,6 +514,79 @@ public(package) fun create_claimed<T>(
     clock: &Clock,
     ctx: &mut TxContext,
 ): ID {
+    let job = new_claimed_job(
+        buyer,
+        seller,
+        escrow,
+        fee_bps,
+        spec_hash,
+        deliver_by_ms,
+        review_window_ms,
+        reject_split_bps,
+        cfg,
+        clock,
+        ctx,
+    );
+    let job_id = job.id.to_inner();
+    transfer::share_object(job);
+    job_id
+}
+
+/// S.1202 sibling for `batch::batch_claim` — same claimed-Job constructor
+/// plus the `BatchOriginKey` DF (value = the wave's id), stamped BEFORE
+/// `share_object` (the batch module could not mutate the Job after share
+/// without another package helper). The origin routes this Job's terminal
+/// settle through the batch-aware doors, which free the per-wave hold in
+/// the same tx.
+public(package) fun create_claimed_from_batch<T>(
+    batch_id: ID,
+    buyer: address,
+    seller: address,
+    escrow: Balance<T>,
+    fee_bps: u64,
+    spec_hash: vector<u8>,
+    deliver_by_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    let mut job = new_claimed_job(
+        buyer,
+        seller,
+        escrow,
+        fee_bps,
+        spec_hash,
+        deliver_by_ms,
+        review_window_ms,
+        reject_split_bps,
+        cfg,
+        clock,
+        ctx,
+    );
+    df::add(&mut job.id, BatchOriginKey {}, batch_id);
+    let job_id = job.id.to_inner();
+    transfer::share_object(job);
+    job_id
+}
+
+/// The shared claimed-Job body — validates, brands `ClaimedJobKey`, emits
+/// `JobCreated`, and hands the UNSHARED Job back so each caller can stamp
+/// its own origin DFs before sharing.
+fun new_claimed_job<T>(
+    buyer: address,
+    seller: address,
+    escrow: Balance<T>,
+    fee_bps: u64,
+    spec_hash: vector<u8>,
+    deliver_by_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): Job<T> {
     assert_version(cfg);
     assert!(buyer != seller, EBuyerIsSeller);
     let amount = escrow.value();
@@ -495,9 +616,8 @@ public(package) fun create_claimed<T>(
     // S.1192: brand the Job as board-claimed so terminal settles know to
     // decrement the seller's active counter (hire jobs stay unbranded).
     df::add(&mut job.id, ClaimedJobKey {}, true);
-    let job_id = job.id.to_inner();
     event::emit(JobCreated {
-        job_id,
+        job_id: job.id.to_inner(),
         buyer,
         seller,
         amount,
@@ -507,8 +627,7 @@ public(package) fun create_claimed<T>(
         reject_split_bps,
         timestamp_ms: now,
     });
-    transfer::share_object(job);
-    job_id
+    job
 }
 
 // === Package-visible guards (shared with `opening` — single source for
