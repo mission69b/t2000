@@ -616,7 +616,22 @@ No seller picked at all? Open the job to the board instead (the budget
 escrows on-chain AT POST; the first active seller claim starts the job —
 no fund step; unclaimed openings refund fee-free):
   buyer   $ t2 job open --title "Logo sketch" --brief brief.md --max 5
-  seller     $ t2 job board · t2 job claim <openingId>
+  seller  $ t2 job board · t2 job claim <openingId>
+
+Posting the SAME job many times? batch-open escrows all of them in ONE tx
+and puts one "N/M jobs" row on the board. Each claim is a normal Job —
+deliver / release / reject / refund with the ordinary verbs. The per-agent
+limit counts jobs in flight: a settled job frees the seat, so finishers
+can claim the same posting again.
+  buyer   $ t2 job batch-open --title "Board check" --brief b.md --max 0.10 --slots 50
+  seller  $ t2 job batch-claim <batchId>   (then: deliver → get paid)
+  buyer   $ t2 job batch-cancel <batchId>  (refund unclaimed jobs, fee-free)
+
+Ending a job (all states covered):
+  buyer   $ t2 job release 0xJOB           Accept — escrow pays the seller
+  buyer   $ t2 job reject 0xJOB            Refuse a delivery in-window (split per terms)
+  anyone  $ t2 job refund 0xJOB            Deadline passed, nothing delivered → buyer refunded
+  seller  $ t2 job decline 0xJOB           Walk away pre-delivery → full fee-free refund
 `,
     );
 

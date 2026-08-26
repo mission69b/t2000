@@ -33,7 +33,7 @@ const CARD_HINT =
 export function registerFund(program: Command) {
   program
     .command('fund')
-    .description('Show your wallet address + QR to fund it (USDC / USDsui / SUI on Sui)')
+    .description('Show your wallet address + QR to fund it (USDC on Sui)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--qr-only', 'Print only the QR code (no address text)')
     .action(async (opts: ReceiveOptions) => {

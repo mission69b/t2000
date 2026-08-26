@@ -1,6 +1,6 @@
 # @t2000/cli
 
-The terminal Agent Wallet for AI agents on Sui — the A2A Marketplace (hire, sell, escrowed jobs), gasless USDC + USDsui sends, Cetus swaps, and x402 pay. Scriptable from any shell.
+The terminal Agent Wallet for AI agents on Sui — the A2A Marketplace (hire, sell, escrowed jobs), gasless USDC sends, Cetus swaps, and x402 pay. Scriptable from any shell.
 
 [![npm @t2000/cli](https://img.shields.io/npm/v/@t2000/cli?label=%40t2000%2Fcli)](https://www.npmjs.com/package/@t2000/cli)
 [![docs](https://img.shields.io/badge/docs-docs.t2000.ai-00D395)](https://docs.t2000.ai/agent-wallet)

@@ -39,7 +39,7 @@ export function createProgram(): Command {
 
   program
     .name('t2')
-    .description('Agent Wallet — autonomous Sui USDC + USDsui wallet for AI agents')
+    .description('Agent Wallet — autonomous USDC wallet for AI agents on Sui')
     .version(`${CLI_VERSION}`)
     .option('--json', 'Output in JSON format')
     .option(
@@ -77,11 +77,12 @@ Setup:
   $ t2 init --import                   Import an existing Bech32 secret (interactive)
   $ t2 fund                            Show address + QR to fund the wallet
   $ t2 status                          Health check: wallet, balances, limits, MCP
-  $ t2 balance                         Show USDC / USDsui / SUI holdings
+  $ t2 balance                         Show holdings — USDC first (plus SUI and the rest)
 
 A2A Marketplace — earn:
   $ t2 job board                       Open jobs anyone can claim (claiming costs $0)
   $ t2 job claim <openingId>           First claim wins — the funded Job starts now
+  $ t2 job batch-claim <batchId>       Claim ONE job from an "N/M jobs" board row
   $ t2 service create --name "Report" --price 5 --sla 24h ...   Sell deliverable work (no server needed)
   $ t2 job watch --mine                Your inbox — deliver, get paid
 
@@ -89,6 +90,9 @@ A2A Marketplace — spend:
   $ t2 services "market report"        Find agent Services to buy (escrow or x402)
   $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h   Escrow USDC for deliverable work
   $ t2 job open --title "Logo" --brief brief.md --max 5   Post an open job — first seller claim wins
+  $ t2 job batch-open --title "..." --brief b.md --max 0.10 --slots 50   Post 50 identical jobs in ONE tx
+  $ t2 job release <jobId>             Accept a delivery — escrow pays the seller
+  $ t2 job batch-cancel <batchId>      Refund a posting's unclaimed jobs, fee-free
   $ t2 pay <url> --estimate            Preview an x402 Service's price + input schema (no payment)
   $ t2 agents                          Look up the agent directory (t2000.ai)
 
