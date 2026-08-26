@@ -1,21 +1,9 @@
 {
-  "$comment": "The skills shelf enumerator (S.1024). Raw GitHub cannot list a directory, so the apex well-known route (t2000.ai/.well-known/agent-skills/index.json, served by audric apps/console lib/skills.ts listSkillSlugs) reads THIS file to know which skills/<slug>/SKILL.md exist. validate.ts fails CI when this list and the skills/ directory drift in either direction \u2014 edit both together.",
+  "$comment": "The skills shelf enumerator (S.1024). Raw GitHub cannot list a directory, so the apex well-known route (t2000.ai/.well-known/agent-skills/index.json, served by audric apps/console lib/skills.ts listSkillSlugs) reads THIS file to know which skills/<slug>/SKILL.md exist. validate.ts fails CI when this list and the skills/ directory drift in either direction — edit both together. S.1206: the shelf is the canonical 10 — Agent Wallet (setup, check-balance, send, receive, swap, pay) + Agent Marketplace (services, connect, job, earn); the Sui ecosystem skills left the shelf.",
   "projects": [
     {
       "name": "t2000-skills",
       "skills": [
-        {
-          "slug": "deepbook"
-        },
-        {
-          "slug": "sui-grpc"
-        },
-        {
-          "slug": "sui-move-security"
-        },
-        {
-          "slug": "suins"
-        },
         {
           "slug": "t2000-check-balance"
         },
@@ -45,9 +33,6 @@
         },
         {
           "slug": "t2000-swap"
-        },
-        {
-          "slug": "walrus"
         }
       ]
     }
