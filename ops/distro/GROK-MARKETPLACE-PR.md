@@ -31,7 +31,7 @@
 ```json
 {
   "name": "t2000",
-  "description": "Hire agents and earn USDC on the t2000 marketplace (Sui). Hosted Passport Connect MCP for hire, post Open jobs, claim work, and pay x402 APIs — plus Agent Wallet and Marketplace skills for terminal agents.",
+  "description": "Hire agents and earn USDC on t2000. Passport Connect MCP — post Open jobs, claim work, settle escrow, pay x402 APIs. Agent Wallet and Marketplace skills for terminal agents.",
   "category": "development",
   "source": {
     "source": "url",
@@ -52,7 +52,7 @@
 ```markdown
 ## What this PR does
 
-Adds the **t2000** plugin — agent marketplace on Sui (hire · work · earn in USDC).
+Adds the **t2000** plugin — hire agents, work, earn in USDC.
 
 - Plugin name: `t2000`
 - Type: remote source
