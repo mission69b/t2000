@@ -11,7 +11,7 @@ Do not ask what to do with the text. Pre-flight → **load queue** → **route e
 
 **Batch / jobId (S.1193 / S.1197):** every settle/reject/deliver/review takes a **job** object id. Never pass a batchId. Batch-claimed jobs are normal Jobs — settle them like any other Open. If claim returned `jobIdPending`, resolve before acting.
 
-**NEVER bare inbox:** Do **not** call `t2000_jobs` without `needsOnly: true` (and without narrowing `role`) on seats with history — Connect loads up to **500 job rows** and blows the context window (dogfood 2026-08-26: 500 of 634 on funkii@). Settle **always** uses `needsOnly: true`. Posting inventory uses `role: "buyer"` → `openings[]` only (`PROMPT-GTM-DESK.md` §A).
+**NEVER bare inbox:** On mature seats, do **not** call `t2000_jobs` without **`needsOnly: true` AND `role: "buyer"`** for settle work — a no-role call can return **`needsActionTotal > 0` with an empty `jobs[]`** (counter and rows diverge; dogfood 2026-08-26 follow-up). Posting inventory uses the same buyer scope → `openings[]` only (`PROMPT-GTM-DESK.md` §A). Seller deliverables: separate call with `role: "seller"` · `needsOnly: true` after the buyer queue is clear.
 
 ---
 
@@ -19,25 +19,25 @@ Do not ask what to do with the text. Pre-flight → **load queue** → **route e
 
 1. **Who am I** — Passport handle + address.  
 2. You only settle **buyer** rows on openings **this Passport funded**. Skip buyer jobs posted by other seats.  
-3. **`t2000_jobs { needsOnly: true }`** — no `role` — needs-action across buyer + seller on this Passport. **Mandatory** — not optional.
+3. **`t2000_jobs { needsOnly: true, role: "buyer" }`** — buyer needs-action on this Passport. **Mandatory** — not optional. (Do **not** omit `role` on settle passes.)
 
 ---
 
 ## Load the queue
 
-1. Call `t2000_jobs` · `needsOnly: true` · no `role`.  
+1. Call `t2000_jobs` · **`needsOnly: true`** · **`role: "buyer"`**.  
 2. Build a work list — process in order:
    1. **Buyer `funded` past deliver deadline** → § Refund (`t2000_job_refund`).
    2. **Buyer `delivered` Open jobs** → settle/reject (money waiting on you).
-   3. Seller rows on jobs you claimed.
-3. For each row, note: `jobId` / opening id, title, maxUsdc, state, seat (buyer = you?).
+3. For each row, note: `jobId` / opening id, title, maxUsdc, state.
 
-If empty → report "queue clear" and stop.
+If empty → report "buyer queue clear". Then optional: `t2000_jobs { needsOnly: true, role: "seller" }` for § Seller-side rows.
 
-**Queue completeness (S.1200d — revised 2026-08-26):**
+**Queue completeness (S.1200d — revised 2026-08-26 follow-up):**
 
-- **`needsActionTotal === 0`** → queue clear (reliable).
-- **`needsActionTotal > 0`** but `jobs[]` is empty or `matching`/`returned` are 0 → **not actionable from this response** — do not trust the card CTA ("…and N more need action") when the JSON lists no jobIds. Console spot-check this seat, or re-call with `role: "buyer"` · `needsOnly: true` and inspect funded rows manually. **Non-zero `needsActionTotal` alone is not queue-clear.**
+- On **`role: "buyer"`** · `needsOnly: true`: **`needsActionTotal === 0`** → buyer queue clear (reliable).
+- **Never** use a no-role call for queue-clear — same moment can show `needsActionTotal: 2` with `jobs: []` while `role: "buyer"` returns the real rows (counter and payload diverge).
+- If a host ever returns **`needsActionTotal > 0`** with empty `jobs[]` even **with** `role: "buyer"` → console spot-check; do not claim queue-clear.
 
 **Resume after tool limit:** if the run stops mid-queue, on the next pass **grade oldest review-window / SLA clock first** — a lapsed window auto-releases to the hunter regardless of quality.
 
@@ -209,9 +209,11 @@ Jobs from `PROMPT-WAVE-ACTIVITY.md`, `PROMPT-50-MICRO-ACTIVITY-JOBS.md`, `PROMPT
 
 ---
 
-## Seller-side rows (same queue)
+## Seller-side rows (after buyer queue clear)
 
-If `needsOnly` shows **seller** work (funded → deliver, review window, etc.) on openings **you claimed** (not ones you funded as buyer):
+Optional second call: `t2000_jobs { needsOnly: true, role: "seller" }`.
+
+If seller work shows up (funded → deliver, review window, etc.) on openings **you claimed** (not ones you funded as buyer):
 
 - **Deliver** with `t2000_job_deliver` when you're the seller and work is ready.  
 - Do **not** settle your own buyer-funded campaign openings you accidentally claimed.
@@ -225,7 +227,7 @@ If `needsOnly` shows **seller** work (funded → deliver, review window, etc.) o
 | activity / micro settled/rejected | job-loop settled/rejected | referral settled/rejected (by price) |
 | metrics settled/rejected (if any) | social settled/rejected (if any) |
 | reviews left (stars) | jobIds settled | jobIds rejected |
-| blockers | queue still needs-action? |
+| blockers | buyer queue clear? (`role: "buyer"` · `needsActionTotal === 0`) |
 ```
 
 On tool fail: continue other rows; list blockers. Do **not** invent jobIds.

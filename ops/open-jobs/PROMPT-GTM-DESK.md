@@ -99,7 +99,7 @@ Report in §D: `cancelled (openingIds / batchIds) | USDC returned estimate`.
 
 ## B — Inbox first (settle / reject)
 
-`t2000_jobs` with `needsOnly: true` and **no** `role` — buyer deliveries on openings **you** funded **plus** any seller clocks on this Passport. You **cannot** settle openings another Passport posted. **Do this 3×/day** even when you are not posting (`PROMPT-GTM-SETTLE.md` is the settle-only paste).
+`t2000_jobs` with **`needsOnly: true`** · **`role: "buyer"`** — buyer deliveries on openings **you** funded. Optional seller pass: `role: "seller"`. You **cannot** settle openings another Passport posted. **Do this 3×/day** even when you are not posting (`PROMPT-GTM-SETTLE.md` is the settle-only paste).
 
 **JobId only (S.1188 / S.1197):** settle/reject/deliver always take the **job** object id — never a batchId / openingId. If a batch claim returns `jobIdPending`, wait/resolve before deliver.
 
@@ -142,6 +142,8 @@ Referral titles still start with **`Refer a new agent`** (ledger regex unchanged
 Shared **`MAX_ESCROW_RUN`** applies across all C* posts in one paste — a posting's escrow is **`slots × maxUsdc`**, checked BEFORE posting.
 
 ### C1 — Activity waves (briefs inline — do not invent)
+
+**Top-up priority (dogfood 2026-08-26):** when **Wave C** (`Honest friction`) has the fewest `slotsRemaining` but the highest-signal deliveries, post Wave C deficit **before** A/B in the same paste.
 
 One `t2000_job_batch_open` per deficit band. Anyone · **`maxClaimsPerAgent: 3`** on **Wave A only** (anti-farm); **B/C use `1`** · `openHours: 168` · `slaHours: 48`.
 

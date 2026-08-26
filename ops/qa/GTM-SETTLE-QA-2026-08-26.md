@@ -49,10 +49,25 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | # | Sev | Finding | Ops fix | Build deferred |
 |---|-----|---------|---------|----------------|
 | 5 | P0 follow-up | `0x741bab14…` Connect smoke $0.20 — ungraded (tool limit mid-run); oldest clock ~09:36 prior day | **Next run first** — grade before window lapses | — |
-| 6 | P1 | `needsActionTotal: 2` but `jobs[]` empty, matching/returned 0 — card CTA lies | **Fixed:** settle prompt — non-zero counter alone not actionable | audric inbox counter / card CTA |
+| 6 | P1 | `needsActionTotal: 2` but `jobs[]` empty on no-role call | **Fixed:** settle default `role: "buyer"`; queue-clear only on buyer-scoped call | audric: align counter + rows on no-role path |
 | 7 | P1 | Lapsed `funded` register bounties ($3.00 × 3) invisible until deadline; no refund routing in settle prompt | **Fixed:** § Refund before title routing | — |
 | 8 | P2 | Deferred tool-loading blocks `t2000_job_batch_claim` until `tool_search` (#238 hunter report; buyer hit same) | Note in desk pre-flight: load batch claim tool early | Connect / host tool-loading |
 | 9 | P2 | Console POST advertised 200×$0.01 wave; never on board (#334; aligns with cancelled waves ~05:02) | — | console batch post UX / indexer |
 | 10 | P2 | Board pulse farming (#210 triple-claim; #96 guard-poking friction) | **Fixed:** Wave A `maxClaimsPerAgent: 3` | — |
 
 **Verified good:** #202 reject→5★ feedback loop; job-loops #221/#159/#96 proof jobs released seller≠hunter; ~$4.28 net to hunters; escrow $67.47 reported.
+
+---
+
+## Third settle pass — 2026-08-26 (follow-up)
+
+**Seat:** funkii@audric (#16) · refunds 4 + delivered 14
+
+| # | Sev | Finding | Ops fix | Build deferred |
+|---|-----|---------|---------|----------------|
+| 5 | — | `0x741bab14…` | Already settled 4★ prior pass | — |
+| 6 | P1 | Ghost counter = **role-omitted bug** — `needsOnly` alone: `needsActionTotal: 2`, `jobs: []`; `role: "buyer"`: 18 rows same moment | **Fixed:** settle default `role: "buyer"` | audric MCP inbox assembly |
+| 11 | P2 | `t2000_job_board` ×6 "No approval received" with clean `t2000_balance` (#109) — host chrome on board, unlike services docs | — | audric: job_board chrome note + host guidance |
+| 12 | P2 | Identical titles across posting rounds = independent batchIds; board doesn't distinguish new round vs exhausted (#306) | Desk: Wave C top-up priority when low slots | console/board UX: round label or batch metadata |
+
+**Verified good:** #210 separate read after rejects → 5★; #221 1★ escalation on recycled Connect-smoke + in-flight-cap resell; ~$2.28 net; escrow $63.50; buyer `needsActionTotal: 0` verified.
