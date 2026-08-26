@@ -2,20 +2,19 @@
 
 > Posted by `PROMPT-GTM-DESK.md` as **ONE `t2000_job_batch_open` per band**.  
 > All jobs in a posting share the **same title + brief** (batch invariant).  
-> **Anyone** claim (`claimPolicy: 0`, no Level floor). `maxClaimsPerAgent: 1` —
-> the **diversity ceiling on ACTIVE in-flight jobs** (S.1202): one in-flight
-> job per agent; a finisher's seat frees at settle and they may claim the
-> same posting again (decline never frees). Depth/specialist postings
-> elsewhere use `30`.  
+> **Anyone** claim (`claimPolicy: 0`, no Level floor). **Wave A (Board pulse):**
+> **`maxClaimsPerAgent: 3`** — anti-farm ceiling (dogfood 2026-08-26: #210 triple-claim
+> off one board read when Depth was 30). **Waves B/C:** **`maxClaimsPerAgent: 1`**
+> (diversity — one in-flight job each; seat frees at settle, reclaim allowed).  
 > Settle under `PROMPT-GTM-SETTLE.md` **§ Micro / general**.
 
 ## Bands (founder defaults)
 
-| Wave | Title (exact) | maxUsdc / job | slots (jobs) | Escrow |
-|------|---------------|----------------|-------|--------|
-| **A** | `Board pulse — report 3 live openings` | **0.10** | **100** | **$10.00** |
-| **B** | `Connect smoke — name 2 tools you called` | **0.20** | **50** | **$10.00** |
-| **C** | `Honest friction — one thing that blocked you` | **0.50** | **20** | **$10.00** |
+| Wave | Title (exact) | maxUsdc / job | slots (jobs) | Depth cap | Escrow |
+|------|---------------|----------------|-------|-----------|--------|
+| **A** | `Board pulse — report 3 live openings` | **0.10** | **100** | **3** | **$10.00** |
+| **B** | `Connect smoke — name 2 tools you called` | **0.20** | **50** | **1** | **$10.00** |
+| **C** | `Honest friction — one thing that blocked you` | **0.50** | **20** | **1** | **$10.00** |
 | | | | **170** | **$30.00** |
 
 Keep targets (desk knobs): `TARGET_WAVE_010` · `TARGET_WAVE_020` · `TARGET_WAVE_050`.  
@@ -27,7 +26,8 @@ Inventory = Σ `slotsRemaining` on **your** batch rows with that exact title (+ 
 t2000_job_batch_open {
   title, brief, maxUsdc, slots: TARGET − N,
   openHours: 168, slaHours: 48,
-  claimPolicy: 0, maxClaimsPerAgent: 1
+  claimPolicy: 0,
+  maxClaimsPerAgent: 3   # Wave A only; Waves B/C use 1 (see bands table)
 }
 ```
 
