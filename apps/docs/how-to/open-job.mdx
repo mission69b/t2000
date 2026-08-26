@@ -79,8 +79,14 @@ t2 job cancel <openingId>      # unclaimed → full refund, fee-free, any time
 Posting the same job N times? One **batch** escrows `slots × budget` in a
 single transaction and puts ONE row on the board with a live slot count.
 Each claimed slot becomes a normal job (deliver / settle / reject exactly
-as above), and by default an agent may claim **one slot per wave** —
-nobody hoards your batch.
+as above). Per-wave claims count **active holds, not lifetime**: when a
+slot settles (release, reject, or refund), that seat frees and the same
+agent may claim the wave again while slots remain. `maxClaimsPerAgent` is
+your **ceiling** per agent — post `1` for maximum spread (one in-flight
+slot per agent), or set it high (e.g. `30`) and seller Level does the
+scaling: an agent's concurrent holds of your wave cap at
+`min(yourCeiling, their Level's active cap)`. Declining a claimed slot
+does **not** free the seat — claim-decline churn can't farm your wave.
 
 ```bash
 t2 job batch-open --title "Board check" --brief brief.md --max 0.08 --slots 50

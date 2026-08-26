@@ -13,6 +13,7 @@ import {
   buildRejectJobTx,
   buildReleaseJobTx,
   getJob,
+  getJobBatchOrigin,
   jobActionsFor,
   preflightCreateJob,
   verifyJobForSeller,
@@ -223,6 +224,97 @@ describe('single-object verb builders', () => {
 
   it('deliver rejects a malformed hash', () => {
     expect(() => buildDeliverJobTx(JOB_ID, 'nope')).toThrow(/hex hash/);
+  });
+
+  // S.1202: a batch-origin Job (batchId passed) settles through the batch
+  // module's doors — the wave hold frees with the money; bare v2 doors
+  // abort EUseBatchSettle on-chain, so building them would be a wedge.
+  const BATCH_ID = `0x${'9'.repeat(64)}`;
+  it.each([
+    [
+      'batch_release',
+      () => buildReleaseJobTx(JOB_ID, { sellerScoreId: SCORE_ID, batchId: BATCH_ID }),
+    ],
+    [
+      'batch_reject',
+      () =>
+        buildRejectJobTx(JOB_ID, {
+          sellerScoreId: SCORE_ID,
+          registryId: REGISTRY_ID,
+          batchId: BATCH_ID,
+        }),
+    ],
+    [
+      'batch_reject_agent_buyer',
+      () =>
+        buildRejectJobTx(JOB_ID, {
+          sellerScoreId: SCORE_ID,
+          registryId: REGISTRY_ID,
+          buyerScoreId: `0x${'d'.repeat(64)}`,
+          batchId: BATCH_ID,
+        }),
+    ],
+    [
+      'batch_refund',
+      () => buildRefundJobTx(JOB_ID, { sellerScoreId: SCORE_ID, batchId: BATCH_ID }),
+    ],
+  ])('%s targets the batch module for origin Jobs (S.1202)', (fn, build) => {
+    const tx = build();
+    const calls = tx
+      .getData()
+      .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Array<{
+      MoveCall: { package: string; module: string; function: string };
+    }>;
+    expect(calls).toHaveLength(1);
+    expect(calls[0].MoveCall.package).toBe(A2A_ESCROW_LATEST_PACKAGE_ID);
+    expect(calls[0].MoveCall.module).toBe('batch');
+    expect(calls[0].MoveCall.function).toBe(fn);
+  });
+});
+
+describe('getJobBatchOrigin (S.1202)', () => {
+  const BATCH_ID = `0x${'9'.repeat(64)}`;
+  const originField = {
+    fieldId: `0x${'1'.repeat(64)}`,
+    type: 'DynamicField',
+    name: {
+      type: `0x${'5'.repeat(64)}::escrow::BatchOriginKey`,
+      bcs: new Uint8Array(),
+    },
+    valueType: '0x2::object::ID',
+    $kind: 'DynamicField' as const,
+  };
+
+  function dfClient(fields: unknown[], valueBcs?: Uint8Array) {
+    return {
+      core: {
+        listDynamicFields: vi
+          .fn()
+          .mockResolvedValue({ hasNextPage: false, cursor: null, dynamicFields: fields }),
+        getDynamicField: vi.fn().mockResolvedValue({
+          dynamicField: { value: { type: '0x2::object::ID', bcs: valueBcs } },
+        }),
+      },
+    } as any;
+  }
+
+  it('returns the wave id from the BatchOriginKey DF (any defining pkg)', async () => {
+    const valueBcs = Uint8Array.from(
+      { length: 32 },
+      () => 0x99, // BCS of the 0x99…99 address
+    );
+    const origin = await getJobBatchOrigin(dfClient([originField], valueBcs), JOB_ID);
+    expect(origin).toBe(BATCH_ID);
+  });
+
+  it('returns null when the Job has no origin DF (single/hire)', async () => {
+    const claimedOnly = {
+      ...originField,
+      name: { type: `0x${'5'.repeat(64)}::escrow::ClaimedJobKey`, bcs: new Uint8Array() },
+    };
+    const client = dfClient([claimedOnly]);
+    expect(await getJobBatchOrigin(client, JOB_ID)).toBeNull();
+    expect(client.core.getDynamicField).not.toHaveBeenCalled();
   });
 });
 

@@ -113,6 +113,19 @@ export const A2A_ESCROW_PACKAGE_V10_ID =
 export const A2A_ESCROW_PACKAGE_V11_ID =
   process.env.A2A_ESCROW_PACKAGE_V11_ID ??
   '0x2a928916c859a159e6d6f4841073a31397d01336c1ea689ce74344e456463c8d';
+/** v12 (S.1202) — defining id for the batch active-claims surface: the
+ *  `BatchSlotHoldReleased` event and the BatchOriginKey/
+ *  BatchHoldReleasedKey/ActiveClaimsSemanticsKey DF key types. A
+ *  DEFINING-id anchor like V2…V11 — never moves again once filled.
+ *
+ *  TODO(S.1202 cutover): PLACEHOLDER until the founder executes
+ *  RUNBOOK_S1202_BATCH_ACTIVE_CLAIMS (upgrade → immediate migrate) — fill
+ *  with the real v12 package id in the post-upgrade pin PR, together with
+ *  `MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID` above. Nothing may consume this
+ *  while it reads 0x0 (origin reads suffix-match the type name instead —
+ *  `BATCH_ORIGIN_KEY_TYPE_SUFFIX` in wallet/job.ts). */
+export const A2A_ESCROW_PACKAGE_V12_ID =
+  process.env.A2A_ESCROW_PACKAGE_V12_ID ?? '0x0';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';

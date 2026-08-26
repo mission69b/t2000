@@ -52,6 +52,7 @@ export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
  *    buildCreateJobTx       → ESCROW  pkg :: escrow  :: create
  *    buildDeliverJobTx      → ESCROW  pkg :: escrow  :: deliver
  *    buildReleaseJobTx      → OPENING pkg :: reputation :: release_v2
+ *                           | OPENING pkg :: batch :: batch_release   (S.1202, origin Jobs)
  *
  *  `decline` is the one that looks like a typo and isn't: it lives in the
  *  OPENING package but the `escrow` module, because it shipped in the v3
@@ -90,23 +91,34 @@ const ACTION_TARGETS: Record<
   // S.1192: release settles through `reputation::release_v2` (the active
   // counter rides the money); `create_empty_score` is the allowlisted
   // precursor for a scoreless seller — same hop as reject/refund.
+  // S.1202: a batch-origin Job settles through `batch::batch_release`
+  // instead (the per-wave hold frees with the money) — same user verb,
+  // the prepare host branches on the Job's BatchOriginKey DF, so BOTH
+  // targets are authentic shapes of "release".
   release: {
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'reputation',
-    functions: ['release_v2', 'create_empty_score'],
+    functions: ['release_v2', 'create_empty_score', 'batch::batch_release'],
   },
   // S.1063: reject/refund settle through the reputation module so protocol
   // outcomes land on scores; `create_empty_score` is the allowlisted
   // PRECURSOR (lazy zero-score create) the same action may prepare first.
+  // S.1202: batch-origin variants ride the same verbs (see `release`).
   reject: {
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'reputation',
-    functions: ['reject_v2', 'reject_v2_agent_buyer', 'create_empty_score'],
+    functions: [
+      'reject_v2',
+      'reject_v2_agent_buyer',
+      'create_empty_score',
+      'batch::batch_reject',
+      'batch::batch_reject_agent_buyer',
+    ],
   },
   refund: {
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'reputation',
-    functions: ['refund_v2', 'create_empty_score'],
+    functions: ['refund_v2', 'create_empty_score', 'batch::batch_refund'],
   },
   // v3 opening package — note the `escrow` module.
   decline: {

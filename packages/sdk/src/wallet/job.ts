@@ -1,4 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
+import { bcs } from '@mysten/sui/bcs';
 import { T2000Error } from '../errors.js';
 import { USDC_TYPE } from '../token-registry.js';
 import { USDC_DECIMALS } from '../constants.js';
@@ -297,12 +298,48 @@ export function buildDeclineJobTx(jobId: string): Transaction {
  *  the protocol outcome lands on the seller's score. Score ids derive
  *  locally (`deriveAgentScoreId`); pass `buyerScoreId` exactly when the
  *  buyer is a registered agent — the contract refuses a mismatched
- *  variant, so a registered buyer can't dodge its own counter. */
+ *  variant, so a registered buyer can't dodge its own counter.
+ *
+ *  S.1202: a batch-origin Job (has `BatchOriginKey` — read it with
+ *  `getJobBatchOrigin`) MUST pass `batchId` so the PTB targets
+ *  `batch::batch_reject`/`batch_reject_agent_buyer` and frees the per-wave
+ *  hold with the money; the bare reputation door aborts `EUseBatchSettle`
+ *  on origin Jobs. */
 export function buildRejectJobTx(
   jobId: string,
-  v2: { sellerScoreId: string; registryId: string; buyerScoreId?: string },
+  v2: {
+    sellerScoreId: string;
+    registryId: string;
+    buyerScoreId?: string;
+    batchId?: string;
+  },
 ): Transaction {
   const tx = new Transaction();
+  if (v2.batchId) {
+    tx.moveCall({
+      target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::batch::${v2.buyerScoreId ? 'batch_reject_agent_buyer' : 'batch_reject'}`,
+      typeArguments: [USDC_TYPE],
+      arguments: v2.buyerScoreId
+        ? [
+            tx.object(v2.batchId),
+            tx.object(jobId),
+            tx.object(v2.sellerScoreId),
+            tx.object(v2.buyerScoreId),
+            tx.object(v2.registryId),
+            feeConfigArg(tx),
+            tx.object(CLOCK_ID),
+          ]
+        : [
+            tx.object(v2.batchId),
+            tx.object(jobId),
+            tx.object(v2.sellerScoreId),
+            tx.object(v2.registryId),
+            feeConfigArg(tx),
+            tx.object(CLOCK_ID),
+          ],
+    });
+    return tx;
+  }
   tx.moveCall({
     target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::${v2.buyerScoreId ? 'reject_v2_agent_buyer' : 'reject_v2'}`,
     typeArguments: [USDC_TYPE],
@@ -328,12 +365,30 @@ export function buildRejectJobTx(
 
 /** Deadline refund (no delivery) — S.1063: settles through
  *  `reputation::refund_v2` so `no_delivery` lands on the seller's score.
- *  Still permissionless: funds only ever return to the buyer. */
+ *  Still permissionless: funds only ever return to the buyer.
+ *
+ *  S.1202: pass `batchId` for a batch-origin Job (see `getJobBatchOrigin`)
+ *  — the crank must attach the origin wave (`batch::batch_refund`), and a
+ *  wrong wave aborts `EWrongBatch` on-chain. */
 export function buildRefundJobTx(
   jobId: string,
-  v2: { sellerScoreId: string },
+  v2: { sellerScoreId: string; batchId?: string },
 ): Transaction {
   const tx = new Transaction();
+  if (v2.batchId) {
+    tx.moveCall({
+      target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::batch::batch_refund`,
+      typeArguments: [USDC_TYPE],
+      arguments: [
+        tx.object(v2.batchId),
+        tx.object(jobId),
+        tx.object(v2.sellerScoreId),
+        feeConfigArg(tx),
+        tx.object(CLOCK_ID),
+      ],
+    });
+    return tx;
+  }
   tx.moveCall({
     target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::refund_v2`,
     typeArguments: [USDC_TYPE],
@@ -369,12 +424,32 @@ export function buildDeliverJobTx(jobId: string, deliveryHash: string): Transact
  *  board-claimed job frees its active seat with the money. Hire jobs pass
  *  the same score; the contract's `ClaimedJobKey` marker decides whether
  *  a decrement lands. A scoreless seller needs the `create_empty_score`
- *  precursor first (same hop as reject/refund since S.1063). */
+ *  precursor first (same hop as reject/refund since S.1063).
+ *
+ *  S.1202: a batch-origin Job MUST pass `batchId` (read it with
+ *  `getJobBatchOrigin`) so the release targets `batch::batch_release` and
+ *  frees the per-wave hold in the same tx — bare `release_v2` aborts
+ *  `EUseBatchSettle` on origin Jobs. Applies to all three release shapes
+ *  (buyer accept, buyer goodwill, permissionless timeout crank). */
 export function buildReleaseJobTx(
   jobId: string,
-  v2: { sellerScoreId: string },
+  v2: { sellerScoreId: string; batchId?: string },
 ): Transaction {
   const tx = new Transaction();
+  if (v2.batchId) {
+    tx.moveCall({
+      target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::batch::batch_release`,
+      typeArguments: [USDC_TYPE],
+      arguments: [
+        tx.object(v2.batchId),
+        tx.object(jobId),
+        tx.object(v2.sellerScoreId),
+        feeConfigArg(tx),
+        tx.object(CLOCK_ID),
+      ],
+    });
+    return tx;
+  }
   tx.moveCall({
     target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::release_v2`,
     typeArguments: [USDC_TYPE],
@@ -432,6 +507,51 @@ export async function getJob(client: SuiCoreClient, jobId: string): Promise<Job>
     deliveredAtMs: hasDelivery ? deliveredAtMs : null,
     createdAtMs: Number(json.created_at_ms),
   };
+}
+
+/** Type-name suffix of the S.1202 origin marker DF on a batch-claimed
+ *  Job. Matched as a SUFFIX so reads never depend on the V12 defining
+ *  package id (fillable only after the cutover) — the parent Job is
+ *  already authenticated by `getJob`/object-type checks, and only our
+ *  package can attach DFs to it. */
+export const BATCH_ORIGIN_KEY_TYPE_SUFFIX = '::escrow::BatchOriginKey' as const;
+
+/**
+ * The `BatchOpening` id a Job was batch-claimed from, or null for
+ * single-opening / hire Jobs (S.1202 — reads the `BatchOriginKey` DF).
+ *
+ * Every settle/reject/refund prepare MUST call this first: an origin Job
+ * settles only through the batch doors (`batchId` on the builders), and
+ * the bare v2 doors abort `EUseBatchSettle` on it. Errors propagate —
+ * a "couldn't read, assume non-batch" fallback would build a PTB that
+ * aborts on-chain anyway, with a worse message.
+ */
+export async function getJobBatchOrigin(
+  client: SuiCoreClient,
+  jobId: string,
+): Promise<string | null> {
+  let cursor: string | null = null;
+  do {
+    const page: {
+      hasNextPage: boolean;
+      cursor: string | null;
+      dynamicFields: { name: { type: string; bcs: Uint8Array } }[];
+    } = await client.core.listDynamicFields({
+      parentId: jobId,
+      cursor: cursor ?? undefined,
+    });
+    for (const field of page.dynamicFields) {
+      if (!field.name.type.endsWith(BATCH_ORIGIN_KEY_TYPE_SUFFIX)) continue;
+      const resp = await client.core.getDynamicField({
+        parentId: jobId,
+        name: field.name,
+      });
+      // Value is the wave's `ID` — 32 BCS bytes, rendered as an address.
+      return bcs.Address.parse(resp.dynamicField.value.bcs);
+    }
+    cursor = page.hasNextPage ? page.cursor : null;
+  } while (cursor);
+  return null;
 }
 
 /** What `caller` can do to `job` right now — drives `t2 job watch` (the
