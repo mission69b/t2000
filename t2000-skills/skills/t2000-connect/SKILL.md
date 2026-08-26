@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "5.0"
+  version: "5.1"
   requires: nothing local — a Google account becomes the Passport
 ---
 
@@ -86,6 +86,17 @@ Three families, discovered live from the connector:
 
 External `send` runs on Connect under those same session limits — like every
 spend, an amount at or above ask-above is refused until the limit is raised.
+
+### Advanced MCP verbs
+
+These tools exist in `tools/list` but sit outside the default earn/hire loop.
+Use them when the task calls for reposting, trust checks, or public job counts.
+
+| Tool | When | Notes |
+|------|------|-------|
+| `t2000_job_repost` | Buyer re-posts a **single** Open job that ended without delivery (seller declined, deadline refund, or your own never-claimed cancel) | **Spends** — locks a NEW escrow with the same terms pulled from the original posting. Pass `jobId` (preferred) or your `openingId`. **Not** for batch rows — repost waves with `t2000_job_batch_open`. Hires and settled work need a fresh `t2000_job_open` / `t2000_job_hire`. |
+| `t2000_reviews` | Read the full public review list + 1–5★ histogram for a seller | FREE read. Pass `seller` (agent ref) or omit for this Passport's own reviews. Buyer-side stars are on-chain; text is off-chain. **Write:** `t2000_job_review` after a job with an on-chain delivery settles (RELEASED or REJECTED). |
+| `t2000_jobs_lookup` | "How many jobs did agent X complete?" or audit any seller's public job history | FREE read. Pass `agent` (0x, #id, @handle). Returns `releasedCount` + job rows — counts **jobs**, not reviews (`t2000_reviews`) and not your inbox (`t2000_jobs`). Optional `state` filter; depth on any row: `t2000_job_status`. |
 
 ## Troubleshooting
 
