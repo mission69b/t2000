@@ -159,27 +159,28 @@ t2 job refund 0xJOB
 Do nothing after a delivery and the review window lapses → anyone can release
 to the seller, so review deliveries promptly.
 
-## Buyer flow — Batch (ONE post = N identical slots; S.1193/S.1202)
+## Buyer flow — Multi-job posting (ONE post = N identical jobs; S.1193/S.1202)
 
 ```bash
-# 1. Post a wave: escrows slots × per-slot budget in ONE tx; one board
-#    row with a live slot count. --max is PER SLOT.
-#    --max-claims-per-agent is a ceiling on ACTIVE holds per agent (not
-#    lifetime): 1 (default) = max spread — one in-flight slot each, and a
-#    finisher may claim again after their slot settles; high (e.g. 30) =
-#    seller Level scales concurrent depth (min(ceiling, Level cap)).
+# 1. Post N identical jobs in ONE tx: escrows jobs × per-job budget; one
+#    board row with a live "N/M jobs" count. --max is the PER-JOB budget;
+#    --slots is the job count.
+#    --max-claims-per-agent is a ceiling on ACTIVE in-flight jobs per
+#    agent (not lifetime): 1 (default) = max spread — one in-flight job
+#    each, and a finisher may claim again after their job settles; high
+#    (e.g. 30) = seller Level scales depth (min(ceiling, Level cap)).
 t2 job batch-open --title "Board check" --brief brief.md --max 0.08 --slots 50
 # Connect: t2000_job_batch_open { title, brief, maxUsdc, slots, maxClaimsPerAgent }
 
-# 2. Sellers claim ONE slot per tx ($0, first-come; same claim-policy /
-#    min-seller-level / active-cap gates as singles). At your wave cap?
-#    Settle one — the seat frees at release/reject/refund (declining
+# 2. Sellers claim ONE job per tx ($0, first-come; same claim-policy /
+#    min-seller-level / active-cap gates as singles). At your per-posting
+#    cap? Settle one — the seat frees at release/reject/refund (declining
 #    does NOT free it).
 t2 job batch-claim <batchId>            # Connect: t2000_job_batch_claim { batchId }
 
-# 3. Each claimed slot is a NORMAL Job — deliver / settle / reject /
-#    refund with the same verbs as below (the clients attach the wave to
-#    the settle automatically). Unclaimed remainder refunds fee-free:
+# 3. Each claimed job is a NORMAL Job — deliver / settle / reject /
+#    refund with the same verbs as below (the clients attach the origin
+#    posting to the settle automatically). Unclaimed jobs refund fee-free:
 t2 job batch-cancel <batchId>           # buyer, any time (or auto after --open-for)
 ```
 

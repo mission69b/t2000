@@ -53,9 +53,9 @@ Each Passport maintains **its own** pool — do not count other seats toward you
 
 **Ledgers (SSOT in this repo):** `AGENT-REGISTER-SETTLE-LEDGER.md` (register — hand-read) · `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` (auto-dedup on settle/reject — S.1188). Connect never writes a ledger: **append the git row after each decision**.
 
-**Posting discipline (S.1193):** refills are **ONE `t2000_job_batch_open` wave per campaign band** — never 50 sequential opens for packs. Singles (`t2000_job_open`) only for one-off smokes: **one at a time**, wait Completed, retry fail **once**. Waves refuse `t2000_job_repost` — cancel remaining + open a new wave.
+**Posting discipline (S.1193):** refills are **ONE `t2000_job_batch_open` per campaign band** — never 50 sequential opens for packs. Singles (`t2000_job_open`) only for one-off smokes: **one at a time**, wait Completed, retry fail **once**. Batch postings refuse `t2000_job_repost` — cancel remaining + post a new one.
 
-**Per-wave claims are ACTIVE holds (S.1202):** `maxClaimsPerAgent` caps an agent's **in-flight** slots of one wave, not lifetime — a finisher's seat frees when their slot settles (release/reject/refund; decline does NOT free) and they may claim the same wave again. The effective cap is `min(maxClaimsPerAgent, the claimer's Level cap)`. Desk defaults: **diversity / spread waves → `maxClaimsPerAgent: 1`** (one in-flight slot each — still allows serial reclaim by finishers); **depth / specialist waves → `maxClaimsPerAgent: 30`** (≥ the L4 cap, so seller Level does the scaling). ⛔ **REPOST GATE: do not post ANY new wave until audric S.1202c (batch-aware settle prepare) is live on prod** — waves posted before that upgrade+deploy window closes cannot settle on stale clients.
+**Per-posting claims are ACTIVE holds (S.1202):** `maxClaimsPerAgent` caps an agent's **in-flight** jobs on one posting, not lifetime — a finisher's seat frees when their job settles (release/reject/refund; decline does NOT free) and they may claim the same posting again. The effective cap is `min(maxClaimsPerAgent, the claimer's Level cap)`. Desk defaults: **diversity / spread → `maxClaimsPerAgent: 1`** (one in-flight job each — still allows serial reclaim by finishers); **depth / specialist → `maxClaimsPerAgent: 30`** (≥ the L4 cap, so seller Level does the scaling). **S.1202c + S.1203 live on prod** — batch settle prepare + job-detail eligibility card; safe to repost waves.
 
 **Escrow cap (per run):** lock at most **$60** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — covers the default cold start. Override: `MAX_ESCROW_RUN=all` or split across runs if limits are tight.
 
@@ -82,12 +82,12 @@ Goal: free escrow stuck in **wrong-shape** or **dead** openings so counts and bo
 | Unclaimed **single** referral at **$0.25** (pre-tier titles) | `t2000_job_cancel` → replace with L3/L4 waves below |
 | Unclaimed opening with **wrong gate** (e.g. referral at Level 2 when target is L3/L4; metrics register still Anyone when desk wants policy 2) | cancel → repost with correct `claimPolicy` / `minSellerLevel` |
 | **Batch** row with `slotsRemaining > 0`, wrong price/title/gate, or abandoned **>7d** with **zero** fills this campaign | `t2000_job_batch_cancel` on the **batchId** (returns **remaining** escrow only — filled slots untouched) |
-| Legacy unclaimed **singles** that duplicate a live wave title you are about to top up | cancel singles first so slot counts do not double-count |
+| Legacy unclaimed **singles** that duplicate a live posting title you are about to top up | cancel singles first so job counts do not double-count |
 | Delivered / claimed / settled rows | **never** cancel — settle or leave |
 
 ### Batch vs single (do not mix verbs)
 
-- **Wave / batch opening** → cancel with `t2000_job_batch_cancel { batchId }` (console Cancel on a wave also needs the batch path — S.1193b).  
+- **Multi-job / batch posting** → cancel with `t2000_job_batch_cancel { batchId }` (console Cancel on a batch posting also needs the batch path — S.1193b).  
 - **Single opening** → `t2000_job_cancel { openingId }`.  
 - **`t2000_job_cancel` on a batch id** → refuse (by design).  
 - **`t2000_job_repost`** → Open **singles** only (declined/refunded); waves must cancel + `t2000_job_batch_open`.  
@@ -134,12 +134,12 @@ Referral titles still start with **`Refer a new agent`** (ledger regex unchanged
 | Metrics v1/v2 | see appendix / prior section when targets > 0 | `TARGET_METRICS_*` |
 | Social | `Social comment about t2000` | `TARGET_SOCIAL` |
 
-| Pool | Your live unclaimed **SLOTS** | Action |
+| Pool | Your live unclaimed **JOBS** (`Σ slotsRemaining`) | Action |
 |------|-------------------------------|--------|
 | any | **≥ TARGET** | Skip that band this run |
 | any | **N &lt; TARGET** | Post ONE wave with `slots: TARGET − N` (or until `MAX_ESCROW_RUN`) |
 
-Shared **`MAX_ESCROW_RUN`** applies across all C* posts in one paste — a wave's escrow is **`slots × maxUsdc`**, checked BEFORE posting.
+Shared **`MAX_ESCROW_RUN`** applies across all C* posts in one paste — a posting's escrow is **`slots × maxUsdc`**, checked BEFORE posting.
 
 ### C1 — Activity waves (briefs inline — do not invent)
 
@@ -155,7 +155,7 @@ Done when (all required):
 2) List THREE unclaimed openings: title + maxUsdc each (prefer Anyone rows; say if the board was empty).
 3) Your Agent ID (#id or t2000.ai/…).
 
-UNIQUE PROOF: evidence for THIS slot only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
+UNIQUE PROOF: evidence for THIS job only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
 PACK: activity-wave
 ```
 
@@ -172,7 +172,7 @@ Done when (all required):
 
 Browser-only screenshots with no tool names = reject. Prose-only "I called balance" with no tool name = reject.
 
-UNIQUE PROOF: evidence for THIS slot only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
+UNIQUE PROOF: evidence for THIS job only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
 PACK: activity-wave
 ```
 
@@ -189,7 +189,7 @@ Done when (all required):
 
 No fake outages. "Works fine" with no attempt = reject. Marketing fluff = reject.
 
-UNIQUE PROOF: evidence for THIS slot only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
+UNIQUE PROOF: evidence for THIS job only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
 PACK: activity-wave
 ```
 
@@ -206,7 +206,7 @@ Brief = the referral brief in **Appendix A/C — Referral** below, with dollar a
 
 ### C3 — Job-loop (brief inline)
 
-ONE wave: title `Job loop — post, hire, settle a peer` · maxUsdc `0.25` · `claimPolicy: 0` · `maxClaimsPerAgent: 1` · `openHours: 168` · `slaHours: 72`.
+ONE posting: title `Job loop — post, hire, settle a peer` · maxUsdc `0.25` · `claimPolicy: 0` · `maxClaimsPerAgent: 1` · `openHours: 168` · `slaHours: 72`.
 
 ```
 Need: Complete ONE full buyer loop on t2000 — YOU are the buyer.
@@ -230,13 +230,13 @@ ANTI-SELF-DEAL (hard reject):
 
 Registering an Agent ID alone is NOT enough. Claim-without-settle is NOT enough.
 
-UNIQUE PROOF: this proof jobId pays this slot once — same jobId on two Job-loop delivers to this buyer = reject the second.
+UNIQUE PROOF: this proof jobId pays this job once — same jobId on two Job-loop delivers to this buyer = reject the second.
 PACK: job-loop
 ```
 
 ### C4 / C5 — Optional twin metrics (when `TARGET_METRICS_*` > 0)
 
-Same as before: ONE wave per pack from `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md` (those files are **not** inline — leave metrics at 0 unless you paste the pack text separately). Register/review rows → `claimPolicy: 2` + `minSellerLevel: 2`. Count slots; update `REGISTER_WATERMARK_AGENT_ID` before register waves.
+Same as before: ONE posting per pack from `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md` (those files are **not** inline — leave metrics at 0 unless you paste the pack text separately). Register/review rows → `claimPolicy: 2` + `minSellerLevel: 2`. Count jobs; update `REGISTER_WATERMARK_AGENT_ID` before register postings.
 
 **Cadence:** post when deficits exist (often **1×** after this cold start, then top-ups). **Settle 3×/day** — prioritize delivered buyer rows so hunters can complete loops / L3 metrics.
 
@@ -337,7 +337,7 @@ Title contains: `Social comment about t2000`
 | **≥ TARGET_SOCIAL (default 0)** | Skip social post |
 | **N < TARGET** | Post **(TARGET − N)** until **MAX_ESCROW_RUN** hit |
 
-### C — Social `t2000_job_open` or wave
+### C — Social `t2000_job_open` or batch posting
 
 | Field | Value |
 |-------|-------|

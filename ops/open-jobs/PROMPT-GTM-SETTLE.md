@@ -2,12 +2,14 @@
 
 > Paste into Connect or Audric chat when you need to **review the queue, settle/reject, and rate** — **no posting**.  
 > Works on **any** seat that funded Open jobs (admin@, funkii@, team).  
-> Run **3×/day** while campaigns are live — the desk posts the 50-pack **once** per batch, but every delivered row waits on YOU; a missed review window ≈ auto-release to hunter.
+> Run **3×/day** while campaigns are live — the desk posts once, but every delivered job waits on YOU; a missed review window ≈ auto-release to hunter.
 
 **If this file is the user message: execute the settle loop now.**  
 Do not ask what to do with the text. Pre-flight → **load queue** → **route each row** → **report**.
 
-**Post new openings:** `PROMPT-GTM-DESK.md` · **Twin packs:** `PROMPT-50-PROTOCOL-METRICS.md` (v1) + `PROMPT-50-PROTOCOL-METRICS-V2.md` (v2) · **Alt seed:** `PROMPT-50-MICRO-ACTIVITY-JOBS.md`
+**Post new openings:** `PROMPT-GTM-DESK.md` · **Activity waves:** `PROMPT-WAVE-ACTIVITY.md` · **Job-loop:** `PROMPT-50-JOB-LOOP.md` · **Optional metrics:** `PROMPT-50-PROTOCOL-METRICS.md` / `V2` · **Alt seed:** `PROMPT-50-MICRO-ACTIVITY-JOBS.md`
+
+**Batch / jobId (S.1193 / S.1197):** every settle/reject/deliver/review takes a **job** object id. Never pass a batchId. Batch-claimed jobs are normal Jobs — settle them like any other Open. If claim returned `jobIdPending`, resolve before acting.
 
 ---
 
@@ -27,17 +29,33 @@ Do not ask what to do with the text. Pre-flight → **load queue** → **route e
 
 If empty → report "queue clear" and stop.
 
+**Queue completeness (S.1200d ✓):** trust `needsActionTotal === 0` on the card / API for queue-clear. Console spot-check optional belt-and-suspenders.
+
 ---
 
-## Route by title (buyer delivered Opens)
+## `title: null` rows (rare fallback after S.1200d)
+
+`needsOnly` rows may show **`title: null`** (hash-only specs, batch-claimed jobs, title enrich cap). **Do not skip them** — title routing below fails without a status read.
+
+**For each buyer `delivered` row where `title` is null or empty:**
+
+1. `t2000_job_status` with that row's **`jobId`** (never batchId).  
+2. Route using **status `title` + `publicBrief` / `workOrder`** — look for **`PACK:`** (`job-loop`, `protocol-metrics`, `activity-wave`, …) and the delivery text.  
+3. Settle/reject with **jobId alone:** `t2000_job_settle { jobId }` / `t2000_job_reject { jobId }`.
+
+After S.1200d, inbox titles should populate from postings; use status read only when a row is still untitled.
+
+---
 
 | Title pattern | Rule set | Ledger |
 |---------------|----------|--------|
+| `Job loop — post, hire, settle a peer` or brief `PACK: job-loop` | **§ Job loop** | — |
 | Brief contains `PACK: protocol-metrics` or `PACK: protocol-metrics-v2` | **§ Metrics / protocol** | `AGENT-REGISTER-SETTLE-LEDGER.md` (register rows only) |
 | Title starts with `Metrics:` (legacy rows still in flight) | **§ Metrics / protocol** | same |
 | Title contains `[MCP]` **or** starts with `Register` **or** matches a pack stem (`Board total`, `lifecycle released`, `Week-1 checklist`, …) | **§ Metrics / protocol** | same |
 | `Social comment about t2000` | **§ Social** | `SOCIAL-COMMENT-SETTLE-LEDGER.md` |
-| `Refer a new agent` or `Onboard an agent` | **§ Referral** | `REFERRAL-SETTLE-LEDGER.md` |
+| `Refer a new agent` or `Onboard an agent` (any price: $0.25 / $0.50 / $1.00) | **§ Referral** | `REFERRAL-SETTLE-LEDGER.md` |
+| Activity waves (`Board pulse…`, `Connect smoke…`, `Honest friction…`) or brief `PACK: activity-wave` | **§ Micro / general** | — |
 | Everything else **you** posted (micro pack, dogfood, etc.) | **§ Micro / general** | — |
 
 **Tools:** `t2000_job_settle` (accept) · `t2000_job_reject` (buyer reject on delivered Open — **100%** back to you) · `t2000_job_review` after settle if you rate (**`stars: 1–5`**, optional text).
@@ -121,14 +139,31 @@ Append the ledger row in git after each decision (the embedded check is read-onl
 - the embedded ledger check passes (not a duplicate).
 
 **Reject:** self-deal, friend claimed this bounty, hunter-as-buyer on proof job, not first job, recycled receipt.  
-**Fee:** hunter ~$0.24 on $0.25 (5% protocol).  
+**Fee:** hunter ≈ price × 0.95 (e.g. ~$0.24 on $0.25, ~$0.475 on $0.50, ~$0.95 on $1.00).  
 Append the ledger row in git after each decision (the embedded check is read-only; Connect never writes the ledger).
+
+---
+
+## § Job loop
+
+Rows from `PROMPT-50-JOB-LOOP.md` — title `Job loop — post, hire, settle a peer` / brief `PACK: job-loop`.
+
+**Settle only if ALL true:**
+- Delivery names **proof jobId** (0x…) and hunter + seller Agent IDs.  
+- Proof job is **released** (`t2000_job_status`).  
+- Hunter Agent ID is the **buyer** on the proof job (this Passport funded it).  
+- Seller Agent ID ≠ hunter.  
+- Proof title is **not** a desk bounty (`Refer a new agent…`, `Social comment…`, `Job loop…`, Metrics / PACK activity titles).  
+- Same proof jobId not already settled on another Job-loop deliver to you this campaign.  
+
+**Reject:** self-deal, friend-funded proof, bounty-as-proof, unreleased proof, recycled jobId, missing ids.  
+**Fee:** hunter ~$0.24 on $0.25.
 
 ---
 
 ## § Micro / general Open jobs
 
-Jobs from `PROMPT-50-MICRO-ACTIVITY-JOBS.md`, `PROMPT-10-*`, or any other title **you** posted.
+Jobs from `PROMPT-WAVE-ACTIVITY.md`, `PROMPT-50-MICRO-ACTIVITY-JOBS.md`, `PROMPT-10-*`, or any other title **you** posted.
 
 **Settle if:**
 - Delivery matches the **posted brief's done-when** (open the opening title + read delivery text).  
@@ -159,7 +194,8 @@ If `needsOnly` shows **seller** work (funded → deliver, review window, etc.) o
 
 ```
 | seat | buyer delivered processed | settled | rejected | skipped (other seat) |
-| metrics settled/rejected (registers · lifecycle released · reviews) | social settled/rejected | referral settled/rejected | micro settled/rejected |
+| activity / micro settled/rejected | job-loop settled/rejected | referral settled/rejected (by price) |
+| metrics settled/rejected (if any) | social settled/rejected (if any) |
 | reviews left (stars) | jobIds settled | jobIds rejected |
 | blockers | queue still needs-action? |
 ```
