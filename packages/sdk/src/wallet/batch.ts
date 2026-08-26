@@ -20,12 +20,16 @@ import {
 } from './reputation.js';
 
 /**
- * Batch openings — client for `a2a_escrow::batch` (S.1193, Phase D wave
- * post). ONE post = N homogeneous slots backed by a single escrow of
- * `amount × slots`; each claimed slot mints a normal `escrow::Job`
- * (ClaimedJobKey stamped — settles with the ordinary job verbs and frees
- * the claimer's global active seat). One `batch_claim` per tx (v1 lock);
- * `maxClaimsPerAgent > 1` means sequential claim txs.
+ * Batch openings — client for `a2a_escrow::batch` (S.1193 wave post;
+ * S.1202 active claims). ONE post = N homogeneous slots backed by a
+ * single escrow of `amount × slots`; each claimed slot mints a normal
+ * `escrow::Job` (ClaimedJobKey + BatchOriginKey stamped). Origin Jobs
+ * settle via `batch::batch_release` / `batch_reject*` / `batch_refund` —
+ * the same user verbs, built by the job.ts builders when `batchId` is
+ * passed — freeing the global seat AND the per-wave hold with the money;
+ * non-origin Jobs stay on the reputation v2 doors. One `batch_claim` per
+ * tx (v1 lock); a claimer below `min(maxClaimsPerAgent, Level cap)`
+ * ACTIVE holds claims again in a new tx.
  *
  * Amount bounds are PER SLOT (same live min/max as a single post). The
  * wave TOTAL (`slots × amountUsdc`) is deliberately unbounded on-chain —
