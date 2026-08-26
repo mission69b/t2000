@@ -94,6 +94,12 @@ const EBuyerIsAgent: u64 = 7;
 /// S.1063: this buyer is NOT a registered Agent ID — use `reject_v2`
 /// (Passport buyers never get a public chain counter).
 const EBuyerNotAgent: u64 = 8;
+/// S.1202: this Job carries `BatchOriginKey` — its terminal settle must
+/// go through the batch-aware doors (`batch::batch_release` /
+/// `batch_reject*` / `batch_refund`), which free the per-wave hold in the
+/// same tx. A bare v2 settle would silently leak the wave seat, so it
+/// aborts loudly here instead (the S.1032/S.1063 dedicated-code pattern).
+const EUseBatchSettle: u64 = 9;
 
 // === Objects ===
 
@@ -321,7 +327,8 @@ public fun submit_review<T>(
     apply_review(score, object::id(job), ctx.sender(), stars, clock.timestamp_ms());
 }
 
-// === Outcome settlement (S.1063) — the ONLY live reject/refund doors ===
+// === Outcome settlement (S.1063) — the live reject/refund doors for
+// === NON-batch jobs (S.1202: batch-origin jobs settle via `batch::*`) ===
 // Money moves in `escrow::{reject,refund}_settle_pkg` (single source for
 // coin/fee math + the frozen v1 events); the counters land here. Outcomes
 // never touch stars/distinct/Proven — display-only protocol facts.
@@ -370,6 +377,7 @@ public fun reject_v2<T>(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    assert!(!escrow::is_batch_origin_job(job), EUseBatchSettle); // S.1202
     assert!(!registry::is_registered(registry, escrow::buyer(job)), EBuyerIsAgent);
     assert!(seller_score.agent == escrow::seller(job), EWrongScore);
     escrow::reject_settle_pkg(job, cfg, clock, ctx); // auth: sender==buyer, DELIVERED, in-window
@@ -400,6 +408,7 @@ public fun reject_v2_agent_buyer<T>(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    assert!(!escrow::is_batch_origin_job(job), EUseBatchSettle); // S.1202
     let buyer = escrow::buyer(job);
     assert!(registry::is_registered(registry, buyer), EBuyerNotAgent);
     assert!(seller_score.agent == escrow::seller(job), EWrongScore);
@@ -438,6 +447,7 @@ public fun refund_v2<T>(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    assert!(!escrow::is_batch_origin_job(job), EUseBatchSettle); // S.1202
     assert!(seller_score.agent == escrow::seller(job), EWrongScore);
     escrow::refund_settle_pkg(job, cfg, clock, ctx); // auth: FUNDED, past deadline
     let now = clock.timestamp_ms();
@@ -456,8 +466,10 @@ public fun refund_v2<T>(
     };
 }
 
-/// Release — funds → seller minus the protocol fee (S.1192: the ONLY live
-/// release door). Money settles in escrow's package-visible
+/// Release — funds → seller minus the protocol fee (S.1192: the live
+/// release door for every NON-batch job; S.1202: batch-origin jobs abort
+/// here and settle via `batch::batch_release`, which also frees the
+/// per-wave hold). Money settles in escrow's package-visible
 /// `release_settle_pkg` (auth unchanged from v1: buyer accept, buyer
 /// goodwill on FUNDED, or anyone after the review window lapses); the
 /// seller's active-job counter decrements here for board-claimed jobs.
@@ -471,6 +483,7 @@ public fun release_v2<T>(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    assert!(!escrow::is_batch_origin_job(job), EUseBatchSettle); // S.1202
     assert!(seller_score.agent == escrow::seller(job), EWrongScore);
     escrow::release_settle_pkg(job, cfg, clock, ctx);
     if (escrow::is_claimed_job(job)) {
@@ -506,10 +519,47 @@ fun record_outcome<K: copy + drop + store>(
     });
 }
 
+// === Batch settle hooks (S.1202) — package-visible outcome recorders ===
+// The batch-aware settle doors in `batch` must land the SAME counters the
+// v2 doors do; `record_outcome` stays private (the typed DF keys are the
+// authority), so `batch` gets these thin package-visible wrappers instead.
+// No cycle: `batch` imports `reputation`, never the reverse.
+
+/// `rejected_after_delivery` +1 — for `batch::batch_reject*` only.
+public(package) fun record_rejected_after_delivery_pkg(
+    score: &mut AgentScore,
+    job_id: ID,
+    now: u64,
+) {
+    record_outcome(
+        score,
+        job_id,
+        RejectedAfterDeliveryKey {},
+        OUTCOME_REJECTED_AFTER_DELIVERY,
+        now,
+    );
+}
+
+/// `no_delivery` +1 — for `batch::batch_refund` only.
+public(package) fun record_no_delivery_pkg(score: &mut AgentScore, job_id: ID, now: u64) {
+    record_outcome(score, job_id, NoDeliveryKey {}, OUTCOME_NO_DELIVERY, now);
+}
+
+/// `as_buyer_rejected` +1 — for `batch::batch_reject_agent_buyer` only.
+public(package) fun record_as_buyer_rejected_pkg(
+    score: &mut AgentScore,
+    job_id: ID,
+    now: u64,
+) {
+    record_outcome(score, job_id, AsBuyerRejectedKey {}, OUTCOME_AS_BUYER_REJECTED, now);
+}
+
 // === Active-job counter (S.1192) — package-private mutators ===
-// Only `opening::do_claim` increments; only the three terminal settle
-// paths above decrement (claimed jobs only). Package-private, so the
-// counter can never move except with the money.
+// Only `opening::do_claim` and `batch::batch_claim` increment; only the
+// terminal settle paths decrement — the three v2 doors above for
+// non-batch jobs, the `batch::batch_release`/`batch_reject*`/
+// `batch_refund` doors for batch-origin jobs (claimed jobs only).
+// Package-private, so the counter can never move except with the money.
 
 /// +1 — called by `opening::do_claim` after the Job mints. Serializes
 /// same-seller claims on the score object (correct: that IS the cap);

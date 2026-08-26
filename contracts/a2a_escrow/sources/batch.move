@@ -1,18 +1,26 @@
 /// Batch openings — wave post (SPEC_MARKETPLACE_BATCH_OPENINGS, Phase D /
-/// S.1193). ONE post = N homogeneous slots on the open board, backed by a
-/// SINGLE escrow balance of `amount × slots_total`. Each claimed slot
-/// splits `amount` out and mints a normal `escrow::Job` (ClaimedJobKey
-/// stamped by `create_claimed`, exactly like a single-opening claim), so
-/// settle / reject / refund / decline are unchanged downstream.
+/// S.1193; active per-wave claims + batch-aware settle, S.1202). ONE post
+/// = N homogeneous slots on the open board, backed by a SINGLE escrow
+/// balance of `amount × slots_total`. Each claimed slot splits `amount`
+/// out and mints a normal `escrow::Job` (ClaimedJobKey + BatchOriginKey
+/// stamped by `create_claimed_from_batch`), and that Job settles through
+/// THIS module's batch-aware doors so the per-wave hold frees with the
+/// money.
 ///
 ///   create_batch_open ──batch_claim × N (sellers, FCFS)──▶ N normal Jobs
+///   Job ──batch_release / batch_reject* / batch_refund──▶ money settles,
+///     global seat −1, per-wave hold −1 (the bare v2 doors abort on
+///     batch-origin Jobs — `EUseBatchSettle`)
 ///   create_batch_open ──cancel_batch_open (buyer)──▶ refund remainder, fee-free
 ///   create_batch_open ──refund_batch_expired (ANYONE, past open_until)──▶ same
 ///
 /// Design notes (annex + Build risk control, locked):
-/// - **Additive upgrade (S.1064-style).** A NEW module + NEW shared type +
-///   NEW entries only — no live signature changes, so no FeeConfig VERSION
-///   bump and no migrate. Entries still gate on the live VERSION via
+/// - **VERSION cutover (S.1192-style, D23).** New entries + new DF keys,
+///   no live signature changes — but the S.1202 upgrade ships with
+///   `escrow::VERSION` 6→7 + an immediate `migrate`, because leaving old
+///   bytecode callable would let v11 `create_batch_open` / `batch_claim` /
+///   bare `release_v2` bypass active-claim semantics and origin settle.
+///   Every entry gates on the live VERSION via
 ///   `escrow::assert_version_pkg` like every sibling.
 /// - **Escrow invariant** — `escrow.value() == amount * slots_remaining`,
 ///   asserted after every mutation (claim / cancel / refund). The last
@@ -24,22 +32,36 @@
 /// - **Phase C gates reused verbatim at claim**: claimer's OWN
 ///   `&mut AgentScore` (ownership asserted), claim policy 0/1/2,
 ///   `min_seller_level` on the EFFECTIVE level, and the per-level active
-///   cap — a batch slot occupies a seat exactly like a single claim. On
-///   top, `max_claims_per_agent` bounds slots PER WAVE (default 1): one
-///   hunter cannot hoard a wave even below their global cap.
+///   cap — a batch slot occupies a seat exactly like a single claim.
+/// - **Per-wave claims are ACTIVE holds, Level-scaled (S.1202, D11–D16).**
+///   `claims_by_agent[agent]` counts this agent's IN-FLIGHT slots of THIS
+///   wave — release / reject / refund free one (saturating −1, row removed
+///   at 0); a finisher may claim the same wave again while slots remain.
+///   The claim gate is `min(max_claims_per_agent, active_cap_for_level)`:
+///   the buyer's `max_claims_per_agent` is a diversity CEILING (post 1 for
+///   spread), and seller Level scales how much of a high ceiling one agent
+///   may hold concurrently. Decline does NOT free the wave seat (parity
+///   with the global active counter — claim→decline churn can't farm
+///   slots).
+/// - **Legacy batches reject new claims (D21).** Pre-S.1202 waves carry
+///   lifetime rows that would lock finishers out forever; `batch_claim`
+///   aborts `ELegacyBatch` when `ActiveClaimsSemanticsKey` is missing.
+///   Cancel / expired-refund on legacy batches stay allowed, and their
+///   in-flight Jobs (no `BatchOriginKey`) keep settling via the v2 doors.
 /// - **One claim per tx (v1 lock, founder 2026-08-25)** — no multi-claim
-///   PTBs; `max_claims_per_agent > 1` means sequential claim txs.
+///   PTBs; a claimer below their wave cap claims again in a new tx.
 /// - **Per-slot amount bounds only.** `amount` obeys the live min/max job
 ///   bounds; the TOTAL (`amount × slots`) is deliberately unbounded here —
 ///   the wallet balance and the desk's own budget bound it.
 module a2a_escrow::batch;
 
-use a2a_escrow::escrow::{Self, FeeConfig};
+use a2a_escrow::escrow::{Self, FeeConfig, Job};
 use a2a_escrow::reputation::{Self, AgentScore};
 use agent_id::registry::{Self, Registry};
 use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::{Self, Coin};
+use sui::dynamic_field as df;
 use sui::event;
 use sui::table::{Self, Table};
 
@@ -78,6 +100,26 @@ const ENotBuyer: u64 = 19;
 const ENotExpired: u64 = 20;
 /// Defensive: the escrow invariant broke (should be unreachable).
 const EEscrowInvariant: u64 = 21;
+/// S.1202 (D21): this `BatchOpening` predates active-claim semantics
+/// (no `ActiveClaimsSemanticsKey`) — its lifetime `claims_by_agent` rows
+/// can never free, so NEW claims are refused. Cancel / expired-refund
+/// still work; in-flight Jobs settle via the v2 doors.
+const ELegacyBatch: u64 = 22;
+/// S.1202: the Job passed to a batch settle door has no `BatchOriginKey` —
+/// it was not minted from a batch; settle it via the v2 doors.
+const ENotBatchJob: u64 = 23;
+/// S.1202: the Job's `BatchOriginKey` names a DIFFERENT batch than the
+/// one passed — the crank/client attached the wrong wave.
+const EWrongBatch: u64 = 24;
+/// S.1202: the passed seller `AgentScore` is not this Job's seller's.
+const EWrongSellerScore: u64 = 25;
+/// S.1202: the passed buyer `AgentScore` is not this Job's buyer's.
+const EWrongBuyerScore: u64 = 26;
+/// S.1202: registered Agent-ID buyer — use `batch_reject_agent_buyer`
+/// (an agent buyer cannot dodge its own `as_buyer_rejected` counter).
+const EBuyerIsAgent: u64 = 27;
+/// S.1202: unregistered (Passport) buyer — use `batch_reject`.
+const EBuyerNotAgent: u64 = 28;
 
 // === Objects ===
 
@@ -109,6 +151,14 @@ public struct BatchOpening<phantom T> has key {
     claims_by_agent: Table<address, u8>,
     created_at_ms: u64,
 }
+
+/// S.1202 (D21) — semantics marker DF on `BatchOpening.id`, stamped by
+/// `create_batch_open` from this package version on: `claims_by_agent`
+/// rows on this wave are ACTIVE holds that free at settle. `batch_claim`
+/// aborts `ELegacyBatch` when it is missing (pre-S.1202 waves have
+/// lifetime rows that can never free). Defining id = the S.1202 upgrade
+/// package (V12 pin).
+public struct ActiveClaimsSemanticsKey has copy, drop, store {}
 
 // === Events (defining id = the S.1193 upgrade package — V11 pin) ===
 
@@ -151,6 +201,17 @@ public struct BatchOpeningRefunded has copy, drop {
     buyer: address,
     refunded: u64,
     slots_refunded: u64,
+    timestamp_ms: u64,
+}
+/// S.1202 — a settle freed one per-wave hold (sibling event; the frozen
+/// `BatchSlotClaimed` never grows). `claims_remaining_for_agent` is the
+/// POST-write value — the read model mirrors it, never decrements.
+/// Defining id = the S.1202 upgrade package (V12 pin).
+public struct BatchSlotHoldReleased has copy, drop {
+    batch_id: ID,
+    job_id: ID,
+    agent: address,
+    claims_remaining_for_agent: u8,
     timestamp_ms: u64,
 }
 
@@ -202,7 +263,7 @@ public fun create_batch_open<T>(
         reject_split_bps == escrow::bps_denominator_pkg(),
         EOpenRejectMustBeFullBuyer,
     );
-    let batch = BatchOpening<T> {
+    let mut batch = BatchOpening<T> {
         id: object::new(ctx),
         buyer: ctx.sender(),
         escrow: payment.into_balance(),
@@ -221,6 +282,9 @@ public fun create_batch_open<T>(
         claims_by_agent: table::new(ctx),
         created_at_ms: now,
     };
+    // S.1202 (D21): brand active-claim semantics before share — claims on
+    // un-branded (pre-upgrade) waves abort `ELegacyBatch`.
+    df::add(&mut batch.id, ActiveClaimsSemanticsKey {}, true);
     let batch_id = batch.id.to_inner();
     event::emit(BatchOpeningCreated {
         batch_id,
@@ -245,10 +309,16 @@ public fun create_batch_open<T>(
 // === Claim (one slot per tx — v1 lock) ===
 
 /// Claim ONE slot: every Phase C single-claim gate, plus the wave's own
-/// slot + per-agent limits. Mints a normal funded Job (ClaimedJobKey
-/// stamped inside `create_claimed`) and seats the claimer's global
-/// active counter. FCFS per slot — losers of a same-slot race abort on
-/// the shared-object version, exactly like single openings.
+/// slot + per-agent limits. Mints a normal funded Job (ClaimedJobKey +
+/// BatchOriginKey stamped inside `create_claimed_from_batch`) and seats
+/// the claimer's global active counter. FCFS per slot — losers of a
+/// same-slot race abort on the shared-object version, exactly like
+/// single openings.
+///
+/// S.1202 wave gate: `claims_by_agent[claimer]` counts ACTIVE holds of
+/// this wave, and the limit is `min(max_claims_per_agent,
+/// active_cap_for_level)` — asserted BEFORE the global `EActiveJobCap`
+/// (locked abort priority; MCP maps both).
 public fun batch_claim<T>(
     batch: &mut BatchOpening<T>,
     registry: &Registry,
@@ -258,19 +328,26 @@ public fun batch_claim<T>(
     ctx: &mut TxContext,
 ): ID {
     escrow::assert_version_pkg(cfg);
+    // S.1202 (D21): lifetime-semantics waves never accept new claims.
+    assert!(has_active_claims_semantics(batch), ELegacyBatch);
     let now = clock.timestamp_ms();
     let claimer = ctx.sender();
-    // Locked check order (annex §batch_claim).
+    // Locked check order (annex §batch_claim + S.1202 claim gate).
     assert!(now <= batch.open_until_ms, EBatchExpired);
     assert!(batch.slots_remaining > 0, ENoSlotsRemaining);
-    let already = claims_of(batch, claimer);
-    assert!(already < batch.max_claims_per_agent, EMaxClaimsReached);
     assert!(claimer != batch.buyer, EClaimerIsBuyer);
     assert!(registry::is_registered(registry, claimer), ENotActiveAgent);
     let record = registry::borrow_record(registry, claimer);
     assert!(registry::is_active(record), ENotActiveAgent);
-    // Phase C gates, same order as opening::do_claim.
+    // Phase C gates, same order as opening::do_claim — except the wave cap
+    // needs the claimer's EFFECTIVE level, so the level computes first.
     assert!(reputation::agent(score) == claimer, EScoreNotClaimer);
+    let level = reputation::effective_seller_level(score, cfg);
+    let cap = reputation::active_cap_for_level(cfg, level);
+    // S.1202 (D15): active holds of THIS wave < min(buyer ceiling, level cap).
+    let already = claims_of(batch, claimer) as u64;
+    let wave_cap = (batch.max_claims_per_agent as u64).min(cap);
+    assert!(already < wave_cap, EMaxClaimsReached);
     let policy = batch.claim_policy;
     if (policy != CLAIM_POLICY_ANY_ACTIVE) {
         if (policy == CLAIM_POLICY_MIN_AVG) {
@@ -279,8 +356,6 @@ public fun batch_claim<T>(
             assert!(reputation::meets_proven(score), EClaimPolicyUnmet);
         };
     };
-    let level = reputation::effective_seller_level(score, cfg);
-    let cap = reputation::active_cap_for_level(cfg, level);
     assert!(reputation::active_seller_jobs(score) < cap, EActiveJobCap);
     if (batch.min_seller_level > 0) {
         assert!(
@@ -288,9 +363,12 @@ public fun batch_claim<T>(
             EMinSellerLevelUnmet,
         );
     };
-    // Split ONE slot's escrow → normal Job (ClaimedJobKey inside).
+    // Split ONE slot's escrow → normal Job (ClaimedJobKey + the S.1202
+    // BatchOriginKey inside — settles via THIS module's doors).
+    let batch_id = batch.id.to_inner();
     let slot_escrow = batch.escrow.split(batch.amount);
-    let job_id = escrow::create_claimed(
+    let job_id = escrow::create_claimed_from_batch(
+        batch_id,
         batch.buyer,
         claimer,
         slot_escrow,
@@ -322,6 +400,160 @@ public fun batch_claim<T>(
         timestamp_ms: now,
     });
     job_id
+}
+
+// === Batch-aware settle (S.1202) — the ONLY terminal doors for Jobs ===
+// === carrying `BatchOriginKey` (the v2 doors abort `EUseBatchSettle`) ===
+// Each door is the v2 door's exact mirror — money settles in escrow's
+// `*_settle_pkg` (auth + coin/fee math + frozen events, single source),
+// outcome counters land via reputation's package hooks, the global seat
+// frees via `decrement_active` — PLUS the per-wave hold frees in the SAME
+// tx (D12). Permissionless-crank properties survive unchanged: the batch
+// and score inputs are verified against the Job, never the caller.
+
+/// Release a batch-origin Job — funds → seller minus the protocol fee.
+/// Same three legitimate callers as `release_v2` (buyer accept, buyer
+/// goodwill on FUNDED, anyone after the review window lapses); the wave
+/// hold frees either way — a goodwill release is still this slot leaving
+/// flight (SPEC §batch-aware settle table).
+public fun batch_release<T>(
+    batch: &mut BatchOpening<T>,
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    escrow::assert_version_pkg(cfg);
+    assert_batch_origin(batch, job);
+    assert!(reputation::agent(seller_score) == escrow::seller(job), EWrongSellerScore);
+    escrow::release_settle_pkg(job, cfg, clock, ctx);
+    let now = clock.timestamp_ms();
+    if (escrow::is_claimed_job(job)) {
+        reputation::decrement_active(seller_score, object::id(job), now);
+    };
+    free_wave_hold(batch, job, now);
+}
+
+/// Buyer rejects delivered batch work — PASSPORT (unregistered) buyer
+/// variant: split settles (open-board lock: 100% buyer), the seller's
+/// `rejected_after_delivery` counter lands, seat + wave hold free.
+public fun batch_reject<T>(
+    batch: &mut BatchOpening<T>,
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    registry: &Registry,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    escrow::assert_version_pkg(cfg);
+    assert_batch_origin(batch, job);
+    assert!(!registry::is_registered(registry, escrow::buyer(job)), EBuyerIsAgent);
+    assert!(reputation::agent(seller_score) == escrow::seller(job), EWrongSellerScore);
+    escrow::reject_settle_pkg(job, cfg, clock, ctx); // auth: sender==buyer, DELIVERED, in-window
+    let now = clock.timestamp_ms();
+    let job_id = object::id(job);
+    reputation::record_rejected_after_delivery_pkg(seller_score, job_id, now);
+    if (escrow::is_claimed_job(job)) {
+        reputation::decrement_active(seller_score, job_id, now);
+    };
+    free_wave_hold(batch, job, now);
+}
+
+/// Buyer rejects delivered batch work — AGENT-ID buyer variant: same as
+/// `batch_reject` plus `as_buyer_rejected` on the buyer's OWN score
+/// (transparency cuts both ways — the v2 routing locks apply verbatim).
+public fun batch_reject_agent_buyer<T>(
+    batch: &mut BatchOpening<T>,
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    buyer_score: &mut AgentScore,
+    registry: &Registry,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    escrow::assert_version_pkg(cfg);
+    assert_batch_origin(batch, job);
+    let buyer = escrow::buyer(job);
+    assert!(registry::is_registered(registry, buyer), EBuyerNotAgent);
+    assert!(reputation::agent(seller_score) == escrow::seller(job), EWrongSellerScore);
+    assert!(reputation::agent(buyer_score) == buyer, EWrongBuyerScore);
+    escrow::reject_settle_pkg(job, cfg, clock, ctx);
+    let now = clock.timestamp_ms();
+    let job_id = object::id(job);
+    reputation::record_rejected_after_delivery_pkg(seller_score, job_id, now);
+    reputation::record_as_buyer_rejected_pkg(buyer_score, job_id, now);
+    if (escrow::is_claimed_job(job)) {
+        reputation::decrement_active(seller_score, job_id, now);
+    };
+    free_wave_hold(batch, job, now);
+}
+
+/// Deadline refund (no delivery) of a batch-origin Job — permissionless
+/// crank; `no_delivery` lands on the seller, seat + wave hold free (the
+/// no_delivery counter is what costs the seller — via level regression).
+public fun batch_refund<T>(
+    batch: &mut BatchOpening<T>,
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    escrow::assert_version_pkg(cfg);
+    assert_batch_origin(batch, job);
+    assert!(reputation::agent(seller_score) == escrow::seller(job), EWrongSellerScore);
+    escrow::refund_settle_pkg(job, cfg, clock, ctx); // auth: FUNDED, past deadline
+    let now = clock.timestamp_ms();
+    let job_id = object::id(job);
+    reputation::record_no_delivery_pkg(seller_score, job_id, now);
+    if (escrow::is_claimed_job(job)) {
+        reputation::decrement_active(seller_score, job_id, now);
+    };
+    free_wave_hold(batch, job, now);
+}
+
+/// The Job must carry `BatchOriginKey` AND it must name THIS batch —
+/// a crank passing the wrong wave aborts instead of mutating a stranger's
+/// `claims_by_agent` table.
+fun assert_batch_origin<T>(batch: &BatchOpening<T>, job: &Job<T>) {
+    let mut origin = escrow::batch_origin(job);
+    assert!(origin.is_some(), ENotBatchJob);
+    assert!(origin.extract() == batch.id.to_inner(), EWrongBatch);
+}
+
+/// Free ONE per-wave hold for this Job's seller: saturating −1 on
+/// `claims_by_agent` (row removed at 0 — the Table stays droppable in
+/// spirit), one-shot `BatchHoldReleasedKey` on the Job (a second free
+/// aborts in escrow — belt + suspenders over the settle state machine),
+/// and the sibling event. NOT called on decline (D13: decline burns the
+/// wave seat, parity with the global counter).
+fun free_wave_hold<T>(batch: &mut BatchOpening<T>, job: &mut Job<T>, now: u64) {
+    escrow::mark_batch_hold_released_pkg(job);
+    let agent = escrow::seller(job);
+    let remaining = if (table::contains(&batch.claims_by_agent, agent)) {
+        let current = table::remove(&mut batch.claims_by_agent, agent);
+        if (current > 1) {
+            table::add(&mut batch.claims_by_agent, agent, current - 1);
+            current - 1
+        } else {
+            0
+        }
+    } else {
+        // Saturating: unreachable through the doors above (every origin
+        // Job added a row at claim), kept as a no-abort floor so a
+        // settlement can never wedge on counter drift.
+        0
+    };
+    event::emit(BatchSlotHoldReleased {
+        batch_id: batch.id.to_inner(),
+        job_id: object::id(job),
+        agent,
+        claims_remaining_for_agent: remaining,
+        timestamp_ms: now,
+    });
 }
 
 // === Cancel (buyer withdraws the unclaimed remainder — fee-free) ===
@@ -422,9 +654,26 @@ public fun min_seller_level<T>(batch: &BatchOpening<T>): u8 {
 public fun max_claims_per_agent<T>(batch: &BatchOpening<T>): u8 {
     batch.max_claims_per_agent
 }
-/// Slots `agent` already claimed of this batch (0 when never claimed).
+/// ACTIVE holds `agent` currently has of this batch (S.1202) — 0 when
+/// never claimed or when every claimed slot has settled. On a legacy
+/// (pre-S.1202) wave the rows are lifetime counts that never free.
 public fun claims_by_agent<T>(batch: &BatchOpening<T>, agent: address): u8 {
     claims_of(batch, agent)
 }
+/// Whether this wave runs active-claim semantics (S.1202) — false only
+/// for pre-upgrade batches, which no longer accept new claims (D21).
+public fun has_active_claims_semantics<T>(batch: &BatchOpening<T>): bool {
+    df::exists(&batch.id, ActiveClaimsSemanticsKey {})
+}
 public fun created_at_ms<T>(batch: &BatchOpening<T>): u64 { batch.created_at_ms }
 public fun escrow_value<T>(batch: &BatchOpening<T>): u64 { batch.escrow.value() }
+
+// === Test hooks ===
+
+/// Simulate a PRE-S.1202 wave: strip the semantics marker so legacy-batch
+/// behavior (`ELegacyBatch` on claim, cancel/refund still allowed) is
+/// testable without deploying old bytecode.
+#[test_only]
+public fun strip_active_claims_semantics_for_testing<T>(batch: &mut BatchOpening<T>) {
+    let _: bool = df::remove(&mut batch.id, ActiveClaimsSemanticsKey {});
+}
