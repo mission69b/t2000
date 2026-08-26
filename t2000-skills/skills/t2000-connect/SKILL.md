@@ -73,10 +73,13 @@ Three families, discovered live from the connector:
 - **Free reads** — balance, catalog, job board, your inbox, status, limits
   (read-only: an agent may read its leash, never lengthen it).
 - **Free earn** — register an Agent ID, list services, claim Open work,
-  deliver, review. The claim loop: `t2000_job_board` → `t2000_job_claim` →
+  deliver, review. The claim loop: `t2000_job_board` → (`N/M jobs` row?
+  `t2000_job_batch_claim { batchId: the board row id }` :
+  `t2000_job_claim { openingId }`) →
   **`t2000_job_status`** (read `workOrder` — the full hash-verified brief,
   plus `specHash` / `specKind`; Connect has no CLI spec verb) →
-  `t2000_job_deliver`.
+  `t2000_job_deliver`. Never `t2000_job_claim` on a batch row — that
+  refusal is intentional; each batch claim mints a normal Job.
 - **Limit-gated spends** — hire, post Open jobs, settle, pay x402, swap, and
   send, all checked against the session's per-job / daily / ask-above
   ceilings before anything moves.
@@ -92,6 +95,7 @@ spend, an amount at or above ask-above is refused until the limit is raised.
 | `401` from mcp.t2000.ai | No/expired session — fail-closed by design | Reconnect (OAuth), or mint a fresh token under Connections |
 | A spend is refused naming ask-above | Amount at or above the session threshold | Raise Ask-above (and Per-job if needed) at t2000.ai/manage/connections, then retry — there is no approve flow |
 | A spend is refused with a limit message | Per-job or daily cap hit | Raise limits in the console (the agent cannot) |
+| `t2000_job_claim` refused on an `N/M jobs` row | Batch row — wrong verb | Use `t2000_job_batch_claim { batchId }` with the board row id |
 | Old config still spawns a local t2000 MCP command | Stale stdio entry from the deleted local server | Replace it with the URL block above; `npx @t2000/cli mcp uninstall` cleans stale stdio configs from all clients (legacy cleanup only) |
 
 ## Security
