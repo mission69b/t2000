@@ -15,9 +15,12 @@
 ///   create_batch_open ──refund_batch_expired (ANYONE, past open_until)──▶ same
 ///
 /// Design notes (annex + Build risk control, locked):
-/// - **Additive upgrade (S.1064-style).** New entries + new DF keys only —
-///   no live signature changes, so no FeeConfig VERSION bump and no
-///   migrate. Entries still gate on the live VERSION via
+/// - **VERSION cutover (S.1192-style, D23).** New entries + new DF keys,
+///   no live signature changes — but the S.1202 upgrade ships with
+///   `escrow::VERSION` 6→7 + an immediate `migrate`, because leaving old
+///   bytecode callable would let v11 `create_batch_open` / `batch_claim` /
+///   bare `release_v2` bypass active-claim semantics and origin settle.
+///   Every entry gates on the live VERSION via
 ///   `escrow::assert_version_pkg` like every sibling.
 /// - **Escrow invariant** — `escrow.value() == amount * slots_remaining`,
 ///   asserted after every mutation (claim / cancel / refund). The last

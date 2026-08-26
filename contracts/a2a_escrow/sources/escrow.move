@@ -53,6 +53,13 @@ use sui::dynamic_field as df;
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
+/// v7 (S.1202, D23): batch active per-wave claims + batch-aware settle —
+/// the cutover kills the v11 bytecode whose `create_batch_open` /
+/// `batch_claim` / bare `release_v2` would still post un-branded waves,
+/// claim with lifetime semantics, and settle batch Jobs without freeing
+/// the wave hold. After migrate, batch Jobs settle ONLY through the
+/// `batch::batch_release`/`batch_reject*`/`batch_refund` doors and every
+/// pre-upgrade (non-origin) Job settles on THIS package's v2 doors.
 /// v6 (S.1192): seller levels + active caps — claims and release settle
 /// through `opening::claim_v2`/`claim_proven_v2` and
 /// `reputation::release_v2` (all take the seller's `&mut AgentScore` so
@@ -64,7 +71,7 @@ use sui::event;
 /// outcomes hit the seller's (and an Agent-ID buyer's) score. v4
 /// (S.1062): Proven = distinct buyers. v3 (S.1019): open reject 100%
 /// buyer. v2 (S.981): amount bounds.
-const VERSION: u64 = 6;
+const VERSION: u64 = 7;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
