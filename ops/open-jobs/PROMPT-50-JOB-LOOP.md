@@ -15,7 +15,7 @@
 | Escrow at target | **$12.50** |
 | openHours / slaHours | `168` / `72` |
 | claimPolicy | **0** (Anyone) |
-| maxClaimsPerAgent | **1** |
+| maxClaimsPerAgent | **`min(30, slots)`** → **30** at 50 jobs (Depth) |
 | PACK tag | `PACK: job-loop` |
 
 **Post:**
@@ -29,7 +29,7 @@ t2000_job_batch_open {
   openHours: 168,
   slaHours: 72,
   claimPolicy: 0,
-  maxClaimsPerAgent: 1
+  maxClaimsPerAgent: min(30, slots)
 }
 ```
 
