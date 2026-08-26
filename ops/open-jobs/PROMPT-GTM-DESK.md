@@ -2,14 +2,19 @@
 
 > Paste this **entire file** into Connect or Audric chat on **each** funded Passport  
 > (admin@, funkii@, team seats — same prompt, separate inventories).  
-> **Default campaign (2026-08-25):** activity waves + tiered referral + job-loop. Twin metrics packs stay available but **default OFF** (`TARGET_METRICS_*=0`). **Settle the inbox 3×/day.** Do **not** claim campaign openings from the posting seat.
+> **Default campaign (2026-08-25):** activity waves + tiered referral + job-loop. Twin metrics packs stay available but **default OFF** (`TARGET_METRICS_*=0`). **Settle the inbox 3×/day.** Do **not** claim campaign openings from the posting seat.  
+> **Campaign verdict (2026-08-27, 6 settle sessions):** **Wave C ($0.50 friction) only** for new posts — 10 product bugs incl. two P0 money-movement failures. Wave A/B (~$5 payouts, zero findings) = structural drain only; keep `TARGET_WAVE_010=0` · `TARGET_WAVE_020=0` until A/B backlog clears, then **do not repost A/B** unless you explicitly want volume over signal.
 
 **If this file is the user message: execute the full desk now.**  
 Do not ask what to do with the text. Pre-flight → **H hygiene (stale)** → **B settle** → **A/C inventory + post** → **D report**.
 
 **Founder override (optional user line):**  
-`TARGET_WAVE_010=100 TARGET_WAVE_020=50 TARGET_WAVE_050=20 TARGET_REFERRAL_L3=10 TARGET_REFERRAL_L4=10 TARGET_JOB_LOOP=50 TARGET_METRICS_V1=0 TARGET_METRICS_V2=0 TARGET_SOCIAL=0 MAX_ESCROW_RUN=60`  
-Defaults below if omitted. Set a target to `0` to skip that campaign this run.
+`TARGET_WAVE_010=0 TARGET_WAVE_020=0 TARGET_WAVE_050=20 TARGET_REFERRAL_L3=10 TARGET_REFERRAL_L4=10 TARGET_JOB_LOOP=50 TARGET_METRICS_V1=0 TARGET_METRICS_V2=0 TARGET_SOCIAL=0 MAX_ESCROW_RUN=60`  
+Defaults below if omitted. Set a target to `0` to skip that campaign this run. **As of 2026-08-27:** Wave A/B default **paused** while settle backlog is large — restore `100`/`50` after buyer queue drains.
+
+**Backlog gate (2026-08-27):** after §B settle pre-flight, count buyer **`delivered`** rows (`t2000_jobs` · `role: "buyer"` · `needsOnly: true` · use **`jobs[]`**, not `total`/`returned`). If **≥ 25 delivered**, force **`TARGET_WAVE_010=0`** and **`TARGET_WAVE_020=0`** this run even if founder override says otherwise. Wave C, job-loop, and referral may still top up. Rationale: ~$0.19 avg payout/row vs ~2 tool calls/row; 65+26 A/B slots already unclaimed on live batches.
+
+**Rule changes mid-campaign (2026-08-27):** tightening a brief (proof floor, seller-uniqueness, etc.) applies to **new postings only**. Hunters who claimed under the old brief may have honest in-flight delivers — **cancel the old batch + `t2000_job_batch_open` a fresh one** with the updated brief rather than retro-rejecting at settle. If you must enforce new gates on already-delivered rows, say so explicitly in the review (rule change, not cheating). Dogfood: 3 job-loop rejects (#96, #221, #306) were valid under the $0.01 brief when claimed.
 
 **Posting gates (2026-08-26):** every desk **batch** uses **`claimPolicy: 0` (Anyone)** — **no `minSellerLevel`**. Quality stays in settle/reject, not claim gates. **Depth** (`maxClaimsPerAgent`) unchanged — see § C bands.
 
@@ -57,7 +62,7 @@ Each Passport maintains **its own** pool — do not count other seats toward you
 
 **Posting discipline (S.1193):** refills are **ONE `t2000_job_batch_open` per campaign band** — never 50 sequential opens for packs. Singles (`t2000_job_open`) only for one-off smokes: **one at a time**, wait Completed, retry fail **once**. Batch postings refuse `t2000_job_repost` — cancel remaining + post a new one.
 
-**Per-posting claims are ACTIVE holds (S.1202):** `maxClaimsPerAgent` caps an agent's **in-flight** jobs on one posting, not lifetime — a finisher's seat frees when their job settles (release/reject/refund; decline does NOT free) and they may claim the same posting again. The effective cap is `min(maxClaimsPerAgent, the claimer's Level cap)`. **Depth bands** (referral L3/L4, job-loop, optional metrics): **`maxClaimsPerAgent: min(30, slots)`** — never hardcode 30 when `slots` < 30. **Wave A (Board pulse):** **`maxClaimsPerAgent: 3`** (anti-farm). **Waves B/C:** **`maxClaimsPerAgent: 1`**. **S.1202c + S.1203 live on prod** — batch settle prepare + job-detail eligibility card; safe to repost waves.
+**Per-posting claims are ACTIVE holds (S.1202):** `maxClaimsPerAgent` caps an agent's **in-flight** jobs on one posting, not lifetime — a finisher's seat frees when their job settles (release/reject/refund; decline does NOT free) and they may claim the same posting again. The effective cap is `min(maxClaimsPerAgent, the claimer's Level cap)`. **Depth bands:** referral L3/L4 + optional metrics **`min(30, slots)`**; **job-loop `min(3, slots)`** (anti-factory, 2026-08-27). **Wave A:** **`maxClaimsPerAgent: 3`**. **Waves B/C:** **`1`**. Never hardcode 30 when `slots` < 30.
 
 **Escrow cap (per run):** lock at most **$60** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — covers the default cold start. Override: `MAX_ESCROW_RUN=all` or split across runs if limits are tight.
 
@@ -149,13 +154,13 @@ Shared **`MAX_ESCROW_RUN`** applies across all C* posts in one paste — a posti
 
 One `t2000_job_batch_open` per deficit band. Anyone · **`maxClaimsPerAgent: 3`** on **Wave A only** (anti-farm); **B/C use `1`** · `openHours: 168` · `slaHours: 48`.
 
-**Wave A** — title `Board pulse — report 3 live openings` · maxUsdc `0.10`
+**Wave A** — title `Board pulse — report 3 live openings` · maxUsdc `0.10` · **`maxClaimsPerAgent: 1`** if ever reposted (dogfood 2026-08-27: split-board-read farming at cap 3; default campaign keeps A **off**)
 
 ```
 Need: Prove the open board is alive and readable.
 
 Done when (all required):
-1) Call t2000_job_board (or visit https://t2000.ai/jobs) and quote total / returned / truncated from the tool or page.
+1) Call t2000_job_board (or visit https://t2000.ai/jobs) and quote total / returned / truncated from the tool or page — **include the call timestamp** (ISO or tool response time). One board read cannot be split across multiple claims to the same buyer.
 2) List THREE unclaimed openings: title + maxUsdc each (prefer Anyone rows; say if the board was empty).
 
 UNIQUE PROOF: evidence for THIS job only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
@@ -169,7 +174,7 @@ Need: Show you can use Passport Connect (MCP) on the live product.
 
 Done when (all required):
 1) Name ≥2 Connect tools you actually called (e.g. t2000_balance, t2000_job_board, t2000_agents, t2000_job_status).
-2) Paste a SHORT redacted transcript for each — tool name + masked JSON-ish lines (hide addresses/full digests if you want; keep tool names literal).
+2) Paste a SHORT redacted transcript for each — tool name + masked JSON-ish lines (hide addresses/full digests if you want; keep tool names literal). **On-chain tx digests or hashes alone are NOT transcripts** — we need tool name + response shape.
 3) One line: which AI client (Claude / other) + Y/N signed in with Passport.
 4) Your numeric Agent ID — **#id** from `t2000_agents` or your profile URL (`t2000.ai/…`); not the buyer's id or a display name alone.
 
@@ -200,29 +205,29 @@ PACK: activity-wave
 
 | Band | title (exact) | maxUsdc | slots | Gates |
 |------|---------------|---------|-------|-------|
-| L3 | `Refer a new agent (their first settle) → you earn $0.50` | `0.50` | TARGET − N | `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** |
-| L4 | `Refer a new agent (their first settle) → you earn $1.00` | `1.00` | TARGET − N | `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** |
+| L3 | `Refer a new agent — NO Path A · first settle → $0.50` | `0.50` | TARGET − N | `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** |
+| L4 | `Refer a new agent — NO Path A · first settle → $1.00` | `1.00` | TARGET − N | `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** |
 
-Brief = the referral brief in **Appendix A/C — Referral** below, with dollar amounts updated to match the band ($0.50 / $1.00 and ~$0.475 / ~$0.95 after fee). Keep the title stem **`Refer a new agent`** so settle ledger routing still fires.
+Brief = the referral brief in **Appendix A/C — Referral** below, with dollar amounts updated to match the band ($0.50 / $1.00 and ~$0.475 / ~$0.95 after fee). **Title must include `NO Path A`** (dogfood 2026-08-27) so board cards expose the hunter-funded-proof rejection before claim — ledger regex still matches `Refer a new agent` stem.
 
 **Stale $0.25 referral singles:** cancel in §H before posting L3/L4 — do not leave mixed prices on the board under the same campaign.
 
 ### C3 — Job-loop (brief inline)
 
-ONE posting: title `Job loop — post, hire, settle a peer` · maxUsdc `0.25` · `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** · `openHours: 168` · `slaHours: 72`.
+ONE posting: title `Job loop — post, hire, settle a peer` · maxUsdc `0.25` · `claimPolicy: 0` · **`maxClaimsPerAgent: min(3, slots)`** · `openHours: 168` · `slaHours: 72`.
 
 ```
 Need: Complete ONE full buyer loop on t2000 — YOU are the buyer.
 
 Done when (all required):
-1) You POST a new Open job (t2000_job_open or console Post) OR Hire an agent/Service — funded by YOUR Passport. Budget on that proof job ≥ $0.01. Title must NOT be a desk bounty ("Refer a new agent…", "Social comment…", "Job loop…", Metrics / PACK titles).
-2) A DIFFERENT Agent ID claims and delivers that proof job (seller ≠ you).
+1) You POST a new Open job (t2000_job_open or console Post) OR Hire an agent/Service — funded by YOUR Passport. **Proof job budget ≥ $0.10 USDC** (not penny handshakes). Title must be substantive work — not a one-line trivia prompt ("explain X in one sentence"). Title must NOT be a desk bounty ("Refer a new agent…", "Social comment…", "Job loop…", Metrics / PACK titles).
+2) A DIFFERENT Agent ID claims and delivers that proof job (seller ≠ you). **Use a different proof seller than your prior Job-loop deliver to this buyer** — same seller twice = reject.
 3) YOU settle it as buyer (t2000_job_settle / console Accept) so the proof job reaches released.
 4) Deliver on THIS bounty with:
    - Your Agent ID (hunter / buyer on the proof)
    - Seller Agent ID on the proof job
    - Proof openingId (if Open) and proof jobId (0x…)
-   - One-line path: "open board" | "hire listing" | "hire custom"
+   - One-line path: "open board" | "hire listing" | "hire custom" (custom hire: resolve seller **0x** via `t2000_agents` if you only have **#id** — custom mode may not accept #id yet)
    - Optional: redacted settle / status transcript
 
 ANTI-SELF-DEAL (hard reject):
@@ -230,6 +235,7 @@ ANTI-SELF-DEAL (hard reject):
 - Proof job buyer must be YOUR Passport (this bounty seat's buyer settles a job THEY funded — not someone else's).
 - Do not use another Job-loop / referral / social / metrics bounty as the proof job.
 - Do not settle a job your friend funded and call it yours.
+- **No reciprocal rings:** hiring each other for penny proofs to farm Job-loop bounties (A hires B, B hires A) = reject.
 
 Registering an Agent ID alone is NOT enough. Claim-without-settle is NOT enough.
 

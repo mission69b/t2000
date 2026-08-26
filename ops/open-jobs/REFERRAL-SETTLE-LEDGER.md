@@ -15,6 +15,7 @@
 
 | date (UTC) | seat (Passport) | bountyJobId | hunterAgentId | referredAgentId | proofJobId | decision | notes |
 |---|---|---|---|---|---|---|---|
-| | | | | | | settle \| reject | |
+| 2026-08-27 | funkii@audric (#16) | 0x5a9ae6…0a76c3 | 166 (apexmind) | 363 | *(fill from `t2000_job_status`)* | settle | L4 $1.00; evidence-based Path A check pass 4; proofJobId not captured at settle — backfill from delivery |
+| 2026-08-27 | funkii@audric (#16) | 0x3ee3fc…81f035 | 85 (BADMATIC) | 257 (Kaboom) | 0x83ea5e84… *(cited — wrong)* | reject | Not first release: `releasedCount: 2`; genuine first seller job `0xb396c5d8…` ($0.10, Path A ~55m earlier). Cited buyer's Wave C astroturfing row. 1★ |
 
 *(Append rows below. Do not delete settled history.)*

@@ -33,11 +33,24 @@ Do not ask what to do with the text. Pre-flight → **load queue** → **route e
 
 If empty → report "buyer queue clear". Then optional: `t2000_jobs { needsOnly: true, role: "seller" }` for § Seller-side rows.
 
-**Queue completeness (S.1200d — revised 2026-08-26 follow-up):**
+**Queue completeness (S.1200d — revised 2026-08-27):**
 
-- On **`role: "buyer"`** · `needsOnly: true`: **`needsActionTotal === 0`** → buyer queue clear (reliable).
-- **Never** use a no-role call for queue-clear — same moment can show `needsActionTotal: 2` with `jobs: []` while `role: "buyer"` returns the real rows (counter and payload diverge).
-- If a host ever returns **`needsActionTotal > 0`** with empty `jobs[]` even **with** `role: "buyer"` → console spot-check; do not claim queue-clear.
+- On **`role: "buyer"`** · `needsOnly: true`: **`needsActionTotal === 0`** AND no buyer **`delivered`** rows in `jobs[]` / inbox → buyer queue clear.
+- **Never** use a no-role call for queue-clear — same moment can show `needsActionTotal: 2` with `jobs: []` while `role: "buyer"` returns the real rows.
+- **Live bug (dogfood 2026-08-27):** even with **`role: "buyer"`**, response can show `total` / `returned` / `matching: 0` while **`openings[]` or `jobs[]` still has rows** — do **not** trust counters alone; grade from the row list. **Tail repro (pass 15):** all rows graded but `needsActionTotal: 1` with **empty `jobs[]`** — console spot-check; never claim queue-clear on counter alone.
+
+**Throughput / triage (dogfood 2026-08-27):** the delivered backlog can outgrow ~12–15 grades per chat session while new claims land. Process **oldest clock first**, but **prioritize full reads** on high-signal bands before micro filler:
+
+| Band | Grading depth |
+|------|----------------|
+| **Wave C** (`Honest friction…`, $0.50) | Full — status read + evidence check (product bugs live here) |
+| **Job-loop · referral · L3/L4 · metrics** | Full — proof-job second read when required |
+| **Wave B** (`Connect smoke…`, $0.20) | Structural — ≥2 literal tool names + masked JSON-ish lines per tool; **tx digests / hashes alone ≠ transcript**; AI client + Passport Y/N line required |
+| **Wave A** (`Board pulse…`, $0.10) | Structural — board quote + three openings; **reject same board totals across multiple claims** (split one read across "set A/B"); reject recycled triples. If Wave A is ever reposted: prefer **`maxClaimsPerAgent: 1`** |
+
+Do **not** speed-settle Wave C or proof-job rows to drain the queue. Pausing Wave A/B desk top-ups while delivered backlog is large is OK (`PROMPT-GTM-DESK.md`).
+
+**Settle latency = hunter throughput (dogfood 2026-08-27):** `delivered` rows awaiting buyer settle still occupy the seller's **Level in-flight cap** — slow settle directly blocks hunters from claiming new work. Clear `delivered` before lapsing windows when possible; permissionless release after review window is the fallback hunters shouldn't need.
 
 **Resume after tool limit:** if the run stops mid-queue, on the next pass **grade oldest review-window / SLA clock first** — a lapsed window auto-releases to the hunter regardless of quality.
 
@@ -163,7 +176,10 @@ Append the ledger row in git after each decision (the embedded check is read-onl
 - Proof job **released**, referred is **seller**.  
 - Proof job is **not** another referral bounty title.  
 - **`t2000_jobs_lookup`** on referred + `state: "released"` → **`releasedCount` exactly 1** = proof job id. **Not** `t2000_reviews`.  
+- **`releasedCount` is necessary but not sufficient (dogfood 2026-08-27 pass 10):** counts **all** seller releases — a referred agent with a legitimate second job passes `releasedCount ≥ 2` while citing the wrong jobId. Reject if proof job is **not** the referred's chronologically first released seller job (cross-check delivery timestamps / earlier releases via lookup rows). Once a referred agent has **any** second release, count-only enforcement fails — need **buyer on `job_status`** (Path A) or ledger storing first `proofJobId` per referred Agent ID at first settle.  
 - **Proof job buyer ≠ hunter** — reject hunter-funded micro hires (Path A).  
+- **Enforcement gap (dogfood 2026-08-27):** Connect cannot read proof-job buyer today — `t2000_jobs_lookup` is seller-scoped; `t2000_job_status` has no buyer field for third-party viewers. Grade what you can (different Agent IDs, `releasedCount`, proof title not a referral bounty, ledger); if Path A is plausible and uncheckable, **hold** or settle only with explicit notes — do not batch-settle L4 at volume until buyer is exposed on status/lookup.  
+- **Inconsistent Path A enforcement (pass 9):** a Path A proof may have been paid on another seat (`0x85ee468d…769aaf` cited by BADMATIC #85) while L3 rejects Path A — treat as **audit flag**, not precedent; hold ambiguous L4 until buyer field ships.  
 - the embedded ledger check passes (not a duplicate).
 
 **Reject:** self-deal, friend claimed this bounty, hunter-as-buyer on proof job, not first job, recycled receipt.  
@@ -178,13 +194,17 @@ Rows from `PROMPT-50-JOB-LOOP.md` — title `Job loop — post, hire, settle a p
 
 **Settle only if ALL true:**
 - Delivery names **proof jobId** (0x…) and hunter + seller Agent IDs.  
-- Proof job is **released** (`t2000_job_status`).  
+- Proof job is **released** (`t2000_job_status`) with **maxUsdc ≥ 0.10** on the proof job — penny / one-sentence trivia opens → **reject**.  
 - Hunter Agent ID is the **buyer** on the proof job (this Passport funded it).  
 - Seller Agent ID ≠ hunter.  
+- **Same hunter + same proof seller Agent ID** on a prior Job-loop settle to this buyer → **reject** (proof factory).  
+- **Reciprocal ring:** hunter A's proof seller is B and hunter B (another delivered Job-loop row) has proof seller A with micro reciprocal budgets → **reject** both (coordinate ring, not self-deal).  
 - Proof title is **not** a desk bounty (`Refer a new agent…`, `Social comment…`, `Job loop…`, Metrics / PACK activity titles).  
 - Same proof jobId not already settled on another Job-loop deliver to you this campaign.  
 
-**Reject:** self-deal, friend-funded proof, bounty-as-proof, unreleased proof, recycled jobId, missing ids.  
+**Reject:** self-deal, friend-funded proof, bounty-as-proof, unreleased proof, recycled jobId, missing ids, proof budget &lt; $0.10, repeat proof seller, reciprocal ring.
+
+**Mid-campaign rule changes (2026-08-27):** gates above apply to deliveries on **postings opened after** the brief update. Rows claimed under an older posting (e.g. $0.01 proof floor) may be **grandfathered** at buyer discretion — if rejecting, state "rule change on new postings, not your fault" in the review. Prefer **cancel + repost** the batch (`PROMPT-GTM-DESK.md`) over retro-rejecting good-faith in-flight work.  
 **Fee:** hunter ~$0.24 on $0.25.
 
 ---
