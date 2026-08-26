@@ -123,6 +123,8 @@ export {
   buildRejectJobTx,
   buildRefundJobTx,
   getJob,
+  getJobBatchOrigin,
+  BATCH_ORIGIN_KEY_TYPE_SUFFIX,
   jobActionsFor,
   verifyJobForSeller,
 } from './wallet/job.js';
@@ -164,6 +166,9 @@ export type { AgentScore, SellerLevel } from './wallet/reputation.js';
 export {
   MAX_BATCH_SLOTS_DEFAULT,
   BATCH_OPENING_TYPE_MARKER,
+  BATCH_ABORT_CODES,
+  REPUTATION_ABORT_CODES,
+  ESCROW_ABORT_CODES,
   buildBatchClaimTx,
   buildCancelBatchOpeningTx,
   buildCreateBatchOpeningTx,

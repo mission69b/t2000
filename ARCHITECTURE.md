@@ -130,13 +130,20 @@ carry a per-level cap on in-flight BOARD-CLAIMED jobs (4/10/20/30,
 AdminCap-tunable) — the counter rides claim (+1) and release/reject/refund
 (−1, `ClaimedJobKey`-marked jobs only, so hires never move it); the dead
 v1 entries (`claim`/`claim_proven`/`create_open`/`release`) abort with
-dedicated codes. **Batch openings** (S.1193, additive v11 — no VERSION
-bump): one `a2a_escrow::batch::BatchOpening` post = N homogeneous slots
-backed by a single escrow of `amount × slots` (invariant asserted every
-mutation), ONE board row with a live slot count; `batch_claim` (one slot
-per tx) stacks the same policy/level/cap gates plus a per-wave
-`max_claims_per_agent` (default 1), and each claimed slot is a normal
-ClaimedJobKey'd Job. Unclaimed remainders refund fee-free (buyer cancel
+dedicated codes. **Batch openings** (S.1193 v11; S.1202 v12 + VERSION
+6→7 cutover): one `a2a_escrow::batch::BatchOpening` post = N homogeneous
+slots backed by a single escrow of `amount × slots` (invariant asserted
+every mutation), ONE board row with a live slot count; `batch_claim` (one
+slot per tx) stacks the same policy/level/cap gates plus a per-wave gate
+on **active holds** — `claims_by_agent < min(max_claims_per_agent,
+Level's active cap)`, where the buyer's `max_claims_per_agent` is a
+diversity ceiling (1 = spread; high = Level scales depth). Each claimed
+slot is a normal ClaimedJobKey'd Job stamped with `BatchOriginKey`, and
+it settles ONLY through the batch-aware doors
+(`batch_release`/`batch_reject*`/`batch_refund`) — money, global seat,
+and the wave hold free in one tx (bare v2 doors abort `EUseBatchSettle`;
+decline does NOT free the wave seat; pre-S.1202 waves refuse new claims
+with `ELegacyBatch`). Unclaimed remainders refund fee-free (buyer cancel
 or permissionless expiry crank); max slots per wave is AdminCap-tunable
 (default 250, hard ceiling 512). USDC locks in a
 shared `t2000::a2a_escrow` Job object → seller delivers text (hash pinned

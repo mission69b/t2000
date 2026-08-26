@@ -152,6 +152,8 @@ export {
   buildRejectJobTx,
   buildRefundJobTx,
   getJob,
+  getJobBatchOrigin,
+  BATCH_ORIGIN_KEY_TYPE_SUFFIX,
   jobActionsFor,
   verifyJobForSeller,
 } from './wallet/job.js';
@@ -168,6 +170,7 @@ export {
   A2A_ESCROW_PACKAGE_V8_ID,
   A2A_ESCROW_PACKAGE_V10_ID,
   A2A_ESCROW_PACKAGE_V11_ID,
+  A2A_ESCROW_PACKAGE_V12_ID,
   MAX_OPEN_WINDOW_MS,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
   OPENING_CLAIM_POLICY_PROVEN,
@@ -184,6 +187,9 @@ export type { Opening, OpeningTerms } from './wallet/opening.js';
 export {
   MAX_BATCH_SLOTS_DEFAULT,
   BATCH_OPENING_TYPE_MARKER,
+  BATCH_ABORT_CODES,
+  REPUTATION_ABORT_CODES,
+  ESCROW_ABORT_CODES,
   buildBatchClaimTx,
   buildCancelBatchOpeningTx,
   buildCreateBatchOpeningTx,

@@ -245,6 +245,16 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       'refund',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
     ],
+    // S.1202: the SAME user verbs settle batch-origin Jobs through the
+    // batch module's doors (prepare branches on the Job's BatchOriginKey) —
+    // without these entries the guard refuses every batch settle.
+    ['release', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_release`],
+    ['reject', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_reject`],
+    [
+      'reject',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_reject_agent_buyer`,
+    ],
+    ['refund', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_refund`],
     // buildDeclineJobTx: OPENING package, `escrow` module — looks like a typo,
     // isn't. `decline` shipped in the v3 upgrade.
     ['decline', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::decline`],
@@ -307,6 +317,15 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       expect(() => assertTxMatchesIntent(b64, { action })).not.toThrow();
     });
   }
+
+  it('S.1202: "release" does not extend to other batch functions', async () => {
+    const b64 = await buildTxB64(
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_claim`,
+    );
+    expect(() => assertTxMatchesIntent(b64, { action: 'release' })).toThrow(
+      /should call/,
+    );
+  });
 
   // The exact names the broken map expected. Neither exists on mainnet.
   const PHANTOMS: [string, string][] = [

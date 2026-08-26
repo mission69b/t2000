@@ -44,6 +44,42 @@ export const MAX_BATCH_SLOTS_DEFAULT = 250;
 /** Object-type marker for `resolveCreatedObjectId` digest walks. */
 export const BATCH_OPENING_TYPE_MARKER = '::batch::BatchOpening<' as const;
 
+/** S.1202 abort codes clients map to English (transcribed from
+ *  `contracts/a2a_escrow` — the runbook's abort-code map is the SSOT).
+ *  Grouped by the aborting MODULE, because Move abort codes are only
+ *  unique per module. */
+export const BATCH_ABORT_CODES = {
+  /** At your wave cap RIGHT NOW — min(buyer ceiling, level cap) active
+   *  holds. Settle one to reclaim; never "lifetime". */
+  EMaxClaimsReached: 12,
+  /** Pre-S.1202 wave — lifetime rows never free, so new claims refuse.
+   *  The wave's cancel / expired-refund still work. */
+  ELegacyBatch: 22,
+  /** The Job passed to a batch settle door has no BatchOriginKey. */
+  ENotBatchJob: 23,
+  /** The attached wave is not this Job's origin batch. */
+  EWrongBatch: 24,
+  EWrongSellerScore: 25,
+  EWrongBuyerScore: 26,
+  /** Registered Agent-ID buyer must reject via the agent-buyer variant. */
+  EBuyerIsAgent: 27,
+  EBuyerNotAgent: 28,
+} as const;
+
+export const REPUTATION_ABORT_CODES = {
+  /** A bare v2 door (release_v2 / reject_v2 variants / refund_v2) on a
+   *  batch-origin Job — the client must attach the batch and settle via
+   *  the batch doors. */
+  EUseBatchSettle: 9,
+} as const;
+
+export const ESCROW_ABORT_CODES = {
+  /** Stale package flow (FeeConfig VERSION moved) — update @t2000/*. */
+  EWrongVersion: 13,
+  /** Second wave-hold free on one Job (unreachable via the doors). */
+  EBatchHoldReleased: 23,
+} as const;
+
 export interface BatchOpeningTerms extends OpeningTerms {
   /** Slots in the wave (1..live max; default live max 250). `amountUsdc`
    *  is PER SLOT — total escrow = `slots × amountUsdc`. */
