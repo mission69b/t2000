@@ -11,25 +11,53 @@ Do not ask what to do with the text. Pre-flight → **load queue** → **route e
 
 **Batch / jobId (S.1193 / S.1197):** every settle/reject/deliver/review takes a **job** object id. Never pass a batchId. Batch-claimed jobs are normal Jobs — settle them like any other Open. If claim returned `jobIdPending`, resolve before acting.
 
+**NEVER bare inbox:** Do **not** call `t2000_jobs` without `needsOnly: true` (and without narrowing `role`) on seats with history — Connect loads up to **500 job rows** and blows the context window (dogfood 2026-08-26: 500 of 634 on funkii@). Settle **always** uses `needsOnly: true`. Posting inventory uses `role: "buyer"` → `openings[]` only (`PROMPT-GTM-DESK.md` §A).
+
 ---
 
 ## Pre-flight
 
 1. **Who am I** — Passport handle + address.  
 2. You only settle **buyer** rows on openings **this Passport funded**. Skip buyer jobs posted by other seats.  
-3. `t2000_jobs` with `needsOnly: true` and **no** `role` — needs-action across buyer + seller on this Passport.
+3. **`t2000_jobs { needsOnly: true }`** — no `role` — needs-action across buyer + seller on this Passport. **Mandatory** — not optional.
 
 ---
 
 ## Load the queue
 
 1. Call `t2000_jobs` · `needsOnly: true` · no `role`.  
-2. Build a work list — process **buyer delivered Open jobs first** (money waiting on your settle/reject).  
+2. Build a work list — process in order:
+   1. **Buyer `funded` past deliver deadline** → § Refund (`t2000_job_refund`).
+   2. **Buyer `delivered` Open jobs** → settle/reject (money waiting on you).
+   3. Seller rows on jobs you claimed.
 3. For each row, note: `jobId` / opening id, title, maxUsdc, state, seat (buyer = you?).
 
 If empty → report "queue clear" and stop.
 
-**Queue completeness (S.1200d ✓):** trust `needsActionTotal === 0` on the card / API for queue-clear. Console spot-check optional belt-and-suspenders.
+**Queue completeness (S.1200d — revised 2026-08-26):**
+
+- **`needsActionTotal === 0`** → queue clear (reliable).
+- **`needsActionTotal > 0`** but `jobs[]` is empty or `matching`/`returned` are 0 → **not actionable from this response** — do not trust the card CTA ("…and N more need action") when the JSON lists no jobIds. Console spot-check this seat, or re-call with `role: "buyer"` · `needsOnly: true` and inspect funded rows manually. **Non-zero `needsActionTotal` alone is not queue-clear.**
+
+**Resume after tool limit:** if the run stops mid-queue, on the next pass **grade oldest review-window / SLA clock first** — a lapsed window auto-releases to the hunter regardless of quality.
+
+---
+
+## § Refund — lapsed `funded` rows (before title routing)
+
+Some buyer rows sit **`funded`** with the deliver deadline **already passed** — no delivery ever landed (register bounties, ghost claims, etc.). They may surface days after the claim and are easy to miss because this prompt routes on **delivered** titles.
+
+**For each buyer row in `needsOnly` with `state: funded` and deadline passed** (or status read shows deliver window expired):
+
+```
+t2000_job_refund { jobId }
+```
+
+- Runs **before** § Metrics / Social / Micro title routing — not a settle/reject decision.
+- Fee-free return to you (buyer seat).
+- Then continue to delivered rows.
+
+If unsure on deadline: `t2000_job_status` with the `jobId`.
 
 ---
 
