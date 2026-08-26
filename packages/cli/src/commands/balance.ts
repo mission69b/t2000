@@ -24,7 +24,7 @@ export interface BalanceOptions {
 export function registerBalance(program: Command) {
   program
     .command('balance')
-    .description('Show all wallet holdings — USDC / USDsui / SUI (USD-priced) + any other tokens (amount-only)')
+    .description('Show all wallet holdings — USDC first (stables + SUI USD-priced) + any other tokens (amount-only)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .action(async (opts: BalanceOptions) => {
       try {
