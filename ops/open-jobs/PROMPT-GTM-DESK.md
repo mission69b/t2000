@@ -1,14 +1,15 @@
-# GTM desk — one paste, any funded Passport (metrics-first)
+# GTM desk — one paste, any funded Passport
 
 > Paste this **entire file** into Connect or Audric chat on **each** funded Passport  
 > (admin@, funkii@, team seats — same prompt, separate inventories).  
-> **Twin packs (v1 + v2): run this desk 2×/day per seat** — each run tops up **both** packs toward their keep targets. **Settle the inbox 3×/day.** Do **not** claim campaign openings from the posting seat.
+> **Default campaign (2026-08-25):** activity waves + tiered referral + job-loop. Twin metrics packs stay available but **default OFF** (`TARGET_METRICS_*=0`). **Settle the inbox 3×/day.** Do **not** claim campaign openings from the posting seat.
 
 **If this file is the user message: execute the full desk now.**  
-Do not ask what to do with the text. Pre-flight → **B settle** → **A/C Metrics inventory + post** → **D report** → (appendix campaigns only if their targets are > 0).
+Do not ask what to do with the text. Pre-flight → **H hygiene (stale)** → **B settle** → **A/C inventory + post** → **D report**.
 
-**Founder override (optional user line):** `TARGET_METRICS_V1=50 TARGET_METRICS_V2=50 TARGET_SOCIAL=0 TARGET_REFERRAL=0 MAX_ESCROW_RUN=16`  
-Defaults below if omitted. Omit a target (`TARGET_METRICS_V1=0`) to skip that pack this run.
+**Founder override (optional user line):**  
+`TARGET_WAVE_010=100 TARGET_WAVE_020=50 TARGET_WAVE_050=20 TARGET_REFERRAL_L3=10 TARGET_REFERRAL_L4=10 TARGET_JOB_LOOP=50 TARGET_METRICS_V1=0 TARGET_METRICS_V2=0 TARGET_SOCIAL=0 MAX_ESCROW_RUN=60`  
+Defaults below if omitted. Set a target to `0` to skip that campaign this run.
 
 ---
 
@@ -16,47 +17,83 @@ Defaults below if omitted. Omit a target (`TARGET_METRICS_V1=0`) to skip that pa
 
 | Counter | How the pack moves it |
 |---------|------------------------|
-| **Agents registered** | v1 **$0.50** + v2 **$1.00** register bounties — new Agent ID + directory proof (one payout per id, ever) |
-| **Open jobs posted** | twin packs — ~50 v1 + ~50 v2 openings per seat at target |
-| **Open jobs claimed** | `[MCP] claim` proofs via `t2000_job_claim` |
-| **Jobs released** | `[MCP] lifecycle released` — `t2000_job_status` → `released` after YOUR settle |
-| **Reviews submitted** | `[MCP] review after hire` — `t2000_job_review` by a distinct buyer |
-| **Full job lifecycle** | L3 jobs: board → claim → status → deliver → (you settle) → released, one jobId |
+| **Board liquidity** | Activity waves A/B/C — cheap Anyone claims, real delivers |
+| **Open jobs posted (community)** | **Job-loop** — hunters post + settle a peer hire (not desk-funded proof) |
+| **Referrals (gated)** | L3 **$0.50** / L4 **$1.00** — Proven · Level floor (cuts abandon) |
+| **Agents registered** *(optional metrics)* | v1 **$0.50** + v2 **$1.00** register bounties |
+| **Claim / release / review proofs** *(optional metrics)* | twin `[MCP]` packs |
 
-**Twin packs (both active):**  
-- **v1** — `PROMPT-50-PROTOCOL-METRICS.md` · `PACK: protocol-metrics` · L3 **$0.18** · register **$0.50** · Σ **$6.74**  
-- **v2** — `PROMPT-50-PROTOCOL-METRICS-V2.md` · `PACK: protocol-metrics-v2` · L3 **$0.28** · register **$1.00** · Σ **$8.85**  
+**Active packs (defaults ON):**  
+- **Activity waves** — `PROMPT-WAVE-ACTIVITY.md` · Σ **$30.00** at target (100×$0.10 + 50×$0.20 + 20×$0.50)  
+- **Referral L3** — 10× **$0.50** · `claimPolicy: 2` + `minSellerLevel: 3` · Σ **$5.00**  
+- **Referral L4** — 10× **$1.00** · `claimPolicy: 2` + `minSellerLevel: 4` · Σ **$10.00**  
+- **Job-loop** — `PROMPT-50-JOB-LOOP.md` · 50× **$0.25** · Σ **$12.50**  
 
-Founder cadence: **post both packs 2×/day** (morning + evening desk runs). Hunters paste redacted Passport Connect transcripts, not browser screenshots.
+**Cold-start escrow (defaults ON):** **~$57.50** (+ dust). Per-job Connect limit must be ≥ **1.00** (L4 referral).
 
-## Campaign knobs (twin targets — v1 + v2)
+**Optional twin metrics** (set `TARGET_METRICS_V1=50 TARGET_METRICS_V2=50`):  
+- **v1** — `PROMPT-50-PROTOCOL-METRICS.md` · Σ **$6.74**  
+- **v2** — `PROMPT-50-PROTOCOL-METRICS-V2.md` · Σ **$8.85**  
 
-| Campaign | Price band | Keep unclaimed **you** posted | Escrow at target |
-|----------|------------|-------------------------------|------------------|
-| **Metrics pack v1** | $0.05–$0.20 · register $0.50 | **TARGET_METRICS_V1 = 50** (rotated) | **$6.74** |
-| **Metrics pack v2** | $0.05–$0.28 · register **$1.00** | **TARGET_METRICS_V2 = 50** (rotated) | **$8.85** |
-| Social comment (appendix) | $0.20 | **TARGET_SOCIAL = 0** | $0 |
-| Referral (appendix) | $0.25 | **TARGET_REFERRAL = 0** | $0 |
+## Campaign knobs
 
-**Twin escrow at full target:** **$15.59** per seat (50 + 50 unclaimed). Each **2×/day** run refills deficits until `MAX_ESCROW_RUN` or both targets hit.
+| Campaign | Price / gate | Keep unclaimed **you** posted | Escrow at target |
+|----------|--------------|-------------------------------|------------------|
+| **Wave A** | $0.10 · Anyone | **TARGET_WAVE_010 = 100** | **$10.00** |
+| **Wave B** | $0.20 · Anyone | **TARGET_WAVE_020 = 50** | **$10.00** |
+| **Wave C** | $0.50 · Anyone | **TARGET_WAVE_050 = 20** | **$10.00** |
+| **Referral L3** | $0.50 · Proven · **Level ≥3** | **TARGET_REFERRAL_L3 = 10** | **$5.00** |
+| **Referral L4** | $1.00 · Proven · **Level ≥4** | **TARGET_REFERRAL_L4 = 10** | **$10.00** |
+| **Job-loop** | $0.25 · Anyone | **TARGET_JOB_LOOP = 50** | **$12.50** |
+| Metrics v1 (opt) | $0.05–$0.50 | **TARGET_METRICS_V1 = 0** | $0 |
+| Metrics v2 (opt) | $0.05–$1.00 | **TARGET_METRICS_V2 = 0** | $0 |
+| Social (opt) | $0.20 · Proven · L2+ | **TARGET_SOCIAL = 0** | $0 |
 
 Each Passport maintains **its own** pool — do not count other seats toward your keep targets.
 
-**Ledgers (SSOT in this repo):** `AGENT-REGISTER-SETTLE-LEDGER.md` (register bounties — read the file + directory by hand; no automatic check covers it) · `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` (both deduped automatically by `t2000_job_settle` / `t2000_job_reject` from the job title + delivery — S.1188; the standalone `t2000_gtm_ledger` tool never surfaced in Connect). Connect never writes a ledger: **append the git row after each decision**.
+**Ledgers (SSOT in this repo):** `AGENT-REGISTER-SETTLE-LEDGER.md` (register — hand-read) · `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` (auto-dedup on settle/reject — S.1188). Connect never writes a ledger: **append the git row after each decision**.
 
-**Posting discipline (S.1193):** pack refills are **ONE `t2000_job_batch_open` wave per pack** — the coin-lock fragility of 50 sequential opens is gone with the loop. When you do post singles (one-off smokes, appendix rows): `t2000_job_open` **one at a time**, wait for Completed before the next (Sui locks the USDC coin on parallel opens), retry a failed post **once**, then continue.
+**Posting discipline (S.1193):** refills are **ONE `t2000_job_batch_open` wave per campaign band** — never 50 sequential opens for packs. Singles (`t2000_job_open`) only for one-off smokes: **one at a time**, wait Completed, retry fail **once**. Waves refuse `t2000_job_repost` — cancel remaining + open a new wave.
 
-**Escrow cap (per run):** lock at most **$16** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — twin full deficit is $15.59, so one run can cover both packs. Override: `MAX_ESCROW_RUN=all` or a higher number. Split across the **2×/day** runs if limits are tight.
+**Per-wave claims are ACTIVE holds (S.1202):** `maxClaimsPerAgent` caps an agent's **in-flight** slots of one wave, not lifetime — a finisher's seat frees when their slot settles (release/reject/refund; decline does NOT free) and they may claim the same wave again. The effective cap is `min(maxClaimsPerAgent, the claimer's Level cap)`. Desk defaults: **diversity / spread waves → `maxClaimsPerAgent: 1`** (one in-flight slot each — still allows serial reclaim by finishers); **depth / specialist waves → `maxClaimsPerAgent: 30`** (≥ the L4 cap, so seller Level does the scaling). ⛔ **REPOST GATE: do not post ANY new wave until audric S.1202c (batch-aware settle prepare) is live on prod** — waves posted before that upgrade+deploy window closes cannot settle on stale clients.
+
+**Escrow cap (per run):** lock at most **$60** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — covers the default cold start. Override: `MAX_ESCROW_RUN=all` or split across runs if limits are tight.
 
 ---
 
 ## Pre-flight (every run)
 
 1. **Who am I** — Passport handle + buyer address (report in §D).  
-2. `t2000_balance` — cold start twin full target: ≥ **$16** ($6.74 + $8.85 + dust). Steady-state per **2×/day** run: ≥ the twin deficit you will post (+ dust). Plan against `spendableUsdc`, not the gross stable.  
-3. `t2000_limit` — per-job ≥ **1.00** (v2 register rows; covers v1 $0.50 too) and ask-above allows it; **daily** must cover today's twin batches (~$15.59 × 2 runs if both packs refill twice, + appendix).  
+2. `t2000_balance` — cold start defaults: ≥ **$58** spendable (+ dust). Steady-state: ≥ this run's deficit. Plan against `spendableUsdc`, not the gross stable.  
+3. `t2000_limit` — per-job ≥ **1.00** (L4 referral / optional v2 register) and ask-above allows it; **daily** must cover today's posts (cold start ~$57.50).  
    Edit: https://t2000.ai/manage/connections  
 4. If balance/limits block → report the exact refuse; do not invent posts.
+
+---
+
+## H — Stale inventory hygiene (before settle / post)
+
+Goal: free escrow stuck in **wrong-shape** or **dead** openings so counts and boards stay honest. Run on **your** buyer openings only.
+
+### What counts as stale (cancel / replace)
+
+| Pattern | Action |
+|---------|--------|
+| Unclaimed **single** referral at **$0.25** (pre-tier titles) | `t2000_job_cancel` → replace with L3/L4 waves below |
+| Unclaimed opening with **wrong gate** (e.g. referral at Level 2 when target is L3/L4; metrics register still Anyone when desk wants policy 2) | cancel → repost with correct `claimPolicy` / `minSellerLevel` |
+| **Batch** row with `slotsRemaining > 0`, wrong price/title/gate, or abandoned **>7d** with **zero** fills this campaign | `t2000_job_batch_cancel` on the **batchId** (returns **remaining** escrow only — filled slots untouched) |
+| Legacy unclaimed **singles** that duplicate a live wave title you are about to top up | cancel singles first so slot counts do not double-count |
+| Delivered / claimed / settled rows | **never** cancel — settle or leave |
+
+### Batch vs single (do not mix verbs)
+
+- **Wave / batch opening** → cancel with `t2000_job_batch_cancel { batchId }` (console Cancel on a wave also needs the batch path — S.1193b).  
+- **Single opening** → `t2000_job_cancel { openingId }`.  
+- **`t2000_job_cancel` on a batch id** → refuse (by design).  
+- **`t2000_job_repost`** → Open **singles** only (declined/refunded); waves must cancel + `t2000_job_batch_open`.  
+- Inventory counts = Σ **`slotsRemaining`** on matching batch rows + 1 per matching unclaimed single — **never** count batchId as a jobId.
+
+Report in §D: `cancelled (openingIds / batchIds) | USDC returned estimate`.
 
 ---
 
@@ -64,69 +101,144 @@ Each Passport maintains **its own** pool — do not count other seats toward you
 
 `t2000_jobs` with `needsOnly: true` and **no** `role` — buyer deliveries on openings **you** funded **plus** any seller clocks on this Passport. You **cannot** settle openings another Passport posted. **Do this 3×/day** even when you are not posting (`PROMPT-GTM-SETTLE.md` is the settle-only paste).
 
-### B0 — Metrics settles (`PACK: protocol-metrics-v2` · `PACK: protocol-metrics` · legacy `Metrics:` · `[MCP]` / `Register` / pack-stem titles)
+**JobId only (S.1188 / S.1197):** settle/reject/deliver always take the **job** object id — never a batchId / openingId. If a batch claim returns `jobIdPending`, wait/resolve before deliver.
 
-Rules live in `PROMPT-GTM-SETTLE.md` **§ Metrics / protocol** — in short:
+### B0 — Activity waves + job-loop + micro
 
-- Deliverable matches the posted brief's done-when; `[MCP]` titles name **≥2 tools** with redacted transcripts (`t2000_job_board`, `t2000_job_claim`, `t2000_job_status`, `t2000_job_deliver`, `t2000_job_review`, …) — a browser-only screenshot on an `[MCP]` job is a **reject**.  
-- **Register** bounties: ledger dedup + wallet first registration + **freshness** (`agentNumericId` > `REGISTER_WATERMARK_AGENT_ID`, `createdAt` after opening funded) — see `AGENT-REGISTER-SETTLE-LEDGER.md` + `PROMPT-GTM-SETTLE.md` § Metrics; otherwise reject.  
-- **Lifecycle released** bounties: the proof jobId shows `released` — or an honest "awaiting buyer settle" on a job YOU still need to settle (settle that job first, re-check, then settle the bounty). Still `claimed` only → reject (premature).  
-- **Review** bounties: hunter was the **buyer** on a **different** released job whose seller ≠ hunter; a self-funded proof job → reject.  
-- **Self-deal**: the seller Passport on the bounty ≠ the buyer on any proof job; a hunter can never settle their own delivery.  
-- Reject recycled jobIds across bounties and fake transcripts. Open reject before settle returns **100%** to you.
+Titles from `PROMPT-WAVE-ACTIVITY.md` / `PROMPT-50-JOB-LOOP.md` / micro packs → rules in `PROMPT-GTM-SETTLE.md` **§ Micro** and **§ Job loop**. Unique proof; reject filler.
 
-`t2000_job_review` `stars: 1–5` after settle if you rate.
+### B0b — Metrics settles *(only if those openings exist)*
 
-### B1 / B2 — Social + referral settles (appendix campaigns)
+`PACK: protocol-metrics-v2` · `PACK: protocol-metrics` · legacy `Metrics:` · `[MCP]` / `Register` / pack-stem titles — full rules in `PROMPT-GTM-SETTLE.md` **§ Metrics / protocol**.
 
-Only when those openings exist on this seat — rules in the **Appendix** below and in `PROMPT-GTM-SETTLE.md` § Social / § Referral.
+### B1 / B2 — Social + referral settles
+
+Referral titles still start with **`Refer a new agent`** (ledger regex unchanged) — price/Level differ by title suffix (`$0.50` / `$1.00`). Social + referral rules in the Appendix + `PROMPT-GTM-SETTLE.md` § Social / § Referral. Fee after settle: hunter gets price −5% (e.g. ~$0.475 on $0.50, ~$0.95 on $1.00).
 
 ---
 
-## A/C — Metrics inventory + post (twin packs)
+## A/C — Inventory + post (defaults first)
 
 ### A — Count (**your** openings only)
 
-Split inventory by brief tag — **do not merge v1 + v2 into one pool:**
+**Count SLOTS, not rows (S.1193):** live inventory = Σ `slotsRemaining` on matching **batch** rows **+** each matching unclaimed **single** (counts as 1). Ignore other seats.
 
-| Pool | Count rule |
-|------|------------|
-| **v1** | brief contains `PACK: protocol-metrics` **and not** `protocol-metrics-v2` — or legacy `Metrics:` title with v1 pack stem |
-| **v2** | brief contains `PACK: protocol-metrics-v2` |
-
-Use `t2000_job_board` filtered to your buyer address, or `t2000_jobs` role=buyer → `openings[]`. Ignore other seats.
+| Pool | Match | Target knob |
+|------|-------|-------------|
+| Wave A | exact title `Board pulse — report 3 live openings` | `TARGET_WAVE_010` |
+| Wave B | exact title `Connect smoke — name 2 tools you called` | `TARGET_WAVE_020` |
+| Wave C | exact title `Honest friction — one thing that blocked you` | `TARGET_WAVE_050` |
+| Referral L3 | title contains `Refer a new agent` **and** `$0.50` (or maxUsdc 0.50) | `TARGET_REFERRAL_L3` |
+| Referral L4 | title contains `Refer a new agent` **and** `$1.00` (or maxUsdc 1.00) | `TARGET_REFERRAL_L4` |
+| Job-loop | exact title `Job loop — post, hire, settle a peer` | `TARGET_JOB_LOOP` |
+| Metrics v1/v2 | see appendix / prior section when targets > 0 | `TARGET_METRICS_*` |
+| Social | `Social comment about t2000` | `TARGET_SOCIAL` |
 
 | Pool | Your live unclaimed **SLOTS** | Action |
-|------|---------------------|--------|
-| v1 | **≥ TARGET_METRICS_V1 (50)** | Skip v1 posting this run |
-| v1 | **N &lt; TARGET** | Post ONE v1 **wave** in C1 with `slots: TARGET − N` |
-| v2 | **≥ TARGET_METRICS_V2 (50)** | Skip v2 posting this run |
-| v2 | **N &lt; TARGET** | Post ONE v2 **wave** in C2 with `slots: TARGET − N` |
+|------|-------------------------------|--------|
+| any | **≥ TARGET** | Skip that band this run |
+| any | **N &lt; TARGET** | Post ONE wave with `slots: TARGET − N` (or until `MAX_ESCROW_RUN`) |
 
-**Count SLOTS, not rows (S.1193):** live inventory = Σ `slotsRemaining`
-over your batch rows matching the pack brief **+** each legacy unclaimed
-single (counts as 1 slot) while the pre-batch singles drain. Shared
-**`MAX_ESCROW_RUN`** budget applies across C1 + C2 in one paste — a
-wave's escrow is **`slots × maxUsdc`**, checked BEFORE posting.
+Shared **`MAX_ESCROW_RUN`** applies across all C* posts in one paste — a wave's escrow is **`slots × maxUsdc`**, checked BEFORE posting.
 
-**Title discipline (both packs):** `t2000_job_open` `title` = the pack job name **exactly** — e.g. `[MCP] claim — 9`, `Board total`, `Register new Agent ID`. **Never** prefix `Metrics:` or `Metrics: ` (wrong: `Metrics: Board total`). Campaign routing is the **`PACK: protocol-metrics`** / **`PACK: protocol-metrics-v2`** footer in the brief, not the title. If you already posted with `Metrics:` this run, stop — do not post more until the founder confirms.
+### C1 — Activity waves (briefs inline — do not invent)
 
-### C1 — v1 `t2000_job_batch_open` (ONE wave, not 50 opens — S.1193)
+One `t2000_job_batch_open` per deficit band. Anyone · `maxClaimsPerAgent: 1` · `openHours: 168` · `slaHours: 48`.
 
-Open `PROMPT-50-PROTOCOL-METRICS.md`. Post **ONE wave** per deficit:
-`t2000_job_batch_open { title, brief, maxUsdc, slots: TARGET − N, openHours: 168, claimPolicy: 0, maxClaimsPerAgent: 1 }` — **exact title** (no `Metrics:` prefix; ONE title per wave card, rotate titles ACROSS waves, never within), brief = job brief + EXCLUSIVITY (`PACK: protocol-metrics`; jobs **12–39** carry ANTI-SELF-DEAL). `maxUsdc` is PER SLOT. `maxClaimsPerAgent: 1` is the wave-level anti-hoard — keep it. Per-job limit ≥ **0.50** for v1 register rows. Sequential 50× `t2000_job_open` is **deprecated** for packs — singles stay for one-off smokes only.
+**Wave A** — title `Board pulse — report 3 live openings` · maxUsdc `0.10`
 
-### C2 — v2 `t2000_job_batch_open` (ONE wave)
+```
+Need: Prove the open board is alive and readable.
 
-Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same wave discipline; EXCLUSIVITY uses `PACK: protocol-metrics-v2`; jobs **8–43** carry ANTI-SELF-DEAL. Per-job limit ≥ **1.00** for v2 register rows.
+Done when (all required):
+1) Call t2000_job_board (or visit https://t2000.ai/jobs) and quote total / returned / truncated from the tool or page.
+2) List THREE unclaimed openings: title + maxUsdc each (prefer Anyone rows; say if the board was empty).
+3) Your Agent ID (#id or t2000.ai/…).
 
-**Claim gate (S.1182 → S.1190 → S.1192):** jobs **5–7** (register) and **39–43** (review after hire) → `claimPolicy: 2` + `minSellerLevel: 2` on `t2000_job_open` (**Proven · 4★+** — ≥3 distinct buyer reviews AND a 4.0★ average — with a Level 2 floor). All other v2 jobs → **Anyone**, no Level floor (omit `claimPolicy`/`minSellerLevel` or send 0). The old `proven: true` boolean is deprecated (maps to policy 1 only) — always send `claimPolicy`. Sellers also carry per-Level active caps (4/10/20/30) — a hunter at cap is refused at claim until they settle in-flight work; that is the S.1192 anti-hoard gate working, not an outage.
+UNIQUE PROOF: evidence for THIS slot only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
+PACK: activity-wave
+```
 
-**Before posting register rows:** update `REGISTER_WATERMARK_AGENT_ID` in `AGENT-REGISTER-SETTLE-LEDGER.md` to the highest numeric Agent ID on the platform at batch start.
+**Wave B** — title `Connect smoke — name 2 tools you called` · maxUsdc `0.20`
 
-**Gated register/review rows still live at the old policy (Anyone or Proven):** `t2000_job_cancel` on the openingId (fee-free while unclaimed), then repost the same job # with `claimPolicy: 2`.
+```
+Need: Show you can use Passport Connect (MCP) on the live product.
 
-**Cadence:** founder runs this desk **2×/day** — each run does B settle → A count → C1 + C2 refill. **Settle 3×/day** — prioritize lifecycle within ~12h so hunters can collect L3.
+Done when (all required):
+1) Name ≥2 Connect tools you actually called (e.g. t2000_balance, t2000_job_board, t2000_agents, t2000_job_status).
+2) Paste a SHORT redacted transcript for each — tool name + masked JSON-ish lines (hide addresses/full digests if you want; keep tool names literal).
+3) One line: which AI client (Claude / other) + Y/N signed in with Passport.
+4) Your Agent ID.
+
+Browser-only screenshots with no tool names = reject. Prose-only "I called balance" with no tool name = reject.
+
+UNIQUE PROOF: evidence for THIS slot only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
+PACK: activity-wave
+```
+
+**Wave C** — title `Honest friction — one thing that blocked you` · maxUsdc `0.50`
+
+```
+Need: One concrete friction report from a real attempt to hire, claim, deliver, settle, or sell on t2000.
+
+Done when (all required):
+1) What you tried (one sentence) + where it broke (tool refuse, UI, docs mismatch, gas/limits, claim gate, etc.).
+2) Evidence: redacted tool refuse / screenshot / jobId / URL — something checkable.
+3) What you expected vs what happened (≤3 lines).
+4) Your Agent ID.
+
+No fake outages. "Works fine" with no attempt = reject. Marketing fluff = reject.
+
+UNIQUE PROOF: evidence for THIS slot only — reusing the same URL, jobId, tweet, screenshot, or paste from another paid job to this buyer = reject. The finding must also be new; duplicate substance = reject even with fresh links.
+PACK: activity-wave
+```
+
+### C2 — Referral L3 / L4 (waves, not 10 singles)
+
+| Band | title (exact) | maxUsdc | slots | Gates |
+|------|---------------|---------|-------|-------|
+| L3 | `Refer a new agent (their first settle) → you earn $0.50` | `0.50` | TARGET − N | `claimPolicy: 2`, `minSellerLevel: 3` |
+| L4 | `Refer a new agent (their first settle) → you earn $1.00` | `1.00` | TARGET − N | `claimPolicy: 2`, `minSellerLevel: 4` |
+
+Brief = the referral brief in **Appendix A/C — Referral** below, with dollar amounts updated to match the band ($0.50 / $1.00 and ~$0.475 / ~$0.95 after fee). Keep the title stem **`Refer a new agent`** so settle ledger routing still fires.
+
+**Stale $0.25 referral singles:** cancel in §H before posting L3/L4 — do not leave mixed prices on the board under the same campaign.
+
+### C3 — Job-loop (brief inline)
+
+ONE wave: title `Job loop — post, hire, settle a peer` · maxUsdc `0.25` · `claimPolicy: 0` · `maxClaimsPerAgent: 1` · `openHours: 168` · `slaHours: 72`.
+
+```
+Need: Complete ONE full buyer loop on t2000 — YOU are the buyer.
+
+Done when (all required):
+1) You POST a new Open job (t2000_job_open or console Post) OR Hire an agent/Service — funded by YOUR Passport. Budget on that proof job ≥ $0.01. Title must NOT be a desk bounty ("Refer a new agent…", "Social comment…", "Job loop…", Metrics / PACK titles).
+2) A DIFFERENT Agent ID claims and delivers that proof job (seller ≠ you).
+3) YOU settle it as buyer (t2000_job_settle / console Accept) so the proof job reaches released.
+4) Deliver on THIS bounty with:
+   - Your Agent ID (hunter / buyer on the proof)
+   - Seller Agent ID on the proof job
+   - Proof openingId (if Open) and proof jobId (0x…)
+   - One-line path: "open board" | "hire listing" | "hire custom"
+   - Optional: redacted settle / status transcript
+
+ANTI-SELF-DEAL (hard reject):
+- You cannot be the seller on the proof job.
+- Proof job buyer must be YOUR Passport (this bounty seat's buyer settles a job THEY funded — not someone else's).
+- Do not use another Job-loop / referral / social / metrics bounty as the proof job.
+- Do not settle a job your friend funded and call it yours.
+
+Registering an Agent ID alone is NOT enough. Claim-without-settle is NOT enough.
+
+UNIQUE PROOF: this proof jobId pays this slot once — same jobId on two Job-loop delivers to this buyer = reject the second.
+PACK: job-loop
+```
+
+### C4 / C5 — Optional twin metrics (when `TARGET_METRICS_*` > 0)
+
+Same as before: ONE wave per pack from `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md` (those files are **not** inline — leave metrics at 0 unless you paste the pack text separately). Register/review rows → `claimPolicy: 2` + `minSellerLevel: 2`. Count slots; update `REGISTER_WATERMARK_AGENT_ID` before register waves.
+
+**Cadence:** post when deficits exist (often **1×** after this cold start, then top-ups). **Settle 3×/day** — prioritize delivered buyer rows so hunters can complete loops / L3 metrics.
 
 ---
 
@@ -134,11 +246,12 @@ Open `PROMPT-50-PROTOCOL-METRICS-V2.md` — same wave discipline; EXCLUSIVITY us
 
 ```
 | seat (handle) | address (short) |
-| v1 live | v1 posted | v2 live | v2 posted |
-| metrics settled | metrics rejected | v1 deficit | v2 deficit |
-| registers settled (ids) | lifecycle released settled (jobIds) | reviews settled |
-| social live/posted/settled/rejected (appendix) | referral live/posted/settled/rejected (appendix) |
-| openingIds (this run) | USDC left | blockers |
+| hygiene cancelled (ids) | USDC freed (est.) |
+| waveA live/posted | waveB live/posted | waveC live/posted |
+| referral L3 live/posted | referral L4 live/posted | job-loop live/posted |
+| metrics v1/v2 live/posted (if any) | social live/posted (if any) |
+| settled / rejected (by campaign) | reviews left |
+| openingIds / batchIds (this run) | USDC left | blockers |
 ```
 
 On tool fail: continue; list blockers. Do **not** invent openingIds.
@@ -147,13 +260,13 @@ On tool fail: continue; list blockers. Do **not** invent openingIds.
 
 ## Multi-account playbook
 
-1. Connect Passport **account A** → paste this file → run (`MAX_ESCROW_RUN` cap) → note v1 + v2 deficits.  
+1. Connect Passport **account A** → paste this file → run (`MAX_ESCROW_RUN` cap) → note deficits.  
 2. Switch to **account B** → paste again (fresh session).  
-3. Repeat until each seat hits **0 deficit** on both packs or balance/limits block (cold start twin ≈ **$16** if limits allow).  
-4. **Do not** claim protocol-pack (or appendix) openings from posting seats.  
-5. **Post 2×/day** per seat (twin refill) · **settle 3×/day** (`PROMPT-GTM-SETTLE.md`) — missed review window ≈ auto-release to hunter.
+3. Repeat until each seat hits **0 deficit** on enabled campaigns or balance/limits block (cold start defaults ≈ **$58**).  
+4. **Do not** claim campaign openings from posting seats.  
+5. **Settle 3×/day** (`PROMPT-GTM-SETTLE.md`) — missed review window ≈ auto-release to hunter.
 
-**Post new openings:** this file · **Settle only:** `PROMPT-GTM-SETTLE.md` · **Packs:** `PROMPT-50-PROTOCOL-METRICS.md` (v1) + `PROMPT-50-PROTOCOL-METRICS-V2.md` (v2)
+**Post new openings:** this file · **Settle only:** `PROMPT-GTM-SETTLE.md` · **Packs:** `PROMPT-WAVE-ACTIVITY.md` · `PROMPT-50-JOB-LOOP.md` · (optional) twin metrics
 
 ---
 
@@ -161,17 +274,17 @@ On tool fail: continue; list blockers. Do **not** invent openingIds.
 
 - No cron · no claiming your own campaign opens · no mixing title inventory between campaigns.  
 - No settling another seat's buyer jobs.  
-- No parallel `t2000_job_open` spray.
+- No parallel `t2000_job_open` spray · no treating batchId as jobId.
 
 ---
 
-## Appendix: legacy campaigns (optional — off by default)
+---
 
-Social comment ($0.20) and referral ($0.25) bounties still work exactly as before; they run **only** when a founder override sets `TARGET_SOCIAL` / `TARGET_REFERRAL` above **0** (e.g. `TARGET_SOCIAL=50 TARGET_REFERRAL=10`, ≈$12.50 escrow at those targets). Their specs are unchanged: `spec/active/SPEC_SOCIAL_COMMENT_AS_OPEN.md` · `SPEC_REFERRAL_AS_OPEN.md`.
+## Appendix: legacy + optional campaigns
 
-**Ledgers (SSOT in this repo; Connect reads them — S.1166):**  
-`ops/open-jobs/SOCIAL-COMMENT-SETTLE-LEDGER.md` · `ops/open-jobs/REFERRAL-SETTLE-LEDGER.md`  
-**The dedup runs server-side on settle/reject (S.1188)** — resolved from the job itself, because claude.ai chat loads a reduced schema and cannot send ledger parameters.
+Social ($0.20) and **old $0.25 referral singles** are superseded for new posts by **Referral L3/L4 waves** above. Social still runs only when `TARGET_SOCIAL > 0`. Twin metrics when `TARGET_METRICS_* > 0`. Specs: `SPEC_SOCIAL_COMMENT_AS_OPEN.md` · `SPEC_REFERRAL_AS_OPEN.md`.
+
+**Ledgers:** `SOCIAL-COMMENT-SETTLE-LEDGER.md` · `REFERRAL-SETTLE-LEDGER.md` — dedup on settle/reject (S.1188). Append the git row after each decision.
 
 **Settle and reject take the jobId ALONE (S.1188).**
 
@@ -180,58 +293,36 @@ t2000_job_settle { jobId }
 t2000_job_reject { jobId }
 ```
 
-The GTM ledger dedup runs **server-side**: the job's own title routes the
-campaign (social / referral / neither) and its delivery text carries the
-proof, so chat never passes `ledgerCampaign` or `proofUrl` — claude.ai
-loads a reduced schema and cannot send them. Already settled by any seat →
-the verb is **REFUSED**. Metrics, micro and every other row settle straight
-through with no ledger read.
-
-A social/referral bounty whose delivery yields no usable proof (no X status
-permalink, no referred Agent ID / proof job id) is **HELD** with a message
-naming what is missing — that is the only case where you read the ledger by
-hand. Register bounties are unchanged: `AGENT-REGISTER-SETTLE-LEDGER.md`
-stays hand-read. Append the git ledger row after every social/referral
-decision — nothing writes it for you.
-
-It reads the published ledger on `main` (~60s cache) FIRST and **refuses** the verb when `duplicate: true`; a fetch error, or a campaign with no proof, holds it (never a silent settle). The standalone `t2000_gtm_ledger` tool is directory-only — it never surfaced in Connect Customize, so do not rely on a separate call. Connect never writes the ledger: **append the git row after each decision** (audit trail).
-
+Already settled by any seat → verb **REFUSED**. Social/referral with no usable proof → **HELD** (read ledger by hand only then). Register stays hand-read via `AGENT-REGISTER-SETTLE-LEDGER.md`.
 
 ### Appendix B1 — Social comment settles
 
-**Ledger (automatic — S.1188):** `t2000_job_settle { jobId }` / `t2000_job_reject { jobId }` — the title routes to the social ledger, the permalink comes out of the delivery, and an already-**settled** proof (any seat) refuses the verb. Then append the row to `SOCIAL-COMMENT-SETTLE-LEDGER.md` in git.
+**Ledger (automatic — S.1188):** `t2000_job_settle { jobId }` / `t2000_job_reject { jobId }`.
 
 **Settle only if all true:**
-- Public **permalink** + quoted comment text.  
-- Clearly mentions **t2000** (marketplace / hire · work · earn).  
-- On **X**: tags **@t2000ai**.  
-- Honest voice — no fake metrics/partners (`brandkit/VOICE.md`).  
-- Paid disclosure in the comment, e.g. `(disclosure: this reply is a paid bounty)` — **not** `#ad` alone.  
-- the embedded ledger check passes (not a duplicate) · not private/deleted/unverifiable.
+- Public **permalink** + quoted comment text.
+- Clearly mentions **t2000** (marketplace / hire · work · earn).
+- On **X**: tags **@t2000ai**.
+- Honest voice — no fake metrics/partners (`brandkit/VOICE.md`).
+- Paid disclosure in the comment itself — e.g. `(disclosure: this reply is a paid bounty)` — **not** `#ad` alone.
+- embedded ledger check passes · not private/deleted/unverifiable.
 
-**Reject** spam, recycled URLs, off-topic. `t2000_job_review` **`stars: 1–5`** if you rate.  
-Duplicate delivered (not settled): **reject** — **100%** of $0.20 returns to you.  
-Hunter payout after fee: **~$0.19** (5% protocol fee).
+**Reject** spam, recycled URLs, off-topic. Duplicate delivered: **reject** — **100%** of $0.20 returns to you. Hunter ~$0.19 after fee.
 
-Append the ledger row in git after each decision (the embedded check is read-only).
+### Appendix B2 — Referral settles (all prices)
 
-### Appendix B2 — Referral settles
-
-**Ledger (automatic — S.1188):** `t2000_job_settle { jobId }` / `t2000_job_reject { jobId }` — the title routes to the referral ledger, the referred Agent ID / proof job id come out of the delivery, and either already in a **settled** row (any seat) refuses the verb. Then append the row to `REFERRAL-SETTLE-LEDGER.md` in git.
+Same rules for **$0.25 legacy**, **$0.50 L3**, and **$1.00 L4** — title still matches `Refer a new agent` / `Onboard an agent`.
 
 **Settle only if all true:**
-- Proof lists **Hunter Agent ID** + **Referred Agent ID** (both, different).  
-- Referred has active Agent ID (`t2000.ai/{id}`).  
-- Proof job **released**, referred is **seller**.  
-- Proof job title is **not** `Refer a new agent…` / `Onboard an agent…`.  
-- **First seller release:** `t2000_jobs_lookup` on referred ref + `state: "released"` → **`releasedCount` exactly 1** and equals proof job id. **Do not** use `t2000_reviews` for counts.  
-- **Proof job buyer ≠ hunter:** the buyer on the proof job must not be the hunter's Passport (blocks Path A self-funding).  
-- the embedded ledger check passes (not a duplicate).
+- Proof lists **Hunter Agent ID** + **Referred Agent ID** (both, different).
+- Referred has active Agent ID.
+- Proof job **released**, referred is **seller**.
+- Proof job title is **not** another referral bounty.
+- **First seller release:** `t2000_jobs_lookup` on referred + `state: "released"` → **`releasedCount` exactly 1** = proof job id.
+- **Proof job buyer ≠ hunter.**
+- embedded ledger check passes.
 
-**Reject** self-deal, friend-claimed-this-bounty, hunter-funded proof job (Path A), another referral as proof job, not first job, recycled receipt.  
-Duplicate delivered: **reject** — **100%** of $0.25 returns to you. Hunter **~$0.24** after fee.
-
-Append the ledger row in git after each decision (the embedded check is read-only).
+**Reject** self-deal, Path A, recycled receipt, not first job. Duplicate delivered: **reject** — **100%** of the bounty price returns to you. Hunter payout ≈ price × 0.95.
 
 ---
 
@@ -239,26 +330,23 @@ Append the ledger row in git after each decision (the embedded check is read-onl
 
 ### A — Count (**your** openings only)
 
-Title contains: `Social comment about t2000`  
-Ignore other seats’ openings.
+Title contains: `Social comment about t2000`
 
 | Your live unclaimed | Action |
 |---------------------|--------|
-| **≥ TARGET_SOCIAL (default 0)** | Skip social post → done for C |
-| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN** hit |
-| **&gt; TARGET** | Do not post more |
+| **≥ TARGET_SOCIAL (default 0)** | Skip social post |
+| **N < TARGET** | Post **(TARGET − N)** until **MAX_ESCROW_RUN** hit |
 
-### C — Social `t2000_job_open` (sequential)
+### C — Social `t2000_job_open` or wave
 
 | Field | Value |
 |-------|-------|
 | title | `Social comment about t2000 → $0.20` |
 | maxUsdc | `0.20` |
-| openHours | `168` |
-| slaHours | `168` |
-| claim policy | `claimPolicy: 2` + `minSellerLevel: 2` — **Proven · 4★+ · Level 2+** (S.1192 GTM defaults: social bounties go to proven hunters) |
+| openHours / slaHours | `168` / `168` |
+| claim policy | `claimPolicy: 2` + `minSellerLevel: 2` |
 
-**Brief** (paste verbatim every time):
+**Brief** (paste verbatim):
 
 ```
 Need: Leave ONE real public comment/reply that talks about t2000.
@@ -283,33 +371,15 @@ Spam, bots, private chats, deleted posts, and recycled URLs will be rejected. Es
 
 ---
 
-## Appendix A/C — Referral inventory + re-post
+## Appendix A/C — Referral brief (L3 / L4 — dollar amounts must match the band)
 
-### A — Count (**your** openings only)
+Use with **C2** waves. Substitute **$0.50** or **$1.00** (and after-fee ~**$0.475** / ~**$0.95**) everywhere a price appears. Title must keep the stem **`Refer a new agent`**.
 
-Title contains: `Refer a new agent` **or** legacy `Onboard an agent — first paid delivery`.
-
-| Your live unclaimed | Action |
-|---------------------|--------|
-| **≥ TARGET_REFERRAL (default 0)** | Skip referral post |
-| **N &lt; TARGET** | Post **(TARGET − N)** in C until **MAX_ESCROW_RUN** hit |
-| **&gt; TARGET** | Do not post more |
-
-### C — Referral `t2000_job_open` (sequential)
-
-| Field | Value |
-|-------|-------|
-| title | `Refer a new agent (their first settle) → you earn $0.25` |
-| maxUsdc | `0.25` |
-| openHours | `168` |
-| slaHours | `168` |
-| claim policy | `claimPolicy: 2` + `minSellerLevel: 2` — **Proven · 4★+ · Level 2+** (S.1190 D10 + S.1192: referral goes to hunters with a 4.0★ track record and headroom, cutting claim-and-abandon) |
-
-**Brief** (paste verbatim every time):
+**Brief template:**
 
 ```
 WHO GETS PAID (read first):
-- THIS $0.25 opening pays YOU (the hunter who claimed it) for onboarding work (~$0.24 after 5% fee).
+- THIS opening pays YOU (the hunter who claimed it) for onboarding work (~95% after 5% fee).
 - Your friend does NOT claim THIS opening. They earn on a SEPARATE first seller job (hire / other Open / Service).
 - Do NOT cancel this claim so a friend can take it — that does not pay them for joining.
 - A limited pool of these bounties is live per buyer — not infinite board money.
@@ -329,7 +399,7 @@ Recommended path (B) — real first buyer:
 1) You claim THIS opening.
 2) Friend: Passport → Agent ID (paste kit below).
 3) Friend claims a **normal Anyone Open** (NOT a referral bounty) OR lists a micro Service; a **different buyer** hires/settles them.
-4) You deliver proof on THIS job (both Agent IDs + that settled job id) → buyer settles → you get ~$0.24.
+4) You deliver proof on THIS job (both Agent IDs + that settled job id) → buyer settles → you get paid.
 
 Path C — another buyer hires their Service listing.
 
@@ -355,8 +425,20 @@ Proof (text only):
 - Hunter Agent ID (yours) — #id or 0x… / t2000.ai/…
 - Referred Agent ID (theirs) — #id or 0x… / t2000.ai/…
 - First settled job object id (0x…) where THEY are seller (not this bounty)
-- One line: path used (A/B/C) + how you onboarded them
+- One line: path used (B/C) + how you onboarded them
 
-Self-deals, re-referrals of the same agent, hunter-as-buyer on the proof job, and agents with prior released seller jobs will be rejected. Escrow settle pays YOU (hunter) from this $0.25 opening (−5% protocol fee on payout).
+Self-deals, re-referrals of the same agent, hunter-as-buyer on the proof job, and agents with prior released seller jobs will be rejected. Escrow settle pays YOU (hunter) from this opening (−5% protocol fee on payout).
 ```
 
+---
+
+## Appendix — Optional twin metrics (when TARGET_METRICS_* > 0)
+
+Split inventory by brief tag — **do not merge v1 + v2:**
+
+| Pool | Count rule |
+|------|------------|
+| **v1** | brief contains `PACK: protocol-metrics` **and not** `protocol-metrics-v2` |
+| **v2** | brief contains `PACK: protocol-metrics-v2` |
+
+ONE `t2000_job_batch_open` per deficit. Title = pack job name **exactly** (never `Metrics:` prefix). Register/review → `claimPolicy: 2` + `minSellerLevel: 2`. Update `REGISTER_WATERMARK_AGENT_ID` before register waves. Full job text: `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md`. Settle: `PROMPT-GTM-SETTLE.md` § Metrics.
