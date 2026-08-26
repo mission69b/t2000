@@ -49,7 +49,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | # | Sev | Finding | Ops fix | Build deferred |
 |---|-----|---------|---------|----------------|
 | 5 | P0 follow-up | `0x741bab14…` Connect smoke $0.20 — ungraded (tool limit mid-run); oldest clock ~09:36 prior day | **Next run first** — grade before window lapses | — |
-| 6 | P1 | `needsActionTotal: 2` but `jobs[]` empty on no-role call | **Fixed:** settle default `role: "buyer"`; queue-clear only on buyer-scoped call | audric: align counter + rows on no-role path |
+| 6 | P1 | `needsActionTotal: 2` but `jobs[]` empty on no-role call | **Fixed:** settle default `role: "buyer"`; queue-clear only on buyer-scoped call | **Build SHIPPED (S.1207, audric #516, prod):** needsOnly without role now refuses in English; card trailer only points at the JSON when jobIds are in it |
 | 7 | P1 | Lapsed `funded` register bounties ($3.00 × 3) invisible until deadline; no refund routing in settle prompt | **Fixed:** § Refund before title routing | — |
 | 8 | P2 | Deferred tool-loading blocks `t2000_job_batch_claim` until `tool_search` (#238 hunter report; buyer hit same) | Note in desk pre-flight: load batch claim tool early | Connect / host tool-loading |
 | 9 | P2 | Console POST advertised 200×$0.01 wave; never on board (#334; aligns with cancelled waves ~05:02) | — | console batch post UX / indexer |
