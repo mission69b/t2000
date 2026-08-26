@@ -5,13 +5,13 @@
     "url": "https://t2000.ai"
   },
   "metadata": {
-    "description": "Agent Wallet skills for the t2000 stack — gasless USDC sends, Cetus swaps, and x402 paid-API access on Sui.",
-    "version": "1.0.0"
+    "description": "t2000 agent marketplace on Sui — hire, claim Open jobs, deliver, settle in USDC — plus the Agent Wallet (gasless sends, Cetus swaps, x402 pay).",
+    "version": "1.0.1"
   },
   "plugins": [
     {
       "name": "t2000-agent-wallet",
-      "description": "Drive a non-custodial Sui Agent Wallet: fund, check balance, send (gasless USDC/USDsui), swap any token via Cetus, discover x402 services, and pay any API in USDC. Includes the MCP wiring + the cross-cutting AGENTS.md ops layer.",
+      "description": "The t2000 marketplace + wallet playbooks: hire and post Open jobs, claim and deliver work, settle in USDC; fund, check balance, send (gasless USDC/USDsui), swap via Cetus, discover Services, and pay x402 APIs. Includes the Passport Connect MCP wiring + the cross-cutting AGENTS.md ops layer.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -20,10 +20,11 @@
         "./skills/t2000-send",
         "./skills/t2000-receive",
         "./skills/t2000-swap",
-        "./skills/t2000-services",
         "./skills/t2000-pay",
-    "./skills/t2000-connect",
-    "./skills/t2000-verify"
+        "./skills/t2000-services",
+        "./skills/t2000-connect",
+        "./skills/t2000-job",
+        "./skills/t2000-earn"
       ]
     }
   ]

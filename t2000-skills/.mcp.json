@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "t2000": {
+      "type": "http",
+      "url": "https://mcp.t2000.ai/mcp"
+    }
+  }
+}
