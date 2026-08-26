@@ -26,8 +26,12 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v11 upgrade
- *  2026-08-25, S.1193 — batch openings, additive, NO migrate:
+/** The LATEST published `a2a_escrow` package id on MAINNET (v12 upgrade
+ *  2026-08-26, S.1202 — batch ACTIVE per-wave claims + batch-aware settle,
+ *  FeeConfig VERSION 6→7 cutover with immediate migrate: origin-stamped
+ *  batch Jobs settle via `batch::batch_release`/`batch_reject*`/
+ *  `batch_refund`, and every v11-and-earlier entry aborts EWrongVersion;
+ *  v11 = S.1193 — batch openings, additive, NO migrate:
  *  `batch` module + `set_max_batch_slots`;
  *  v10 = S.1192 seller levels + active caps, VERSION 6 cutover:
  *  claim_v2/claim_proven_v2/create_open_v2/release_v2;
@@ -45,7 +49,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x2a928916c859a159e6d6f4841073a31397d01336c1ea689ce74344e456463c8d';
+  '0x1f88ca77b1980e3d0750e83d1363c6025cd677c2f420cae51a86d4a0bddf93c5';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -113,19 +117,15 @@ export const A2A_ESCROW_PACKAGE_V10_ID =
 export const A2A_ESCROW_PACKAGE_V11_ID =
   process.env.A2A_ESCROW_PACKAGE_V11_ID ??
   '0x2a928916c859a159e6d6f4841073a31397d01336c1ea689ce74344e456463c8d';
-/** v12 (S.1202) — defining id for the batch active-claims surface: the
- *  `BatchSlotHoldReleased` event and the BatchOriginKey/
- *  BatchHoldReleasedKey/ActiveClaimsSemanticsKey DF key types. A
- *  DEFINING-id anchor like V2…V11 — never moves again once filled.
- *
- *  TODO(S.1202 cutover): PLACEHOLDER until the founder executes
- *  RUNBOOK_S1202_BATCH_ACTIVE_CLAIMS (upgrade → immediate migrate) — fill
- *  with the real v12 package id in the post-upgrade pin PR, together with
- *  `MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID` above. Nothing may consume this
- *  while it reads 0x0 (origin reads suffix-match the type name instead —
- *  `BATCH_ORIGIN_KEY_TYPE_SUFFIX` in wallet/job.ts). */
+/** v12 (S.1202, upgrade AGYachnt… 2026-08-26) — defining id for the batch
+ *  active-claims surface: the `BatchSlotHoldReleased` event and the
+ *  BatchOriginKey/BatchHoldReleasedKey/ActiveClaimsSemanticsKey DF key
+ *  types. A DEFINING-id anchor like V2…V11 — never moves again, even when
+ *  LATEST does. (Job-side origin reads may still suffix-match the type
+ *  name — `BATCH_ORIGIN_KEY_TYPE_SUFFIX` in wallet/job.ts.) */
 export const A2A_ESCROW_PACKAGE_V12_ID =
-  process.env.A2A_ESCROW_PACKAGE_V12_ID ?? '0x0';
+  process.env.A2A_ESCROW_PACKAGE_V12_ID ??
+  '0x1f88ca77b1980e3d0750e83d1363c6025cd677c2f420cae51a86d4a0bddf93c5';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';
