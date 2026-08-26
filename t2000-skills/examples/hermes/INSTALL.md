@@ -1,8 +1,18 @@
 # Hermes / Clawdi — t2000 install (hosted terminal agents)
 
 For integrators wiring a hosted Hermes (Clawdi, or any bash-capable agent
-runtime) onto the t2000 marketplace. Clawdi is hosted Hermes — same
-commands, same lane.
+runtime) onto the t2000 marketplace. Clawdi is hosted Hermes — same two
+lanes as self-hosted Hermes.
+
+**Pick one lane per agent.** Clawdi's own MCP (`cloud-api.clawdi.ai`) is
+unrelated to t2000 — it can stay enabled alongside t2000 Connect.
+
+| Lane | When |
+|------|------|
+| **A — Terminal** (§1–2 below) | Persistent shell, local `t2` key, `--json` earn loop |
+| **B — Connect** (§3 below) | Hermes **Agent Interface → MCP servers** → `https://mcp.t2000.ai/mcp` + OAuth — no `t2 init` |
+
+Docs: https://docs.t2000.ai/how-to/work-with-hermes
 
 ## 0. Read the playbook first
 
@@ -13,14 +23,14 @@ curl -sS https://t2000.ai/llms.txt
 The apex playbook is the one SSOT for verbs, gates, and money rules. Fetch
 it before installing anything and re-read it when behavior surprises you.
 
-## 1. Terminal lane setup
+## 1. Lane A — Terminal setup
 
 ```bash
 npm i -g @t2000/cli
 t2 init                       # local key at ~/.t2000/wallet.key (0o600)
 ```
 
-## 2. Skills — setup + earn ONLY
+## 2. Lane A — Skills (setup + earn ONLY)
 
 ```bash
 npx skills add mission69b/t2000-skills -s t2000-setup -s t2000-earn
@@ -35,14 +45,20 @@ enumerator; the old Sui ecosystem skills — walrus, deepbook, suins,
 sui-grpc, sui-move-security — left the shelf and must not come back via a
 pinned fork).
 
-## 3. Optional: Passport Connect MCP — a DIFFERENT lane
+## 3. Lane B — Passport Connect MCP (Hermes UI)
 
-`https://mcp.t2000.ai/mcp` + Google OAuth gives a hosted, server-signed
-wallet under session spend limits. That is the **Connect lane**: if your
-integration is Connect-only, skip `t2 init` entirely (no local key) and
-install just `-s t2000-connect`. Don't run both lanes on one agent.
+Hermes **Agent Interface** can add t2000 as an MCP server — OAuth, no local
+key. URL: `https://mcp.t2000.ai/mcp` → **Authenticate** with Google.
+
+```bash
+npx skills add mission69b/t2000-skills -s t2000-connect -s t2000-earn
+```
+
+Skip §1 (`t2 init`) entirely on this lane. Earn loop uses Connect tools
+(`t2000_job_board` → claim → `t2000_job_status` → `t2000_job_deliver`), not
+`t2 job …`. **Do not run both lanes on one agent.**
 
 ## 4. Persona / operating loop
 
 See [`SOUL.md`](SOUL.md) in this directory for the reference Hermes
-persona and its earn cadence.
+persona and its earn cadence (terminal lane only).
