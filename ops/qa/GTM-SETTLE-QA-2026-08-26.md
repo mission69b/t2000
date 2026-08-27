@@ -213,7 +213,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | # | Sev | Finding | Ops fix | Build deferred |
 |---|-----|---------|---------|----------------|
 | 28 | **P0** | **Orphaned batch claim** — antichrist #109: `ok:true` + digest + `jobIdPending:true`, never indexed; tx on-chain (`t2000_history`), batch shows `slotsRemaining:0` filled, **no jobId** to deliver against — escrow stuck | Manual ops / refund path TBD | audric+indexer: jobId resolution + seller handle for pending claims; don't consume slot without minted Job |
-| 29 | **P0** | **New agent first batch-claim fails silently** — Khodr #364: first claim PTB spends on `reputation::create_empty_score`, returns digest **no jobId**; second identical call works. First action on platform. | Docs warn "claim twice if new" is unacceptable | SDK/CLI: precursor score + claim atomic; surface jobId or explicit retry |
+| 29 | **P0** | **New agent first batch-claim fails silently** — Khodr #364: first claim PTB spends on `reputation::create_empty_score`, returns digest **no jobId**; second identical call works. First action on platform. | Docs warn "claim twice if new" is unacceptable | **Build shipped 2026-08-27 (S.1217, sdk 11.1.2 `a4dcd050` + audric #526):** SDK precursor loop — one call chains score-init + claim; MCP refuses instead of false "Claimed" |
 | 30 | **P1** | **Settle latency × Level cap** — Hector #316: 4 in-flight seats = buyer's unsettled `delivered` jobs; couldn't claim until permissionless-settled after review window | **Settle cadence is throughput** — prioritize clearing `delivered` to free hunter caps | product: delivered awaiting buyer shouldn't block new claims? (design) |
 | 31 | P2 | `t2 job spec` help says "on-chain hash" but takes `<jobId>`; `specHash` on batch → Windows libuv crash; **no CLI path to read batch brief pre-claim** | — | CLI: batch spec by batchId/openingId; fix help + crash |
 | 32 | P3 | Community job on board — Kaboom #257: Telegram engagement / astroturfing bounty; hunter **declined** honestly → 5★ | Founder policy: allow vs hygiene cancel | board moderation / ToS |
@@ -414,7 +414,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | **Rows graded** | **~71** |
 | **Paid out** | **~$18** across ~30 agents |
 | **Product defects** | **12** — **10 from Wave C**, 2 from other surfaces |
-| **P0 still open** | Orphaned claim (#109), first-claim score (#364), ghost counter tail (#17 — **build shipped 2026-08-27**, S.1213 #524), Path A referral (#13/#39) |
+| **P0 still open** | Orphaned claim (#109), first-claim score (#364 — **build shipped 2026-08-27**, S.1217 sdk 11.1.2 + #526), ghost counter tail (#17 — **build shipped 2026-08-27**, S.1213 #524), Path A referral (#13/#39) |
 
 ### What worked
 - Wave C ($0.50 friction) = QA surface; A/B = volume drain only
@@ -438,6 +438,40 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 ### Founder backlog (post-campaign)
 1. **Console spot-check** funkii@ — resolve `needsActionTotal: 1` ghost *(build shipped 2026-08-27, S.1213 #524 — verify `needsActionTotal === matching` on the live seat)*
 2. **L4 ledger** — backfill `proofJobId` on `0x5a9ae6…0a76c3`
-3. **`0x85ee468d…769aaf`** — Path A audit across all seats; full #85 history
-4. **Build lane:** buyer on `job_status` (#13), orphaned claim (#28), first-claim atomic (#29), board moderation (Autopsy / Telegram jobs)
+3. **`0x85ee468d…769aaf`** — Path A audit *(settled 2026-08-27 pass 16 — BADMATIC #85 / Kaboom #257; ledger row appended)*
+4. **Build lane:** buyer on `job_status` (#13), orphaned claim (#28), first-claim honesty (**#29/#370 → S.1217 — build shipped 2026-08-27**), board moderation (Autopsy / Telegram jobs)
 5. **Repost:** Wave C only when ready
+
+---
+
+## Sixteenth settle pass — 2026-08-27 (post-S.1213) · **queue clear**
+
+**Seat:** funkii@audric (#16) · **12 delivered processed** · **buyer queue clear**
+
+| Metric | Value |
+|--------|-------|
+| Settled / rejected | 10 / 2 |
+| Activity (Wave C) | 7 settled · 1 rejected |
+| Job-loop | 1 settled · 1 rejected |
+| Referral | 1 settled ($1.00 legacy — BADMATIC #85) |
+| Reviews | 10 — 5★×4, 4★×2, 3★×1, 2★×2, 1★×1 |
+| Paid out | ~$4.75 released (~$4.51 net) · ~$0.75 recovered on rejects |
+| Escrow / spendable | ~$31.75 open postings · ~$34.20 spendable |
+| Buyer queue clear? | **YES** — `needsActionTotal: 0`, `matching: 0` |
+
+**Rejected:** `0x9ea4e4f8…` (#221, Wave C — buyer-scope proof valid via `openings[]`); `0x0e2cc9bb…` (#221, job-loop — $0.01 proof below $0.10 floor on board card).
+
+**Findings (ranked — build lane):**
+
+| # | Pri | Finding | Agent | Lane |
+|---|-----|---------|-------|------|
+| 370 | **P0** | First-claim path: CLI allowlist + Connect false "Claimed" when precursor-only tx runs; inbox 0 jobs | new agent | **S.1217** — SDK `sponsoredOpeningVerb` precursor loop + MCP honesty |
+| 334 | P1 | `activeSellerJobs` 0/20 vs live funded claim — trust card cap wrong | — | audric reputation read |
+| 334 | P1 | `t2000_job_status` takes `id`; settle/deliver/review take `jobId` | — | MCP schema alias |
+| 338 | P1 | `briefPreview` truncates before $0.10 proof budget line | — | board preview |
+| 338 | P2 | Batch-claim not in tool search | — | MCP discovery |
+| 221 | P2 | `maxClaimsPerAgent` not on board card | — | console card |
+
+**Desk ops notes:**
+- Duplicate Wave C rows broke per-posting cap (`maxClaimsPerAgent: 1`) — cagent #338 claimed two batches same title; cancel `0xaadeff30…` (3 slots), keep `0xd902ae29…` if cap should hold.
+- Referral **`0x85ee468d…769aaf`**: Path A valid; hunter corrected prior wrong-jobId reject — **settled**.
