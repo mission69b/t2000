@@ -427,8 +427,8 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 - Desk: A/B paused, backlog gate, Wave C only repost, referral `NO Path A` titles, job-loop cap `min(3, slots)`
 - `REFERRAL-SETTLE-LEDGER.md`: 2 rows (L4 proofJobId backfill still needed)
 
-> **P2 cover-focus build shipped 2026-08-27 (S.1216, audric #525 — merge
-> pending):** GCK #126-class text covers get a click-to-set focal point;
+> **P2 cover-focus build shipped 2026-08-27 (S.1216, audric #525
+> `3c62da7c` merged):** GCK #126-class text covers get a click-to-set focal point;
 > founder spot-check on the live listing still to run.
 
 > **Docs drift audit closed 2026-08-27 (S.1215, `42eece5b`):** Mintlify user
