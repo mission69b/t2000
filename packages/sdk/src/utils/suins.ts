@@ -87,12 +87,53 @@ export function canonicalizeRecipientInput(raw: string): string {
   return trimmed;
 }
 
+// === Wrong-chain shapes (S.1214) — refuse BEFORE any resolve/sign ===
+// Agents routinely paste Ethereum/Base/Tron withdrawal addresses into Sui
+// send flows (dogfood #251). An EVM 40-hex would otherwise pad to a
+// "valid" Sui address and route funds to the wrong recipient — so the
+// shape check runs first, pure and synchronous, in every recipient path.
+
+/** Exactly 0x + 40 hex (42 chars) — Ethereum/Base/Arbitrum-style. */
+const EVM_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+/** T + 33 base58 (standard TRON alphabet — no 0/O/I/l). */
+const TRON_ADDRESS_RE = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
+
+/** Pure detector for clearly-not-Sui recipient shapes. Null = no known
+ *  wrong-chain shape (NOT proof of validity — run the normal checks). */
+export function detectWrongChainAddressShape(raw: string): 'evm' | 'tron' | null {
+  const trimmed = raw.trim();
+  if (EVM_ADDRESS_RE.test(trimmed)) return 'evm';
+  if (TRON_ADDRESS_RE.test(trimmed)) return 'tron';
+  return null;
+}
+
+/** The one refusal sentence per detected shape — SDK preflight, MCP, CLI
+ *  and Audric chat all relay this verbatim. */
+export function wrongChainAddressMessage(
+  shape: 'evm' | 'tron',
+  label = 'recipient',
+): string {
+  const looksLike =
+    shape === 'evm'
+      ? 'an Ethereum-style address (0x + 40 hex characters)'
+      : 'a Tron address (T + 33 characters)';
+  return (
+    `That ${label} looks like ${looksLike}. t2000 sends USDC on Sui — ` +
+    'paste a full Sui 0x address (64 hex characters), a .sui name, or an ' +
+    '@audric handle. Nothing was sent.'
+  );
+}
+
 export class InvalidAddressError extends Error {
-  constructor(public readonly raw: string) {
+  constructor(
+    public readonly raw: string,
+    message?: string,
+  ) {
     super(
-      `"${raw}" isn't a valid Sui address or SuiNS name. ` +
-        `Pass a 0x-prefixed hex address (e.g. 0x40cd…3e62), a SuiNS name ending in .sui (e.g. alex.sui), ` +
-        `or a Passport handle (e.g. alex@audric).`,
+      message ??
+        `"${raw}" isn't a valid Sui address or SuiNS name. ` +
+          `Pass a 0x-prefixed hex address (e.g. 0x40cd…3e62), a SuiNS name ending in .sui (e.g. alex.sui), ` +
+          `or a Passport handle (e.g. alex@audric).`,
     );
     this.name = 'InvalidAddressError';
   }
@@ -258,6 +299,13 @@ export async function normalizeAddressInput(
   // P3.1: `label@audric` → `label.audric.sui` before shape checks. `raw`
   // keeps the ORIGINAL paste; `suinsName` carries the canonical name.
   const trimmed = canonicalizeRecipientInput(value);
+  // S.1214: refuse wrong-chain shapes BEFORE the loose Sui regex — an EVM
+  // 40-hex matches `SUI_ADDRESS_REGEX` and would silently pad to a
+  // "valid" Sui address.
+  const wrongChain = detectWrongChainAddressShape(trimmed);
+  if (wrongChain) {
+    throw new InvalidAddressError(value, wrongChainAddressMessage(wrongChain));
+  }
   if (SUI_ADDRESS_REGEX.test(trimmed)) {
     return { address: trimmed.toLowerCase(), suinsName: null, raw: value };
   }

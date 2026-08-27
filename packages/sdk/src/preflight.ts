@@ -13,6 +13,11 @@
 
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import type { T2000ErrorCode } from './errors.js';
+import {
+  detectWrongChainAddressShape,
+  SUI_ADDRESS_STRICT_REGEX,
+  wrongChainAddressMessage,
+} from './utils/suins.js';
 
 /**
  * The result of a synchronous preflight check. `valid: false` carries a
@@ -66,13 +71,35 @@ export function checkPositiveAmount(
  * Pure, synchronous Sui-address validity (no throw, no network) — the
  * non-throwing sibling of `validateAddress`. Use in preflight; use
  * `validateAddress` when you need the normalized form.
+ *
+ * S.1214 — money-destination strictness: this gate protects SEND
+ * recipients and HIRE sellers, so a raw hex input must be the FULL
+ * canonical 66-char form. Wrong-chain shapes (EVM 40-hex, Tron base58)
+ * refuse with copy naming the detected chain — an EVM address would
+ * otherwise pad to a "valid" Sui address and route funds to the wrong
+ * recipient. SuiNS / @audric handles never reach this check raw: they
+ * resolve through `normalizeAddressInput` first.
  */
 export function checkSuiAddress(address: string, label = 'recipient'): PreflightResult {
+  if (typeof address !== 'string' || address.trim() === '') {
+    // `normalizeSuiAddress('')` pads to the zero address (which is
+    // "valid"), so refuse empty / whitespace-only input outright.
+    return preflightFail('INVALID_ADDRESS', `Invalid ${label} address: ${address}`);
+  }
+  const trimmed = address.trim();
+  const wrongChain = detectWrongChainAddressShape(trimmed);
+  if (wrongChain) {
+    return preflightFail('INVALID_ADDRESS', wrongChainAddressMessage(wrongChain, label));
+  }
+  if (/^0x/i.test(trimmed) && !SUI_ADDRESS_STRICT_REGEX.test(trimmed)) {
+    return preflightFail(
+      'INVALID_ADDRESS',
+      `A Sui ${label} address is 66 characters (0x + 64 hex) — got ${trimmed.length}. ` +
+        'Paste the full address, a .sui name, or an @audric handle.',
+    );
+  }
   try {
-    // `normalizeSuiAddress('')` pads to the zero address (which is "valid"), so
-    // guard empty / whitespace-only input before normalizing.
-    if (typeof address === 'string' && address.trim() !== '' &&
-        isValidSuiAddress(normalizeSuiAddress(address))) {
+    if (isValidSuiAddress(normalizeSuiAddress(trimmed))) {
       return PREFLIGHT_OK;
     }
   } catch {

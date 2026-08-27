@@ -5,6 +5,7 @@ import {
   PREFLIGHT_MAX_AMOUNT,
   PREFLIGHT_OK,
 } from './preflight.js';
+import { detectWrongChainAddressShape } from './utils/suins.js';
 import { preflightSend } from './wallet/send.js';
 import { preflightPay } from './wallet/pay.js';
 import { preflightSwap } from './protocols/cetus-swap.js';
@@ -50,6 +51,49 @@ describe('checkPositiveAmount', () => {
   });
 });
 
+describe('detectWrongChainAddressShape + checkSuiAddress (S.1214 — refuse before sign)', () => {
+  // Well-known EVM-only shape (0x + 40 hex) — must never reach a tx build.
+  const EVM = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7';
+  const TRON = 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE';
+
+  it('detects EVM and Tron shapes; null for Sui / names / garbage', () => {
+    expect(detectWrongChainAddressShape(EVM)).toBe('evm');
+    expect(detectWrongChainAddressShape(` ${EVM} `)).toBe('evm');
+    expect(detectWrongChainAddressShape(TRON)).toBe('tron');
+    expect(detectWrongChainAddressShape(VALID_ADDRESS)).toBe(null);
+    expect(detectWrongChainAddressShape('alex.sui')).toBe(null);
+    expect(detectWrongChainAddressShape('not-an-address')).toBe(null);
+    // T + wrong length / bad alphabet (0, l) is not the Tron shape.
+    expect(detectWrongChainAddressShape('T0lhEsLJW1ChVWFMSMeRDow5KcbLSEQn9')).toBe(null);
+  });
+
+  it('EVM recipient refuses in English naming Ethereum — never pads to Sui', () => {
+    const r = checkSuiAddress(EVM);
+    expect(r.valid).toBe(false);
+    if (!r.valid) {
+      expect(r.code).toBe('INVALID_ADDRESS');
+      expect(r.error).toMatch(/Ethereum/);
+      expect(r.error).toMatch(/Sui/);
+      expect(r.error).toMatch(/Nothing was sent/);
+    }
+  });
+
+  it('Tron recipient refuses naming Tron', () => {
+    const r = checkSuiAddress(TRON);
+    expect(r.valid).toBe(false);
+    if (!r.valid) {
+      expect(r.code).toBe('INVALID_ADDRESS');
+      expect(r.error).toMatch(/Tron/);
+    }
+  });
+
+  it('raw hex that is not the full 66-char form refuses with the length', () => {
+    const r = checkSuiAddress('0xabc123');
+    expect(r.valid).toBe(false);
+    if (!r.valid) expect(r.error).toMatch(/66 characters/);
+  });
+});
+
 describe('checkSuiAddress', () => {
   it('accepts a valid 64-hex address', () => {
     expect(checkSuiAddress(VALID_ADDRESS)).toEqual(PREFLIGHT_OK);
@@ -70,6 +114,31 @@ describe('checkSuiAddress', () => {
 describe('preflightSend', () => {
   it('passes a valid USDC send', () => {
     expect(preflightSend({ to: VALID_ADDRESS, amount: 1, asset: 'USDC' })).toEqual(PREFLIGHT_OK);
+  });
+
+  // S.1214 (dogfood #251): wrong-chain recipients refuse BEFORE any sign —
+  // an EVM 40-hex would otherwise pad to a "valid" Sui address.
+  it('refuses an EVM-shaped recipient naming Ethereum', () => {
+    const r = preflightSend({
+      to: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7',
+      amount: 1,
+      asset: 'USDC',
+    });
+    expect(r.valid).toBe(false);
+    if (!r.valid) {
+      expect(r.code).toBe('INVALID_ADDRESS');
+      expect(r.error).toMatch(/Ethereum/);
+    }
+  });
+
+  it('refuses a Tron-shaped recipient naming Tron', () => {
+    const r = preflightSend({
+      to: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
+      amount: 1,
+      asset: 'USDC',
+    });
+    expect(r.valid).toBe(false);
+    if (!r.valid) expect(r.error).toMatch(/Tron/);
   });
 
   // [S.957] USDT is sendable now (any resolvable coin type); the hard

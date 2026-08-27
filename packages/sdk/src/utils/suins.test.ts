@@ -30,7 +30,35 @@ import {
 } from './suins.js';
 
 describe('utils/suins — SDK exports (S.279)', () => {
-  describe('SUI_ADDRESS_REGEX', () => {
+  describe('detectWrongChainAddressShape / normalizeAddressInput (S.1214)', () => {
+  const EVM = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7';
+  const TRON = 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE';
+
+  it('normalizeAddressInput throws InvalidAddressError naming Ethereum for EVM shapes', async () => {
+    await expect(normalizeAddressInput(EVM)).rejects.toThrow(/Ethereum/);
+    await expect(normalizeAddressInput(EVM)).rejects.toBeInstanceOf(InvalidAddressError);
+  });
+
+  it('normalizeAddressInput throws naming Tron for Tron shapes', async () => {
+    await expect(normalizeAddressInput(TRON)).rejects.toThrow(/Tron/);
+  });
+
+  it('short Sui hex still normalizes (legacy read behaviour preserved)', async () => {
+    // 0x2 (framework) and other short ids stay readable — the strict
+    // 66-char money gate lives in checkSuiAddress, not the normalizer.
+    const r = await normalizeAddressInput('0x2');
+    expect(r.address).toBe('0x2');
+    expect(r.suinsName).toBe(null);
+  });
+
+  it('full 64-hex Sui address passes untouched', async () => {
+    const full = `0x${'a'.repeat(64)}`;
+    const r = await normalizeAddressInput(full);
+    expect(r.address).toBe(full);
+  });
+});
+
+describe('SUI_ADDRESS_REGEX', () => {
     it('matches a full-length 0x address', () => {
       expect(SUI_ADDRESS_REGEX.test('0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b69b739c3e62')).toBe(true);
     });

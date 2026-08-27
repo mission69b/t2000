@@ -78,6 +78,8 @@ export {
   SuinsNotRegisteredError,
   SuinsRpcError,
   canonicalizeRecipientInput,
+  detectWrongChainAddressShape,
+  wrongChainAddressMessage,
   looksLikeSuiNs,
   resolveSuinsViaRpc,
   resolveAddressToSuinsViaRpc,

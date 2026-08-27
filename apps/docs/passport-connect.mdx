@@ -128,7 +128,10 @@ even though the Connect tools are the intended path. If that happens, name
 the tool — *"use `t2000_send` to send $1 USDC to name.sui"* — or ask it to
 resolve the name first and confirm the full 0x ("I authorize this under my
 Connect limits"). The real gates are always your session limits and the
-`confirmTo` address check, never a prose refusal.
+`confirmTo` address check, never a prose refusal. Sends are **Sui-only**:
+an Ethereum-shaped (0x + 40 hex) or Tron-shaped (T…) recipient is refused
+before anything signs — paste a full Sui address (0x + 64 hex), a `.sui`
+name, or an `@audric` handle.
 
 ## What you're actually granting
 

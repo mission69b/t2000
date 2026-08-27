@@ -23,7 +23,7 @@ Transfer USDC, USDsui, or SUI from the agent's available balance to any Sui addr
 
 1. **Asset is REQUIRED.** v4 has no implicit USDC default. `t2 send 5 alice.sui` exits with a clear error pointing at the missing `<asset>` arg. Always pass one of `USDC | USDsui | SUI`.
 2. **Only USDC / USDsui / SUI are accepted.** Other tokens (e.g. USDY, USDT, USDe) are rejected with `unsupported asset`. To send a different asset, the user first swaps it via `t2 swap` (or audric.ai) into USDC, USDsui, or SUI.
-3. **Validate the recipient first.** Names → SuiNS resolves (`alice.sui`). Raw addresses → `isValidSuiAddress()`. The SDK throws clear errors (`INVALID_ADDRESS`, `SUINS_NOT_REGISTERED`); don't guess.
+3. **Validate the recipient first.** Names → SuiNS resolves (`alice.sui`). Raw addresses → `isValidSuiAddress()`. The SDK throws clear errors (`INVALID_ADDRESS`, `SUINS_NOT_REGISTERED`); don't guess. **Sui only:** an Ethereum-shaped (0x + 40 hex) or Tron-shaped (`T…`) address is REFUSED before anything signs (S.1214) — never paste an EVM/Tron withdrawal address into a Sui send.
 4. **Prefer SuiNS names.** `alice.sui` is globally resolvable — surface it as the recommended way to address a recipient. (There is no local contacts/alias map.)
 5. **Sends are single-write.** Each transfer is its own intent. If you need send + something else, sequence them across turns.
 6. **Amount precision matters.** Floor to the asset's decimals (USDC + USDsui: 6, SUI: 9). Never round up — `Math.round` can produce a number larger than the on-chain balance and the transfer will fail simulation.

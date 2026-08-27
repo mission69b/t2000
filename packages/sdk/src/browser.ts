@@ -203,6 +203,11 @@ export {
   checkPositiveAmount,
   checkSuiAddress,
 } from './preflight.js';
+// S.1214 — wrong-chain recipient shapes (EVM/Tron) refuse before sign.
+export {
+  detectWrongChainAddressShape,
+  wrongChainAddressMessage,
+} from './utils/suins.js';
 
 // Spending limits are Node-only (`@t2000/sdk/limits` uses node:fs) — NOT
 // exported here. The browser (Audric) write path skips client-side limits;
