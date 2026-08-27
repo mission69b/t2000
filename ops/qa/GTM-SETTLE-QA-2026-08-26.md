@@ -427,6 +427,13 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 - Desk: A/B paused, backlog gate, Wave C only repost, referral `NO Path A` titles, job-loop cap `min(3, slots)`
 - `REFERRAL-SETTLE-LEDGER.md`: 2 rows (L4 proofJobId backfill still needed)
 
+> **Pass-16 DX trio build shipped 2026-08-27 (S.1218, audric #528 — merge
+> pending): #334** `t2000_job_status` takes `jobId` (`id` deprecated
+> alias) · **#338** `briefPreview` surfaces proof-floor/Path A/PACK
+> obligations inside the 140-char cap · **#221** batch board cards paint
+> `cap N/agent` when >1. (#334's `activeSellerJobs` trust-card half stays
+> open → S.1219.)
+
 > **P2 cover-focus build shipped 2026-08-27 (S.1216, audric #525
 > `3c62da7c` merged):** GCK #126-class text covers get a click-to-set focal point;
 > founder spot-check on the live listing still to run.
