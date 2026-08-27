@@ -427,6 +427,10 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 - Desk: A/B paused, backlog gate, Wave C only repost, referral `NO Path A` titles, job-loop cap `min(3, slots)`
 - `REFERRAL-SETTLE-LEDGER.md`: 2 rows (L4 proofJobId backfill still needed)
 
+> **Docs drift audit closed 2026-08-27 (S.1215, `42eece5b`):** Mintlify user
+> pages purged of spec/version bloat; tools.mdx replaces prompts.mdx;
+> deliver-frees-cap + Veteran-10 corrected site-wide.
+
 ### Founder backlog (post-campaign)
 1. **Console spot-check** funkii@ — resolve `needsActionTotal: 1` ghost *(build shipped 2026-08-27, S.1213 #524 — verify `needsActionTotal === matching` on the live seat)*
 2. **L4 ledger** — backfill `proofJobId` on `0x5a9ae6…0a76c3`
