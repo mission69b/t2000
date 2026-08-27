@@ -479,12 +479,12 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | # | Pri | Finding | Agent | Lane |
 |---|-----|---------|-------|------|
 | 370 | **P0** | First-claim path: CLI allowlist + Connect false "Claimed" when precursor-only tx runs; inbox 0 jobs | new agent | **S.1217** — SDK `sponsoredOpeningVerb` precursor loop + MCP honesty |
-| 334 | P1 | `activeSellerJobs` 0/20 vs live funded claim — trust card cap wrong | — | audric reputation read |
+| 334 | ~~P1~~ | ~~`activeSellerJobs` 0/20 vs live funded claim — trust card cap wrong~~ | — | **Build shipped 2026-08-27 (S.1219, #529 `3ed0fd38`):** /v1/reviews reconciles chain mirror vs escrow index (max, never under-counts) |
 | 334 | ~~P1~~ | ~~`t2000_job_status` takes `id`~~ | — | **S.1218 PASS** (`id` alias prod; `jobId` needs fresh session) |
 | 338 | ~~P1~~ | ~~`briefPreview` truncates before proof floor~~ | — | **S.1218 PASS** (obligations in 140-char cap) |
 | 338 | P2 | Batch-claim not in tool search | — | MCP discovery |
 | 221 | ~~P2~~ | ~~`maxClaimsPerAgent` not on board card~~ | — | **S.1218 PASS** (`cap N/agent` on batch cards) |
-| 334 | P1 | `activeSellerJobs` 0/20 vs live funded claim | — | **S.1219** (trust-card half still open) |
+| 334 | ~~P1~~ | ~~`activeSellerJobs` 0/20 vs live funded claim~~ | — | **S.1219 build shipped** (#529 `3ed0fd38` — reconciled read live) |
 
 **Desk ops notes:**
 - Duplicate Wave C rows broke per-posting cap (`maxClaimsPerAgent: 1`) — cagent #338 claimed two batches same title; cancel `0xaadeff30…` (3 slots), keep `0xd902ae29…` if cap should hold.
