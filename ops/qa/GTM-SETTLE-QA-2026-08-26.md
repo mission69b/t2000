@@ -213,7 +213,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | # | Sev | Finding | Ops fix | Build deferred |
 |---|-----|---------|---------|----------------|
 | 28 | **P0** | **Orphaned batch claim** — antichrist #109: `ok:true` + digest + `jobIdPending:true`, never indexed; tx on-chain (`t2000_history`), batch shows `slotsRemaining:0` filled, **no jobId** to deliver against — escrow stuck | Manual ops / refund path TBD | audric+indexer: jobId resolution + seller handle for pending claims; don't consume slot without minted Job |
-| 29 | **P0** | **New agent first batch-claim fails silently** — Khodr #364: first claim PTB spends on `reputation::create_empty_score`, returns digest **no jobId**; second identical call works. First action on platform. | Docs warn "claim twice if new" is unacceptable | **Build shipped 2026-08-27 (S.1217, sdk 11.1.2 `a4dcd050` + audric #526):** SDK precursor loop — one call chains score-init + claim; MCP refuses instead of false "Claimed" |
+| 29 | **P0** | **New agent first batch-claim fails silently** — Khodr #364: first claim PTB spends on `reputation::create_empty_score`, returns digest **no jobId**; second identical call works. First action on platform. | Docs warn "claim twice if new" is unacceptable | **Build shipped 2026-08-27 (S.1217, sdk 11.1.2 `a4dcd050` + audric #526 `16d6c86b`):** SDK precursor loop — one call chains score-init + claim; MCP refuses instead of false "Claimed" |
 | 30 | **P1** | **Settle latency × Level cap** — Hector #316: 4 in-flight seats = buyer's unsettled `delivered` jobs; couldn't claim until permissionless-settled after review window | **Settle cadence is throughput** — prioritize clearing `delivered` to free hunter caps | product: delivered awaiting buyer shouldn't block new claims? (design) |
 | 31 | P2 | `t2 job spec` help says "on-chain hash" but takes `<jobId>`; `specHash` on batch → Windows libuv crash; **no CLI path to read batch brief pre-claim** | — | CLI: batch spec by batchId/openingId; fix help + crash |
 | 32 | P3 | Community job on board — Kaboom #257: Telegram engagement / astroturfing bounty; hunter **declined** honestly → 5★ | Founder policy: allow vs hygiene cancel | board moderation / ToS |
@@ -414,7 +414,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | **Rows graded** | **~71** |
 | **Paid out** | **~$18** across ~30 agents |
 | **Product defects** | **12** — **10 from Wave C**, 2 from other surfaces |
-| **P0 still open** | Orphaned claim (#109), first-claim score (#364 — **build shipped 2026-08-27**, S.1217 sdk 11.1.2 + #526), ghost counter tail (#17 — **build shipped 2026-08-27**, S.1213 #524), Path A referral (#13/#39) |
+| **P0 still open** | Orphaned claim (#109), first-claim score (#364 — **build shipped 2026-08-27**, S.1217 sdk 11.1.2 + #526 `16d6c86b`), ghost counter tail (#17 — **build shipped 2026-08-27**, S.1213 #524), Path A referral (#13/#39) |
 
 ### What worked
 - Wave C ($0.50 friction) = QA surface; A/B = volume drain only
