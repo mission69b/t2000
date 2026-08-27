@@ -32,7 +32,7 @@ import {
   postBatchOpenJob,
   preflightBatchClaim,
   resolveCreatedObjectId,
-  sellerLevelLabel,
+  trustRequirementLabel,
 } from '@t2000/sdk';
 import { parseDuration } from './job.js';
 import {
@@ -62,7 +62,7 @@ export function registerBatchVerbs(group: Command) {
     .requiredOption('--brief <file-or-text>', 'What every job delivers — PUBLIC, one brief for the whole posting')
     .requiredOption('--max <usdc>', `PER-JOB budget (max ${MAX_JOB_USDC}); total escrow = jobs × this`)
     .requiredOption('--slots <n>', `Jobs in the posting (1–${MAX_BATCH_SLOTS_DEFAULT}; the live max is AdminCap-tunable)`)
-    .option('--max-claims-per-agent <n>', 'Jobs one agent may hold IN FLIGHT on this posting (default 1) — a settled job frees the seat; seller Level scales the effective cap', '1')
+    .option('--max-claims-per-agent <n>', 'Jobs one agent may hold IN FLIGHT on this posting (default 1) — a settled job frees the seat; seller trust tier scales the effective cap', '1')
     .option('--sla <duration>', 'Delivery window per job once claimed (e.g. 30m, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
     .option(
@@ -71,7 +71,7 @@ export function registerBatchVerbs(group: Command) {
     )
     .option(
       '--min-seller-level <level>',
-      'Minimum seller Level to claim: 1–4 (default none) — independent of --claim-policy',
+      'Minimum seller trust tier to claim: 1–4 (default none) — 2 Established · 3 Top rated · 4 Veteran; independent of --claim-policy',
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -141,7 +141,7 @@ export function registerBatchVerbs(group: Command) {
             );
           }
           if (minSellerLevel > 0) {
-            printInfo(`${sellerLevelLabel(minSellerLevel)}+ floor on.`);
+            printInfo(`${trustRequirementLabel(minSellerLevel)} floor on.`);
           }
           if (maxClaims === 1) {
             printInfo(
@@ -149,7 +149,7 @@ export function registerBatchVerbs(group: Command) {
             );
           } else {
             printInfo(
-              `Up to ${maxClaims} jobs in flight per agent on this posting (sequential claims; seller Level scales the effective cap).`,
+              `Up to ${maxClaims} jobs in flight per agent on this posting (sequential claims; seller trust tier scales the effective cap).`,
             );
           }
           printBlank();

@@ -240,10 +240,10 @@ export function claimPolicyLabel(claimPolicy: number): string {
  *  this instead of surfacing a raw Move abort. */
 export function claimPolicyRequirement(claimPolicy: number): string {
   if (claimPolicy === 1) {
-    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} reviews from distinct buyers.`;
+    return `Claiming needs Established — reviews from at least ${PROVEN_MIN_REVIEWS} distinct buyers.`;
   }
   if (claimPolicy === 2) {
-    return `Claiming needs at least ${PROVEN_MIN_REVIEWS} reviews from distinct buyers and a 4.0★ average.`;
+    return `Claiming needs Top rated — reviews from at least ${PROVEN_MIN_REVIEWS} distinct buyers and a 4.0★ average.`;
   }
   return 'Anyone can claim (active Agent ID required).';
 }
@@ -290,9 +290,48 @@ export function meetsMinSellerLevel(score: AgentScore | null, minLevel: number):
   return effectiveSellerLevel(score) >= minLevel;
 }
 
-/** Human label — every surface uses this, never the raw number. */
+// === Trust tiers (S.1208) — the ONE user-facing trust vocabulary ===
+
+/** User-facing name for a seller level. Every human/agent surface paints
+ *  these — numeric "Level N" is protocol detail, never default UI copy. */
+export function trustTierLabel(level: number): string {
+  if (level === 1) return 'New';
+  if (level === 2) return 'Established';
+  if (level === 3) return 'Top rated';
+  if (level === 4) return 'Veteran';
+  return `Unknown tier (${level})`;
+}
+
+/** @deprecated S.1208 — use `trustTierLabel`. Same strings. */
 export function sellerLevelLabel(level: number): string {
-  return level >= 1 && level <= 4 ? `Level ${level}` : `Level ? (${level})`;
+  return trustTierLabel(level);
+}
+
+/** Buyer-facing requirement chip for a posting's `minSellerLevel` floor.
+ *  0/1 floors gate nothing beyond an active Agent ID → "Open". */
+export function trustRequirementLabel(minSellerLevel: number): string {
+  if (minSellerLevel <= 1) return 'Open';
+  if (minSellerLevel === 2) return 'Established only';
+  if (minSellerLevel === 3) return 'Top rated only';
+  if (minSellerLevel === 4) return 'Veteran only';
+  return `Unknown requirement (${minSellerLevel})`;
+}
+
+/** The ONE requirement chip for an opening's combined gates. Legacy
+ *  `claimPolicy` 1/2 (pre-S.1209 posts) map onto the tier ladder —
+ *  policy 1 shares Established's distinct-buyer floor, policy 2 adds
+ *  Top rated's 4.0★ average. The board is cleared pre-launch, so the
+ *  legacy arms should be unreachable — kept for stray reads. */
+export function trustRequirementFromOpening(opening: {
+  claimPolicy?: number;
+  minSellerLevel?: number;
+}): string {
+  const minLevel = opening.minSellerLevel ?? 0;
+  if (minLevel >= 2) return trustRequirementLabel(minLevel);
+  const policy = opening.claimPolicy ?? 0;
+  if (policy === 1) return 'Established';
+  if (policy === 2) return 'Top rated';
+  return 'Open';
 }
 
 /** English preflight for a claim (S.1192) — refuse BEFORE the sponsored
@@ -314,8 +353,9 @@ export function preflightClaimOpening(
     return {
       valid: false,
       error:
-        `Active: ${active}/${cap} — ${sellerLevelLabel(level)} caps in-flight claimed jobs at ${cap}. ` +
-        'Finish (deliver + settle) a job or wait for a deadline refund, then claim again.',
+        `Seller cap (${active}/${cap}) — ${trustTierLabel(level)} sellers run up to ${cap} ` +
+        'claimed jobs in flight. Finish (deliver + settle) a job or wait for a deadline ' +
+        'refund, then claim again.',
     };
   }
   const minLevel = opening.minSellerLevel ?? 0;
@@ -323,10 +363,9 @@ export function preflightClaimOpening(
     return {
       valid: false,
       error:
-        `This opening needs ${sellerLevelLabel(minLevel)}+ — this wallet is ` +
-        `${sellerLevelLabel(level)}. Level 2 = reviews from ${PROVEN_MIN_REVIEWS}+ distinct buyers; ` +
-        'Level 3 adds a 4.0★ average; reliability (no-shows) can regress a level. ' +
-        'Earn it on openings without a floor first.',
+        `Requires ${trustTierLabel(minLevel)} — you are ${trustTierLabel(level)}. ` +
+        `Established = reviews from ${PROVEN_MIN_REVIEWS}+ distinct buyers; Top rated adds ` +
+        'a 4.0★ average; no-shows can regress a tier. Earn it on Open postings first.',
     };
   }
   return { valid: true };

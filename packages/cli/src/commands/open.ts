@@ -34,7 +34,8 @@ import {
   meetsClaimPolicy,
   postOpenJob,
   preflightClaimOpening,
-  sellerLevelLabel,
+  trustRequirementFromOpening,
+  trustRequirementLabel,
   MAX_JOB_USDC,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
   OPENING_CLAIM_POLICY_PROVEN,
@@ -156,7 +157,7 @@ export function registerOpenVerbs(group: Command) {
     .option('--proven', 'DEPRECATED — same as --claim-policy 1')
     .option(
       '--min-seller-level <level>',
-      'Minimum seller Level to claim: 1–4 (default none) — Level 2 = Proven, 3 = 4.0★+ average, 4 = 20+ reviews; independent of --claim-policy (S.1192)',
+      'Minimum seller trust tier to claim: 1–4 (default none) — 2 Established (3+ distinct buyers), 3 Top rated (4.0★+ average), 4 Veteran; independent of --claim-policy (S.1192)',
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -213,7 +214,7 @@ export function registerOpenVerbs(group: Command) {
           }
           if (minSellerLevel > 0) {
             printInfo(
-              `${sellerLevelLabel(minSellerLevel)}+ floor on: only sellers at that effective Level can claim.`,
+              `${trustRequirementLabel(minSellerLevel)} floor on: sellers below that effective tier cannot claim.`,
             );
           }
           printBlank();
@@ -274,11 +275,10 @@ export function registerOpenVerbs(group: Command) {
           printBlank();
         }
         for (const row of rows) {
-          // Surface the claim gate BEFORE anyone burns a claim attempt on it.
-          const gate =
-            (row.claimPolicy ?? 0) !== 0
-              ? `  ${pc.magenta(claimPolicyLabel(row.claimPolicy ?? 0))}`
-              : '';
+          // Surface the claim gate BEFORE anyone burns a claim attempt on it
+          // — the S.1208 requirement chip covers policy + tier floor alike.
+          const requirement = trustRequirementFromOpening(row);
+          const gate = requirement !== 'Open' ? `  ${pc.magenta(requirement)}` : '';
           printLine(
             `  ${pc.bold(row.title ?? 'Untitled opening')}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}  ${statusColor(row.status)}${gate}` +
               (row.status === 'open' ? pc.dim(`  ${fmtLeft(row.openUntilMs)} left`) : ''),

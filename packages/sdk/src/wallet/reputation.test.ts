@@ -16,6 +16,9 @@ import {
   SELLER_LEVEL_ACTIVE_CAPS,
   sellerLevel,
   sellerLevelLabel,
+  trustTierLabel,
+  trustRequirementLabel,
+  trustRequirementFromOpening,
   type AgentScore,
 } from './reputation.js';
 
@@ -85,15 +88,53 @@ describe('labels + requirements — the one English source', () => {
     expect(claimPolicyLabel(2)).toBe('Proven · 4★+');
   });
 
-  it('requirements are the SHORT human sentence naming the real threshold (S.1059/S.1062)', () => {
+  it('requirements are the SHORT human sentence naming the real threshold (S.1059/S.1062/S.1208)', () => {
     expect(claimPolicyRequirement(1)).toBe(
-      `Claiming needs at least ${PROVEN_MIN_REVIEWS} reviews from distinct buyers.`,
+      `Claiming needs Established — reviews from at least ${PROVEN_MIN_REVIEWS} distinct buyers.`,
     );
     expect(claimPolicyRequirement(2)).toContain(`${PROVEN_MIN_REVIEWS}`);
     expect(claimPolicyRequirement(2)).toContain('distinct buyers');
     expect(claimPolicyRequirement(2)).toContain('4.0');
+    expect(claimPolicyRequirement(2)).toContain('Top rated');
     // The Passport claim surface paints this verbatim — no essay prefix.
     expect(claimPolicyRequirement(2)).toMatch(/^Claiming needs/);
+  });
+});
+
+describe('trust tiers (S.1208) — the one user-facing vocabulary', () => {
+  it('names every level; sellerLevelLabel is the deprecated alias', () => {
+    expect(trustTierLabel(1)).toBe('New');
+    expect(trustTierLabel(2)).toBe('Established');
+    expect(trustTierLabel(3)).toBe('Top rated');
+    expect(trustTierLabel(4)).toBe('Veteran');
+    expect(trustTierLabel(9)).toBe('Unknown tier (9)');
+    for (const level of [1, 2, 3, 4]) {
+      expect(sellerLevelLabel(level)).toBe(trustTierLabel(level));
+    }
+  });
+
+  it('requirement chip: floors 0/1 are Open, 2..4 are "<Tier> only"', () => {
+    expect(trustRequirementLabel(0)).toBe('Open');
+    expect(trustRequirementLabel(1)).toBe('Open');
+    expect(trustRequirementLabel(2)).toBe('Established only');
+    expect(trustRequirementLabel(3)).toBe('Top rated only');
+    expect(trustRequirementLabel(4)).toBe('Veteran only');
+  });
+
+  it('trustRequirementFromOpening: minSellerLevel wins; legacy claimPolicy maps onto the ladder', () => {
+    expect(trustRequirementFromOpening({ claimPolicy: 0, minSellerLevel: 0 })).toBe('Open');
+    expect(trustRequirementFromOpening({})).toBe('Open');
+    // Legacy Proven policies (board cleared pre-launch — mapper kept for stray reads).
+    expect(trustRequirementFromOpening({ claimPolicy: 1, minSellerLevel: 0 })).toBe('Established');
+    expect(trustRequirementFromOpening({ claimPolicy: 2 })).toBe('Top rated');
+    // A real level floor takes precedence over the legacy policy.
+    expect(trustRequirementFromOpening({ claimPolicy: 0, minSellerLevel: 2 })).toBe(
+      'Established only',
+    );
+    expect(trustRequirementFromOpening({ claimPolicy: 1, minSellerLevel: 3 })).toBe(
+      'Top rated only',
+    );
+    expect(trustRequirementFromOpening({ minSellerLevel: 4 })).toBe('Veteran only');
   });
 });
 
@@ -162,7 +203,7 @@ describe('seller levels (S.1192) — mirror the Move bars', () => {
     expect(SELLER_LEVEL_ACTIVE_CAPS).toEqual([4, 10, 20, 30]);
     expect(activeCapForLevel(1)).toBe(4);
     expect(activeCapForLevel(4)).toBe(30);
-    expect(sellerLevelLabel(2)).toBe('Level 2');
+    expect(sellerLevelLabel(2)).toBe('Established');
   });
 });
 
@@ -172,11 +213,11 @@ describe('preflightClaimOpening (S.1192) — English before the rail', () => {
     expect(preflightClaimOpening(score(0, 0), { claimPolicy: 0 }).valid).toBe(true);
   });
 
-  it('at the cap: refuses with Active: N/cap capacity language, not a ban', () => {
+  it('at the cap: refuses with Seller cap (N/cap) capacity language, not a ban', () => {
     const capped = { ...score(0, 0), activeSellerJobs: 4 };
     const pf = preflightClaimOpening(capped, { claimPolicy: 0 });
     expect(pf.valid).toBe(false);
-    expect(pf.error).toMatch(/Active: 4\/4/);
+    expect(pf.error).toMatch(/Seller cap \(4\/4\)/);
     expect(pf.error).toMatch(/Finish|deadline refund/);
     // One under the cap still claims.
     expect(
@@ -192,11 +233,11 @@ describe('preflightClaimOpening (S.1192) — English before the rail', () => {
     ).toBe(false);
   });
 
-  it('min level floor refuses below-floor sellers by name', () => {
+  it('min level floor refuses below-floor sellers by tier name (S.1208)', () => {
     const pf = preflightClaimOpening(score(0, 0), { claimPolicy: 0, minSellerLevel: 2 });
     expect(pf.valid).toBe(false);
-    expect(pf.error).toMatch(/Level 2\+/);
-    expect(pf.error).toMatch(/Level 1/);
+    expect(pf.error).toMatch(/Requires Established/);
+    expect(pf.error).toMatch(/you are New/);
     expect(
       preflightClaimOpening(score(3, 9), { claimPolicy: 0, minSellerLevel: 2 }).valid,
     ).toBe(true);

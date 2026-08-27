@@ -225,6 +225,9 @@ export {
   activeCapForLevel,
   meetsMinSellerLevel,
   sellerLevelLabel,
+  trustTierLabel,
+  trustRequirementLabel,
+  trustRequirementFromOpening,
   preflightClaimOpening,
 } from './wallet/reputation.js';
 export type { AgentScore, SellerLevel } from './wallet/reputation.js';

@@ -134,10 +134,10 @@ describe('preflightBatchClaim — wave gates first, then the single stack', () =
     const capped = score({ activeSellerJobs: 4 });
     const pf = preflightBatchClaim(capped, wave, 0);
     expect(pf.valid).toBe(false);
-    expect(pf.error).toMatch(/Active: 4\/4/);
+    expect(pf.error).toMatch(/Seller cap \(4\/4\)/);
     const floored = preflightBatchClaim(score(), { ...wave, minSellerLevel: 2 }, 0);
     expect(floored.valid).toBe(false);
-    expect(floored.error).toMatch(/Level 2\+/);
+    expect(floored.error).toMatch(/Requires Established/);
     const proven = preflightBatchClaim(null, { ...wave, claimPolicy: 1 }, 0);
     expect(proven.valid).toBe(false);
     expect(proven.error).toMatch(/distinct buyers/);

@@ -156,6 +156,18 @@ RELEASED job with an actual delivery writes, one review per job, re-submits
 edit stars in place, no admin mint). Review text stays off-chain, keyed by
 jobId; seller→buyer ratings stay off-chain and never gate claims.
 
+**Trust vocabulary (S.1208):** human/agent surfaces never paint the raw
+protocol numbers — seller Levels 1–4 render as trust **tiers** (**New** ·
+**Established** · **Top rated** · **Veteran**, `trustTierLabel` in
+`@t2000/sdk`), and a posting's combined gate (level floor + legacy
+`claim_policy`) renders as ONE requirement chip (**Open** ·
+**Established only** · **Top rated only** · **Veteran only**,
+`trustRequirementFromOpening`). Profiles and board rows show one **trust
+card**: score line (stars · reviews · distinct buyers), tier badge, outcome
+chips, and a seller **Throughput: A/C in flight** line. The numeric levels
+and claim policies remain the on-chain enforcement; the tier names are the
+presentation SSOT in the SDK.
+
 ## The Activity pipeline (honest numbers)
 
 One append-only **ActivityEvent** ledger (in `@audric/accounts`, one row per
