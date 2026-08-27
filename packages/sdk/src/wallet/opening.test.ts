@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { MAX_JOB_USDC, MIN_JOB_USDC } from './job.js';
-import { buildClaimOpeningTx, preflightCreateOpening, type OpeningTerms } from './opening.js';
+import {
+  buildClaimOpeningTx,
+  openingMinSellerLevel,
+  preflightCreateOpening,
+  type OpeningTerms,
+} from './opening.js';
+import { TRUST_REQUIREMENTS } from './trust.js';
 
 function terms(overrides: Partial<OpeningTerms> = {}): OpeningTerms {
   return {
@@ -54,25 +60,36 @@ describe('preflightCreateOpening reject split (S.1019 v5)', () => {
   });
 });
 
-describe('preflightCreateOpening claim policy (S.1054)', () => {
-  it('omitted policy defaults to Anyone and passes', () => {
+describe('preflightCreateOpening trust requirement (S.1209 — the ONE knob)', () => {
+  it('omitted requirement defaults to open and passes', () => {
     expect(preflightCreateOpening(terms()).valid).toBe(true);
   });
 
-  it('accepts 0 (Anyone), 1 (Proven) and 2 (Proven · 4★+)', () => {
-    for (const claimPolicy of [0, 1, 2]) {
-      expect(preflightCreateOpening(terms({ claimPolicy })).valid).toBe(true);
+  it('accepts the four named requirements', () => {
+    for (const trustRequirement of TRUST_REQUIREMENTS) {
+      expect(preflightCreateOpening(terms({ trustRequirement })).valid).toBe(true);
     }
   });
 
-  it('refuses undefined policies with a human message', () => {
-    const pf = preflightCreateOpening(terms({ claimPolicy: 3 }));
+  it('refuses unknown requirements with the four names', () => {
+    const pf = preflightCreateOpening(
+      terms({ trustRequirement: 'proven' as never }),
+    );
     expect(pf.valid).toBe(false);
-    expect(pf.error).toMatch(/Proven/);
+    expect(pf.error).toMatch(/open · established · top · veteran/);
+  });
+
+  it('trustRequirement wins over a raw minSellerLevel', () => {
+    expect(
+      openingMinSellerLevel({ trustRequirement: 'top', minSellerLevel: 2 }),
+    ).toBe(3);
+    expect(openingMinSellerLevel({ trustRequirement: 'open' })).toBe(0);
+    expect(openingMinSellerLevel({ minSellerLevel: 4 })).toBe(4);
+    expect(openingMinSellerLevel({})).toBe(0);
   });
 });
 
-describe('preflightCreateOpening minSellerLevel (S.1192)', () => {
+describe('preflightCreateOpening minSellerLevel (S.1192 — low-level floor)', () => {
   it('accepts 0 (default) through 4', () => {
     for (const minSellerLevel of [0, 1, 2, 3, 4]) {
       expect(preflightCreateOpening(terms({ minSellerLevel })).valid).toBe(true);

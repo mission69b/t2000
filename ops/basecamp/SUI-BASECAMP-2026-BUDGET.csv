@@ -1,0 +1,6 @@
+scenario,target_budget_usd,slot_multiplier,categories_included,est_jobs,est_max_escrow_usd,notes
+lean_1k,1000,0.35,"micro,social",~1500,950,"Photos + X only; skip large; friction sample 10 slots"
+standard_5k,5000,2.2,all,~9500,5000,"Full catalog; 2.2× slots column"
+max_10k,10000,4.5,all,~19500,10000,"Full catalog; 4.5× slots — thousands of opens"
+mainstage_focus,3000,1.0,"STAGE_MAIN,STAGE_AI_LAB,BOOTH_T2000,MCP_CONNECT",~800,2800,"Stage + booth quality over booth-crawl volume"
+ugc_wall,2000,3.0,"UGC_PHOTO,UGC,HYPE,X_SOCIAL",~6000,2000,"UGC + hashtag wall for social team"

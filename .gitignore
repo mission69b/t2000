@@ -15,6 +15,7 @@ build/
 
 # misc
 .DS_Store
+ops/basecamp/.venv/
 *.pem
 *.tsbuildinfo
 next-env.d.ts

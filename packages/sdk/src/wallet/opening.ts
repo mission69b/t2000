@@ -12,6 +12,11 @@ import {
   MAX_JOB_USDC,
   MIN_JOB_USDC,
 } from './job.js';
+import {
+  minSellerLevelForTrustRequirement,
+  TRUST_REQUIREMENTS,
+  type TrustRequirement,
+} from './trust.js';
 
 /**
  * Open door — client for `a2a_escrow::opening` (SPEC_T2_AGENTS_OPEN_ONCHAIN,
@@ -175,15 +180,28 @@ export interface OpeningTerms {
    *  full (contract-asserted; a partial split made junk delivery +EV over
    *  an honest decline). Hire/`escrow::create` keeps the 0–10000 range. */
   rejectSplitBps: number;
-  /** S.1054 — who may race to claim: 0 Anyone (default), 1 Proven,
-   *  2 Proven · 4★+. Never changes HOW a claim works: still FCFS, still
-   *  $0. 3+ aborts on-chain until defined. */
-  claimPolicy?: number;
-  /** S.1192 — minimum EFFECTIVE seller level to claim: 0 none (default),
-   *  1..4 (Level floor, independent of claimPolicy — a post can require
-   *  Proven · 4★+ AND Level 2+, or either alone). Stored as a DF on the
-   *  Opening, enforced on-chain at claim. */
+  /** S.1209 — the ONE buyer trust knob: who may race to claim. Maps to
+   *  the on-chain `min_seller_level` floor; `claim_policy` is ALWAYS
+   *  written 0 (legacy Proven policies are read-only stragglers). Never
+   *  changes HOW a claim works: still FCFS, still $0. Wins over
+   *  `minSellerLevel` when both are set. */
+  trustRequirement?: TrustRequirement;
+  /** Low-level tier floor 0–4 (0 = none) — the raw value
+   *  `trustRequirement` maps onto; prefer the named knob. Stored as a DF
+   *  on the Opening, enforced on-chain at claim (S.1192). */
   minSellerLevel?: number;
+}
+
+/** Resolve an opening's tier floor from its terms — `trustRequirement`
+ *  (the S.1209 knob) wins over a raw `minSellerLevel`. */
+export function openingMinSellerLevel(terms: {
+  trustRequirement?: TrustRequirement;
+  minSellerLevel?: number;
+}): number {
+  if (terms.trustRequirement !== undefined) {
+    return minSellerLevelForTrustRequirement(terms.trustRequirement);
+  }
+  return terms.minSellerLevel ?? 0;
 }
 
 /** Every claim policy `create_open` accepts (S.1054). */
@@ -243,24 +261,24 @@ export function preflightCreateOpening(terms: OpeningTerms): {
         'contract-enforced since v5) — reject is economically a decline, so junk delivery has no edge.',
     };
   }
-  const policy = terms.claimPolicy ?? OPENING_CLAIM_POLICY_ANY_ACTIVE;
-  if (!(OPENING_CLAIM_POLICIES as readonly number[]).includes(policy)) {
+  if (
+    terms.trustRequirement !== undefined &&
+    !(TRUST_REQUIREMENTS as readonly string[]).includes(terms.trustRequirement)
+  ) {
     return {
       valid: false,
       code: 'INVALID_INPUT',
       error:
-        'claimPolicy must be 0 (Anyone), 1 (Proven) or 2 (Proven · 4★+) — ' +
-        'anything else aborts on-chain.',
+        'trustRequirement must be one of open · established · top · veteran (S.1209).',
     };
   }
-  const minLevel = terms.minSellerLevel ?? 0;
+  const minLevel = openingMinSellerLevel(terms);
   if (!Number.isInteger(minLevel) || minLevel < 0 || minLevel > 4) {
     return {
       valid: false,
       code: 'INVALID_INPUT',
       error:
-        'minSellerLevel must be 0 (no floor) or 1–4 (Level 1–4) — ' +
-        'anything else aborts on-chain (S.1192).',
+        'minSellerLevel must be 0 (no floor) or 1–4 — anything else aborts on-chain (S.1192).',
     };
   }
   return { valid: true };
@@ -295,8 +313,10 @@ export async function buildCreateOpeningTx({
       tx.pure.u64(terms.slaMs),
       tx.pure.u64(terms.reviewWindowMs),
       tx.pure.u64(terms.rejectSplitBps),
-      tx.pure.u8(terms.claimPolicy ?? OPENING_CLAIM_POLICY_ANY_ACTIVE),
-      tx.pure.u8(terms.minSellerLevel ?? 0),
+      // S.1209 — claim_policy is ALWAYS 0 on new posts: trustRequirement →
+      // min_seller_level is the one gate (S.1210 asserts this on-chain).
+      tx.pure.u8(OPENING_CLAIM_POLICY_ANY_ACTIVE),
+      tx.pure.u8(openingMinSellerLevel(terms)),
       feeConfigArg(tx),
       tx.object(CLOCK_ID),
     ],

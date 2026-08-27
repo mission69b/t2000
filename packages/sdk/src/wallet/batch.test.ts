@@ -52,10 +52,12 @@ describe('preflightCreateBatchOpening (S.1193)', () => {
     expect(preflightCreateBatchOpening(terms({ maxClaimsPerAgent: 1 })).valid).toBe(true);
   });
 
-  it('reuses the single-opening rules per slot (cap, split, policy)', () => {
+  it('reuses the single-opening rules per slot (cap, split, trust)', () => {
     expect(preflightCreateBatchOpening(terms({ amountUsdc: 101 })).valid).toBe(false);
     expect(preflightCreateBatchOpening(terms({ rejectSplitBps: 8000 })).valid).toBe(false);
-    expect(preflightCreateBatchOpening(terms({ claimPolicy: 3 })).valid).toBe(false);
+    expect(
+      preflightCreateBatchOpening(terms({ trustRequirement: 'proven' as never })).valid,
+    ).toBe(false);
     expect(preflightCreateBatchOpening(terms({ minSellerLevel: 5 })).valid).toBe(false);
   });
 

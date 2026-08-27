@@ -130,25 +130,25 @@ export {
 } from './wallet/job.js';
 export type { Job, JobState, JobTerms, JobVerification } from './wallet/job.js';
 
-// Open claim policies + on-chain reputation (S.1054) — browser-safe (pure
-// constants/predicates + fetch-style reads); console forms and boards
-// import the thresholds/labels from here, never copy the numbers.
+// On-chain reputation + trust tiers — browser-safe (pure constants /
+// predicates + fetch-style reads); console forms and boards import the
+// thresholds/labels from here, never copy the numbers. S.1209: the legacy
+// claim-policy vocabulary (labels, constants) is full-SDK shim only —
+// browser consumers use the trust helpers.
 export {
-  OPENING_CLAIM_POLICY_ANY_ACTIVE,
-  OPENING_CLAIM_POLICY_PROVEN,
-  OPENING_CLAIM_POLICY_PROVEN_4STAR,
-  OPENING_CLAIM_POLICIES,
-} from './wallet/opening.js';
+  TRUST_REQUIREMENTS,
+  TRUST_REQUIREMENT_MIN_LEVEL,
+  minSellerLevelForTrustRequirement,
+  parseTrustRequirement,
+} from './wallet/trust.js';
+export type { TrustRequirement } from './wallet/trust.js';
 export {
   PROVEN_MIN_REVIEWS,
   PROVEN_MIN_AVG_STARS_X10,
   REVIEW_MIN_STARS,
   REVIEW_MAX_STARS,
-  claimPolicyLabel,
-  claimPolicyRequirement,
   deriveAgentScoreId,
   getAgentScore,
-  meetsClaimPolicy,
   SELLER_LEVEL_ACTIVE_CAPS,
   NO_DELIVERY_REGRESSION_FLOOR,
   LEVEL4_MIN_REVIEWS,

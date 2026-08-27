@@ -25,22 +25,20 @@ import {
   A2A_SCORE_BOARD_ID,
   cancelOpenJob,
   claimOpenJob,
-  claimPolicyLabel,
-  claimPolicyRequirement,
   getAgentScore,
   getOpening,
   getSuiClient,
   listOpenJobs,
-  meetsClaimPolicy,
+  minSellerLevelForTrustRequirement,
+  parseTrustRequirement,
   postOpenJob,
   preflightClaimOpening,
   trustRequirementFromOpening,
   trustRequirementLabel,
   MAX_JOB_USDC,
-  OPENING_CLAIM_POLICY_ANY_ACTIVE,
-  OPENING_CLAIM_POLICY_PROVEN,
   PROVEN_MIN_REVIEWS,
   type OpenJobRow,
+  type TrustRequirement,
   resolveCreatedObjectId,
 } from '@t2000/sdk';
 import { parseDuration } from './job.js';
@@ -81,38 +79,21 @@ export async function resolveBrief(input: string): Promise<string> {
   }
 }
 
-/** S.1190 — one resolver for the two claim-gate flags: an explicit
- *  `--claim-policy 0|1|2` always wins; `--proven` stays a deprecated alias
- *  for policy 1 (one release). Default: Anyone (0). */
-export function resolveClaimPolicyFlags(opts: {
-  claimPolicy?: string;
-  proven?: boolean;
-}): number {
-  if (opts.claimPolicy !== undefined) {
-    // Strict digit match — Number('') is 0, which would silently post an
-    // Anyone opening off an empty flag value.
-    if (!/^[012]$/.test(opts.claimPolicy.trim())) {
-      throw new Error(
-        '--claim-policy must be 0 (Anyone), 1 (Proven) or 2 (Proven · 4★+).',
-      );
-    }
-    return Number(opts.claimPolicy.trim());
-  }
-  return opts.proven
-    ? OPENING_CLAIM_POLICY_PROVEN
-    : OPENING_CLAIM_POLICY_ANY_ACTIVE;
-}
-
-/** S.1192 — `--min-seller-level 1|2|3|4` (absent = 0, no floor). Strict
- *  digit match, same guard class as the claim-policy flag. */
-export function resolveMinSellerLevelFlag(raw?: string): number {
+/** S.1209 — the ONE trust flag: `--trust open|established|top|veteran`
+ *  (absent = open). Replaces `--claim-policy`, `--proven` and
+ *  `--min-seller-level` — no silent aliases: the removed flags error as
+ *  unknown options. */
+export function resolveTrustFlag(raw?: string): TrustRequirement {
   if (raw === undefined) {
-    return 0;
+    return 'open';
   }
-  if (!/^[1-4]$/.test(raw.trim())) {
-    throw new Error('--min-seller-level must be 1, 2, 3 or 4 (omit for no floor).');
+  try {
+    return parseTrustRequirement(raw);
+  } catch {
+    throw new Error(
+      '--trust must be open (default), established, top or veteran.',
+    );
   }
-  return Number(raw.trim());
 }
 
 function statusColor(status: OpenJobRow['status']): string {
@@ -151,13 +132,8 @@ export function registerOpenVerbs(group: Command) {
     .option('--sla <duration>', 'Delivery window once claimed (e.g. 30m, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
     .option(
-      '--claim-policy <policy>',
-      `Who may claim: 0 Anyone (default) · 1 Proven (≥${PROVEN_MIN_REVIEWS} distinct buyers' reviews) · 2 Proven · 4★+ (adds a 4.0★ average); claiming stays instant and $0 under every policy`,
-    )
-    .option('--proven', 'DEPRECATED — same as --claim-policy 1')
-    .option(
-      '--min-seller-level <level>',
-      'Minimum seller trust tier to claim: 1–4 (default none) — 2 Established (3+ distinct buyers), 3 Top rated (4.0★+ average), 4 Veteran; independent of --claim-policy (S.1192)',
+      '--trust <requirement>',
+      `Who may claim: open (default — any active Agent ID) · established (reviews from ${PROVEN_MIN_REVIEWS}+ distinct buyers) · top (adds a 4.0★ average) · veteran (power-user floor); claiming stays instant and $0 under every gate (S.1209)`,
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -168,9 +144,7 @@ export function registerOpenVerbs(group: Command) {
         max: string;
         sla: string;
         openFor: string;
-        claimPolicy?: string;
-        proven?: boolean;
-        minSellerLevel?: string;
+        trust?: string;
         key?: string;
         api?: string;
       }) => {
@@ -181,8 +155,7 @@ export function registerOpenVerbs(group: Command) {
             throw new Error(`--max must be between 0.01 and ${MAX_JOB_USDC} USDC.`);
           }
           const brief = await resolveBrief(opts.brief);
-          const claimPolicy = resolveClaimPolicyFlags(opts);
-          const minSellerLevel = resolveMinSellerLevelFlag(opts.minSellerLevel);
+          const trustRequirement = resolveTrustFlag(opts.trust);
           // The budget escrows ON-CHAIN at post — a real outflow from the
           // buyer's wallet, so it belongs under the same cap as a hire.
           // (Claiming is free and is never recorded as spend.)
@@ -194,8 +167,7 @@ export function registerOpenVerbs(group: Command) {
             maxUsdc,
             slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
             openHours: parseDuration(opts.openFor) / 3_600_000,
-            claimPolicy,
-            ...(minSellerLevel > 0 ? { minSellerLevel } : {}),
+            trustRequirement,
           });
           recordSpendIfLanded(maxUsdc, digest);
           const openingId = await resolveCreated(digest, '::opening::Opening<');
@@ -207,14 +179,9 @@ export function registerOpenVerbs(group: Command) {
           printSuccess(
             `Posted — $${maxUsdc.toFixed(2)} USDC escrowed on-chain in the opening.`,
           );
-          if (claimPolicy !== OPENING_CLAIM_POLICY_ANY_ACTIVE) {
+          if (trustRequirement !== 'open') {
             printInfo(
-              `${claimPolicyLabel(claimPolicy)} gate on: ${claimPolicyRequirement(claimPolicy)}`,
-            );
-          }
-          if (minSellerLevel > 0) {
-            printInfo(
-              `${trustRequirementLabel(minSellerLevel)} floor on: sellers below that effective tier cannot claim.`,
+              `${trustRequirementLabel(minSellerLevelForTrustRequirement(trustRequirement))} — sellers below that effective tier cannot claim.`,
             );
           }
           printBlank();

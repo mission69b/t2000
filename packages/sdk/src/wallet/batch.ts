@@ -11,6 +11,7 @@ import {
   A2A_ESCROW_OPENING_PACKAGE_ID,
   feeConfigArg,
   OPENING_CLAIM_POLICY_ANY_ACTIVE,
+  openingMinSellerLevel,
   preflightCreateOpening,
   type OpeningTerms,
 } from './opening.js';
@@ -157,8 +158,10 @@ export async function buildCreateBatchOpeningTx({
       tx.pure.u64(terms.slaMs),
       tx.pure.u64(terms.reviewWindowMs),
       tx.pure.u64(terms.rejectSplitBps),
-      tx.pure.u8(terms.claimPolicy ?? OPENING_CLAIM_POLICY_ANY_ACTIVE),
-      tx.pure.u8(terms.minSellerLevel ?? 0),
+      // S.1209 — claim_policy is ALWAYS 0 on new posts: trustRequirement →
+      // min_seller_level is the one gate (S.1210 asserts this on-chain).
+      tx.pure.u8(OPENING_CLAIM_POLICY_ANY_ACTIVE),
+      tx.pure.u8(openingMinSellerLevel(terms)),
       tx.pure.u8(terms.maxClaimsPerAgent ?? 1),
       feeConfigArg(tx),
       tx.object(CLOCK_ID),

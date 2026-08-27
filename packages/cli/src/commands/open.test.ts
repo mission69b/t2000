@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { resolveBrief, resolveClaimPolicyFlags, resolveMinSellerLevelFlag } from './open.js';
+import { resolveBrief, resolveTrustFlag } from './open.js';
 
 // Open-verb helper coverage — the command wiring itself is exercised by
 // program.integration.test.ts (every group's --help resolves).
@@ -35,47 +35,25 @@ describe('resolveBrief (open-job briefs are PUBLIC board text)', () => {
   });
 });
 
-describe('resolveClaimPolicyFlags (S.1190 — --claim-policy 0|1|2, --proven alias)', () => {
-  it('defaults to 0 (Anyone)', () => {
-    expect(resolveClaimPolicyFlags({})).toBe(0);
-    expect(resolveClaimPolicyFlags({ proven: false })).toBe(0);
+describe('resolveTrustFlag (S.1209 — the ONE --trust knob)', () => {
+  it('defaults to open when absent', () => {
+    expect(resolveTrustFlag(undefined)).toBe('open');
   });
 
-  it('maps the DEPRECATED --proven to policy 1 for one release', () => {
-    expect(resolveClaimPolicyFlags({ proven: true })).toBe(1);
+  it('accepts the four requirements, case-insensitive, trimmed', () => {
+    expect(resolveTrustFlag('open')).toBe('open');
+    expect(resolveTrustFlag('established')).toBe('established');
+    expect(resolveTrustFlag('top')).toBe('top');
+    expect(resolveTrustFlag('veteran')).toBe('veteran');
+    expect(resolveTrustFlag(' Established ')).toBe('established');
+    expect(resolveTrustFlag('TOP')).toBe('top');
   });
 
-  it('accepts --claim-policy 0|1|2, which always wins over --proven', () => {
-    expect(resolveClaimPolicyFlags({ claimPolicy: '0' })).toBe(0);
-    expect(resolveClaimPolicyFlags({ claimPolicy: '1' })).toBe(1);
-    expect(resolveClaimPolicyFlags({ claimPolicy: '2' })).toBe(2);
-    expect(resolveClaimPolicyFlags({ claimPolicy: '2', proven: true })).toBe(2);
-    expect(resolveClaimPolicyFlags({ claimPolicy: '0', proven: true })).toBe(0);
-  });
-
-  it('refuses anything outside 0|1|2 with the three labels', () => {
-    for (const bad of ['3', '-1', '1.5', 'proven', '']) {
-      expect(() => resolveClaimPolicyFlags({ claimPolicy: bad })).toThrow(
-        /0 \(Anyone\), 1 \(Proven\) or 2/,
+  it('refuses legacy numbers, Proven vocabulary, and empty', () => {
+    for (const bad of ['0', '1', '2', 'proven', 'anyone', 'level 2', '']) {
+      expect(() => resolveTrustFlag(bad)).toThrow(
+        /open \(default\), established, top or veteran/,
       );
-    }
-  });
-});
-
-describe('resolveMinSellerLevelFlag (S.1192 — --min-seller-level 1|2|3|4)', () => {
-  it('defaults to 0 (no floor) when absent', () => {
-    expect(resolveMinSellerLevelFlag(undefined)).toBe(0);
-  });
-
-  it('accepts 1 through 4', () => {
-    for (const lvl of ['1', '2', '3', '4']) {
-      expect(resolveMinSellerLevelFlag(lvl)).toBe(Number(lvl));
-    }
-  });
-
-  it('refuses 0, 5, garbage and empty (strict digit — Number("") is 0)', () => {
-    for (const bad of ['0', '5', '-1', '2.5', 'two', '']) {
-      expect(() => resolveMinSellerLevelFlag(bad)).toThrow(/1, 2, 3 or 4/);
     }
   });
 });

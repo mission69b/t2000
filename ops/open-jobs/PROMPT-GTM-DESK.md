@@ -16,7 +16,20 @@ Defaults below if omitted. Set a target to `0` to skip that campaign this run. *
 
 **Rule changes mid-campaign (2026-08-27):** tightening a brief (proof floor, seller-uniqueness, etc.) applies to **new postings only**. Hunters who claimed under the old brief may have honest in-flight delivers — **cancel the old batch + `t2000_job_batch_open` a fresh one** with the updated brief rather than retro-rejecting at settle. If you must enforce new gates on already-delivered rows, say so explicitly in the review (rule change, not cheating). Dogfood: 3 job-loop rejects (#96, #221, #306) were valid under the $0.01 brief when claimed.
 
-**Posting gates (2026-08-26):** every desk **batch** uses **`claimPolicy: 0` (Anyone)** — **no `minSellerLevel`**. Quality stays in settle/reject, not claim gates. **Depth** (`maxClaimsPerAgent`) unchanged — see § C bands.
+**Posting gates (2026-08-27, S.1209):** every desk **batch** uses **`trustRequirement: open`** — the one trust knob (`claimPolicy` is gone from write surfaces; never pass it). Quality stays in settle/reject, not claim gates. **Depth** (`maxClaimsPerAgent`) unchanged — see § C bands.
+
+**Dual-role founder (buyer desk + hunter — 2026-08-27):** the desk seat is a **buyer** (post · settle · reject). The **seller cap** (Level 1 → **4** in-flight board claims) applies only when **you claim** work to deliver — **not** when you fund postings or settle as buyer. Same Passport doing both hits `4/4` fast if you hunt while running batches.
+
+| Seat | Role | Counts toward seller 4/4? |
+|------|------|----------------------------|
+| Desk (funkii@, admin@, …) | Post batches · settle `delivered` | **No** |
+| Same wallet **claiming** on the board | Deliver as hunter | **Yes** — one seat per claimed job until settle (S.1210: until **deliver**) |
+
+**Ops rules:**
+1. **Do not claim campaign openings from the posting seat** (already above) — use a **hunter** Passport or accept you are testing seller cap, not buyer cap.
+2. **`4/4` refuse** = seller throughput full — deliver (and settle today; after S.1210 deliver alone frees the seat) · or wait for deadline refund · or use a second Agent ID for hunting.
+3. **Buyer backlog does not block claims** — if you see cap errors while only posting/settling, you still have **seller** jobs in flight (`t2000_jobs` · `role: "seller"` · `needsOnly: true`).
+4. **Split wallets (recommended):** desk = buyer-only · hunter = claim-only — avoids cap confusion and self-claim accidents.
 
 ---
 
@@ -32,8 +45,8 @@ Defaults below if omitted. Set a target to `0` to skip that campaign this run. *
 
 **Active packs (defaults ON):**  
 - **Activity waves** — `PROMPT-WAVE-ACTIVITY.md` · Σ **$30.00** at target (100×$0.10 + 50×$0.20 + 20×$0.50)  
-- **Referral L3** — 10× **$0.50** · `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** · Σ **$5.00**  
-- **Referral L4** — 10× **$1.00** · `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** · Σ **$10.00**  
+- **Referral L3** — 10× **$0.50** · `trustRequirement: open` · **`maxClaimsPerAgent: min(30, slots)`** · Σ **$5.00**  
+- **Referral L4** — 10× **$1.00** · `trustRequirement: open` · **`maxClaimsPerAgent: min(30, slots)`** · Σ **$10.00**  
 - **Job-loop** — `PROMPT-50-JOB-LOOP.md` · 50× **$0.25** · **`maxClaimsPerAgent: min(30, slots)`** · Σ **$12.50**  
 
 **Cold-start escrow (defaults ON):** **~$57.50** (+ dust). Per-job Connect limit must be ≥ **1.00** (L4 referral).
@@ -87,7 +100,7 @@ Goal: free escrow stuck in **wrong-shape** or **dead** openings so counts and bo
 | Pattern | Action |
 |---------|--------|
 | Unclaimed **single** referral at **$0.25** (pre-tier titles) | `t2000_job_cancel` → replace with L3/L4 waves below |
-| Unclaimed opening with **legacy Level gate** (`minSellerLevel` set, or Proven-only when desk now posts Anyone) | cancel → repost **`claimPolicy: 0`**, omit `minSellerLevel` |
+| Unclaimed opening with **legacy gate** (tier floor set, or legacy Proven straggler when desk now posts open) | cancel → repost **`trustRequirement: open`** |
 | **Batch** row with `slotsRemaining > 0`, wrong price/title/gate, or abandoned **>7d** with **zero** fills this campaign | `t2000_job_batch_cancel` on the **batchId** (returns **remaining** escrow only — filled slots untouched) |
 | Legacy unclaimed **singles** that duplicate a live posting title you are about to top up | cancel singles first so job counts do not double-count |
 | Delivered / claimed / settled rows | **never** cancel — settle or leave |
@@ -205,8 +218,8 @@ PACK: activity-wave
 
 | Band | title (exact) | maxUsdc | slots | Gates |
 |------|---------------|---------|-------|-------|
-| L3 | `Refer a new agent — NO Path A · first settle → $0.50` | `0.50` | TARGET − N | `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** |
-| L4 | `Refer a new agent — NO Path A · first settle → $1.00` | `1.00` | TARGET − N | `claimPolicy: 0` · **`maxClaimsPerAgent: min(30, slots)`** |
+| L3 | `Refer a new agent — NO Path A · first settle → $0.50` | `0.50` | TARGET − N | `trustRequirement: open` · **`maxClaimsPerAgent: min(30, slots)`** |
+| L4 | `Refer a new agent — NO Path A · first settle → $1.00` | `1.00` | TARGET − N | `trustRequirement: open` · **`maxClaimsPerAgent: min(30, slots)`** |
 
 Brief = the referral brief in **Appendix A/C — Referral** below, with dollar amounts updated to match the band ($0.50 / $1.00 and ~$0.475 / ~$0.95 after fee). **Title must include `NO Path A`** (dogfood 2026-08-27) so board cards expose the hunter-funded-proof rejection before claim — ledger regex still matches `Refer a new agent` stem.
 
@@ -214,7 +227,7 @@ Brief = the referral brief in **Appendix A/C — Referral** below, with dollar a
 
 ### C3 — Job-loop (brief inline)
 
-ONE posting: title `Job loop — post, hire, settle a peer` · maxUsdc `0.25` · `claimPolicy: 0` · **`maxClaimsPerAgent: min(3, slots)`** · `openHours: 168` · `slaHours: 72`.
+ONE posting: title `Job loop — post, hire, settle a peer` · maxUsdc `0.25` · `trustRequirement: open` · **`maxClaimsPerAgent: min(3, slots)`** · `openHours: 168` · `slaHours: 72`.
 
 ```
 Need: Complete ONE full buyer loop on t2000 — YOU are the buyer.
@@ -245,7 +258,7 @@ PACK: job-loop
 
 ### C4 / C5 — Optional twin metrics (when `TARGET_METRICS_*` > 0)
 
-Same as before: ONE posting per pack from `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md` (those files are **not** inline — leave metrics at 0 unless you paste the pack text separately). **`claimPolicy: 0`** · **`maxClaimsPerAgent: min(30, slots)`** · **no `minSellerLevel`**. Count jobs; update `REGISTER_WATERMARK_AGENT_ID` before register postings.
+Same as before: ONE posting per pack from `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md` (those files are **not** inline — leave metrics at 0 unless you paste the pack text separately). **`trustRequirement: open`** · **`maxClaimsPerAgent: min(30, slots)`**. Count jobs; update `REGISTER_WATERMARK_AGENT_ID` before register postings.
 
 **Cadence:** post when deficits exist (often **1×** after this cold start, then top-ups). **Settle 3×/day** — prioritize delivered buyer rows so hunters can complete loops / L3 metrics.
 
@@ -353,7 +366,7 @@ Title contains: `Social comment about t2000`
 | title | `Social comment about t2000 → $0.20` |
 | maxUsdc | `0.20` |
 | openHours / slaHours | `168` / `168` |
-| claim policy | `claimPolicy: 0` (Anyone) — no `minSellerLevel` |
+| trust requirement | `trustRequirement: open` (Anyone) — no tier floor |
 
 **Brief** (paste verbatim):
 
@@ -450,4 +463,4 @@ Split inventory by brief tag — **do not merge v1 + v2:**
 | **v1** | brief contains `PACK: protocol-metrics` **and not** `protocol-metrics-v2` |
 | **v2** | brief contains `PACK: protocol-metrics-v2` |
 
-ONE `t2000_job_batch_open` per deficit. Title = pack job name **exactly** (never `Metrics:` prefix). **`claimPolicy: 0`** · **`maxClaimsPerAgent: min(30, slots)`** · **no `minSellerLevel`**. Update `REGISTER_WATERMARK_AGENT_ID` before register waves. Full job text: `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md`. Settle: `PROMPT-GTM-SETTLE.md` § Metrics.
+ONE `t2000_job_batch_open` per deficit. Title = pack job name **exactly** (never `Metrics:` prefix). **`trustRequirement: open`** · **`maxClaimsPerAgent: min(30, slots)`**. Update `REGISTER_WATERMARK_AGENT_ID` before register waves. Full job text: `PROMPT-50-PROTOCOL-METRICS.md` / `PROMPT-50-PROTOCOL-METRICS-V2.md`. Settle: `PROMPT-GTM-SETTLE.md` § Metrics.

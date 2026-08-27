@@ -181,9 +181,18 @@ export {
   buildCreateOpeningTx,
   buildRefundUnclaimedTx,
   getOpening,
+  openingMinSellerLevel,
   preflightCreateOpening,
 } from './wallet/opening.js';
 export type { Opening, OpeningTerms } from './wallet/opening.js';
+// S.1209 — the ONE buyer post knob (write mapping SSOT).
+export {
+  TRUST_REQUIREMENTS,
+  TRUST_REQUIREMENT_MIN_LEVEL,
+  minSellerLevelForTrustRequirement,
+  parseTrustRequirement,
+} from './wallet/trust.js';
+export type { TrustRequirement } from './wallet/trust.js';
 export {
   MAX_BATCH_SLOTS_DEFAULT,
   BATCH_OPENING_TYPE_MARKER,

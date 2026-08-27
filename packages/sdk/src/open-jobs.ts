@@ -18,6 +18,10 @@
 import { fromBase64 } from '@mysten/sui/utils';
 import type { TransactionSigner } from './signer.js';
 import { runSponsoredTxGuard } from './sponsored-guard.js';
+import {
+  minSellerLevelForTrustRequirement,
+  type TrustRequirement,
+} from './wallet/trust.js';
 
 async function fetchJson(
   url: string,
@@ -71,12 +75,12 @@ export interface OpenJobRow {
   buyerAgent: { agentId: number; name: string } | null;
   /** The escrow Job this opening was claimed into (claimed rows). */
   jobId: string | null;
-  /** S.1054 — who may race to claim: 0 Anyone, 1 Proven, 2 Proven · 4★+
-   *  (render with `claimPolicyLabel`, never the raw number). Absent on
-   *  pre-S.1054 rows = 0. */
+  /** LEGACY READ (S.1209 shim) — the on-chain claim_policy of pre-S.1209
+   *  stragglers (0 on every new post). Never render the raw number: paint
+   *  the ONE requirement chip via `trustRequirementFromOpening`. */
   claimPolicy?: number;
-  /** S.1192 — minimum EFFECTIVE seller level to claim (render with
-   *  `sellerLevelLabel`). Absent on pre-S.1192 rows = 0 (no floor). */
+  /** Minimum EFFECTIVE trust tier to claim (0 = none). Render via
+   *  `trustRequirementFromOpening`. Absent on pre-S.1192 rows = 0. */
   minSellerLevel?: number;
   /** S.1193 — row kind: absent or "single" = one Opening; "batch" = a
    *  wave (ONE row for the whole batch — never N duplicate rows). */
@@ -228,14 +232,20 @@ export function postOpenJob(
     slaMinutes?: number;
     /** How long the posting stays claimable (default 24h, max 720). */
     openHours?: number;
-    /** S.1054 — 0 Anyone (default), 1 Proven, 2 Proven · 4★+. */
-    claimPolicy?: number;
-    /** S.1192 — minimum EFFECTIVE seller level to claim: 0 none
-     *  (default), 1..4. Independent of claimPolicy. */
-    minSellerLevel?: number;
+    /** S.1209 — the ONE trust knob: who may claim (default "open").
+     *  Maps to the on-chain tier floor; `claim_policy` is always 0. */
+    trustRequirement?: TrustRequirement;
   },
 ): Promise<string> {
-  return sponsoredOpeningVerb(base, signer, 'open-create', input);
+  const { trustRequirement = 'open', ...rest } = input;
+  return sponsoredOpeningVerb(base, signer, 'open-create', {
+    ...rest,
+    // Mapped client-side so the rail contract stays value-stable — the
+    // server re-asserts the same mapping and always writes claimPolicy 0.
+    trustRequirement,
+    minSellerLevel: minSellerLevelForTrustRequirement(trustRequirement),
+    claimPolicy: 0,
+  });
 }
 
 /** Review a settled job you bought — RELEASED or REJECTED (S.1064),
@@ -315,13 +325,20 @@ export function postBatchOpenJob(
     slots: number;
     slaMinutes?: number;
     openHours?: number;
-    claimPolicy?: number;
-    minSellerLevel?: number;
-    /** Slots one agent may claim of this wave (default 1). */
+    /** S.1209 — the ONE trust knob (default "open"); claim_policy always 0. */
+    trustRequirement?: TrustRequirement;
+    /** Slots one agent may claim of this wave (default 1 — NOT the tier
+     *  cap; the effective per-posting limit is min(this, tier cap)). */
     maxClaimsPerAgent?: number;
   },
 ): Promise<string> {
-  return sponsoredOpeningVerb(base, signer, 'batch-open-create', input);
+  const { trustRequirement = 'open', ...rest } = input;
+  return sponsoredOpeningVerb(base, signer, 'batch-open-create', {
+    ...rest,
+    trustRequirement,
+    minSellerLevel: minSellerLevelForTrustRequirement(trustRequirement),
+    claimPolicy: 0,
+  });
 }
 
 /** S.1193 — claim ONE slot of a wave (v1 lock: one claim per tx; a

@@ -2,7 +2,7 @@
 
 > Posted by `PROMPT-GTM-DESK.md` as **ONE `t2000_job_batch_open` per band**.  
 > All jobs in a posting share the **same title + brief** (batch invariant).  
-> **Anyone** claim (`claimPolicy: 0`, no Level floor). **Wave A (Board pulse):**
+> **Open** claim (`trustRequirement: open`, no tier floor). **Wave A (Board pulse):**
 > **`maxClaimsPerAgent: 1`** if reposted (dogfood 2026-08-27: at cap **3**, one board read split across claims).
 > Default campaign keeps Wave A **off** — see `PROMPT-GTM-DESK.md`. **Waves B/C:** **`maxClaimsPerAgent: 1`**
 > (diversity — one in-flight job each; seat frees at settle, reclaim allowed).  
@@ -26,7 +26,7 @@ Inventory = Σ `slotsRemaining` on **your** batch rows with that exact title (+ 
 t2000_job_batch_open {
   title, brief, maxUsdc, slots: TARGET − N,
   openHours: 168, slaHours: 48,
-  claimPolicy: 0,
+  trustRequirement: "open",
   maxClaimsPerAgent: 1   # Wave A if reposted; Waves B/C always 1
 }
 ```

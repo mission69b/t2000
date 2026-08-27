@@ -20,26 +20,20 @@ import {
   BATCH_OPENING_TYPE_MARKER,
   cancelBatchOpenJob,
   claimBatchOpenJob,
-  claimPolicyLabel,
-  claimPolicyRequirement,
   getAgentScore,
   getBatchClaimsByAgent,
   getBatchOpening,
   getSuiClient,
   MAX_BATCH_SLOTS_DEFAULT,
   MAX_JOB_USDC,
-  OPENING_CLAIM_POLICY_ANY_ACTIVE,
+  minSellerLevelForTrustRequirement,
   postBatchOpenJob,
   preflightBatchClaim,
   resolveCreatedObjectId,
   trustRequirementLabel,
 } from '@t2000/sdk';
 import { parseDuration } from './job.js';
-import {
-  resolveBrief,
-  resolveClaimPolicyFlags,
-  resolveMinSellerLevelFlag,
-} from './open.js';
+import { resolveBrief, resolveTrustFlag } from './open.js';
 import { withAgent } from '../lib/with-agent.js';
 import {
   handleError,
@@ -66,12 +60,8 @@ export function registerBatchVerbs(group: Command) {
     .option('--sla <duration>', 'Delivery window per job once claimed (e.g. 30m, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
     .option(
-      '--claim-policy <policy>',
-      'Who may claim: 0 Anyone (default) · 1 Proven · 2 Proven · 4★+; claiming stays instant and $0',
-    )
-    .option(
-      '--min-seller-level <level>',
-      'Minimum seller trust tier to claim: 1–4 (default none) — 2 Established · 3 Top rated · 4 Veteran; independent of --claim-policy',
+      '--trust <requirement>',
+      'Who may claim: open (default) · established · top · veteran; claiming stays instant and $0 (S.1209)',
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -84,8 +74,7 @@ export function registerBatchVerbs(group: Command) {
         maxClaimsPerAgent: string;
         sla: string;
         openFor: string;
-        claimPolicy?: string;
-        minSellerLevel?: string;
+        trust?: string;
         key?: string;
         api?: string;
       }) => {
@@ -103,8 +92,7 @@ export function registerBatchVerbs(group: Command) {
           if (!Number.isInteger(maxClaims) || maxClaims < 1 || maxClaims > slots) {
             throw new Error('--max-claims-per-agent must be an integer ≥1 and ≤ --slots.');
           }
-          const claimPolicy = resolveClaimPolicyFlags(opts);
-          const minSellerLevel = resolveMinSellerLevelFlag(opts.minSellerLevel);
+          const trustRequirement = resolveTrustFlag(opts.trust);
           const brief = await resolveBrief(opts.brief);
           // The WHOLE posting escrows at post — the spend gate sees the total.
           const totalUsdc = maxUsdc * slots;
@@ -117,8 +105,7 @@ export function registerBatchVerbs(group: Command) {
             slots,
             slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
             openHours: parseDuration(opts.openFor) / 3_600_000,
-            claimPolicy,
-            ...(minSellerLevel > 0 ? { minSellerLevel } : {}),
+            trustRequirement,
             maxClaimsPerAgent: maxClaims,
           });
           recordSpendIfLanded(totalUsdc, digest);
@@ -135,13 +122,10 @@ export function registerBatchVerbs(group: Command) {
           printSuccess(
             `Posted — ${slots} job${slots === 1 ? '' : 's'} × $${maxUsdc.toFixed(2)} = $${totalUsdc.toFixed(2)} USDC escrowed in ONE tx.`,
           );
-          if (claimPolicy !== OPENING_CLAIM_POLICY_ANY_ACTIVE) {
+          if (trustRequirement !== 'open') {
             printInfo(
-              `${claimPolicyLabel(claimPolicy)} gate on: ${claimPolicyRequirement(claimPolicy)}`,
+              `${trustRequirementLabel(minSellerLevelForTrustRequirement(trustRequirement))} — sellers below that effective tier cannot claim.`,
             );
-          }
-          if (minSellerLevel > 0) {
-            printInfo(`${trustRequirementLabel(minSellerLevel)} floor on.`);
           }
           if (maxClaims === 1) {
             printInfo(
