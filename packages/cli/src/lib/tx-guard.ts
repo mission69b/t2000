@@ -48,7 +48,7 @@ export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
  *    buildCancelOpeningTx   → OPENING pkg :: opening :: cancel_open
  *    buildRefundUnclaimedTx → OPENING pkg :: opening :: refund_unclaimed
  *    buildOpenJobTx         → OPENING pkg :: opening :: create_open_v2
- *    buildClaimOpeningTx    → OPENING pkg :: opening :: claim_v2|claim_proven_v2
+ *    buildClaimOpeningTx    → OPENING pkg :: opening :: claim_v2   (S.1212: proven routing removed)
  *    buildCreateJobTx       → ESCROW  pkg :: escrow  :: create
  *    buildDeliverJobTx      → OPENING pkg :: reputation :: deliver_v2
  *                           | OPENING pkg :: batch :: deliver_v2   (S.1210, origin Jobs)
@@ -147,12 +147,12 @@ const ACTION_TARGETS: Record<
   },
   'open-claim': {
     // S.1192: every claim carries the claimer's own &mut AgentScore
-    // (claim_v2 for Anyone, claim_proven_v2 for Proven 1/2), with
+    // (claim_v2 — S.1212 removed the proven routing), with
     // `create_empty_score` as the allowlisted precursor when the score
     // doesn't exist yet.
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'opening',
-    functions: ['claim_v2', 'claim_proven_v2', 'reputation::create_empty_score'],
+    functions: ['claim_v2', 'reputation::create_empty_score'],
   },
   'open-cancel': {
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],

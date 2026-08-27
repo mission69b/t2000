@@ -150,12 +150,6 @@ const SHA256_HEX_RE = /^(0x)?[0-9a-fA-F]{64}$/;
 
 /** Default claim policy: any ACTIVE registered Agent ID ($0 claim, FCFS). */
 export const OPENING_CLAIM_POLICY_ANY_ACTIVE = 0;
-/** S.1054 — Proven: claimer needs ≥ PROVEN_MIN_REVIEWS on-chain reviews
- *  (see `wallet/reputation.ts`). Claims route through `claim_proven`. */
-export const OPENING_CLAIM_POLICY_PROVEN = 1;
-/** S.1054 — Proven · 4★+: Proven AND average stars ≥ 4.0 (strictly
- *  stronger than policy 1). */
-export const OPENING_CLAIM_POLICY_PROVEN_4STAR = 2;
 /** Max time an opening may stay claimable (contract cap): 30 days. */
 export const MAX_OPEN_WINDOW_MS = 2_592_000_000;
 
@@ -215,13 +209,6 @@ export function openingMinSellerLevel(terms: {
   }
   return terms.minSellerLevel ?? 0;
 }
-
-/** Every claim policy `create_open` accepts (S.1054). */
-export const OPENING_CLAIM_POLICIES = [
-  OPENING_CLAIM_POLICY_ANY_ACTIVE,
-  OPENING_CLAIM_POLICY_PROVEN,
-  OPENING_CLAIM_POLICY_PROVEN_4STAR,
-] as const;
 
 /** The only reject split `create_open` accepts since v5 (S.1019). */
 export const OPEN_REJECT_SPLIT_BPS = 10_000;
@@ -347,19 +334,18 @@ export async function buildCreateOpeningTx({
  *  `buildCreateEmptyScoreTx` as its own PRECURSOR tx first (a shared
  *  object cannot be created and used in one tx — the S.1063 sponsored
  *  precursor hop; an empty score grants nothing and reads as Level 1).
- *  `claimPolicy` (the OPENING's policy, from the board row or
- *  `getOpening`) routes 0 → `claim_v2`, 1/2 → `claim_proven_v2`.
+ *  S.1212: always `claim_v2` — the board verified straggler-free, so the
+ *  `claim_proven_v2` routing left the SDK (the Move entry stays published
+ *  forever, unused).
  *  Preflight with `preflightClaimOpening` first for English refusals. */
 export function buildClaimOpeningTx({
   openingId,
   registryId,
   scoreId,
-  claimPolicy = OPENING_CLAIM_POLICY_ANY_ACTIVE,
 }: {
   openingId: string;
   registryId: string;
   scoreId: string;
-  claimPolicy?: number;
 }): Transaction {
   if (!scoreId) {
     throw new T2000Error(
@@ -369,10 +355,9 @@ export function buildClaimOpeningTx({
         'create it first with buildCreateEmptyScoreTx when it does not exist yet.',
     );
   }
-  const proven = claimPolicy !== OPENING_CLAIM_POLICY_ANY_ACTIVE;
   const tx = new Transaction();
   tx.moveCall({
-    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::${proven ? 'claim_proven_v2' : 'claim_v2'}`,
+    target: `${A2A_ESCROW_OPENING_PACKAGE_ID}::${MODULE}::claim_v2`,
     typeArguments: [USDC_TYPE],
     arguments: [
       tx.object(openingId),

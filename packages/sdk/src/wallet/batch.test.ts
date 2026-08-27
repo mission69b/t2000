@@ -132,7 +132,7 @@ describe('preflightBatchClaim — wave gates first, then the single stack', () =
     ).toBe(true);
   });
 
-  it('the Phase C stack still applies (active cap + level floor + policy)', () => {
+  it('the Phase C stack still applies (active cap + tier floor; policy gone — S.1212)', () => {
     const capped = score({ activeSellerJobs: 4 });
     const pf = preflightBatchClaim(capped, wave, 0);
     expect(pf.valid).toBe(false);
@@ -140,8 +140,8 @@ describe('preflightBatchClaim — wave gates first, then the single stack', () =
     const floored = preflightBatchClaim(score(), { ...wave, minSellerLevel: 2 }, 0);
     expect(floored.valid).toBe(false);
     expect(floored.error).toMatch(/Requires Established/);
-    const proven = preflightBatchClaim(null, { ...wave, claimPolicy: 1 }, 0);
-    expect(proven.valid).toBe(false);
-    expect(proven.error).toMatch(/distinct buyers/);
+    // The frozen claimPolicy key is ignored — a straggler-free board has
+    // no policy gate left to preflight (Move would still enforce one).
+    expect(preflightBatchClaim(score(), { ...wave, claimPolicy: 1 }, 0).valid).toBe(true);
   });
 });

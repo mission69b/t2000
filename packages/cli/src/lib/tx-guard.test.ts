@@ -263,14 +263,11 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::create_open_v2`,
     ],
     ['open-claim', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_v2`],
-    // S.1192: Proven openings claim via claim_proven_v2; the scoreless
-    // claimer's precursor rides the same action cross-module. Buyer review
-    // stars land on-chain via the reputation module (both entries — the
-    // first review a seller ever gets lazily creates their AgentScore).
-    [
-      'open-claim',
-      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_proven_v2`,
-    ],
+    // S.1212: claim_proven_v2 left the map with the straggler-free board —
+    // a negative test below asserts the guard now refuses it. The
+    // scoreless claimer's precursor rides the same action cross-module.
+    // Buyer review stars land on-chain via the reputation module (both
+    // entries — the first review lazily creates the AgentScore).
     [
       'open-claim',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
@@ -317,6 +314,15 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       expect(() => assertTxMatchesIntent(b64, { action })).not.toThrow();
     });
   }
+
+  it('S.1212: "open-claim" refuses the removed claim_proven_v2 routing', async () => {
+    const b64 = await buildTxB64(
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::claim_proven_v2`,
+    );
+    expect(() => assertTxMatchesIntent(b64, { action: 'open-claim' })).toThrow(
+      /should call/,
+    );
+  });
 
   it('S.1202: "release" does not extend to other batch functions', async () => {
     const b64 = await buildTxB64(

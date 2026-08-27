@@ -25,9 +25,10 @@ import {
  * actually delivered) `escrow::Job` can write, once per job — resubmitting
  * edits the stars in place. There is no admin mint: reputation is receipts.
  *
- * These aggregates are the ONE public score SSOT (profile stars, Proven
- * claim gates). `claim_policy` `1`/`2` openings claim via
- * `opening::claim_proven`, which reads the claimer's own score immutably.
+ * These aggregates are the ONE public score SSOT (profile stars, trust
+ * tiers, and the tier floors on postings). The legacy `claim_policy`
+ * vocabulary left the SDK in S.1212 — the field is frozen on-chain and 0
+ * on every claimable row.
  */
 
 /** The shared `reputation::ScoreBoard` object id on MAINNET — the derived-
@@ -213,42 +214,6 @@ export function buildCreateEmptyScoreTx({
   return tx;
 }
 
-/** Does a score satisfy an Opening's claim policy? (`null` score = zero
- *  reviews.) Mirrors the Move predicates exactly — S.1062: the Proven
- *  floor counts DISTINCT BUYERS; integer avg math; policy 2 strictly
- *  stronger than policy 1. */
-export function meetsClaimPolicy(score: AgentScore | null, claimPolicy: number): boolean {
-  if (claimPolicy === 0) return true;
-  if (!score) return false;
-  const proven = score.distinctBuyers >= PROVEN_MIN_REVIEWS;
-  if (claimPolicy === 1) return proven;
-  if (claimPolicy === 2) {
-    return proven && score.starsSum * 10 >= score.reviewCount * PROVEN_MIN_AVG_STARS_X10;
-  }
-  return false;
-}
-
-/** Human label for a claim policy — every surface uses these, never the
- *  raw enum. */
-export function claimPolicyLabel(claimPolicy: number): string {
-  if (claimPolicy === 0) return 'Anyone';
-  if (claimPolicy === 1) return 'Proven';
-  if (claimPolicy === 2) return 'Proven · 4★+';
-  return `Unknown policy ${claimPolicy}`;
-}
-
-/** One English sentence for a Proven refusal — CLI/MCP/prepare all reuse
- *  this instead of surfacing a raw Move abort. */
-export function claimPolicyRequirement(claimPolicy: number): string {
-  if (claimPolicy === 1) {
-    return `Claiming needs Established — reviews from at least ${PROVEN_MIN_REVIEWS} distinct buyers.`;
-  }
-  if (claimPolicy === 2) {
-    return `Claiming needs Top rated — reviews from at least ${PROVEN_MIN_REVIEWS} distinct buyers and a 4.0★ average.`;
-  }
-  return 'Anyone can claim (active Agent ID required).';
-}
-
 // === Seller levels (S.1192) — mirror the Move predicates exactly ===
 
 /** Computed Level 1..4 from on-chain aggregates (`null` score = Level 1,
@@ -318,35 +283,33 @@ export function trustRequirementLabel(minSellerLevel: number): string {
   return `Unknown requirement (${minSellerLevel})`;
 }
 
-/** The ONE requirement chip for an opening's combined gates. Legacy
- *  `claimPolicy` 1/2 (pre-S.1209 posts) map onto the tier ladder —
- *  policy 1 shares Established's distinct-buyer floor, policy 2 adds
- *  Top rated's 4.0★ average. The board is cleared pre-launch, so the
- *  legacy arms should be unreachable — kept for stray reads. */
+/** The ONE requirement chip for an opening — the tier floor is the only
+ *  live gate (S.1212: the board verified straggler-free, so the legacy
+ *  `claimPolicy` mapping arms are gone; the key is tolerated and ignored
+ *  for callers still passing whole rows). */
 export function trustRequirementFromOpening(opening: {
+  /** @deprecated S.1212 — ignored; the frozen on-chain field is 0 on
+   *  every claimable row. */
   claimPolicy?: number;
   minSellerLevel?: number;
 }): string {
-  const minLevel = opening.minSellerLevel ?? 0;
-  if (minLevel >= 2) return trustRequirementLabel(minLevel);
-  const policy = opening.claimPolicy ?? 0;
-  if (policy === 1) return 'Established';
-  if (policy === 2) return 'Top rated';
-  return 'Open';
+  return trustRequirementLabel(opening.minSellerLevel ?? 0);
 }
 
-/** English preflight for a claim (S.1192) — refuse BEFORE the sponsored
- *  rail instead of surfacing a raw Move abort. Checks, in gate order:
- *  claim policy (S.1054), the active-job cap on the claimer's effective
- *  level, then the opening's level floor. Capacity language, not ban
- *  language — a capped seller finishes work and claims again. */
+/** English preflight for a claim (S.1192 · S.1212) — refuse BEFORE the
+ *  sponsored rail instead of surfacing a raw Move abort. Checks, in gate
+ *  order: the active-job cap on the claimer's effective tier, then the
+ *  opening's tier floor (the legacy claim-policy branch left with the
+ *  straggler-free board — S.1212). Capacity language, not ban language —
+ *  a capped seller delivers work and claims again. */
 export function preflightClaimOpening(
   score: AgentScore | null,
-  opening: { claimPolicy: number; minSellerLevel?: number },
+  opening: {
+    /** @deprecated S.1212 — ignored (0 on every claimable row). */
+    claimPolicy?: number;
+    minSellerLevel?: number;
+  },
 ): { valid: boolean; error?: string } {
-  if (!meetsClaimPolicy(score, opening.claimPolicy)) {
-    return { valid: false, error: claimPolicyRequirement(opening.claimPolicy) };
-  }
   const level = effectiveSellerLevel(score);
   const cap = activeCapForLevel(level);
   const active = score?.activeSellerJobs ?? 0;

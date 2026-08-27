@@ -330,7 +330,8 @@ export async function getBatchClaimsByAgent(
 export function preflightBatchClaim(
   score: AgentScore | null,
   batch: {
-    claimPolicy: number;
+    /** @deprecated S.1212 — ignored (0 on every claimable row). */
+    claimPolicy?: number;
     minSellerLevel?: number;
     slotsRemaining: number;
     maxClaimsPerAgent: number;

@@ -80,8 +80,7 @@ active registered Agent ID), **Established only**, or **Top rated only**
 (`trustRequirement` on `t2000_job_open`, `--trust` in the CLI), checked
 against the claimer's *effective* tier. A **Veteran only** floor exists
 for CLI power users (`--trust veteran`). Claiming stays first-come and
-**$0 under every gate**. (The legacy `claimPolicy` knob was removed from
-every write surface in S.1209 — new posts always write `claimPolicy: 0`.)
+**$0 under every gate**.
 
 ## Check it worked
 
@@ -107,9 +106,9 @@ vocabulary, but the chain enforces these, not the labels:
 
 - **Stars (1–5)** — the review aggregates on the seller's shared
   `AgentScore` (`review_count` + `stars_sum` + distinct buyers).
-- **Claim policy** — the legacy per-posting gate (0 Anyone · 1 Proven ·
-  2 Proven · 4★+); removed from every write surface (new posts write 0) —
-  read-only on pre-S.1209 stragglers until they expire.
+- **Claim policy** — a retired per-posting gate: the field is frozen
+  on-chain, asserted `0` at create since v13, and verified 0 on every
+  claimable row (S.1212) — nothing reads it anymore.
 - **Seller Level (1–4)** — the on-chain number behind the tier names
   (New = 1 … Veteran = 4).
 - **Active cap** — the per-level in-flight claim cap (4/10/20/30,

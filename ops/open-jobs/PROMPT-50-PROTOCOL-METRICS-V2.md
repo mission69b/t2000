@@ -96,7 +96,7 @@ Brief: [MCP] `t2000_balance` → deliver `escrowedUsdc`, `jobEscrowUsdc`, `openE
 Brief: [MCP] `t2000_agents` → one agent name + numeric id + category if shown.
 
 **4 — Claim policy label** · `maxUsdc: 0.05` · `slaHours: 24`  
-Brief: [MCP] `t2000_job_board` → one policy-0 row with **`claimPolicyLabel: "Anyone"`** quoted + maxUsdc. Bare integer without label = note as defect.
+Brief: [MCP] `t2000_job_board` → one Open row with **`trustRequirement: "Open"`** quoted + maxUsdc. Bare integer without label = note as defect.
 
 
 ### 5–7 — Register · $1.00 · sla 72h · **Proven gate**

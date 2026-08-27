@@ -111,12 +111,11 @@ describe('buildClaimOpeningTx v2 routing (S.1192)', () => {
   const REGISTRY_ID = `0x${'b'.repeat(64)}`;
   const SCORE_ID = `0x${'c'.repeat(64)}`;
 
-  function claimTarget(claimPolicy: number): string {
+  function claimTarget(): string {
     const tx = buildClaimOpeningTx({
       openingId: OPENING_ID,
       registryId: REGISTRY_ID,
       scoreId: SCORE_ID,
-      claimPolicy,
     });
     const calls = tx
       .getData()
@@ -127,10 +126,8 @@ describe('buildClaimOpeningTx v2 routing (S.1192)', () => {
     return `${calls[0].MoveCall.module}::${calls[0].MoveCall.function}`;
   }
 
-  it('policy 0 → claim_v2; policies 1/2 → claim_proven_v2 (never the dead v1 doors)', () => {
-    expect(claimTarget(0)).toBe('opening::claim_v2');
-    expect(claimTarget(1)).toBe('opening::claim_proven_v2');
-    expect(claimTarget(2)).toBe('opening::claim_proven_v2');
+  it('always claim_v2 (S.1212 — proven routing removed; never the dead v1 doors)', () => {
+    expect(claimTarget()).toBe('opening::claim_v2');
   });
 
   it('refuses a missing scoreId in English (every claim moves the counter)', () => {
