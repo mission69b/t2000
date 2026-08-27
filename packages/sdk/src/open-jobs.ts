@@ -194,10 +194,45 @@ async function sponsoredOpeningVerb(
   // Host pin (S.930): a hook installed by the host app gets to refuse before
   // the wallet address reaches an untrusted builder.
   runSponsoredTxGuard({ base, action });
-  const prep = await fetchJson(`${base}/job/prepare`, {
-    method: 'POST',
-    body: { address, action, params },
-  });
+  const prepare = () =>
+    fetchJson(`${base}/job/prepare`, {
+      method: 'POST',
+      body: { address, action, params },
+    });
+  // S.1063 / S.1217: some verbs need a PRECURSOR tx first — a scoreless
+  // seller's first claim lazily creates their zero AgentScore, and a shared
+  // object can't be created and consumed in one tx. The server flags it
+  // (`precursor`); sign+submit that hop and RE-PREPARE the real verb, so
+  // one call always finishes the claim (dogfood #364/#370: without this
+  // loop the first claim returned the score-init digest as if it were the
+  // claim — "Claimed" with an empty inbox, and only a second identical
+  // claim minted the job). Bounded, same 3-hop contract as the CLI's
+  // runSponsoredTx and @audric/marketplace's sponsoredJobVerb; every
+  // hop's bytes pass the same guard before signing.
+  let prep = await prepare();
+  let hops = 0;
+  while (prep.precursor && hops < 3) {
+    hops += 1;
+    await signPreparedSponsoredHop(base, signer, action, prep);
+    prep = await prepare();
+  }
+  if (prep.precursor) {
+    throw new Error(
+      'Agent score initialization incomplete — retry the claim.',
+    );
+  }
+  return await signPreparedSponsoredHop(base, signer, action, prep);
+}
+
+/** One sponsored hop: guard the bytes, sign, submit — shared by the
+ *  precursor loop and the final verb so every hop passes the SAME S.930
+ *  intent gate. Returns the hop's digest. */
+async function signPreparedSponsoredHop(
+  base: string,
+  signer: TransactionSigner,
+  action: string,
+  prep: Record<string, unknown>,
+): Promise<string> {
   const nonce = prep.nonce as string | undefined;
   const txBytes = prep.txBytes as string | undefined;
   if (!(nonce && txBytes)) {
@@ -208,7 +243,7 @@ async function sponsoredOpeningVerb(
   const { signature } = await signer.signTransaction(fromBase64(txBytes));
   const json = await fetchJson(`${base}/job/submit`, {
     method: 'POST',
-    body: { nonce, address, signature },
+    body: { nonce, address: signer.getAddress(), signature },
   });
   const digest = json.digest as string | undefined;
   if (!digest) {

@@ -239,3 +239,97 @@ describe('on-chain verbs — prepare → sign → submit (sponsored rail)', () =
     ).rejects.toThrow(/did not go through/i);
   });
 });
+
+describe('S.1217 — first-claim precursor loop (S.1063 lazy score create)', () => {
+  const TX = Buffer.from('sponsored-tx').toString('base64');
+  const PRECURSOR_TX = Buffer.from('score-init-tx').toString('base64');
+
+  it('precursor prepare → hop signs+submits → re-prepare → CLAIM digest returned', async () => {
+    const signer = stubSigner();
+    const calls = mockFetchQueue([
+      // prepare 1: the score-init precursor
+      {
+        json: {
+          nonce: 'n-pre',
+          txBytes: PRECURSOR_TX,
+          precursor: `score-init:${ADDRESS}`,
+        },
+      },
+      // submit the precursor hop
+      { json: { digest: 'DIGEST-SCORE-INIT' } },
+      // prepare 2: the real claim
+      { json: { nonce: 'n-claim', txBytes: TX } },
+      // submit the claim
+      { json: { digest: 'DIGEST-CLAIM' } },
+    ]);
+    await expect(claimOpenJob(BASE, signer, OPENING_ID)).resolves.toBe(
+      'DIGEST-CLAIM',
+    );
+    // Both hops signed; the returned digest is the CLAIM's, never the
+    // precursor's (the dogfood false-success).
+    expect(signer.signedTxBytes.length).toBe(2);
+    expect(new TextDecoder().decode(signer.signedTxBytes[0])).toBe(
+      'score-init-tx',
+    );
+    expect(new TextDecoder().decode(signer.signedTxBytes[1])).toBe(
+      'sponsored-tx',
+    );
+    expect(calls.map((c) => c.url)).toEqual([
+      `${BASE}/job/prepare`,
+      `${BASE}/job/submit`,
+      `${BASE}/job/prepare`,
+      `${BASE}/job/submit`,
+    ]);
+    // The re-prepare carries the SAME action + params.
+    expect(calls[2]?.body).toMatchObject({
+      action: 'open-claim',
+      params: { openingId: OPENING_ID },
+    });
+  });
+
+  it('batch-open-claim rides the same loop', async () => {
+    const signer = stubSigner();
+    const calls = mockFetchQueue([
+      { json: { nonce: 'n-pre', txBytes: PRECURSOR_TX, precursor: 'score-init:x' } },
+      { json: { digest: 'D1' } },
+      { json: { nonce: 'n-claim', txBytes: TX } },
+      { json: { digest: 'D-BATCH-CLAIM' } },
+    ]);
+    const { claimBatchOpenJob } = await import('./open-jobs.js');
+    await expect(claimBatchOpenJob(BASE, signer, OPENING_ID)).resolves.toBe(
+      'D-BATCH-CLAIM',
+    );
+    expect(calls[2]?.body).toMatchObject({ action: 'batch-open-claim' });
+  });
+
+  it('loop exhausts on a stuck precursor → explicit throw, never a false digest', async () => {
+    const stuck = {
+      json: { nonce: 'n', txBytes: PRECURSOR_TX, precursor: 'score-init:x' },
+    };
+    mockFetchQueue([
+      stuck,
+      { json: { digest: 'D1' } },
+      stuck,
+      { json: { digest: 'D2' } },
+      stuck,
+      { json: { digest: 'D3' } },
+      stuck,
+    ]);
+    await expect(claimOpenJob(BASE, stubSigner(), OPENING_ID)).rejects.toThrow(
+      /score initialization incomplete/i,
+    );
+  });
+
+  it('single-shot claim (score exists) is unchanged — one prepare, one submit', async () => {
+    const signer = stubSigner();
+    const calls = mockFetchQueue([
+      { json: { nonce: 'n-2', txBytes: TX } },
+      { json: { digest: 'DIGEST2' } },
+    ]);
+    await expect(claimOpenJob(BASE, signer, OPENING_ID)).resolves.toBe(
+      'DIGEST2',
+    );
+    expect(calls.length).toBe(2);
+    expect(signer.signedTxBytes.length).toBe(1);
+  });
+});

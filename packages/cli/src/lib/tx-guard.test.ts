@@ -660,3 +660,35 @@ describe('B — Agent ID registry verbs (S.1049)', () => {
     awaited.setActive = await REGISTRY('set_active');
   });
 });
+
+// S.1217 — the scoreless first-claim precursor, derived from the REAL SDK
+// builder (buildCreateEmptyScoreTx), not a retyped target string: if the
+// builder ever retargets (package upgrade, module move), this catches the
+// allowlist drift that would refuse a brand-new seller's first `t2 job
+// claim` / batch claim mid-loop (dogfood #370).
+describe('S.1217 — real create_empty_score precursor bytes pass the claim intents', () => {
+  it('buildCreateEmptyScoreTx target is accepted for open-claim AND batch-open-claim', async () => {
+    const { buildCreateEmptyScoreTx } = await import('@t2000/sdk');
+    const real = buildCreateEmptyScoreTx({
+      agent: SENDER,
+      boardId: `0x${'3'.repeat(64)}`,
+    });
+    const call = real
+      .getData()
+      .commands.find((c) => c.$kind === 'MoveCall')?.MoveCall;
+    expect(call).toBeTruthy();
+    if (!call) return;
+    expect(`${call.module}::${call.function}`).toBe(
+      'reputation::create_empty_score',
+    );
+    const b64 = await buildTxB64(
+      `${call.package}::${call.module}::${call.function}`,
+    );
+    expect(() =>
+      assertTxMatchesIntent(b64, { action: 'open-claim' }),
+    ).not.toThrow();
+    expect(() =>
+      assertTxMatchesIntent(b64, { action: 'batch-open-claim' }),
+    ).not.toThrow();
+  });
+});
