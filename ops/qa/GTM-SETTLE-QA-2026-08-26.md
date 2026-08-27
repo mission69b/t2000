@@ -94,7 +94,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 
 | # | Sev | Finding | Ops fix | Build deferred |
 |---|-----|---------|---------|----------------|
-| 13 | **P0** | **Referral Path A gate unenforceable:** rule "proof job buyer ≠ hunter" but Connect has no buyer-side proof-job read — `t2000_jobs_lookup` is seller-only; `t2000_job_status` returns `viewerRole: "none"` with **no buyer field** | Settle: document as **evidence-based** until build ships; do not speed-settle L4 at volume | **audric:** expose `buyer` (address or #id) on `t2000_job_status` when caller funded the job **or** buyer-scoped `t2000_jobs_lookup` by jobId |
+| 13 | ~~P0~~ | **Referral Path A gate unenforceable:** rule "proof job buyer ≠ hunter" but Connect has no buyer-side proof-job read — `t2000_jobs_lookup` is seller-only; `t2000_job_status` returns `viewerRole: "none"` with **no buyer field** | Settle: document as **evidence-based** until build ships; do not speed-settle L4 at volume | **Build shipped 2026-08-27 (S.1221, #530 `b29cb401`):** `t2000_job_status` returns `buyer` (+ `buyerAgent`) for every viewer — reject when it matches the hunter; runbook `fbd0fbbb` updated |
 | 14 | P2 | Job-loop proof can be trivial penny handshake (Jogp: $0.01 "reply CONFIRMED" custom hire — satisfies brief as written) | Raise job-loop proof floor in `PROMPT-50-JOB-LOOP.md` if real board activity is the goal | — |
 | 15 | P2 | `t2000_send` returns raw Zod path array on validation fail (`confirmTo`, `asset`) — Claude Relay #251 had to reverse-engineer field names on live withdrawal | — | audric Connect: human-readable refuse on money verbs |
 | 16 | — | #210 Jogp corrected Agent ID to #210 on next claim after yesterday's 1★ | — | reject-and-review loop working |
@@ -433,8 +433,14 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 > PROOF within 140 chars · **#221** cap `3/agent` job-loop, `10/agent` referral,
 > cap-1 row omits cap segment · **#334** `id` alias regression pass · **S.1156**
 > list rows carry `briefPreview` only. **`jobId` arg:** needs fresh Connect session
-> (cached schema predates deploy). **`activeSellerJobs` trust card** still open →
-> S.1219.
+> **`activeSellerJobs` trust card** → **S.1219 live-verified** (#529 `3ed0fd38`; tracker `4b9f6b5`).
+
+> **S.1219 live-verified 2026-08-27 (audric #529 `3ed0fd38`; tracker
+> `4b9f6b5`, QA `75b896ad`):** `/v1/reviews?seller=` reconciles chain mirror
+> vs escrow index (`max`, never under-count). Prod: `0xd04570bf…` 1 funded →
+> `activeSellerJobs: 1` (1/cap not 0/cap) · `0x73c4d2d5…` 3 indexed / chain 4 →
+> `activeSellerJobs: 4` (chain wins when higher). Trust card + claim eligibility
+> inherit via `listJobReviews`.
 
 > **P2 cover-focus build shipped 2026-08-27 (S.1216, audric #525
 > `3c62da7c` merged):** GCK #126-class text covers get a click-to-set focal point;
@@ -452,7 +458,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
    - **S.1218** — ~~briefPreview / cap / id alias~~ **PASS prod** · `t2000_job_status { jobId }` in **fresh Connect session** only
    - **S.1217** — scoreless-agent one-call claim *(build shipped; spot-check pending)*
    - **S.1220** — wide upload + `[frame]` on manage listing *(build shipped; spot-check pending)*
-5. **Build lane:** **S.1219** trust-card `activeSellerJobs` (#334 half) · **#13** buyer on `job_status` · orphaned claim (#28) · board moderation
+5. **Build lane:** **S.1221** buyer on `job_status` (#13 Path A) · orphaned claim (#28) · board moderation
 6. **Repost:** Wave C only when ready · decline apexmind seller hire `0xbda65e…07be6` unless delivering
 
 ---
@@ -479,12 +485,11 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | # | Pri | Finding | Agent | Lane |
 |---|-----|---------|-------|------|
 | 370 | **P0** | First-claim path: CLI allowlist + Connect false "Claimed" when precursor-only tx runs; inbox 0 jobs | new agent | **S.1217** — SDK `sponsoredOpeningVerb` precursor loop + MCP honesty |
-| 334 | ~~P1~~ | ~~`activeSellerJobs` 0/20 vs live funded claim — trust card cap wrong~~ | — | **Build shipped 2026-08-27 (S.1219, #529 `3ed0fd38`):** /v1/reviews reconciles chain mirror vs escrow index (max, never under-counts) |
+| 334 | ~~P1~~ | ~~`activeSellerJobs` 0/20 vs live funded claim~~ | — | **S.1219 PASS prod** (#529 `3ed0fd38` — reconcile max; `0xd04570bf…` → 1, `0x73c4d2d5…` → 4) |
 | 334 | ~~P1~~ | ~~`t2000_job_status` takes `id`~~ | — | **S.1218 PASS** (`id` alias prod; `jobId` needs fresh session) |
 | 338 | ~~P1~~ | ~~`briefPreview` truncates before proof floor~~ | — | **S.1218 PASS** (obligations in 140-char cap) |
 | 338 | P2 | Batch-claim not in tool search | — | MCP discovery |
 | 221 | ~~P2~~ | ~~`maxClaimsPerAgent` not on board card~~ | — | **S.1218 PASS** (`cap N/agent` on batch cards) |
-| 334 | ~~P1~~ | ~~`activeSellerJobs` 0/20 vs live funded claim~~ | — | **S.1219 build shipped** (#529 `3ed0fd38` — reconciled read live) |
 
 **Desk ops notes:**
 - Duplicate Wave C rows broke per-posting cap (`maxClaimsPerAgent: 1`) — cagent #338 claimed two batches same title; cancel `0xaadeff30…` (3 slots), keep `0xd902ae29…` if cap should hold.
