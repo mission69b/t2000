@@ -31,11 +31,15 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v12 upgrade
- *  2026-08-26, S.1202 — batch ACTIVE per-wave claims + batch-aware settle,
- *  FeeConfig VERSION 6→7 cutover with immediate migrate: origin-stamped
- *  batch Jobs settle via `batch::batch_release`/`batch_reject*`/
- *  `batch_refund`, and every v11-and-earlier entry aborts EWrongVersion;
+/** The LATEST published `a2a_escrow` package id on MAINNET (v13 upgrade
+ *  2026-08-27, S.1210 — active cap frees on DELIVER, FeeConfig VERSION
+ *  7→8 cutover with immediate migrate: claimed jobs deliver via
+ *  `reputation::deliver_v2` / `batch::deliver_v2` (seller score attached,
+ *  wave hold frees too), Level 4 review floor 20→10, and creates assert
+ *  `claim_policy == 0`; upgrade digest dTTnC1VJ…, migrate 5G5ewRLV…;
+ *  v12 = S.1202 — batch ACTIVE per-wave claims + batch-aware settle,
+ *  FeeConfig VERSION 6→7: origin-stamped batch Jobs settle via
+ *  `batch::batch_release`/`batch_reject*`/`batch_refund`;
  *  v11 = S.1193 — batch openings, additive, NO migrate:
  *  `batch` module + `set_max_batch_slots`;
  *  v10 = S.1192 seller levels + active caps, VERSION 6 cutover:
@@ -54,7 +58,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x1f88ca77b1980e3d0750e83d1363c6025cd677c2f420cae51a86d4a0bddf93c5';
+  '0x912b6fe2a5913fb2a3848480c6a84dce777a10bc8bd5d24efde741a81ef8b5c4';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
@@ -131,6 +135,14 @@ export const A2A_ESCROW_PACKAGE_V11_ID =
 export const A2A_ESCROW_PACKAGE_V12_ID =
   process.env.A2A_ESCROW_PACKAGE_V12_ID ??
   '0x1f88ca77b1980e3d0750e83d1363c6025cd677c2f420cae51a86d4a0bddf93c5';
+/** v13 (S.1210, upgrade dTTnC1VJ… 2026-08-27) — defining id for the
+ *  cap-frees-on-deliver surface: the `ActiveFreedKey` DF key type and the
+ *  `deliver_v2` entries. No new EVENT families (ActiveSellerJobsChanged
+ *  keeps its V10 defining id). A DEFINING-id anchor like V2…V12 — never
+ *  moves again, even when LATEST does. */
+export const A2A_ESCROW_PACKAGE_V13_ID =
+  process.env.A2A_ESCROW_PACKAGE_V13_ID ??
+  '0x912b6fe2a5913fb2a3848480c6a84dce777a10bc8bd5d24efde741a81ef8b5c4';
 
 const CLOCK_ID = '0x6';
 const MODULE = 'opening';

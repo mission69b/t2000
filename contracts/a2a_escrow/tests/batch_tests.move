@@ -109,7 +109,9 @@ fun post_batch_with(
     ts::next_tx(sc, BUYER);
     let cfg = ts::take_shared<FeeConfig>(sc);
     let coin = coin::mint_for_testing<SUI>(payment, ts::ctx(sc));
-    let id = batch::create_batch_open<SUI>(
+    // S.1210: v13 creates assert policy == 0 — gated fixtures ride the
+    // test-only legacy door (mainnet stragglers still claim this way).
+    let id = batch::create_batch_open_legacy_for_testing<SUI>(
         coin,
         slots,
         b"wave-spec-hash",
@@ -1008,5 +1010,109 @@ fun buyer_cannot_claim_own_batch() {
     clk.set_for_testing(10_000);
     register_agent(&mut sc, &clk, BUYER);
     claim_as(&mut sc, BUYER, &clk);
+    abort 0
+}
+
+// === S.1210 (v13) — wave hold + global seat free on DELIVER ===
+
+/// Deliver a batch-origin Job through `batch::deliver_v2` as `who`.
+fun batch_deliver_as(
+    sc: &mut ts::Scenario,
+    who: address,
+    clk: &Clock,
+    batch_id: ID,
+    job_id: ID,
+) {
+    ts::next_tx(sc, who);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let mut b = ts::take_shared_by_id<BatchOpening<SUI>>(sc, batch_id);
+    let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
+    let mut score = take_score(sc, who);
+    batch::deliver_v2(&mut b, &mut job, &mut score, b"delivery", &cfg, clk, ts::ctx(sc));
+    ts::return_shared(score);
+    ts::return_shared(job);
+    ts::return_shared(b);
+    ts::return_shared(cfg);
+}
+
+#[test]
+fun deliver_frees_wave_hold_and_seat_so_same_wave_reclaims() {
+    let (mut sc, clk) = setup();
+    // maxClaimsPerAgent 1 — the Basecamp shape: pre-v13 this blocked
+    // re-claim until the BUYER settled.
+    let bid = post_batch_with(&mut sc, &clk, SLOT_AMOUNT * 2, 2, 0, 0, 1);
+    let job1 = claim_from(&mut sc, SELLER, &clk, bid);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 0);
+    // Deliver → BOTH counters free the moment the work ships.
+    batch_deliver_as(&mut sc, SELLER, &clk, bid, job1);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 0, 1);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let score = take_score(&mut sc, SELLER);
+        let job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+        assert!(reputation::active_seller_jobs(&score) == 0, 2);
+        assert!(escrow::is_active_freed(&job), 3);
+        assert!(escrow::is_batch_hold_released(&job), 4);
+        ts::return_shared(job);
+        ts::return_shared(score);
+    };
+    // The SAME wave is claimable again immediately — no buyer settle.
+    let job2 = claim_from(&mut sc, SELLER, &clk, bid);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 5);
+    // Settling the delivered job double-frees NOTHING: the second job's
+    // hold survives and the global counter stays at the second claim.
+    batch_release_as(&mut sc, BUYER, &clk, bid, job1, SELLER);
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 6);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let score = take_score(&mut sc, SELLER);
+        assert!(reputation::active_seller_jobs(&score) == 1, 7);
+        ts::return_shared(score);
+    };
+    let _ = job2;
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EUseBatchDeliver)]
+fun bare_deliver_v2_refuses_batch_origin_job() {
+    let (mut sc, clk) = setup();
+    let bid = post_batch_with(&mut sc, &clk, SLOT_AMOUNT * 2, 2, 0, 0, 1);
+    let job1 = claim_from(&mut sc, SELLER, &clk, bid);
+    // The NON-batch deliver door must route wave slots to batch::deliver_v2
+    // (which frees the per-wave hold in the same tx).
+    ts::next_tx(&mut sc, SELLER);
+    let cfg = ts::take_shared<FeeConfig>(&sc);
+    let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
+    let mut score = take_score(&mut sc, SELLER);
+    reputation::deliver_v2(&mut job, &mut score, b"delivery", &cfg, &clk, ts::ctx(&mut sc));
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = batch::EBadClaimPolicy)]
+fun create_batch_open_rejects_proven_policy() {
+    // S.1210 hardening: a direct chain call posting claim_policy > 0
+    // aborts at create (trustRequirement → min_seller_level is the gate).
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, BUYER);
+    let cfg = ts::take_shared<FeeConfig>(&sc);
+    let coin = coin::mint_for_testing<SUI>(SLOT_AMOUNT * 2, ts::ctx(&mut sc));
+    batch::create_batch_open<SUI>(
+        coin,
+        2,
+        b"wave-spec-hash",
+        OPEN_UNTIL,
+        SLA_MS,
+        REVIEW_WINDOW,
+        SPLIT_BPS,
+        1, // legacy Proven — refused on v13
+        0,
+        1,
+        &cfg,
+        &clk,
+        ts::ctx(&mut sc),
+    );
     abort 0
 }

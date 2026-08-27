@@ -233,10 +233,75 @@ public fun create_open_v2<T>(
     ctx: &mut TxContext,
 ): ID {
     escrow::assert_version_pkg(cfg);
-    // S.1054: 0 (Anyone) stays the default; 1/2 (Proven) are live; 3+
-    // still aborts until a later SPEC defines them (min_seller_level is
-    // the level floor — NEVER a claim_policy 3+).
+    // S.1210 hardening: the product's one gate is `min_seller_level`
+    // (trustRequirement, S.1209) — new posts must use claim_policy 0.
+    // Legacy Proven openings stay claimable via `claim_proven_v2`; only
+    // creates are asserted.
+    assert!(claim_policy == CLAIM_POLICY_ANY_ACTIVE, EBadClaimPolicy);
+    do_create_open(
+        payment,
+        spec_hash,
+        open_until_ms,
+        sla_ms,
+        review_window_ms,
+        reject_split_bps,
+        claim_policy,
+        min_seller_level,
+        cfg,
+        clock,
+        ctx,
+    )
+}
+
+#[test_only]
+/// Test-only mirror of a PRE-v13 gated opening (`claim_policy` 1/2) —
+/// mainnet may still carry such stragglers, and `claim_proven_v2` must
+/// stay tested even though v13 creates assert `claim_policy == 0`.
+public fun create_open_legacy_for_testing<T>(
+    payment: Coin<T>,
+    spec_hash: vector<u8>,
+    open_until_ms: u64,
+    sla_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    claim_policy: u8,
+    min_seller_level: u8,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    escrow::assert_version_pkg(cfg);
     assert!(claim_policy <= CLAIM_POLICY_MIN_AVG, EBadClaimPolicy);
+    do_create_open(
+        payment,
+        spec_hash,
+        open_until_ms,
+        sla_ms,
+        review_window_ms,
+        reject_split_bps,
+        claim_policy,
+        min_seller_level,
+        cfg,
+        clock,
+        ctx,
+    )
+}
+
+/// The shared create body — version + policy already asserted by the
+/// public doors above.
+fun do_create_open<T>(
+    payment: Coin<T>,
+    spec_hash: vector<u8>,
+    open_until_ms: u64,
+    sla_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    claim_policy: u8,
+    min_seller_level: u8,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
     assert!(min_seller_level <= 4, EBadMinSellerLevel);
     let amount = payment.value();
     assert!(amount > 0, EZeroAmount);

@@ -9,6 +9,8 @@ Do not ask what to do with the text. Pre-flight → **load queue** → **route e
 
 **Post new openings:** `PROMPT-GTM-DESK.md` · **Activity waves:** `PROMPT-WAVE-ACTIVITY.md` · **Job-loop:** `PROMPT-50-JOB-LOOP.md` · **Optional metrics:** `PROMPT-50-PROTOCOL-METRICS.md` / `V2` · **Alt seed:** `PROMPT-50-MICRO-ACTIVITY-JOBS.md`
 
+**Settle latency ≠ seller throughput (S.1210):** a seller's cap seat frees at **deliver**, not settle — a slow settle queue no longer blocks hunters. Settle still matters exactly as much: it is the **payment** (release moves the money) and the **review receipt** (only settled, delivered jobs can be rated) — clear the queue for those, not for capacity.
+
 **Batch / jobId (S.1193 / S.1197):** every settle/reject/deliver/review takes a **job** object id. Never pass a batchId. Batch-claimed jobs are normal Jobs — settle them like any other Open. If claim returned `jobIdPending`, resolve before acting.
 
 **NEVER bare inbox:** On mature seats, do **not** call `t2000_jobs` without **`needsOnly: true` AND `role: "buyer"`** for settle work — a no-role call can return **`needsActionTotal > 0` with an empty `jobs[]`** (counter and rows diverge; dogfood 2026-08-26 follow-up). Posting inventory uses the same buyer scope → `openings[]` only (`PROMPT-GTM-DESK.md` §A). Seller deliverables: separate call with `role: "seller"` · `needsOnly: true` after the buyer queue is clear.

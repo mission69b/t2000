@@ -236,11 +236,85 @@ public fun create_batch_open<T>(
     ctx: &mut TxContext,
 ): ID {
     escrow::assert_version_pkg(cfg);
+    // S.1210 hardening: the product's one gate is `min_seller_level`
+    // (trustRequirement, S.1209) — new waves must post claim_policy 0;
+    // legacy Proven policies survive read-only on pre-v13 objects.
+    assert!(claim_policy == CLAIM_POLICY_ANY_ACTIVE, EBadClaimPolicy);
+    do_create_batch_open(
+        payment,
+        slots_total,
+        spec_hash,
+        open_until_ms,
+        sla_ms,
+        review_window_ms,
+        reject_split_bps,
+        claim_policy,
+        min_seller_level,
+        max_claims_per_agent,
+        cfg,
+        clock,
+        ctx,
+    )
+}
+
+#[test_only]
+/// Test-only mirror of a PRE-v13 gated wave (`claim_policy` 1/2) —
+/// keeps the legacy-policy claim gates tested even though v13 creates
+/// assert `claim_policy == 0`.
+public fun create_batch_open_legacy_for_testing<T>(
+    payment: Coin<T>,
+    slots_total: u64,
+    spec_hash: vector<u8>,
+    open_until_ms: u64,
+    sla_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    claim_policy: u8,
+    min_seller_level: u8,
+    max_claims_per_agent: u8,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    escrow::assert_version_pkg(cfg);
+    assert!(claim_policy <= CLAIM_POLICY_MIN_AVG, EBadClaimPolicy);
+    do_create_batch_open(
+        payment,
+        slots_total,
+        spec_hash,
+        open_until_ms,
+        sla_ms,
+        review_window_ms,
+        reject_split_bps,
+        claim_policy,
+        min_seller_level,
+        max_claims_per_agent,
+        cfg,
+        clock,
+        ctx,
+    )
+}
+
+/// The shared create body — version + policy already asserted above.
+fun do_create_batch_open<T>(
+    payment: Coin<T>,
+    slots_total: u64,
+    spec_hash: vector<u8>,
+    open_until_ms: u64,
+    sla_ms: u64,
+    review_window_ms: u64,
+    reject_split_bps: u64,
+    claim_policy: u8,
+    min_seller_level: u8,
+    max_claims_per_agent: u8,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
     assert!(
         slots_total >= 1 && slots_total <= escrow::config_max_batch_slots(cfg),
         EBadSlots,
     );
-    assert!(claim_policy <= CLAIM_POLICY_MIN_AVG, EBadClaimPolicy);
     assert!(min_seller_level <= 4, EBadMinSellerLevel);
     assert!(max_claims_per_agent >= 1, EBadMaxClaims);
     let total = payment.value();
@@ -429,10 +503,15 @@ public fun batch_release<T>(
     assert!(reputation::agent(seller_score) == escrow::seller(job), EWrongSellerScore);
     escrow::release_settle_pkg(job, cfg, clock, ctx);
     let now = clock.timestamp_ms();
-    if (escrow::is_claimed_job(job)) {
+    // S.1210: skip when deliver already freed the seat (marker present).
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         reputation::decrement_active(seller_score, object::id(job), now);
     };
-    free_wave_hold(batch, job, now);
+    // S.1210: on v13 the wave hold freed at deliver — free here only
+    // for goodwill-FUNDED releases, refunds, and pre-v13 stragglers.
+    if (!escrow::is_batch_hold_released(job)) {
+        free_wave_hold(batch, job, now);
+    };
 }
 
 /// Buyer rejects delivered batch work — PASSPORT (unregistered) buyer
@@ -455,10 +534,15 @@ public fun batch_reject<T>(
     let now = clock.timestamp_ms();
     let job_id = object::id(job);
     reputation::record_rejected_after_delivery_pkg(seller_score, job_id, now);
-    if (escrow::is_claimed_job(job)) {
+    // S.1210: skip when deliver already freed the seat (marker present).
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         reputation::decrement_active(seller_score, job_id, now);
     };
-    free_wave_hold(batch, job, now);
+    // S.1210: on v13 the wave hold freed at deliver — free here only
+    // for goodwill-FUNDED releases, refunds, and pre-v13 stragglers.
+    if (!escrow::is_batch_hold_released(job)) {
+        free_wave_hold(batch, job, now);
+    };
 }
 
 /// Buyer rejects delivered batch work — AGENT-ID buyer variant: same as
@@ -485,10 +569,15 @@ public fun batch_reject_agent_buyer<T>(
     let job_id = object::id(job);
     reputation::record_rejected_after_delivery_pkg(seller_score, job_id, now);
     reputation::record_as_buyer_rejected_pkg(buyer_score, job_id, now);
-    if (escrow::is_claimed_job(job)) {
+    // S.1210: skip when deliver already freed the seat (marker present).
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         reputation::decrement_active(seller_score, job_id, now);
     };
-    free_wave_hold(batch, job, now);
+    // S.1210: on v13 the wave hold freed at deliver — free here only
+    // for goodwill-FUNDED releases, refunds, and pre-v13 stragglers.
+    if (!escrow::is_batch_hold_released(job)) {
+        free_wave_hold(batch, job, now);
+    };
 }
 
 /// Deadline refund (no delivery) of a batch-origin Job — permissionless
@@ -509,9 +598,37 @@ public fun batch_refund<T>(
     let now = clock.timestamp_ms();
     let job_id = object::id(job);
     reputation::record_no_delivery_pkg(seller_score, job_id, now);
-    if (escrow::is_claimed_job(job)) {
+    // S.1210: skip when deliver already freed the seat (marker present).
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         reputation::decrement_active(seller_score, job_id, now);
     };
+    // S.1210: on v13 the wave hold freed at deliver — free here only
+    // for goodwill-FUNDED releases, refunds, and pre-v13 stragglers.
+    if (!escrow::is_batch_hold_released(job)) {
+        free_wave_hold(batch, job, now);
+    };
+}
+
+/// Deliver a batch-origin Job (S.1210 / v13) — the live deliver door for
+/// wave slots: posts the delivery via `escrow::deliver` (auth unchanged:
+/// sender == seller, FUNDED, before deadline), frees the seller's GLOBAL
+/// active seat (`reputation::on_job_delivered`) AND this wave's per-agent
+/// hold in the same tx — a `maxClaimsPerAgent: 1` wave becomes
+/// re-claimable the moment the work ships, not when the buyer settles.
+public fun deliver_v2<T>(
+    batch: &mut BatchOpening<T>,
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    delivery_hash: vector<u8>,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    assert_batch_origin(batch, job);
+    assert!(reputation::agent(seller_score) == escrow::seller(job), EWrongSellerScore);
+    escrow::deliver(job, delivery_hash, cfg, clock, ctx);
+    let now = clock.timestamp_ms();
+    reputation::on_job_delivered(seller_score, job, now);
     free_wave_hold(batch, job, now);
 }
 
@@ -528,8 +645,10 @@ fun assert_batch_origin<T>(batch: &BatchOpening<T>, job: &Job<T>) {
 /// `claims_by_agent` (row removed at 0 — the Table stays droppable in
 /// spirit), one-shot `BatchHoldReleasedKey` on the Job (a second free
 /// aborts in escrow — belt + suspenders over the settle state machine),
-/// and the sibling event. NOT called on decline (D13: decline burns the
-/// wave seat, parity with the global counter).
+/// and the sibling event. Called at DELIVER since S.1210 (settle doors
+/// only catch goodwill-FUNDED / refund / pre-v13 stragglers). NOT called
+/// on decline (D13: decline burns the wave seat, parity with the global
+/// counter).
 fun free_wave_hold<T>(batch: &mut BatchOpening<T>, job: &mut Job<T>, now: u64) {
     escrow::mark_batch_hold_released_pkg(job);
     let agent = escrow::seller(job);

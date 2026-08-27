@@ -50,7 +50,8 @@ export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
  *    buildOpenJobTx         → OPENING pkg :: opening :: create_open_v2
  *    buildClaimOpeningTx    → OPENING pkg :: opening :: claim_v2|claim_proven_v2
  *    buildCreateJobTx       → ESCROW  pkg :: escrow  :: create
- *    buildDeliverJobTx      → ESCROW  pkg :: escrow  :: deliver
+ *    buildDeliverJobTx      → OPENING pkg :: reputation :: deliver_v2
+ *                           | OPENING pkg :: batch :: deliver_v2   (S.1210, origin Jobs)
  *    buildReleaseJobTx      → OPENING pkg :: reputation :: release_v2
  *                           | OPENING pkg :: batch :: batch_release   (S.1202, origin Jobs)
  *
@@ -83,10 +84,20 @@ const ACTION_TARGETS: Record<
     module: 'escrow',
     functions: ['create'],
   },
+  // S.1210 (v13): deliver rides `reputation::deliver_v2` (the active seat
+  // frees the moment the work ships) or `batch::deliver_v2` for wave
+  // slots (the per-wave hold frees too); `create_empty_score` is the
+  // allowlisted precursor for a scoreless seller, and the bare
+  // `escrow::deliver` stays for pre-v13 prepare hosts mid-transition.
   deliver: {
     pkgs: [MAINNET_A2A_ESCROW_PACKAGE_ID, MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
     module: 'escrow',
-    functions: ['deliver'],
+    functions: [
+      'deliver',
+      'reputation::deliver_v2',
+      'reputation::create_empty_score',
+      'batch::deliver_v2',
+    ],
   },
   // S.1192: release settles through `reputation::release_v2` (the active
   // counter rides the money); `create_empty_score` is the allowlisted

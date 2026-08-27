@@ -574,7 +574,9 @@ fun post_open_with_policy(sc: &mut ts::Scenario, clk: &Clock, policy: u8) {
     ts::next_tx(sc, BUYER);
     let cfg = ts::take_shared<FeeConfig>(sc);
     let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(sc));
-    opening::create_open_v2<SUI>(
+    // S.1210: v13 creates assert policy == 0 — gated fixtures ride the
+    // test-only legacy door (mainnet stragglers still claim this way).
+    opening::create_open_legacy_for_testing<SUI>(
         payment,
         b"open-spec-hash",
         clk.timestamp_ms() + OPEN_UNTIL,
@@ -1073,10 +1075,12 @@ fun delivered_pre_reject_still_not_reviewable() {
     abort 0
 }
 
-// === create_open policy bounds (S.1054) ===
+// === create_open policy bounds (S.1054 → S.1210 hardening) ===
 
 #[test]
-fun create_open_accepts_proven_policies() {
+fun legacy_test_door_still_posts_proven_policies() {
+    // The shim fixture: pre-v13 gated openings exist on mainnet and must
+    // stay claimable — the test-only door mirrors them.
     let (mut sc, clk) = setup();
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN);
     ts::next_tx(&mut sc, BUYER);
@@ -1088,6 +1092,31 @@ fun create_open_accepts_proven_policies() {
     post_open_with_policy(&mut sc, &clk, POLICY_PROVEN_4STAR);
     ts::end(sc);
     clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = opening::EBadClaimPolicy)]
+fun create_open_v2_rejects_proven_policy() {
+    // S.1210: new posts carry ONE gate (min_seller_level) — a direct
+    // chain call with claim_policy > 0 aborts at create.
+    let (mut sc, clk) = setup();
+    ts::next_tx(&mut sc, BUYER);
+    let cfg = ts::take_shared<FeeConfig>(&sc);
+    let payment = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(&mut sc));
+    opening::create_open_v2<SUI>(
+        payment,
+        b"open-spec-hash",
+        clk.timestamp_ms() + OPEN_UNTIL,
+        SLA_MS,
+        REVIEW_WINDOW,
+        SPLIT_BPS,
+        POLICY_PROVEN,
+        0,
+        &cfg,
+        &clk,
+        ts::ctx(&mut sc),
+    );
+    abort 0
 }
 
 #[test]
@@ -1153,7 +1182,8 @@ fun seller_levels_climb_the_locked_bars() {
         assert!(reputation::seller_level(&score) == 2, 5);
         ts::return_shared(score);
     };
-    // Level 3: 5★ jobs pull the average over 4.0 (8 reviews < 20 → not 4).
+    // Level 3: 5★ jobs pull the average over 4.0 (8 reviews < 10 → not 4;
+    // S.1210 dropped the Veteran review floor 20 → 10).
     reviewed_n_cycling(&mut sc, &clk, SELLER, 5, 5);
     ts::next_tx(&mut sc, ADMIN);
     {
@@ -1161,13 +1191,13 @@ fun seller_levels_climb_the_locked_bars() {
         assert!(reputation::seller_level(&score) == 3, 6);
         ts::return_shared(score);
     };
-    // Level 4: ≥20 reviews, avg still ≥4.0, no_delivery 0 ≤ 2.
-    reviewed_n_cycling(&mut sc, &clk, SELLER, 12, 5); // total 20
+    // Level 4: ≥10 reviews (S.1210), avg still ≥4.0, no_delivery 0 ≤ 2.
+    reviewed_n_cycling(&mut sc, &clk, SELLER, 2, 5); // total 10
     ts::next_tx(&mut sc, ADMIN);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let score = seller_score(&sc);
-        assert!(reputation::review_count(&score) == 20, 7);
+        assert!(reputation::review_count(&score) == 10, 7);
         assert!(reputation::seller_level(&score) == 4, 8);
         assert!(reputation::meets_min_seller_level(&score, &cfg, 4), 9);
         ts::return_shared(score);
@@ -1316,4 +1346,142 @@ fun release_v2_with_wrong_score_fails() {
         ts::return_shared(cfg);
     };
     abort 0
+}
+
+// === S.1210 (v13) — the active cap frees on DELIVER, not settle ===
+
+/// Claim the one shared Anyone opening as SELLER (score must exist).
+fun claim_anyone_as_seller(sc: &mut ts::Scenario, clk: &Clock): ID {
+    ts::next_tx(sc, SELLER);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let reg = ts::take_shared<Registry>(sc);
+    let op = ts::take_shared<Opening<SUI>>(sc);
+    let mut score = seller_score(sc);
+    let job_id = opening::claim_v2(op, &reg, &mut score, &cfg, clk, ts::ctx(sc));
+    ts::return_shared(score);
+    ts::return_shared(reg);
+    ts::return_shared(cfg);
+    job_id
+}
+
+/// Deliver as SELLER through the v13 door (score attached).
+fun deliver_v2_as_seller(sc: &mut ts::Scenario, clk: &Clock, job_id: ID) {
+    ts::next_tx(sc, SELLER);
+    let cfg = ts::take_shared<FeeConfig>(sc);
+    let mut job = ts::take_shared_by_id<Job<SUI>>(sc, job_id);
+    let mut score = seller_score(sc);
+    reputation::deliver_v2(&mut job, &mut score, b"delivery-hash", &cfg, clk, ts::ctx(sc));
+    ts::return_shared(score);
+    ts::return_shared(job);
+    ts::return_shared(cfg);
+}
+
+#[test]
+fun deliver_v2_frees_claimed_seat_and_settle_never_double_frees() {
+    let (mut sc, clk) = setup();
+    empty_score_for(&mut sc, &clk, SELLER);
+    post_open_with_policy(&mut sc, &clk, POLICY_ANY);
+    let job_id = claim_anyone_as_seller(&mut sc, &clk);
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let score = seller_score(&sc);
+        assert!(reputation::active_seller_jobs(&score) == 1, 0);
+        ts::return_shared(score);
+    };
+    // The seat frees the moment the work ships…
+    deliver_v2_as_seller(&mut sc, &clk, job_id);
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let score = seller_score(&sc);
+        let job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        assert!(reputation::active_seller_jobs(&score) == 0, 1);
+        assert!(escrow::is_active_freed(&job), 2);
+        assert!(escrow::state(&job) == escrow::state_delivered(), 3);
+        ts::return_shared(job);
+        ts::return_shared(score);
+    };
+    // …and the buyer's settle does NOT double-decrement (marker present).
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = seller_score(&sc);
+        reputation::release_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(reputation::active_seller_jobs(&score) == 0, 4);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun goodwill_release_on_funded_claim_still_frees_seat() {
+    let (mut sc, clk) = setup();
+    empty_score_for(&mut sc, &clk, SELLER);
+    post_open_with_policy(&mut sc, &clk, POLICY_ANY);
+    let job_id = claim_anyone_as_seller(&mut sc, &clk);
+    // Goodwill release on FUNDED (no delivery, no ActiveFreedKey) — the
+    // settle path still frees the seat.
+    ts::next_tx(&mut sc, BUYER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = seller_score(&sc);
+        assert!(!escrow::is_active_freed(&job), 0);
+        reputation::release_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(reputation::active_seller_jobs(&score) == 0, 1);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun refund_of_undelivered_claim_still_frees_seat() {
+    let (mut sc, mut clk) = setup();
+    empty_score_for(&mut sc, &clk, SELLER);
+    post_open_with_policy(&mut sc, &clk, POLICY_ANY);
+    let job_id = claim_anyone_as_seller(&mut sc, &clk);
+    let past = clk.timestamp_ms() + SLA_MS + 1;
+    clk.set_for_testing(past);
+    ts::next_tx(&mut sc, STRANGER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut score = seller_score(&sc);
+        reputation::refund_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(reputation::active_seller_jobs(&score) == 0, 0);
+        assert!(reputation::no_delivery(&score) == 1, 1);
+        ts::return_shared(score);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+fun hire_deliver_v2_passes_through_without_counter_move() {
+    let (mut sc, clk) = setup();
+    empty_score_for(&mut sc, &clk, SELLER);
+    let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
+    // A hire never incremented — deliver_v2 posts the delivery and the
+    // hook no-ops (no ClaimedJobKey, no marker, no decrement).
+    deliver_v2_as_seller(&mut sc, &clk, job_id);
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let score = seller_score(&sc);
+        let job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        assert!(escrow::state(&job) == escrow::state_delivered(), 0);
+        assert!(!escrow::is_active_freed(&job), 1);
+        assert!(reputation::active_seller_jobs(&score) == 0, 2);
+        ts::return_shared(job);
+        ts::return_shared(score);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
 }

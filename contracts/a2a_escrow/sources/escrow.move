@@ -53,6 +53,14 @@ use sui::dynamic_field as df;
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
+/// v8 (S.1210, v13 package): active cap frees on DELIVER — claimed jobs
+/// deliver through `reputation::deliver_v2` / `batch::deliver_v2` (seller
+/// score attached; wave hold frees too), settle paths skip the decrement
+/// when the deliver already freed it, Level 4 review floor 20 → 10, and
+/// `create_open_v2` / `create_batch_open` assert `claim_policy == 0`
+/// (S.1209 made trustRequirement the one product gate; this closes the
+/// direct-chain hole). The cutover kills v12 bytecode whose bare
+/// `escrow::deliver` would leave seats occupied until settle.
 /// v7 (S.1202, D23): batch active per-wave claims + batch-aware settle —
 /// the cutover kills the v11 bytecode whose `create_batch_open` /
 /// `batch_claim` / bare `release_v2` would still post un-branded waves,
@@ -71,7 +79,7 @@ use sui::event;
 /// outcomes hit the seller's (and an Agent-ID buyer's) score. v4
 /// (S.1062): Proven = distinct buyers. v3 (S.1019): open reject 100%
 /// buyer. v2 (S.981): amount bounds.
-const VERSION: u64 = 7;
+const VERSION: u64 = 8;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
@@ -169,6 +177,9 @@ const EBadBatchSlots: u64 = 22;
 /// `BatchHoldReleasedKey` is belt + suspenders over the state machine
 /// (a second settle already aborts `EWrongState` inside the settle body).
 const EBatchHoldReleased: u64 = 23;
+/// S.1210: second active-freed stamp on one Job (unreachable via the
+/// guarded deliver hook).
+const EActiveAlreadyFreed: u64 = 24;
 
 // === Objects ===
 
@@ -226,6 +237,12 @@ public struct BatchOriginKey has copy, drop, store {}
 /// `mark_batch_hold_released_pkg`). A second free aborts. Defining id =
 /// the S.1202 upgrade package (V12 pin).
 public struct BatchHoldReleasedKey has copy, drop, store {}
+/// S.1210 (v13) — the seller's GLOBAL active seat for this Job was freed
+/// at DELIVER (`reputation::on_job_delivered`). Settle paths skip their
+/// decrement when present, so deliver-then-settle never double-frees —
+/// and a job delivered on a pre-v13 package (no marker) still frees at
+/// settle, the straggler catch-up.
+public struct ActiveFreedKey has copy, drop, store {}
 /// DF key for the canonical `reputation::ScoreBoard` id on `FeeConfig.id`
 /// (S.1054b). Value is the board `ID`. Its EXISTENCE is the single-instance
 /// lock: `reputation::create_score_board` records it and aborts if it is
@@ -422,6 +439,21 @@ public fun is_batch_hold_released<T>(job: &Job<T>): bool {
 public(package) fun mark_batch_hold_released_pkg<T>(job: &mut Job<T>) {
     assert!(!df::exists(&job.id, BatchHoldReleasedKey {}), EBatchHoldReleased);
     df::add(&mut job.id, BatchHoldReleasedKey {}, true);
+}
+
+/// Whether this Job's seller already freed their GLOBAL active seat at
+/// deliver (S.1210 / v13). Missing ⇒ not freed — settle decrements.
+public fun is_active_freed<T>(job: &Job<T>): bool {
+    df::exists(&job.id, ActiveFreedKey {})
+}
+
+/// One-shot active-freed stamp (S.1210) — set only by
+/// `reputation::on_job_delivered` right before the deliver-time
+/// decrement. Abort-on-second-set keeps the idempotency loud (the hook
+/// guards with `is_active_freed` first; this is the belt).
+public(package) fun mark_active_freed_pkg<T>(job: &mut Job<T>) {
+    assert!(!df::exists(&job.id, ActiveFreedKey {}), EActiveAlreadyFreed);
+    df::add(&mut job.id, ActiveFreedKey {}, true);
 }
 
 /// Bounds gate for money ENTERING escrow — `create` and (via the package

@@ -11,6 +11,7 @@ import {
   activeCapForLevel,
   effectiveSellerLevel,
   meetsMinSellerLevel,
+  LEVEL4_MIN_REVIEWS,
   NO_DELIVERY_REGRESSION_FLOOR,
   preflightClaimOpening,
   SELLER_LEVEL_ACTIVE_CAPS,
@@ -183,12 +184,13 @@ describe('seller levels (S.1192) — mirror the Move bars', () => {
     expect(effectiveSellerLevel(null)).toBe(1);
   });
 
-  it('Level 2 = Proven (3 distinct), Level 3 = 4.0★+, Level 4 = 20 reviews + ≤2 no-delivery', () => {
+  it('Level 2 = Proven (3 distinct), Level 3 = 4.0★+, Level 4 = 10 reviews + ≤2 no-delivery (S.1210)', () => {
     expect(sellerLevel(score(3, 9))).toBe(2); // 3.0★ avg, proven
     expect(sellerLevel(score(3, 12))).toBe(3); // exactly 4.0★
-    expect(sellerLevel(score(20, 80))).toBe(4); // 20 reviews at 4.0★
-    expect(sellerLevel({ ...score(20, 80), noDelivery: 3 })).toBe(3); // reliability bar
-    expect(sellerLevel(score(19, 76))).toBe(3); // one review short of L4
+    expect(sellerLevel(score(10, 40))).toBe(4); // 10 reviews at 4.0★
+    expect(sellerLevel({ ...score(10, 40), noDelivery: 3 })).toBe(3); // reliability bar
+    expect(sellerLevel(score(9, 36))).toBe(3); // one review short of L4
+    expect(LEVEL4_MIN_REVIEWS).toBe(10); // the S.1210 retune, mirrored from Move
   });
 
   it('regression: no_delivery >= 3 floors the EFFECTIVE level to 1', () => {
@@ -218,7 +220,9 @@ describe('preflightClaimOpening (S.1192) — English before the rail', () => {
     const pf = preflightClaimOpening(capped, { claimPolicy: 0 });
     expect(pf.valid).toBe(false);
     expect(pf.error).toMatch(/Seller cap \(4\/4\)/);
-    expect(pf.error).toMatch(/Finish|deadline refund/);
+    // S.1210: the way out is DELIVER — the seat frees when the work ships.
+    expect(pf.error).toMatch(/Deliver one|lapsed job refund/);
+    expect(pf.error).toMatch(/no waiting on buyer settle/);
     // One under the cap still claims.
     expect(
       preflightClaimOpening({ ...score(0, 0), activeSellerJobs: 3 }, { claimPolicy: 0 }).valid,

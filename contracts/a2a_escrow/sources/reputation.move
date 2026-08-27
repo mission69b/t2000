@@ -63,8 +63,9 @@ const MIN_STARS: u8 = 1;
 const MAX_STARS: u8 = 5;
 
 // === Seller levels (S.1192) — protocol constants, one SSOT ===
-/// Level 4 additionally needs this many reviews…
-const LEVEL4_MIN_REVIEWS: u64 = 20;
+/// Level 4 additionally needs this many reviews… (S.1210: 20 → 10 — the
+/// young marketplace made Veteran feel unreachable).
+const LEVEL4_MIN_REVIEWS: u64 = 10;
 /// …and at most this many no-delivery outcomes.
 const LEVEL4_MAX_NO_DELIVERY: u64 = 2;
 /// `ActiveSellerJobsChanged.delta` values (u8 — Move has no signed ints;
@@ -100,6 +101,10 @@ const EBuyerNotAgent: u64 = 8;
 /// same tx. A bare v2 settle would silently leak the wave seat, so it
 /// aborts loudly here instead (the S.1032/S.1063 dedicated-code pattern).
 const EUseBatchSettle: u64 = 9;
+/// S.1210: this Job carries `BatchOriginKey` — deliver must go through
+/// `batch::deliver_v2`, which also frees the per-wave hold in the same
+/// tx (same loud-abort pattern as `EUseBatchSettle`).
+const EUseBatchDeliver: u64 = 10;
 
 // === Objects ===
 
@@ -161,13 +166,16 @@ public struct NoDeliveryKey has copy, drop, store {}
 /// Passport buyers never get a public chain counter: privacy lock).
 public struct AsBuyerRejectedKey has copy, drop, store {}
 
-// === v2 active-job counter (S.1192) — DF on `AgentScore.id` ===
-// In-flight BOARD-CLAIMED jobs (funded + delivered) this seller holds.
-// +1 in `opening::do_claim` (via `increment_active`), −1 on the terminal
-// settles of jobs carrying `escrow::ClaimedJobKey` (release_v2 /
-// reject_v2* / refund_v2). Hire jobs never move it — they never
-// incremented, and an unconditional decrement would let a colluding
-// buyer reset a hunter's counter with a dust hire + instant release.
+// === v2 active-job counter (S.1192 · S.1210) — DF on `AgentScore.id` ===
+// FUNDED, UNDELIVERED board-claimed jobs this seller holds (S.1210: the
+// seat frees at DELIVER — buyer settle latency no longer blocks a
+// hunter's throughput). +1 in `opening::do_claim` / `batch::batch_claim`
+// (via `increment_active`); −1 at deliver (`on_job_delivered`, v13
+// packages mark `ActiveFreedKey` on the Job) or — for goodwill releases
+// on FUNDED, deadline refunds, and pre-v13 delivered stragglers — at the
+// terminal settle of jobs carrying `escrow::ClaimedJobKey`. Hire jobs
+// never move it — they never incremented, and an unconditional decrement
+// would let a colluding buyer reset a hunter's counter with a dust hire.
 // Missing ⇒ 0 (soft start — no backfill, pre-upgrade claims never count).
 
 /// DF key → `u64`: this seller's live claimed-job count. Missing ⇒ 0.
@@ -390,8 +398,10 @@ public fun reject_v2<T>(
         OUTCOME_REJECTED_AFTER_DELIVERY,
         now,
     );
-    // S.1192: a board-claimed job leaving flight frees a seat.
-    if (escrow::is_claimed_job(job)) {
+    // S.1192/S.1210: a reject is always on DELIVERED work — on v13 the
+    // seat already freed at deliver; the un-marked branch catches jobs
+    // delivered on a pre-v13 package.
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         decrement_active(seller_score, job_id, now);
     };
 }
@@ -430,9 +440,10 @@ public fun reject_v2_agent_buyer<T>(
         OUTCOME_AS_BUYER_REJECTED,
         now,
     );
-    // S.1192: seller seat frees (the SELLER's counter only — a buyer's
-    // as_buyer facts never touch capacity).
-    if (escrow::is_claimed_job(job)) {
+    // S.1192/S.1210: seller seat frees unless deliver already freed it
+    // (the SELLER's counter only — a buyer's as_buyer facts never touch
+    // capacity).
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         decrement_active(seller_score, job_id, now);
     };
 }
@@ -460,8 +471,10 @@ public fun refund_v2<T>(
         now,
     );
     // S.1192: the abandoned claimed job frees its seat (the no_delivery
-    // counter above is what costs the seller — via level regression).
-    if (escrow::is_claimed_job(job)) {
+    // counter above is what costs the seller — via level regression). A
+    // refund is definitionally undelivered, so `ActiveFreedKey` can never
+    // be set here — the guard is uniformity, not a live branch.
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         decrement_active(seller_score, job_id, now);
     };
 }
@@ -486,8 +499,47 @@ public fun release_v2<T>(
     assert!(!escrow::is_batch_origin_job(job), EUseBatchSettle); // S.1202
     assert!(seller_score.agent == escrow::seller(job), EWrongScore);
     escrow::release_settle_pkg(job, cfg, clock, ctx);
-    if (escrow::is_claimed_job(job)) {
+    // S.1210: on DELIVERED the seat freed at deliver (marker present);
+    // a goodwill release on FUNDED (no delivery, no marker) still frees.
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
         decrement_active(seller_score, object::id(job), clock.timestamp_ms());
+    };
+}
+
+/// Deliver a NON-batch Job with the seller's score attached (S.1210 /
+/// v13) — the live deliver door: posts the delivery via `escrow::deliver`
+/// (auth unchanged: sender == seller, FUNDED, before deadline), then
+/// frees the seller's global active seat for board-claimed jobs so buyer
+/// settle latency never blocks throughput. Batch-origin jobs abort here
+/// and deliver through `batch::deliver_v2` (which also frees the wave
+/// hold). Hire jobs pass through — no `ClaimedJobKey`, no counter move.
+public fun deliver_v2<T>(
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    delivery_hash: vector<u8>,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    assert!(!escrow::is_batch_origin_job(job), EUseBatchDeliver);
+    assert!(seller_score.agent == escrow::seller(job), EWrongScore);
+    escrow::deliver(job, delivery_hash, cfg, clock, ctx);
+    on_job_delivered(seller_score, job, clock.timestamp_ms());
+}
+
+/// The deliver-time seat release (S.1210) — package-visible so
+/// `batch::deliver_v2` lands the SAME semantics. Idempotent: only
+/// board-claimed jobs whose seat is still held move the counter, and the
+/// one-shot `ActiveFreedKey` stamp makes the settle paths skip their
+/// decrement afterwards.
+public(package) fun on_job_delivered<T>(
+    score: &mut AgentScore,
+    job: &mut Job<T>,
+    now: u64,
+) {
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
+        escrow::mark_active_freed_pkg(job);
+        decrement_active(score, object::id(job), now);
     };
 }
 

@@ -402,14 +402,46 @@ export function buildRefundJobTx(
   return tx;
 }
 
-/** Seller posts the delivery commitment (hex hash) before the deadline. */
-export function buildDeliverJobTx(jobId: string, deliveryHash: string): Transaction {
+/** Seller posts the delivery commitment (hex hash) before the deadline.
+ *  S.1210 (v13): delivers through `reputation::deliver_v2` — the SELLER's
+ *  own score (derive with `deriveAgentScoreId`) rides along so a
+ *  board-claimed job frees its active seat the moment the work ships,
+ *  never waiting on buyer settle. Hire jobs pass the same score; the
+ *  contract's `ClaimedJobKey` marker decides whether a decrement lands.
+ *  A scoreless seller needs the `create_empty_score` precursor first
+ *  (same hop as release/reject/refund).
+ *
+ *  A batch-origin Job MUST pass `batchId` (read it with
+ *  `getJobBatchOrigin`) so the deliver targets `batch::deliver_v2` and
+ *  frees the per-wave hold in the same tx — the bare door aborts
+ *  `EUseBatchDeliver` on origin Jobs. */
+export function buildDeliverJobTx(
+  jobId: string,
+  deliveryHash: string,
+  v2: { sellerScoreId: string; batchId?: string },
+): Transaction {
   const tx = new Transaction();
+  if (v2.batchId) {
+    tx.moveCall({
+      target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::batch::deliver_v2`,
+      typeArguments: [USDC_TYPE],
+      arguments: [
+        tx.object(v2.batchId),
+        tx.object(jobId),
+        tx.object(v2.sellerScoreId),
+        tx.pure.vector('u8', hexToBytes(deliveryHash)),
+        feeConfigArg(tx),
+        tx.object(CLOCK_ID),
+      ],
+    });
+    return tx;
+  }
   tx.moveCall({
-    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::deliver`,
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::deliver_v2`,
     typeArguments: [USDC_TYPE],
     arguments: [
       tx.object(jobId),
+      tx.object(v2.sellerScoreId),
       tx.pure.vector('u8', hexToBytes(deliveryHash)),
       feeConfigArg(tx),
       tx.object(CLOCK_ID),

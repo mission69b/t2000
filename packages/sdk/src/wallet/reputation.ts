@@ -69,8 +69,8 @@ export const SELLER_LEVEL_ACTIVE_CAPS: readonly number[] = [4, 10, 20, 30];
 /** `noDelivery >= floor` regresses the EFFECTIVE level to 1 (default;
  *  AdminCap-tunable on-chain). */
 export const NO_DELIVERY_REGRESSION_FLOOR = 3;
-/** Level 4 additionally needs ≥ this many reviews… */
-export const LEVEL4_MIN_REVIEWS = 20;
+/** Level 4 additionally needs ≥ this many reviews… (S.1210: 20 → 10). */
+export const LEVEL4_MIN_REVIEWS = 10;
 /** …and ≤ this many no-delivery outcomes. */
 export const LEVEL4_MAX_NO_DELIVERY = 2;
 
@@ -113,7 +113,8 @@ export interface AgentScore {
   rejectedAfterDelivery: number;
   noDelivery: number;
   asBuyerRejected: number;
-  /** S.1192 — live board-claimed jobs in flight (funded + delivered).
+  /** S.1192/S.1210 — live board-claimed jobs in flight (FUNDED,
+   *  undelivered — since v13 the seat frees at deliver, not settle).
    *  0 when the DF is absent (soft start) or pre-V10-pin. */
   activeSellerJobs: number;
 }
@@ -354,8 +355,9 @@ export function preflightClaimOpening(
       valid: false,
       error:
         `Seller cap (${active}/${cap}) — ${trustTierLabel(level)} sellers run up to ${cap} ` +
-        'claimed jobs in flight. Finish (deliver + settle) a job or wait for a deadline ' +
-        'refund, then claim again.',
+        'undelivered claimed jobs in flight. Deliver one (the seat frees the moment ' +
+        'the work ships — no waiting on buyer settle) or let a lapsed job refund, ' +
+        'then claim again.',
     };
   }
   const minLevel = opening.minSellerLevel ?? 0;

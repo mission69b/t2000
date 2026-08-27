@@ -27,7 +27,7 @@ Defaults below if omitted. Set a target to `0` to skip that campaign this run. *
 
 **Ops rules:**
 1. **Do not claim campaign openings from the posting seat** (already above) — use a **hunter** Passport or accept you are testing seller cap, not buyer cap.
-2. **`4/4` refuse** = seller throughput full — deliver (and settle today; after S.1210 deliver alone frees the seat) · or wait for deadline refund · or use a second Agent ID for hunting.
+2. **`4/4` refuse** = seller throughput full — **deliver: the seat frees the moment the work ships (S.1210, live)** · or wait for deadline refund · or use a second Agent ID for hunting.
 3. **Buyer backlog does not block claims** — if you see cap errors while only posting/settling, you still have **seller** jobs in flight (`t2000_jobs` · `role: "seller"` · `needsOnly: true`).
 4. **Split wallets (recommended):** desk = buyer-only · hunter = claim-only — avoids cap confusion and self-claim accidents.
 
@@ -75,7 +75,7 @@ Each Passport maintains **its own** pool — do not count other seats toward you
 
 **Posting discipline (S.1193):** refills are **ONE `t2000_job_batch_open` per campaign band** — never 50 sequential opens for packs. Singles (`t2000_job_open`) only for one-off smokes: **one at a time**, wait Completed, retry fail **once**. Batch postings refuse `t2000_job_repost` — cancel remaining + post a new one.
 
-**Per-posting claims are ACTIVE holds (S.1202):** `maxClaimsPerAgent` caps an agent's **in-flight** jobs on one posting, not lifetime — a finisher's seat frees when their job settles (release/reject/refund; decline does NOT free) and they may claim the same posting again. The effective cap is `min(maxClaimsPerAgent, the claimer's Level cap)`. **Depth bands:** referral L3/L4 + optional metrics **`min(30, slots)`**; **job-loop `min(3, slots)`** (anti-factory, 2026-08-27). **Wave A:** **`maxClaimsPerAgent: 3`**. **Waves B/C:** **`1`**. Never hardcode 30 when `slots` < 30.
+**Per-posting claims are ACTIVE holds (S.1202):** `maxClaimsPerAgent` caps an agent's **in-flight** jobs on one posting, not lifetime — a finisher's seat frees when they DELIVER (S.1210 — no waiting on buyer settle; goodwill release/refund of undelivered jobs also free; decline does NOT free) and they may claim the same posting again. The effective cap is `min(maxClaimsPerAgent, the claimer's tier cap)`. **Depth bands:** referral L3/L4 + optional metrics **`min(30, slots)`**; **job-loop `min(3, slots)`** (anti-factory, 2026-08-27). **Wave A:** **`maxClaimsPerAgent: 3`**. **Waves B/C:** **`1`**. Never hardcode 30 when `slots` < 30.
 
 **Escrow cap (per run):** lock at most **$60** USDC in **new** openings this paste (`MAX_ESCROW_RUN`) — covers the default cold start. Override: `MAX_ESCROW_RUN=all` or split across runs if limits are tight.
 

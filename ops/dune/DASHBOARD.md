@@ -8,6 +8,8 @@
 
 Sui event types are frozen at the package that **first defined** the struct. After upgrades, filtering `package = LATEST` returns nothing for old event families.
 
+> v13 (S.1210, cap-frees-on-deliver) defines **no new event families** — `ActiveSellerJobsChanged` keeps its V10 defining id (deliver now emits the same −1). No query changes; only note the new LATEST call package if any query (against the rule above) filters by it.
+
 | Family | Defining package | Events |
 |---|---|---|
 | Escrow jobs (v1) | `0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd` | `JobCreated` `JobDelivered` `JobReleased` `JobRejected` `JobRefunded` |

@@ -176,20 +176,36 @@ const SCORE_ID = `0x${'e'.repeat(64)}`;
 const REGISTRY_ID = `0x${'f'.repeat(64)}`;
 
 describe('single-object verb builders', () => {
-  it.each([['deliver', () => buildDeliverJobTx(JOB_ID, '0xabcd')]])(
-    '%s targets the escrow module',
-    (fn, build) => {
-      const tx = build();
-      const calls = tx
-        .getData()
-        .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Array<{
-        MoveCall: { module: string; function: string };
-      }>;
-      expect(calls).toHaveLength(1);
-      expect(calls[0].MoveCall.module).toBe('escrow');
-      expect(calls[0].MoveCall.function).toBe(fn);
-    },
-  );
+  // S.1210 (v13): deliver rides reputation::deliver_v2 — the seller's
+  // score frees the active seat the moment the work ships; batch-origin
+  // Jobs route to batch::deliver_v2 (the wave hold frees too). Never the
+  // bare escrow::deliver door.
+  it('deliver targets reputation::deliver_v2 with the seller score', () => {
+    const tx = buildDeliverJobTx(JOB_ID, '0xabcd', { sellerScoreId: SCORE_ID });
+    const calls = tx
+      .getData()
+      .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Array<{
+      MoveCall: { module: string; function: string };
+    }>;
+    expect(calls).toHaveLength(1);
+    expect(calls[0].MoveCall.module).toBe('reputation');
+    expect(calls[0].MoveCall.function).toBe('deliver_v2');
+  });
+
+  it('deliver with a batchId targets batch::deliver_v2 (S.1210)', () => {
+    const tx = buildDeliverJobTx(JOB_ID, '0xabcd', {
+      sellerScoreId: SCORE_ID,
+      batchId: `0x${'9'.repeat(64)}`,
+    });
+    const calls = tx
+      .getData()
+      .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Array<{
+      MoveCall: { module: string; function: string };
+    }>;
+    expect(calls).toHaveLength(1);
+    expect(calls[0].MoveCall.module).toBe('batch');
+    expect(calls[0].MoveCall.function).toBe('deliver_v2');
+  });
 
   // S.1063: reject/refund settle through the reputation module (outcome
   // counters); S.1192 adds release_v2 (the active counter rides the
@@ -223,7 +239,9 @@ describe('single-object verb builders', () => {
   });
 
   it('deliver rejects a malformed hash', () => {
-    expect(() => buildDeliverJobTx(JOB_ID, 'nope')).toThrow(/hex hash/);
+    expect(() =>
+      buildDeliverJobTx(JOB_ID, 'nope', { sellerScoreId: SCORE_ID }),
+    ).toThrow(/hex hash/);
   });
 
   // S.1202: a batch-origin Job (batchId passed) settles through the batch
