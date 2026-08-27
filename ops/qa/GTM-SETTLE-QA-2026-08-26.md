@@ -427,8 +427,8 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 - Desk: A/B paused, backlog gate, Wave C only repost, referral `NO Path A` titles, job-loop cap `min(3, slots)`
 - `REFERRAL-SETTLE-LEDGER.md`: 2 rows (L4 proofJobId backfill still needed)
 
-> **Pass-16 DX trio build shipped 2026-08-27 (S.1218, audric #528 — merge
-> pending): #334** `t2000_job_status` takes `jobId` (`id` deprecated
+> **Pass-16 DX trio build shipped 2026-08-27 (S.1218, audric #528
+> `ea4fb499` merged): #334** `t2000_job_status` takes `jobId` (`id` deprecated
 > alias) · **#338** `briefPreview` surfaces proof-floor/Path A/PACK
 > obligations inside the 140-char cap · **#221** batch board cards paint
 > `cap N/agent` when >1. (#334's `activeSellerJobs` trust-card half stays
