@@ -427,12 +427,14 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 - Desk: A/B paused, backlog gate, Wave C only repost, referral `NO Path A` titles, job-loop cap `min(3, slots)`
 - `REFERRAL-SETTLE-LEDGER.md`: 2 rows (L4 proofJobId backfill still needed)
 
-> **Pass-16 DX trio build shipped 2026-08-27 (S.1218, audric #528
-> `ea4fb499` merged): #334** `t2000_job_status` takes `jobId` (`id` deprecated
-> alias) · **#338** `briefPreview` surfaces proof-floor/Path A/PACK
-> obligations inside the 140-char cap · **#221** batch board cards paint
-> `cap N/agent` when >1. (#334's `activeSellerJobs` trust-card half stays
-> open → S.1219.)
+> **S.1218 live-verified 2026-08-27 (audric #528 `ea4fb499`; tracker
+> `f47db4d`, QA `47cf1981`, docs `a834360f`):** web-v3 + MCP + console all
+> green. **#338** board `briefPreview` surfaces proof-floor / Path A / UNIQUE
+> PROOF within 140 chars · **#221** cap `3/agent` job-loop, `10/agent` referral,
+> cap-1 row omits cap segment · **#334** `id` alias regression pass · **S.1156**
+> list rows carry `briefPreview` only. **`jobId` arg:** needs fresh Connect session
+> (cached schema predates deploy). **`activeSellerJobs` trust card** still open →
+> S.1219.
 
 > **P2 cover-focus build shipped 2026-08-27 (S.1216, audric #525
 > `3c62da7c` merged):** GCK #126-class text covers get a click-to-set focal point;
@@ -443,11 +445,15 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 > deliver-frees-cap + Veteran-10 corrected site-wide.
 
 ### Founder backlog (post-campaign)
-1. **Console spot-check** funkii@ — resolve `needsActionTotal: 1` ghost *(build shipped 2026-08-27, S.1213 #524 — verify `needsActionTotal === matching` on the live seat)*
+1. ~~Console ghost counter~~ *(S.1213 verified pass 16–17 — counters agree)*
 2. **L4 ledger** — backfill `proofJobId` on `0x5a9ae6…0a76c3`
-3. **`0x85ee468d…769aaf`** — Path A audit *(settled 2026-08-27 pass 16 — BADMATIC #85 / Kaboom #257; ledger row appended)*
-4. **Build lane:** buyer on `job_status` (#13), orphaned claim (#28), first-claim honesty (**#29/#370 → S.1217 — build shipped 2026-08-27**), board moderation (Autopsy / Telegram jobs)
-5. **Repost:** Wave C only when ready
+3. ~~`0x85ee468d…769aaf` Path A audit~~ *(settled pass 16; ledger appended)*
+4. **Manual verify (shipped, founder):**
+   - **S.1218** — ~~briefPreview / cap / id alias~~ **PASS prod** · `t2000_job_status { jobId }` in **fresh Connect session** only
+   - **S.1217** — scoreless-agent one-call claim *(build shipped; spot-check pending)*
+   - **S.1220** — wide upload + `[frame]` on manage listing *(build shipped; spot-check pending)*
+5. **Build lane:** **S.1219** trust-card `activeSellerJobs` (#334 half) · **#13** buyer on `job_status` · orphaned claim (#28) · board moderation
+6. **Repost:** Wave C only when ready · decline apexmind seller hire `0xbda65e…07be6` unless delivering
 
 ---
 
@@ -474,11 +480,43 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 |---|-----|---------|-------|------|
 | 370 | **P0** | First-claim path: CLI allowlist + Connect false "Claimed" when precursor-only tx runs; inbox 0 jobs | new agent | **S.1217** — SDK `sponsoredOpeningVerb` precursor loop + MCP honesty |
 | 334 | P1 | `activeSellerJobs` 0/20 vs live funded claim — trust card cap wrong | — | audric reputation read |
-| 334 | P1 | `t2000_job_status` takes `id`; settle/deliver/review take `jobId` | — | MCP schema alias |
-| 338 | P1 | `briefPreview` truncates before $0.10 proof budget line | — | board preview |
+| 334 | ~~P1~~ | ~~`t2000_job_status` takes `id`~~ | — | **S.1218 PASS** (`id` alias prod; `jobId` needs fresh session) |
+| 338 | ~~P1~~ | ~~`briefPreview` truncates before proof floor~~ | — | **S.1218 PASS** (obligations in 140-char cap) |
 | 338 | P2 | Batch-claim not in tool search | — | MCP discovery |
-| 221 | P2 | `maxClaimsPerAgent` not on board card | — | console card |
+| 221 | ~~P2~~ | ~~`maxClaimsPerAgent` not on board card~~ | — | **S.1218 PASS** (`cap N/agent` on batch cards) |
+| 334 | P1 | `activeSellerJobs` 0/20 vs live funded claim | — | **S.1219** (trust-card half still open) |
 
 **Desk ops notes:**
 - Duplicate Wave C rows broke per-posting cap (`maxClaimsPerAgent: 1`) — cagent #338 claimed two batches same title; cancel `0xaadeff30…` (3 slots), keep `0xd902ae29…` if cap should hold.
 - Referral **`0x85ee468d…769aaf`**: Path A valid; hunter corrected prior wrong-jobId reject — **settled**.
+
+---
+
+## Seventeenth settle pass — 2026-08-27 (evening) · **queue clear**
+
+**Seat:** funkii@audric (#16) · **7 delivered processed** · **buyer queue clear**
+
+| Metric | Value |
+|--------|-------|
+| Settled / rejected | 4 / 3 |
+| Wave C | 2 settled · 1 rejected |
+| Job-loop | 1 settled · 1 rejected |
+| Referral $1.00 | 1 settled · 1 rejected |
+| Paid out | ~$2.14 net · ~$1.75 recovered on rejects |
+| Reviews | 7 rated (5★ · 4★×2 · 3★×2 · 2★×2) |
+| Buyer queue clear? | **YES** — `needsActionTotal: 0`, `matching: 0`, counters agreed (S.1213) |
+
+**Settled:** `0x26e6ac…0eb21b` Wave C (pre-claim brief visibility · CLI 10.40.1 · 5★) · `0x9e4b93…c787fa` Wave C (4/4 cap refuse · 3★) · `0x6d4094…c24318` referral #166→#372 (Path A attestation · 4★) · `0x05bc00…6c038b` job-loop (grandfathered $0.01 proof posting · 4★).
+
+**Rejected:** `0x1e62f1…f21a7a` job-loop ($0.01 trivia vs ≥$0.10 floor) · `0xc37852…feb69d` Wave C (uGig not t2000 · 0x not #id) · `0x6d4731…97edbd` referral (self-disclosed Path A).
+
+**Blockers / ops:**
+
+| Item | Action |
+|------|--------|
+| Referral ledger | **Appended** — settle `0x6d4094…` + reject `0x6d4731…` (#98→#155 Path A) |
+| Path A (#13) | Still **P0** — `job_status` no buyer on third-party proof; don't volume-settle referrals until build |
+| Hector #316 proof seller | Watch — both job-loop rows this pass, different hunters (not proof-factory breach) |
+| Seller inbox | **apexmind** hired funkii `0xbda65e…07be6` "Refer new agent #372 — first settle proof" ~22h — **decline** unless delivering |
+
+**S.1218:** **PASS prod** (evening) — pass-17 pre-claim gap was pre-deploy; live board now paints obligations (#338 job-loop floor, Wave C Path A, friction UNIQUE PROOF). Only remaining check: `jobId` arg in fresh Connect session.
