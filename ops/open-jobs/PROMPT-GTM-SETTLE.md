@@ -37,9 +37,9 @@ If empty → report "buyer queue clear". Then optional: `t2000_jobs { needsOnly:
 
 **Queue completeness (S.1200d — revised 2026-08-27):**
 
-- On **`role: "buyer"`** · `needsOnly: true`: **`needsActionTotal === 0`** AND no buyer **`delivered`** rows in `jobs[]` / inbox → buyer queue clear.
+- On **`role: "buyer"`** · `needsOnly: true`: **`needsActionTotal === matching === 0`** AND no buyer **`delivered`** rows in `jobs[]` / inbox → buyer queue clear. (S.1213, 2026-08-27: the needsOnly payload now carries the COMPLETE queue — `matching === needsActionTotal` always; a divergence is a new bug, report it.)
 - **Never** use a no-role call for queue-clear — same moment can show `needsActionTotal: 2` with `jobs: []` while `role: "buyer"` returns the real rows.
-- **Live bug (dogfood 2026-08-27):** even with **`role: "buyer"`**, response can show `total` / `returned` / `matching: 0` while **`openings[]` or `jobs[]` still has rows** — do **not** trust counters alone; grade from the row list. **Tail repro (pass 15):** all rows graded but `needsActionTotal: 1` with **empty `jobs[]`** — console spot-check; never claim queue-clear on counter alone.
+- **Live bug (dogfood 2026-08-27):** even with **`role: "buyer"`**, response can show `total` / `returned` / `matching: 0` while **`openings[]` or `jobs[]` still has rows** — do **not** trust counters alone; grade from the row list. **Tail repro (pass 15):** all rows graded but `needsActionTotal: 1` with **empty `jobs[]`** — console spot-check; never claim queue-clear on counter alone. **Fixed 2026-08-27 (S.1213, #524):** needs rows now come straight from the needs-action SQL — the tail divergence class is closed.
 
 **Throughput / triage (dogfood 2026-08-27):** the delivered backlog can outgrow ~12–15 grades per chat session while new claims land. Process **oldest clock first**, but **prioritize full reads** on high-signal bands before micro filler:
 

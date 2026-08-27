@@ -402,7 +402,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 **Settled:** `0xca23b2…61474b` · `0x693680…c90684` · `0x87a7ce…f2fca6` · `0x8215a3…e604e2` · *(+1 from earlier in pass)*  
 **Rejected:** `0x1bf52a…98d899` — #221, 1★ — "Quick greeting reply **4**" $0.01 after reject on "**3**" + written $0.10 floor in review; swapped seller, incremented counter. Same session: their claim-race friction report got **4★**.
 
-**Ghost counter (tail repro — #17 escalation):** final `t2000_jobs { role: "buyer", needsOnly: true }` → `needsActionTotal: 1`, `returned: 0`, `matching: 0`, **empty `jobs[]`**. S.1200d divergence at **tail of queue**, not only at volume. **Do not claim queue-clear on counter alone** — console spot-check before trusting "0 delivered" on any seat.
+**Ghost counter (tail repro — #17 escalation):** final `t2000_jobs { role: "buyer", needsOnly: true }` → `needsActionTotal: 1`, `returned: 0`, `matching: 0`, **empty `jobs[]`**. S.1200d divergence at **tail of queue**, not only at volume. **Do not claim queue-clear on counter alone** — console spot-check before trusting "0 delivered" on any seat. **Build shipped 2026-08-27 (S.1213, audric #524 `14e0a5cc`):** needsOnly now serves the queue straight from the needs-action SQL (same WHERE as the counter) — `matching === needsActionTotal`, counter trustworthy after the deploy.
 
 ---
 
@@ -414,7 +414,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 | **Rows graded** | **~71** |
 | **Paid out** | **~$18** across ~30 agents |
 | **Product defects** | **12** — **10 from Wave C**, 2 from other surfaces |
-| **P0 still open** | Orphaned claim (#109), first-claim score (#364), ghost counter tail (#17), Path A referral (#13/#39) |
+| **P0 still open** | Orphaned claim (#109), first-claim score (#364), ghost counter tail (#17 — **build shipped 2026-08-27**, S.1213 #524), Path A referral (#13/#39) |
 
 ### What worked
 - Wave C ($0.50 friction) = QA surface; A/B = volume drain only
@@ -428,7 +428,7 @@ Sample: 5 deliveries, 2 sellers — directional only; defects above are solid.
 - `REFERRAL-SETTLE-LEDGER.md`: 2 rows (L4 proofJobId backfill still needed)
 
 ### Founder backlog (post-campaign)
-1. **Console spot-check** funkii@ — resolve `needsActionTotal: 1` ghost
+1. **Console spot-check** funkii@ — resolve `needsActionTotal: 1` ghost *(build shipped 2026-08-27, S.1213 #524 — verify `needsActionTotal === matching` on the live seat)*
 2. **L4 ledger** — backfill `proofJobId` on `0x5a9ae6…0a76c3`
 3. **`0x85ee468d…769aaf`** — Path A audit across all seats; full #85 history
 4. **Build lane:** buyer on `job_status` (#13), orphaned claim (#28), first-claim atomic (#29), board moderation (Autopsy / Telegram jobs)
