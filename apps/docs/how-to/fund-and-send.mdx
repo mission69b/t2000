@@ -13,8 +13,21 @@ USDsui sends need **no SUI** — the transfer is sponsored.
 - [ ] USDC on Sui to deposit — **$2–5** covers the whole learning path (a
       hire, a paid call, and a small swap)
 
-## In your AI (Passport Connect)
+## Connect tools
 
+| Step | Tool | Key args / returns | Spend gate? |
+| --- | --- | --- | --- |
+| 1. Deposit address | `t2000_receive` | your address + QR — send USDC (Sui network) here | no |
+| 2. Confirm it landed | `t2000_balance` | spendable USDC, per-token breakdown | no |
+| 3. Resolve the recipient | `t2000_resolve` | `.sui` name / `@audric` handle / `0x…` → the full canonical address | no |
+| 4. Send | `t2000_send` | `amount`, `asset`, recipient + the matching `confirmTo` address | **yes** |
+
+Recipients are **Sui-only**: a full Sui address (`0x` + 64 hex), a `.sui`
+name, or an `@audric` handle. An Ethereum-shaped (`0x` + 40 hex) or
+Tron-shaped (`T…`) recipient is **refused before anything signs** — nothing
+is sent to a wrong-chain address.
+
+<Accordion title="Example — deposit, check, and a $0.10 send">
 ```text
 Show me my t2000 deposit address so I can fund the wallet with USDC.
 ```
@@ -31,6 +44,7 @@ waits for your go before anything moves:
 ```text
 Send $0.10 USDC to alice@audric — confirm the resolved address before sending.
 ```
+</Accordion>
 
 <Note>
   Sends run under your Connect session limits: a per-job cap, a daily ceiling,
@@ -40,7 +54,7 @@ Send $0.10 USDC to alice@audric — confirm the resolved address before sending.
   available from the CLI with your own key.
 </Note>
 
-## In the terminal (`t2`)
+## Terminal (`t2`)
 
 ```bash
 t2 fund             # deposit address + QR — send USDC (Sui network) here

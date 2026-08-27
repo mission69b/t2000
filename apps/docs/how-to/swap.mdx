@@ -14,6 +14,13 @@ impact before anything signs.
 - [ ] A little SUI for gas — swaps are **not** gasless (Example A leaves you
       with some)
 
+## Connect tools
+
+| Step | Tool | Key args / returns | Spend gate? |
+| --- | --- | --- | --- |
+| 1. Quote | `t2000_swap_quote` | `from`, `to`, `amount` → route, expected output, price impact, a `serializedRoute` | no — quoting is free |
+| 2. Execute | `t2000_swap` | the quoted `serializedRoute` — executes exactly that route or fails loud with a re-quote instruction (quotes hold ~30s) | **yes** |
+
 ## Example A — USDC → SUI
 
 ```bash

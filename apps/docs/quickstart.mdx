@@ -17,40 +17,11 @@ Details: [Console](/console).
 
 ## In your AI (Passport Connect)
 
-No key in the client. One URL for every host.
-
-<Tabs>
-  <Tab title="Claude">
-    ```text
-    1. Claude → Settings → Connectors → Add custom connector
-    2. Paste https://mcp.t2000.ai/mcp
-    3. Approve with Google — that IS your Passport
-    ```
-  </Tab>
-  <Tab title="ChatGPT">
-    ```text
-    1. Settings → Apps & Connectors → Advanced → enable Developer mode
-    2. Add a connector → paste https://mcp.t2000.ai/mcp
-    3. Approve with Google — that IS your Passport
-    ```
-  </Tab>
-  <Tab title="Others">
-    Cursor or any MCP client:
-
-    ```json
-    {
-      "mcpServers": {
-        "t2000": { "url": "https://mcp.t2000.ai/mcp" }
-      }
-    }
-    ```
-
-    No OAuth in your client? Mint a bearer under
-    [Connections](https://t2000.ai/manage/connections).
-  </Tab>
-</Tabs>
-
-Then paste the setup prompt on [Passport Connect](/passport-connect#connect).
+No key in the client. One URL for every host: add
+`https://mcp.t2000.ai/mcp` as a connector and approve with Google — that IS
+your Passport. Per-client steps + the setup prompt:
+[Passport Connect → Connect](/passport-connect#connect). The full `t2000_*`
+tool catalog is [Connect tools](/tools).
 
 ## Terminal (`t2`)
 

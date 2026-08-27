@@ -19,6 +19,12 @@
       "dark": "#0C0F12"
     }
   },
+  "redirects": [
+    {
+      "source": "/prompts",
+      "destination": "/tools"
+    }
+  ],
   "navigation": {
     "tabs": [
       {
@@ -30,7 +36,7 @@
               "index",
               "quickstart",
               "passport-connect",
-              "prompts",
+              "tools",
               "console"
             ]
           },

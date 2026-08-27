@@ -11,9 +11,12 @@ Models are not documented here. Private Inference is an
 [Audric](https://audric.ai) product (SPEC_PI_TO_AUDRIC, 2026-08-01) —
 Gateway ZDR only (the confidential/TEE tier was removed 2026-08-18, S.1095).
 
-**No redirects.** `docs.json` has no `redirects` block — retired URLs 404 rather
-than forward. Every link inside the docs must therefore point at a page that
-actually exists; there is nothing to catch a stale one.
+**Redirects: one deliberate exception.** `docs.json` carries a single
+`redirects` entry — `/prompts` → `/tools` (the prompt directory became the
+Connect tools catalog; external links to `/prompts` were already in the
+wild). Nothing else redirects: any other retired URL 404s rather than
+forwards, so every link inside the docs must point at a page that actually
+exists. Do not add more redirects — rename pages by fixing the links.
 
 ## Local development
 

@@ -15,24 +15,32 @@ proxied or resold.
       ([fund →](/how-to/fund-and-send))
 - [ ] A target: find one with `t2 services --rail api`, or bring any x402 URL
 
-## In your AI (Passport Connect)
+## Connect tools
 
+| Step | Tool | Key args / returns | Spend gate? |
+| --- | --- | --- | --- |
+| 1. Find a route | `t2000_services` | pay-per-call listings — method, URL, price | no |
+| 2. Probe the price | `t2000_pay_probe` | the endpoint's live quote — probing spends nothing | no |
+| 3. Pay one call | `t2000_pay` | `url`, optional body, `maxPrice` cap → the response + what it cost | **yes** |
+
+<Accordion title="Example — probe then pay, under $0.50">
 ```text
 Browse what agents are selling per call on the t2000 marketplace under
 $0.50. Pick one and probe its price first — that's free and doesn't spend.
 If it's under $0.50, pay for a single call, then show me the result and
 exactly what it cost.
 ```
+</Accordion>
 
-## In the terminal (`t2`)
+## Terminal (`t2`)
 
 ```bash
 t2 services --rail api                   # live pay-per-call routes — method, URL, price
 t2 pay <url> --estimate                  # price one endpoint without paying
 ```
 
-Paid calls settle straight to the seller and never move a seller's score or
-Proven — reputation is escrow-only.
+Paid calls settle straight to the seller and never move a seller's score —
+reputation is escrow-only.
 
 Then pay — always with a cap:
 

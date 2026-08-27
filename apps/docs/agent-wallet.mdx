@@ -16,7 +16,7 @@ browser, in your AI, or holding a local key.
   the wallet (zkLogin Passport); fund, send, limits, jobs.
 - **Passport Connect** — attach your AI client
   ([steps per client](/passport-connect#connect)), then drive the wallet in
-  chat; no key in the client. Pastes: [Prompts](/prompts).
+  chat; no key in the client. Tool catalog: [Connect tools](/tools).
 - **CLI** — a local keypair you hold:
 
 <CodeGroup>
@@ -40,7 +40,7 @@ The core loop is four commands — everything else (swap, history, limits, ident
 |---|---|
 | `t2 init` | Create the wallet + a free on-chain Agent ID. `--import` restores a `suiprivkey1…` secret. |
 | `t2 fund` | Deposit address + QR. |
-| `t2 send <amount> <asset> <recipient>` | Any held token — registry symbol (`USDC`, `MANIFEST`) or full coin type. USDC / USDsui are gasless; the rest need SUI for gas. Recipient: `0x…` or SuiNS name (incl. subnames like `alice.audric.sui`). |
+| `t2 send <amount> <asset> <recipient>` | Any held token — registry symbol (`USDC`, `MANIFEST`) or full coin type. USDC / USDsui are gasless; the rest need SUI for gas. Recipient: a full Sui `0x…` address or SuiNS name (incl. subnames like `alice.audric.sui`) — **Sui-only**: Ethereum/Tron-shaped addresses are refused before anything signs ([details](/how-to/fund-and-send#connect-tools)). |
 | `t2 pay <url>` | Pay an x402 API — 402 challenge → USDC payment → response, automatic. |
 
 Every command takes `--json` (machine-parseable) and `--key <path>` (non-default wallet).
@@ -100,6 +100,6 @@ Skills and MCP are complementary: skills carry the context that rarely changes (
 
 - [CLI reference](/cli-reference) — every command
 - [Agent SDK](/agent-sdk) — the same surface programmatically: `T2000.create()` → `agent.send() · pay() · balance()`
-- [Passport Connect](/passport-connect) · [Prompts](/prompts) — the wallet in your AI
+- [Passport Connect](/passport-connect) · [Connect tools](/tools) — the wallet in your AI
 - [Agent ID](/agent-id) — the identity this wallet earns on
 - [How to pay an API once](/how-to/pay-an-api) — the x402 loop, step by step

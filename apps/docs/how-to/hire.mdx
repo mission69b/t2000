@@ -14,8 +14,18 @@ accept (or the review window lapses).
       ([fund →](/how-to/fund-and-send))
 - [ ] A brief: what you want, in a sentence or a file
 
-## In your AI (Passport Connect)
+## Connect tools
 
+| Step | Tool | Key args / returns | Spend gate? |
+| --- | --- | --- | --- |
+| 1. Browse | `t2000_services` | listings with price, SLA, escrow terms | no |
+| 2. Inspect one | `t2000_service_get` | the listing's full terms + required buyer fields | no |
+| 3. Hire | `t2000_job_hire` | funds the escrow → the `jobId` | **yes** |
+| 4. Track | `t2000_job_status` | state, deadline, the delivery when it lands | no |
+| 5. Settle | `t2000_job_settle` / `t2000_job_reject` | releases the escrow already locked (settle pays the seller; reject splits per terms, in-window) | releases escrow — no new debit |
+| 6. Rate | `t2000_job_review` | stars 1–5 on the delivered, settled job | no |
+
+<Accordion title="Example — browse and hire under $2">
 ```text
 Browse marketplace Services that can write a short Sui market brief for
 under $2. Show me the top options with price, SLA, and escrow terms before
@@ -23,8 +33,9 @@ I fund anything. Then hire the best one with this brief: "One paragraph on
 DEEP — price action this week, one risk, one catalyst." Wait for my go
 before spending.
 ```
+</Accordion>
 
-## In the terminal (`t2`)
+## Terminal (`t2`)
 
 Hire a listing — price and terms come from the listing:
 
@@ -75,4 +86,7 @@ become the seller's public score —
   <jobId>` returns your money; anyone may crank it. Job text is public — keep
   private details out of specs.
 - **Lost the job id** — `t2 job watch --buying --once` lists every escrow
-  this wallet funded, full ids on actionable rows.
+  this wallet funded, full ids on actionable rows. In Connect,
+  `t2000_jobs { "needsOnly": true, "role": "buyer" }` is the settle queue —
+  every delivery awaiting you, full ids; it's clear only when
+  `needsActionTotal === matching === 0`.

@@ -47,8 +47,8 @@ await agent.send({ to: '0x8b3e…', amount: 5, asset: 'USDsui' });
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 100 });
 
 // Pay — any x402-protected API. Gasless USDC; handles HTTP 402 transparently.
-// Speaks both dialects: x402 `accepts[]` body (preferred) and the MPP
-// x402 accepts[] dialect only. JSON string bodies default to content-type: application/json.
+// Speaks the x402 `accepts[]` dialect only (header-only 402s fail closed).
+// JSON string bodies default to content-type: application/json.
 const result = await agent.pay({
   url: 'https://api.example.com/v1/chat/completions',
   method: 'POST',
@@ -185,7 +185,7 @@ const score = await getAgentScore(agent.suiClient, sellerAddress);
 const tier = trustTierLabel(effectiveSellerLevel(score)); // e.g. "Established"
 ```
 
-**Posting gates (S.1209):** the ONE buyer knob is `trustRequirement: 'open' | 'established' | 'top' | 'veteran'` — pass it to `postOpenJob` / `postBatchOpenJob` (or `--trust` in the CLI; `open` is the default). The SDK maps it to the on-chain tier floor via `minSellerLevelForTrustRequirement` and always writes `claimPolicy: 0` (the legacy claim-policy read helpers left the SDK in S.1212 — the on-chain field is frozen and 0 on every claimable row). Types: `AgentScore` · `SellerLevel` · `TrustRequirement`.
+**Posting gates:** the ONE buyer knob is `trustRequirement: 'open' | 'established' | 'top' | 'veteran'` — pass it to `postOpenJob` / `postBatchOpenJob` (or `--trust` in the CLI; `open` is the default). The SDK maps it to the on-chain tier floor via `minSellerLevelForTrustRequirement`; a legacy on-chain field exists but is frozen and unused. Types: `AgentScore` · `SellerLevel` · `TrustRequirement`.
 
 ---
 
@@ -291,7 +291,7 @@ t2000 builds Sui transactions with thin builders — no protocol SDK dependencie
 |---|---|---|
 | Sui foundation gasless | `0x2::balance::send_funds` Move call (built via `SuiGrpcClient`) | USDC + USDsui transfers, x402 USDC payments |
 | Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated to `protocols/cetus-swap.ts`) | Multi-DEX swap routing |
-| x402 / MPP | `@suimpp/mpp/x402` (sign-then-settle) + `mppx` header-dialect fallback | Paid API access — any x402 seller's endpoint, at their own origin |
+| x402 | `@t2000/sui-x402` (sign-then-settle) | Paid API access — any x402 seller's endpoint, at their own origin |
 
 ---
 

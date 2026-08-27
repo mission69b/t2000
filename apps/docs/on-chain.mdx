@@ -21,7 +21,7 @@ The identity registry behind [Agent ID](/agent-id) — browse it at
 | What | Id | Export (`@t2000/id`) |
 |---|---|---|
 | Package **original** — types, event filters | [`0x7669be207f9ac28a34d2cbd45dcfdade11e6fd503ad24e687c180931be9a45e9`](https://suiscan.xyz/mainnet/object/0x7669be207f9ac28a34d2cbd45dcfdade11e6fd503ad24e687c180931be9a45e9) | — (event anchor; never retarget) |
-| Package **latest** (v3, S.1032) — entry calls | [`0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7`](https://suiscan.xyz/mainnet/object/0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7) | `AGENT_ID_PACKAGE_ID` |
+| Package **latest** — entry calls | [`0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7`](https://suiscan.xyz/mainnet/object/0xe94a8b8f14104b75ee4c7e359289da78698fbfffdd0e5e3e9cb7d250887df7a7) | `AGENT_ID_PACKAGE_ID` |
 | Shared `Registry` | [`0xf41683aa9f4c121f34e4082c35180b0efdbd6d5293e3c88b1bcfa45ddf5c4119`](https://suiscan.xyz/mainnet/object/0xf41683aa9f4c121f34e4082c35180b0efdbd6d5293e3c88b1bcfa45ddf5c4119) | `AGENT_ID_REGISTRY_ID` |
 
 Source: [`contracts/agent_id`](https://github.com/mission69b/t2000/tree/main/contracts/agent_id).
@@ -33,7 +33,7 @@ The Job + Opening escrow behind hire, Open jobs, and settle.
 | What | Id | Export (`@t2000/sdk`) |
 |---|---|---|
 | Package **original** — type strings, v1 events | [`0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd`](https://suiscan.xyz/mainnet/object/0x358a819c1c016e2cc84ef5fbea81cba90c31f7f8a62bf45cb5e5276acf198bdd) | `MAINNET_A2A_ESCROW_PACKAGE_ID` |
-| Package **latest** (v13, S.1210 — active cap frees on **deliver** via `reputation::deliver_v2` / `batch::deliver_v2`, Veteran review floor 10, creates assert `claim_policy == 0`; FeeConfig VERSION **8**, older package versions abort `EWrongVersion`) — entry calls (create / claim_v2 / deliver_v2 / release_v2 / batch_claim / batch_release / review / …) | [`0x912b6fe2a5913fb2a3848480c6a84dce777a10bc8bd5d24efde741a81ef8b5c4`](https://suiscan.xyz/mainnet/object/0x912b6fe2a5913fb2a3848480c6a84dce777a10bc8bd5d24efde741a81ef8b5c4) | `MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID` |
+| Package **latest** (escrow) — entry calls; upgrade history in [`contracts/a2a_escrow`](https://github.com/mission69b/t2000/tree/main/contracts/a2a_escrow) | [`0x912b6fe2a5913fb2a3848480c6a84dce777a10bc8bd5d24efde741a81ef8b5c4`](https://suiscan.xyz/mainnet/object/0x912b6fe2a5913fb2a3848480c6a84dce777a10bc8bd5d24efde741a81ef8b5c4) | `MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID` |
 | Shared `FeeConfig` | [`0xddaa25570950b7484dbf20797ebcf75707be9c87cd67bef2a06ed2e81d2c494b`](https://suiscan.xyz/mainnet/object/0xddaa25570950b7484dbf20797ebcf75707be9c87cd67bef2a06ed2e81d2c494b) | `A2A_ESCROW_FEE_CONFIG_ID` |
 | Shared `ScoreBoard` (reputation namespace parent) | [`0x7506f01e01b1c48d73832949a2808929b80dec2f7104889e012f8a4f09719f6e`](https://suiscan.xyz/mainnet/object/0x7506f01e01b1c48d73832949a2808929b80dec2f7104889e012f8a4f09719f6e) | `MAINNET_A2A_SCORE_BOARD_ID` / `A2A_SCORE_BOARD_ID` |
 
@@ -46,7 +46,7 @@ The v6 pin (`A2A_ESCROW_PACKAGE_V6_ID`,
 the defining anchor for the early `reputation` events and object types —
 like every defining id, it never retargets on later upgrades.
 
-How scores, reviews, and Proven claim gates work:
+How scores, trust tiers, and reviews work:
 [Reviews & reputation](/how-to/reviews-and-reputation).
 
 Fee: **5%** of the seller payout at settle, taken on-chain; the receiver is

@@ -62,8 +62,8 @@ t2000_job_board → (N/M jobs row? t2000_job_batch_claim : t2000_job_claim)
   → t2000_job_status (read workOrder) → t2000_job_deliver
 ```
 
-Inbox: `t2000_jobs` with `needsOnly: true`. Full tool list: the connector's
-`tools/list` — see [Passport Connect](/passport-connect).
+Inbox: `t2000_jobs` with `needsOnly: true` and a `role`. Full tool list: the
+connector's `tools/list` — human index at [Connect tools](/tools).
 
 Buyers on this lane add `t2000-job` (post/hire/settle via MCP).
 

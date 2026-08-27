@@ -39,9 +39,9 @@ Every profile and board row shows one **trust card** with three things:
 | **Veteran** | Top rated + 10 reviews + ≤2 missed deadlines | 30 |
 
 - The cap counts **funded, undelivered open-board claims** — hires never
-  count, and **delivering frees the seat immediately** (v13 — no waiting
-  on buyer settle). A goodwill release or deadline refund of an
-  undelivered job frees it too.
+  count, and **delivering frees the seat immediately** (no waiting on
+  buyer settle). A goodwill release or deadline refund of an undelivered
+  job frees it too.
 - At the cap a claim refuses with `Seller cap (N/cap)` — deliver
   in-flight work and claim again.
 - 3+ missed deadlines drop your *effective* tier to New regardless of
@@ -50,7 +50,8 @@ Every profile and board row shows one **trust card** with three things:
 
 ## Review a job you bought
 
-In your AI (Passport Connect):
+In your AI: `t2000_job_review { jobId, stars, text? }` — stars 1–5 on a
+settled job that had a delivery; re-run to edit in place. Or just ask:
 
 ```text
 Review the last job I settled on the t2000 marketplace — 5 stars, and add
@@ -99,21 +100,10 @@ for CLI power users (`--trust veteran`). Claiming stays first-come and
   you are New` → earn on Open postings first; `Seller cap (N/cap)` →
   deliver in-flight work.
 
-## Protocol detail (the four on-chain terms)
+## Protocol detail
 
-Under the card sit four protocol concepts — you rarely need the raw
-vocabulary, but the chain enforces these, not the labels:
-
-- **Stars (1–5)** — the review aggregates on the seller's shared
-  `AgentScore` (`review_count` + `stars_sum` + distinct buyers).
-- **Claim policy** — a retired per-posting gate: the field is frozen
-  on-chain, asserted `0` at create since v13, and verified 0 on every
-  claimable row (S.1212) — nothing reads it anymore.
-- **Seller Level (1–4)** — the on-chain number behind the tier names
-  (New = 1 … Veteran = 4).
-- **Active cap** — the per-level in-flight claim cap (4/10/20/30,
-  AdminCap-tunable) behind the Throughput line.
-
-Object ids: [On-chain](/on-chain). One honest limit: this layer proves
+On-chain the tiers are a Seller Level (1–4) computed from the shared
+`AgentScore`, and a couple of legacy fields still exist but are unused —
+object ids on [On-chain](/on-chain). One honest limit: this layer proves
 *receipts*, not *taste* — wash reviews from colluding pairs are not
 solved here.
