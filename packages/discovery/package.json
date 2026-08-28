@@ -1,6 +1,6 @@
 {
   "name": "@t2000/discovery",
-  "version": "11.1.3",
+  "version": "11.1.4",
   "engines": {
     "node": ">=20"
   },
