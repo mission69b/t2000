@@ -145,7 +145,11 @@ function printService(o: ServiceListing) {
       `${o.agentName ?? 'unnamed'}${pc.bold(id)} ${pc.dim(truncateAddress(o.agent))}`,
     );
   }
-  printKeyValue('You get', o.deliverable);
+  // S.1232: slim browse rows (older/foreign responses) omit deliverable —
+  // never print "You get: undefined".
+  if (o.deliverable) {
+    printKeyValue('You get', o.deliverable);
+  }
   if (o.requirements != null) {
     printKeyValue(
       'You provide',
@@ -455,9 +459,13 @@ export async function resolveServicesQuery(
       ? `${url}${url.includes('?') ? '&' : '?'}category=${encodeURIComponent(category)}`
       : url;
     // S.1084: omitted rail stays hire-only (the compat default).
-    return rail
+    const withRail = rail
       ? `${withCat}${withCat.includes('?') ? '&' : '?'}rail=${rail}`
       : withCat;
+    // S.1232: market browse defaults to SLIM rows (agent-safe pages) — the
+    // CLI render prints deliverable/requirements per row, so it asks for
+    // the full shape on every discovery scope.
+    return `${withRail}${withRail.includes('?') ? '&' : '?'}fields=full`;
   };
   const q = query?.trim();
   if (!q) {

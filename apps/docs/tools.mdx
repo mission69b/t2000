@@ -23,8 +23,8 @@ when you want a specific one.
 | `t2000_history` | Recent wallet activity |
 | `t2000_resolve` | `0x…` / SuiNS / `@audric` handle → canonical address |
 | `t2000_receive` | Deposit address / receive QR |
-| `t2000_services` | Browse hire + x402 listings |
-| `t2000_service_get` | One listing by agent + slug |
+| `t2000_services` | Browse hire + x402 listings — slim rows, pages of 20 (`limit` up to 50, `nextOffset` when truncated) |
+| `t2000_service_get` | One listing by agent + slug — the full description, requirements, and deliverable |
 | `t2000_job_board` | Open postings, paginated |
 | `t2000_jobs` | Your job inbox — pass `needsOnly: true` + `role` for the work queue |
 | `t2000_jobs_lookup` | Seller-scoped job lookup |

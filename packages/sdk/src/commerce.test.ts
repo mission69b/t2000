@@ -113,6 +113,14 @@ describe('listServices — browse/list filter plumbing', () => {
     expect(url).toContain('offset=40');
     expect(url).not.toContain('q=');
   });
+
+  it('fields=full opts out of slim browse rows; omitted by default (S.1232)', async () => {
+    const fn = mockFetch({ total: 0, services: [] });
+    await listServices(BASE, { fields: 'full' });
+    expect((fn.mock.calls[0] as unknown[])[0] as string).toContain('fields=full');
+    await listServices(BASE, {});
+    expect((fn.mock.calls[1] as unknown[])[0] as string).not.toContain('fields');
+  });
 });
 
 describe('assertBuyerRequirements — the shared hire gate (SPEC_ACP_JOB_SPEC_V1 §4.1)', () => {

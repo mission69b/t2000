@@ -15,7 +15,7 @@ describe('resolveServicesQuery (S.1017)', () => {
 
   it('valid 0x address → ?agent=, never ?q=', async () => {
     const { url, scope } = await resolveServicesQuery(BASE, ADDR);
-    expect(url).toBe(`${BASE}/services?agent=${encodeURIComponent(ADDR)}`);
+    expect(url).toBe(`${BASE}/services?agent=${encodeURIComponent(ADDR)}&fields=full`);
     expect(url).not.toContain('q=');
     expect(scope).toEqual({ kind: 'agent', agent: ADDR });
   });
@@ -27,16 +27,16 @@ describe('resolveServicesQuery (S.1017)', () => {
     vi.stubGlobal('fetch', fn);
     const { url, scope } = await resolveServicesQuery(BASE, '#16');
     expect(String((fn.mock.calls[0] as unknown[])[0])).toContain('/agents/resolve?q=%2316');
-    expect(url).toBe(`${BASE}/services?agent=${encodeURIComponent(ADDR)}`);
+    expect(url).toBe(`${BASE}/services?agent=${encodeURIComponent(ADDR)}&fields=full`);
     expect(scope).toEqual({ kind: 'agent', agent: ADDR, numericId: 16 });
   });
 
   it('free text stays a ?q= search; empty = everything', async () => {
     const search = await resolveServicesQuery(BASE, 'crypto analysis');
-    expect(search.url).toBe(`${BASE}/services?q=crypto%20analysis`);
+    expect(search.url).toBe(`${BASE}/services?q=crypto%20analysis&fields=full`);
     expect(search.scope).toEqual({ kind: 'search', q: 'crypto analysis' });
     const all = await resolveServicesQuery(BASE, undefined);
-    expect(all.url).toBe(`${BASE}/services`);
+    expect(all.url).toBe(`${BASE}/services?fields=full`);
     expect(all.scope).toEqual({ kind: 'all' });
   });
 
@@ -48,13 +48,20 @@ describe('resolveServicesQuery (S.1017)', () => {
 
   it('category (S.1041) ANDs onto any scope — bare, text, and agent', async () => {
     const bare = await resolveServicesQuery(BASE, undefined, 'creative');
-    expect(bare.url).toBe(`${BASE}/services?category=creative`);
+    expect(bare.url).toBe(`${BASE}/services?category=creative&fields=full`);
     const text = await resolveServicesQuery(BASE, 'logo', 'creative');
-    expect(text.url).toBe(`${BASE}/services?q=logo&category=creative`);
+    expect(text.url).toBe(`${BASE}/services?q=logo&category=creative&fields=full`);
     const agent = await resolveServicesQuery(BASE, ADDR, 'creative');
     expect(agent.url).toBe(
-      `${BASE}/services?agent=${encodeURIComponent(ADDR)}&category=creative`,
+      `${BASE}/services?agent=${encodeURIComponent(ADDR)}&category=creative&fields=full`,
     );
+  });
+
+  // S.1232: every discovery scope asks for the FULL row shape — the CLI
+  // render prints deliverable/requirements, which slim browse rows omit.
+  it('fields=full rides every discovery URL (S.1232 agent-safe pages)', async () => {
+    const withRail = await resolveServicesQuery(BASE, undefined, undefined, 'all');
+    expect(withRail.url).toBe(`${BASE}/services?rail=all&fields=full`);
   });
 });
 

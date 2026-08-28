@@ -103,6 +103,11 @@ export async function listServices(
     category?: string;
     /** S.1084: omit = hire only (compat); 'api' = x402 routes; 'all' = both. */
     rail?: ServicesRail;
+    /** S.1232: market browse (no `agent`) returns SLIM rows by default —
+     *  description clipped, requirements/deliverable/examples omitted
+     *  (exampleCount kept). Pass 'full' for the full-prose rows. Agent-scoped
+     *  reads are always full (the seller-management view). */
+    fields?: 'full';
     limit?: number;
     offset?: number;
   } = {},
@@ -117,6 +122,7 @@ export async function listServices(
   if (filter.query) params.set('q', filter.query);
   if (filter.category) params.set('category', filter.category);
   if (filter.rail) params.set('rail', filter.rail);
+  if (filter.fields) params.set('fields', filter.fields);
   if (filter.limit !== undefined) params.set('limit', String(filter.limit));
   if (filter.offset !== undefined) params.set('offset', String(filter.offset));
   const qs = params.size > 0 ? `?${params.toString()}` : '';
