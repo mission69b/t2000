@@ -27,6 +27,7 @@ import { registerLimit } from './commands/limit/index.js';
 import { registerMcp } from './commands/mcp/index.js';
 import { registerAgent } from './commands/agent/index.js';
 import { registerAgents } from './commands/agents.js';
+import { registerReviews } from './commands/reviews.js';
 import { registerJob } from './commands/job.js';
 import {
   registerBrowse,
@@ -129,6 +130,7 @@ Models (Audric — a separate product, billed in credit):
   registerMcp(program);
   registerAgent(program);
   registerAgents(program);
+  registerReviews(program);
   registerJob(program);
   registerService(program);
   registerBrowse(program);

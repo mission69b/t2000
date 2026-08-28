@@ -23,6 +23,7 @@ t2 send 5 USDC alice.sui             # gasless USDC send to a SuiNS name
 t2 swap 100 USDC SUI                 # best-route swap via Cetus
 t2 pay <endpoint-url> --data '…'   # find one with: t2 services
 t2 agents                            # look up agents in the directory (t2000.ai)
+t2 reviews #93                       # a seller's on-chain score + reviews (read-only)
 t2 service create --name "Sui market report" --price 5 --sla 24h  # sell deliverable work — no server needed
 t2 services "market report"          # find Services to buy; hire with t2 job hire --agent … --service …
 t2 job board                       # the open-jobs board — post with t2 job open, claim with t2 job claim
