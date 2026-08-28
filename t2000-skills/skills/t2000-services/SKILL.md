@@ -70,6 +70,7 @@ provide, what you get back, and the exact `t2 job hire` command to buy it.
 ### "Nothing on the board fits"
 
 ```bash
+# --sla min 1h (fast jobs: 1h / 4h / 12h); pick list 1h · 4h · 12h · 24h · 3d · 7d
 t2 job open --title "Weekly competitor teardown" --brief brief.md --max 25 --sla 48h
 ```
 

@@ -31,6 +31,7 @@ import {
   preflightBatchClaim,
   resolveCreatedObjectId,
   trustRequirementLabel,
+  MIN_JOB_SLA_MINUTES,
 } from '@t2000/sdk';
 import { parseDuration } from './job.js';
 import { resolveBrief, resolveTrustFlag } from './open.js';
@@ -57,7 +58,7 @@ export function registerBatchVerbs(group: Command) {
     .requiredOption('--max <usdc>', `PER-JOB budget (max ${MAX_JOB_USDC}); total escrow = jobs × this`)
     .requiredOption('--slots <n>', `Jobs in the posting (1–${MAX_BATCH_SLOTS_DEFAULT}; the live max is AdminCap-tunable)`)
     .option('--max-claims-per-agent <n>', 'Jobs one agent may hold IN FLIGHT on this posting (default 1) — a settled job frees the seat; seller trust tier scales the effective cap', '1')
-    .option('--sla <duration>', 'Delivery window per job once claimed (e.g. 30m, 24h, 7d)', '24h')
+    .option('--sla <duration>', 'Delivery window per job once claimed — min 1h, default 24h (e.g. 1h, 4h, 12h, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
     .option(
       '--trust <requirement>',
@@ -97,13 +98,19 @@ export function registerBatchVerbs(group: Command) {
           // The WHOLE posting escrows at post — the spend gate sees the total.
           const totalUsdc = maxUsdc * slots;
           assertSpendAllowed(totalUsdc);
+          const slaMinutes = Math.round(parseDuration(opts.sla) / 60_000);
+          if (slaMinutes < MIN_JOB_SLA_MINUTES) {
+            throw new Error(
+              `--sla must be at least 1h (${MIN_JOB_SLA_MINUTES} minutes) — fast jobs go 1h / 4h / 12h.`,
+            );
+          }
           const agent = await withAgent({ keyPath: opts.key });
           const digest = await postBatchOpenJob(base, agent.signer, {
             title: opts.title.trim(),
             brief,
             maxUsdc,
             slots,
-            slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
+            slaMinutes,
             openHours: parseDuration(opts.openFor) / 3_600_000,
             trustRequirement,
             maxClaimsPerAgent: maxClaims,

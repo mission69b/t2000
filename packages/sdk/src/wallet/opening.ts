@@ -213,6 +213,28 @@ export function openingMinSellerLevel(terms: {
 /** The only reject split `create_open` accepts since v5 (S.1019). */
 export const OPEN_REJECT_SPLIT_BPS = 10_000;
 
+/** S.1223 — product floor on the delivery SLA: 1 HOUR. Stricter than the
+ *  chain (`sla_ms > 0`); a sub-hour window is a trap for the claiming
+ *  seller, not a fast job. Every post surface (console, API, MCP, CLI)
+ *  imports this — never a copied literal. */
+export const MIN_JOB_SLA_MINUTES = 60;
+
+/** Default delivery window (24h) — unchanged product default. */
+export const DEFAULT_JOB_SLA_MINUTES = 1440;
+
+/** S.1223 — the ONE buyer-facing SLA pick list (fast-job ladder):
+ *  1h · 4h · 12h · 24h · 3d · 7d. Console post + Services dropdowns and
+ *  docs examples render THIS — never a per-surface copy (the old console
+ *  floor was 24h while the rail took any SLA; Services had a stray 6h). */
+export const JOB_SLA_CHOICES = [
+  { minutes: 60, label: '1 hour' },
+  { minutes: 240, label: '4 hours' },
+  { minutes: 720, label: '12 hours' },
+  { minutes: 1440, label: '24 hours' },
+  { minutes: 4320, label: '3 days' },
+  { minutes: 10_080, label: '7 days' },
+] as const;
+
 /** Client-side preflight — mirrors the contract's `create_open` bounds plus
  *  the `MAX_JOB_USDC` client cap (the contract is value-neutral, same as
  *  Job). */
@@ -248,8 +270,12 @@ export function preflightCreateOpening(terms: OpeningTerms): {
   if (terms.openUntilMs > now + MAX_OPEN_WINDOW_MS) {
     return { valid: false, code: 'INVALID_INPUT', error: 'Openings can stay claimable at most 30 days.' };
   }
-  if (terms.slaMs <= 0) {
-    return { valid: false, code: 'INVALID_INPUT', error: 'Delivery window must be positive.' };
+  if (terms.slaMs < MIN_JOB_SLA_MINUTES * 60_000) {
+    return {
+      valid: false,
+      code: 'INVALID_INPUT',
+      error: `Delivery window must be at least 1 hour (${MIN_JOB_SLA_MINUTES} minutes) — fast jobs go 1h / 4h / 12h.`,
+    };
   }
   if (terms.rejectSplitBps !== OPEN_REJECT_SPLIT_BPS) {
     return {

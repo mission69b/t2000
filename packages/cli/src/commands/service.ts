@@ -29,6 +29,7 @@ import {
   slugify,
   truncateAddress,
   validateAddress,
+  MIN_JOB_SLA_MINUTES,
 } from '@t2000/sdk';
 import {
   AGENT_CATEGORIES,
@@ -190,7 +191,7 @@ Examples:
       '--price <usdc>',
       `Fixed price in USDC (${MIN_JOB_USDC}\u2013${MAX_JOB_USDC})`,
     )
-    .requiredOption('--sla <duration>', 'Delivery SLA — e.g. 30m, 24h, 7d')
+    .requiredOption('--sla <duration>', 'Delivery SLA — min 1h (e.g. 1h, 4h, 12h, 24h, 7d)')
     .requiredOption('--description <text>', 'What this service is (max 2000 chars)')
     .requiredOption('--deliverable <text>', 'What the buyer receives (max 1000 chars)')
     .option('--slug <slug>', 'Machine name (default: derived from --name)')
@@ -250,6 +251,11 @@ Examples:
             );
           }
           const slaMinutes = Math.round(parseDuration(opts.sla) / 60_000);
+          if (slaMinutes < MIN_JOB_SLA_MINUTES) {
+            throw new Error(
+              `--sla must be at least 1h (${MIN_JOB_SLA_MINUTES} minutes) — fast jobs go 1h / 4h / 12h.`,
+            );
+          }
           const reviewWindowMinutes = Math.round(parseDuration(opts.review) / 60_000);
           const rejectSplitBps = Number.parseInt(opts.split, 10);
           const slug = (opts.slug ?? slugify(opts.name)).trim().toLowerCase();

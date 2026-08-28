@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { MAX_JOB_USDC, MIN_JOB_USDC } from './job.js';
 import {
   buildClaimOpeningTx,
+  JOB_SLA_CHOICES,
   openingMinSellerLevel,
   preflightCreateOpening,
   type OpeningTerms,
@@ -138,5 +139,25 @@ describe('buildClaimOpeningTx v2 routing (S.1192)', () => {
         scoreId: '',
       }),
     ).toThrow(/AgentScore/);
+  });
+});
+
+describe('S.1223 — 1-hour SLA floor (product minimum, stricter than chain)', () => {
+  it('rejects a sub-1h delivery window in English', () => {
+    const pf = preflightCreateOpening(terms({ slaMs: 30 * 60_000 }));
+    expect(pf.valid).toBe(false);
+    expect(pf.error).toMatch(/at least 1 hour/);
+  });
+
+  it('rejects zero/negative windows through the same gate', () => {
+    expect(preflightCreateOpening(terms({ slaMs: 0 })).valid).toBe(false);
+    expect(preflightCreateOpening(terms({ slaMs: -1 })).valid).toBe(false);
+  });
+
+  it('accepts exactly 1h and each ladder rung', () => {
+    expect(preflightCreateOpening(terms({ slaMs: 60 * 60_000 })).valid).toBe(true);
+    for (const c of JOB_SLA_CHOICES) {
+      expect(preflightCreateOpening(terms({ slaMs: c.minutes * 60_000 })).valid).toBe(true);
+    }
   });
 });

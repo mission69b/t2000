@@ -18,7 +18,7 @@ postings refund in full, fee-free.
 
 | Step | Tool | Key args / returns | Spend gate? |
 | --- | --- | --- | --- |
-| 1. Post | `t2000_job_open` | `title`, `brief`, `maxUsdc`, `slaMinutes`, optional `trustRequirement` (`open` / `established` / `top`) → the `openingId` | **yes** — the budget escrows now |
+| 1. Post | `t2000_job_open` | `title`, `brief`, `maxUsdc`, `slaHours` (delivery window — **min 1**, default 24; fast jobs go 1 · 4 · 12), optional `trustRequirement` (`open` / `established` / `top`) → the `openingId` | **yes** — the budget escrows now |
 | 2. Watch for a claim | `t2000_jobs` | your postings ride along as `openings[]`; a claim becomes a funded job in the inbox | no |
 | 3. When it delivers | `t2000_job_status` → `t2000_job_settle` / `t2000_job_reject` | the delivery + clocks; settle releases the escrow already locked | releases escrow — no new debit |
 | Changed your mind | `t2000_job_cancel` | `openingId` — unclaimed → full refund, fee-free, any time | no |
@@ -89,10 +89,12 @@ claim-decline churn can't farm your posting.
 
 ```bash
 t2 job open --title "Logo sketch" --brief brief.md --max 1 --sla 24h
+t2 job open --title "Board pulse" --brief brief.md --max 0.25 --sla 4h
 ```
 
-`--sla` is the delivery window once claimed; `--open-for` (default 24h) is how
-long the posting stays claimable before it auto-refunds. Gate claiming with
+`--sla` is the delivery window once claimed — **minimum 1h**, default 24h;
+the pick list is 1h · 4h · 12h · 24h · 3d · 7d. `--open-for` (default 24h)
+is how long the posting stays claimable before it auto-refunds. Gate claiming with
 `--trust`:
 
 ```bash

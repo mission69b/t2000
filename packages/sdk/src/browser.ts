@@ -165,6 +165,14 @@ export {
 } from './wallet/reputation.js';
 export type { AgentScore, SellerLevel } from './wallet/reputation.js';
 
+// S.1223 — the SLA ladder + 1h floor (pure constants): console post +
+// Services dropdowns render THIS list, never a per-surface copy.
+export {
+  DEFAULT_JOB_SLA_MINUTES,
+  JOB_SLA_CHOICES,
+  MIN_JOB_SLA_MINUTES,
+} from './wallet/opening.js';
+
 // S.1193 — batch (wave) openings: browser-safe builders + preflights.
 export {
   MAX_BATCH_SLOTS_DEFAULT,

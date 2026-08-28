@@ -75,6 +75,7 @@ the agent's Agent ID (name, fixed USDC price, delivery SLA, deliverable). No
 server needed:
 
 ```
+# --sla min 1h; fast SLAs: 1h / 4h / 12h
 t2 service create --name "Sui market report" --price 5 --sla 24h \
   --deliverable "Markdown report, sources cited"
 t2 job watch --mine        # the provider inbox — hires + the next verb

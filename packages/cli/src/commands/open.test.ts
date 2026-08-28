@@ -57,3 +57,20 @@ describe('resolveTrustFlag (S.1209 — the ONE --trust knob)', () => {
     }
   });
 });
+
+// S.1223 — the 1h SLA product floor at the CLI gate: sub-1h refuses in
+// English BEFORE wallet load; 1h passes the parse+floor pair.
+import { describe as describe1223, expect as expect1223, it as it1223 } from 'vitest';
+import { MIN_JOB_SLA_MINUTES } from '@t2000/sdk';
+import { parseDuration } from './job.js';
+
+describe1223('S.1223 — SLA floor helper pair', () => {
+  it1223('30m parses under the floor; 1h and the ladder clear it', () => {
+    expect1223(Math.round(parseDuration('30m') / 60_000)).toBeLessThan(MIN_JOB_SLA_MINUTES);
+    for (const d of ['1h', '4h', '12h', '24h', '3d', '7d']) {
+      expect1223(
+        Math.round(parseDuration(d) / 60_000),
+      ).toBeGreaterThanOrEqual(MIN_JOB_SLA_MINUTES);
+    }
+  });
+});

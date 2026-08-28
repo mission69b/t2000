@@ -40,6 +40,7 @@ import {
   type OpenJobRow,
   type TrustRequirement,
   resolveCreatedObjectId,
+  MIN_JOB_SLA_MINUTES,
 } from '@t2000/sdk';
 import { parseDuration } from './job.js';
 import { withAgent } from '../lib/with-agent.js';
@@ -129,7 +130,7 @@ export function registerOpenVerbs(group: Command) {
     .requiredOption('--title <text>', "The job's public name (up to 80 chars)")
     .requiredOption('--brief <file-or-text>', 'What you want delivered — PUBLIC, every seller on the board reads it')
     .requiredOption('--max <usdc>', `Budget escrowed AT POST (max ${MAX_JOB_USDC})`)
-    .option('--sla <duration>', 'Delivery window once claimed (e.g. 30m, 24h, 7d)', '24h')
+    .option('--sla <duration>', 'Delivery window once claimed — min 1h, default 24h (e.g. 1h, 4h, 12h, 24h, 7d)', '24h')
     .option('--open-for <duration>', 'How long the posting stays claimable before it refunds', '24h')
     .option(
       '--trust <requirement>',
@@ -160,12 +161,18 @@ export function registerOpenVerbs(group: Command) {
           // buyer's wallet, so it belongs under the same cap as a hire.
           // (Claiming is free and is never recorded as spend.)
           assertSpendAllowed(maxUsdc);
+          const slaMinutes = Math.round(parseDuration(opts.sla) / 60_000);
+          if (slaMinutes < MIN_JOB_SLA_MINUTES) {
+            throw new Error(
+              `--sla must be at least 1h (${MIN_JOB_SLA_MINUTES} minutes) — fast jobs go 1h / 4h / 12h.`,
+            );
+          }
           const agent = await withAgent({ keyPath: opts.key });
           const digest = await postOpenJob(base, agent.signer, {
             title: opts.title.trim(),
             brief,
             maxUsdc,
-            slaMinutes: Math.round(parseDuration(opts.sla) / 60_000),
+            slaMinutes,
             openHours: parseDuration(opts.openFor) / 3_600_000,
             trustRequirement,
           });

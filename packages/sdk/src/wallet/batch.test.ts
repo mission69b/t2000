@@ -145,3 +145,23 @@ describe('preflightBatchClaim — wave gates first, then the single stack', () =
     expect(preflightBatchClaim(score(), { ...wave, claimPolicy: 1 }, 0).valid).toBe(true);
   });
 });
+
+// S.1223 — batch inherits the 1h SLA floor via the shared single preflight.
+describe('S.1223 — batch SLA floor inherits from preflightCreateOpening', () => {
+  it('sub-1h refuses; 1h passes', () => {
+    const base = {
+      amountUsdc: 0.1,
+      specHash: `0x${'a'.repeat(64)}`,
+      openUntilMs: Date.now() + 3_600_000,
+      reviewWindowMs: 600_000,
+      rejectSplitBps: 10_000,
+      slots: 5,
+    };
+    const short = preflightCreateBatchOpening({ ...base, slaMs: 30 * 60_000 });
+    expect(short.valid).toBe(false);
+    expect(short.error).toMatch(/at least 1 hour/);
+    expect(
+      preflightCreateBatchOpening({ ...base, slaMs: 60 * 60_000 }).valid
+    ).toBe(true);
+  });
+});
