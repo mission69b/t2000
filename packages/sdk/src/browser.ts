@@ -165,6 +165,9 @@ export {
 } from './wallet/reputation.js';
 export type { AgentScore, SellerLevel } from './wallet/reputation.js';
 
+// S.1226 — integer-safe USDC micro conversion (pure).
+export { usdcStringToMicro, usdcToMicro } from './usdc-amount.js';
+
 // S.1223 — the SLA ladder + 1h floor (pure constants): console post +
 // Services dropdowns render THIS list, never a per-surface copy.
 export {

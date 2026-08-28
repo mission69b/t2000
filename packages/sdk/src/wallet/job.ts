@@ -3,6 +3,7 @@ import { bcs } from '@mysten/sui/bcs';
 import { T2000Error } from '../errors.js';
 import { USDC_TYPE } from '../token-registry.js';
 import { USDC_DECIMALS } from '../constants.js';
+import { usdcToMicro } from '../usdc-amount.js';
 import {
   type PreflightResult,
   PREFLIGHT_OK,
@@ -251,7 +252,9 @@ export async function buildCreateJobTx({
   }
   // Floor, never round up — a rounded-up raw amount can exceed the on-chain
   // balance (financial-amounts discipline).
-  const rawAmount = BigInt(Math.floor(terms.amountUsdc * 10 ** USDC_DECIMALS));
+  // S.1226 (Aegis §3) — integer-safe micro: 0.29 must lock 290000, never
+  // the float-floor 289999.
+  const rawAmount = usdcToMicro(terms.amountUsdc);
 
   const tx = new Transaction();
   const { coin } = await selectAndSplitCoin(tx, client, buyer, USDC_TYPE, rawAmount, {
@@ -636,8 +639,10 @@ export async function verifyJobForSeller({
   client: SuiCoreClient;
   jobId: string;
   seller: string;
-  /** The listing's price for this job class. */
-  minAmountUsdc: number;
+  /** The listing's price for this job class. OPTIONAL (S.1226): the
+   *  escrow amount is already on-chain — omit to verify funded state +
+   *  seller only (the price compare is for listing-class checks). */
+  minAmountUsdc?: number;
   /** Minimum time-to-deadline to accept the job (default 60s). */
   minRunwayMs?: number;
 }): Promise<JobVerification> {
@@ -649,7 +654,7 @@ export async function verifyJobForSeller({
   if (job.seller !== validateAddress(seller)) {
     problems.push(`job pays ${job.seller}, not this seller`);
   }
-  if (job.escrowUsdc < minAmountUsdc) {
+  if (minAmountUsdc !== undefined && job.escrowUsdc < minAmountUsdc) {
     problems.push(`escrow holds ${job.escrowUsdc} USDC, price is ${minAmountUsdc}`);
   }
   if (job.deliverByMs - Date.now() < minRunwayMs) {

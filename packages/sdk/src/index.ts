@@ -188,6 +188,10 @@ export {
   preflightCreateOpening,
 } from './wallet/opening.js';
 export type { Opening, OpeningTerms } from './wallet/opening.js';
+
+// S.1226 — THE display-USDC → micro conversion (integer-safe; the
+// Math.floor(usdc*1e6) float-dust class is dead).
+export { usdcStringToMicro, usdcToMicro } from './usdc-amount.js';
 // S.1209 — the ONE buyer post knob (write mapping SSOT).
 export {
   TRUST_REQUIREMENTS,

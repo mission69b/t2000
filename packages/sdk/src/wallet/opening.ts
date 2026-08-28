@@ -2,6 +2,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { deriveDynamicFieldID } from '@mysten/sui/utils';
 import { T2000Error } from '../errors.js';
 import { USDC_DECIMALS } from '../constants.js';
+import { usdcToMicro } from '../usdc-amount.js';
 import { USDC_TYPE } from '../token-registry.js';
 import { validateAddress } from '../utils/sui.js';
 import { selectAndSplitCoin } from './coinSelection.js';
@@ -321,7 +322,9 @@ export async function buildCreateOpeningTx({
 }): Promise<Transaction> {
   const pf = preflightCreateOpening(terms);
   if (!pf.valid) throw new T2000Error(pf.code ?? 'INVALID_INPUT', pf.error ?? 'Invalid opening.');
-  const rawAmount = BigInt(Math.floor(terms.amountUsdc * 10 ** USDC_DECIMALS));
+  // S.1226 (Aegis §3) — integer-safe micro: 0.29 must lock 290000, never
+  // the float-floor 289999.
+  const rawAmount = usdcToMicro(terms.amountUsdc);
   const tx = new Transaction();
   const { coin } = await selectAndSplitCoin(tx, client, validateAddress(buyer), USDC_TYPE, rawAmount, {
     allowSwapAll: false,

@@ -599,7 +599,7 @@ ${MAX_JOB_USDC} USDC.
 
 Typical flow:
   buyer   $ t2 job hire 5 0xSELLER --spec brief.md --deadline 24h
-  seller  $ t2 job verify 0xJOB --price 5
+  seller  $ t2 job verify 0xJOB            # funded + pays you (add --price 5 to also check your listing price)
   seller  $ t2 job deliver 0xJOB report.md
   buyer   $ t2 job release 0xJOB          (or: t2 job reject 0xJOB)
   either  $ t2 job watch 0xJOB
@@ -880,10 +880,10 @@ Ending a job (all states covered):
   group
     .command('verify')
     .argument('<jobId>', 'The Job object id (0x…)')
-    .description('Seller-side check: the job is funded, pays YOU, and covers the price')
-    .requiredOption('--price <usdc>', 'Your price for this job class')
+    .description('Seller-side check: the job is funded and pays YOU. --price additionally checks the escrow covers your listing price')
+    .option('--price <usdc>', 'Your price for this job class (optional — the escrow amount is already on-chain)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
-    .action(async (jobId: string, opts: { price: string; key?: string }) => {
+    .action(async (jobId: string, opts: { price?: string; key?: string }) => {
       try {
         const agent = await withAgent({ keyPath: opts.key });
         const client = getSuiClient();
@@ -891,7 +891,11 @@ Ending a job (all states covered):
           client,
           jobId,
           seller: agent.address(),
-          minAmountUsdc: Number.parseFloat(opts.price),
+          // S.1226 — price is a listing-class check; without it the
+          // on-chain escrow + funded state + seller are the verification.
+          ...(opts.price === undefined
+            ? {}
+            : { minAmountUsdc: Number.parseFloat(opts.price) }),
         });
         if (isJsonMode()) {
           printJson({ ok: result.ok, problems: result.problems, job: result.job });
@@ -900,7 +904,11 @@ Ending a job (all states covered):
         }
         printBlank();
         if (result.ok) {
-          printSuccess('Escrow verified — funded, pays this wallet, covers the price. Safe to start work.');
+          printSuccess(
+            opts.price === undefined
+              ? `Escrow verified — funded with ${result.job.escrowUsdc} USDC, pays this wallet. Safe to start work.`
+              : 'Escrow verified — funded, pays this wallet, covers the price. Safe to start work.',
+          );
         } else {
           printError('Do NOT start work on this job:');
           for (const p of result.problems) printWarning(`  ${p}`);

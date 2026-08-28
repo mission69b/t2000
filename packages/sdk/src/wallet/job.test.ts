@@ -463,6 +463,26 @@ describe('verifyJobForSeller', () => {
     expect(v.problems.join(' ')).toMatch(/escrow holds 0/);
   });
 
+  // S.1226 — the escrow amount is already on-chain: price omitted =
+  // funded-state + seller verification only, no price compare.
+  it('verifies without minAmountUsdc (price optional)', async () => {
+    const v = await verifyJobForSeller({
+      client: mockClient(onChainJob()),
+      jobId: JOB_ID,
+      seller: SELLER,
+    });
+    expect(v.ok).toBe(true);
+    // And a zero-escrow job still fails on state/parties, never a price
+    // compare that was never asked for.
+    const stranger = await verifyJobForSeller({
+      client: mockClient(onChainJob({ escrow: '0' })),
+      jobId: JOB_ID,
+      seller: STRANGER,
+    });
+    expect(stranger.ok).toBe(false);
+    expect(stranger.problems.join(' ')).not.toMatch(/price/);
+  });
+
   it('flags a deadline too close to accept', async () => {
     const v = await verifyJobForSeller({
       client: mockClient(onChainJob({ deliver_by_ms: String(Date.now() + 1_000) })),
