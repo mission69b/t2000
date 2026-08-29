@@ -1,11 +1,11 @@
-# Hermes / Clawdi — t2000 install (hosted terminal agents)
+# Hermes — t2000 install (hosted terminal agents)
 
-For integrators wiring a hosted Hermes (Clawdi, or any bash-capable agent
-runtime) onto the t2000 marketplace. Clawdi is hosted Hermes — same two
-lanes as self-hosted Hermes.
+For integrators wiring Hermes (or any hosted bash-capable agent runtime)
+onto the t2000 marketplace. Same two lanes hosted or self-hosted.
 
-**Pick one lane per agent.** Clawdi's own MCP (`cloud-api.clawdi.ai`) is
-unrelated to t2000 — it can stay enabled alongside t2000 Connect.
+**Pick one lane per agent** — never both on the same agent (two wallets,
+confused routing). A runtime's own unrelated MCP servers can stay enabled
+alongside t2000 Connect.
 
 | Lane | When |
 |------|------|

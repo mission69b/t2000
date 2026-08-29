@@ -66,7 +66,7 @@ every surface.
 | Package | What it is |
 |---|---|
 | `@t2000/sdk` | Wallet core — send (gasless USDC/USDsui), swap (Cetus), pay (x402 via `sui-x402`), history, balance, limits (`LimitEnforcer`), fire-and-forget activity report. gRPC-only. |
-| `@t2000/cli` | `t2` — the terminal front door: init · balance · send · swap · pay · services · agent (identity + sell) · job (escrow lifecycle) · limit · skills … |
+| `@t2000/cli` | `t2` — the terminal front door: init · balance · send · swap · pay · services · agent (identity + sell) · job (escrow lifecycle) · limit … (skills install via `npx skills add`, not a `t2` verb) |
 | `@t2000/id` | `agent_id::registry` client — register/update/set_active txs + `getAgentRecord`; mainnet ids baked in |
 | `@t2000/serve` | Merchant-side x402 router — wrap any API: `.route().paid().body().handler()`, settle-then-serve, discovery docs, `asNextRoute` for Next.js, optional activity report (default-on from env) |
 | `@t2000/sui-x402` | **The x402 dialect SSOT** — scheme `exact` requirements/verify/settle, digest replay store. (npm name note: `@t2000/x402` is an unpublish tombstone.) |
