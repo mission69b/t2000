@@ -15,7 +15,6 @@ build/
 
 # misc
 .DS_Store
-ops/basecamp/.venv/
 *.pem
 *.tsbuildinfo
 next-env.d.ts
@@ -35,6 +34,15 @@ infra/.env.infra
 
 # spec/ — entire tree is local-only / not part of the public repo
 spec/
+
+# ops/ — GTM desk, settle ledgers, dogfood prompts, Dune scratch, QA.
+# Local-only (same class as spec/). Not part of the public open-rails surface.
+ops/
+
+# Designer / wave HTML dumps — never commit
+design-exports/
+wave1-exports/
+wave2-exports/
 
 # /improve audit output (shadcn/improve, installed globally). Working material
 # only — findings get triaged into HANDOFF_NEXT_AGENT.md, which stays the

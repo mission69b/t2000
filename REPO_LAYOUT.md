@@ -27,7 +27,7 @@ t2000/
 ├── templates/                               ← deployable starter templates (serve-vercel — Deploy-with-Vercel target; NOT workspace packages)
 ├── contracts/                               ← Move sources (a2a_escrow, agent_id — live on mainnet)
 ├── brandkit/                                ← voice, logos, OG, emails, connector-directory paste packs
-├── ops/                                     ← dogfood prompts, test plans, Dune pitch queries (not Mintlify)
+├── ops/                                     ← local-only / gitignored (GTM desk · dogfood · settle ledgers · QA · Dune scratch — same class as spec/)
 ├── scripts/                                 ← release tooling (release-notes.sh)
 ├── t2000-skills/                            ← agent skills (canonical SKILL.md source; synced to mission69b/t2000-skills)
 ├── .claude/                                 ← agent context (canonical)
@@ -49,7 +49,7 @@ t2000/
 | Package README | `packages/<pkg>/README.md` |
 | App README | `apps/<app>/README.md` |
 | Brand voice / logos / connector paste / marketing one-pager | `brandkit/` |
-| Dogfood prompts, manual QA, Dune SQL, ops runbooks | `ops/` |
+| Dogfood prompts, manual QA, GTM/settle ledgers, Dune SQL, ops runbooks | local `ops/` (**gitignored** — never the public repo; mirror to private `t2000-internal` if multi-machine) |
 | A rule every task needs | `CLAUDE.md` (it loads every turn — keep it tight) |
 | A rule only some tasks need | `.claude/skills/<name>/SKILL.md` (write a trigger-rich `description`) |
 | A repeatable ritual | `.claude/commands/<name>.md` |
