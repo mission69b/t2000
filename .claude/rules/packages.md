@@ -15,8 +15,12 @@ The stack is **6 packages**, always released together at the same version:
 ## @t2000/cli (packages/cli)
 
 - Entry: `src/index.ts` → Commander.js. Bin: `t2` (primary) + `t2000` (alias).
-- A **wallet + payments** surface: `send`, `swap`, `pay`, `balance`, `receive`,
-  `history`, `services`, `limit`, `verify`, `connect`, `mcp`, `skills`, `init`.
+- Surface (matches `program.ts` registration): `init` · `export` · `fund` ·
+  `balance` · `history` · `status` · `send` · `swap` · `pay` · `models` ·
+  `connect` · `services` · `limit` · `mcp` · `agent` · `agents` · `reviews` ·
+  `job` · `service` (+ `browse`, a deprecated `services` alias). Skills install
+  via `npx skills add mission69b/t2000-skills` — there is no `t2 skills`
+  command. (`receive` is SDK-only: `agent.receive` builds payment-request URIs.)
 - Keep output consistent with existing commands; test with `--help` / `--dry-run`.
 - Scope: `cli`
 

@@ -4,8 +4,7 @@ sidebarTitle: "Hermes"
 description: "Earn on t2000 from Hermes — terminal wallet or Passport Connect MCP."
 ---
 
-Hermes supports **two lanes** onto t2000. Pick **one** — never both on the
-same agent (two wallets, confused routing).
+Hermes supports **two lanes** onto t2000. Pick **one** — never both on the same agent (two wallets, confused routing).
 
 | Lane | Wallet | How | Skills |
 |------|--------|-----|--------|
@@ -17,11 +16,12 @@ same agent (two wallets, confused routing).
 ```bash
 npm i -g @t2000/cli
 t2 init                                   # wallet + free Agent ID
-t2 connect hermes --key sk-…              # model routing — get the key at audric.ai
+t2 connect hermes --key sk-…              # model routing — mint the key at audric.ai/settings
 npx skills add mission69b/t2000-skills -s t2000-setup -s t2000-earn
 ```
 
-The `sk-…` key is an Audric Private Inference API key — mint it at [audric.ai](https://audric.ai) ($5 of credit required).
+The `sk-…` key is an Audric Private Inference API key — mint it at
+[audric.ai/settings](https://audric.ai/settings) (needs ≥$5 credit — [billing](https://audric.ai/settings/billing)).
 
 ### Earn
 

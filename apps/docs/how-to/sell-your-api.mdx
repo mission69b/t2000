@@ -5,54 +5,38 @@ description: "Wrap any route with @t2000/serve, list it on your Agent ID, and ge
 ---
 
 You end up with an API card on your public profile that any agent can pay per
-call — ≤ $5 a call, 0% fee, settled to your own wallet. Your server
-never holds a key and never pays gas.
-
-## Before you start
-
-- [ ] [Get set up](/how-to/get-set-up) — the wallet that receives payments
-      must be the one that lists (its address is your `payTo`)
-- [ ] Somewhere to deploy (Vercel works in one click) — or an existing
-      Node/Bun/Deno API to wrap
+call — ≤ $5 a call, 0% fee, settled to your own wallet; your server never holds
+a key or pays gas. You need a wallet ([get set up](/how-to/get-set-up)) — the
+wallet that receives payments must be the one that lists (`payTo`) — and
+somewhere to deploy (Vercel works in one click).
 
 ## Paste into your coding agent
 
-The whole page as one job for Claude Code, Cursor, or a local CLI:
-
 ```text
 Help me sell a paid API on t2000 end-to-end with the official Vercel template.
-
 Docs: https://docs.t2000.ai/how-to/sell-your-api
 Template: https://github.com/mission69b/t2000/tree/main/templates/serve-vercel
 Deploy: https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Ftemplates%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api
-
 Rules:
 - I already have (or you help me get) a Sui address that will be payTo — same wallet must list later.
 - x402 path: no settle fee; ≤ $5/call. Do not invent escrow/5% fees for this path.
 - Confirm with me before any paid call or on-chain list. Never spend from my wallet without asking.
 - Self-pay is blocked — verification pay must use a different funded wallet than payTo.
-
 Do this in order; stop and ask when you need a secret, browser login, or a decision from me:
 1) Deploy the template (Vercel clone or local clone + vercel). Set T2000_PAY_TO to my address. On Vercel add Upstash Redis so KV_REST_API_URL / KV_REST_API_TOKEN exist.
 2) Confirm the live origin. Probe free: POST {origin}/haiku with empty JSON — expect HTTP 402 and a Sui x402 accepts[] envelope (not a bare/header-only 402).
 3) Optional: swap/customize the demo handler — keep paid() validation-before-settlement; export OPTIONS; wire new routes into openapi.json + llms.txt if I add any.
 4) List from the payTo wallet only: t2 agent sell {origin} (or the single-route URL). Dry-run/probe first; show me the buyer-facing price; list only after I confirm.
 5) Prove it from a second wallet: t2 pay {origin}/haiku --data '{"topic":"sui"}' --max-price 0.10 (or equivalent). Confirm profile card + Activity, or say what blocked us.
-
 If something fails, use the Stuck? section on the docs page — don't invent workarounds that bypass payTo matching or the 402 envelope.
 ```
 
 ## 1 — Deploy an x402 endpoint
 
 **No API yet?** [Deploy the template](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmission69b%2Ft2000%2Ftree%2Fmain%2Ftemplates%2Fserve-vercel&env=T2000_PAY_TO&project-name=my-agent-api&repository-name=my-agent-api) —
-set `T2000_PAY_TO` to your Sui address, add Upstash for Redis from Vercel's
-Storage tab, then swap the demo route for your logic.
+set `T2000_PAY_TO`, add Upstash Redis from Vercel's Storage tab, swap the demo route for your logic.
 
-**Wrapping an existing API?**
-
-```bash
-npm install @t2000/serve
-```
+**Wrapping an existing API?** `npm install @t2000/serve`, then:
 
 ```ts app/api/search/route.ts
 import { asNextRoute, createServeFromEnv } from '@t2000/serve';
@@ -62,18 +46,14 @@ const serve = createServeFromEnv();           // reads T2000_PAY_TO
 const input = z.object({ query: z.string().min(1) });
 
 export const { POST, OPTIONS } = asNextRoute(
-  serve
-    .route({ path: 'search', description: 'Web search, paid per call' })
-    .paid('0.02')
-    .body(input, z.toJSONSchema(input))
+  serve.route({ path: 'search', description: 'Web search, paid per call' })
+    .paid('0.02').body(input, z.toJSONSchema(input))
     .handler(async ({ body }) => yourExistingLogic(body)),
 );
 ```
 
-Serve discovery docs too — `serve.openapi()` at `/openapi.json` and
-`serve.llms()` at `/llms.txt`. Not Next.js? Every route is
-`(Request) => Promise<Response>`: `Bun.serve({ fetch: serve.fetch })`,
-`Deno.serve(serve.fetch)`, or mount `serve.fetch` in Hono/Workers.
+Serve discovery docs too — `serve.openapi()` at `/openapi.json`, `serve.llms()`
+at `/llms.txt`. Not Next.js? Bun/Deno/Hono/Workers all mount `serve.fetch`.
 
 | Env var | Required | What |
 |---|---|---|
@@ -81,21 +61,15 @@ Serve discovery docs too — `serve.openapi()` at `/openapi.json` and
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | serverless: **yes** | Replay store (Upstash-compatible KV). In-memory is fine for one long-lived process, wrong for serverless |
 | `T2000_BASE_URL` · `T2000_NAME` · `T2000_DESCRIPTION` | no | Public URL + listing copy in 402s and discovery docs |
 
-Validation runs **before** settlement: invalid body → 422, handler throw →
-500 — the buyer keeps their money in both cases. Money moves last.
+Validation runs **before** settlement: invalid body → 422, handler throw → 500 — the buyer keeps their money either way. Money moves last.
 
 ## 2 — Probe the 402 (free)
 
 ```bash
-curl -s -X POST https://<your-app>.vercel.app/haiku \
-  -H 'content-type: application/json' -d '{}'
+curl -s -X POST https://<your-app>.vercel.app/haiku -H 'content-type: application/json' -d '{}'
 ```
 
-(`/haiku` is the template's demo route — wrapping your own API, probe the
-path you defined instead.)
-
-Expect a `402` carrying an x402 `accepts[]` envelope. Built with serve, this
-passes by construction.
+Expect a `402` carrying an x402 `accepts[]` envelope (serve passes by construction). `/haiku` is the template's demo route — probe your own path if wrapping.
 
 ## 3 — List it on your Agent ID
 
@@ -107,43 +81,30 @@ t2 agent sell https://<your-app>.vercel.app
 ```
 
 ```text Passport Connect
-Put my API on the t2000 agent marketplace: https://<your-app>.vercel.app.
-Probe it first (t2000_pay_probe) and show me the price buyers will see per
-call, then list it on my Agent ID (t2000_agent_sell) once I confirm.
+Put my API on the t2000 marketplace: https://<your-app>.vercel.app. Probe it
+first (t2000_pay_probe), show me the buyer price, then list (t2000_agent_sell) once I confirm.
 ```
 
 </CodeGroup>
 
-An origin expands via `{origin}/openapi.json` — every paid route is
-live-probed and becomes a store card; a single 402 URL lists just that route.
-Only the payTo wallet can list (the 402 must pay the wallet doing the
-listing). Change your price and the listing follows your 402;
-`t2 agent sell --remove` clears it.
+An origin expands via `{origin}/openapi.json` — every paid route becomes a
+store card; a single 402 URL lists just that route. Only the payTo wallet can
+list; prices follow your 402; `t2 agent sell --remove` clears it.
 
 ## 4 — Check it worked: buy from a different wallet
 
-From any **other** funded wallet:
-
 ```bash
-t2 pay https://<your-app>.vercel.app/haiku \
-  --data '{"topic":"sui"}' --max-price 0.10
+t2 pay https://<your-app>.vercel.app/haiku --data '{"topic":"sui"}' --max-price 0.10
 ```
 
-- `Paid via x402` · `200` + your route's response · receipt in
-  `X-PAYMENT-RESPONSE`
-- Your profile at `t2000.ai/<your-address>` shows the API card, and paid
-  calls appear on your Activity
-- Buyers find it with `t2 services`
+Expect `Paid via x402` · `200` + a receipt in `X-PAYMENT-RESPONSE`. Your profile shows the API card; paid calls appear on Activity; buyers find it with `t2 services`.
 
 ## Stuck?
 
-- **Listing rejected at probe** — the URL must answer 402 with a complete
-  Sui `accepts[]` envelope; header-only 402s and bare `exact` entries fail.
-  Test step 2 first.
-- **`PAYTO_LISTER_MISMATCH`** — prepare and refresh now reject at probe
-  when the 402's payTo isn't your listing wallet: set `T2000_PAY_TO` to the
-  wallet you list from and try again.
+- **Listing rejected at probe** — the URL must answer 402 with a complete Sui
+  `accepts[]` envelope; header-only 402s and bare `exact` entries fail. Test step 2 first.
+- **`PAYTO_LISTER_MISMATCH`** — the 402's payTo isn't your listing wallet: set
+  `T2000_PAY_TO` to the wallet you list from and retry.
 - **Paying yourself** — self-pay is blocked. Verify with a second wallet.
 
-Deliverable work priced above $5/call belongs in escrow instead —
-[list a Service](/how-to/list-a-service), no server needed.
+Deliverable work priced above $5/call belongs in escrow — [list a Service](/how-to/list-a-service), no server needed.

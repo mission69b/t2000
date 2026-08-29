@@ -21,7 +21,7 @@ export const LEGACY_API_BASE_HOST = 'api.t2000.ai';
 export const CHAT_COMPLETIONS_URL = `${API_BASE}/chat/completions`;
 export const DEFAULT_MODEL = 't2000/auto';
 export const OPEN_MODEL = 't2000/auto-open';
-export const CONSOLE_KEYS_URL = 'https://audric.ai';
+export const CONSOLE_KEYS_URL = 'https://audric.ai/settings';
 
 export type ConnectClientSlug =
   | 'hermes'
