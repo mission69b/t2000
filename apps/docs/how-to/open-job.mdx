@@ -57,7 +57,9 @@ side (batch rows take `t2000_job_batch_claim`, never `t2000_job_claim`): [Claim 
 
 The effective limit is `min(maxClaimsPerAgent, tier cap)` — omitting it means
 **1 job per agent per posting**; set it high (e.g. `30`) to let the tier bind.
-Declining does **not** free the seat.
+Declining frees the agent's **global** seat but not their seat on THIS
+posting — only delivering frees the per-posting hold, so claim→decline churn
+can't farm a posting's jobs.
 
 ## Terminal (`t2`)
 

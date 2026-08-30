@@ -283,13 +283,28 @@ export async function buildCreateJobTx({
 /** Seller's pre-delivery abort (SPEC_T2_AGENTS_TRUST §B): FUNDED only →
  *  full fee-free refund to the buyer, terminal state REFUNDED (the
  *  JobDeclined event is what distinguishes a decline from a deadline
- *  refund). Targets the latest package id — `decline` shipped in v3. */
-export function buildDeclineJobTx(jobId: string): Transaction {
+ *  refund). S.1255 (v14): declines through `reputation::decline_v2` —
+ *  the SELLER's score (derive with `deriveAgentScoreId`) rides along so
+ *  a board-claimed job frees its GLOBAL active seat with the money
+ *  (pre-v14 the seat burned forever). A scoreless seller needs the
+ *  `create_empty_score` precursor first (same hop as deliver/release).
+ *  NO batchId variant on purpose: batch-origin jobs decline through this
+ *  same single door — the per-wave hold deliberately stays burned (D13
+ *  anti-farm), so no batch object is needed in the PTB. */
+export function buildDeclineJobTx(
+  jobId: string,
+  v2: { sellerScoreId: string },
+): Transaction {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::decline`,
+    target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::reputation::decline_v2`,
     typeArguments: [USDC_TYPE],
-    arguments: [tx.object(jobId), feeConfigArg(tx), tx.object(CLOCK_ID)],
+    arguments: [
+      tx.object(jobId),
+      tx.object(v2.sellerScoreId),
+      feeConfigArg(tx),
+      tx.object(CLOCK_ID),
+    ],
   });
   return tx;
 }

@@ -44,7 +44,7 @@ export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
  *  all. A fail-closed check is only as good as its ground truth, so the table
  *  below mirrors the builders line for line:
  *
- *    buildDeclineJobTx      → OPENING pkg :: escrow  :: decline   (v3)
+ *    buildDeclineJobTx      → OPENING pkg :: reputation :: decline_v2  (S.1255)
  *    buildCancelOpeningTx   → OPENING pkg :: opening :: cancel_open
  *    buildRefundUnclaimedTx → OPENING pkg :: opening :: refund_unclaimed
  *    buildOpenJobTx         → OPENING pkg :: opening :: create_open_v2
@@ -55,9 +55,7 @@ export const ALLOW_UNTRUSTED_FLAG = '--allow-untrusted-api';
  *    buildReleaseJobTx      → OPENING pkg :: reputation :: release_v2
  *                           | OPENING pkg :: batch :: batch_release   (S.1202, origin Jobs)
  *
- *  `decline` is the one that looks like a typo and isn't: it lives in the
- *  OPENING package but the `escrow` module, because it shipped in the v3
- *  upgrade. Package ids are the MAINNET literals — deliberately NOT the
+ *  Package ids are the MAINNET literals — deliberately NOT the
  *  env-overridable constants, which would let an attacker supply both the
  *  transaction and the yardstick.
  *
@@ -131,11 +129,18 @@ const ACTION_TARGETS: Record<
     module: 'reputation',
     functions: ['refund_v2', 'create_empty_score', 'batch::batch_refund'],
   },
-  // v3 opening package — note the `escrow` module.
+  // S.1255 (v14): decline settles through reputation::decline_v2 — the
+  // seller's score rides along so a board-claimed job frees its GLOBAL
+  // active seat with the money (batch-origin jobs use the SAME door; the
+  // per-wave hold deliberately stays burned, so no batch:: variant).
+  // `create_empty_score` is the allowlisted precursor for a scoreless
+  // seller; the bare `escrow::decline` stays for pre-v14 prepare hosts
+  // mid-transition (post-migrate it can only abort EUseSettleV2 on-chain,
+  // no funds moved).
   decline: {
     pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
-    module: 'escrow',
-    functions: ['decline'],
+    module: 'reputation',
+    functions: ['decline_v2', 'create_empty_score', 'escrow::decline'],
   },
   // Open board.
   'open-create': {

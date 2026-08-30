@@ -38,7 +38,9 @@
 ///   form of the API's no-goodwill-review rule)
 /// - one contribution per `job_id`; resubmitting = star edit in place
 ///   (`stars_sum` adjusts, `review_count` doesn't)
-/// - NO AdminCap / mint path: the protocol cannot gift stars.
+/// - NO AdminCap / mint path: the protocol cannot gift stars. (The one
+///   narrow S.1255 exception, `set_active_seller_jobs`, writes ONLY the
+///   active-seat mirror — never stars, distinct, or outcome counters.)
 module a2a_escrow::reputation;
 
 use a2a_escrow::escrow::{Self, AdminCap, FeeConfig, Job};
@@ -72,6 +74,9 @@ const LEVEL4_MAX_NO_DELIVERY: u64 = 2;
 /// same encoding house as `OutcomeRecorded.kind`).
 const ACTIVE_DELTA_CLAIM: u8 = 0; // +1
 const ACTIVE_DELTA_SETTLE: u8 = 1; // −1
+/// S.1255 — AdminCap reconcile: the counter was SET to an absolute value
+/// (healing pre-v14 decline burns), not moved by a money path.
+const ACTIVE_DELTA_ADMIN_SET: u8 = 2;
 
 // === Errors ===
 const ENotBuyer: u64 = 0;
@@ -105,6 +110,10 @@ const EUseBatchSettle: u64 = 9;
 /// `batch::deliver_v2`, which also frees the per-wave hold in the same
 /// tx (same loud-abort pattern as `EUseBatchSettle`).
 const EUseBatchDeliver: u64 = 10;
+/// S.1255: `set_active_seller_jobs` value above the Level 4 active cap —
+/// the reconcile door only writes counts a seller could legitimately
+/// hold; anything larger is a fat-fingered set, refused loudly.
+const EActiveSetOutOfBounds: u64 = 11;
 
 // === Objects ===
 
@@ -166,17 +175,23 @@ public struct NoDeliveryKey has copy, drop, store {}
 /// Passport buyers never get a public chain counter: privacy lock).
 public struct AsBuyerRejectedKey has copy, drop, store {}
 
-// === v2 active-job counter (S.1192 · S.1210) — DF on `AgentScore.id` ===
+// === v2 active-job counter (S.1192 · S.1210 · S.1255) — DF on
+// === `AgentScore.id` ===
 // FUNDED, UNDELIVERED board-claimed jobs this seller holds (S.1210: the
 // seat frees at DELIVER — buyer settle latency no longer blocks a
 // hunter's throughput). +1 in `opening::do_claim` / `batch::batch_claim`
 // (via `increment_active`); −1 at deliver (`on_job_delivered`, v13
-// packages mark `ActiveFreedKey` on the Job) or — for goodwill releases
-// on FUNDED, deadline refunds, and pre-v13 delivered stragglers — at the
-// terminal settle of jobs carrying `escrow::ClaimedJobKey`. Hire jobs
-// never move it — they never incremented, and an unconditional decrement
-// would let a colluding buyer reset a hunter's counter with a dust hire.
-// Missing ⇒ 0 (soft start — no backfill, pre-upgrade claims never count).
+// packages mark `ActiveFreedKey` on the Job), at decline (`decline_v2`,
+// S.1255 — the pre-v14 rule burned the seat forever) or — for goodwill
+// releases on FUNDED, deadline refunds, and pre-v13 delivered
+// stragglers — at the terminal settle of jobs carrying
+// `escrow::ClaimedJobKey`. Hire jobs never move it — they never
+// incremented, and an unconditional decrement would let a colluding
+// buyer reset a hunter's counter with a dust hire. Missing ⇒ 0 (soft
+// start — no backfill, pre-upgrade claims never count). One narrow
+// non-money writer exists since S.1255: the AdminCap
+// `set_active_seller_jobs` reconcile door, healing counts inflated by
+// pre-v14 decline burns.
 
 /// DF key → `u64`: this seller's live claimed-job count. Missing ⇒ 0.
 public struct ActiveSellerJobsKey has copy, drop, store {}
@@ -247,13 +262,16 @@ public struct OutcomeRecorded has copy, drop {
 /// S.1192 — the seller's in-flight claimed-job counter moved.
 /// `active_seller_jobs` is the POST-write value (read-model mirrors
 /// without a fetch); `delta` is 0 = +1 (claim) · 1 = −1 (terminal
-/// settle). Defining id = the S.1192 upgrade package (V10 pin).
+/// settle, deliver, or decline) · 2 = AdminCap reconcile set (S.1255 —
+/// `job_id` is the 0x0 sentinel there: no job moved the counter).
+/// Defining id = the S.1192 upgrade package (V10 pin).
 public struct ActiveSellerJobsChanged has copy, drop {
     score_id: ID,
     agent: address,
     job_id: ID,
     active_seller_jobs: u64,
-    /// 0 = +1 (claim) · 1 = −1 (release/reject/refund of a claimed job)
+    /// 0 = +1 (claim) · 1 = −1 (deliver/decline/release/reject/refund of
+    /// a claimed job) · 2 = absolute AdminCap set (reconcile)
     delta: u8,
     timestamp_ms: u64,
 }
@@ -479,6 +497,37 @@ public fun refund_v2<T>(
     };
 }
 
+/// Seller's pre-delivery decline (S.1255 / v14) — the live decline door:
+/// settles the fee-free full refund via `escrow::decline_settle_pkg`
+/// (auth unchanged from v3: sender == seller, FUNDED only), then frees
+/// the seller's GLOBAL active seat for board-claimed jobs — the same
+/// idempotent `ActiveFreedKey` + decrement pattern as deliver. This is an
+/// INTENTIONAL design change, not a bugfix: pre-v14, decline burned the
+/// global seat forever (anti claim→decline churn); S.1255 deletes that
+/// lock — what remains anti-farm is the D13 per-wave hold (deliberately
+/// NOT freed here: batch-origin jobs decline through this same single
+/// door, and their wave seat stays burned) plus the deadline
+/// `no_delivery` outcome, which a decline still never writes (clean walk
+/// for reputation). Hire jobs pass through — no `ClaimedJobKey`, no
+/// counter move.
+public fun decline_v2<T>(
+    job: &mut Job<T>,
+    seller_score: &mut AgentScore,
+    cfg: &FeeConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(seller_score.agent == escrow::seller(job), EWrongScore);
+    escrow::decline_settle_pkg(job, cfg, clock, ctx);
+    // Same shape as `on_job_delivered` — but a decline is terminal, so the
+    // one-shot stamp here is uniformity + a loud lock against any future
+    // path double-freeing this Job's seat.
+    if (escrow::is_claimed_job(job) && !escrow::is_active_freed(job)) {
+        escrow::mark_active_freed_pkg(job);
+        decrement_active(seller_score, object::id(job), clock.timestamp_ms());
+    };
+}
+
 /// Release — funds → seller minus the protocol fee (S.1192: the live
 /// release door for every NON-batch job; S.1202: batch-origin jobs abort
 /// here and settle via `batch::batch_release`, which also frees the
@@ -658,6 +707,45 @@ public(package) fun decrement_active(score: &mut AgentScore, job_id: ID, now: u6
         job_id,
         active_seller_jobs: value,
         delta: ACTIVE_DELTA_SETTLE,
+        timestamp_ms: now,
+    });
+}
+
+/// S.1255 — the ONE AdminCap write this module allows, and it touches
+/// ONLY the active-seat mirror: set a seller's `active_seller_jobs` DF to
+/// an absolute value, for the one-shot reconcile that heals counts
+/// inflated by pre-v14 decline burns (decline used to keep the seat
+/// occupied forever; those phantom seats have no job left to free them).
+/// Deliberately NOT a general repair door: stars, distinct buyers,
+/// outcome counters (`no_delivery` & co.) and per-wave batch holds stay
+/// AdminCap-free — reputation remains receipts. Bounds: the value must
+/// not exceed the live Level 4 active cap (the most seats any seller can
+/// legitimately hold), so the door can never GRANT capacity beyond what
+/// claims could have seated. Emits the same `ActiveSellerJobsChanged`
+/// event the indexer already mirrors (post-write value; `delta` 2 =
+/// admin set; `job_id` = the 0x0 sentinel — no job moved this).
+public fun set_active_seller_jobs(
+    _: &AdminCap,
+    score: &mut AgentScore,
+    value: u64,
+    cfg: &FeeConfig,
+    clock: &Clock,
+) {
+    escrow::assert_version_pkg(cfg);
+    assert!(value <= escrow::config_tier_active_cap(cfg, 4), EActiveSetOutOfBounds);
+    if (df::exists(&score.id, ActiveSellerJobsKey {})) {
+        *df::borrow_mut(&mut score.id, ActiveSellerJobsKey {}) = value;
+    } else {
+        df::add(&mut score.id, ActiveSellerJobsKey {}, value);
+    };
+    let now = clock.timestamp_ms();
+    score.updated_at_ms = now;
+    event::emit(ActiveSellerJobsChanged {
+        score_id: score.id.to_inner(),
+        agent: score.agent,
+        job_id: object::id_from_address(@0x0),
+        active_seller_jobs: value,
+        delta: ACTIVE_DELTA_ADMIN_SET,
         timestamp_ms: now,
     });
 }

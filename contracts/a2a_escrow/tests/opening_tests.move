@@ -479,13 +479,16 @@ fun claimed_opening_job_can_be_declined() {
     claim_as(&mut sc, SELLER, &clk);
     // The claiming SELLER backs out pre-delivery — full fee-free refund. The
     // Opening was consumed at claim, so the board posting does NOT
-    // resurrect; the buyer re-posts if they still want the work.
+    // resurrect; the buyer re-posts if they still want the work. S.1255:
+    // the live door is `reputation::decline_v2` (score attached).
     ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        let mut score = take_score(&sc, SELLER);
+        reputation::decline_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
         assert!(escrow::state(&job) == escrow::state_refunded(), 0);
+        ts::return_shared(score);
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
@@ -622,8 +625,13 @@ fun reject_v2_frees_the_seat() {
 }
 
 #[test]
-fun decline_never_touches_the_active_counter() {
+fun decline_v2_frees_the_active_seat_and_allows_reclaim() {
     let (mut sc, mut clk) = setup();
+    // S.1255 (supersedes the S.1192 "decline burns the seat forever"
+    // lock, deliberately): decline frees the GLOBAL seat with the money —
+    // claim → decline → claim again works; what still bounds churn is the
+    // D13 per-wave hold (batch_tests) and the deadline no_delivery.
+    post_open(&mut sc, &clk);
     post_open(&mut sc, &clk);
     clk.set_for_testing(10_000);
     let job_id = claim_as(&mut sc, SELLER, &clk);
@@ -632,17 +640,44 @@ fun decline_never_touches_the_active_counter() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        let mut score = take_score(&sc, SELLER);
+        reputation::decline_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        // The one-shot marker landed — no later path can double-free.
+        assert!(escrow::is_active_freed(&job), 1);
+        ts::return_shared(score);
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
-    // LOCKED (master spec D-table): decline is a clean walk for outcomes
-    // AND never decrements — the declined claim keeps its seat occupied.
-    // Named consequence: claim→decline churn burns capacity permanently
-    // (documented in RUNBOOK_S1192; anti-abandon by design).
-    assert!(active_of(&mut sc, SELLER) == 1, 1);
+    assert!(active_of(&mut sc, SELLER) == 0, 2);
+    assert_received(&mut sc, BUYER, AMOUNT);
+    // Reclaim: the freed seat is immediately usable on the second posting.
+    claim_as(&mut sc, SELLER, &clk);
+    assert!(active_of(&mut sc, SELLER) == 1, 3);
     ts::end(sc);
     clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EWrongScore)]
+fun decline_v2_with_wrong_seller_score_fails() {
+    let (mut sc, mut clk) = setup();
+    post_open(&mut sc, &clk);
+    clk.set_for_testing(10_000);
+    let job_id = claim_as(&mut sc, SELLER, &clk);
+    // A stranger's score cannot ride the seller's decline — the freed
+    // seat must land on the job's actual seller.
+    ensure_score(&mut sc, &clk, IDLE_SELLER);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
+        let mut wrong = take_score(&sc, IDLE_SELLER);
+        reputation::decline_v2(&mut job, &mut wrong, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(wrong);
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
 }
 
 #[test]

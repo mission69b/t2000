@@ -911,12 +911,19 @@ fun decline_writes_no_outcome() {
     let (mut sc, clk) = setup();
     let sid = empty_score_for(&mut sc, &clk, SELLER);
     let job_id = funded_job(&mut sc, &clk, BUYER, SELLER);
-    // Seller walks cleanly before delivering — full refund, NO counter.
+    // Seller walks cleanly before delivering — full refund, NO counter
+    // (S.1255: through the live decline_v2 door; a HIRE job also never
+    // touches active_seller_jobs — no ClaimedJobKey, no decrement).
     ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job_id);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        let mut score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        reputation::decline_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        assert!(escrow::state(&job) == escrow::state_refunded(), 100);
+        // Hire job: the seat hook must not stamp or decrement anything.
+        assert!(!escrow::is_active_freed(&job), 101);
+        ts::return_shared(score);
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
@@ -925,10 +932,62 @@ fun decline_writes_no_outcome() {
         let score = ts::take_shared_by_id<AgentScore>(&sc, sid);
         assert!(reputation::no_delivery(&score) == 0, 0);
         assert!(reputation::rejected_after_delivery(&score) == 0, 1);
+        assert!(reputation::active_seller_jobs(&score) == 0, 2);
         ts::return_shared(score);
     };
     ts::end(sc);
     clk.destroy_for_testing();
+}
+
+// === S.1255: AdminCap active-seat reconcile (`set_active_seller_jobs`) ===
+
+#[test]
+fun admin_set_active_seller_jobs_writes_the_mirror() {
+    let (mut sc, clk) = setup();
+    let sid = empty_score_for(&mut sc, &clk, SELLER);
+    // Heal an over-count down to truth (the reconcile crank's shape) —
+    // and a later set can move it again (absolute write, not a delta).
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        reputation::set_active_seller_jobs(&cap, &mut score, 3, &cfg, &clk);
+        assert!(reputation::active_seller_jobs(&score) == 3, 0);
+        reputation::set_active_seller_jobs(&cap, &mut score, 1, &cfg, &clk);
+        assert!(reputation::active_seller_jobs(&score) == 1, 1);
+        reputation::set_active_seller_jobs(&cap, &mut score, 0, &cfg, &clk);
+        assert!(reputation::active_seller_jobs(&score) == 0, 2);
+        // The door never touches receipts.
+        assert!(reputation::no_delivery(&score) == 0, 3);
+        assert!(reputation::review_count(&score) == 0, 4);
+        ts::return_shared(score);
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
+    ts::end(sc);
+    clk.destroy_for_testing();
+}
+
+#[test]
+#[expected_failure(abort_code = reputation::EActiveSetOutOfBounds)]
+fun admin_set_active_above_level4_cap_aborts() {
+    let (mut sc, clk) = setup();
+    let sid = empty_score_for(&mut sc, &clk, SELLER);
+    // The ceiling is the live Level 4 cap — the door can never grant more
+    // capacity than legitimate claims could have seated.
+    ts::next_tx(&mut sc, ADMIN);
+    {
+        let cap = ts::take_from_sender<AdminCap>(&sc);
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut score = ts::take_shared_by_id<AgentScore>(&sc, sid);
+        let ceiling = escrow::config_tier_active_cap(&cfg, 4);
+        reputation::set_active_seller_jobs(&cap, &mut score, ceiling + 1, &cfg, &clk);
+        ts::return_shared(score);
+        ts::return_shared(cfg);
+        ts::return_to_sender(&sc, cap);
+    };
+    abort 0
 }
 
 #[test]

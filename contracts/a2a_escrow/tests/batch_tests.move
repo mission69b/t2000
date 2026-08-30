@@ -570,10 +570,13 @@ fun ceiling_one_finisher_reclaims_same_wave_after_settle() {
 
 #[test]
 #[expected_failure(abort_code = batch::EMaxClaimsReached)]
-fun decline_does_not_free_wave_hold() {
+fun decline_frees_global_seat_but_not_wave_hold() {
     let (mut sc, mut clk) = setup();
-    // Acceptance 3 (D13): decline burns the wave seat — claim→decline
-    // churn cannot farm slots of a ceiling-1 wave.
+    // Acceptance 3 (D13, re-locked by S.1255): decline frees the GLOBAL
+    // seat (decline_v2 works on batch-origin Jobs through the one door)
+    // but still BURNS the wave seat — claim→decline churn cannot farm
+    // slots of a ceiling-1 wave. Wave is deliberately stricter than the
+    // global counter; do not "restore parity".
     let bid = post_batch(&mut sc, &clk, SLOTS, 1);
     clk.set_for_testing(10_000);
     let job1 = claim_as(&mut sc, SELLER, &clk);
@@ -581,11 +584,16 @@ fun decline_does_not_free_wave_hold() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared_by_id<Job<SUI>>(&sc, job1);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        let mut score = take_score(&sc, SELLER);
+        reputation::decline_v2(&mut job, &mut score, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(score);
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
-    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 0);
+    // Global seat freed with the money…
+    assert!(active_of(&mut sc, SELLER) == 0, 0);
+    // …but the per-wave hold is still occupied, so the reclaim aborts.
+    assert!(wave_claims_of(&mut sc, bid, SELLER) == 1, 1);
     claim_from(&mut sc, SELLER, &clk, bid);
     abort 0
 }

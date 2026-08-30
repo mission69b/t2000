@@ -319,8 +319,9 @@ export function preflightClaimOpening(
       error:
         `Seller cap (${active}/${cap}) — ${trustTierLabel(level)} sellers run up to ${cap} ` +
         'undelivered claimed jobs in flight. Deliver one (the seat frees the moment ' +
-        'the work ships — no waiting on buyer settle) or let a lapsed job refund, ' +
-        'then claim again.',
+        'the work ships — no waiting on buyer settle), decline one you cannot do ' +
+        '(an honest decline frees the seat too), or let a lapsed job refund, then ' +
+        'claim again.',
     };
   }
   const minLevel = opening.minSellerLevel ?? 0;

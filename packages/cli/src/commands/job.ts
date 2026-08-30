@@ -1064,7 +1064,7 @@ Ending a job (all states covered):
     [
       'decline',
       "Pass on an undelivered job you were hired for — the buyer's escrow returns in full, fee-free (seller, before delivery)",
-      "Declined — the buyer's escrow went back in full, fee-free. (An Open-claimed posting does not resurrect; the buyer re-posts.)",
+      "Declined — the buyer's escrow went back in full, fee-free, and your claim seat is free again. (An Open-claimed posting does not resurrect; the buyer re-posts.)",
     ],
   ] as const) {
     group

@@ -53,6 +53,16 @@ use sui::dynamic_field as df;
 use sui::event;
 
 /// Package flow version — bump on upgrades that must invalidate old flows.
+/// v9 (S.1255, v14 package): decline frees the GLOBAL active seat —
+/// claimed jobs decline through `reputation::decline_v2` (seller score
+/// attached; same idempotent `ActiveFreedKey` pattern as deliver; still
+/// no `no_delivery` — decline stays a clean walk for outcomes), and the
+/// bare `escrow::decline` is a dead `EUseSettleV2` stub. The per-wave
+/// batch hold still BURNS on decline (D13 — wave is now deliberately
+/// STRICTER than the global counter). Adds the narrow AdminCap
+/// `reputation::set_active_seller_jobs` reconcile door for healing the
+/// pre-v14 decline over-counts. The cutover kills v13 bytecode whose
+/// `escrow::decline` would keep burning global seats.
 /// v8 (S.1210, v13 package): active cap frees on DELIVER — claimed jobs
 /// deliver through `reputation::deliver_v2` / `batch::deliver_v2` (seller
 /// score attached; wave hold frees too), settle paths skip the decrement
@@ -79,7 +89,7 @@ use sui::event;
 /// outcomes hit the seller's (and an Agent-ID buyer's) score. v4
 /// (S.1062): Proven = distinct buyers. v3 (S.1019): open reject 100%
 /// buyer. v2 (S.981): amount bounds.
-const VERSION: u64 = 8;
+const VERSION: u64 = 9;
 
 // === States ===
 const STATE_FUNDED: u8 = 0;
@@ -238,10 +248,11 @@ public struct BatchOriginKey has copy, drop, store {}
 /// the S.1202 upgrade package (V12 pin).
 public struct BatchHoldReleasedKey has copy, drop, store {}
 /// S.1210 (v13) — the seller's GLOBAL active seat for this Job was freed
-/// at DELIVER (`reputation::on_job_delivered`). Settle paths skip their
-/// decrement when present, so deliver-then-settle never double-frees —
-/// and a job delivered on a pre-v13 package (no marker) still frees at
-/// settle, the straggler catch-up.
+/// at DELIVER (`reputation::on_job_delivered`) or — since S.1255 (v14) —
+/// at DECLINE (`reputation::decline_v2`, same idempotent hook). Settle
+/// paths skip their decrement when present, so deliver-then-settle never
+/// double-frees — and a job delivered on a pre-v13 package (no marker)
+/// still frees at settle, the straggler catch-up.
 public struct ActiveFreedKey has copy, drop, store {}
 /// DF key for the canonical `reputation::ScoreBoard` id on `FeeConfig.id`
 /// (S.1054b). Value is the board `ID`. Its EXISTENCE is the single-instance
@@ -448,9 +459,10 @@ public fun is_active_freed<T>(job: &Job<T>): bool {
 }
 
 /// One-shot active-freed stamp (S.1210) — set only by
-/// `reputation::on_job_delivered` right before the deliver-time
-/// decrement. Abort-on-second-set keeps the idempotency loud (the hook
-/// guards with `is_active_freed` first; this is the belt).
+/// `reputation::on_job_delivered` (and, since S.1255, the decline hook in
+/// `reputation::decline_v2`) right before the seat-freeing decrement.
+/// Abort-on-second-set keeps the idempotency loud (both hooks guard with
+/// `is_active_freed` first; this is the belt).
 public(package) fun mark_active_freed_pkg<T>(job: &mut Job<T>) {
     assert!(!df::exists(&job.id, ActiveFreedKey {}), EActiveAlreadyFreed);
     df::add(&mut job.id, ActiveFreedKey {}, true);
@@ -850,15 +862,35 @@ public(package) fun reject_settle_pkg<T>(
 }
 
 // === Decline (SELLER, before delivery — funds → buyer, fee-free) ===
-/// The seller's abort (SPEC_T2_AGENTS_TRUST §B): an unwilling or unable
-/// seller returns the escrow immediately instead of stranding the buyer
-/// until the deadline refund. FUNDED only — after delivery the buyer's
-/// release/reject verbs own the outcome. Fee-free (the protocol never
-/// earns on a failed job) and terminal-state REFUNDED — a NEW state would
-/// break every published reader that maps state numbers; `JobDeclined`
-/// (vs `JobRefunded`) is how indexers tell a decline from a deadline
-/// refund.
+/// DEPRECATED (S.1255) — always aborts `EUseSettleV2`. The live path is
+/// `reputation::decline_v2`, which settles via `decline_settle_pkg` below
+/// AND frees the seller's global active seat on board-claimed jobs (the
+/// old rule — decline burns the seat forever — was the anti-churn lock;
+/// S.1255 deliberately deletes it: the D13 wave hold plus deadline
+/// `no_delivery` remain the anti-farm rails). Signature survives (Sui
+/// compatible upgrades cannot remove public functions); the body is dead.
 public fun decline<T>(
+    _job: &mut Job<T>,
+    cfg: &FeeConfig,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
+) {
+    assert_version(cfg);
+    abort EUseSettleV2
+}
+
+/// The decline settlement body (S.1255: package-visible so
+/// `reputation::decline_v2` — the only live caller — settles the money
+/// HERE; coin math never leaves this module). The seller's abort
+/// (SPEC_T2_AGENTS_TRUST §B): an unwilling or unable seller returns the
+/// escrow immediately instead of stranding the buyer until the deadline
+/// refund. FUNDED only — after delivery the buyer's release/reject verbs
+/// own the outcome. Fee-free (the protocol never earns on a failed job)
+/// and terminal-state REFUNDED — a NEW state would break every published
+/// reader that maps state numbers; `JobDeclined` (vs `JobRefunded`) is
+/// how indexers tell a decline from a deadline refund. Emits
+/// `JobDeclined` exactly as v3 did — defining id unchanged.
+public(package) fun decline_settle_pkg<T>(
     job: &mut Job<T>,
     cfg: &FeeConfig,
     clock: &Clock,

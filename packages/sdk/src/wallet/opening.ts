@@ -32,12 +32,19 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v13 upgrade
- *  2026-08-27, S.1210 — active cap frees on DELIVER, FeeConfig VERSION
- *  7→8 cutover with immediate migrate: claimed jobs deliver via
- *  `reputation::deliver_v2` / `batch::deliver_v2` (seller score attached,
- *  wave hold frees too), Level 4 review floor 20→10, and creates assert
- *  `claim_policy == 0`; upgrade digest dTTnC1VJ…, migrate 5G5ewRLV…;
+/** The LATEST published `a2a_escrow` package id on MAINNET (v14 upgrade,
+ *  S.1255 — decline frees the GLOBAL active seat, FeeConfig VERSION 8→9
+ *  cutover with immediate migrate: claimed jobs decline via
+ *  `reputation::decline_v2` (seller score attached; the D13 per-wave
+ *  batch hold still burns — deliberately stricter than global), the bare
+ *  `escrow::decline` is a dead EUseSettleV2 stub, and the narrow AdminCap
+ *  `set_active_seller_jobs` reconcile door heals pre-v14 decline burns;
+ *  v13 upgrade 2026-08-27, S.1210 — active cap frees on DELIVER,
+ *  FeeConfig VERSION 7→8 cutover with immediate migrate: claimed jobs
+ *  deliver via `reputation::deliver_v2` / `batch::deliver_v2` (seller
+ *  score attached, wave hold frees too), Level 4 review floor 20→10, and
+ *  creates assert `claim_policy == 0`; upgrade digest dTTnC1VJ…, migrate
+ *  5G5ewRLV…;
  *  v12 = S.1202 — batch ACTIVE per-wave claims + batch-aware settle,
  *  FeeConfig VERSION 6→7: origin-stamped batch Jobs settle via
  *  `batch::batch_release`/`batch_reject*`/`batch_refund`;

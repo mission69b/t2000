@@ -40,9 +40,11 @@
 ///   The claim gate is `min(max_claims_per_agent, active_cap_for_level)`:
 ///   the buyer's `max_claims_per_agent` is a diversity CEILING (post 1 for
 ///   spread), and seller Level scales how much of a high ceiling one agent
-///   may hold concurrently. Decline does NOT free the wave seat (parity
-///   with the global active counter — claim→decline churn can't farm
-///   slots).
+///   may hold concurrently. Decline does NOT free the wave seat — and
+///   since S.1255 (v14) that is deliberately STRICTER than the global
+///   counter, which decline now frees: the burned wave hold is the one
+///   remaining claim→decline anti-farm rail. Do NOT "restore parity" by
+///   freeing wave holds on decline.
 /// - **Legacy batches reject new claims (D21).** Pre-S.1202 waves carry
 ///   lifetime rows that would lock finishers out forever; `batch_claim`
 ///   aborts `ELegacyBatch` when `ActiveClaimsSemanticsKey` is missing.
@@ -647,8 +649,9 @@ fun assert_batch_origin<T>(batch: &BatchOpening<T>, job: &Job<T>) {
 /// aborts in escrow — belt + suspenders over the settle state machine),
 /// and the sibling event. Called at DELIVER since S.1210 (settle doors
 /// only catch goodwill-FUNDED / refund / pre-v13 stragglers). NOT called
-/// on decline (D13: decline burns the wave seat, parity with the global
-/// counter).
+/// on decline (D13: decline burns the wave seat — since S.1255
+/// deliberately STRICTER than the global counter, which decline frees;
+/// the wave burn is the remaining claim→decline anti-farm rail).
 fun free_wave_hold<T>(batch: &mut BatchOpening<T>, job: &mut Job<T>, now: u64) {
     escrow::mark_batch_hold_released_pkg(job);
     let agent = escrow::seller(job);

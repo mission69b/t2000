@@ -620,6 +620,10 @@ fun migrate_same_version_fails() {
 }
 
 // === Decline (SPEC_T2_AGENTS_TRUST §B — the seller's pre-delivery abort) ===
+// S.1255: the money path lives in `decline_settle_pkg` (the live door is
+// `reputation::decline_v2`; seat-freeing behavior is covered in
+// opening/batch/reputation tests) — these tests pin auth + coin math via
+// the in-package direct call, the release/reject settle tests' pattern.
 
 #[test]
 fun seller_decline_refunds_buyer_in_full() {
@@ -629,7 +633,7 @@ fun seller_decline_refunds_buyer_in_full() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::decline_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         assert!(escrow::state(&job) == escrow::state_refunded(), 0);
         assert!(escrow::escrow_value(&job) == 0, 1);
         ts::return_shared(job);
@@ -650,7 +654,7 @@ fun stranger_decline_fails() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::decline_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
@@ -666,7 +670,7 @@ fun buyer_decline_fails() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::decline_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
@@ -683,7 +687,7 @@ fun decline_after_deliver_fails() {
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);
         let mut job = ts::take_shared<Job<SUI>>(&sc);
-        escrow::decline(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        escrow::decline_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
         ts::return_shared(job);
         ts::return_shared(cfg);
     };
@@ -697,6 +701,24 @@ fun decline_after_release_fails() {
     create_job(&mut sc, &clk);
     deliver(&mut sc, &clk);
     release_as(&mut sc, BUYER, &clk);
+    ts::next_tx(&mut sc, SELLER);
+    {
+        let cfg = ts::take_shared<FeeConfig>(&sc);
+        let mut job = ts::take_shared<Job<SUI>>(&sc);
+        escrow::decline_settle_pkg(&mut job, &cfg, &clk, ts::ctx(&mut sc));
+        ts::return_shared(job);
+        ts::return_shared(cfg);
+    };
+    abort 0
+}
+
+#[test]
+#[expected_failure(abort_code = escrow::EUseSettleV2)]
+fun deprecated_escrow_decline_aborts() {
+    let (mut sc, clk) = setup();
+    // S.1255: the frozen-signature v3 door is a dead stub — the live path
+    // is `reputation::decline_v2` (frees the global seat with the money).
+    create_job(&mut sc, &clk);
     ts::next_tx(&mut sc, SELLER);
     {
         let cfg = ts::take_shared<FeeConfig>(&sc);

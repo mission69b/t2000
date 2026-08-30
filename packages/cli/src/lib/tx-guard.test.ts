@@ -255,8 +255,15 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_reject_agent_buyer`,
     ],
     ['refund', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_refund`],
-    // buildDeclineJobTx: OPENING package, `escrow` module — looks like a typo,
-    // isn't. `decline` shipped in the v3 upgrade.
+    // S.1255: decline settles through reputation::decline_v2 (the global
+    // seat frees with the money; batch-origin jobs use the same door);
+    // create_empty_score is its precursor, and the bare escrow::decline
+    // stays allowlisted for pre-v14 prepare hosts mid-transition.
+    ['decline', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::decline_v2`],
+    [
+      'decline',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::create_empty_score`,
+    ],
     ['decline', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::escrow::decline`],
     [
       'open-create',
