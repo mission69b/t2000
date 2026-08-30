@@ -1,6 +1,6 @@
 {
   "name": "@t2000/sui-x402",
-  "version": "11.1.6",
+  "version": "11.2.0",
   "engines": {
     "node": ">=20"
   },
