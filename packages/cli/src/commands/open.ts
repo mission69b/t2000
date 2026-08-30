@@ -253,8 +253,15 @@ export function registerOpenVerbs(group: Command) {
           // — the S.1208 requirement chip covers policy + tier floor alike.
           const requirement = trustRequirementFromOpening(row);
           const gate = requirement !== 'Open' ? `  ${pc.magenta(requirement)}` : '';
+          // S.1247: batch rows say so on the row — they claim with
+          // `t2 job batch-claim`, never the single verb (which refuses).
+          const b = row as { kind?: string; slotsRemaining?: number; slotsTotal?: number };
+          const batchChip =
+            b.kind === 'batch'
+              ? `  ${pc.cyan(`${b.slotsRemaining ?? 0}/${b.slotsTotal ?? 0} jobs`)}`
+              : '';
           printLine(
-            `  ${pc.bold(row.title ?? 'Untitled opening')}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}  ${statusColor(row.status)}${gate}` +
+            `  ${pc.bold(row.title ?? 'Untitled opening')}  ${pc.dim(`$${row.maxUsdc.toFixed(2)}`)}${batchChip}  ${statusColor(row.status)}${gate}` +
               (row.status === 'open' ? pc.dim(`  ${fmtLeft(row.openUntilMs)} left`) : ''),
           );
           // Board rows carry a one-line preview (S.1156), never the task —
@@ -267,7 +274,7 @@ export function registerOpenVerbs(group: Command) {
           printBlank();
         }
         printInfo(
-          'Claim one: t2 job claim <id> — the budget is already escrowed; claiming starts the job.',
+          "Claim one: t2 job claim <id> — the budget is already escrowed; claiming starts the job. 'N/M jobs' rows: t2 job batch-claim <id>.",
         );
         if (page.nextOffset != null) {
           // The hint reproduces the page's own filters — following it must
