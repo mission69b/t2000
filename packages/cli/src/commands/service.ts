@@ -38,6 +38,7 @@ import {
 } from '../lib/agent-category.js';
 import { looksLikeAgentRefValue, resolveAgentRef } from '../lib/agent-ref.js';
 import { commerceFor } from '../lib/commerce-client.js';
+import { humanProfileUrl, profileLine } from '../lib/profile-url.js';
 import { mergeServiceUpsert } from '../lib/service-upsert.js';
 import {
   type ApiRouteListing,
@@ -352,7 +353,11 @@ Examples:
           // Say the fee at listing time, not at settlement time (S.932).
           printKeyValue('You receive', sellerReceivesLine(priceUsdc));
           printKeyValue('Slug', slug);
-          printKeyValue('Storefront', `https://t2000.ai/${address}`);
+          // S.1248: human pages are numeric-only — never a 0x path.
+          printKeyValue(
+            'Storefront',
+            profileLine(await humanProfileUrl(base, address)),
+          );
           printKeyValue('Buyers run', `t2 job hire --agent ${address} --service ${slug}`);
           printBlank();
           printInfo(SETTLE_FEE_NOTE);

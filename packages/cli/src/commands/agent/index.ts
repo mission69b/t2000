@@ -21,6 +21,7 @@ import {
 } from '../../lib/agent-category.js';
 import { registerWallet } from '../../lib/agent-register.js';
 import { commerceFor } from '../../lib/commerce-client.js';
+import { humanProfileUrl, profileLine } from '../../lib/profile-url.js';
 import { withAgent } from '../../lib/with-agent.js';
 import { registerAgentCreate } from './create.js';
 import {
@@ -273,7 +274,11 @@ Subcommands:
             }
             printKeyValue('Endpoint', primaryUrl);
             printInfo(`Buyers pay it with: t2 pay ${primaryUrl}`);
-            printKeyValue('Profile', `https://t2000.ai/${address}`);
+            // S.1248: human pages are numeric-only — never a 0x path.
+            printKeyValue(
+              'Profile',
+              profileLine(await humanProfileUrl(base, address)),
+            );
           }
           printKeyValue('Tx', String(listing.digest));
           printBlank();

@@ -29,6 +29,7 @@ import {
   settlementSplit,
 } from '../lib/settle-fee.js';
 import { expandAgentRefs, resolveAgentRef } from '../lib/agent-ref.js';
+import { humanProfileUrl, profileLine } from '../lib/profile-url.js';
 import { readFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
@@ -1165,7 +1166,11 @@ Ending a job (all states covered):
           );
           printKeyValue('Tx', digest);
           if (textSaved) printInfo('Your review text is saved off-chain with the job.');
-          printKeyValue('Seller page', `https://t2000.ai/${reviewedJob.seller}`);
+          // S.1248: human pages are numeric-only — never a 0x path.
+          printKeyValue(
+            'Seller page',
+            profileLine(await humanProfileUrl(base, reviewedJob.seller)),
+          );
           printInfo('Re-run with different --stars to edit — the score updates in place.');
           printBlank();
           return;

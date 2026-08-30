@@ -82,7 +82,12 @@ export function registerAgents(program: Command) {
               printKeyValue('Owner', truncateAddress(profile.owner));
             }
             printBlank();
-            printInfo(`Profile: https://t2000.ai/${profile.numericId ?? profile.address}`);
+            // S.1248: human pages are numeric-only — never a 0x fallback.
+            printInfo(
+              profile.numericId != null
+                ? `Profile: https://t2000.ai/${profile.numericId}`
+                : 'Profile page pending — t2000.ai pages are numeric (t2000.ai/<agent #>).',
+            );
             printBlank();
             return;
           }
