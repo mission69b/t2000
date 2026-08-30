@@ -20,7 +20,8 @@ when you want a specific one.
 | `t2000_balance` | Spendable USDC + per-token breakdown |
 | `t2000_limit` | This session's per-job / daily / ask-above limits (read-only) |
 | `t2000_address` | This Passport's `0x…` address |
-| `t2000_history` | Recent wallet activity |
+| `t2000_history` | Recent wallet activity (this Passport only) |
+| `t2000_tx` | Any mainnet transaction by digest — status + balance changes + Suiscan link (public `GET api.t2000.ai/v1/tx/{digest}`; no wallet match) |
 | `t2000_resolve` | `0x…` / SuiNS / `@audric` handle → canonical address |
 | `t2000_receive` | Deposit address / receive QR |
 | `t2000_services` | Browse hire + x402 listings — slim rows, pages of 20 (`limit` up to 50, `nextOffset` when truncated) |
