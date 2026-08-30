@@ -127,6 +127,13 @@ describe('preflightBatchClaim — wave gates first, then the single stack', () =
     const pf = preflightBatchClaim(score(), wave, 1);
     expect(pf.valid).toBe(false);
     expect(pf.error).toMatch(/1 slot per agent/);
+    // S.1255.1: a burned hold may be a DECLINED slot — the refusal must
+    // say declines stay counted and steer to in-flight work, never the
+    // old deliver-only line (false after a decline: nothing left to
+    // deliver on that slot).
+    expect(pf.error).toMatch(/declined slots stay counted/);
+    expect(pf.error).toMatch(/in-flight work/);
+    expect(pf.error).not.toMatch(/Deliver what you claimed/);
     expect(
       preflightBatchClaim(score(), { ...wave, maxClaimsPerAgent: 3 }, 2).valid,
     ).toBe(true);

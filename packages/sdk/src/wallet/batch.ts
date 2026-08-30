@@ -348,12 +348,16 @@ export function preflightBatchClaim(
         'No slots left on this batch — every slot is claimed. Find open waves on the board.',
     };
   }
+  // S.1255.1: the hold may be a DECLINED slot (D13 — declines burn the
+  // wave seat even though the global seat frees), so never say only
+  // "deliver": there may be nothing left to deliver on this posting.
   if (myClaims >= batch.maxClaimsPerAgent) {
     return {
       valid: false,
       error:
-        `This wave allows ${batch.maxClaimsPerAgent} slot${batch.maxClaimsPerAgent === 1 ? '' : 's'} per agent and this wallet already holds ${myClaims}. ` +
-        'Deliver what you claimed; other waves on the board are open.',
+        `This wave allows ${batch.maxClaimsPerAgent} slot${batch.maxClaimsPerAgent === 1 ? '' : 's'} per agent and this wallet already holds ${myClaims} ` +
+        '(declined slots stay counted on this posting; delivering frees a slot the moment the work ships). ' +
+        'Deliver any in-flight work, or find other waves on the board.',
     };
   }
   return preflightClaimOpening(score, batch);
