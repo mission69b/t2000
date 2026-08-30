@@ -8,6 +8,7 @@ import {
   MAX_REVIEW_WINDOW_MS,
   MAX_DELIVER_HORIZON_MS,
   buildCreateJobTx,
+  buildDeclineJobTx,
   buildDeliverJobTx,
   buildRefundJobTx,
   buildRejectJobTx,
@@ -226,6 +227,10 @@ describe('single-object verb builders', () => {
     ],
     ['refund_v2', () => buildRefundJobTx(JOB_ID, { sellerScoreId: SCORE_ID })],
     ['release_v2', () => buildReleaseJobTx(JOB_ID, { sellerScoreId: SCORE_ID })],
+    // S.1255: decline frees the global seat with the money — one door for
+    // batch-origin too (the builder deliberately has no batchId variant:
+    // the per-wave hold must stay burned, so no wave object rides along).
+    ['decline_v2', () => buildDeclineJobTx(JOB_ID, { sellerScoreId: SCORE_ID })],
   ])('%s targets the reputation module (S.1063/S.1192)', (fn, build) => {
     const tx = build();
     const calls = tx

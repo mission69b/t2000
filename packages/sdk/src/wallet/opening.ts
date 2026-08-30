@@ -32,13 +32,15 @@ import {
  * unchanged.
  */
 
-/** The LATEST published `a2a_escrow` package id on MAINNET (v14 upgrade,
- *  S.1255 — decline frees the GLOBAL active seat, FeeConfig VERSION 8→9
- *  cutover with immediate migrate: claimed jobs decline via
+/** The LATEST published `a2a_escrow` package id on MAINNET (v14 upgrade
+ *  2026-08-31, S.1255 — decline frees the GLOBAL active seat, FeeConfig
+ *  VERSION 8→9 cutover with immediate migrate: claimed jobs decline via
  *  `reputation::decline_v2` (seller score attached; the D13 per-wave
  *  batch hold still burns — deliberately stricter than global), the bare
  *  `escrow::decline` is a dead EUseSettleV2 stub, and the narrow AdminCap
  *  `set_active_seller_jobs` reconcile door heals pre-v14 decline burns;
+ *  upgrade digest Fpb3TjctBKh423JDTppGNQwMr2WiTKy6uRYcQ5FUKKNE, migrate
+ *  827A4hM2YyydBFXfbVAjeXUdjEgcyxAT2CpUHAWSwJka;
  *  v13 upgrade 2026-08-27, S.1210 — active cap frees on DELIVER,
  *  FeeConfig VERSION 7→8 cutover with immediate migrate: claimed jobs
  *  deliver via `reputation::deliver_v2` / `batch::deliver_v2` (seller
@@ -66,7 +68,7 @@ import {
  *  (`MAINNET_A2A_ESCROW_PACKAGE_ID` in job.ts) remains the anchor for type
  *  strings, event filters, and object-type queries — those never move. */
 export const MAINNET_A2A_ESCROW_LATEST_PACKAGE_ID =
-  '0x912b6fe2a5913fb2a3848480c6a84dce777a10bc8bd5d24efde741a81ef8b5c4';
+  '0x818cfc9cb050ab034ad8fc2979be0d7d4ef3b48e8855621450e88095816d9cac';
 
 /** Back-compat name for the latest id (pre-S.981 consumers import this). */
 export const MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID =
