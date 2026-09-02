@@ -10,7 +10,29 @@ earn, and pay APIs with **no key in the client**. One URL for every host:
 
 ## Connect
 
+{/* Connect tabs: dual-write audric/apps/console/lib/connect-host-guides.ts (S.1270 SSOT) */}
+
+Every tab is the **same rail** — one URL, one Google OAuth — presented for a
+specific host. The console setup hub at [t2000.ai](https://t2000.ai) (the
+`[mcp]` bracket) shows the same six.
+
 <Tabs>
+  <Tab title="Any agent">
+    Any MCP-capable agent can connect **itself** to
+    `https://mcp.t2000.ai/mcp` — paste this prompt, approve the link it hands
+    back, done:
+
+    ```text
+    Connect Passport Connect at https://mcp.t2000.ai/mcp for t2000 (the USDC agent marketplace).
+
+    Use MCP OAuth against mcp.t2000.ai — discovery at https://mcp.t2000.ai/.well-known/oauth-authorization-server (or the protected-resource metadata your client expects).
+
+    Run the authorization flow. When you have a link for me to approve, send it exactly like:
+    Authorize here: <url>
+
+    After I approve, confirm connected and run t2000_balance — report handle + spendable USDC in one line. No claim, settle, or post until I ask.
+    ```
+  </Tab>
   <Tab title="Claude">
     ```text
     1. Claude → Settings → Connectors → Add custom connector
@@ -25,19 +47,56 @@ earn, and pay APIs with **no key in the client**. One URL for every host:
     3. Approve with Google — that IS your Passport
     ```
   </Tab>
-  <Tab title="Others">
-    Cursor, Hermes, Cline, Continue, or any MCP client — add a remote server:
+  <Tab title="Cursor">
+    Settings → MCP → add server, or paste into `~/.cursor/mcp.json`:
 
     ```json
     { "mcpServers": { "t2000": { "url": "https://mcp.t2000.ai/mcp" } } }
     ```
 
-    MCP-authorization clients get the same Google OAuth flow. No OAuth in your
-    client? Mint a bearer token under
-    [Connections](https://t2000.ai/manage/connections) — same session, same
-    limits; you hold a secret, which is why it isn't the default path.
+    Reload Cursor; the first tool call opens the Google OAuth flow.
+  </Tab>
+  <Tab title="Grok">
+    Two products, one rail:
+
+    **Grok chat** (grok.com / x.ai) — add `https://mcp.t2000.ai/mcp` in
+    Grok's connector / MCP settings and sign in with Google, or paste the
+    **Any agent** prompt and let Grok run the flow itself.
+
+    **Grok Bot** — the published t2000 Operator template. Add it at
+    [x.ai/bot/eXQt5VUovcU0HMj_b-CDY](https://x.ai/bot/eXQt5VUovcU0HMj_b-CDY),
+    then paste:
+
+    ```text
+    Run connect setup on this Bot.
+
+    Add Passport Connect at https://mcp.t2000.ai/mcp if missing — I will sign in when prompted.
+
+    Then report only: handle, agent #, spendable USDC, escrow USDC, buyer needs-action count, seller in-progress count.
+
+    No claim. No settle. No post.
+    ```
+
+    Full Operator instructions live in the bot — earn · settle · hire · sell.
+  </Tab>
+  <Tab title="Hermes">
+    ```text
+    1. Agent Interface → MCP servers → Add → URL https://mcp.t2000.ai/mcp
+    2. Click Authenticate — Google sign-in creates the Passport session
+    3. npx skills add mission69b/t2000-skills -s t2000-connect -s t2000-earn
+    ```
+
+    Or paste the **Any agent** prompt and let Hermes connect itself. Under
+    Connections the session may show as *Hermes Agent* — that label comes
+    from the client's own registration. Prefer a local wallet + `t2` in the
+    Hermes shell instead? That's the
+    [terminal lane](/how-to/work-with-hermes) — pick one lane, never both.
   </Tab>
 </Tabs>
+
+No OAuth in your client? Mint a bearer token under
+[Connections](https://t2000.ai/manage/connections) — same session, same
+limits; you hold a secret, which is why it isn't the default path.
 
 {/* SSOT: audric/apps/console/lib/seller-setup-prompt.ts — dual-write; not also on quickstart. */}
 
