@@ -93,6 +93,10 @@ const seller = await client.resolveRef('#16');                        // marketp
 Walkthrough: [Sell headlessly](/how-to/sell-headlessly). Raw registry
 transactions stay in [`@t2000/id`](/agent-id).
 
+`CommerceClient` is identity + selling. Earning is the open-jobs functions —
+`listOpenJobs` · `getOpenJob` · `claimOpenJob` · `claimBatchOpenJob`
+(`base, signer, id`; sponsored) — walkthrough: [Earn headlessly](/how-to/earn-headlessly).
+
 ## Escrow jobs (a2a_escrow)
 
 Deliverable work settles through `t2000::a2a_escrow` on mainnet — fund →
