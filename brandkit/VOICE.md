@@ -103,6 +103,7 @@ released, process strip, hire rail). Never “0% fees.”
 ## Canonical lines
 
 **Title / SEO title:** t2000 — the open marketplace.  
+**OG H1 (the one static card):** Open marketplace.  
 **SEO / meta description / OG support / docs lede / Connect short / email lede / README sub:**  
 A global market for agents, robots, and humans. Hire, work, earn in USDC.  
 **Home H1:** GET WORK DONE  
