@@ -1,16 +1,34 @@
 # t2000 voice — product copy SSOT
 
-> **Use this pack for any public string.** 2026-09-09 (rev — t2000 lead:
-> **the open marketplace**; Audric lead unchanged: **AI you can put to work**).
-> Technical product map: `PRODUCT.md`. Marketing one-pager: `brandkit/MARKETING-ONEPAGER.md`.
-> Do not invent capabilities, fees, or custody.
+> **Use this pack for any public string.** 2026-09-09 (rev 3 — one path).
+> Noun = **open marketplace**. Fold = **GET WORK DONE**. Support = the
+> sentence below. Audric unchanged: **AI you can put to work**. Store
+> stays **dark**. Technical product map: `PRODUCT.md`. Marketing one-pager:
+> `brandkit/MARKETING-ONEPAGER.md`. Do not invent capabilities, fees, or
+> custody.
 
 ---
 
-## One lead (no umbrella, no stack noun)
+## Noun vs fold
 
-**t2000 is the open marketplace.**  
-Sub: agents, machines, robots, and humans. USDC.
+**Public noun:** the open marketplace.  
+Eyebrow: `OPEN MARKETPLACE`. Not “agent marketplace.” Not a sentence.
+
+**Fold (home hero):** GET WORK DONE. The wordmark already says t2000 —
+do not use “t2000 is the open marketplace” as the H1.
+
+```
+OPEN MARKETPLACE
+GET WORK DONE
+A global market for agents, robots, and humans. Hire, work, earn in USDC.
+
+Post work · Earn with your AI
+Escrow first · Claim is free · ~5% at settle
+```
+
+That support sentence is the **only** cold lede under the noun. Do not
+run a second who-line. Do not say “open” again in the support (eyebrow
+already has it). Do not use “t2000 is the open marketplace” as a lede.
 
 That’s the only public noun. No “agent economy.” No “open economy.” No
 “agentic.” No stack brand (identity / wallet / escrow / Connect are how it
@@ -19,8 +37,9 @@ works — they don’t get a name on the billboard).
 **Passport Connect** is how the market shows up in your AI. Last beat, never
 the H1.
 
-**Lead with the open marketplace · hire · work · earn** — not A2A, not leash
-tech, not “agent marketplace,” not “on Sui.”
+**Lead with GET WORK DONE · open marketplace · hire · work · earn** — not
+A2A, not leash tech, not “agent marketplace,” not “on Sui,” not
+“t2000 is the open marketplace” as the headline.
 
 **A2A** = optional second beat (agent-to-agent mode / technical badge), never
 the cold first words.
@@ -36,7 +55,7 @@ headline.
 
 | Form | When |
 |---|---|
-| **the open marketplace** / **open marketplace** | Default lead (body, titles, Connect listings, eyebrow, OG) |
+| **the open marketplace** / **open marketplace** | Noun: eyebrow, body, titles, Connect, OG. Not the home H1. |
 | **the marketplace** | Second mention on the same surface |
 | **A2A** / **A2A Marketplace** | Once per viewport max as mode badge; docs protocol / CLI |
 | ~~agent marketplace~~ as the lead | Retired 2026-09-09 — undersells humans + the global/USDC story |
@@ -49,7 +68,7 @@ headline.
 
 ## Who it’s for
 
-**Sub (locked):** agents, machines, robots, and humans. USDC.
+**Fold / lede:** A global market for agents, robots, and humans. Hire, work, earn in USDC.
 
 Robots are the tent, not a live door. Don’t add a robot product, a Why row,
 or a Hire-a-robot CTA until that door exists. The four cares still say
@@ -83,14 +102,19 @@ released, process strip, hire rail). Never “0% fees.”
 
 ## Canonical lines
 
-**Title:** t2000 — the open marketplace.  
-**Lede:** t2000 is the open marketplace.  
-**Sub:** Agents, machines, robots, and humans. USDC.  
-**Doors (when you need verbs):** Hire, work, earn.  
-**SEO:** The open marketplace. Agents, machines, robots, and humans. Hire,
-work, earn in USDC.  
-**Eyebrow (optional):** `OPEN MARKETPLACE`  
-**Whitepaper H1:** t2000 is the open marketplace. Same sub. No “agent
+**Title / SEO title:** t2000 — the open marketplace.  
+**SEO / meta description / OG support / docs lede / Connect short / email lede / README sub:**  
+A global market for agents, robots, and humans. Hire, work, earn in USDC.  
+**Home H1:** GET WORK DONE  
+**Home CTAs:** Post work · Earn with your AI  
+**Home proof:** Escrow first · Claim is free · ~5% at settle  
+**Doors:** Hire, work, earn.  
+**Eyebrow:** `OPEN MARKETPLACE`  
+**~~t2000 is the open marketplace.~~** Retired as a lede. Title/eyebrow
+only.  
+**~~Post work. You approve before anyone is paid.~~** Why row / process
+only — not the fold.  
+**Whitepaper H1:** The open marketplace. Vision in the body. No “agent
 economy.” No “on Sui.”
 
 ### Passport Connect (directory, Connect docs)
@@ -105,9 +129,9 @@ t2000 — the open marketplace. Hire, work, earn in USDC. Post work, list a
 service, claim open jobs.
 
 **Short:**  
-**t2000 is the open marketplace.** Hire and lock USDC in the job until
-delivery. List a service. Claim open jobs and **earn**. Claiming is free.
-Google is your Passport. Wire your AI once.
+t2000 — the open marketplace. A global market for agents, robots, and
+humans. Hire, work, earn in USDC. Google is your Passport. Wire your AI
+once.
 
 **Control / Connect (after the hit):**  
 Hosted MCP + limits + revoke exist so the market can live in chat — they
@@ -162,7 +186,8 @@ You approve. They get paid.
 
 | Avoid | Why |
 |---|---|
-| Leading with **agent marketplace** / **agent economy** / **on Sui** | Retired. One lead: open marketplace. |
+| Leading with **agent marketplace** / **agent economy** / **on Sui** | Retired. Noun = open marketplace. Fold = GET WORK DONE. |
+| **t2000 is the open marketplace** as the H1 | The mark already says t2000. Use GET WORK DONE. |
 | “Store” as product noun | Marketplace |
 | Leading every line with A2A | Cold-read fails |
 | Leading with wallet/leash/guardrails | Undersells the market |
@@ -194,8 +219,9 @@ Never "Audric is the marketplace." **t2000.ai is the market.**
 | Surface | Pull |
 |---|---|
 | Connector forms | § Connect + `connect-directory/DESCRIPTION.md` |
+| Home fold | GET WORK DONE + this file’s hero stack |
 | docs intro / meta | Open marketplace + three doors |
-| t2000.ai title / meta | Open marketplace · hire · work · earn |
+| t2000.ai title / meta | t2000 — the open marketplace (SEO). Fold is GET WORK DONE. |
 | Audric title / meta | § Sister brand |
 | brandkit marketing | this file + `MARKETING-ONEPAGER.md` |
 | Welcome email | Four cares + lede (already shipped) |

@@ -6,7 +6,7 @@
 
 ## 30-second pitch
 
-**t2000 is the open marketplace.** Agents, machines, robots, and humans. USDC. **Hire, work, earn** — the budget locks in the job (or pays per call), with receipts.
+**t2000 — the open marketplace.** A global market for agents, robots, and humans. Hire, work, earn in USDC. The budget locks in the job (or pays per call), with receipts.
 
 **Audric** is **AI you can put to work** — put it on the t2000 marketplace (hire, claim, deliver, settle in USDC). Private chat and Private Inference are extra. Same Passport. USDC when it counts.
 
@@ -37,11 +37,10 @@ Lead cold marketing with **the open marketplace**. **A2A** is an optional mode b
 
 ### Lines
 
-- **Title:** t2000 — the open marketplace.  
-- **Lede:** t2000 is the open marketplace.  
-- **Sub:** Agents, machines, robots, and humans. USDC.  
+- **Title / SEO title:** t2000 — the open marketplace.  
+- **Lede (SEO description · OG support · docs · Connect short · email · README sub):** A global market for agents, robots, and humans. Hire, work, earn in USDC.  
+- **Eyebrow:** `OPEN MARKETPLACE` · **Home H1:** GET WORK DONE  
 - **Doors (when you need verbs):** Hire, work, earn.  
-- **SEO:** The open marketplace. Agents, machines, robots, and humans. Hire, work, earn in USDC.  
 - **Connect tagline:**  
   t2000 — the open marketplace. Hire, work, earn in USDC. Post work, list a service, claim open jobs.
 

@@ -30,7 +30,7 @@ no second domain — ever.
 | OAuth callback (Claude) | `https://claude.ai/api/mcp/auth_callback` | register on the Connect OAuth server |
 
 **Description (≤2000 chars, canonical — see `DESCRIPTION.md` for the full
-text + example prompts):** opens with **t2000 is the open marketplace** —
+text + example prompts):** opens with **t2000 — the open marketplace** then the one lede —
 never “Passport Connect is…”, never “agent marketplace” / “on Sui” as the
 lead — hire · work · earn, USDC, limits as a second beat, never claims
 "send disabled".
