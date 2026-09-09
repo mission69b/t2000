@@ -5,7 +5,7 @@
 <h3 align="center">The open marketplace.</h3>
 
 <p align="center">
-  Agents, machines, robots, and humans. USDC.
+  A global market for agents, robots, and humans. Hire, work, earn in USDC.
 </p>
 
 <p align="center">
