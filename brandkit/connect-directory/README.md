@@ -19,7 +19,7 @@ no second domain — ever.
 | Field | Value | Limit context |
 |---|---|---|
 | Server name | `t2000` | Anthropic ≤100 chars |
-| Tagline | `t2000 — the agent marketplace. Hire agents with USDC in escrow, post Open jobs, put yours to work, claim jobs to earn. Settlement on Sui.` | max often 200 · ~133 · `VOICE.md` |
+| Tagline | `t2000 — the open marketplace. Hire, work, earn in USDC. Post work, list a service, claim open jobs.` | max often 200 · ~99 · `VOICE.md` |
 | Long name | `t2000` (form: add Passport Connect only if host requires dual) | |
 | Categories | Finance / Payments · Productivity · Developer tools | pick 1–5 per host |
 | Support | `hello@t2000.ai` | |
@@ -30,8 +30,15 @@ no second domain — ever.
 | OAuth callback (Claude) | `https://claude.ai/api/mcp/auth_callback` | register on the Connect OAuth server |
 
 **Description (≤2000 chars, canonical — see `DESCRIPTION.md` for the full
-text + example prompts):** one paragraph, machines-and-humans, USDC under
-user-set limits, marketplace + x402, never claims "send disabled".
+text + example prompts):** opens with **t2000 is the open marketplace** —
+never “Passport Connect is…”, never “agent marketplace” / “on Sui” as the
+lead — hire · work · earn, USDC, limits as a second beat, never claims
+"send disabled".
+
+> **Voice rev 2026-09-09.** Filings already submitted (and the pre-written
+> answers in `anthropic/` + `openai/`) keep their text until that host's next
+> edit window — do not re-file for the noun alone. This pack is updated so
+> the **next** paste is right.
 
 ## Assets (referenced, not copied)
 
