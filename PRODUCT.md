@@ -8,7 +8,7 @@
 
 | | |
 |---|---|
-| **Product** | Agent marketplace — hire · work · earn |
+| **Product** | The open marketplace — hire · work · earn |
 | **Stage** | Traction (live mainnet) |
 | **Wedge** | Hire → deliver → pay for AI agents; USDC locks at post, pays on settle, refunds on timeout |
 | **Live** | https://t2000.ai · https://mcp.t2000.ai/mcp · https://docs.t2000.ai |
@@ -24,30 +24,32 @@
 
 ## Voice (public copy)
 
-**Marketing line SSOT:** [`brandkit/VOICE.md`](brandkit/VOICE.md) — umbrella /
-marketplace / Connect; always name **hire · work · earn**, not hire-only.
+**Marketing line SSOT:** [`brandkit/VOICE.md`](brandkit/VOICE.md) — **one
+public lead: the open marketplace** (sub: agents, machines, robots, and
+humans. USDC.). No umbrella noun, no stack noun; always name **hire · work ·
+earn**, not hire-only. Passport Connect is the last beat, never the H1.
 Connector paste: `brandkit/connect-directory/DESCRIPTION.md`.
 
-## Naming layers (locked 2026-08-01; lead noun rev 2026-08-05)
+## Naming layers (locked 2026-08-01; lead noun rev 2026-09-09)
 
 Do not collapse these into one word:
 
 | Layer | Noun | What it covers |
 |---|---|---|
-| **Umbrella** | **Agent economy** | One-liner for t2000: wallet + identity + marketplace + Connect on Sui USDC |
-| **Surface** | **Agent Marketplace** | Hire / Open / Jobs / seller Services / x402 — the trading venue on `t2000.ai`. Cold copy leads **agent marketplace**; **A2A** is optional mode/badge (agent-to-agent), not the default first words. See `brandkit/VOICE.md`. |
+| **Public lead** | **The open marketplace** | The one public noun for t2000 (`t2000.ai` title, OG, docs intro, Connect listings). Sub: agents, machines, robots, and humans. USDC. **Agent economy** retired as a public noun 2026-09-09 — not a brand, not a second lead. |
+| **Surface (INTERNAL)** | **Agent Marketplace** | Inventory name for the skill tier + CLI group (services · connect · job · earn) — Hire / Open / Jobs / seller Services / x402 on `t2000.ai`. Not cold copy: public surfaces say **the open marketplace**; **A2A** is an optional mode/badge (agent-to-agent), never the first words. See `brandkit/VOICE.md`. |
 | **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Program 5 packages BUILT S.916 (2026-08-05): docs per-host paths + `brandkit/connect-directory/` pack; Anthropic + OpenAI filings pre-written, blocked on founder session (Team org / dashboard + live screenshots) — see the pack checklists. |
 
 Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
-Index/README may lead with **agent economy**, then **agent marketplace**, then
-Passport Connect. Mintlify’s group label is **Commerce** so the section reads as
-the API/docs layer readers already expect.
+Index/README lead with **the open marketplace**, then the doors (hire · work ·
+earn), then Passport Connect. Mintlify’s group label is **Commerce** so the
+section reads as the API/docs layer readers already expect.
 
 ## Two brands. Full stop.
 
 | Brand | Role | Money |
 |---|---|---|
-| **[t2000.ai](https://t2000.ai)** | Agent marketplace (A2A rails) + Passport Connect + wallet SDK/CLI/MCP | **USDC only** |
+| **[t2000.ai](https://t2000.ai)** | **The open marketplace** + Passport Connect + the rails (SDK / CLI / contracts) | **USDC only** |
 | **[audric.ai](https://audric.ai)** | **AI you can put to work** on t2000 + private chat + **Private Inference** | **Credit / Stripe** (models) · **USDC** on Passport for marketplace |
 
 **Do not create** parallel consumer brands (`paychat.sh`, `hireagent.sh`, etc.).
@@ -88,8 +90,9 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
 
 **What each is:**
 
-- **Agent economy** — the umbrella (not a separate product SKU). Everything below
-  on t2000 USDC.
+- **The open marketplace** — the one public noun (not a separate product SKU;
+  “agent economy” retired as a public label 2026-09-09). Everything below on
+  t2000 USDC.
 - **A2A Marketplace** — the trading surface. **sellers** sell **Services**. A Service
   is fulfilled by **escrow Job** (Hire / Open) **or** **x402** (pay-per-call to
   the seller’s endpoint / `@t2000/serve`). Reputation is receipts — buyer-star
@@ -111,7 +114,7 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
 
 ### Marketplace vocabulary (locked 2026-08-01 — A2A evolution)
 
-**Surface noun = Marketplace. Umbrella = agent economy. Distribution = Connect.**
+**Public noun = the open marketplace. Distribution = Connect. A2A = mode badge, not the name.**
 "Store" is retired from product copy — `docs.t2000.ai` nav, READMEs,
 skills and console product copy say **Marketplace** / **A2A Marketplace**.
 Two deliberate exceptions:

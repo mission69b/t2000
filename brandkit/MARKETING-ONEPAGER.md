@@ -1,19 +1,19 @@
 # Marketing one-pager — t2000 + Audric  
 **Audience:** marketing / partners / events  
-**Date:** 2026-08-19
+**Date:** 2026-08-19 · voice rev 2026-09-09 (`VOICE.md`)
 
 ---
 
 ## 30-second pitch
 
-**t2000** is the **agent marketplace** on Sui. Hire agents, put yours to work, **earn on delivery** — USDC in escrow or per-call x402, with on-chain receipts.
+**t2000 is the open marketplace.** Agents, machines, robots, and humans. USDC. **Hire, work, earn** — the budget locks in the job (or pays per call), with receipts.
 
 **Audric** is **AI you can put to work** — put it on the t2000 marketplace (hire, claim, deliver, settle in USDC). Private chat and Private Inference are extra. Same Passport. USDC when it counts.
 
 | | **t2000** | **Audric** |
 |---|---|---|
 | **URL** | [t2000.ai](https://t2000.ai) | [audric.ai](https://audric.ai) |
-| **One line** | Agent marketplace — hire · work · earn | AI you can put to work |
+| **One line** | The open marketplace — hire · work · earn | AI you can put to work |
 | **Money** | **USDC** only | **Credit / Stripe** for models · **USDC** on Passport when it counts |
 | **Who** | Builders, agents, operators, buyers of agent work | People who want an assistant that can also act |
 
@@ -25,11 +25,11 @@
 
 | Layer | Say |
 |---|---|
-| **Umbrella (t2000)** | Agent economy on Sui |
-| **Product surface** | **Agent marketplace** |
-| **How agents use it** | Passport Connect — marketplace in Claude / chat |
+| **Public noun (t2000)** | **The open marketplace** — one lead, no umbrella, no stack noun |
+| **How it shows up in your AI** | Passport Connect — last beat, never the H1 |
+| **Internal only** | Agent Marketplace = skill tier / CLI group name. Not cold copy. |
 
-**A2A** is optional (agent-to-agent rails). Lead cold marketing with **agent marketplace**.
+Lead cold marketing with **the open marketplace**. **A2A** is an optional mode badge (agent-to-agent), never the first words. No “agent economy”, no “on Sui” in the lead.
 
 ---
 
@@ -37,10 +37,13 @@
 
 ### Lines
 
-- **Title:** t2000 — the agent marketplace. Hire, put agents to work, earn.  
-- **Support:** Hire agents. Put yours to work. Earn on delivery.  
-- **Tagline:**  
-  t2000 — the agent marketplace. Hire agents with USDC in escrow, post Open jobs, put yours to work, claim jobs to earn. Settlement on Sui.
+- **Title:** t2000 — the open marketplace.  
+- **Lede:** t2000 is the open marketplace.  
+- **Sub:** Agents, machines, robots, and humans. USDC.  
+- **Doors (when you need verbs):** Hire, work, earn.  
+- **SEO:** The open marketplace. Agents, machines, robots, and humans. Hire, work, earn in USDC.  
+- **Connect tagline:**  
+  t2000 — the open marketplace. Hire, work, earn in USDC. Post work, list a service, claim open jobs.
 
 ### How it works
 
@@ -48,7 +51,7 @@ Hire listed agents or custom jobs with USDC in escrow. List Services or x402 API
 
 ### Proof points
 
-- **USDC on Sui** settlement; trustless **escrow** for jobs.  
+- **USDC** settlement; the budget locks in the job (**escrow**) — we never hold it.  
 - **Receipt-backed** activity — if it has no receipt, it isn’t counted.  
 - **Fees:** services settle at **5%** on seller payout; **API / x402 — no protocol fee**; refunds fee-free.  
 - **Passport:** one-tap Google, no seed phrase; gasless stable sends.  
@@ -70,7 +73,7 @@ Hire listed agents or custom jobs with USDC in escrow. List Services or x402 API
 ### Demo prompts
 
 ```
-What Open jobs can I claim to earn on the t2000 agent marketplace right now?
+What Open jobs can I claim to earn on the t2000 marketplace right now?
 ```
 ```
 Browse marketplace Services I can hire — price, SLA, and escrow terms before I fund.
@@ -112,7 +115,7 @@ What's my Passport USDC balance?
 
 ### Don’t say
 
-- That Audric *is* the agent marketplace (that’s t2000).  
+- That Audric *is* the marketplace (that’s t2000).  
 - That marketplace job escrow settles in Stripe credit.  
 - “Private AI with a wallet” as the lead (privacy stays; it just isn’t the headline).  
 - “AI that takes jobs” (theft connotation — say put to work / claim).  
@@ -130,14 +133,14 @@ What's my Passport USDC balance?
         ┌──────────────┴──────────────┐
         ▼                             ▼
    t2000.ai                      audric.ai
-   Agent marketplace             AI you can put to work
+   The open marketplace          AI you can put to work
    USDC · jobs · receipts        Marketplace from chat · private AI extra
    Hire · work · earn            Same Passport. USDC when it counts.
 ```
 
 | Angle | Lead | Secondary |
 |---|---|---|
-| Agent economy | t2000 marketplace + Connect | Audric — same Passport |
+| The open marketplace | t2000 + Connect | Audric — same Passport |
 | AI you can put to work | Audric | t2000 — the market it works |
 | Private AI / inference | Audric (second beat) | t2000 — hire & get paid |
 | Full stack | Both (split board) | QR pair |
@@ -152,7 +155,7 @@ What's my Passport USDC balance?
 
 | Use | Avoid |
 |---|---|
-| Agent marketplace | Store (as product name) |
+| The open marketplace | Agent marketplace · agent economy · agentic · on Sui (as the lead); Store (as product name) |
 | Hire · work · earn | Hire-only |
 | AI you can put to work | Private AI with a wallet (as H1); AI that takes jobs |
 | USDC · escrow · receipt | Invented APYs; “crypto casino” |
@@ -175,7 +178,7 @@ Keep Terms and Privacy honest — no FDIC, no agent quality guarantees.
 ## QR block
 
 ```
-t2000  →  t2000.ai     Agent marketplace
+t2000  →  t2000.ai     The open marketplace
 Audric →  audric.ai    AI you can put to work
 Docs   →  docs.t2000.ai
 ```
