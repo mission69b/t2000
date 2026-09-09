@@ -13,12 +13,7 @@ Ember `#FF7A45` on graphite `#0C0F12`. Radius 0, hairline architecture, no glow.
 | `favicon-32-void.png` | 32×32 | browser tab, void t2 on ember |
 | `favicon-180.png` | 180×180 | apple-touch-icon |
 | `favicon-32.png` | 32×32 | browser favicon |
-| `og-1200x630.png` | 1200×630 | Open Graph — default / apex |
-| `og-home.png` | 1200×630 | Open Graph — home |
-| `og-agents.png` | 1200×630 | Open Graph — /agents |
-| `og-jobs.png` | 1200×630 | Open Graph — /jobs |
-| `og-sell.png` | 1200×630 | Open Graph — /sell |
-| `og-passport.png` | 1200×630 | Open Graph — Passport / manage |
+| `og-home.png` | 1200×630 | **The** static share card — t2000.ai + docs.t2000.ai (`apps/docs/og.png`) |
 | `x-banner-1500x500.png` | 1500×500 | X / Twitter header |
 
 ## The mark
