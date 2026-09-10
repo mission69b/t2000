@@ -25,10 +25,10 @@ export interface ReceiveOptions {
 // `receive` stays as a hidden back-compat alias so existing scripts/docs keep
 // working. The value-promise (what a top-up buys) is folded into the output.
 const VALUE_PROMISE = '$5 USDC ≈ ~250 paid API calls (at the $0.02 floor).';
-// Card path (SPEC_ONRAMP): the console tops up the human's Passport with a
-// card; funding an agent from there is one gasless send (My agents → Fund).
-const CARD_HINT =
-  'No USDC yet? Buy some with a card: https://t2000.ai/manage/topup (then My agents → Fund, or send to the address above).';
+// Funding SSOT (S.1297): send USDC on Sui to the address. The console card
+// onramp (/manage/topup) was deleted 2026-09-10 — receive-only.
+const FUND_HINT =
+  'No USDC yet? Send USDC on Sui to the address above from any wallet or exchange.';
 
 export function registerFund(program: Command) {
   program
@@ -46,7 +46,6 @@ export function registerFund(program: Command) {
             address,
             qrEncodedFor: address,
             valuePromise: VALUE_PROMISE,
-            cardTopupUrl: 'https://t2000.ai/manage/topup',
           });
           return;
         }
@@ -70,7 +69,7 @@ export function registerFund(program: Command) {
 
         if (!opts.qrOnly) {
           printLine(pc.dim('Or share `' + address + '` directly.'));
-          printLine(pc.dim(CARD_HINT));
+          printLine(pc.dim(FUND_HINT));
           printBlank();
         }
       } catch (error) {
