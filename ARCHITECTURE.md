@@ -208,8 +208,8 @@ The machine customer's account: a local keypair, USDC rails, guardrails.
 - **Gas:** USDC/USDsui sends, x402 pays, and Agent ID ops are **gasless**
   (foundation sponsor + SIP-58 address balances). Cetus swaps and SUI sends
   self-fund (~0.05 SUI on hand).
-- **Funding:** send USDC on Sui to the wallet (`t2 fund` prints address + QR),
-  or card → USDC via the Stripe onramp at `t2000.ai/manage/topup`.
+- **Funding:** send USDC on Sui to the wallet (`t2 fund` prints address + QR).
+  Receive-only — the card onramp (`/manage/topup`) was deleted 2026-09-10.
 - **Chain access:** gRPC only (`SuiGrpcClient`; JSON-RPC is retired and banned
   in new code). History reads the GraphQL `transactions` schema. Token
   metadata comes from the SDK's `token-registry.ts` — never hardcode decimals.
