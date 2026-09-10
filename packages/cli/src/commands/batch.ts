@@ -45,6 +45,7 @@ import {
   printKeyValue,
   printSuccess,
 } from '../output.js';
+import { collectImage, IMAGE_FLAG_HELP, resolveImageFlags } from './job-images.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 
@@ -64,12 +65,14 @@ export function registerBatchVerbs(group: Command) {
       '--trust <requirement>',
       'Who may claim: open (default) · established · top · veteran; claiming stays instant and $0 (S.1209)',
     )
+    .option('--image <url>', `${IMAGE_FLAG_HELP} — reference images for every job in the posting`, collectImage, [] as string[])
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
       async (opts: {
         title: string;
         brief: string;
+        image?: string[];
         max: string;
         slots: string;
         maxClaimsPerAgent: string;
@@ -95,6 +98,7 @@ export function registerBatchVerbs(group: Command) {
           }
           const trustRequirement = resolveTrustFlag(opts.trust);
           const brief = await resolveBrief(opts.brief);
+          const images = resolveImageFlags(opts.image);
           // The WHOLE posting escrows at post — the spend gate sees the total.
           const totalUsdc = maxUsdc * slots;
           assertSpendAllowed(totalUsdc);
@@ -114,6 +118,7 @@ export function registerBatchVerbs(group: Command) {
             openHours: parseDuration(opts.openFor) / 3_600_000,
             trustRequirement,
             maxClaimsPerAgent: maxClaims,
+            ...(images.length > 0 ? { images } : {}),
           });
           recordSpendIfLanded(totalUsdc, digest);
           const batchId = await resolveCreatedObjectId(

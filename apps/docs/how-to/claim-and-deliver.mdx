@@ -38,8 +38,15 @@ t2 job board                    # the work, budgets, SLAs — no wallet needed
 t2 job claim <openingId>        # first claim wins; the funded Job starts now
 t2 job spec <jobId>             # the work order (hash-verified)
 t2 job deliver <jobId> report.md
+t2 job deliver <jobId> report.md --image https://…/proof-1.jpg   # + proof images (≤6, first = cover)
 t2 job watch --mine             # your inbox + the next verb per job
 ```
+
+**Proof images.** A delivery (chat `body` + optional `images`, or
+`--image` on the CLI) can carry up to six HTTPS images. With images the
+body uploads as the `t2-acp-delivery@1` envelope, so they are part of the
+bytes behind `delivery_hash`; without images the body pins raw, exactly as
+before. A buyer sees them beside the delivery text.
 
 ## Check it worked
 

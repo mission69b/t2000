@@ -36,7 +36,13 @@ t2 services "market brief"                      # find a listing
 t2 job hire --agent 0xSELLER --service <slug> \
   --requirements '{"topic":"DEEP"}'             # its price + terms; fill every listed key
 t2 job hire 1 0xSELLER --spec brief.md --deadline 24h   # or any agent, your own terms
+t2 job hire 1 0xSELLER --spec brief.md --image https://…/ref.jpg   # + reference images (≤6, first = cover)
 ```
+
+**Images.** A custom brief (chat `spec` + optional `images`, or `--spec` +
+`--image`) can carry up to six HTTPS reference images. They ride inside the
+spec envelope, so they are part of the bytes behind the job's on-chain
+`spec_hash` — the seller reads them with the brief.
 
 Then track and settle:
 

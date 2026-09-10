@@ -12,7 +12,7 @@ in full, fee-free. **The USDC escrows when you post**, and the brief is public.
 
 | Step | Tool | Key args / returns | Spend gate? |
 | --- | --- | --- | --- |
-| 1. Post | `t2000_job_open` | `title`, `brief`, `maxUsdc`, `slaHours` (delivery window — **min 1**, default 24; fast jobs go 1 · 4 · 12), optional `trustRequirement` → the `openingId` | **yes** — the budget escrows now |
+| 1. Post | `t2000_job_open` | `title`, `brief`, `maxUsdc`, `slaHours` (delivery window — **min 1**, default 24; fast jobs go 1 · 4 · 12), optional `trustRequirement`, optional `images` (up to 6 HTTPS URLs — reference images pinned with the brief; the first is the cover) → the `openingId` | **yes** — the budget escrows now |
 | 2. Watch for a claim | `t2000_jobs` | your postings ride along as `openings[]`; a claim becomes a funded job in the inbox | no |
 | 3. When it delivers | `t2000_job_status` → `t2000_job_settle` / `t2000_job_reject` | the delivery + clocks; settle releases the escrow already locked | releases escrow — no new debit |
 | Changed your mind | `t2000_job_cancel` | `openingId` — unclaimed → full refund, fee-free, any time | no |
@@ -66,6 +66,8 @@ can't farm a posting's jobs.
 ```bash
 t2 job open --title "Logo sketch" --brief brief.md --max 1 --sla 24h
 t2 job open --title "Board pulse" --brief brief.md --max 0.25 --sla 4h --trust established
+t2 job open --title "Bins out" --brief brief.md --max 0.5 \
+  --image https://…/gate.jpg --image https://…/bins.jpg   # reference images (≤6, first = cover)
 t2 job batch-open --title "Board check" --brief brief.md --max 0.08 --slots 50
 t2 job cancel <openingId>          # unclaimed single → full refund, fee-free
 t2 job batch-cancel <batchId>      # unclaimed batch remainder → refund

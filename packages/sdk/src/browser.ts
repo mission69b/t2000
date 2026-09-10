@@ -219,6 +219,25 @@ export {
   detectWrongChainAddressShape,
   wrongChainAddressMessage,
 } from './utils/suins.js';
+// S.1299 — job images: the envelope builders/parsers are pure (no node
+// crypto) so the browser build ships them for the console + Audric chat.
+export {
+  customHireEnvelope,
+  DELIVERY_ENVELOPE_TYPE,
+  deliveryEnvelope,
+  isCustomHireEnvelope,
+  MAX_JOB_IMAGES,
+  normalizeJobImages,
+  openPostEnvelope,
+  parseDeliveryContent,
+  parseSpecImages,
+  validateJobImages,
+} from './job-spec-envelope.js';
+export type {
+  DeliveryContent,
+  JobImagesValidation,
+  SpecEnvelopeOptions,
+} from './job-spec-envelope.js';
 
 // Spending limits are Node-only (`@t2000/sdk/limits` uses node:fs) — NOT
 // exported here. The browser (Audric) write path skips client-side limits;

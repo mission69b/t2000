@@ -260,7 +260,20 @@ export type {
 } from './commerce.js';
 export {
   customHireEnvelope,
+  DELIVERY_ENVELOPE_TYPE,
+  deliveryEnvelope,
   isCustomHireEnvelope,
+  MAX_JOB_IMAGES,
+  normalizeJobImages,
+  openPostEnvelope,
+  parseDeliveryContent,
+  parseSpecImages,
+  validateJobImages,
+} from './job-spec-envelope.js';
+export type {
+  DeliveryContent,
+  JobImagesValidation,
+  SpecEnvelopeOptions,
 } from './job-spec-envelope.js';
 export {
   cancelOpenJob,

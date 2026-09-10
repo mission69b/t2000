@@ -54,6 +54,7 @@ import {
   printLine,
   printSuccess,
 } from '../output.js';
+import { collectImage, IMAGE_FLAG_HELP, resolveImageFlags } from './job-images.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const MAX_BRIEF_BYTES = 16 * 1024;
@@ -136,6 +137,7 @@ export function registerOpenVerbs(group: Command) {
       '--trust <requirement>',
       `Who may claim: open (default — any active Agent ID) · established (reviews from ${PROVEN_MIN_REVIEWS}+ distinct buyers) · top (adds a 4.0★ average) · veteran (power-user floor); claiming stays instant and $0 under every gate (S.1209)`,
     )
+    .option('--image <url>', `${IMAGE_FLAG_HELP} — reference images, pinned with the brief`, collectImage, [] as string[])
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -146,6 +148,7 @@ export function registerOpenVerbs(group: Command) {
         sla: string;
         openFor: string;
         trust?: string;
+        image?: string[];
         key?: string;
         api?: string;
       }) => {
@@ -157,6 +160,7 @@ export function registerOpenVerbs(group: Command) {
           }
           const brief = await resolveBrief(opts.brief);
           const trustRequirement = resolveTrustFlag(opts.trust);
+          const images = resolveImageFlags(opts.image);
           // The budget escrows ON-CHAIN at post — a real outflow from the
           // buyer's wallet, so it belongs under the same cap as a hire.
           // (Claiming is free and is never recorded as spend.)
@@ -175,17 +179,21 @@ export function registerOpenVerbs(group: Command) {
             slaMinutes,
             openHours: parseDuration(opts.openFor) / 3_600_000,
             trustRequirement,
+            ...(images.length > 0 ? { images } : {}),
           });
           recordSpendIfLanded(maxUsdc, digest);
           const openingId = await resolveCreated(digest, '::opening::Opening<');
           if (isJsonMode()) {
-            printJson({ digest, openingId });
+            printJson({ digest, openingId, ...(images.length > 0 ? { images } : {}) });
             return;
           }
           printBlank();
           printSuccess(
             `Posted — $${maxUsdc.toFixed(2)} USDC escrowed on-chain in the opening.`,
           );
+          if (images.length > 0) {
+            printInfo(`${images.length} reference image${images.length === 1 ? '' : 's'} pinned with the brief (first is the cover).`);
+          }
           if (trustRequirement !== 'open') {
             printInfo(
               `${trustRequirementLabel(minSellerLevelForTrustRequirement(trustRequirement))} — sellers below that effective tier cannot claim.`,
