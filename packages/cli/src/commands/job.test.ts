@@ -221,6 +221,16 @@ describe('resolveHireSpecUpload (S.978 — CLI writes the t2-acp-custom@1 envelo
     expect(typeof body.brief).toBe('string'); // not a nested envelope string
   });
 
+  it('S.1299: --image URLs ride INSIDE the envelope (part of the pinned spec); refused on a bare hash', async () => {
+    const { fn } = mockPutSpec();
+    const images = ['https://res.cloudinary.com/t/a.jpg', 'https://res.cloudinary.com/t/b.jpg'];
+    await resolveHireSpecUpload(BASE, 'Brief with pictures.', undefined, images);
+    const body = uploadedBody(fn);
+    expect(body.images).toEqual(images);
+    expect(body.type).toBe('t2-acp-custom@1');
+    await expect(resolveHireSpecUpload(BASE, HASH64, undefined, images)).rejects.toThrow(/--image/);
+  });
+
   it('bare 0x… sha256 stays hash-only — no upload, no wrap', async () => {
     const { fn } = mockPutSpec();
     const result = await resolveHireSpecUpload(BASE, HASH64, undefined);

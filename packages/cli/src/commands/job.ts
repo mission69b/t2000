@@ -46,6 +46,8 @@ import {
   customHireEnvelope,
   isCustomHireEnvelope,
   type Job,
+  deliveryEnvelope,
+  parseSpecImages,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
 import { registerBatchVerbs } from './batch.js';
@@ -70,6 +72,7 @@ import {
   printSuccess,
   printWarning,
 } from '../output.js';
+import { collectImage, IMAGE_FLAG_HELP, resolveImageFlags } from './job-images.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const DEFAULT_REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -200,6 +203,31 @@ export async function resolveSpecUpload(
   return { hash: `0x${await putAndVerifySpec(base, loaded.text)}`, uploaded: true };
 }
 
+/** Delivery upload (S.1299): the body uploads RAW unless proof images
+ *  ride along — then it uploads as the SDK's `t2-acp-delivery@1` envelope
+ *  so the bytes behind delivery_hash carry the images. A bare 0x… sha stays
+ *  hash-only (no images possible). */
+export async function resolveDeliveryUpload(
+  base: string,
+  input: string,
+  images: readonly string[] = [],
+): Promise<{ hash: string; uploaded: boolean }> {
+  const loaded = await loadSpecText(input);
+  if (loaded.kind === 'hash') {
+    if (images.length > 0) {
+      throw new Error('--image needs an uploaded delivery body — a bare 0x… hash pins without one.');
+    }
+    return { hash: loaded.hash, uploaded: false };
+  }
+  const body = deliveryEnvelope(loaded.text, Date.now(), { images });
+  if (Buffer.byteLength(body, 'utf8') > SPEC_STORE_MAX_BYTES) {
+    throw new Error(
+      'The delivery plus its image list exceeds the 16 KiB store cap — shorten the text or the URLs.',
+    );
+  }
+  return { hash: `0x${await putAndVerifySpec(base, body)}`, uploaded: true };
+}
+
 /** Direct-hire spec upload (S.978): text briefs wrap in the SDK's
  *  `t2-acp-custom@1` envelope — the same write shape as console + Connect —
  *  so manage / the public page / the feed title the job without derive
@@ -209,14 +237,22 @@ export async function resolveHireSpecUpload(
   base: string,
   input: string,
   title: string | undefined,
+  /** S.1299 — reference images (validated HTTPS list; first = cover). */
+  images: readonly string[] = [],
 ): Promise<{ hash: string; uploaded: boolean }> {
   const loaded = await loadSpecText(input);
   if (loaded.kind === 'hash') {
+    if (images.length > 0) {
+      throw new Error('--image needs a text brief: a bare 0x… spec hash pins without an envelope, so there is nowhere to put the images.');
+    }
     return { hash: loaded.hash, uploaded: false };
+  }
+  if (isCustomHireEnvelope(loaded.text) && images.length > 0) {
+    throw new Error('--image goes with a plain brief — this input is already a spec envelope; add the images inside it instead.');
   }
   const body = isCustomHireEnvelope(loaded.text)
     ? loaded.text
-    : customHireEnvelope(loaded.text, title, Date.now());
+    : customHireEnvelope(loaded.text, title, Date.now(), { images });
   if (Buffer.byteLength(body, 'utf8') > SPEC_STORE_MAX_BYTES) {
     throw new Error(
       'The brief plus its envelope exceeds the 16 KiB job-spec store cap — ' +
@@ -644,6 +680,7 @@ Ending a job (all states covered):
     .description('Hire — fund an escrow job in one transaction (buyer): a listing (--agent + --service) or your own terms (amount + seller + --spec)')
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED as the public t2-acp-custom@1 title+brief envelope so the seller and the store can read it; sha256 pinned on-chain), or a bare 0x… sha256 (hash-only: pins without uploading, no envelope — the body stays off-platform)')
     .option('--title <text>', 'Public job title (≤80 chars). Custom/direct hire only; derived from the brief\'s first line if omitted')
+    .option('--image <url>', `${IMAGE_FLAG_HELP} — reference images, pinned with the brief (custom/direct hire only)`, collectImage, [] as string[])
     .option(
       '--agent <address|#id|@handle>',
       "Hire a listing: the seller's agent address, #id, or @handle",
@@ -668,6 +705,7 @@ Ending a job (all states covered):
           deadline: string;
           review: string;
           split: string;
+          image?: string[];
           key?: string;
           api?: string;
         },
@@ -774,6 +812,7 @@ Ending a job (all states covered):
               base,
               opts.spec,
               opts.title,
+              resolveImageFlags(opts.image),
             ));
             deliverByMs = Date.now() + parseDuration(opts.deadline);
             reviewWindowMs = opts.review
@@ -929,9 +968,10 @@ Ending a job (all states covered):
     .argument('<proof>', 'Delivery body — a file path or text (UPLOADED so the buyer can read it; sha256 pinned on-chain), or a bare 0x… sha256')
     .description('Post your delivery before the deadline (seller) — ONE SHOT: the sha256 pins on-chain permanently and cannot be replaced. Fix mistakes via buyer reject (inside the review window) or out-of-band — never a second deliver. Decline is only possible BEFORE delivery.')
     .option('--hash-only', "Pin <proof> as a precomputed 0x… sha256 WITHOUT uploading a body — the hashed-spec / large-artifact path (the buyer can't read it on-platform; hand the artifact over out-of-band)")
+    .option('--image <url>', `${IMAGE_FLAG_HELP} — proof images, pinned with the delivery text`, collectImage, [] as string[])
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (jobId: string, proof: string, opts: { hashOnly?: boolean; key?: string; api?: string }) => {
+    .action(async (jobId: string, proof: string, opts: { hashOnly?: boolean; image?: string[]; key?: string; api?: string }) => {
       try {
         const base = opts.api ?? DEFAULT_API_BASE;
         // Preflight BEFORE any upload (S.1003): a redeliver / terminal /
@@ -948,14 +988,18 @@ Ending a job (all states covered):
         }
         let deliveryHash: string;
         let uploaded = false;
+        const images = resolveImageFlags(opts.image);
         if (opts.hashOnly) {
+          if (images.length > 0) {
+            throw new Error('--image needs an uploaded delivery body — --hash-only pins without one, so there is nowhere to put the images.');
+          }
           const hash = proof.trim().toLowerCase();
           if (!SHA256_HEX_RE.test(hash)) {
             throw new Error('--hash-only expects a 0x… 64-char sha256 (e.g. from `shasum -a 256`).');
           }
           deliveryHash = hash;
         } else {
-          ({ hash: deliveryHash, uploaded } = await resolveSpecUpload(base, proof));
+          ({ hash: deliveryHash, uploaded } = await resolveDeliveryUpload(base, proof, images));
         }
         if (!isJsonMode()) {
           // Point of no return — copy only, NEVER a stdin prompt: this
@@ -969,13 +1013,14 @@ Ending a job (all states covered):
           params: { jobId, deliveryHash },
         });
         if (isJsonMode()) {
-          printJson({ jobId, deliveryHash, uploaded, digest, onceOnly: true });
+          printJson({ jobId, deliveryHash, uploaded, digest, onceOnly: true, ...(images.length > 0 ? { images } : {}) });
           return;
         }
         printBlank();
         printSuccess('Delivery posted — the buyer\'s review window is now open.');
         printInfo('This delivery cannot be amended — further `t2 job deliver` calls on this job will fail.');
         printKeyValue('Delivery hash', deliveryHash);
+        if (images.length > 0) printKeyValue('Proof images', `${images.length} (first is the cover)`);
         if (digest) printKeyValue('Tx', digest);
         if (uploaded) {
           printInfo('Body uploaded — the buyer reads it content-addressed (tamper-evident against the on-chain hash).');
@@ -1225,12 +1270,17 @@ Ending a job (all states covered):
           } catch {
             // free-text spec — return as string
           }
-          printJson({ jobId, specHash: job.specHash, spec: parsed });
+          printJson({ jobId, specHash: job.specHash, spec: parsed, images: parseSpecImages(content) });
           return;
         }
         printBlank();
         printKeyValue('Job', jobId);
         printKeyValue('Spec hash', `${job.specHash} ${pc.green('(content verified)')}`);
+        const specImages = parseSpecImages(content);
+        if (specImages.length > 0) {
+          printKeyValue('Reference images', `${specImages.length} (first is the cover) — part of the pinned spec`);
+          for (const url of specImages) printLine(pc.dim(`  ${url}`));
+        }
         printBlank();
         printLine(content);
         printBlank();

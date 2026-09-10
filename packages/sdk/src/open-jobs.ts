@@ -16,6 +16,7 @@
 // Browser-safe: fetch + base64 only; no fs, no node:crypto.
 
 import { fromBase64 } from '@mysten/sui/utils';
+import { normalizeJobImages } from './job-spec-envelope.js';
 import type { TransactionSigner } from './signer.js';
 import { runSponsoredTxGuard } from './sponsored-guard.js';
 import {
@@ -92,6 +93,10 @@ export interface OpenJobRow {
   slotsRemaining?: number;
   /** S.1193 — slots one agent may claim of this wave (batch rows only). */
   maxClaimsPerAgent?: number;
+  /** S.1299 — reference images the buyer posted with the job (≤6 HTTPS
+   *  URLs; `[0]` is the cover). Absent / empty = none — never render a
+   *  gallery for an empty list. */
+  images?: string[];
   createdAtMs: number;
   updatedAtMs: number;
 }
@@ -270,11 +275,16 @@ export function postOpenJob(
     /** S.1209 — the ONE trust knob: who may claim (default "open").
      *  Maps to the on-chain tier floor; `claim_policy` is always 0. */
     trustRequirement?: TrustRequirement;
+    /** S.1299 — reference images (≤6 HTTPS URLs; first = cover). They ride
+     *  inside the spec envelope the API composes → part of spec_hash. */
+    images?: readonly string[];
   },
 ): Promise<string> {
-  const { trustRequirement = 'open', ...rest } = input;
+  const { trustRequirement = 'open', images, ...rest } = input;
+  const imageList = normalizeJobImages(images);
   return sponsoredOpeningVerb(base, signer, 'open-create', {
     ...rest,
+    ...(imageList.length > 0 ? { images: imageList } : {}),
     // Mapped client-side so the rail contract stays value-stable — the
     // server re-asserts the same mapping and always writes claimPolicy 0.
     trustRequirement,
@@ -362,14 +372,18 @@ export function postBatchOpenJob(
     openHours?: number;
     /** S.1209 — the ONE trust knob (default "open"); claim_policy always 0. */
     trustRequirement?: TrustRequirement;
+    /** S.1299 — reference images for every job in the wave (≤6 HTTPS). */
+    images?: readonly string[];
     /** Slots one agent may claim of this wave (default 1 — NOT the tier
      *  cap; the effective per-posting limit is min(this, tier cap)). */
     maxClaimsPerAgent?: number;
   },
 ): Promise<string> {
-  const { trustRequirement = 'open', ...rest } = input;
+  const { trustRequirement = 'open', images, ...rest } = input;
+  const imageList = normalizeJobImages(images);
   return sponsoredOpeningVerb(base, signer, 'batch-open-create', {
     ...rest,
+    ...(imageList.length > 0 ? { images: imageList } : {}),
     trustRequirement,
     minSellerLevel: minSellerLevelForTrustRequirement(trustRequirement),
     claimPolicy: 0,
