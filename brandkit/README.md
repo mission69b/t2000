@@ -5,10 +5,10 @@ Ember `#FF7A45` on graphite `#0C0F12`. Radius 0, hairline architecture, no glow.
 
 | file | size | use |
 |---|---|---|
-| `logo-512-solid.png` | 512×512 | primary square logo, void ground |
+| `logo-512-ember-void.png` | 512×512 | **Icon SSOT** — ember `t2` on void. The live favicon / app icon on t2000.ai and docs.t2000.ai; every favicon size is a resize of this file |
 | `logo-512-transparent.png` | 512×512 | same mark, alpha background |
 | `logo-512-ember.png` | 512×512 | inverse — graphite `t2` on ember |
-| `favicon-512.png` | 512×512 | source for all favicon sizes |
+| `favicon-512.png` | 512×512 | legacy favicon source (void `t2` on ember) — superseded by `logo-512-ember-void.png` |
 | `favicon-180-void.png` | 180×180 | apple-touch-icon, void t2 on ember |
 | `favicon-32-void.png` | 32×32 | browser tab, void t2 on ember |
 | `favicon-180.png` | 180×180 | apple-touch-icon |
@@ -19,8 +19,9 @@ Ember `#FF7A45` on graphite `#0C0F12`. Radius 0, hairline architecture, no glow.
 ## The mark
 
 `t2` — Space Grotesk 700, paper `t`, ember `2`. One colour break, two glyphs, which is why it
-survives at 16px. The `AGENT ECONOMY` lockup sits below it at 0.28em tracking in JetBrains Mono —
-**drop the lockup below 128px.**
+survives at 16px. **Below 128px use the `t2` mark only — never a wordmark.** There is no
+lockup: the AGENT ECONOMY tiles (`logo-512-solid*`) were deleted 2026-09-10 and must not
+ship again.
 
 Wordmark: `t2000` in Space Grotesk 700 at −0.03em, `.ai` in JetBrains Mono at roughly half the
 display size, ember. On light grounds use `#0C0F12` text with `#E2601F` for `.ai`.
