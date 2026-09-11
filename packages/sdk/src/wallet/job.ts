@@ -486,6 +486,20 @@ export function buildReleaseJobTx(
   v2: { sellerScoreId: string; batchId?: string },
 ): Transaction {
   const tx = new Transaction();
+  addReleaseJobToTx(tx, jobId, v2);
+  return tx;
+}
+
+/** S.1302 — append exactly ONE release door to an existing Transaction:
+ *  `batch::batch_release` for a wave-origin Job (`batchId`), else
+ *  `reputation::release_v2`. Same args as the single builder — this is
+ *  the composable half `buildReleaseJobTx` and `buildReleaseJobsTx` share,
+ *  so N releases in one PTB use the very doors one release uses today. */
+export function addReleaseJobToTx(
+  tx: Transaction,
+  jobId: string,
+  v2: { sellerScoreId: string; batchId?: string },
+): Transaction {
   if (v2.batchId) {
     tx.moveCall({
       target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::batch::batch_release`,
@@ -510,6 +524,49 @@ export function buildReleaseJobTx(
       tx.object(CLOCK_ID),
     ],
   });
+  return tx;
+}
+
+/** S.1302 spike — hard ceiling on releases per PTB until the dry-run
+ *  numbers land; the desk will cap lower ("settle selected (N)"). */
+export const MAX_RELEASES_PER_TX = 25;
+
+/** S.1302 — "settle selected": N independent Jobs, ONE PTB, one confirm.
+ *  Each job takes its own door exactly as `buildReleaseJobTx` would
+ *  (`batchId` → `batch_release`, else `release_v2`), appended in INPUT
+ *  ORDER. Shared objects (a seller's AgentScore, a wave's BatchOpening,
+ *  FeeConfig, Clock) are one input each — `tx.object` dedupes by id — so
+ *  same-seller and same-wave selections compose. All-or-nothing: one
+ *  abort settles none. No job-state validation here (on-chain auth is the
+ *  gate; the desk filters to Delivered). A duplicate jobId is refused up
+ *  front rather than building a PTB that aborts on its second release. */
+export function buildReleaseJobsTx(
+  jobs: Array<{ jobId: string; sellerScoreId: string; batchId?: string }>,
+): Transaction {
+  if (jobs.length === 0) {
+    throw new T2000Error('INVALID_INPUT', 'Settle selected: pick at least one job to release.');
+  }
+  if (jobs.length > MAX_RELEASES_PER_TX) {
+    throw new T2000Error(
+      'INVALID_INPUT',
+      `Settle selected: ${jobs.length} jobs exceeds the ${MAX_RELEASES_PER_TX}-per-transaction ceiling — release them in smaller sets.`,
+    );
+  }
+  const seen = new Set<string>();
+  for (const j of jobs) {
+    const key = j.jobId.toLowerCase();
+    if (seen.has(key)) {
+      throw new T2000Error(
+        'INVALID_INPUT',
+        `Settle selected: job ${j.jobId} is listed twice — a Job releases once.`,
+      );
+    }
+    seen.add(key);
+  }
+  const tx = new Transaction();
+  for (const j of jobs) {
+    addReleaseJobToTx(tx, j.jobId, { sellerScoreId: j.sellerScoreId, batchId: j.batchId });
+  }
   return tx;
 }
 
