@@ -16,7 +16,14 @@
 // Browser-safe: fetch + base64 only; no fs, no node:crypto.
 
 import { fromBase64 } from '@mysten/sui/utils';
-import { normalizeJobImages } from './job-spec-envelope.js';
+import {
+  type JobMode,
+  type JobWhere,
+  normalizeJobImages,
+  normalizeJobPlace,
+  validateJobMode,
+  validateJobWhere,
+} from './job-spec-envelope.js';
 import type { TransactionSigner } from './signer.js';
 import { runSponsoredTxGuard } from './sponsored-guard.js';
 import {
@@ -97,6 +104,11 @@ export interface OpenJobRow {
    *  URLs; `[0]` is the cover). Absent / empty = none — never render a
    *  gallery for an empty list. */
   images?: string[];
+  /** S.1300 — work mode (absent on pre-S.1300 rows = remote). */
+  mode?: JobMode;
+  /** S.1300 — the structured place (on-site / either rows that carry one;
+   *  null / absent = no location — never a pin). */
+  where?: JobWhere | null;
   createdAtMs: number;
   updatedAtMs: number;
 }
@@ -175,6 +187,62 @@ export async function getOpenJob(
     `${base}/open-jobs/${encodeURIComponent(id.trim())}`,
   );
   return json.openJob as OpenJobRow;
+}
+
+/** S.1300 — resolve a place query through the HOST's geocoder
+ *  (`GET /v1/geo/search`, MapTiler behind it): the one door agents and the
+ *  CLI use to turn "Bondi Junction" into the structured `where` the
+ *  envelope stores. Empty list = no match. Throws the host's English when
+ *  place search is not configured there (no fake pins). */
+export async function geocodePlace(
+  base: string,
+  query: string,
+  opts: { limit?: number } = {},
+): Promise<JobWhere[]> {
+  const q = query.trim();
+  if (!q) {
+    return [];
+  }
+  const limit = Math.min(Math.max(opts.limit ?? 5, 1), 10);
+  const json = await fetchJson(
+    `${base}/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+  );
+  const places = Array.isArray(json.places) ? json.places : [];
+  const out: JobWhere[] = [];
+  for (const p of places) {
+    const v = validateJobWhere(p);
+    if (v.valid && v.where) {
+      out.push(v.where);
+    }
+  }
+  return out;
+}
+
+/** S.1300 — the one rule for `where` on a WRITE input: a structured place
+ *  passes through validated; a query string is handed to the host (the
+ *  prepare route geocodes it once); remote + where refuses. Returns the
+ *  params fragment to spread (empty when default remote and no place). */
+export function placeParams(input: {
+  mode?: JobMode | string;
+  where?: JobWhere | string | null;
+}): { mode?: JobMode; where?: JobWhere | string } {
+  const whereInput =
+    typeof input.where === 'string' ? (input.where.trim() || null) : (input.where ?? null);
+  if (typeof whereInput === 'string') {
+    const m = validateJobMode(input.mode);
+    if (!m.valid) {
+      throw new Error(m.error);
+    }
+    if (m.mode === 'remote') {
+      throw new Error('A remote job has no place — set mode to on-site or either, or drop where.');
+    }
+    return { mode: m.mode, where: whereInput };
+  }
+  const place = normalizeJobPlace(input.mode, whereInput);
+  return {
+    ...(place.mode !== 'remote' ? { mode: place.mode } : {}),
+    ...(place.where ? { where: place.where } : {}),
+  };
 }
 
 /** Sponsored on-chain verb: prepare (server builds tx) → sign → submit.
@@ -278,13 +346,19 @@ export function postOpenJob(
     /** S.1299 — reference images (≤6 HTTPS URLs; first = cover). They ride
      *  inside the spec envelope the API composes → part of spec_hash. */
     images?: readonly string[];
+    /** S.1300 — work mode (default remote). */
+    mode?: JobMode;
+    /** S.1300 — the place: a structured `JobWhere`, or a query string the
+     *  host geocodes once (MapTiler). On-site / either only. */
+    where?: JobWhere | string | null;
   },
 ): Promise<string> {
-  const { trustRequirement = 'open', images, ...rest } = input;
+  const { trustRequirement = 'open', images, mode, where, ...rest } = input;
   const imageList = normalizeJobImages(images);
   return sponsoredOpeningVerb(base, signer, 'open-create', {
     ...rest,
     ...(imageList.length > 0 ? { images: imageList } : {}),
+    ...placeParams({ mode, where }),
     // Mapped client-side so the rail contract stays value-stable — the
     // server re-asserts the same mapping and always writes claimPolicy 0.
     trustRequirement,
@@ -374,16 +448,20 @@ export function postBatchOpenJob(
     trustRequirement?: TrustRequirement;
     /** S.1299 — reference images for every job in the wave (≤6 HTTPS). */
     images?: readonly string[];
+    /** S.1300 — work mode + place for every job in the wave. */
+    mode?: JobMode;
+    where?: JobWhere | string | null;
     /** Slots one agent may claim of this wave (default 1 — NOT the tier
      *  cap; the effective per-posting limit is min(this, tier cap)). */
     maxClaimsPerAgent?: number;
   },
 ): Promise<string> {
-  const { trustRequirement = 'open', images, ...rest } = input;
+  const { trustRequirement = 'open', images, mode, where, ...rest } = input;
   const imageList = normalizeJobImages(images);
   return sponsoredOpeningVerb(base, signer, 'batch-open-create', {
     ...rest,
     ...(imageList.length > 0 ? { images: imageList } : {}),
+    ...placeParams({ mode, where }),
     trustRequirement,
     minSellerLevel: minSellerLevelForTrustRequirement(trustRequirement),
     claimPolicy: 0,

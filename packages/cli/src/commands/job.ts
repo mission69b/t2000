@@ -48,6 +48,8 @@ import {
   type Job,
   deliveryEnvelope,
   parseSpecImages,
+  parseSpecMode,
+  parseSpecWhere,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
 import { registerBatchVerbs } from './batch.js';
@@ -73,6 +75,7 @@ import {
   printWarning,
 } from '../output.js';
 import { collectImage, IMAGE_FLAG_HELP, resolveImageFlags } from './job-images.js';
+import { describePlace, hostGeocoder, MODE_FLAG_HELP, type ResolvedPlace, resolveWhereFlags, WHERE_FLAG_HELP } from './job-where.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const DEFAULT_REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -239,20 +242,23 @@ export async function resolveHireSpecUpload(
   title: string | undefined,
   /** S.1299 — reference images (validated HTTPS list; first = cover). */
   images: readonly string[] = [],
+  /** S.1300 — work mode + structured place (default remote, none). */
+  place: ResolvedPlace = { mode: 'remote', where: null },
 ): Promise<{ hash: string; uploaded: boolean }> {
   const loaded = await loadSpecText(input);
+  const overlays = images.length > 0 || place.mode !== 'remote' || place.where !== null;
   if (loaded.kind === 'hash') {
-    if (images.length > 0) {
-      throw new Error('--image needs a text brief: a bare 0x… spec hash pins without an envelope, so there is nowhere to put the images.');
+    if (overlays) {
+      throw new Error('--image / --mode / --where need a text brief: a bare 0x… spec hash pins without an envelope, so there is nowhere to put them.');
     }
     return { hash: loaded.hash, uploaded: false };
   }
-  if (isCustomHireEnvelope(loaded.text) && images.length > 0) {
-    throw new Error('--image goes with a plain brief — this input is already a spec envelope; add the images inside it instead.');
+  if (isCustomHireEnvelope(loaded.text) && overlays) {
+    throw new Error('--image / --mode / --where go with a plain brief — this input is already a spec envelope; put them inside it instead.');
   }
   const body = isCustomHireEnvelope(loaded.text)
     ? loaded.text
-    : customHireEnvelope(loaded.text, title, Date.now(), { images });
+    : customHireEnvelope(loaded.text, title, Date.now(), { images, mode: place.mode, where: place.where });
   if (Buffer.byteLength(body, 'utf8') > SPEC_STORE_MAX_BYTES) {
     throw new Error(
       'The brief plus its envelope exceeds the 16 KiB job-spec store cap — ' +
@@ -681,6 +687,8 @@ Ending a job (all states covered):
     .option('--spec <file-or-text>', 'Job spec — a file path or inline text (UPLOADED as the public t2-acp-custom@1 title+brief envelope so the seller and the store can read it; sha256 pinned on-chain), or a bare 0x… sha256 (hash-only: pins without uploading, no envelope — the body stays off-platform)')
     .option('--title <text>', 'Public job title (≤80 chars). Custom/direct hire only; derived from the brief\'s first line if omitted')
     .option('--image <url>', `${IMAGE_FLAG_HELP} — reference images, pinned with the brief (custom/direct hire only)`, collectImage, [] as string[])
+    .option('--mode <mode>', `${MODE_FLAG_HELP} — custom/direct hire only`)
+    .option('--where <place>', `${WHERE_FLAG_HELP} — custom/direct hire only`)
     .option(
       '--agent <address|#id|@handle>',
       "Hire a listing: the seller's agent address, #id, or @handle",
@@ -706,6 +714,8 @@ Ending a job (all states covered):
           review: string;
           split: string;
           image?: string[];
+          mode?: string;
+          where?: string;
           key?: string;
           api?: string;
         },
@@ -722,6 +732,11 @@ Ending a job (all states covered):
           let serviceSlug: string | undefined;
 
           const serviceSlugOpt = opts.service;
+          // S.1300 — listing hire pins the catalog brief: mode / where (like
+          // --image) belong to a custom brief only. Refuse in English.
+          if ((serviceSlugOpt || opts.agent) && (opts.mode || opts.where)) {
+            throw new Error('--mode / --where go with a custom brief — a listing hire pins the catalog brief. Drop them, or hire custom (<amount> <seller> --spec).');
+          }
           if (serviceSlugOpt || opts.agent) {
             // Service mode — price + terms come from the listing, the spec
             // is the buyer's requirements (stored content-addressed; its
@@ -813,6 +828,8 @@ Ending a job (all states covered):
               opts.spec,
               opts.title,
               resolveImageFlags(opts.image),
+              // S.1300 — mode + place ride inside the envelope too.
+              await resolveWhereFlags(opts, hostGeocoder(base)),
             ));
             deliverByMs = Date.now() + parseDuration(opts.deadline);
             reviewWindowMs = opts.review
@@ -1270,7 +1287,14 @@ Ending a job (all states covered):
           } catch {
             // free-text spec — return as string
           }
-          printJson({ jobId, specHash: job.specHash, spec: parsed, images: parseSpecImages(content) });
+          printJson({
+            jobId,
+            specHash: job.specHash,
+            spec: parsed,
+            images: parseSpecImages(content),
+            mode: parseSpecMode(content),
+            where: parseSpecWhere(content),
+          });
           return;
         }
         printBlank();
@@ -1280,6 +1304,11 @@ Ending a job (all states covered):
         if (specImages.length > 0) {
           printKeyValue('Reference images', `${specImages.length} (first is the cover) — part of the pinned spec`);
           for (const url of specImages) printLine(pc.dim(`  ${url}`));
+        }
+        const specMode = parseSpecMode(content);
+        const specWhere = parseSpecWhere(content);
+        if (specMode !== 'remote' || specWhere) {
+          printKeyValue('Mode', describePlace({ mode: specMode, where: specWhere }));
         }
         printBlank();
         printLine(content);
