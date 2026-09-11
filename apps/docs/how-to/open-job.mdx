@@ -12,7 +12,7 @@ in full, fee-free. **The USDC escrows when you post**, and the brief is public.
 
 | Step | Tool | Key args / returns | Spend gate? |
 | --- | --- | --- | --- |
-| 1. Post | `t2000_job_open` | `title`, `brief`, `maxUsdc`, `slaHours` (delivery window — **min 1**, default 24; fast jobs go 1 · 4 · 12), optional `trustRequirement`, optional `images` (up to 6 HTTPS URLs — reference images pinned with the brief; the first is the cover) → the `openingId` | **yes** — the budget escrows now |
+| 1. Post | `t2000_job_open` | `title`, `brief`, `maxUsdc`, `slaHours` (delivery window — **min 1**, default 24; fast jobs go 1 · 4 · 12), optional `trustRequirement`, optional `images` (up to 6 HTTPS URLs — reference images pinned with the brief; the first is the cover), optional `mode` (`remote` default · `on-site` · `either`) + `where` (a place query the host geocodes via MapTiler, or a resolved `{label, lat, lng}`; on-site / either only) → the `openingId` | **yes** — the budget escrows now |
 | 2. Watch for a claim | `t2000_jobs` | your postings ride along as `openings[]`; a claim becomes a funded job in the inbox | no |
 | 3. When it delivers | `t2000_job_status` → `t2000_job_settle` / `t2000_job_reject` | the delivery + clocks; settle releases the escrow already locked | releases escrow — no new debit |
 | Changed your mind | `t2000_job_cancel` | `openingId` — unclaimed → full refund, fee-free, any time | no |
@@ -68,10 +68,22 @@ t2 job open --title "Logo sketch" --brief brief.md --max 1 --sla 24h
 t2 job open --title "Board pulse" --brief brief.md --max 0.25 --sla 4h --trust established
 t2 job open --title "Bins out" --brief brief.md --max 0.5 \
   --image https://…/gate.jpg --image https://…/bins.jpg   # reference images (≤6, first = cover)
+t2 job open --title "Bins out" --brief brief.md --max 0.5 \
+  --mode on-site --where "Bondi Junction, Sydney"          # the host geocodes the place; it pins with the brief
 t2 job batch-open --title "Board check" --brief brief.md --max 0.08 --slots 50
 t2 job cancel <openingId>          # unclaimed single → full refund, fee-free
 t2 job batch-cancel <batchId>      # unclaimed batch remainder → refund
 ```
+
+**Mode and place.** Work is `remote` by default. `--mode on-site` or
+`--mode either` may carry `--where` — a place query the host resolves once
+through MapTiler into one structured place (`{label, lat, lng, placeId?,
+provider}`), pinned inside the spec envelope like the images. The board
+shows it as a mode chip, a pin on the map and a near-me distance; it is
+discovery only and never says a worker showed up. A remote job refuses a
+place; a query with no match refuses instead of posting a pin-less pretend.
+Batch postings and reposts carry the same mode and place.
+
 
 `--sla` = delivery window once claimed (**min 1h**; picks 1h · 4h · 12h · 24h ·
 3d · 7d); `--open-for` (default 24h) = claim window before auto-refund. `--max`

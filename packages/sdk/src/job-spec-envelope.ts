@@ -79,9 +79,204 @@ export function normalizeJobImages(input: unknown): string[] {
   return v.images;
 }
 
+// ── Mode + where (S.1300) ─────────────────────────────────────────────────
+// Work MODE (`remote` | `on-site` | `either`, default remote) and ONE
+// structured WHERE — the only persisted place shape, every door:
+//   { label, lat, lng, placeId?, provider: "maptiler" }
+// Console picks it from MapTiler autocomplete; agents (Connect / Audric /
+// CLI) pass a place query string that the HOST geocodes once via MapTiler
+// into this same shape — never free text on the board, never a raw lat/lng
+// asked of a model. Both keys ride INSIDE the spec envelope (part of
+// spec_hash) and are written ONLY when non-default, so a remote job with
+// no place hashes byte-identically to before S.1300. Remote + where is
+// refused (a remote job has no place). Discovery only — a pin never says
+// the worker showed up.
+//
+// `mode` here is the WORK mode. It is deliberately not the hire
+// discriminator (`listing` vs `custom`) — those never share a type.
+
+export const JOB_MODES = ['remote', 'on-site', 'either'] as const;
+export type JobMode = (typeof JOB_MODES)[number];
+export const DEFAULT_JOB_MODE: JobMode = 'remote';
+/** The ONE human label per mode (chips, bylines, cards). */
+export const JOB_MODE_LABELS: Record<JobMode, string> = {
+  remote: 'Remote',
+  'on-site': 'On-site',
+  either: 'Either',
+};
+
+export type JobWhere = {
+  /** Human place label as the geocoder returned it ("Bondi Junction, Sydney"). */
+  label: string;
+  lat: number;
+  lng: number;
+  /** MapTiler feature id — optional, informational. */
+  placeId?: string;
+  provider: 'maptiler';
+};
+
+export const WHERE_LABEL_MAX = 200;
+
+export function isJobMode(value: unknown): value is JobMode {
+  return typeof value === 'string' && (JOB_MODES as readonly string[]).includes(value);
+}
+
+export type JobModeValidation =
+  | { valid: true; mode: JobMode }
+  | { valid: false; error: string };
+
+/** `undefined` / `null` / '' → remote. Anything else must be a mode. */
+export function validateJobMode(input: unknown): JobModeValidation {
+  if (input === undefined || input === null || input === '') {
+    return { valid: true, mode: DEFAULT_JOB_MODE };
+  }
+  if (typeof input === 'string') {
+    const m = input.trim().toLowerCase();
+    // Tolerate the common spellings agents type; the stored value is canonical.
+    const canon = m === 'onsite' || m === 'on_site' || m === 'in-person' || m === 'in person' ? 'on-site' : m;
+    if (isJobMode(canon)) {
+      return { valid: true, mode: canon };
+    }
+  }
+  return {
+    valid: false,
+    error: `mode must be one of ${JOB_MODES.join(' | ')} (default remote).`,
+  };
+}
+
+export type JobWhereValidation =
+  | { valid: true; where: JobWhere | null }
+  | { valid: false; error: string };
+
+/** Validate an already-STRUCTURED where. `undefined` / `null` → none. A
+ *  string is NOT accepted here — that is a place query for the host's
+ *  geocoder (see `geocodePlace`), never a stored value. */
+export function validateJobWhere(input: unknown): JobWhereValidation {
+  if (input === undefined || input === null) {
+    return { valid: true, where: null };
+  }
+  if (typeof input === 'string') {
+    return {
+      valid: false,
+      error: 'where must be a geocoded place {label, lat, lng, provider: "maptiler"} — pass the text to the host geocoder first.',
+    };
+  }
+  if (typeof input !== 'object' || Array.isArray(input)) {
+    return { valid: false, error: 'where must be a place object {label, lat, lng, placeId?, provider}.' };
+  }
+  const o = input as Record<string, unknown>;
+  const label = typeof o.label === 'string' ? o.label.trim() : '';
+  if (!label) {
+    return { valid: false, error: 'where.label is required (the place name).' };
+  }
+  if (label.length > WHERE_LABEL_MAX) {
+    return { valid: false, error: `where.label must be under ${WHERE_LABEL_MAX} characters.` };
+  }
+  const lat = typeof o.lat === 'number' ? o.lat : Number.NaN;
+  const lng = typeof o.lng === 'number' ? o.lng : Number.NaN;
+  if (!(Number.isFinite(lat) && lat >= -90 && lat <= 90)) {
+    return { valid: false, error: 'where.lat must be a number between -90 and 90.' };
+  }
+  if (!(Number.isFinite(lng) && lng >= -180 && lng <= 180)) {
+    return { valid: false, error: 'where.lng must be a number between -180 and 180.' };
+  }
+  if (o.provider !== undefined && o.provider !== 'maptiler') {
+    return { valid: false, error: 'where.provider must be "maptiler" (the one place vendor).' };
+  }
+  const placeId =
+    typeof o.placeId === 'string' && o.placeId.trim() ? o.placeId.trim().slice(0, 120) : undefined;
+  return {
+    valid: true,
+    where: {
+      label,
+      lat: Math.round(lat * 1e6) / 1e6,
+      lng: Math.round(lng * 1e6) / 1e6,
+      ...(placeId ? { placeId } : {}),
+      provider: 'maptiler',
+    },
+  };
+}
+
+export type JobPlaceValidation =
+  | { valid: true; mode: JobMode; where: JobWhere | null }
+  | { valid: false; error: string };
+
+/** The pair rule every write path runs: mode validated, where validated,
+ *  and remote + where refused — a remote job has no place. */
+export function validateJobPlace(modeInput: unknown, whereInput: unknown): JobPlaceValidation {
+  const m = validateJobMode(modeInput);
+  if (!m.valid) {
+    return m;
+  }
+  const w = validateJobWhere(whereInput);
+  if (!w.valid) {
+    return w;
+  }
+  if (m.mode === 'remote' && w.where) {
+    return {
+      valid: false,
+      error: 'A remote job has no place — set mode to on-site or either, or drop where.',
+    };
+  }
+  return { valid: true, mode: m.mode, where: w.where };
+}
+
+/** validateJobPlace that throws — for write paths. */
+export function normalizeJobPlace(modeInput: unknown, whereInput: unknown): { mode: JobMode; where: JobWhere | null } {
+  const v = validateJobPlace(modeInput, whereInput);
+  if (!v.valid) {
+    throw new Error(v.error);
+  }
+  return { mode: v.mode, where: v.where };
+}
+
+/** READ the mode off any spec content — fail-soft: missing / junk → remote. */
+export function parseSpecMode(content: string): JobMode {
+  try {
+    const parsed = JSON.parse(content) as { mode?: unknown };
+    const v = validateJobMode(parsed.mode);
+    return v.valid ? v.mode : DEFAULT_JOB_MODE;
+  } catch {
+    return DEFAULT_JOB_MODE;
+  }
+}
+
+/** READ the structured where off any spec content — fail-soft null. */
+export function parseSpecWhere(content: string): JobWhere | null {
+  try {
+    const parsed = JSON.parse(content) as { where?: unknown };
+    const v = validateJobWhere(parsed.where);
+    return v.valid ? v.where : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Distance between two places in km (haversine) — the board's near-me
+ *  radius math, shared so the API and the console never disagree. */
+export function distanceKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/** The board's one near-me radius (D1b lock). */
+export const NEAR_ME_RADIUS_KM = 10;
+
 export type SpecEnvelopeOptions = {
   /** S.1299 — reference images (≤6 HTTPS; first = cover). Validated. */
   images?: readonly string[] | null;
+  /** S.1300 — work mode (default remote; written only when not remote). */
+  mode?: JobMode | string | null;
+  /** S.1300 — structured place (on-site / either only; written only when set). */
+  where?: JobWhere | null;
 };
 
 /** Title rules: an explicit title wins; otherwise the brief's first
@@ -105,6 +300,7 @@ export function customHireEnvelope(
     t = `${t.slice(0, ENVELOPE_TITLE_MAX - 1).trimEnd()}…`;
   }
   const images = normalizeJobImages(opts.images);
+  const place = normalizeJobPlace(opts.mode, opts.where);
   return JSON.stringify({
     type: 't2-acp-custom@1',
     title: t || 'Custom job',
@@ -112,6 +308,10 @@ export function customHireEnvelope(
     createdAtMs: now,
     // Written only when present — byte-stable for every image-less job.
     ...(images.length > 0 ? { images } : {}),
+    // S.1300 — mode only when not remote; where only when set. Appended
+    // AFTER images so every S.1299 envelope stays byte-identical too.
+    ...(place.mode !== DEFAULT_JOB_MODE ? { mode: place.mode } : {}),
+    ...(place.where ? { where: place.where } : {}),
   });
 }
 

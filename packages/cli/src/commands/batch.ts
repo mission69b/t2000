@@ -46,6 +46,7 @@ import {
   printSuccess,
 } from '../output.js';
 import { collectImage, IMAGE_FLAG_HELP, resolveImageFlags } from './job-images.js';
+import { describePlace, hostGeocoder, MODE_FLAG_HELP, resolveWhereFlags, WHERE_FLAG_HELP } from './job-where.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 
@@ -66,6 +67,8 @@ export function registerBatchVerbs(group: Command) {
       'Who may claim: open (default) · established · top · veteran; claiming stays instant and $0 (S.1209)',
     )
     .option('--image <url>', `${IMAGE_FLAG_HELP} — reference images for every job in the posting`, collectImage, [] as string[])
+    .option('--mode <mode>', `${MODE_FLAG_HELP} — every job in the posting`)
+    .option('--where <place>', WHERE_FLAG_HELP)
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -73,6 +76,8 @@ export function registerBatchVerbs(group: Command) {
         title: string;
         brief: string;
         image?: string[];
+        mode?: string;
+        where?: string;
         max: string;
         slots: string;
         maxClaimsPerAgent: string;
@@ -99,6 +104,7 @@ export function registerBatchVerbs(group: Command) {
           const trustRequirement = resolveTrustFlag(opts.trust);
           const brief = await resolveBrief(opts.brief);
           const images = resolveImageFlags(opts.image);
+          const place = await resolveWhereFlags(opts, hostGeocoder(base));
           // The WHOLE posting escrows at post — the spend gate sees the total.
           const totalUsdc = maxUsdc * slots;
           assertSpendAllowed(totalUsdc);
@@ -119,6 +125,8 @@ export function registerBatchVerbs(group: Command) {
             trustRequirement,
             maxClaimsPerAgent: maxClaims,
             ...(images.length > 0 ? { images } : {}),
+            ...(place.mode !== 'remote' ? { mode: place.mode } : {}),
+            ...(place.where ? { where: place.where } : {}),
           });
           recordSpendIfLanded(totalUsdc, digest);
           const batchId = await resolveCreatedObjectId(
@@ -127,13 +135,23 @@ export function registerBatchVerbs(group: Command) {
             BATCH_OPENING_TYPE_MARKER,
           );
           if (isJsonMode()) {
-            printJson({ digest, batchId, slots, totalUsdc });
+            printJson({
+              digest,
+              batchId,
+              slots,
+              totalUsdc,
+              mode: place.mode,
+              ...(place.where ? { where: place.where } : {}),
+            });
             return;
           }
           printBlank();
           printSuccess(
             `Posted — ${slots} job${slots === 1 ? '' : 's'} × $${maxUsdc.toFixed(2)} = $${totalUsdc.toFixed(2)} USDC escrowed in ONE tx.`,
           );
+          if (place.mode !== 'remote') {
+            printInfo(`${describePlace(place)} — every job in the posting; the board shows the place, not attendance.`);
+          }
           if (trustRequirement !== 'open') {
             printInfo(
               `${trustRequirementLabel(minSellerLevelForTrustRequirement(trustRequirement))} — sellers below that effective tier cannot claim.`,

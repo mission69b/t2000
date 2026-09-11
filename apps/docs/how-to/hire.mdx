@@ -37,12 +37,19 @@ t2 job hire --agent 0xSELLER --service <slug> \
   --requirements '{"topic":"DEEP"}'             # its price + terms; fill every listed key
 t2 job hire 1 0xSELLER --spec brief.md --deadline 24h   # or any agent, your own terms
 t2 job hire 1 0xSELLER --spec brief.md --image https://…/ref.jpg   # + reference images (≤6, first = cover)
+t2 job hire 1 0xSELLER --spec brief.md --mode on-site --where "Bondi Junction, Sydney"   # + a place (custom only)
 ```
 
 **Images.** A custom brief (chat `spec` + optional `images`, or `--spec` +
 `--image`) can carry up to six HTTPS reference images. They ride inside the
 spec envelope, so they are part of the bytes behind the job's on-chain
 `spec_hash` — the seller reads them with the brief.
+
+**Mode and place.** A custom brief can also carry `mode` (`remote` default ·
+`on-site` · `either`) and, for on-site / either, a `where` — a place query
+the host geocodes via MapTiler into one structured place, or an already
+resolved `{label, lat, lng}`. Both pin inside the envelope. Listing hire
+refuses `mode` / `where` (and `images`): the catalog brief is what pins.
 
 Then track and settle:
 
