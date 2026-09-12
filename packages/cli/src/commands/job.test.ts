@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  BULK_JOB_MAX,
   bucketSellerJob,
+  bulkModeError,
+  eligibleBulkIds,
+  parseIdList,
+  pickBulkJobIds,
   deliverPreflightError,
   fetchSellerJobs,
   type IndexedJob,
@@ -510,5 +515,56 @@ describe('hydrateJobsFromChain seat-neutral alias (S.1016)', () => {
   it('is the same function the seller inbox uses', async () => {
     const { hydrateSellerJobsFromChain } = await import('./job.js');
     expect(hydrateJobsFromChain).toBe(hydrateSellerJobsFromChain);
+  });
+});
+
+// S.1310 — bulk settle / refund helpers: one mode at a time, cap 10 with
+// an honest remainder, eligibility = buyer delivered (settle) / funded
+// past the deadline (refund).
+describe('bulk settle / refund helpers (S.1310)', () => {
+  const row = (jobId: string, state: IndexedJob['state'], deliverByMs: number): IndexedJob => ({
+    jobId,
+    buyer: '0xb',
+    seller: '0xs',
+    amountUsdc: 1,
+    state,
+    deliverByMs,
+    reviewWindowMs: 0,
+    deliveryHash: null,
+    createdAtMs: 0,
+    updatedAtMs: 0,
+  });
+
+  it('parseIdList trims, drops blanks, dedupes case-insensitively', () => {
+    expect(parseIdList(' 0xA, 0xb ,,0xa ')).toEqual(['0xA', '0xb']);
+    expect(parseIdList('')).toEqual([]);
+  });
+
+  it('bulkModeError: exactly one of positional / --ids / --all-*', () => {
+    expect(bulkModeError({ allFlag: '--all-delivered' })).toMatch(/Pass a jobId, --ids/);
+    expect(bulkModeError({ positional: '0xA', allFlag: '--all-delivered' })).toBeNull();
+    expect(bulkModeError({ ids: '0xA', allFlag: '--all-delivered' })).toBeNull();
+    expect(bulkModeError({ all: true, allFlag: '--all-lapsed' })).toBeNull();
+    expect(bulkModeError({ positional: '0xA', ids: '0xB', allFlag: '--all-delivered' })).toMatch(/not a mix/);
+    expect(bulkModeError({ ids: '0xB', all: true, allFlag: '--all-lapsed' })).toMatch(/--ids \/ --all-lapsed/);
+  });
+
+  it('pickBulkJobIds caps at 10 and reports the remainder', () => {
+    const ids = Array.from({ length: 13 }, (_, i) => `0x${i}`);
+    expect(pickBulkJobIds(ids)).toEqual({ jobIds: ids.slice(0, BULK_JOB_MAX), remaining: 3 });
+    expect(pickBulkJobIds(['0x1'])).toEqual({ jobIds: ['0x1'], remaining: 0 });
+  });
+
+  it('eligibleBulkIds: delivered for release; funded past deadline for refund; inbox order', () => {
+    const now = 1_000_000;
+    const jobs = [
+      row('0x1', 'delivered', 0),
+      row('0x2', 'funded', now - 1),
+      row('0x3', 'funded', now + 1),
+      row('0x4', 'released', 0),
+      row('0x5', 'delivered', 0),
+    ];
+    expect(eligibleBulkIds(jobs, 'release', now)).toEqual(['0x1', '0x5']);
+    expect(eligibleBulkIds(jobs, 'refund', now)).toEqual(['0x2']);
   });
 });

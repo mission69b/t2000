@@ -15,6 +15,8 @@ import {
   buildReleaseJobTx,
   addReleaseJobToTx,
   buildReleaseJobsTx,
+  addRefundJobToTx,
+  buildRefundJobsTx,
   MAX_RELEASES_PER_TX,
   getJob,
   getJobBatchOrigin,
@@ -602,7 +604,7 @@ describe('buildReleaseJobsTx (S.1302 settle selected)', () => {
   });
 
   it('empty selection throws; a duplicate jobId throws (case-insensitive)', () => {
-    expect(() => buildReleaseJobsTx([])).toThrow(/at least one job/);
+    expect(() => buildReleaseJobsTx([])).toThrow(/Settle selected: pick at least one job/);
     expect(() =>
       buildReleaseJobsTx([
         { jobId: JOB_A, sellerScoreId: SCORE_A },
@@ -622,5 +624,76 @@ describe('buildReleaseJobsTx (S.1302 settle selected)', () => {
       sellerScoreId: SCORE_ID,
     }));
     expect(() => buildReleaseJobsTx(over)).toThrow(/ceiling/);
+  });
+});
+
+// S.1310 — "Refund all lapsed": the exact mirror of settle-selected on the
+// refund doors (refund_v2 / batch_refund), same composer.
+describe('buildRefundJobsTx (S.1310 refund all lapsed)', () => {
+  const JOB_A = `0x${'1'.repeat(64)}`;
+  const JOB_B = `0x${'2'.repeat(64)}`;
+  const SCORE_A = `0x${'3'.repeat(64)}`;
+  const SCORE_B = `0x${'4'.repeat(64)}`;
+  const BATCH = `0x${'9'.repeat(64)}`;
+  type Call = {
+    MoveCall: { package: string; module: string; function: string; arguments: unknown[] };
+  };
+  const moveCalls = (tx: Transaction): Call[] =>
+    tx
+      .getData()
+      .commands.filter((c) => 'MoveCall' in (c as Record<string, unknown>)) as Call[];
+
+  it('buildRefundJobTx is unchanged: one call, same door, via addRefundJobToTx', () => {
+    const single = moveCalls(buildRefundJobTx(JOB_A, { sellerScoreId: SCORE_A }));
+    const added = moveCalls(addRefundJobToTx(new Transaction(), JOB_A, { sellerScoreId: SCORE_A }));
+    expect(single).toHaveLength(1);
+    expect(single[0].MoveCall.function).toBe('refund_v2');
+    expect(JSON.stringify(single)).toBe(JSON.stringify(added));
+  });
+
+  it('mix: wave-origin + plain → batch_refund then refund_v2, input order', () => {
+    const calls = moveCalls(
+      buildRefundJobsTx([
+        { jobId: JOB_A, sellerScoreId: SCORE_A, batchId: BATCH },
+        { jobId: JOB_B, sellerScoreId: SCORE_B },
+      ]),
+    );
+    expect(calls.map((c) => `${c.MoveCall.module}::${c.MoveCall.function}`)).toEqual([
+      'batch::batch_refund',
+      'reputation::refund_v2',
+    ]);
+    for (const c of calls) expect(c.MoveCall.package).toBe(A2A_ESCROW_LATEST_PACKAGE_ID);
+  });
+
+  it('same seller twice shares ONE score input; same wave twice shares ONE batch input', () => {
+    const sameSeller = buildRefundJobsTx([
+      { jobId: JOB_A, sellerScoreId: SCORE_A },
+      { jobId: JOB_B, sellerScoreId: SCORE_A },
+    ]);
+    expect(sameSeller.getData().inputs).toHaveLength(5);
+    const sameWave = buildRefundJobsTx([
+      { jobId: JOB_A, sellerScoreId: SCORE_A, batchId: BATCH },
+      { jobId: JOB_B, sellerScoreId: SCORE_B, batchId: BATCH },
+    ]);
+    expect(sameWave.getData().inputs).toHaveLength(7);
+    expect(moveCalls(sameWave).map((c) => c.MoveCall.function)).toEqual([
+      'batch_refund',
+      'batch_refund',
+    ]);
+  });
+
+  it('empty / duplicate / ceiling refuse with the refund label', () => {
+    expect(() => buildRefundJobsTx([])).toThrow(/Refund all lapsed: pick at least one job/);
+    expect(() =>
+      buildRefundJobsTx([
+        { jobId: JOB_A, sellerScoreId: SCORE_A },
+        { jobId: JOB_A, sellerScoreId: SCORE_A },
+      ]),
+    ).toThrow(/listed twice/);
+    const over = Array.from({ length: MAX_RELEASES_PER_TX + 1 }, (_, i) => ({
+      jobId: `0x${String(i).padStart(64, '7')}`,
+      sellerScoreId: SCORE_A,
+    }));
+    expect(() => buildRefundJobsTx(over)).toThrow(/ceiling/);
   });
 });

@@ -582,10 +582,88 @@ export function deliverPreflightError(state: Job['state'], deliverByMs: number, 
   return null;
 }
 
+// ── S.1310 — bulk settle / refund: N jobs, ONE PTB (all-or-nothing) ───────
+// `t2 job release --ids 0xA,0xB` / `--all-delivered` and
+// `t2 job refund --ids …` / `--all-lapsed` ride the SAME sponsored rail as
+// the single verbs through the `release-many` / `refund-many` prepare
+// actions (the API re-reads every job on-chain and builds one PTB). The
+// product cap is 10 per transaction; `--all-*` takes the first 10 (inbox
+// order) and says how many remain. Pure helpers below are unit-pinned.
+
+/** Product cap on jobs per bulk transaction (mirrors the API's cap). */
+export const BULK_JOB_MAX = 10;
+
+/** `--ids 0xA,0xB` → trimmed, deduped (case-insensitive) list. */
+export function parseIdList(csv: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of csv.split(',')) {
+    const id = raw.trim();
+    if (!id) continue;
+    const key = id.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(id);
+  }
+  return out;
+}
+
+/** Exactly ONE of positional id · --ids · --all-* — never a mix. */
+export function bulkModeError(opts: {
+  positional?: string;
+  ids?: string;
+  all?: boolean;
+  allFlag: string;
+}): string | null {
+  const modes = [
+    opts.positional ? '<jobId>' : null,
+    opts.ids !== undefined ? '--ids' : null,
+    opts.all ? opts.allFlag : null,
+  ].filter(Boolean);
+  if (modes.length === 0) {
+    return `Pass a jobId, --ids 0xA,0xB, or ${opts.allFlag}.`;
+  }
+  if (modes.length > 1) {
+    return `Pass only one of ${modes.join(' / ')} — not a mix.`;
+  }
+  return null;
+}
+
+/** Cap a bulk selection: the first `cap` ids (input / inbox order) plus how
+ *  many were left behind — the caller says "run again for the rest". */
+export function pickBulkJobIds(
+  ids: string[],
+  cap: number = BULK_JOB_MAX,
+): { jobIds: string[]; remaining: number } {
+  return { jobIds: ids.slice(0, cap), remaining: Math.max(0, ids.length - cap) };
+}
+
+/** Buyer rows a bulk verb may take: delivered (settle) / funded past the
+ *  deadline (refund). Inbox order preserved. */
+export function eligibleBulkIds(
+  jobs: IndexedJob[],
+  verb: 'release' | 'refund',
+  nowMs: number,
+): string[] {
+  return jobs
+    .filter((j) =>
+      verb === 'release' ? j.state === 'delivered' : j.state === 'funded' && nowMs > j.deliverByMs,
+    )
+    .map((j) => j.jobId);
+}
+
 async function sponsoredJobVerb(opts: {
   base: string;
   keyPath?: string;
-  action: 'create' | 'decline' | 'deliver' | 'release' | 'reject' | 'refund';
+  action:
+    | 'create'
+    | 'decline'
+    | 'deliver'
+    | 'release'
+    | 'release-many'
+    | 'reject'
+    | 'refund'
+    | 'refund-many';
   params: Record<string, unknown>;
   /** USDC leaving THIS wallet, for the spending gate. Only `create` moves
    *  buyer money out; the seller-side verbs settle escrow that is already
@@ -1057,13 +1135,54 @@ Ending a job (all states covered):
   // decline would be wrong.
   group
     .command('release')
-    .argument('<jobId>', 'The Job object id (0x…)')
-    .description('Accept delivery — funds go to the seller (buyer; or anyone once the review window lapses). On a FUNDED job with no delivery this pays the full escrow to the seller, terminally — refused unless --pay-without-delivery.')
+    .argument('[jobId]', 'The Job object id (0x…) — or use --ids / --all-delivered')
+    .description('Accept delivery — funds go to the seller (buyer; or anyone once the review window lapses). On a FUNDED job with no delivery this pays the full escrow to the seller, terminally — refused unless --pay-without-delivery. Settle several at once: --ids 0xA,0xB or --all-delivered (one transaction, all settle or none, up to 10).')
+    .option('--ids <list>', 'Settle several DELIVERED jobs in ONE transaction (comma-separated jobIds, up to 10; all settle or none)')
+    .option('--all-delivered', 'Settle every delivered job you bought — first 10 in ONE transaction; run again for the rest')
     .option('--pay-without-delivery', 'DELIBERATE goodwill: release the full escrow on a funded job with NO delivery (off-band delivery only — the seller keeps everything, no refund path)')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (jobId: string, opts: { payWithoutDelivery?: boolean; key?: string; api?: string }) => {
+    .action(async (jobId: string | undefined, opts: { ids?: string; allDelivered?: boolean; payWithoutDelivery?: boolean; key?: string; api?: string }) => {
       try {
+        const modeErr = bulkModeError({ positional: jobId, ids: opts.ids, all: opts.allDelivered, allFlag: '--all-delivered' });
+        if (modeErr) throw new Error(modeErr);
+        // S.1310 — bulk: ONE PTB through the release-many prepare action.
+        if (opts.ids !== undefined || opts.allDelivered) {
+          if (opts.payWithoutDelivery) {
+            throw new Error('--pay-without-delivery is single-job only — bulk release settles DELIVERED work.');
+          }
+          const base = opts.api ?? DEFAULT_API_BASE;
+          let candidates: string[];
+          if (opts.allDelivered) {
+            const me = (await withAgent({ keyPath: opts.key })).address();
+            candidates = eligibleBulkIds(await fetchBuyerJobs(base, me), 'release', Date.now());
+            if (candidates.length === 0) {
+              printInfo('Nothing to settle — no delivered jobs on your buyer seat.');
+              return;
+            }
+          } else {
+            candidates = parseIdList(opts.ids ?? '');
+            if (candidates.length === 0) throw new Error('--ids needs at least one jobId.');
+          }
+          const { jobIds, remaining } = pickBulkJobIds(candidates);
+          const { digest } = await sponsoredJobVerb({
+            base,
+            keyPath: opts.key,
+            action: 'release-many',
+            params: { jobIds },
+          });
+          if (isJsonMode()) {
+            printJson({ action: 'release-many', jobIds, digest, remaining });
+            return;
+          }
+          printBlank();
+          printSuccess(`Settled ${jobIds.length} job${jobIds.length === 1 ? '' : 's'} in one transaction — funds released to the sellers.`);
+          if (digest) printKeyValue('Tx', digest);
+          if (remaining > 0) printInfo(`${remaining} more delivered — run again for the rest.`);
+          printBlank();
+          return;
+        }
+        if (!jobId) throw new Error('Pass a jobId.');
         // Preflight (same style as deliver, S.1003): read the chain before
         // signing. Unreadable job → proceed; the prepare API runs the same
         // gate server-side (S.1015 root fix) and the chain stays authority.
@@ -1119,11 +1238,6 @@ Ending a job (all states covered):
       'Delivery rejected — funds split per the terms agreed at create.',
     ],
     [
-      'refund',
-      'Reclaim funds after the deadline passed with no delivery (anyone may crank this)',
-      'Escrow refunded to the buyer.',
-    ],
-    [
       'decline',
       "Pass on an undelivered job you were hired for — the buyer's escrow returns in full, fee-free (seller, before delivery)",
       "Declined — the buyer's escrow went back in full, fee-free, and your claim seat is free again. (An Open-claimed posting does not resurrect; the buyer re-posts.)",
@@ -1156,6 +1270,71 @@ Ending a job (all states covered):
         }
       });
   }
+
+  // S.1310 — refund stands alone so it can take --ids / --all-lapsed.
+  group
+    .command('refund')
+    .argument('[jobId]', 'The Job object id (0x…) — or use --ids / --all-lapsed')
+    .description('Reclaim funds after the deadline passed with no delivery (anyone may crank this). Refund several at once: --ids 0xA,0xB or --all-lapsed (one transaction, all refund or none, up to 10).')
+    .option('--ids <list>', 'Refund several lapsed jobs in ONE transaction (comma-separated jobIds, up to 10; all refund or none)')
+    .option('--all-lapsed', 'Refund every funded job you bought whose deadline passed undelivered — first 10 in ONE transaction; run again for the rest')
+    .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (jobId: string | undefined, opts: { ids?: string; allLapsed?: boolean; key?: string; api?: string }) => {
+      try {
+        const modeErr = bulkModeError({ positional: jobId, ids: opts.ids, all: opts.allLapsed, allFlag: '--all-lapsed' });
+        if (modeErr) throw new Error(modeErr);
+        const base = opts.api ?? DEFAULT_API_BASE;
+        if (opts.ids !== undefined || opts.allLapsed) {
+          let candidates: string[];
+          if (opts.allLapsed) {
+            const me = (await withAgent({ keyPath: opts.key })).address();
+            candidates = eligibleBulkIds(await fetchBuyerJobs(base, me), 'refund', Date.now());
+            if (candidates.length === 0) {
+              printInfo('Nothing to refund — no funded jobs past their deadline on your buyer seat.');
+              return;
+            }
+          } else {
+            candidates = parseIdList(opts.ids ?? '');
+            if (candidates.length === 0) throw new Error('--ids needs at least one jobId.');
+          }
+          const { jobIds, remaining } = pickBulkJobIds(candidates);
+          const { digest } = await sponsoredJobVerb({
+            base,
+            keyPath: opts.key,
+            action: 'refund-many',
+            params: { jobIds },
+          });
+          if (isJsonMode()) {
+            printJson({ action: 'refund-many', jobIds, digest, remaining });
+            return;
+          }
+          printBlank();
+          printSuccess(`Refunded ${jobIds.length} job${jobIds.length === 1 ? '' : 's'} in one transaction — escrow back to the buyer, fee-free.`);
+          if (digest) printKeyValue('Tx', digest);
+          if (remaining > 0) printInfo(`${remaining} more lapsed — run again for the rest.`);
+          printBlank();
+          return;
+        }
+        if (!jobId) throw new Error('Pass a jobId.');
+        const { digest } = await sponsoredJobVerb({
+          base,
+          keyPath: opts.key,
+          action: 'refund',
+          params: { jobId },
+        });
+        if (isJsonMode()) {
+          printJson({ jobId, action: 'refund', digest });
+          return;
+        }
+        printBlank();
+        printSuccess('Escrow refunded to the buyer.');
+        if (digest) printKeyValue('Tx', digest);
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
 
   group
     .command('review')

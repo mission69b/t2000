@@ -393,6 +393,19 @@ export function buildRefundJobTx(
   v2: { sellerScoreId: string; batchId?: string },
 ): Transaction {
   const tx = new Transaction();
+  addRefundJobToTx(tx, jobId, v2);
+  return tx;
+}
+
+/** S.1310 — append exactly ONE refund door to an existing Transaction:
+ *  `batch::batch_refund` for a wave-origin Job (`batchId`), else
+ *  `reputation::refund_v2`. The composable half `buildRefundJobTx` and
+ *  `buildRefundJobsTx` share (mirror of `addReleaseJobToTx`). */
+export function addRefundJobToTx(
+  tx: Transaction,
+  jobId: string,
+  v2: { sellerScoreId: string; batchId?: string },
+): Transaction {
   if (v2.batchId) {
     tx.moveCall({
       target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::batch::batch_refund`,
@@ -418,6 +431,17 @@ export function buildRefundJobTx(
     ],
   });
   return tx;
+}
+
+/** S.1310 — "Refund all lapsed": N FUNDED-past-deadline Jobs, ONE PTB,
+ *  all-or-nothing — the exact mirror of `buildReleaseJobsTx` (same
+ *  ceiling, same empty / duplicate refusals, same input order, same
+ *  shared-object dedupe). No state validation here: the chain (and the
+ *  host's refund preflight) is the gate. */
+export function buildRefundJobsTx(
+  jobs: Array<{ jobId: string; sellerScoreId: string; batchId?: string }>,
+): Transaction {
+  return buildManyJobVerbTx(jobs, addRefundJobToTx, 'Refund all lapsed');
 }
 
 /** Seller posts the delivery commitment (hex hash) before the deadline.
@@ -543,13 +567,29 @@ export const MAX_RELEASES_PER_TX = 25;
 export function buildReleaseJobsTx(
   jobs: Array<{ jobId: string; sellerScoreId: string; batchId?: string }>,
 ): Transaction {
+  return buildManyJobVerbTx(jobs, addReleaseJobToTx, 'Settle selected');
+}
+
+/** The ONE N-in-one-PTB composer behind settle-selected / refund-all:
+ *  empty → refuse; more than the ceiling → refuse; a duplicate jobId →
+ *  refuse up front (never build a PTB that aborts on its second door);
+ *  else one Transaction, doors appended in INPUT ORDER via `add`. */
+function buildManyJobVerbTx(
+  jobs: Array<{ jobId: string; sellerScoreId: string; batchId?: string }>,
+  add: (
+    tx: Transaction,
+    jobId: string,
+    v2: { sellerScoreId: string; batchId?: string },
+  ) => Transaction,
+  label: string,
+): Transaction {
   if (jobs.length === 0) {
-    throw new T2000Error('INVALID_INPUT', 'Settle selected: pick at least one job to release.');
+    throw new T2000Error('INVALID_INPUT', `${label}: pick at least one job.`);
   }
   if (jobs.length > MAX_RELEASES_PER_TX) {
     throw new T2000Error(
       'INVALID_INPUT',
-      `Settle selected: ${jobs.length} jobs exceeds the ${MAX_RELEASES_PER_TX}-per-transaction ceiling — release them in smaller sets.`,
+      `${label}: ${jobs.length} jobs exceeds the ${MAX_RELEASES_PER_TX}-per-transaction ceiling — run it in smaller sets.`,
     );
   }
   const seen = new Set<string>();
@@ -558,14 +598,14 @@ export function buildReleaseJobsTx(
     if (seen.has(key)) {
       throw new T2000Error(
         'INVALID_INPUT',
-        `Settle selected: job ${j.jobId} is listed twice — a Job releases once.`,
+        `${label}: job ${j.jobId} is listed twice — a Job settles once.`,
       );
     }
     seen.add(key);
   }
   const tx = new Transaction();
   for (const j of jobs) {
-    addReleaseJobToTx(tx, j.jobId, { sellerScoreId: j.sellerScoreId, batchId: j.batchId });
+    add(tx, j.jobId, { sellerScoreId: j.sellerScoreId, batchId: j.batchId });
   }
   return tx;
 }

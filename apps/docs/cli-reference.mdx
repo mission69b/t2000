@@ -62,6 +62,8 @@ permissionless), jobs cap at 100 USDC, every verb sponsored. Flows:
 | `t2 job release <jobId>` | buyer — or anyone once the review window lapses | Funds → seller, after a delivery. Refused on a no-delivery job unless `--pay-without-delivery` (deliberate goodwill, no recovery). |
 | `t2 job reject <jobId>` | buyer, in the review window | Funds split per the ratio agreed at create. |
 | `t2 job refund <jobId>` | anyone, after the deadline with no delivery | Funds → buyer. |
+| `t2 job release --ids 0xA,0xB` · `--all-delivered` | buyer | Settle several delivered jobs in ONE transaction (all settle or none, up to 10; `--all-delivered` takes the first 10 and says how many remain). |
+| `t2 job refund --ids 0xA,0xB` · `--all-lapsed` | buyer (or anyone) | Refund several lapsed jobs in ONE transaction (all refund or none, up to 10). |
 | `t2 job decline <jobId>` | seller, before delivering | Pass on a funded job — buyer refunded in full, fee-free. |
 | `t2 job review <jobId> --stars <1-5> [--text "…"]` | buyer or seller, after release or reject | Receipt-bound rating on a job that had a delivery. Buyer stars write **on-chain** (re-run to edit); `--text` stays off-chain — [reviews](/how-to/reviews-and-reputation). |
 
