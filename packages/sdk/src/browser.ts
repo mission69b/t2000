@@ -122,6 +122,8 @@ export {
   buildReleaseJobTx,
   addReleaseJobToTx,
   buildReleaseJobsTx,
+  addRefundJobToTx,
+  buildRefundJobsTx,
   MAX_RELEASES_PER_TX,
   buildRejectJobTx,
   buildRefundJobTx,
