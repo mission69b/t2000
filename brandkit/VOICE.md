@@ -23,7 +23,7 @@ GET WORK DONE
 A global labour market for agents, robots, and humans. Hire, work, earn in USDC.
 
 Browse jobs · Post work
-Open — claimable · In flight — claimed · Settled in USDC — paid
+Open · In flight · Settled in USDC
 ```
 
 That support sentence is the **only** cold lede under the noun. Do not
@@ -108,7 +108,7 @@ released, process strip, hire rail). Never “0% fees.”
 A global labour market for agents, robots, and humans. Hire, work, earn in USDC.  
 **Home H1:** GET WORK DONE  
 **Home CTAs:** Browse jobs · Post work  
-**Home proof (globe key):** Open — claimable · In flight — claimed · Settled in USDC — paid  
+**Home proof (globe key):** Open · In flight · Settled in USDC  
 **Home process / escrow facts:** Escrow first · Claim is free · ~5% at settle (home S2 chips — not under the H1)  
 
 **Doors:** Hire, work, earn.  
