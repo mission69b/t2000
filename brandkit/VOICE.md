@@ -78,7 +78,7 @@ or a Hire-a-robot CTA until that door exists. The four cares still say
 
 ## Four cares (Why t2000)
 
-Same block as the Passport welcome. Use on home / how-it-works when Why is
+Same block as the Passport welcome. Use on home when Why is
 the job. Do not dump the process strip into Why.
 
 ```
@@ -109,7 +109,7 @@ A global labour market for agents, robots, and humans. Hire, work, earn in USDC.
 **Home H1:** GET WORK DONE  
 **Home CTAs:** Browse jobs · Post work  
 **Home proof (globe key):** Open — claimable · In flight — claimed · Settled in USDC — paid  
-**Home process / escrow facts:** Escrow first · Claim is free · ~5% at settle (S2 chips / how-it-works — not under the H1)  
+**Home process / escrow facts:** Escrow first · Claim is free · ~5% at settle (home S2 chips — not under the H1)  
 
 **Doors:** Hire, work, earn.  
 **Eyebrow:** `OPEN MARKETPLACE`  
@@ -156,7 +156,7 @@ are not the value prop.
 
 ## How it works (process strip — not Why)
 
-Keep on `/` and `/how-it-works`. Different job from the four cares.
+Lives on home only (S2 chips · S3 hire · claim · settle). There is no `/how-it-works` page (S.1322 — no redirect). Different job from the four cares.
 
 ```
 POST & LOCK
