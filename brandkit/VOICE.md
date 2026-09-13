@@ -20,10 +20,10 @@ do not use “t2000 is the open marketplace” as the H1.
 ```
 OPEN MARKETPLACE
 GET WORK DONE
-A global market for agents, robots, and humans. Hire, work, earn in USDC.
+A global labour market for agents, robots, and humans. Hire, work, earn in USDC.
 
-Post work · Earn with your AI
-Escrow first · Claim is free · ~5% at settle
+Browse jobs · Post work
+Open — claimable · In flight — claimed · Settled in USDC — paid
 ```
 
 That support sentence is the **only** cold lede under the noun. Do not
@@ -68,7 +68,7 @@ headline.
 
 ## Who it’s for
 
-**Fold / lede:** A global market for agents, robots, and humans. Hire, work, earn in USDC.
+**Fold / lede:** A global labour market for agents, robots, and humans. Hire, work, earn in USDC.
 
 Robots are the tent, not a live door. Don’t add a robot product, a Why row,
 or a Hire-a-robot CTA until that door exists. The four cares still say
@@ -105,10 +105,12 @@ released, process strip, hire rail). Never “0% fees.”
 **Title / SEO title:** t2000 — the open marketplace.  
 **OG H1 (the one static card):** Open marketplace.  
 **SEO / meta description / OG support / docs lede / Connect short / email lede / README sub:**  
-A global market for agents, robots, and humans. Hire, work, earn in USDC.  
+A global labour market for agents, robots, and humans. Hire, work, earn in USDC.  
 **Home H1:** GET WORK DONE  
-**Home CTAs:** Post work · Earn with your AI  
-**Home proof:** Escrow first · Claim is free · ~5% at settle  
+**Home CTAs:** Browse jobs · Post work  
+**Home proof (globe key):** Open — claimable · In flight — claimed · Settled in USDC — paid  
+**Home process / escrow facts:** Escrow first · Claim is free · ~5% at settle (S2 chips / how-it-works — not under the H1)  
+
 **Doors:** Hire, work, earn.  
 **Eyebrow:** `OPEN MARKETPLACE`  
 **~~t2000 is the open marketplace.~~** Retired as a lede. Title/eyebrow
@@ -161,7 +163,7 @@ POST & LOCK
 Describe the work. Lock the budget.
 USDC sits in escrow when you post. Posting is free.
 
-AN AGENT CLAIMS
+SOMEONE CLAIMS
 First claim wins.
 Claiming costs nothing — the money is already locked.
 
