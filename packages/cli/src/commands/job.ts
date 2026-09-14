@@ -638,17 +638,45 @@ export function pickBulkJobIds(
   return { jobIds: ids.slice(0, cap), remaining: Math.max(0, ids.length - cap) };
 }
 
+/** S.1335 — the prepare params behind `t2 job review --ids / --all-unreviewed`.
+ *  `--all-unreviewed` is a HOST flag: review eligibility ("did this buyer
+ *  already rate it?") is not on the indexer row, so a local "first 10
+ *  settled" slice would resend the same already-rated prefix forever once
+ *  prepare skips those ids. The host picks the unreviewed ten and reports
+ *  the remainder. `--ids` is the explicit list: parsed, deduped, capped
+ *  here exactly like release `--ids` (first 10 + how many were left). */
+export function reviewBulkParams(opts: {
+  ids?: string;
+  allUnreviewed?: boolean;
+  stars: number;
+}):
+  | { params: { allUnreviewed: true; stars: number }; jobIds: null; remaining: 0 }
+  | { params: { jobIds: string[]; stars: number }; jobIds: string[]; remaining: number } {
+  if (opts.allUnreviewed) {
+    return { params: { allUnreviewed: true, stars: opts.stars }, jobIds: null, remaining: 0 };
+  }
+  const candidates = parseIdList(opts.ids ?? '');
+  if (candidates.length === 0) throw new Error('--ids needs at least one jobId.');
+  const { jobIds, remaining } = pickBulkJobIds(candidates);
+  return { params: { jobIds, stars: opts.stars }, jobIds, remaining };
+}
+
 /** Buyer rows a bulk verb may take: delivered (settle) / funded past the
- *  deadline (refund). Inbox order preserved. */
+ *  deadline (refund) / settled WITH a delivery (review — S.1335: the
+ *  predicate the marketplace selector shares; the CLI's `--all-unreviewed`
+ *  does NOT pre-slice with it — the indexer row carries no star bit, so
+ *  "unreviewed" is the prepare host's call). Inbox order preserved. */
 export function eligibleBulkIds(
   jobs: IndexedJob[],
-  verb: 'release' | 'refund',
+  verb: 'release' | 'refund' | 'review',
   nowMs: number,
 ): string[] {
   return jobs
-    .filter((j) =>
-      verb === 'release' ? j.state === 'delivered' : j.state === 'funded' && nowMs > j.deliverByMs,
-    )
+    .filter((j) => {
+      if (verb === 'release') return j.state === 'delivered';
+      if (verb === 'refund') return j.state === 'funded' && nowMs > j.deliverByMs;
+      return (j.state === 'released' || j.state === 'rejected') && Boolean(j.deliveryHash);
+    })
     .map((j) => j.jobId);
 }
 
@@ -663,7 +691,9 @@ async function sponsoredJobVerb(opts: {
     | 'release-many'
     | 'reject'
     | 'refund'
-    | 'refund-many';
+    | 'refund-many'
+    // S.1335 — N buyer star reviews, one PTB (stars only).
+    | 'review-many';
   params: Record<string, unknown>;
   /** USDC leaving THIS wallet, for the spending gate. Only `create` moves
    *  buyer money out; the seller-side verbs settle escrow that is already
@@ -1338,18 +1368,57 @@ Ending a job (all states covered):
 
   group
     .command('review')
-    .argument('<jobId>', 'The Job object id (0x…) of a RELEASED job you were party to')
-    .description('Rate a settled job (released OR rejected, with a delivery) 1–5 stars — role-aware: buyers rate the seller (stars land ON-CHAIN, the one public score); sellers rate the buyer (off-chain; public only if the buyer holds an Agent ID)')
-    .requiredOption('--stars <1-5>', 'Star rating, 1 (poor) to 5 (excellent)')
-    .option('--text <text>', 'Optional short review (max 1000 chars) — text stays off-chain, keyed to the job')
+    .argument('[jobId]', 'The Job object id (0x…) of a RELEASED job you were party to — or use --ids / --all-unreviewed')
+    .description('Rate a settled job (released OR rejected, with a delivery) 1–5 stars — role-aware: buyers rate the seller (stars land ON-CHAIN, the one public score); sellers rate the buyer (off-chain; public only if the buyer holds an Agent ID). Rate several you BOUGHT at once: --ids 0xA,0xB or --all-unreviewed with one --stars (one transaction, all rate or none, up to 10; no --text on a batch).')
+    .requiredOption('--stars <1-5>', 'Star rating, 1 (poor) to 5 (excellent) — on a batch, the same stars for every job')
+    .option('--text <text>', 'Optional short review (max 1000 chars) — text stays off-chain, keyed to the job. Single job only.')
+    .option('--ids <list>', 'Rate several settled jobs you bought in ONE transaction (comma-separated jobIds, up to 10; first-time stars only — already-rated ids are skipped)')
+    .option('--all-unreviewed', 'Rate every settled, delivered job you bought that you have not rated — first 10 in ONE transaction; run again for the rest')
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (jobId: string, opts: { stars: string; text?: string; key?: string; api?: string }) => {
+    .action(async (jobId: string | undefined, opts: { stars: string; text?: string; ids?: string; allUnreviewed?: boolean; key?: string; api?: string }) => {
       try {
         const stars = Number.parseInt(opts.stars, 10);
         if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
           throw new Error(`--stars must be an integer 1–5 (got "${opts.stars}").`);
         }
+        const modeErr = bulkModeError({ positional: jobId, ids: opts.ids, all: opts.allUnreviewed, allFlag: '--all-unreviewed' });
+        if (modeErr) throw new Error(modeErr);
+        // S.1335 — bulk: ONE PTB through the review-many prepare action
+        // (buyer stars only; the API routes each job to submit_review or
+        // the seller's first review, skips already-rated ids, and for
+        // --all-unreviewed picks the unreviewed ten itself — the CLI never
+        // scans the inbox for review). A prepare 400 (nothing to rate, or a
+        // host without review-many yet) surfaces as-is.
+        if (opts.ids !== undefined || opts.allUnreviewed) {
+          if (opts.text !== undefined) {
+            throw new Error('--text is single-job only — notes stay on a single-job review (t2 job review <jobId> --stars N --text "…").');
+          }
+          const base = opts.api ?? DEFAULT_API_BASE;
+          const sel = reviewBulkParams({ ids: opts.ids, allUnreviewed: opts.allUnreviewed, stars });
+          const { digest } = await sponsoredJobVerb({
+            base,
+            keyPath: opts.key,
+            action: 'review-many',
+            params: sel.params,
+          });
+          if (isJsonMode()) {
+            printJson({ action: 'review-many', ...sel.params, digest, ...(sel.jobIds ? { remaining: sel.remaining } : {}) });
+            return;
+          }
+          printBlank();
+          const starsLabel = `${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`;
+          printSuccess(
+            sel.jobIds
+              ? `Rated ${sel.jobIds.length} job${sel.jobIds.length === 1 ? '' : 's'} ${starsLabel} in one transaction — stars are on-chain.`
+              : `Rated your unreviewed deliveries ${starsLabel} in one transaction — stars are on-chain (up to 10 per run; run again for the rest).`,
+          );
+          if (digest) printKeyValue('Tx', digest);
+          if (sel.jobIds && sel.remaining > 0) printInfo(`${sel.remaining} more listed — run again with the rest.`);
+          printBlank();
+          return;
+        }
+        if (!jobId) throw new Error('Pass a jobId.');
         // Role decides the rail, so the job read is required here (the
         // chain + API refuse independently — this is the English layer).
         const reviewedJob = await getJob(getSuiClient(), jobId).catch(() => null);

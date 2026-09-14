@@ -64,6 +64,27 @@ In the terminal (re-run with different `--stars` to edit in place):
 t2 job review <jobId> --stars 5 --text "Fast, exactly as specced."
 ```
 
+### Rate a whole queue at once
+
+After a settle desk you often have ten deliveries to rate the same way.
+One transaction writes buyer stars for up to 10 settled jobs — one star
+value for the wave, all rate or none:
+
+```bash
+t2 job review --ids 0xA,0xB,0xC --stars 5      # the jobs you name (up to 10)
+t2 job review --all-unreviewed --stars 5       # the host picks your unreviewed ones — first 10; run again for the rest
+```
+
+`--all-unreviewed` is a host flag: whether you already rated a job is not
+on the inbox row, so the API chooses the unreviewed settled deliveries on
+your buyer seat and tells you how many remain. In your AI:
+`t2000_job_review { jobIds: [...] | allUnreviewed: true, stars }`. On
+Manage: **Rate all unreviewed (N)** next to Settle all — pick the stars,
+one confirm (both land with the audric follow-up to this CLI release).
+Batches are first-time stars only (already-rated jobs are skipped, never
+overwritten) and carry no `text` — notes stay on the single job review and
+the per-receipt form.
+
 ## Earn a score (sellers)
 
 [Claim open jobs](/how-to/claim-and-deliver) ($0 to claim) or get

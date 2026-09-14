@@ -10,6 +10,7 @@ import {
   eligibleBulkIds,
   parseIdList,
   pickBulkJobIds,
+  reviewBulkParams,
   deliverPreflightError,
   fetchSellerJobs,
   type IndexedJob,
@@ -566,5 +567,72 @@ describe('bulk settle / refund helpers (S.1310)', () => {
     ];
     expect(eligibleBulkIds(jobs, 'release', now)).toEqual(['0x1', '0x5']);
     expect(eligibleBulkIds(jobs, 'refund', now)).toEqual(['0x2']);
+  });
+});
+
+// S.1335 — `t2 job review --ids / --all-unreviewed` reuses the release
+// selector helpers; the review eligibility is "settled with a delivery".
+describe('review bulk selectors (S.1335)', () => {
+  it('bulkModeError: exactly one of <jobId> / --ids / --all-unreviewed', () => {
+    expect(bulkModeError({ allFlag: '--all-unreviewed' })).toMatch(/--all-unreviewed/);
+    expect(bulkModeError({ positional: '0xa', allFlag: '--all-unreviewed' })).toBeNull();
+    expect(bulkModeError({ ids: '0xa,0xb', allFlag: '--all-unreviewed' })).toBeNull();
+    expect(bulkModeError({ all: true, allFlag: '--all-unreviewed' })).toBeNull();
+    expect(bulkModeError({ positional: '0xa', all: true, allFlag: '--all-unreviewed' })).toMatch(
+      /not a mix/,
+    );
+    expect(bulkModeError({ ids: '0xa', all: true, allFlag: '--all-unreviewed' })).toMatch(
+      /--ids \/ --all-unreviewed/,
+    );
+  });
+
+  it('--all-unreviewed is a HOST flag: params are { allUnreviewed: true, stars } and never jobIds', () => {
+    const sel = reviewBulkParams({ allUnreviewed: true, stars: 5 });
+    expect(sel.params).toEqual({ allUnreviewed: true, stars: 5 });
+    expect('jobIds' in sel.params).toBe(false);
+    expect(sel.jobIds).toBeNull();
+    expect(sel.remaining).toBe(0);
+  });
+
+  it('--ids stays the explicit list: parsed, deduped, capped at 10 with the remainder counted', () => {
+    const two = reviewBulkParams({ ids: '0xa, 0xB ,0xA', stars: 4 });
+    expect(two.params).toEqual({ jobIds: ['0xa', '0xB'], stars: 4 });
+    expect(two.remaining).toBe(0);
+    const twelve = reviewBulkParams({
+      ids: Array.from({ length: 12 }, (_, i) => `0x${i + 1}`).join(','),
+      stars: 3,
+    });
+    expect(twelve.jobIds).toHaveLength(10);
+    expect(twelve.remaining).toBe(2);
+    expect('allUnreviewed' in twelve.params).toBe(false);
+    expect(() => reviewBulkParams({ ids: ' , ', stars: 5 })).toThrow(/at least one jobId/);
+  });
+
+  it('eligibleBulkIds(review): released|rejected WITH a delivery, inbox order; never funded/refunded or goodwill releases', () => {
+    const row = (jobId: string, state: IndexedJob['state'], deliveryHash: string | null): IndexedJob => ({
+      jobId,
+      buyer: '0xb',
+      seller: '0xs',
+      amountUsdc: 1,
+      state,
+      deliverByMs: 0,
+      reviewWindowMs: 0,
+      deliveryHash,
+      createdAtMs: 0,
+      updatedAtMs: 0,
+    });
+    const ids = eligibleBulkIds(
+      [
+        row('0x1', 'released', '0xd'),
+        row('0x2', 'rejected', '0xd'),
+        row('0x3', 'released', null), // goodwill release — nothing to rate
+        row('0x4', 'delivered', '0xd'),
+        row('0x5', 'refunded', null),
+        row('0x6', 'funded', null),
+      ],
+      'review',
+      Date.now(),
+    );
+    expect(ids).toEqual(['0x1', '0x2']);
   });
 });

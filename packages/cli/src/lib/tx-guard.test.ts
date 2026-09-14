@@ -287,6 +287,18 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       'job-review',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_first_review`,
     ],
+    // S.1335: the bulk actions ride the single verbs' doors, N times.
+    // release-many / refund-many (S.1310) were missing from the table —
+    // the guard refused every CLI bulk settle / refund as an unknown verb.
+    ['release-many', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::release_v2`],
+    ['release-many', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_release`],
+    ['refund-many', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::refund_v2`],
+    ['refund-many', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::batch::batch_refund`],
+    ['review-many', `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_review`],
+    [
+      'review-many',
+      `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_first_review`,
+    ],
     [
       'open-cancel',
       `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::opening::cancel_open`,
@@ -321,6 +333,39 @@ describe('B — the map matches the SDK builders, verb for verb', () => {
       expect(() => assertTxMatchesIntent(b64, { action })).not.toThrow();
     });
   }
+
+  // S.1335 — a 10-review PTB is ten allowed doors in one tx: the guard
+  // walks every MoveCall, so N of the same door pass and one foreign
+  // door still refuses the whole thing.
+  it('review-many: 10× submit_review (+ one first review) in one tx is signable', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      for (let n = 0; n < 9; n += 1) {
+        tx.moveCall({
+          target: `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_review`,
+          arguments: [],
+        });
+      }
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_first_review`,
+        arguments: [],
+      });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'review-many' })).not.toThrow();
+  });
+
+  it('review-many: a release door smuggled into a review wave refuses', async () => {
+    const b64 = await buildMultiTxB64((tx) => {
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::submit_review`,
+        arguments: [],
+      });
+      tx.moveCall({
+        target: `${MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID}::reputation::release_v2`,
+        arguments: [],
+      });
+    });
+    expect(() => assertTxMatchesIntent(b64, { action: 'review-many' })).toThrow(/should call reputation::submit_review/);
+  });
 
   it('S.1212: "open-claim" refuses the removed claim_proven_v2 routing', async () => {
     const b64 = await buildTxB64(
