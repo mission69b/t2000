@@ -15,6 +15,7 @@
 //
 // Browser-safe: fetch + base64 only; no fs, no node:crypto.
 
+import { T2000Error } from './errors.js';
 import { fromBase64 } from '@mysten/sui/utils';
 import {
   type JobMode,
@@ -395,25 +396,40 @@ export function submitJobReview(
 }
 
 /** S.1335 — rate several settled jobs this wallet BOUGHT with ONE star
- *  value in ONE sponsored transaction (`review-many`): the API re-reads
- *  every job (buyer seat, released|rejected, delivered), routes each to
- *  `submit_review` / the seller's first review, skips already-rated ids,
- *  and composes `buildSubmitReviewsTx`. Stars only — notes stay on
- *  `submitJobReview` + the signed text path. Up to the product cap (10);
- *  the caller says how many remain. Returns the tx digest. */
+ *  value in ONE sponsored transaction (`review-many`). Exactly one
+ *  selector: `jobIds` (the jobs you name) OR `allUnreviewed: true` (the
+ *  host picks unreviewed settled deliveries on your buyer seat — review
+ *  eligibility is not on the indexer row, so the host is the only honest
+ *  chooser). The API re-reads every job (buyer seat, released|rejected,
+ *  delivered), routes each to `submit_review` / the seller's first
+ *  review, skips already-rated ids, caps at the product cap (10) and
+ *  reports the remainder, and composes `buildSubmitReviewsTx`. Stars
+ *  only — notes stay on `submitJobReview` + the signed text path.
+ *  Returns the tx digest. */
 export function submitJobReviews(
   base: string,
   signer: TransactionSigner,
-  input: {
-    jobIds: string[];
-    /** Integer 1-5, applied to EVERY job in the wave. */
-    stars: number;
-  },
+  input:
+    | { jobIds: string[]; allUnreviewed?: false; stars: number }
+    | { allUnreviewed: true; jobIds?: undefined; stars: number },
 ): Promise<string> {
-  return sponsoredOpeningVerb(base, signer, 'review-many', {
-    jobIds: input.jobIds.map((id) => id.trim()),
-    stars: input.stars,
-  });
+  const hasIds = Array.isArray(input.jobIds);
+  const all = input.allUnreviewed === true;
+  if (hasIds === all) {
+    throw new T2000Error(
+      'INVALID_INPUT',
+      'Rate several: pass jobIds (the jobs you name) or allUnreviewed: true — exactly one.',
+    );
+  }
+  const stars = input.stars;
+  return sponsoredOpeningVerb(
+    base,
+    signer,
+    'review-many',
+    hasIds
+      ? { jobIds: (input.jobIds as string[]).map((id) => id.trim()), stars }
+      : { allUnreviewed: true, stars },
+  );
 }
 
 /** Claim an open job (seller side) — first claim wins ON-CHAIN and mints the

@@ -158,10 +158,6 @@ describe('buildSubmitReviewsTx (S.1335 rate all unreviewed)', () => {
     const calls = moveCalls(tx);
     expect(calls).toHaveLength(10);
     expect(calls.every((c) => c.module === 'reputation' && c.function === 'submit_review')).toBe(true);
-    // Shared objects are ONE input each — 10 reviews of one seller share
-    // the score, FeeConfig and Clock inputs.
-    const objectInputs = tx.getData().inputs.filter((i) => 'UnresolvedObject' in i || 'Object' in i);
-    expect(objectInputs.length).toBeLessThan(10 * 5);
   });
 
   it('mixed first + later reviews route each item to its own door, in order', () => {

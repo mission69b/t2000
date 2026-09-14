@@ -7,6 +7,7 @@ import {
   listOpenJobs,
   postOpenJob,
   submitJobReview,
+  submitJobReviews,
   refundOpenJob,
 } from './open-jobs.js';
 
@@ -190,6 +191,55 @@ describe('on-chain verbs — prepare → sign → submit (sponsored rail)', () =
       action: 'job-review',
       params: { jobId: OPENING_ID, stars: 5 },
     });
+  });
+
+  // S.1335 — the two bulk selectors, exactly one.
+  it('submitJobReviews with jobIds sends { jobIds, stars } on review-many', async () => {
+    const signer = stubSigner();
+    const calls = mockFetchQueue([
+      { json: { nonce: 'n-rm', txBytes: TX_BYTES } },
+      { json: { digest: 'DIGEST-RM' } },
+    ]);
+    await expect(
+      submitJobReviews(BASE, signer, { jobIds: [` ${OPENING_ID} `], stars: 4 }),
+    ).resolves.toBe('DIGEST-RM');
+    expect(calls[0]?.body).toMatchObject({
+      action: 'review-many',
+      params: { jobIds: [OPENING_ID], stars: 4 },
+    });
+    expect((calls[0]?.body as { params: Record<string, unknown> }).params).not.toHaveProperty('allUnreviewed');
+  });
+
+  it('submitJobReviews with allUnreviewed sends { allUnreviewed: true, stars } — the host picks the jobs', async () => {
+    const signer = stubSigner();
+    const calls = mockFetchQueue([
+      { json: { nonce: 'n-ra', txBytes: TX_BYTES } },
+      { json: { digest: 'DIGEST-RA' } },
+    ]);
+    await expect(
+      submitJobReviews(BASE, signer, { allUnreviewed: true, stars: 5 }),
+    ).resolves.toBe('DIGEST-RA');
+    expect(calls[0]?.body).toMatchObject({
+      action: 'review-many',
+      params: { allUnreviewed: true, stars: 5 },
+    });
+    expect((calls[0]?.body as { params: Record<string, unknown> }).params).not.toHaveProperty('jobIds');
+  });
+
+  it('submitJobReviews refuses both selectors and neither — before any network call', () => {
+    const signer = stubSigner();
+    const calls = mockFetchQueue([]);
+    expect(() =>
+      submitJobReviews(BASE, signer, {
+        jobIds: [OPENING_ID],
+        allUnreviewed: true,
+        stars: 5,
+      } as unknown as { jobIds: string[]; stars: number }),
+    ).toThrow(/exactly one/);
+    expect(() =>
+      submitJobReviews(BASE, signer, { stars: 5 } as unknown as { jobIds: string[]; stars: number }),
+    ).toThrow(/exactly one/);
+    expect(calls).toHaveLength(0);
   });
 
   it.each([

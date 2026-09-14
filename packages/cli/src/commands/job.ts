@@ -638,11 +638,34 @@ export function pickBulkJobIds(
   return { jobIds: ids.slice(0, cap), remaining: Math.max(0, ids.length - cap) };
 }
 
+/** S.1335 — the prepare params behind `t2 job review --ids / --all-unreviewed`.
+ *  `--all-unreviewed` is a HOST flag: review eligibility ("did this buyer
+ *  already rate it?") is not on the indexer row, so a local "first 10
+ *  settled" slice would resend the same already-rated prefix forever once
+ *  prepare skips those ids. The host picks the unreviewed ten and reports
+ *  the remainder. `--ids` is the explicit list: parsed, deduped, capped
+ *  here exactly like release `--ids` (first 10 + how many were left). */
+export function reviewBulkParams(opts: {
+  ids?: string;
+  allUnreviewed?: boolean;
+  stars: number;
+}):
+  | { params: { allUnreviewed: true; stars: number }; jobIds: null; remaining: 0 }
+  | { params: { jobIds: string[]; stars: number }; jobIds: string[]; remaining: number } {
+  if (opts.allUnreviewed) {
+    return { params: { allUnreviewed: true, stars: opts.stars }, jobIds: null, remaining: 0 };
+  }
+  const candidates = parseIdList(opts.ids ?? '');
+  if (candidates.length === 0) throw new Error('--ids needs at least one jobId.');
+  const { jobIds, remaining } = pickBulkJobIds(candidates);
+  return { params: { jobIds, stars: opts.stars }, jobIds, remaining };
+}
+
 /** Buyer rows a bulk verb may take: delivered (settle) / funded past the
- *  deadline (refund) / settled WITH a delivery (review — S.1335; the
- *  indexer row does not say whether the buyer already rated it, so the
- *  prepare host drops already-reviewed ids and says so). Inbox order
- *  preserved. */
+ *  deadline (refund) / settled WITH a delivery (review — S.1335: the
+ *  predicate the marketplace selector shares; the CLI's `--all-unreviewed`
+ *  does NOT pre-slice with it — the indexer row carries no star bit, so
+ *  "unreviewed" is the prepare host's call). Inbox order preserved. */
 export function eligibleBulkIds(
   jobs: IndexedJob[],
   verb: 'release' | 'refund' | 'review',
@@ -1363,42 +1386,35 @@ Ending a job (all states covered):
         if (modeErr) throw new Error(modeErr);
         // S.1335 — bulk: ONE PTB through the review-many prepare action
         // (buyer stars only; the API routes each job to submit_review or
-        // the seller's first review and skips already-rated ids).
+        // the seller's first review, skips already-rated ids, and for
+        // --all-unreviewed picks the unreviewed ten itself — the CLI never
+        // scans the inbox for review). A prepare 400 (nothing to rate, or a
+        // host without review-many yet) surfaces as-is.
         if (opts.ids !== undefined || opts.allUnreviewed) {
           if (opts.text !== undefined) {
             throw new Error('--text is single-job only — notes stay on a single-job review (t2 job review <jobId> --stars N --text "…").');
           }
           const base = opts.api ?? DEFAULT_API_BASE;
-          let candidates: string[];
-          if (opts.allUnreviewed) {
-            const me = (await withAgent({ keyPath: opts.key })).address();
-            candidates = eligibleBulkIds(await fetchBuyerJobs(base, me), 'review', Date.now());
-            if (candidates.length === 0) {
-              printInfo('Nothing to rate — no unreviewed settled deliveries on your buyer seat.');
-              return;
-            }
-          } else {
-            candidates = parseIdList(opts.ids ?? '');
-            if (candidates.length === 0) throw new Error('--ids needs at least one jobId.');
-          }
-          const { jobIds, remaining } = pickBulkJobIds(candidates);
+          const sel = reviewBulkParams({ ids: opts.ids, allUnreviewed: opts.allUnreviewed, stars });
           const { digest } = await sponsoredJobVerb({
             base,
             keyPath: opts.key,
             action: 'review-many',
-            params: { jobIds, stars },
+            params: sel.params,
           });
           if (isJsonMode()) {
-            printJson({ action: 'review-many', jobIds, stars, digest, remaining });
+            printJson({ action: 'review-many', ...sel.params, digest, ...(sel.jobIds ? { remaining: sel.remaining } : {}) });
             return;
           }
           printBlank();
+          const starsLabel = `${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`;
           printSuccess(
-            `Rated ${jobIds.length} job${jobIds.length === 1 ? '' : 's'} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} in one transaction — stars are on-chain.`,
+            sel.jobIds
+              ? `Rated ${sel.jobIds.length} job${sel.jobIds.length === 1 ? '' : 's'} ${starsLabel} in one transaction — stars are on-chain.`
+              : `Rated your unreviewed deliveries ${starsLabel} in one transaction — stars are on-chain (up to 10 per run; run again for the rest).`,
           );
           if (digest) printKeyValue('Tx', digest);
-          if (remaining > 0) printInfo(`${remaining} more unreviewed — run again for the rest.`);
-          printInfo('Already-rated jobs in the set were skipped — edit one with t2 job review <jobId> --stars N.');
+          if (sel.jobIds && sel.remaining > 0) printInfo(`${sel.remaining} more listed — run again with the rest.`);
           printBlank();
           return;
         }

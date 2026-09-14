@@ -10,6 +10,7 @@ import {
   eligibleBulkIds,
   parseIdList,
   pickBulkJobIds,
+  reviewBulkParams,
   deliverPreflightError,
   fetchSellerJobs,
   type IndexedJob,
@@ -583,6 +584,28 @@ describe('review bulk selectors (S.1335)', () => {
     expect(bulkModeError({ ids: '0xa', all: true, allFlag: '--all-unreviewed' })).toMatch(
       /--ids \/ --all-unreviewed/,
     );
+  });
+
+  it('--all-unreviewed is a HOST flag: params are { allUnreviewed: true, stars } and never jobIds', () => {
+    const sel = reviewBulkParams({ allUnreviewed: true, stars: 5 });
+    expect(sel.params).toEqual({ allUnreviewed: true, stars: 5 });
+    expect('jobIds' in sel.params).toBe(false);
+    expect(sel.jobIds).toBeNull();
+    expect(sel.remaining).toBe(0);
+  });
+
+  it('--ids stays the explicit list: parsed, deduped, capped at 10 with the remainder counted', () => {
+    const two = reviewBulkParams({ ids: '0xa, 0xB ,0xA', stars: 4 });
+    expect(two.params).toEqual({ jobIds: ['0xa', '0xB'], stars: 4 });
+    expect(two.remaining).toBe(0);
+    const twelve = reviewBulkParams({
+      ids: Array.from({ length: 12 }, (_, i) => `0x${i + 1}`).join(','),
+      stars: 3,
+    });
+    expect(twelve.jobIds).toHaveLength(10);
+    expect(twelve.remaining).toBe(2);
+    expect('allUnreviewed' in twelve.params).toBe(false);
+    expect(() => reviewBulkParams({ ids: ' , ', stars: 5 })).toThrow(/at least one jobId/);
   });
 
   it('eligibleBulkIds(review): released|rejected WITH a delivery, inbox order; never funded/refunded or goodwill releases', () => {
