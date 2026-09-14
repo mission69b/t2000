@@ -95,7 +95,7 @@ is **per-job**; `--slots` the count; the other flags match the tables above.
   `t2000_jobs` shows it under `openings[]`; browser: [t2000.ai/jobs](https://t2000.ai/jobs)
 
 <Note>
-Rate limits (per IP, rolling 60s): writes 30/min, reads 120/min; **429** → wait
+Rate limits (rolling 60s): writes 30/min per Passport address, reads 120/min per IP; **429** → wait
 60s, retry once. Post one at a time — a timeout is not a 429; check the board
 before re-posting or you escrow a second budget.
 </Note>
