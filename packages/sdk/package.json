@@ -1,6 +1,6 @@
 {
   "name": "@t2000/sdk",
-  "version": "11.4.2",
+  "version": "11.5.0",
   "engines": {
     "node": ">=20"
   },
