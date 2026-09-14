@@ -199,6 +199,26 @@ const ACTION_TARGETS: Record<
     module: 'reputation',
     functions: ['submit_review', 'submit_first_review'],
   },
+  // S.1335 — the N-in-one-PTB actions. The check below walks EVERY
+  // MoveCall against the same door list, so a bulk prepare is just "the
+  // single verb, N times" to the guard. `release-many` / `refund-many`
+  // (S.1310) had no entry at all: the guard refused them as unknown verbs,
+  // so `t2 job release --ids` could never sign — fixed here, same doors.
+  'release-many': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'reputation',
+    functions: ['release_v2', 'create_empty_score', 'batch::batch_release'],
+  },
+  'refund-many': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'reputation',
+    functions: ['refund_v2', 'create_empty_score', 'batch::batch_refund'],
+  },
+  'review-many': {
+    pkgs: [MAINNET_A2A_ESCROW_OPENING_PACKAGE_ID],
+    module: 'reputation',
+    functions: ['submit_review', 'submit_first_review'],
+  },
   // Agent ID registry verbs (S.1049) — these used to skip Move-target
   // verification entirely via a HOST_PINNED_ONLY carve-out, which meant
   // `register` signed host-prepared bytes blind. Same rule as escrow now:

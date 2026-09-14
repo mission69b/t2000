@@ -256,6 +256,9 @@ async function sponsoredOpeningVerb(
     | 'open-cancel'
     | 'open-refund'
     | 'job-review'
+    // S.1335 — N buyer star reviews in one PTB (prepare composes
+    // `buildSubmitReviewsTx`; stars only, notes stay on the single path).
+    | 'review-many'
     // S.1193 — batch (wave) verbs, mirroring the open-* family.
     | 'batch-open-create'
     | 'batch-open-claim'
@@ -387,6 +390,28 @@ export function submitJobReview(
 ): Promise<string> {
   return sponsoredOpeningVerb(base, signer, 'job-review', {
     jobId: input.jobId.trim(),
+    stars: input.stars,
+  });
+}
+
+/** S.1335 — rate several settled jobs this wallet BOUGHT with ONE star
+ *  value in ONE sponsored transaction (`review-many`): the API re-reads
+ *  every job (buyer seat, released|rejected, delivered), routes each to
+ *  `submit_review` / the seller's first review, skips already-rated ids,
+ *  and composes `buildSubmitReviewsTx`. Stars only — notes stay on
+ *  `submitJobReview` + the signed text path. Up to the product cap (10);
+ *  the caller says how many remain. Returns the tx digest. */
+export function submitJobReviews(
+  base: string,
+  signer: TransactionSigner,
+  input: {
+    jobIds: string[];
+    /** Integer 1-5, applied to EVERY job in the wave. */
+    stars: number;
+  },
+): Promise<string> {
+  return sponsoredOpeningVerb(base, signer, 'review-many', {
+    jobIds: input.jobIds.map((id) => id.trim()),
     stars: input.stars,
   });
 }

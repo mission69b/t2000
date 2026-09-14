@@ -568,3 +568,48 @@ describe('bulk settle / refund helpers (S.1310)', () => {
     expect(eligibleBulkIds(jobs, 'refund', now)).toEqual(['0x2']);
   });
 });
+
+// S.1335 — `t2 job review --ids / --all-unreviewed` reuses the release
+// selector helpers; the review eligibility is "settled with a delivery".
+describe('review bulk selectors (S.1335)', () => {
+  it('bulkModeError: exactly one of <jobId> / --ids / --all-unreviewed', () => {
+    expect(bulkModeError({ allFlag: '--all-unreviewed' })).toMatch(/--all-unreviewed/);
+    expect(bulkModeError({ positional: '0xa', allFlag: '--all-unreviewed' })).toBeNull();
+    expect(bulkModeError({ ids: '0xa,0xb', allFlag: '--all-unreviewed' })).toBeNull();
+    expect(bulkModeError({ all: true, allFlag: '--all-unreviewed' })).toBeNull();
+    expect(bulkModeError({ positional: '0xa', all: true, allFlag: '--all-unreviewed' })).toMatch(
+      /not a mix/,
+    );
+    expect(bulkModeError({ ids: '0xa', all: true, allFlag: '--all-unreviewed' })).toMatch(
+      /--ids \/ --all-unreviewed/,
+    );
+  });
+
+  it('eligibleBulkIds(review): released|rejected WITH a delivery, inbox order; never funded/refunded or goodwill releases', () => {
+    const row = (jobId: string, state: IndexedJob['state'], deliveryHash: string | null): IndexedJob => ({
+      jobId,
+      buyer: '0xb',
+      seller: '0xs',
+      amountUsdc: 1,
+      state,
+      deliverByMs: 0,
+      reviewWindowMs: 0,
+      deliveryHash,
+      createdAtMs: 0,
+      updatedAtMs: 0,
+    });
+    const ids = eligibleBulkIds(
+      [
+        row('0x1', 'released', '0xd'),
+        row('0x2', 'rejected', '0xd'),
+        row('0x3', 'released', null), // goodwill release — nothing to rate
+        row('0x4', 'delivered', '0xd'),
+        row('0x5', 'refunded', null),
+        row('0x6', 'funded', null),
+      ],
+      'review',
+      Date.now(),
+    );
+    expect(ids).toEqual(['0x1', '0x2']);
+  });
+});

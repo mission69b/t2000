@@ -167,6 +167,13 @@ export {
   trustRequirementLabel,
   trustRequirementFromOpening,
   preflightClaimOpening,
+  // S.1335 — review builders (same shape as the release composer above).
+  buildSubmitReviewTx,
+  buildSubmitFirstReviewTx,
+  addSubmitReviewToTx,
+  addSubmitFirstReviewToTx,
+  buildSubmitReviewsTx,
+  MAX_REVIEWS_PER_TX,
 } from './wallet/reputation.js';
 export type { AgentScore, SellerLevel } from './wallet/reputation.js';
 

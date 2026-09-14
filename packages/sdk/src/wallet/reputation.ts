@@ -5,6 +5,7 @@ import { T2000Error } from '../errors.js';
 import { USDC_TYPE } from '../token-registry.js';
 import { validateAddress } from '../utils/sui.js';
 import type { SuiCoreClient } from '../utils/sui.js';
+import { MAX_RELEASES_PER_TX } from './job.js';
 import {
   A2A_ESCROW_LATEST_PACKAGE_ID,
   A2A_ESCROW_PACKAGE_V7_ID,
@@ -343,19 +344,15 @@ function assertStars(stars: number): void {
   }
 }
 
-/** Review a released job when the seller ALREADY has a score object —
- *  also the star-EDIT path (same buyer re-rating the same job). */
-export function buildSubmitReviewTx({
-  scoreId,
-  jobId,
-  stars,
-}: {
-  scoreId: string;
-  jobId: string;
-  stars: number;
-}): Transaction {
+/** S.1335 — append ONE `submit_review` to an existing Transaction (the
+ *  seller already has a score object; also the star-EDIT door). The
+ *  composable half `buildSubmitReviewTx` and `buildSubmitReviewsTx` share,
+ *  so N reviews in one PTB use the very door one review uses today. */
+export function addSubmitReviewToTx(
+  tx: Transaction,
+  { scoreId, jobId, stars }: { scoreId: string; jobId: string; stars: number },
+): Transaction {
   assertStars(stars);
-  const tx = new Transaction();
   tx.moveCall({
     target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::submit_review`,
     typeArguments: [USDC_TYPE],
@@ -370,20 +367,16 @@ export function buildSubmitReviewTx({
   return tx;
 }
 
-/** First review a seller ever receives — lazily creates their score at its
- *  derived address (aborts on-chain if it raced into existence; retry with
- *  `buildSubmitReviewTx`). */
-export function buildSubmitFirstReviewTx({
-  jobId,
-  stars,
-  boardId,
-}: {
-  jobId: string;
-  stars: number;
-  boardId?: string;
-}): Transaction {
+/** S.1335 — append ONE `submit_first_review` (lazily creates the seller's
+ *  score at its derived address). A shared object created in-tx cannot be
+ *  an input later in the SAME tx, so a PTB may carry at most one first
+ *  review PER SELLER — the prepare host splits the rest into the next
+ *  wave; this builder cannot know sellers and does not try. */
+export function addSubmitFirstReviewToTx(
+  tx: Transaction,
+  { jobId, stars, boardId }: { jobId: string; stars: number; boardId?: string },
+): Transaction {
   assertStars(stars);
-  const tx = new Transaction();
   tx.moveCall({
     target: `${A2A_ESCROW_LATEST_PACKAGE_ID}::${MODULE}::submit_first_review`,
     typeArguments: [USDC_TYPE],
@@ -395,5 +388,85 @@ export function buildSubmitFirstReviewTx({
       tx.object(CLOCK_ID),
     ],
   });
+  return tx;
+}
+
+/** Review a released job when the seller ALREADY has a score object —
+ *  also the star-EDIT path (same buyer re-rating the same job). Thin
+ *  wrapper over `addSubmitReviewToTx` (S.1335) — same door, one call. */
+export function buildSubmitReviewTx({
+  scoreId,
+  jobId,
+  stars,
+}: {
+  scoreId: string;
+  jobId: string;
+  stars: number;
+}): Transaction {
+  return addSubmitReviewToTx(new Transaction(), { scoreId, jobId, stars });
+}
+
+/** First review a seller ever receives — lazily creates their score at its
+ *  derived address (aborts on-chain if it raced into existence; retry with
+ *  `buildSubmitReviewTx`). Thin wrapper over `addSubmitFirstReviewToTx`. */
+export function buildSubmitFirstReviewTx({
+  jobId,
+  stars,
+  boardId,
+}: {
+  jobId: string;
+  stars: number;
+  boardId?: string;
+}): Transaction {
+  return addSubmitFirstReviewToTx(new Transaction(), { jobId, stars, boardId });
+}
+
+/** S.1335 — SDK spike ceiling on reviews per PTB: the same number as
+ *  releases (one small MoveCall each). The product cap is 10 at prepare /
+ *  marketplace / UI (`BULK_JOB_MAX`), never here. */
+export const MAX_REVIEWS_PER_TX = MAX_RELEASES_PER_TX;
+
+/** S.1335 — "rate all unreviewed": N buyer star reviews, ONE PTB, one
+ *  signature. Each item takes its own door exactly as the single builders
+ *  would — `scoreId` present → `submit_review`, absent → the seller's
+ *  `submit_first_review` — appended in INPUT ORDER. Shared objects (a
+ *  seller's AgentScore, the ScoreBoard, FeeConfig, Clock) are one input
+ *  each (`tx.object` dedupes by id), so a same-seller wave is sequential
+ *  mutation of one score — what we want. All-or-nothing: one abort rates
+ *  none. Empty / over the ceiling / duplicate jobId refuse up front (never
+ *  build a PTB that aborts on its second review of one job). Per-item
+ *  `stars` so the SDK stays general; the hosts send ONE value per wave. */
+export function buildSubmitReviewsTx(
+  jobs: Array<{ jobId: string; stars: number; scoreId?: string; boardId?: string }>,
+): Transaction {
+  const label = 'Rate all unreviewed';
+  if (jobs.length === 0) {
+    throw new T2000Error('INVALID_INPUT', `${label}: pick at least one job.`);
+  }
+  if (jobs.length > MAX_REVIEWS_PER_TX) {
+    throw new T2000Error(
+      'INVALID_INPUT',
+      `${label}: ${jobs.length} jobs exceeds the ${MAX_REVIEWS_PER_TX}-per-transaction ceiling — run it in smaller sets.`,
+    );
+  }
+  const seen = new Set<string>();
+  for (const j of jobs) {
+    const key = j.jobId.toLowerCase();
+    if (seen.has(key)) {
+      throw new T2000Error(
+        'INVALID_INPUT',
+        `${label}: job ${j.jobId} is listed twice — a job is rated once per wave.`,
+      );
+    }
+    seen.add(key);
+  }
+  const tx = new Transaction();
+  for (const j of jobs) {
+    if (j.scoreId) {
+      addSubmitReviewToTx(tx, { scoreId: j.scoreId, jobId: j.jobId, stars: j.stars });
+    } else {
+      addSubmitFirstReviewToTx(tx, { jobId: j.jobId, stars: j.stars, boardId: j.boardId });
+    }
+  }
   return tx;
 }

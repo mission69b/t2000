@@ -1,9 +1,14 @@
+import { Transaction } from '@mysten/sui/transactions';
 import { describe, it, expect } from 'vitest';
 import {
   MAINNET_A2A_SCORE_BOARD_ID,
   PROVEN_MIN_REVIEWS,
   buildSubmitFirstReviewTx,
   buildSubmitReviewTx,
+  addSubmitFirstReviewToTx,
+  addSubmitReviewToTx,
+  buildSubmitReviewsTx,
+  MAX_REVIEWS_PER_TX,
   deriveAgentScoreId,
   activeCapForLevel,
   effectiveSellerLevel,
@@ -110,6 +115,84 @@ describe('review tx builders', () => {
     for (const stars of [0, 6, 4.5, Number.NaN]) {
       expect(() => buildSubmitReviewTx({ scoreId: BOARD, jobId: JOB, stars })).toThrow(/1-5/);
     }
+  });
+});
+
+// S.1335 — N buyer reviews in ONE PTB, mirroring buildReleaseJobsTx.
+describe('buildSubmitReviewsTx (S.1335 rate all unreviewed)', () => {
+  const SCORE = `0x${'c'.repeat(64)}`;
+  const jobN = (n: number) => `0x${String(n).padStart(64, '0')}`;
+  const moveCalls = (tx: ReturnType<typeof buildSubmitReviewsTx>) =>
+    tx
+      .getData()
+      .commands.filter((c) => 'MoveCall' in c)
+      .map((c) => c.MoveCall!);
+
+  it('the single wrappers still emit the same target via the add* helpers', () => {
+    const a = buildSubmitReviewTx({ scoreId: SCORE, jobId: JOB, stars: 5 });
+    const b = addSubmitReviewToTx(new (a.constructor as typeof Transaction)(), {
+      scoreId: SCORE,
+      jobId: JOB,
+      stars: 5,
+    });
+    expect(moveCalls(a).map((c) => `${c.module}::${c.function}`)).toEqual(['reputation::submit_review']);
+    expect(moveCalls(b).map((c) => `${c.module}::${c.function}`)).toEqual(['reputation::submit_review']);
+    const f = buildSubmitFirstReviewTx({ boardId: BOARD, jobId: JOB, stars: 4 });
+    const g = addSubmitFirstReviewToTx(new (f.constructor as typeof Transaction)(), {
+      boardId: BOARD,
+      jobId: JOB,
+      stars: 4,
+    });
+    expect(moveCalls(f)[0]?.function).toBe('submit_first_review');
+    expect(moveCalls(g)[0]?.function).toBe('submit_first_review');
+  });
+
+  it('one item → exactly the single builder\'s call', () => {
+    const tx = buildSubmitReviewsTx([{ jobId: JOB, stars: 5, scoreId: SCORE }]);
+    expect(moveCalls(tx).map((c) => c.function)).toEqual(['submit_review']);
+  });
+
+  it('10 later reviews → 10× submit_review on ONE Transaction, input order', () => {
+    const jobs = Array.from({ length: 10 }, (_, i) => ({ jobId: jobN(i + 1), stars: 5, scoreId: SCORE }));
+    const tx = buildSubmitReviewsTx(jobs);
+    const calls = moveCalls(tx);
+    expect(calls).toHaveLength(10);
+    expect(calls.every((c) => c.module === 'reputation' && c.function === 'submit_review')).toBe(true);
+    // Shared objects are ONE input each — 10 reviews of one seller share
+    // the score, FeeConfig and Clock inputs.
+    const objectInputs = tx.getData().inputs.filter((i) => 'UnresolvedObject' in i || 'Object' in i);
+    expect(objectInputs.length).toBeLessThan(10 * 5);
+  });
+
+  it('mixed first + later reviews route each item to its own door, in order', () => {
+    const tx = buildSubmitReviewsTx([
+      { jobId: jobN(1), stars: 5, scoreId: SCORE },
+      { jobId: jobN(2), stars: 3, boardId: BOARD },
+      { jobId: jobN(3), stars: 4, scoreId: SCORE },
+    ]);
+    expect(moveCalls(tx).map((c) => c.function)).toEqual([
+      'submit_review',
+      'submit_first_review',
+      'submit_review',
+    ]);
+  });
+
+  it('refuses empty, over the ceiling, duplicate ids, and bad stars', () => {
+    expect(() => buildSubmitReviewsTx([])).toThrow(/at least one/);
+    const many = Array.from({ length: MAX_REVIEWS_PER_TX + 1 }, (_, i) => ({
+      jobId: jobN(i + 1),
+      stars: 5,
+      scoreId: SCORE,
+    }));
+    expect(() => buildSubmitReviewsTx(many)).toThrow(/ceiling/);
+    expect(() =>
+      buildSubmitReviewsTx([
+        { jobId: JOB, stars: 5, scoreId: SCORE },
+        { jobId: JOB.toUpperCase().replace('0X', '0x'), stars: 4, scoreId: SCORE },
+      ]),
+    ).toThrow(/listed twice/);
+    expect(() => buildSubmitReviewsTx([{ jobId: JOB, stars: 0, scoreId: SCORE }])).toThrow(/1-5/);
+    expect(MAX_REVIEWS_PER_TX).toBe(25);
   });
 });
 
