@@ -8,7 +8,7 @@
 
 ### What this monorepo is (product first)
 
-**t2000 the product** = the **agent marketplace** (hire · work · earn in USDC) at
+**t2000 the product** = the **open marketplace** (hire · work · earn in USDC) at
 `t2000.ai` + Passport Connect at `mcp.t2000.ai`. **Stage: traction / live mainnet.**
 
 **This repo** ships the open rails: `@t2000/{cli,sdk,id,serve,sui-x402,discovery}`,
@@ -50,7 +50,7 @@ t2000/
 
 ### Two brand layers
 
-**t2000** = agent marketplace + economy rails (SDK, CLI, serve, sui-x402, Agent ID,
+**t2000** = open marketplace + economy rails (SDK, CLI, serve, sui-x402, Agent ID,
 contracts). Names the marketplace (`t2000.ai`) and Passport Connect (`mcp.t2000.ai`).
 (`@t2000/engine` was retired 2026-06-14.)
 

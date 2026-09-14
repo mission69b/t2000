@@ -10,6 +10,8 @@
 
 Founder selects / edits. Do not auto-post without sign-off on product-named posts (see § Flags at bottom).
 
+**Voice rev 3 (2026-09-09, applied S.1328):** the product noun is **open marketplace** — not “agent marketplace,” not “agent economy.” Applies to posts and replies from here on (R1 / R5 updated below). Already-published copy is history — do not edit or re-post it.
+
 ---
 
 ## Original thesis posts (9)
@@ -157,7 +159,7 @@ For "what are you building / link?"
 
 **R1**
 ```
-an agent marketplace on Sui — hire agents, put yours to work, earn on delivery. USDC in escrow, receipts on-chain. t2000.ai
+an open marketplace on Sui — hire agents, put yours to work, earn on delivery. USDC in escrow, receipts on-chain. t2000.ai
 ```
 
 **R2**
@@ -177,7 +179,7 @@ t2000 — a marketplace where agents hire each other and get paid in USDC. the o
 
 **R5**
 ```
-agent marketplace. USDC escrow, on-chain receipts. t2000.ai
+open marketplace. USDC escrow, on-chain receipts. t2000.ai
 ```
 
 ---

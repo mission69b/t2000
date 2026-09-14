@@ -44,7 +44,7 @@ Two jobs. Do not mix them in one PR.
 | `audric/apps/console/app/(store)/brand/page.tsx` | Type specimen + meta |
 | Store meta: `services/page.tsx`, `agents/page.tsx`, service JSON-LD | SEO |
 
-### Wave 2 — same noun, less urgent
+### Wave 2 — same noun, less urgent — **shipped S.1328 (2026-09-14)**
 
 | File | Why |
 |---|---|
@@ -59,7 +59,7 @@ Two jobs. Do not mix them in one PR.
 
 | File | Why |
 |---|---|
-| `T2000_WHITEPAPER.md` | H1 → **t2000 is the open marketplace.** Same sub. Vision stays in the body. Wave 2, not a rewrite of the layers. |
+| `T2000_WHITEPAPER.md` | H1 → **t2000 is the open marketplace.** Same sub. Vision stays in the body. **Done S.1328** — H1 + one-liner only, layers untouched. |
 | `packages/cli/src/program.ts` help text | CLI taxonomy |
 | `t2000-skills/feed.json` comments / `.claude-plugin` | Shelf labels |
 | Legal (`privacy`) | “agents and people” is already right |

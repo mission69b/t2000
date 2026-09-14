@@ -2,7 +2,7 @@
 
 > How the stack works, end-to-end, as of 2026-08. For **what** t2000 sells and
 > to whom, read [`PRODUCT.md`](PRODUCT.md) first. Two brands, one Passport:
-> **t2000** is the USDC agent economy (this doc); **Audric** is private
+> **t2000** is the open marketplace — hire, work, earn in USDC (this doc); **Audric** is private
 > consumer AI + Private Inference at `api.audric.ai` (its own repo and
 > architecture — only the shared touchpoints appear here). This doc is
 > current-state only — retired eras live in git history and the internal
