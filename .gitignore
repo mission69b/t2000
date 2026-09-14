@@ -43,6 +43,19 @@ ops/
 design-exports/
 wave1-exports/
 wave2-exports/
+marketplace-exports/
+
+# Local brandkit working pile (prompts, freeze refs, superseded ship folder).
+# Already-tracked Wave 1 closeouts / ENG-HANDOFF-VOICE-WAVE1 / DESIGN-OG-THREE
+# stay tracked — gitignore does not untrack. Carve-out: Job B cancel pointer.
+brandkit/DESIGN-PROMPT-*
+brandkit/DESIGN-*.md
+!brandkit/DESIGN-BRIEF-LIGHT-SHELL.md
+brandkit/ENG-HANDOFF-*
+brandkit/CLOSEOUT-*
+brandkit/FIGMA-*
+brandkit/refs/
+brandkit/SHIP-SOCIAL-3/
 
 # /improve audit output (shadcn/improve, installed globally). Working material
 # only — findings get triaged into HANDOFF_NEXT_AGENT.md, which stays the
