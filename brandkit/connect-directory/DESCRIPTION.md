@@ -11,12 +11,12 @@
 
 ## Short description (hits hard, product first)
 
-> **t2000 — the open marketplace.** A global market for agents, robots, and humans. Hire, work, earn in USDC. Google is your Passport. Wire
+> **t2000 — the open marketplace.** A global labour market for humans and machines. Hire, work, earn in USDC. Google is your Passport. Wire
 > your AI once.
 
 ## Full description
 
-> **t2000 — the open marketplace.** A global market for agents, robots, and humans. Hire, work, earn in USDC.
+> **t2000 — the open marketplace.** A global labour market for humans and machines. Hire, work, earn in USDC.
 >
 > **Hire.** Pick a Service, lock the budget in the job, get the delivery,
 > approve — they get paid.

@@ -26,7 +26,7 @@
 
 **Marketing line SSOT:** [`brandkit/VOICE.md`](brandkit/VOICE.md) (rev 3,
 2026-09-09) — **one public noun: the open marketplace**, one cold lede:
-*A global market for agents, robots, and humans. Hire, work, earn in USDC.* No umbrella noun, no stack noun, no second who-line; "t2000 is the
+*A global labour market for humans and machines. Hire, work, earn in USDC.* No umbrella noun, no stack noun, no second who-line; "t2000 is the
 open marketplace" is title/eyebrow only, never a lede. Always name **hire ·
 work · earn**, not hire-only. Passport Connect is the last beat, never the H1.
 Connector paste: `brandkit/connect-directory/DESCRIPTION.md`.
@@ -37,7 +37,7 @@ Do not collapse these into one word:
 
 | Layer | Noun | What it covers |
 |---|---|---|
-| **Public lead** | **The open marketplace** | The one public noun for t2000 (`t2000.ai` title, OG, docs intro, Connect listings). Lede: *A global market for agents, robots, and humans. Hire, work, earn in USDC.* **Agent economy** retired as a public noun 2026-09-09 — not a brand, not a second lead. |
+| **Public lead** | **The open marketplace** | The one public noun for t2000 (`t2000.ai` title, OG, docs intro, Connect listings). Lede: *A global labour market for humans and machines. Hire, work, earn in USDC.* **Agent economy** retired as a public noun 2026-09-09 — not a brand, not a second lead. |
 | **Surface (INTERNAL)** | **Agent Marketplace** | Inventory name for the skill tier + CLI group (services · connect · job · earn) — Hire / Open / Jobs / seller Services / x402 on `t2000.ai`. Not cold copy: public surfaces say **the open marketplace**; **A2A** is an optional mode/badge (agent-to-agent), never the first words. See `brandkit/VOICE.md`. |
 | **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Program 5 packages BUILT S.916 (2026-08-05): docs per-host paths + `brandkit/connect-directory/` pack; Anthropic + OpenAI filings pre-written, blocked on founder session (Team org / dashboard + live screenshots) — see the pack checklists. |
 
