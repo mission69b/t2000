@@ -1,6 +1,6 @@
 # t2000 voice — product copy SSOT
 
-> **Use this pack for any public string.** 2026-09-09 (rev 3 — one path).
+> **Use this pack for any public string.** 2026-09-15 (rev 4 — humans and machines; rev 3 2026-09-09 was one path).
 > Noun = **open marketplace**. Fold = **GET WORK DONE**. Support = the
 > sentence below. Audric unchanged: **AI you can put to work**. Store
 > stays **dark**. Technical product map: `PRODUCT.md`. Marketing one-pager:
@@ -20,7 +20,7 @@ do not use “t2000 is the open marketplace” as the H1.
 ```
 OPEN MARKETPLACE
 GET WORK DONE
-A global labour market for agents, robots, and humans. Hire, work, earn in USDC.
+A global labour market for humans and machines. Hire, work, earn in USDC.
 
 Browse jobs · Post work
 Open · In flight · Settled in USDC
@@ -68,11 +68,16 @@ headline.
 
 ## Who it’s for
 
-**Fold / lede:** A global labour market for agents, robots, and humans. Hire, work, earn in USDC.
+**Fold / lede:** A global labour market for humans and machines. Hire, work, earn in USDC.
 
-Robots are the tent, not a live door. Don’t add a robot product, a Why row,
-or a Hire-a-robot CTA until that door exists. The four cares still say
-“agents, machines, and humans” — don’t force robots into every block.
+**Humans and machines** — humans first, always both. Not “for machines”
+(a machines-only lede reads as agents-only). Not a who-list: not the old
+three-way agents/robots/humans roll, no six-item glyph roll (vehicles, sensors,
+“other machines”). Robots are the tent, not a live door: the WHO band’s
+three tent icons are **Human · Agent · Robot** (that order, singular
+`ROBOT`) — don’t add a robot product, a Why row, or a Hire-a-robot CTA
+until that door exists, and don’t add a fourth icon or collapse to two.
+The four cares say **Humans and machines. Same market, anywhere.**
 
 ---
 
@@ -83,7 +88,7 @@ the job. Do not dump the process strip into Why.
 
 ```
 Open, global
-Agents, machines, and humans. Same market, anywhere.
+Humans and machines. Same market, anywhere.
 
 Start at $0
 Posting is free. Claiming costs nothing.
@@ -105,7 +110,8 @@ released, process strip, hire rail). Never “0% fees.”
 **Title / SEO title:** t2000 — the open marketplace.  
 **OG H1 (the one static card):** Open marketplace.  
 **SEO / meta description / OG support / docs lede / Connect short / email lede / README sub:**  
-A global labour market for agents, robots, and humans. Hire, work, earn in USDC.  
+A global labour market for humans and machines. Hire, work, earn in USDC.  
+(One sentence, always **labour** — the no-labour “A global market for…” split is retired 2026-09-15.)  
 **Home H1:** GET WORK DONE  
 **Home CTAs:** Browse jobs · Post work  
 **Home proof (globe key):** Open · In flight · Settled in USDC  
@@ -132,8 +138,8 @@ t2000 — the open marketplace. Hire, work, earn in USDC. Post work, list a
 service, claim open jobs.
 
 **Short:**  
-t2000 — the open marketplace. A global market for agents, robots, and
-humans. Hire, work, earn in USDC. Google is your Passport. Wire your AI
+t2000 — the open marketplace. A global labour market for humans and
+machines. Hire, work, earn in USDC. Google is your Passport. Wire your AI
 once.
 
 **Control / Connect (after the hit):**  
