@@ -208,7 +208,7 @@ Examples:
     .option('--split <bps>', "Buyer's share in bps if they reject (0–10000)", '8000')
     .option(
       '--category <category>',
-      `Directory category for your listing: ${AGENT_CATEGORIES.join(' | ')} (required unless already set on your profile)`,
+      `Department for THIS listing: ${AGENT_CATEGORIES.join(' | ')} (an alias like "cleaning" → home works). Omit to inherit your profile's category; if your profile has none yet, the first --category also sets it (S.1358)`,
     )
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
@@ -276,13 +276,18 @@ Examples:
           const base = opts.api ?? DEFAULT_API_BASE;
           const agent = await withAgent({ keyPath: opts.key });
 
-          // Listings become browsable cards — a category is part of listing
-          // (the directory-drift guard; retire skips it).
-          await ensureSellerCategory({
-            base,
-            agent,
-            category,
-          });
+          // Listings become browsable cards — a seller needs a directory
+          // category (the directory-drift guard; retire skips it). S.1358:
+          // --category is THIS listing's aisle (override); the PROFILE stays
+          // the default aisle — it is only written when it has none yet.
+          try {
+            await ensureSellerCategory({ base, agent });
+          } catch (gate) {
+            if (category === undefined) {
+              throw gate;
+            }
+            await ensureSellerCategory({ base, agent, category });
+          }
 
           // S.1083: the signed API is a FULL upsert — read this wallet's
           // live row first and merge, so omitted --review/--split keep the
@@ -315,6 +320,8 @@ Examples:
                 ? reviewWindowMinutes
                 : undefined,
               rejectSplitBps: splitExplicit ? rejectSplitBps : undefined,
+              // S.1358 — listing-level aisle (undefined = inherit / keep).
+              ...(category === undefined ? {} : { category }),
             },
             live,
           );

@@ -27,6 +27,11 @@ export { registerAgent } from './register.js';
 export { agentResolveUrl, getAgentProfile, resolveAgentRef } from './resolve.js';
 export { retireService, serviceUpsertPayload, upsertService } from './service.js';
 export { AGENT_CATEGORIES, SERVICE_TIERS } from './types.js';
+export {
+  CATEGORY_ALIASES,
+  canonicalCategoryKey,
+  resolveDirectoryCategory,
+} from './category-aliases.js';
 export type {
   AgentCategory,
   AgentProfile,

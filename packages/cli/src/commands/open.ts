@@ -29,6 +29,7 @@ import {
   getOpening,
   getSuiClient,
   listOpenJobs,
+  normalizeJobPlace,
   minSellerLevelForTrustRequirement,
   parseTrustRequirement,
   postOpenJob,
@@ -56,6 +57,7 @@ import {
 } from '../output.js';
 import { collectImage, IMAGE_FLAG_HELP, resolveImageFlags } from './job-images.js';
 import { describePlace, hostGeocoder, MODE_FLAG_HELP, resolveWhereFlags, WHERE_FLAG_HELP } from './job-where.js';
+import { CATEGORY_FLAG_HELP, parseCategory } from '../lib/agent-category.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 const MAX_BRIEF_BYTES = 16 * 1024;
@@ -141,6 +143,7 @@ export function registerOpenVerbs(group: Command) {
     .option('--image <url>', `${IMAGE_FLAG_HELP} — reference images, pinned with the brief`, collectImage, [] as string[])
     .option('--mode <mode>', MODE_FLAG_HELP)
     .option('--where <place>', WHERE_FLAG_HELP)
+    .option('--category <department>', `${CATEGORY_FLAG_HELP} — the aisle this job sits in (on-site work: home | field | logistics | events)`)
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -154,6 +157,7 @@ export function registerOpenVerbs(group: Command) {
         image?: string[];
         mode?: string;
         where?: string;
+        category?: string;
         key?: string;
         api?: string;
       }) => {
@@ -168,6 +172,8 @@ export function registerOpenVerbs(group: Command) {
           const images = resolveImageFlags(opts.image);
           // S.1300 — mode + place (a query geocodes through the host once).
           const place = await resolveWhereFlags(opts, hostGeocoder(base));
+          // S.1358 — the department (slug or alias), validated before money moves.
+          const category = opts.category === undefined ? undefined : parseCategory(opts.category);
           // The budget escrows ON-CHAIN at post — a real outflow from the
           // buyer's wallet, so it belongs under the same cap as a hire.
           // (Claiming is free and is never recorded as spend.)
@@ -189,6 +195,7 @@ export function registerOpenVerbs(group: Command) {
             ...(images.length > 0 ? { images } : {}),
             ...(place.mode !== 'remote' ? { mode: place.mode } : {}),
             ...(place.where ? { where: place.where } : {}),
+            ...(category ? { category } : {}),
           });
           recordSpendIfLanded(maxUsdc, digest);
           const openingId = await resolveCreated(digest, '::opening::Opening<');
@@ -199,6 +206,7 @@ export function registerOpenVerbs(group: Command) {
               ...(images.length > 0 ? { images } : {}),
               mode: place.mode,
               ...(place.where ? { where: place.where } : {}),
+              ...(category ? { category } : {}),
             });
             return;
           }
@@ -240,16 +248,23 @@ export function registerOpenVerbs(group: Command) {
     .option('--status <status>', 'open | claimed | cancelled | refunded', 'open')
     .option('--limit <n>', 'Rows per page (default 24)', '24')
     .option('--offset <n>', 'Page start — feed a page\'s nextOffset back in', '0')
+    .option('--category <department>', `${CATEGORY_FLAG_HELP} — WHAT (the aisle)`)
+    .option('--mode <mode>', `${MODE_FLAG_HELP} — WHERE (remote | on-site | either)`)
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
-    .action(async (query: string | undefined, opts: { status: string; limit: string; offset: string; api?: string }) => {
+    .action(async (query: string | undefined, opts: { status: string; limit: string; offset: string; category?: string; mode?: string; api?: string }) => {
       try {
         const base = opts.api ?? DEFAULT_API_BASE;
         const offset = Number(opts.offset) || 0;
+        // S.1358 — WHAT × WHERE filters, validated locally before the read.
+        const category = opts.category === undefined ? undefined : parseCategory(opts.category);
+        const mode = opts.mode === undefined ? undefined : normalizeJobPlace(opts.mode, null).mode;
         // S.1156: ONE page with honest counts — the API says what it holds
         // (total / truncated / nextOffset); the CLI never invents a total.
         const page = await listOpenJobs(base, {
           status: opts.status as OpenJobRow['status'] & OpenJobRow['status'],
           query,
+          ...(category ? { category } : {}),
+          ...(mode ? { mode } : {}),
           limit: Number(opts.limit),
           offset,
         } as never);

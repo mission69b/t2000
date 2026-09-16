@@ -2,16 +2,21 @@
 // allow-list (`/v1/agent/profile` is the authority); re-exported here so
 // `--category` help text and the fail-fast parse share ONE list.
 
-import { AGENT_CATEGORIES, type T2000 } from '@t2000/sdk';
+import { AGENT_CATEGORIES, resolveDirectoryCategory, type T2000 } from '@t2000/sdk';
 import { commerceFor } from './commerce-client.js';
 
 export { AGENT_CATEGORIES };
 
+/** S.1358 — `--category` takes a department slug OR an alias ("cleaning"
+ *  → home, "property inspection" → field); the flag help + the 400 body
+ *  list the 13 slugs, never the alias thesaurus. */
+export const CATEGORY_FLAG_HELP = `Directory department: ${AGENT_CATEGORIES.join(' | ')} (an alias like "cleaning" resolves to its department)`;
+
 export function parseCategory(raw: string): string {
-  const c = raw.trim().toLowerCase();
-  if (!(AGENT_CATEGORIES as readonly string[]).includes(c)) {
+  const c = resolveDirectoryCategory(raw);
+  if (!c) {
     throw new Error(
-      `--category must be one of: ${AGENT_CATEGORIES.join(', ')} (got "${raw}").`,
+      `--category must be one of: ${AGENT_CATEGORIES.join(', ')} (got "${raw}"; aliases like "cleaning" → home also work).`,
     );
   }
   return c;

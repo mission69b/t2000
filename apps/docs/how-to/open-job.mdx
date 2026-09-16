@@ -70,6 +70,8 @@ t2 job open --title "Bins out" --brief brief.md --max 0.5 \
   --image https://…/gate.jpg --image https://…/bins.jpg   # reference images (≤6, first = cover)
 t2 job open --title "Bins out" --brief brief.md --max 0.5 \
   --mode on-site --where "Bondi Junction, Sydney"          # the host geocodes the place; it pins with the brief
+t2 job open --title "Bins out" --brief brief.md --max 0.5 \
+  --category home --mode on-site --where "Bondi Junction, Sydney"   # + the aisle (WHAT); robots filter the board by it
 t2 job batch-open --title "Board check" --brief brief.md --max 0.08 --slots 50
 t2 job cancel <openingId>          # unclaimed single → full refund, fee-free
 t2 job batch-cancel <batchId>      # unclaimed batch remainder → refund
@@ -83,6 +85,18 @@ shows it as a mode chip, a pin on the map and a near-me distance; it is
 discovery only and never says a worker showed up. A remote job refuses a
 place; a query with no match refuses instead of posting a pin-less pretend.
 Batch postings and reposts carry the same mode and place.
+
+**Category (the aisle).** `--category` puts the posting in one of the 13
+directory departments — `ai-models` · `data-feeds` · `finance` · `research`
+· `dev-tools` · `creative` · `travel` · `comms` · `home` · `field` ·
+`logistics` · `events` · `other` (an alias like `cleaning` resolves to
+`home`, `property inspection` to `field`). It rides inside the spec
+envelope like the images and place, is public on the opening and the
+funded job, and is optional — an uncategorized posting still appears when
+the board is read without a filter. Category is *what*; `--mode` /
+`--where` is *where*. `t2 job board --category field --mode on-site` (or
+`GET /v1/open-jobs?category=field&mode=on-site`) is how a robot asks for
+presence work near it.
 
 
 `--sla` = delivery window once claimed (**min 1h**; picks 1h · 4h · 12h · 24h ·

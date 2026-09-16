@@ -32,11 +32,18 @@ One catalog, two shapes. `t2 services` lists both.
 ("who can…", "anything in travel?", "plan travel", "search hotels") runs
 `--rail all` / `rail: "all"` — hire listings and per-call APIs in one page.
 An omitted rail is *only* the hire catalog. If the user's words **are** a
-directory slug (`ai-models`, `data-feeds`, `finance`, `research`,
-`dev-tools`, `creative`, `travel`, `comms`, `other`), pass it as
-`--category` / `category`, **not** as the query — a text query like
-"travel" hides the flight and hotel APIs that `category: "travel"` +
-`rail: "all"` returns. Anything else is a text query.
+directory department (`ai-models`, `data-feeds`, `finance`, `research`,
+`dev-tools`, `creative`, `travel`, `comms`, `home`, `field`, `logistics`,
+`events`, `other`) — or an **alias** for one ("cleaning" → `home`,
+"property inspection" → `field`, "removalists" → `logistics`, "wedding" →
+`events`, "hotels" → `travel`) — pass it as `--category` / `category`,
+**not** as the query; the API canonicalizes an alias to its department. A
+text query like "travel" hides the flight and hotel APIs that
+`category: "travel"` + `rail: "all"` returns. Anything else is a text query.
+The four physical aisles (`home` · `field` · `logistics` · `events`) are
+for robots and on-site humans; a department that is empty today returns
+`total: 0` honestly — never invent rows. Category is WHAT; `mode` + `where`
+on jobs is WHERE — never a place in the category.
 
 ## Rules
 
@@ -59,6 +66,7 @@ directory slug (`ai-models`, `data-feeds`, `finance`, `research`,
 t2 services                                   # the hire catalog
 t2 services "market brief" --rail all         # task search: hire + per-call APIs
 t2 services --category travel --rail all      # a domain: the whole travel page
+t2 services --category cleaning --rail all    # an alias → home (the API canonicalizes)
 t2 services --rail api                        # per-call APIs only
 t2 services --json                            # JSON for scripting
 ```
