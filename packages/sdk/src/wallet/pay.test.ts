@@ -624,6 +624,53 @@ describe('payWithX402 — content-type defaulting', () => {
   });
 });
 
+// --- S.1364: injected merchant fetch (browser same-origin relay) --------------
+
+describe('payWithX402 / probeX402 — injected merchant fetch', () => {
+  it('routes BOTH seller legs (402 probe + X-PAYMENT retry) through the injected fetch; global fetch untouched', async () => {
+    const relay = vi
+      .fn()
+      .mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }))
+      .mockResolvedValueOnce(
+        mockResponse({ status: 200, body: { ok: true }, headers: { 'X-PAYMENT-RESPONSE': settleHeaderValue('0xrelay') } }),
+      );
+
+    const result = await payWithX402({
+      signer: makeSigner(),
+      client: makeClient({ total: '1000000', coins: [] }),
+      // activityReport off: that POST goes to t2000.ai on global fetch by
+      // design (B2) — it is not merchant traffic and must NOT ride the hook.
+      options: { url: 'https://paid.example/x', method: 'POST', body: '{}', maxPrice: 0.05, activityReport: false },
+      fetch: relay as unknown as typeof globalThis.fetch,
+    });
+
+    // The seller never sees global fetch — both legs went through the hook.
+    expect(fetchMock.mock.calls.some((c) => c[0] === 'https://paid.example/x')).toBe(false);
+    expect(relay).toHaveBeenCalledTimes(2);
+    expect(relay.mock.calls[0]?.[0]).toBe('https://paid.example/x');
+    const paidInit = relay.mock.calls[1]?.[1] as { headers?: Record<string, string> };
+    expect(paidInit.headers?.['X-PAYMENT']).toBe('signed-x402-header');
+    expect(result.paid).toBe(true);
+    expect(result.receipt?.reference).toBe('0xrelay');
+  });
+
+  it('probeX402 uses the injected fetch too; omitting it keeps the global default', async () => {
+    const relay = vi.fn().mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }));
+    const probe = await probeX402({
+      network: 'mainnet',
+      options: { url: 'https://paid.example/x', method: 'POST', body: '{}', maxPrice: 0.05 },
+      fetch: relay as unknown as typeof globalThis.fetch,
+    });
+    expect(relay).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(probe.kind).toBe('payable');
+
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: 402, body: x402Accepts('20000') }));
+    await probeX402({ network: 'mainnet', options: { url: 'https://paid.example/x', method: 'POST', body: '{}', maxPrice: 0.05 } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 // --- S.919: probeX402 — the READ half of the pay split -----------------------
 // The probe must mirror every payWithX402 branch WITHOUT signing or spending,
 // so the portal's read tool can never promise terms the write tool refuses.
