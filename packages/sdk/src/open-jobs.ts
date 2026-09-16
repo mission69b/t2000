@@ -110,6 +110,9 @@ export interface OpenJobRow {
   /** S.1300 — the structured place (on-site / either rows that carry one;
    *  null / absent = no location — never a pin). */
   where?: JobWhere | null;
+  /** S.1358 — the directory department the buyer set on the posting
+   *  (one of AGENT_CATEGORIES); absent = uncategorized (pre-S.1358 rows). */
+  category?: string | null;
   createdAtMs: number;
   updatedAtMs: number;
 }
@@ -118,6 +121,11 @@ export interface OpenJobFilter {
   status?: 'open' | 'claimed' | 'cancelled' | 'refunded';
   query?: string;
   buyer?: string;
+  /** S.1358 — WHAT: a department slug or alias (`category=` on the wire;
+   *  the API canonicalizes). Omitted = every row, uncategorized included. */
+  category?: string;
+  /** S.1358 — WHERE: work mode (`mode=` on the wire). */
+  mode?: JobMode;
   limit?: number;
   /** Page start (0-based) — feed a page's `nextOffset` back in. */
   offset?: number;
@@ -146,6 +154,8 @@ export async function listOpenJobs(
   if (filter.status) params.set('status', filter.status);
   if (filter.query) params.set('q', filter.query);
   if (filter.buyer) params.set('buyer', filter.buyer);
+  if (filter.category) params.set('category', filter.category);
+  if (filter.mode) params.set('mode', filter.mode);
   if (filter.limit) params.set('limit', String(filter.limit));
   if (filter.offset) params.set('offset', String(filter.offset));
   const qs = params.size > 0 ? `?${params.toString()}` : '';
@@ -355,14 +365,17 @@ export function postOpenJob(
     /** S.1300 — the place: a structured `JobWhere`, or a query string the
      *  host geocodes once (MapTiler). On-site / either only. */
     where?: JobWhere | string | null;
+    /** S.1358 — directory department (slug or alias); optional. */
+    category?: string | null;
   },
 ): Promise<string> {
-  const { trustRequirement = 'open', images, mode, where, ...rest } = input;
+  const { trustRequirement = 'open', images, mode, where, category, ...rest } = input;
   const imageList = normalizeJobImages(images);
   return sponsoredOpeningVerb(base, signer, 'open-create', {
     ...rest,
     ...(imageList.length > 0 ? { images: imageList } : {}),
     ...placeParams({ mode, where }),
+    ...(category ? { category } : {}),
     // Mapped client-side so the rail contract stays value-stable — the
     // server re-asserts the same mapping and always writes claimPolicy 0.
     trustRequirement,
@@ -492,17 +505,20 @@ export function postBatchOpenJob(
     /** S.1300 — work mode + place for every job in the wave. */
     mode?: JobMode;
     where?: JobWhere | string | null;
+    /** S.1358 — directory department (slug or alias); optional. */
+    category?: string | null;
     /** Slots one agent may claim of this wave (default 1 — NOT the tier
      *  cap; the effective per-posting limit is min(this, tier cap)). */
     maxClaimsPerAgent?: number;
   },
 ): Promise<string> {
-  const { trustRequirement = 'open', images, mode, where, ...rest } = input;
+  const { trustRequirement = 'open', images, mode, where, category, ...rest } = input;
   const imageList = normalizeJobImages(images);
   return sponsoredOpeningVerb(base, signer, 'batch-open-create', {
     ...rest,
     ...(imageList.length > 0 ? { images: imageList } : {}),
     ...placeParams({ mode, where }),
+    ...(category ? { category } : {}),
     trustRequirement,
     minSellerLevel: minSellerLevelForTrustRequirement(trustRequirement),
     claimPolicy: 0,

@@ -41,6 +41,8 @@ export type LiveServiceRow = {
   requirements: unknown;
   deliverable: string;
   retired?: boolean;
+  /** S.1358 — listing-level department (null / absent = inherits the profile). */
+  category?: string | null;
 };
 
 export function mergeServiceUpsert(
@@ -54,6 +56,8 @@ export function mergeServiceUpsert(
     requirements: unknown;
     reviewWindowMinutes?: number;
     rejectSplitBps?: number;
+    /** S.1358 — listing-level department (undefined = inherit / keep live). */
+    category?: string;
   },
   live: LiveServiceRow | null,
 ): {
@@ -67,6 +71,7 @@ export function mergeServiceUpsert(
     rejectSplitBps: number;
     requirements: unknown;
     deliverable: string;
+    category?: string;
   };
   created: boolean;
   changed: string[];
@@ -82,6 +87,7 @@ export function mergeServiceUpsert(
     rejectSplitBps: args.rejectSplitBps ?? live?.rejectSplitBps ?? 8000,
     requirements: args.requirements,
     deliverable: args.deliverable.trim(),
+    ...(args.category === undefined ? {} : { category: args.category }),
   };
   if (!live) {
     return { payload, created: true, changed: [] };
@@ -100,6 +106,10 @@ export function mergeServiceUpsert(
   strDiff('name', payload.name, live.name);
   strDiff('description', payload.description, live.description);
   strDiff('deliverable', payload.deliverable, live.deliverable);
+  // S.1358 — a listing-level aisle counts as a change only when sent.
+  if (payload.category !== undefined && payload.category !== (live.category ?? undefined)) {
+    changed.push('category');
+  }
   numDiff('priceUsdc', payload.priceUsdc, live.priceUsdc);
   numDiff('slaMinutes', payload.slaMinutes, live.slaMinutes);
   numDiff(

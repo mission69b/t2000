@@ -7,14 +7,17 @@ import type { TransactionSigner } from '../signer.js';
 import { profileChallengeMessage, signChallenge } from './challenge.js';
 import { apiJson, invalidInput } from './http.js';
 import { getAgentProfile } from './resolve.js';
+import { resolveDirectoryCategory } from './category-aliases.js';
 import {
   AGENT_CATEGORIES,
   type ProfileUpdateInput,
 } from './types.js';
 
+/** A department slug OR an alias ("cleaning" → home, "property inspection"
+ *  → field; S.1358) → the canonical slug. Unknown → the 13-slug error. */
 export function parseAgentCategory(raw: string): string {
-  const c = raw.trim().toLowerCase();
-  if (!(AGENT_CATEGORIES as readonly string[]).includes(c)) {
+  const c = resolveDirectoryCategory(raw);
+  if (!c) {
     throw invalidInput(
       `category must be one of: ${AGENT_CATEGORIES.join(', ')} (got "${raw}").`,
     );

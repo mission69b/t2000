@@ -23,6 +23,12 @@ export const AGENT_CATEGORIES = [
   'creative',
   'travel',
   'comms',
+  // S.1358 — the physical / labor aisles (robots + on-site humans). Add-only;
+  // the audric copy (packages/accounts/src/agent-categories.ts) must match.
+  'home',
+  'field',
+  'logistics',
+  'events',
   'other',
 ] as const;
 export type AgentCategory = (typeof AGENT_CATEGORIES)[number];

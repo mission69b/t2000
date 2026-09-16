@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import {
+  MAX_JOB_IMAGES,
   customHireEnvelope,
   deliveryEnvelope,
   isCustomHireEnvelope,
-  MAX_JOB_IMAGES,
   normalizeJobImages,
   openPostEnvelope,
   parseDeliveryContent,
+  parseSpecCategory,
   parseSpecImages,
+  validateJobCategory,
   validateJobImages,
 } from './job-spec-envelope.js';
 
@@ -129,6 +131,25 @@ describe('customHireEnvelope / openPostEnvelope with images', () => {
     const e = JSON.parse(openPostEnvelope('Bins out', 'Two bins…', 5, { images: [IMG[0]] }));
     expect(e).toMatchObject({ type: 't2-acp-custom@1', title: 'Bins out', brief: 'Two bins…', images: [IMG[0]] });
     expect(isCustomHireEnvelope(openPostEnvelope('Bins out', 'Two bins…', 5))).toBe(true);
+  });
+});
+
+describe('category (S.1358)', () => {
+  it('omitted → byte-identical to the pre-S.1358 envelope; set → written last; alias canonicalizes', () => {
+    const before = openPostEnvelope('Bins out', 'Two bins…', 5);
+    expect(openPostEnvelope('Bins out', 'Two bins…', 5, { category: null })).toBe(before);
+    expect(openPostEnvelope('Bins out', 'Two bins…', 5, { category: '' })).toBe(before);
+    const withCat = openPostEnvelope('Bins out', 'Two bins…', 5, { mode: 'on-site', category: 'cleaning' });
+    const parsed = JSON.parse(withCat) as Record<string, unknown>;
+    expect(parsed.category).toBe('home');
+    expect(Object.keys(parsed).at(-1)).toBe('category');
+    expect(parseSpecCategory(withCat)).toBe('home');
+    expect(parseSpecCategory(before)).toBeNull();
+    expect(parseSpecCategory('not json')).toBeNull();
+  });
+  it('an unknown category refuses instead of pinning junk', () => {
+    expect(() => openPostEnvelope('x', 'y', 1, { category: 'sydney-locksmiths' })).toThrow(/category must be one of/);
+    expect(validateJobCategory(42)).toMatchObject({ valid: false });
   });
 });
 

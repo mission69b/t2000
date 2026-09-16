@@ -20,6 +20,9 @@ const TITLE_PREFIX_RE = /^title\s*:\s*(.+)$/i;
 const ENVELOPE_TITLE_MAX = 80;
 
 /** Max images per job (reference) and per delivery (proof). */
+import { resolveDirectoryCategory } from './commerce/category-aliases.js';
+import { AGENT_CATEGORIES, type AgentCategory } from './commerce/types.js';
+
 export const MAX_JOB_IMAGES = 6;
 
 export type JobImagesValidation =
@@ -270,6 +273,46 @@ export function distanceKm(
 /** The board's one near-me radius (D1b lock). */
 export const NEAR_ME_RADIUS_KM = 10;
 
+// ── Category (S.1358) ─────────────────────────────────────────────────────
+// The WHAT facet on the work unit: one of the 13 directory departments
+// (AGENT_CATEGORIES — a slug or an alias resolves to it). Optional on every
+// door (open / batch-open / repost / custom hire); written ONLY when set,
+// appended after `where`, so every pre-S.1358 envelope hashes byte-identically.
+// Public on the opening and on the funded job (it is the aisle, never the
+// claim-only exact where). Listing hires carry the listing's category instead.
+
+/** Validate a typed category for the envelope: undefined / null / '' → none;
+ *  a slug or alias → the slug; anything else → an error. */
+export function validateJobCategory(
+  input: unknown,
+): { valid: true; category: AgentCategory | null } | { valid: false; error: string } {
+  if (input === undefined || input === null || input === '') {
+    return { valid: true, category: null };
+  }
+  if (typeof input !== 'string') {
+    return { valid: false, error: 'category must be a directory slug (string).' };
+  }
+  const c = resolveDirectoryCategory(input);
+  if (!c) {
+    return {
+      valid: false,
+      error: `category must be one of ${AGENT_CATEGORIES.join(' | ')} (or an alias like "cleaning" → home).`,
+    };
+  }
+  return { valid: true, category: c };
+}
+
+/** READ the category off any spec content — fail-soft null. */
+export function parseSpecCategory(content: string): AgentCategory | null {
+  try {
+    const parsed = JSON.parse(content) as { category?: unknown };
+    const v = validateJobCategory(parsed.category);
+    return v.valid ? v.category : null;
+  } catch {
+    return null;
+  }
+}
+
 export type SpecEnvelopeOptions = {
   /** S.1299 — reference images (≤6 HTTPS; first = cover). Validated. */
   images?: readonly string[] | null;
@@ -277,6 +320,8 @@ export type SpecEnvelopeOptions = {
   mode?: JobMode | string | null;
   /** S.1300 — structured place (on-site / either only; written only when set). */
   where?: JobWhere | null;
+  /** S.1358 — directory department (slug or alias; written only when set). */
+  category?: string | null;
 };
 
 /** Title rules: an explicit title wins; otherwise the brief's first
@@ -301,6 +346,10 @@ export function customHireEnvelope(
   }
   const images = normalizeJobImages(opts.images);
   const place = normalizeJobPlace(opts.mode, opts.where);
+  const cat = validateJobCategory(opts.category);
+  if (!cat.valid) {
+    throw new Error(cat.error);
+  }
   return JSON.stringify({
     type: 't2-acp-custom@1',
     title: t || 'Custom job',
@@ -312,6 +361,9 @@ export function customHireEnvelope(
     // AFTER images so every S.1299 envelope stays byte-identical too.
     ...(place.mode !== DEFAULT_JOB_MODE ? { mode: place.mode } : {}),
     ...(place.where ? { where: place.where } : {}),
+    // S.1358 — the department, only when set; appended LAST for the same
+    // byte-stability reason.
+    ...(cat.category ? { category: cat.category } : {}),
   });
 }
 

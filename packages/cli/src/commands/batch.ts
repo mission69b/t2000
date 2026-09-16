@@ -47,6 +47,7 @@ import {
 } from '../output.js';
 import { collectImage, IMAGE_FLAG_HELP, resolveImageFlags } from './job-images.js';
 import { describePlace, hostGeocoder, MODE_FLAG_HELP, resolveWhereFlags, WHERE_FLAG_HELP } from './job-where.js';
+import { CATEGORY_FLAG_HELP, parseCategory } from '../lib/agent-category.js';
 
 const DEFAULT_API_BASE = process.env.T2000_API_URL ?? 'https://api.t2000.ai/v1';
 
@@ -69,6 +70,7 @@ export function registerBatchVerbs(group: Command) {
     .option('--image <url>', `${IMAGE_FLAG_HELP} — reference images for every job in the posting`, collectImage, [] as string[])
     .option('--mode <mode>', `${MODE_FLAG_HELP} — every job in the posting`)
     .option('--where <place>', WHERE_FLAG_HELP)
+    .option('--category <department>', `${CATEGORY_FLAG_HELP} — every job in the posting`)
     .option('--key <path>', 'Custom wallet path (default ~/.t2000/wallet.key)')
     .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
     .action(
@@ -78,6 +80,7 @@ export function registerBatchVerbs(group: Command) {
         image?: string[];
         mode?: string;
         where?: string;
+        category?: string;
         max: string;
         slots: string;
         maxClaimsPerAgent: string;
@@ -105,6 +108,7 @@ export function registerBatchVerbs(group: Command) {
           const brief = await resolveBrief(opts.brief);
           const images = resolveImageFlags(opts.image);
           const place = await resolveWhereFlags(opts, hostGeocoder(base));
+          const category = opts.category === undefined ? undefined : parseCategory(opts.category);
           // The WHOLE posting escrows at post — the spend gate sees the total.
           const totalUsdc = maxUsdc * slots;
           assertSpendAllowed(totalUsdc);
@@ -127,6 +131,7 @@ export function registerBatchVerbs(group: Command) {
             ...(images.length > 0 ? { images } : {}),
             ...(place.mode !== 'remote' ? { mode: place.mode } : {}),
             ...(place.where ? { where: place.where } : {}),
+            ...(category ? { category } : {}),
           });
           recordSpendIfLanded(totalUsdc, digest);
           const batchId = await resolveCreatedObjectId(
@@ -142,6 +147,7 @@ export function registerBatchVerbs(group: Command) {
               totalUsdc,
               mode: place.mode,
               ...(place.where ? { where: place.where } : {}),
+              ...(category ? { category } : {}),
             });
             return;
           }
