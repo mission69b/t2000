@@ -93,16 +93,34 @@ export type X402Probe =
  * (Invalid input still throws, exactly as `pay()` would, so a caller can't
  * probe a URL that could never be paid.)
  */
+/**
+ * S.1364 — the merchant HTTP hook. Every request to the SELLER (the unpaid
+ * 402 probe and the paid retry carrying `X-PAYMENT`) goes through this;
+ * default = `globalThis.fetch` (Connect, CLI, Node: talk to the seller
+ * directly — no CORS in play). A browser host (Audric chat, console Try-it)
+ * injects a same-origin relay so the page never issues a cross-origin
+ * `fetch` that a seller's bare OPTIONS would kill before anything signs.
+ * NOT on PayOptions — that object is the merchant contract (url / body /
+ * maxPrice); this is transport. Signing stays wherever the signer lives.
+ */
+export type MerchantFetch = typeof globalThis.fetch;
+
+const merchantFetch = (f: MerchantFetch | undefined): MerchantFetch =>
+  f ?? ((input, init) => globalThis.fetch(input, init));
+
 export async function probeX402(args: {
   network: string;
   options: PayOptions;
+  /** S.1364 — optional merchant transport (default: global fetch). */
+  fetch?: MerchantFetch;
 }): Promise<X402Probe> {
   const { network } = args;
+  const doFetch = merchantFetch(args.fetch);
   const pf = preflightPay({ url: args.options.url, maxPrice: args.options.maxPrice });
   if (!pf.valid) throw new T2000Error(pf.code, pf.error);
 
   const { reqInit } = normalizePayRequest(args.options);
-  const probe = await fetch(args.options.url, reqInit);
+  const probe = await doFetch(args.options.url, reqInit);
   if (probe.status !== 402) {
     return {
       kind: 'free',
@@ -209,8 +227,12 @@ export async function payWithX402(args: {
   signer: TransactionSigner;
   client: SuiGrpcClient;
   options: PayOptions;
+  /** S.1364 — optional merchant transport for BOTH seller legs (probe +
+   *  paid retry); default: global fetch. */
+  fetch?: MerchantFetch;
 }): Promise<PayResult> {
   const { signer, client } = args;
+  const doFetch = merchantFetch(args.fetch);
   let options = args.options;
 
   // Layer 2 — cheap synchronous preflight (URL shape + maxPrice sanity) before
@@ -224,7 +246,7 @@ export async function payWithX402(args: {
   const reqInit = normalized.reqInit;
 
   // Probe (no payment). A paid endpoint answers 402; a free/cached one serves.
-  const probe = await fetch(options.url, reqInit);
+  const probe = await doFetch(options.url, reqInit);
   if (probe.status !== 402) {
     return finalize(probe, { paid: false });
   }
@@ -256,7 +278,7 @@ export async function payWithX402(args: {
     // the on-chain leg ran (founder buying from his own seller wallet,
     // 2026-07-20). Fail closed before anything is signed.
     assertNotSelfPayment(signer.getAddress(), requirements.payTo);
-    const result = await payViaX402({ signer, client, options, reqInit, requirements });
+    const result = await payViaX402({ signer, client, options, reqInit, requirements, fetch: doFetch });
     return result;
   }
 
@@ -346,8 +368,11 @@ async function payViaX402(args: {
   options: PayOptions;
   reqInit: RequestInit;
   requirements: X402Requirements;
+  /** S.1364 — the merchant transport the probe used; the paid retry
+   *  carrying X-PAYMENT goes through the SAME hook. */
+  fetch: MerchantFetch;
 }): Promise<PayResult> {
-  const { signer, client, options, reqInit, requirements } = args;
+  const { signer, client, options, reqInit, requirements, fetch: doFetch } = args;
   // Belt to pickSuiExactRequirements' suspenders: buildX402SignedPayment
   // destructures `requirements.extra.suimpp` — an incomplete entry reaching
   // this far must fail as a typed error, never a raw TypeError in chat.
@@ -385,7 +410,7 @@ async function payViaX402(args: {
 
   const { header } = await buildX402SignedPayment({ requirements, signer: signerAdapter });
 
-  const res = await fetch(options.url, {
+  const res = await doFetch(options.url, {
     ...reqInit,
     headers: { ...(options.headers ?? {}), [X402_PAYMENT_HEADER]: header },
   });

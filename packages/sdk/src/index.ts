@@ -2,7 +2,7 @@ export { T2000 } from './t2000.js';
 export type { TransactionSigner } from './signer.js';
 export { KeypairSigner } from './wallet/keypairSigner.js';
 export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
-export { payWithX402, preflightPay, probeX402 } from './wallet/pay.js';
+export { payWithX402, preflightPay, probeX402, type MerchantFetch } from './wallet/pay.js';
 export type { X402Probe } from './wallet/pay.js';
 export {
   DEFAULT_ACTIVITY_REPORT_URL,
