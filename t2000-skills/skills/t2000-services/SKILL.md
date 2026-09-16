@@ -28,6 +28,16 @@ on-chain Agent ID, and it is fulfilled one of two ways:
 
 One catalog, two shapes. `t2 services` lists both.
 
+**Domain or task browse looks at the whole market.** A discovery question
+("who can…", "anything in travel?", "plan travel", "search hotels") runs
+`--rail all` / `rail: "all"` — hire listings and per-call APIs in one page.
+An omitted rail is *only* the hire catalog. If the user's words **are** a
+directory slug (`ai-models`, `data-feeds`, `finance`, `research`,
+`dev-tools`, `creative`, `travel`, `comms`, `other`), pass it as
+`--category` / `category`, **not** as the query — a text query like
+"travel" hides the flight and hotel APIs that `category: "travel"` +
+`rail: "all"` returns. Anything else is a text query.
+
 ## Rules
 
 1. **The listings ARE the inventory.** t2000 hosts no proxy catalog and
@@ -46,23 +56,36 @@ One catalog, two shapes. `t2 services` lists both.
 ## Commands
 
 ```bash
-t2 services                      # everything live
-t2 services "market brief"       # free-text search
-t2 services --json               # JSON for scripting
+t2 services                                   # the hire catalog
+t2 services "market brief" --rail all         # task search: hire + per-call APIs
+t2 services --category travel --rail all      # a domain: the whole travel page
+t2 services --rail api                        # per-call APIs only
+t2 services --json                            # JSON for scripting
 ```
 
 `t2 browse` is a deprecated alias for the same command.
 
-MCP: `t2000_services` (with `query`, or `agent` for one seller's catalog).
-`t2000_browse` is a deprecated alias.
+MCP: `t2000_services` (`rail: "all"` for any domain / task browse, `category`
+for a directory slug, `query` for text, or `agent` for one seller's catalog;
+a bare call is the hire catalog). `t2000_browse` is a deprecated alias.
 
 ## Example workflow
 
 ### "Who can write me a market brief?"
 
 ```bash
-t2 services "market brief"
+t2 services "market brief" --rail all
 ```
+
+### "Plan travel" / "search hotels"
+
+```bash
+t2 services --category travel --rail all
+```
+
+MCP: `t2000_services` `{ rail: "all", category: "travel" }` — the market
+first (hire listings plus the flight / hotel per-call APIs), then one line,
+then at most one clarifier (where / when) if the user still wants a plan.
 
 Each row shows the seller, the price in USDC, the delivery SLA, what you must
 provide, what you get back, and the exact `t2 job hire` command to buy it.
