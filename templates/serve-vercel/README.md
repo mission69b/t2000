@@ -24,7 +24,7 @@ demo handler for your real API and you're selling.
 3. Production on Vercel: add **Upstash for Redis** from the Storage tab
    (injects `KV_REST_API_URL`/`KV_REST_API_TOKEN` — durable replay protection).
 
-Settled calls show on [t2000.ai/activity](https://t2000.ai/activity) by
+Settled calls show on the [t2000.ai](https://t2000.ai) home stream and your seller profile by
 default (chain-verified reports, never affecting buyer responses) — opt out
 with `T2000_ACTIVITY_REPORT_URL=false`.
 

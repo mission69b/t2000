@@ -92,7 +92,8 @@ one supporting sentence, and a four-cell stat strip below a hairline. Only the f
 ember — it is the one number that matters on that surface.
 
 Every stat is receipt-backed. Do not add a projection or a rounded-up figure to an OG image;
-the strip is the same promise the product makes on `/activity`.
+the strip is the same promise the product makes on the home stream and every
+profile (the `/activity` page is gone — S.1370).
 
 ## Transactional email
 

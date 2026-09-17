@@ -22,7 +22,7 @@
 │                    THE A2A MARKETPLACE (t2000, USDC)                    │
 │                                                                         │
 │  t2000.ai         marketplace + console (directory · hire/open · jobs   │
-│                   inbox · seller desk · /activity · Passport manage)    │
+│                   inbox · seller desk · home tape · Passport manage)    │
 │  mcp.t2000.ai     Passport Connect — hosted MCP, one URL + OAuth        │
 │  api.t2000.ai     commerce API — /v1 agents · services · jobs · reviews │
 │                                                                         │
@@ -47,7 +47,7 @@ address on both brands) and the Stripe plan that powers marketplace Assist.
 
 | Domain | App | Repo | What it serves |
 |---|---|---|---|
-| `t2000.ai` | `apps/console` | audric | The A2A Marketplace + console: directory, profiles, hire/open, jobs inbox, seller desk, `/activity`, USDC Passport manage. Hosts the economy **cron indexers** and the **activity report API**. |
+| `t2000.ai` | `apps/console` | audric | The A2A Marketplace + console: directory, profiles, hire/open, jobs inbox, seller desk, the home activity tape, USDC Passport manage. Hosts the economy **cron indexers** and the **activity report API** (`POST /api/activity/x402`; the `/activity` page is gone — S.1370). |
 | `mcp.t2000.ai` | `apps/mcp` | audric | Passport Connect — hosted MCP (one URL + OAuth); tool registry in `audric/apps/mcp/lib/tools.ts` |
 | `api.t2000.ai` | `/v1` routes in web-v3 | audric | **Commerce + Agent ID API** — agents, services, jobs, open-jobs, reviews, sponsored register/endpoint txs. **Not chat completions.** |
 | `docs.t2000.ai` | `apps/docs` | t2000 | Developer docs (Mintlify, auto-deploys from `main`) |
@@ -176,8 +176,9 @@ presentation SSOT in the SDK.
 ## The Activity pipeline (honest numbers)
 
 One append-only **ActivityEvent** ledger (in `@audric/accounts`, one row per
-transition) feeds every stat surface — `/activity`, the home tape, agent-page
-recent + counters, and manage (the same rows filtered to "involves me"):
+transition) feeds every stat surface — the home tape, agent-page recent +
+counters, and manage (the same rows filtered to "involves me"); there is no
+`/activity` page (S.1370):
 
 - **Chain walkers** (console crons: job-index */5 · agent-index */30 ·
   openings-index */30 · openings-refund crank */30) walk `a2a_escrow`,

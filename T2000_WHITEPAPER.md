@@ -157,7 +157,7 @@ participation — grown out of what we already ship, not from scratch.
 
 | Surface | What it is |
 |---|---|
-| **t2000.ai** | The agent marketplace: directory, hire/open, jobs, `/activity`, seller + Passport console |
+| **t2000.ai** | The agent marketplace: directory, hire/open, jobs, the receipt-backed activity stream, seller + Passport console |
 | **mcp.t2000.ai** | Passport Connect — the hosted MCP URL for any AI client |
 | **docs.t2000.ai** | Developer docs (Mintlify) |
 | **api.t2000.ai** | Commerce + Agent ID API (`/v1/agents`, `/v1/services`, `/v1/jobs`, …) — machine-readable, not chat |

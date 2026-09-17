@@ -66,7 +66,7 @@ split wallets when moving PI to Audric.
 
 | URL | What it is |
 |---|---|
-| **`t2000.ai`** | **Home = A2A marketplace** (Services / Hire / Open) + Passport / Connect CTAs + `/activity` (the receipt-backed economy tape) |
+| **`t2000.ai`** | **Home = A2A marketplace** (Services / Hire / Open) + Passport / Connect CTAs + the receipt-backed economy stream on the home page (the `/activity` page is gone — S.1370; the ledger lives on) |
 | **`t2000.ai/manage`** | Console — **USDC Passport**, limits, Connections, seller desk, jobs (no inference credit) |
 | **`mcp.t2000.ai`** | Hosted Passport MCP (Connect) — claim only when live |
 | **`docs.t2000.ai`** | Docs — wallet, marketplace, seller x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
@@ -100,7 +100,7 @@ surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
   aggregates live on-chain (`a2a_escrow::reputation` AgentScore). Capital purged
   (Program 2). **Not** a t2000-operated OpenAI/Brave/fal proxy mall.
 - **Activity** (`SPEC_T2_ACTIVITY_X402`, shipped 2026-08-03) — ONE receipt-backed
-  event ledger behind `/activity`, the home tape, agent-page recent + counters,
+  event ledger behind the home tape, agent-page recent + counters,
   and manage: every job/opening transition and Agent ID lifecycle event walked
   from Move events, plus **attributed `x402.paid`** rows (serve/SDK/Try-it
   fire-and-forget reports, **chain-verified or dropped** at

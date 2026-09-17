@@ -149,7 +149,8 @@ export function createServe(config: ServeConfig): Serve {
  *                     chain-verified server-side, never affects buyer
  *                     responses). DEFAULT-ON for FromEnv: unset →
  *                     https://t2000.ai/api/activity/x402 so new sellers appear
- *                     on the t2000.ai activity tape. Opt out with
+ *                     on the t2000.ai home stream + their profile's recent
+ *                     activity (no /activity page — S.1370). Opt out with
  *                     `false` | `0` | `off` | `none` (case-insensitive), or
  *                     set a custom URL. (`new Serve({...})` without
  *                     activityReportUrl stays silent — only FromEnv defaults.)
