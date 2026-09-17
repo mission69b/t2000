@@ -2,11 +2,19 @@
 export { CommerceClient } from './client.js';
 export {
   fetchChallengeNonce,
+  jobThreadChallengeMessage,
   profileChallengeMessage,
   serviceChallengeMessage,
   servicePayloadSha256,
   signChallenge,
 } from './challenge.js';
+export {
+  type JobThreadMessage,
+  type JobThreadResult,
+  jobThreadPayload,
+  postJobThread,
+  readJobThread,
+} from './job-thread.js';
 export { endpointIssueLines, listEndpoint, removeEndpoint } from './endpoint.js';
 export { createPackage, planPackage } from './package.js';
 export {

@@ -7,18 +7,20 @@ import {
   BULK_JOB_MAX,
   bucketSellerJob,
   bulkModeError,
+  deliverPreflightError,
   eligibleBulkIds,
+  fetchSellerJobs,
+  formatThreadLine,
+  parseDuration,
   parseIdList,
   pickBulkJobIds,
-  reviewBulkParams,
-  deliverPreflightError,
-  fetchSellerJobs,
-  type IndexedJob,
-  parseDuration,
+  pingPreflightError,
   resolveHireSpecUpload,
   resolveSpecUpload,
+  reviewBulkParams,
   reviewClosesMs,
   summarizeSellerInbox,
+  type IndexedJob,
 } from './job.js';
 
 describe('parseDuration', () => {
@@ -634,5 +636,28 @@ describe('review bulk selectors (S.1335)', () => {
       Date.now(),
     );
     expect(ids).toEqual(['0x1', '0x2']);
+  });
+});
+
+// S.1369 — `t2 job ping`: refuse before the nonce + signature.
+describe('t2 job ping preflight (S.1369)', () => {
+  it('needs a message and/or ≥1 https image; caps text at 500; refuses http photos', () => {
+    expect(pingPreflightError(undefined, [])).toMatch(/message and\/or/);
+    expect(pingPreflightError('   ', [])).toMatch(/message and\/or/);
+    expect(pingPreflightError("I'm downstairs", [])).toBeNull();
+    expect(pingPreflightError(undefined, ['https://res.example/door.jpg'])).toBeNull();
+    expect(pingPreflightError('x'.repeat(501), [])).toMatch(/500/);
+    expect(pingPreflightError('door', ['http://res.example/door.jpg'])).toMatch(/HTTPS/);
+  });
+
+  it('thread lines: you vs the other seat, photo count, no null body', () => {
+    const me = `0x${'a'.repeat(64)}`;
+    const other = `0x${'b'.repeat(64)}`;
+    expect(formatThreadLine({ from: me, body: 'lane', createdAt: '2026-09-17T08:00:00.000Z' }, me)).toBe(
+      '2026-09-17 08:00  you: lane',
+    );
+    const line = formatThreadLine({ from: other, images: ['https://x/a.jpg'], createdAt: '2026-09-17T08:01:00.000Z' }, me);
+    expect(line).toMatch(/\[1 photo\]$/);
+    expect(line).not.toMatch(/null|undefined/);
   });
 });

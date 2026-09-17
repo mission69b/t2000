@@ -50,6 +50,9 @@ import {
   parseSpecImages,
   parseSpecMode,
   parseSpecWhere,
+  postJobThread,
+  readJobThread,
+  type JobThreadResult,
 } from '@t2000/sdk';
 import { runSponsoredTx } from '../lib/agent-register.js';
 import { registerBatchVerbs } from './batch.js';
@@ -83,6 +86,31 @@ const DEFAULT_REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** Buyer's share on reject, in bps — 80/20 favors the buyer, matching the
  *  "escrow protects the buyer first" default. Override with --split. */
 const DEFAULT_REJECT_SPLIT_BPS = 8000;
+
+/** S.1369 — `t2 job ping` preflight, BEFORE the nonce + signature: a ping
+ *  needs a message and/or at least one HTTPS image; text is capped at 500
+ *  (the API's rule — mirrored so a long ping never burns a challenge). */
+export function pingPreflightError(message: string | undefined, images: string[]): string | null {
+  const body = message?.trim() ?? '';
+  if (!body && images.length === 0) {
+    return 'A ping needs a message and/or at least one --image <https-url>.';
+  }
+  if (body.length > 500) {
+    return 'Keep a ping under 500 characters — this is the last 20 metres, not a brief.';
+  }
+  if (images.some((u) => !/^https:\/\//.test(u))) {
+    return 'Thread photos must be public HTTPS URLs (upload them first; same shape as deliver --image).';
+  }
+  return null;
+}
+
+/** One thread line for the terminal. */
+export function formatThreadLine(m: JobThreadResult['thread']['messages'][number], me: string): string {
+  const who = m.from.toLowerCase() === me.toLowerCase() ? 'you' : truncateAddress(m.from);
+  const when = m.createdAt.replace('T', ' ').slice(0, 16);
+  const photos = m.images?.length ? ` [${m.images.length} photo${m.images.length === 1 ? '' : 's'}]` : '';
+  return `${when}  ${who}: ${m.body ?? ''}${photos}`.trimEnd();
+}
 
 /** Parse "30m" / "24h" / "7d" (or bare minutes) into ms. */
 export function parseDuration(input: string): number {
@@ -1573,6 +1601,46 @@ Ending a job (all states covered):
       }
     });
 
+  // ── The job delivery thread (S.1369) — seat-only text + photos on a
+  //    FUNDED job: the last 20 metres ("I'm downstairs", "buzzer's dead").
+  //    Logistics, not delivery: proof of work stays `t2 job deliver`.
+  group
+    .command('ping')
+    .argument('<jobId>', 'The funded Job object id (0x…) — not an opening')
+    .argument('[message]', 'What to say (≤500 chars); omit with --image for a photo-only ping')
+    .description('Message the other seat on a funded job — text and/or photos; parties only')
+    .option('--image <url>', 'A public HTTPS photo (repeatable, ≤6) — which door, what went wrong', collectImage, [] as string[])
+    .option('--api <url>', `API base URL (default ${DEFAULT_API_BASE})`)
+    .action(async (jobId: string, message: string | undefined, opts: { image: string[]; api?: string }) => {
+      try {
+        const images = resolveImageFlags(opts.image);
+        const pre = pingPreflightError(message, images);
+        if (pre) {
+          printError(pre);
+          process.exitCode = 1;
+          return;
+        }
+        const agent = await withAgent();
+        const result = await postJobThread(opts.api ?? DEFAULT_API_BASE, agent.signer, {
+          jobId,
+          body: message,
+          images,
+        });
+        if (isJsonMode()) {
+          printJson(result);
+          return;
+        }
+        printBlank();
+        printSuccess(`Posted on the job thread as the ${result.seat} — ${result.thread.messages.length} message(s).`);
+        const last = result.thread.messages.at(-1);
+        if (last) printLine(pc.dim(`  ${formatThreadLine(last, agent.address())}`));
+        printInfo(`The other seat sees it on t2 job watch ${jobId} (or t2000_job_status). Delivery is still t2 job deliver.`);
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
   group
     .command('watch')
     .argument('[jobId]', 'The Job object id (0x…) — omit with --mine or --buying')
@@ -1792,16 +1860,51 @@ Ending a job (all states covered):
           }
         }
 
+        // S.1369 — a SEAT (this wallet is the buyer or the seller) also reads
+        // the delivery thread + the seat-only whereExact each tick (signed
+        // read; the hashed spec never carries the door code). Strangers get
+        // a chain-only watch — no thread key, no error spam.
+        const threadBase = opts.api ?? DEFAULT_API_BASE;
+        let seenThread = 0;
         for (;;) {
           const job = await getJob(client, watchId);
           const actions = jobActionsFor(job, me);
           const terminal = job.state === 'released' || job.state === 'refunded' || job.state === 'rejected';
+          const isSeat = [job.buyer, job.seller].some((a) => a.toLowerCase() === me.toLowerCase());
+          let thread: JobThreadResult | null = null;
+          if (isSeat) {
+            try {
+              thread = await readJobThread(threadBase, agent.signer, watchId);
+            } catch {
+              thread = null; // API blip or unindexed yet — the chain view still paints
+            }
+          }
 
           if (isJsonMode()) {
-            printJson({ job, yourActions: actions, terminal });
+            printJson({
+              job,
+              yourActions: actions,
+              terminal,
+              ...(thread ? { thread: thread.thread } : {}),
+              ...(thread?.whereExact ? { whereExact: thread.whereExact } : {}),
+            });
           } else {
             printBlank();
             printJob(job, me);
+            if (thread?.whereExact) {
+              printKeyValue('Exact where (claim-only)', thread.whereExact);
+            }
+            if (thread) {
+              const msgs = thread.thread.messages;
+              const fresh = msgs.slice(seenThread);
+              if (seenThread === 0) {
+                printKeyValue('Thread', msgs.length === 0 ? 'no messages yet — t2 job ping to talk' : `${msgs.length} message(s)`);
+                for (const m of msgs.slice(-10)) printLine(pc.dim(`  ${formatThreadLine(m, me)}`));
+              } else {
+                for (const m of fresh) printLine(`  ${formatThreadLine(m, me)}`);
+              }
+              seenThread = msgs.length;
+            }
             if (actions.length > 0) {
               printInfo(`You can now: ${actions.map((a) => `t2 job ${a} ${watchId}`).join('  ·  ')}`);
             } else if (!terminal) {
