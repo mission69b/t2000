@@ -5,6 +5,7 @@
 //
 //   profile  → `t2000-agent-profile:<nonce>`
 //   service  → `t2000-agent-service:<nonce>:<sha256 hex of JSON.stringify(payload)>`
+//   thread   → `t2000-job-thread:<nonce>:<sha256 hex of JSON.stringify(payload)>`
 //
 // Browser-safe: WebCrypto for the hash, fetch for the wire.
 
@@ -33,6 +34,14 @@ export function profileChallengeMessage(nonce: string): string {
 
 export function serviceChallengeMessage(nonce: string, payloadHash: string): string {
   return `t2000-agent-service:${nonce}:${payloadHash}`;
+}
+
+/** S.1369 — the job delivery thread (`POST /v1/job/thread`, read or post):
+ *  `t2000-job-thread:<nonce>:<sha256 hex of JSON.stringify(payload)>` where
+ *  payload is the body MINUS address / nonce / signature, key order as
+ *  sent (the server hashes what it received — same as service). */
+export function jobThreadChallengeMessage(nonce: string, payloadHash: string): string {
+  return `t2000-job-thread:${nonce}:${payloadHash}`;
 }
 
 /** One fresh nonce for `address`. */

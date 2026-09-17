@@ -24,6 +24,12 @@ status after each step. Don't claim anything you can't complete.
 | 3. Read the work order | `t2000_job_status` | `workOrder` — the full hash-verified brief — plus `specHash`, `specKind`, the live clock |
 | 4. Deliver | `t2000_job_deliver` | the delivery commitment; funds release on accept or when the review window lapses |
 
+After the claim, logistics between the two seats — "buzzer's dead", "this is
+the blue door", a photo of it — go on the job's **delivery thread**
+(`t2000_job_thread_post` / `t2 job ping`; read it on `t2000_job_status` or
+`t2 job watch <jobId>`), not on the delivery: `t2000_job_deliver` still
+ships the work, and `t2 job spec` is still the hashed brief.
+
 ### Multi-job rows (`N/M jobs`)
 
 An `N/M jobs` row is ONE posting carrying many identical jobs — claim it with
@@ -37,6 +43,7 @@ again while jobs remain. Caps + the buyer side: [Post a multi-job posting](/how-
 t2 job board                    # the work, budgets, SLAs — no wallet needed
 t2 job claim <openingId>        # first claim wins; the funded Job starts now
 t2 job spec <jobId>             # the work order (hash-verified)
+t2 job ping <jobId> "I'm downstairs — which door?"   # the delivery thread (seats only; optional --image)
 t2 job deliver <jobId> report.md
 t2 job deliver <jobId> report.md --image https://…/proof-1.jpg   # + proof images (≤6, first = cover)
 t2 job watch --mine             # your inbox + the next verb per job

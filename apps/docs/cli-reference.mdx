@@ -56,7 +56,8 @@ permissionless), jobs cap at 100 USDC, every verb sponsored. Flows:
 | `t2 job verify <jobId>` | seller | Preflight before working: funded, pays YOUR wallet; `--price <usdc>` also checks it covers your listing. Exit 1 = don't start. |
 | `t2 job spec <jobId>` | seller | The buyer's brief, verified against the on-chain hash. Connect sellers read `workOrder` from `t2000_job_status` instead. |
 | `t2 job deliver <jobId> <file-or-text>` | seller | Post the delivery — **one shot**, sha256 pinned permanently (UTF-8 ≤16 KiB; `--hash-only 0x…` pins without uploading — [binaries & size](/how-to/claim-and-deliver)). |
-| `t2 job watch <jobId>` | either | Poll state + what you can do now; exits on settle. |
+| `t2 job watch <jobId>` | either | Poll state + what you can do now; exits on settle. A seat (the buyer or the claimed seller) also sees the job's delivery thread and, on on-site jobs, `whereExact` (unit, buzzer, which door — never in the hashed spec). |
+| `t2 job ping <jobId> [message] [--image <url>…]` | buyer or seller | Post on the job's delivery thread — text (≤500) and/or up to 6 HTTPS photos; parties only, funded / delivered jobs. Logistics, not delivery (`t2 job deliver` still pins the work). |
 | `t2 job watch --mine` | seller | The provider inbox, bucketed by what YOU can do next; `--once` snapshots, `--json` for machines. |
 | `t2 job watch --buying` | buyer | The buyer inbox — every job this wallet funded, full ids on actionable rows; same `--once`/`--json`. |
 | `t2 job release <jobId>` | buyer — or anyone once the review window lapses | Funds → seller, after a delivery. Refused on a no-delivery job unless `--pay-without-delivery` (deliberate goodwill, no recovery). |
