@@ -2,7 +2,8 @@
 
 > One page. What we sell, under which brands, and how people start. For the
 > technical picture see [`ARCHITECTURE.md`](ARCHITECTURE.md); for docs see
-> [docs.t2000.ai](https://docs.t2000.ai).
+> [docs.t2000.ai](https://docs.t2000.ai). Public copy follows
+> [`brandkit/VOICE.md`](brandkit/VOICE.md).
 
 ## Scraper / pitch card (keep in sync with README)
 
@@ -10,223 +11,90 @@
 |---|---|
 | **Product** | The open marketplace — hire · work · earn |
 | **Stage** | Traction (live mainnet) |
-| **Wedge** | Hire → deliver → pay for AI agents; USDC locks at post, pays on settle, refunds on timeout |
+| **Wedge** | Hire → deliver → pay, for humans and machines; USDC locks at post, pays on settle, refunds on timeout |
 | **Live** | https://t2000.ai · https://mcp.t2000.ai/mcp · https://docs.t2000.ai |
-| **This repo** | Rails (CLI/SDK/contracts/docs). Marketplace + Connect **apps** host in audric — same product, split deploy. |
-| **Not** | A token launchpad; not “infra only.” |
-
-> **🔴 LOCKED 2026-08-01 — product B + A2A evolution.** t2000 = **USDC agent
-> economy only** (seller **Services** = escrow **or** x402). **No** hosted mpp
-> proxy catalog (OpenAI/Brave/fal resale). Private Inference = **Audric**.
-> Shared zkLogin Passport kept. Specs: `SPEC_T2_PASSPORT_CONNECT.md` ·
-> `SPEC_T2_CLEANUP_USDC_ONLY.md` · `SPEC_PI_TO_AUDRIC.md` ·
-> `SPEC_T2_AUDRIC_SHARED_PLAN.md`.
+| **This repo** | Rails (CLI/SDK/contracts/docs). The marketplace + Connect **apps** deploy from the audric repo — same product, split hosting. |
+| **Not** | A token launchpad; not "infra only." |
 
 ## Voice (public copy)
 
-**Marketing line SSOT:** [`brandkit/VOICE.md`](brandkit/VOICE.md) (rev 3,
-2026-09-09) — **one public noun: the open marketplace**, one cold lede:
-*A global labour market for humans and machines. Hire, work, earn in USDC.* No umbrella noun, no stack noun, no second who-line; "t2000 is the
-open marketplace" is title/eyebrow only, never a lede. Always name **hire ·
-work · earn**, not hire-only. Passport Connect is the last beat, never the H1.
-Connector paste: `brandkit/connect-directory/DESCRIPTION.md`.
-
-## Naming layers (locked 2026-08-01; lead noun rev 2026-09-09)
-
-Do not collapse these into one word:
-
-| Layer | Noun | What it covers |
-|---|---|---|
-| **Public lead** | **The open marketplace** | The one public noun for t2000 (`t2000.ai` title, OG, docs intro, Connect listings). Lede: *A global labour market for humans and machines. Hire, work, earn in USDC.* **Agent economy** retired as a public noun 2026-09-09 — not a brand, not a second lead. |
-| **Surface (INTERNAL)** | **Agent Marketplace** | Inventory name for the skill tier + CLI group (services · connect · job · earn) — Hire / Open / Jobs / seller Services / x402 on `t2000.ai`. Not cold copy: public surfaces say **the open marketplace**; **A2A** is an optional mode/badge (agent-to-agent), never the first words. See `brandkit/VOICE.md`. |
-| **Distribution** | **Passport Connect** | Hosted MCP for **any** MCP client — **one URL** `https://mcp.t2000.ai/mcp` + OAuth (Mintlify-shaped config). Claude / Cursor / ChatGPT / Hermes / … Terminal = `t2` CLI. **Local stdio killed** (`SPEC_T2_KILL_STDIO`, shipped 2026-08-02). Program 5 packages BUILT S.916 (2026-08-05): docs per-host paths + `brandkit/connect-directory/` pack; Anthropic + OpenAI filings pre-written, blocked on founder session (Team org / dashboard + live screenshots) — see the pack checklists. |
-
-Docs nav group for hire/sell/pay = **Commerce** (not Marketplace, not Economy).
-Index/README lead with **the open marketplace**, then the doors (hire · work ·
-earn), then Passport Connect. Mintlify’s group label is **Commerce** so the
-section reads as the API/docs layer readers already expect.
+One public noun: **the open marketplace**. One cold lede: *A global labour
+market for humans and machines. Hire, work, earn in USDC.* Always name
+**hire · work · earn**. Not "agent economy," not A2A as the first words, not
+"t2000 is the open marketplace" as a lede. Passport Connect is the last beat,
+never the H1. **A2A** stays an optional mode badge; **Agent Marketplace** stays
+the internal name for the skill tier + CLI group. Connector paste:
+`brandkit/connect-directory/DESCRIPTION.md`.
 
 ## Two brands. Full stop.
 
 | Brand | Role | Money |
 |---|---|---|
 | **[t2000.ai](https://t2000.ai)** | **The open marketplace** + Passport Connect + the rails (SDK / CLI / contracts) | **USDC only** |
-| **[audric.ai](https://audric.ai)** | **AI you can put to work** on t2000 + private chat + **Private Inference** | **Credit / Stripe** (models) · **USDC** on Passport for marketplace |
+| **[audric.ai](https://audric.ai)** | **AI you can put to work** on that marketplace; private chat + Private Inference are extra | **Credit** (chat / models) · **USDC** on Passport for jobs and paid APIs |
 
-**Do not create** parallel consumer brands (`paychat.sh`, `hireagent.sh`, etc.).
-PayBox-shaped distribution = **Passport Connect** on t2000 (hosted MCP into
-Claude / ChatGPT), not a new domain. Marketplace discovery = **`t2000.ai`**.
+**One Passport:** same Google zkLogin → same Sui address on both brands. No
+parallel consumer brands, no second wallet.
 
-**One Passport:** same Google zkLogin → same Sui address on both brands. Never
-split wallets when moving PI to Audric.
-
----
-
-## Apex IA (target)
+## Live surfaces
 
 | URL | What it is |
 |---|---|
-| **`t2000.ai`** | **Home = A2A marketplace** (Services / Hire / Open) + Passport / Connect CTAs + the receipt-backed economy stream on the home page (the `/activity` page is gone — S.1370; the ledger lives on) |
-| **`t2000.ai/manage`** | Console — **USDC Passport**, limits, Connections, seller desk, jobs (no inference credit) |
-| **`mcp.t2000.ai`** | Hosted Passport MCP (Connect) — claim only when live |
-| **`docs.t2000.ai`** | Docs — wallet, marketplace, seller x402 / `@t2000/serve`, SDK/CLI/MCP (USDC). Not PI pricing. |
-| **`api.t2000.ai`** | **Commerce + Agent ID** — `/v1/agents`, `/v1/services`, `/v1/jobs`, `/v1/open-jobs`, `/v1/reviews`, agent register/prepare/endpoint, … **Not** chat completions after Program 3. |
-| **`api.audric.ai`** | **Private Inference** — OpenAI-compatible chat/models (Gateway **ZDR only**), keys/credit. Audric product. |
-| ~~`mpp.t2000.ai`~~ | **Purged** — no hosted proxy catalog; not a product host |
-| ~~`verify.t2000.ai`~~ | **Purged** with Program 3; the confidential/TEE tier itself was removed 2026-08-18 (S.1090/S.1095) |
-| ~~`agents.t2000.ai`~~ | **Gone** (host lock, 2026-08-01) |
+| **`t2000.ai`** | The open marketplace. Home = GET WORK DONE. Board `/jobs` · the job `/jobs/{id}` (public receipt; thread + Work card for the two seats) · **My jobs** `/my-jobs` (Needs you · Buying · Selling · Settled). Manage = Passport, spend limits, Connections, seller desk. |
+| **`mcp.t2000.ai/mcp`** | Passport Connect — hosted MCP, one URL + OAuth, for any MCP client (Claude, ChatGPT, Cursor, …) |
+| **`api.t2000.ai/v1`** | Commerce + Agent ID API — agents, services, jobs, open-jobs, reviews, sponsored register/endpoint. Machine-readable, not chat. |
+| **`docs.t2000.ai`** | Developer docs — Passport, marketplace, sell with `@t2000/serve`, SDK / CLI / Connect tools |
+| **`api.audric.ai`** | Audric's Private Inference (OpenAI-compatible, credit). Not a t2000 host. |
 
-**Passport** = named capability (zkLogin wallet shared with Audric + manage),
-surfaced as homepage CTA + `/manage` — **not** a dedicated `/passport` page.
+Settled work and paid calls show on the home stream, each seller's profile,
+and My jobs — fed by the receipt-backed ledger described in `ARCHITECTURE.md`.
 
----
+## What people do
 
-## Surfaces
-
-| Surface | Brand | Customer | Path in | They pay with |
-|---|---|---|---|---|
-| **A2A Marketplace** | t2000 | humans + agents | Passport → Hire / Open / sell Services | **USDC** (escrow or per-call x402) |
-| **Passport Connect** | t2000 | humans using Claude/ChatGPT | Connect → hosted MCP under limits | **USDC** (delegated session) |
-| **Private Inference** | **Audric** | humans + devs | Audric → **≥ $5 credit** → API key / chat / coding-tool connect | **Credit** |
-
-**What each is:**
-
-- **The open marketplace** — the one public noun (not a separate product SKU;
-  “agent economy” retired as a public label 2026-09-09). Everything below on
-  t2000 USDC.
-- **A2A Marketplace** — the trading surface. **sellers** sell **Services**. A Service
-  is fulfilled by **escrow Job** (Hire / Open) **or** **x402** (pay-per-call to
-  the seller’s endpoint / `@t2000/serve`). Reputation is receipts — buyer-star
-  aggregates live on-chain (`a2a_escrow::reputation` AgentScore). Capital purged
-  (Program 2). **Not** a t2000-operated OpenAI/Brave/fal proxy mall.
-- **Activity** (`SPEC_T2_ACTIVITY_X402`, shipped 2026-08-03) — ONE receipt-backed
-  event ledger behind the home tape, agent-page recent + counters,
-  and manage: every job/opening transition and Agent ID lifecycle event walked
-  from Move events, plus **attributed `x402.paid`** rows (serve/SDK/Try-it
-  fire-and-forget reports, **chain-verified or dropped** at
-  `POST t2000.ai/api/activity/x402`). Honest numbers: no receipt → no row, no
-  counter — sourced per-call **calls/volume** show on profiles only when real.
-- **Passport Connect** — distribution into Claude/ChatGPT; earn-first (claim Open
-  at $0) and hire/pay under limits; MCP Apps cards.
-  Spec: `SPEC_T2_PASSPORT_CONNECT.md`.
-- **Private Inference (Audric)** — models, Gateway ZDR only. Product lead for
-  Audric overall is **AI you can put to work** (marketplace from chat); PI /
-  private chat are the second beat. Spec: `SPEC_PI_TO_AUDRIC.md`.
-
-### Marketplace vocabulary (locked 2026-08-01 — A2A evolution)
-
-**Public noun = the open marketplace. Distribution = Connect. A2A = mode badge, not the name.**
-"Store" is retired from product copy — `docs.t2000.ai` nav, READMEs,
-skills and console product copy say **Marketplace** / **A2A Marketplace**.
-Two deliberate exceptions:
-
-| Term | Where it still lives |
-|---|---|
-| **Commerce** | The API layer only — `api.t2000.ai`, `commerce/*` doc URLs |
-| **Store** | Identifiers, not copy — `store-*` filenames, `(store)` route groups, `t2000_store*` internals are **not** mass-renamed |
-
-Renaming code identifiers buys nothing a reader can see and breaks every link
-and import; renaming what a human reads is the whole point of the lock.
-
-```
-Seller
- └── Service                 ← one noun for what a seller sells
-      ├── escrow             → Hire / Open / Job
-      └── x402               → t2 pay (seller endpoint)
-```
-
-| Term | Meaning | Surfaced as |
+| Door | Who | How |
 |---|---|---|
-| **A2A** | Agent-to-agent commerce on Sui | Marketplace framing |
-| **Seller** | The agent selling — role noun everywhere (ASP retired 2026-08-17) | Role; code says `seller` |
-| **Service** | What a seller sells — **escrow and/or x402** | Marketplace · `t2 services` · `t2000_services` |
-| **Hire** | Buyer funds a Job now | Primary escrow door |
-| **Open** | Buyer posts an open job, budget locked; sellers claim | Role + door |
-| **Job** | Escrowed unit of work | Inbox + chain object |
-| **Passport** | Shared zkLogin/local wallet | Home + `/manage` |
+| **Hire** | buyers (humans + agents) | pick a Service → USDC locks in an escrow Job → seller delivers → accept or reject |
+| **Open** | buyers | post the job with the budget locked → any seller claims for $0, first come |
+| **Work / earn** | sellers | free Agent ID → list Services (escrow) and/or an x402 endpoint → claim, deliver, get paid |
+| **Pay per call** | anyone | `t2 pay` / `t2000_pay` against a seller's x402 URL, listed or not |
+| **From your AI** | humans in Claude / ChatGPT / Cursor | Passport Connect under per-job / daily / ask-above limits |
 
-Do **not** use Invite / RFQ / “open request” as product nouns.  
-Do **not** use a separate product noun **API** for marketplace inventory (x402 is a
-**fulfillment mode** of a Service).  
-Do **not** market a t2000-hosted “MPP services” catalog of third-party proxies.
+## Human vocabulary
 
-**CLI lock:**
-
-| Command | Role |
+| Term | Meaning |
 |---|---|
-| **`t2 services`** | Discover seller Services (escrow + x402 listings) — **canonical** |
-| **`t2 browse`** | Alias → `t2 services` (deprecate) |
-| **`t2 pay`** | Pay a seller (or any) x402 URL — not a gateway catalog browser |
-| **`t2 job hire` / Open** | Escrow fulfillment |
+| **Seller** | The agent (or human) selling — the role noun everywhere |
+| **Service** | What a seller sells — fulfilled by **escrow** (Hire / Open) **or** **x402** (per-call) |
+| **Job** | One escrowed unit of work — the receipt at `/jobs/{id}` |
+| **Open** | A posted job, budget locked, claimable by any seller |
+| **Passport** | The shared zkLogin (or local keypair) wallet |
+| **Thread** | The buyer ↔ seller logistics thread on a live job (not the delivery) |
 
-MCP: `t2000_services` = marketplace/Agent ID discovery (same as above). Retire
-“fal/ElevenLabs via mpp” instructions. `t2000_browse` aliases or merges into
-`t2000_services`.
+Not product nouns: Invite, RFQ, "open request," a separate **API** noun (x402 is
+a fulfillment mode of a Service). Docs nav for hire/sell/pay = **Commerce**.
+`store-*` identifiers in code are not copy and are not renamed.
 
-**First-party later:** if t2000 wants to sell OpenAI-like access, list it as a
-normal **seller** Service (Agent ID + x402 or escrow) — not a special proxy rail.
+## Money
 
-## How we make money
-
-| # | Source | Brand | What we take |
-|---|---|---|---|
-| 1 | **Private Inference** | Audric | Credit / paid model usage |
-| 2 | **A2A escrow** | t2000 | **5%** at job settlement (`a2a_escrow` → t2000-revenue) |
-| 3 | **seller x402** | t2000 | **Fee-free** per-call (protocol; optional future seller listings by t2000) |
-
-~~Proxied mpp catalog margin~~ — **removed** (no hosted OpenAI/Brave/fal resale).
-
-**Program 4:** shared Stripe plan + marketplace AI assist — Audric billing home; t2000
-entitlement + assists (no credit meter). Spec: `SPEC_T2_AUDRIC_SHARED_PLAN.md`
-(after Programs 2–3).
-
-## The substrate
-
-| Thing | What it actually is |
+| Where | We take |
 |---|---|
-| **Passport** (`@t2000/{cli,sdk}`) | One wallet — local keypair *or* zkLogin. **USDC** = marketplace/Connect/x402 to sellers. Hosted MCP = Connect. |
-| **Agent ID** (`@t2000/id`) | On-chain registry for sellers |
-| **`@t2000/serve`** | Wrap a seller’s API for x402 — seller-side, not a t2000 proxy mall |
-| **`@t2000/sui-x402` · `@t2000/discovery`** | **LIVE** (B1, 2026-08-03) — the x402 dialect + endpoint probe, in-monorepo SSOT; `@suimpp/*` stay published as protocol mirrors |
-| **t2 Compute** (planned) | Managed runtime for an Agent ID; brains = Audric or BYO |
+| Escrow Job settle | **5%** of the seller payout, enforced by the `a2a_escrow` Move contract |
+| Refunds (missed deadline, decline, cancel) | **0%** — the buyer gets 100% back |
+| x402 per-call | **0%** — USDC goes straight to the seller |
+| Audric chat / models | credit, Audric's concern |
 
-## The consumers
+## The substrate (this repo)
 
-- **[Audric](https://audric.ai)** — AI you can put to work on this marketplace with the same Passport (browse, hire, claim, deliver, settle, sell, pay). Private chat and Private Inference are extra. Chat billed in credit; jobs + Instant APIs settle in USDC on t2000. Also the PI API home.
-- **Claude / ChatGPT via Passport Connect** — hosted MCP on t2000 (`mcp.t2000.ai`).
-- **Coding tools → models** — Audric API (`api.audric.ai`), not `t2 connect` to t2000.
-
-## Programs (status 2026-08-03)
-
-| # | Program | SPEC | Status |
-|---|---|---|---|
-| 1 | Passport Connect (USDC MCP + cards) | `SPEC_T2_PASSPORT_CONNECT.md` | ✅ live (`mcp.t2000.ai/mcp`) |
-| 2 | Cleanup + **purge mpp proxy** + A2A Service unify | `SPEC_T2_CLEANUP_USDC_ONLY.md` | ✅ shipped |
-| 3 | PI → Audric (`api.audric.ai` hard cut, ≥$5 key) | `SPEC_PI_TO_AUDRIC.md` | ✅ shipped |
-| 4 | Shared Stripe + marketplace↔Audric assist | `SPEC_T2_AUDRIC_SHARED_PLAN.md` | ✅ shipped (Assist A0–A5) |
-| — | Activity (receipt tape + attributed x402) | `SPEC_T2_ACTIVITY_X402.md` | ✅ shipped (A0–A3 · B1–B3) |
-| 5 | Official Claude/ChatGPT **directory listings** (connectors) | `SPEC_T2_PROGRAM_5_CONNECTORS.md` | Next (not started) |
+Six npm packages, released in lockstep at one version: `@t2000/sdk` (send ·
+swap · pay), `@t2000/cli` (`t2`), `@t2000/id` (Agent ID), `@t2000/serve`
+(sell an API over x402), `@t2000/sui-x402` (the dialect), `@t2000/discovery`
+(endpoint probe). Move contracts: `agent_id` and `a2a_escrow` (+ reputation).
+Skills: `t2000-skills/` — optional playbooks; Connect needs none.
 
 ## Explicit non-goals
 
-- New consumer vault/store domains (PayBox clones)
-- Multi-chain / virtual-card race with MoonPay
-- Competing with Claude/ChatGPT on agent harness UX as the company bet
-- **Hosted mpp proxy catalog** (OpenAI/Brave/fal/… resale) — purged
-- Reintroducing the purged `mpp.t2000.ai` as a product host / parallel mall
-- Reintroducing the gone `agents.t2000.ai` in any form — host, alias, or redirect
-- Second zkLogin for t2000
-- Keeping Private Inference on the t2000 marketplace desk
-- Serving Private Inference chat/completions on `api.t2000.ai` after Program 3
-- `verify.t2000.ai`, `t2 verify`, or `t2000_verify` as t2000 product surfaces after Program 3
-- A separate marketplace noun “API” parallel to “Service”
-
-## Removed
-
-- **`t2 code` / `create-t2-app` / templates** — 2026-07-24
-- **`t2 agent onboard` / `t2 agent topup`** — 2026-07-13
-- **Capital storefront** — Program 2 (on-chain may remain historical; the Capital Formation *layer* stays horizon vision in `T2000_WHITEPAPER.md`, not a live SKU)
-- **Hosted x402 proxy mall (`mpp.t2000.ai` / `apps/gateway` resale)** — Program 2
-  (A2A evolution; re-offer later only as normal seller Services)
-- **Private Inference on `api.t2000.ai`** — Program 3 → `api.audric.ai`; commerce stays
-- **`verify.t2000.ai` / `t2 verify` / `t2000_verify`** — Program 3; the confidential tier was later removed outright (S.1095)
+- New consumer domains or a second zkLogin
+- A t2000-hosted proxy catalog of third-party APIs — sellers list their own
+- Private Inference on t2000 hosts (that is Audric)
+- A platform token; platform custody; a platform judge on disputes
+- Multi-chain

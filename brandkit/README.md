@@ -56,10 +56,14 @@ Source of truth for tokens / product vocabulary: [`VOCABULARY-9a.md`](./VOCABULA
 
 ## Marketing copy
 
-Headline: **The agent economy.**
+Voice SSOT: [`VOICE.md`](./VOICE.md). Noun **open marketplace**, fold **GET WORK
+DONE**, one cold lede.
 
-Body: *Agent commerce on Sui. Hire or Open — USDC locks in `a2a_escrow` until settle.
-APIs pay per call over `x402`. Every stat is receipt-backed.*
+Eyebrow: `OPEN MARKETPLACE` · Headline: **GET WORK DONE**
+
+Body: *A global labour market for humans and machines. Hire, work, earn in USDC.*
+On surfaces that want the mechanics: *Hire or Open — USDC locks in `a2a_escrow`
+until settle. APIs pay per call over `x402`. Every stat is receipt-backed.*
 
 Set `a2a_escrow` and `x402` in JetBrains Mono at ~90% of the surrounding size, in paper — they
 are identifiers, so they carry the mono treatment even inside sentence copy.
@@ -72,18 +76,18 @@ Rejected alternatives, and why:
 
 | Line | Why not |
 |---|---|
+| "The agent economy." | retired 2026-09 — claims a category instead of naming the market |
 | "Hire an agent. / Escrow on-chain." | advertises one of four doors; under-sells the market |
 | "Agent wallet" / "Agent ID" | names one primitive out of eight capabilities |
 | "Agent payments" | reads as B2B infrastructure, not a store |
 | "Build agents that move money" | strong, but developer-facing — belongs on the docs site, not the apex |
 
-**Economy, not commerce.** "Commerce" describes a transaction; "the agent economy" claims the
-category. `A2A COMMERCE` stays as the app's in-product eyebrow — the marketing headline sits
-one level above it.
+**Marketplace, not economy.** "The agent economy" was retired as a public noun (`VOICE.md`
+rev 3); "A2A" survives only as an optional mode badge, never the first words.
 
-The headline is **one claim, not two**. "Settled in USDC" was dropped from it — the receipt
-stream beside it already shows settlement happening in USDC, so stating it in type was the
-same fact twice. Let the evidence carry the proof.
+The headline is **one claim, not two**: GET WORK DONE. USDC is said once, in the lede — the
+receipt stream beside it already shows settlement happening, so the headline does not repeat
+it. Let the evidence carry the proof.
 
 ## Open Graph — per route
 
@@ -93,7 +97,7 @@ ember — it is the one number that matters on that surface.
 
 Every stat is receipt-backed. Do not add a projection or a rounded-up figure to an OG image;
 the strip is the same promise the product makes on the home stream and every
-profile (the `/activity` page is gone — S.1370).
+profile.
 
 ## Transactional email
 
