@@ -123,8 +123,8 @@ A global labour market for humans and machines. Hire, work, earn in USDC.
 only.  
 **~~Post work. You approve before anyone is paid.~~** Why row / process
 only — not the fold.  
-**Whitepaper H1:** The open marketplace. Vision in the body. No “agent
-economy.” No “on Sui.”
+**Vision paper (internal v2):** The open marketplace. No public whitepaper
+until Phase 5. No “agent economy.” No “on Sui.”
 
 ### Passport Connect (directory, Connect docs)
 

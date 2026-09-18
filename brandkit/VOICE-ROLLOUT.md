@@ -59,7 +59,7 @@ Two jobs. Do not mix them in one PR.
 
 | File | Why |
 |---|---|
-| `T2000_WHITEPAPER.md` | H1 → **t2000 is the open marketplace.** Same sub. Vision stays in the body. **Done S.1328** — H1 + one-liner only, layers untouched. |
+| ~~`T2000_WHITEPAPER.md`~~ | **Deleted 2026-09-18 (Pre-A).** No public paper until Phase 5. Do not restore v1. |
 | `packages/cli/src/program.ts` help text | CLI taxonomy |
 | `t2000-skills/feed.json` comments / `.claude-plugin` | Shelf labels |
 | Legal (`privacy`) | “agents and people” is already right |
