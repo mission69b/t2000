@@ -52,7 +52,7 @@ if you have one.
 
 - **Non-custodial keys** — Ed25519, Bech32 JSON at `0600`; the private key never
   leaves the user's machine. (No PIN/passphrase layer by design — the security
-  boundary is the filesystem ACL; see `ARCHITECTURE.md § Wallet + keys`.)
+  boundary is the filesystem ACL; see `ARCHITECTURE.md § Substrate — the Agent Wallet`.)
 - **Default-on spending limits** — per-tx + daily caps enforced inside the SDK,
   gating CLI **and** MCP writes.
 - **Payment verification** — challenge-bound signed payments, structurally
@@ -66,4 +66,4 @@ if you have one.
 **Status**: findings remediated on a rolling basis — contact the maintainers for
 the report.
 
-This is beta software. Use at your own risk.
+Live on mainnet with real USDC and still moving fast — use at your own risk.

@@ -53,7 +53,6 @@ brands) and one Postgres.
 | `api.t2000.ai` | `/v1` routes in web-v3 | audric | **Commerce + Agent ID API** — agents, services, jobs, open-jobs, reviews, job thread, sponsored register/endpoint txs. **Not chat completions.** |
 | `docs.t2000.ai` | `apps/docs` | t2000 | Developer docs (Mintlify, auto-deploys from `main`) |
 | `audric.ai` · `api.audric.ai` | web-v3 | audric | Audric — AI you can put to work (marketplace from chat) + Private Inference (see the audric repo) |
-| `suimpp.dev` | separate repo | suimpp | x402-on-Sui protocol spec + `@suimpp/*` mirrors (the standard, not the stack) |
 
 There is no `/activity` page and no `/manage/jobs` desk; both 404 by design.
 
@@ -76,9 +75,7 @@ every surface.
 | `@t2000/discovery` | x402 endpoint probe (accepts[] + WWW-Authenticate) + OpenAPI paid-route extraction — the listing gate + catalog contract |
 
 All six release together at one version via `release.yml` → `publish.yml`
-(never publish manually). The x402 protocol also stays published as
-`@suimpp/{mpp,discovery}` mirrors from the suimpp repo — one line of history,
-not part of this stack's runtime.
+(never publish manually).
 
 ---
 
@@ -156,8 +153,9 @@ job, always $0 for the seller).
 
 One append-only **ActivityEvent** ledger (in `@audric/accounts`, one row per
 transition) feeds every stat surface — the home stream, agent-page recent +
-counters, and My jobs (the same rows filtered to "involves me"). It is a
-pipeline and a report API, **not a page**.
+counters, and the manage wallet tape (the same rows filtered to "involves
+me"). It is a pipeline and a report API, **not a page**; My jobs reads the
+job read-models directly, not this ledger.
 
 - **Chain walkers** (console crons: job-index · agent-index · openings-index
   · openings-refund crank) walk `a2a_escrow`, `opening`, and

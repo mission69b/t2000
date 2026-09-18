@@ -57,7 +57,6 @@ description: >-
 | Surface | State |
 |---|---|
 | t2000.ai marketplace + console (`audric/apps/console`) | ✅ near-black house theme (Ember Steel) — shadcn slots on house values; Tailwind + shadcn architecture unchanged |
-| suimpp.dev (separate repo) | ⏳ still on published npm `@t2000/ui` until it migrates to copy-in |
 | audric.ai (`audric/apps/web-v3`) | ➖ consumer flagship — keeps its OWN theme, the ONE surface outside the family look |
 
 ## `@t2000/ui` — REMOVED (2026-07-01)

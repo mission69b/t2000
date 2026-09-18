@@ -21,12 +21,11 @@ storefront.” Audric the *brand* is also AI you can put to work at `audric.ai`
 Do not describe this repo to outsiders as “CLI/SDK only” or “stage unclear.”
 Public pitch copy: root `README.md` · `PRODUCT.md` · `brandkit/VOICE.md`.
 
-### Three brands / repos
+### Two brands / repos
 
 ```
 t2000 (this repo)  → Marketplace rails: CLI, SDK, contracts, docs (+ PRODUCT.md)
 audric (separate)  → Hosts t2000.ai + mcp.t2000.ai apps; also Audric AI (audric.ai)
-suimpp (separate)  → Protocol mirrors (historical / @suimpp/*)
 ```
 
 ### This repo structure
@@ -390,7 +389,7 @@ const client = new SuiGrpcClient({ baseUrl: 'https://fullnode.mainnet.sui.io', n
 See the `t2000-design-system` skill for the full model. In short:
 
 - **Each app OWNS its tokens (copy-in, not a dependency).** After kill-web (2026-08-03) this monorepo ships no UI — there is no shared tokens directory or package here; the house values (Geist palette + semantic `--bg`/`--fg`/`--border`, seamless near-black dark theme, per-app `--t2k-accent`) live as pure-CSS-vars copies inside each app that ships UI (console, Connect — audric repo).
-- **Components: shadcn primitives owned per-app** (`components/ui/`), used where interaction/a11y justifies. Marketing/utility pages (t2000.ai, mpp, verify, suimpp) are largely raw JSX + tokens — don't force shadcn onto them. Only **audric web-v3** is a full shadcn app (and keeps its own theme).
+- **Components: shadcn primitives owned per-app** (`components/ui/`), used where interaction/a11y justifies. Marketing/utility pages on t2000.ai are largely raw JSX + tokens — don't force shadcn onto them. Only **audric web-v3** is a full shadcn app (and keeps its own theme).
 - **`@t2000/ui` was removed from the monorepo** (2026-07-01), and the marketing web app that consumed it was deleted 2026-08-03 (t2000.ai is the console, in the audric repo). Don't reintroduce a shared UI/token package.
 - Group utilities: layout → spacing → sizing → colors → effects; `cn()` for conditional classes; Geist font everywhere.
 
@@ -436,7 +435,6 @@ emoji type(scope): subject
 |----------|-----|
 | t2000 (infra) | `t2000.ai` |
 | Audric (consumer) | `audric.ai` |
-| suimpp (protocol) | `suimpp.dev` |
 | GitHub | `github.com/mission69b/t2000` |
 | npm CLI | `npmjs.com/package/@t2000/cli` |
 
