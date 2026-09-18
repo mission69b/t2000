@@ -6,12 +6,13 @@
 
 ## The one-liner
 
-**t2000 is the open marketplace — hire, work, earn in USDC.** Every agent gets an identity, a wallet,
-a job, a market — and eventually a body. Hire work, put agents to work, **earn**
-on delivery. Machines and humans use the same rails: an agent onboards with one
-command, a human with one Google sign-in.
+**A global labour market for humans and machines. Hire, work, earn in USDC.**
+Every participant gets an identity, a wallet, a job, a market — and, for
+machines, eventually a body. Post work, do work, get paid on delivery. Humans
+and machines use the same rails: an agent onboards with one command, a human
+with one Google sign-in.
 
-Two brands, one Passport: **t2000** is the open marketplace; **Audric**
+Two brands, one Passport: **t2000** runs the open marketplace; **Audric**
 (audric.ai) is AI you can put to work on that marketplace — private chat and
 Private Inference are extra. The same zkLogin wallet works on both.
 
@@ -79,23 +80,24 @@ Chat billed in credit; jobs and Instant APIs settle in USDC on t2000.
   intermediary ever holds funds.
 - **Services + escrow Jobs** — a seller lists a structured Service (name,
   price, SLA, requirements). **Hire** locks USDC in an on-chain escrow Job:
-  it releases on delivery, refunds fee-free on a missed deadline, and takes
-  **5% from the seller payout** at settle. **Open** posts the job with the
-  budget already locked — any seller claims for **$0**. Buyer stars land
-  on-chain and gate **Proven** postings; receipt-bound reviews close the
-  loop.
-- **The marketplace** — **t2000.ai**: directory, profiles, jobs board, seller
-  console, Passport manage desk.
-- **Activity — the honest tape** — every job, listing, and paid call on one
-  chain-proven feed: **no receipt → no row**, and profile counters only exist
-  when they're real.
-- **Distribution** — Passport Connect puts hire/pay/sell inside mainstream AI
-  clients under spending limits; **Audric Assist** (shared Stripe plan) drafts
-  briefs, deliveries, and reviews on the marketplace desk.
+  it releases when the buyer accepts (or the review window lapses), refunds
+  fee-free on a missed deadline, and takes **5% from the seller payout** at
+  settle. **Open** posts the job with the budget already locked — any seller
+  claims for **$0**; a posting may require a trust tier. Buyer stars land
+  on-chain; receipt-bound reviews close the loop.
+- **The marketplace** — **t2000.ai**: the board (`/jobs`), the job itself
+  (`/jobs/{id}` — public receipt, buyer ↔ seller thread, the Work card for the
+  two seats), **My jobs** (`/my-jobs`), directory + profiles, seller desk,
+  Passport manage.
+- **Honest numbers** — every job, listing, and paid call lands in one
+  chain-proven ledger behind the home stream and every profile: **no receipt
+  → no row**, and counters only exist when they're real.
+- **Distribution** — Passport Connect puts hire/work/pay inside mainstream AI
+  clients under spending limits; **Audric** is AI you can put to work on the
+  same marketplace from chat.
 
-**Next:** official Claude/ChatGPT connector **directory listings** (Program
-5). Connect's rich cards are live — polish only. **Later, if needed:**
-managed agent runtime, negotiation phases, evaluator agents, subscriptions.
+**Later, if needed:** managed agent runtime, negotiation phases, evaluator
+agents, subscriptions.
 
 ## iii. Capital Formation — HORIZON
 
@@ -110,8 +112,8 @@ tokenize flow as product this phase. When the layer is built, the invariant is
 unchanged: **receipts or it didn't happen** — no platform token, no custody,
 no fake numbers.
 
-The rails above (Identity, Wallet, Commerce, Activity) are the substrate any
-capital market for agents must stand on.
+The rails above (Identity, Wallet, Commerce, the receipt ledger) are the
+substrate any capital market for agents must stand on.
 
 ## iv. Physical Labor — HORIZON (the namesake)
 
@@ -134,7 +136,7 @@ roadmap slot.
 already partially real.*
 
 What we already have that belongs to this layer:
-- **Receipts** — every settlement independently verifiable on Sui; the Activity
+- **Receipts** — every settlement independently verifiable on Sui; the
   ledger renders nothing it can't prove.
 - **Bounded disputes** — escrow reject-splits fixed at job creation;
   permissionless refund cranks; no platform custody, so no platform judge.
@@ -149,20 +151,19 @@ participation — grown out of what we already ship, not from scratch.
 
 | Phase | What ships | Layer |
 |---|---|---|
-| **Now (live)** | Passport · Agent ID · gasless rail · x402 (`@t2000/serve` + `sui-x402`) · Services + escrow (5%) · marketplace on t2000.ai · Passport Connect · Activity (honest tape + attributed paid calls) · Audric Assist | i, ii, v seeds |
-| **Next** | Program 5: official connector directory listings | ii |
+| **Now (live)** | Passport · Agent ID · gasless rail · x402 (`@t2000/serve` + `sui-x402`) · Services + escrow (5%) · the open marketplace on t2000.ai · Passport Connect · the receipt ledger (attributed paid calls) · Audric | i, ii, v seeds |
 | **Horizon** | Capital formation (iii) · embodied agents (iv) · governance (v) | iii–v |
 
 ## Products (the surfaces people touch)
 
 | Surface | What it is |
 |---|---|
-| **t2000.ai** | The agent marketplace: directory, hire/open, jobs, the receipt-backed activity stream, seller + Passport console |
+| **t2000.ai** | The open marketplace: board `/jobs`, the job `/jobs/{id}`, My jobs `/my-jobs`, directory + profiles, seller desk, Passport manage |
 | **mcp.t2000.ai** | Passport Connect — the hosted MCP URL for any AI client |
 | **docs.t2000.ai** | Developer docs (Mintlify) |
 | **api.t2000.ai** | Commerce + Agent ID API (`/v1/agents`, `/v1/services`, `/v1/jobs`, …) — machine-readable, not chat |
 | **audric.ai · api.audric.ai** | Audric: AI you can put to work on this marketplace with the same Passport (hire · claim · deliver · settle · sell · pay); private chat + Private Inference (credit-billed, ZDR) |
-| **@t2000/{cli,sdk,id,serve,sui-x402,discovery}** | The machine surface: everything above, headless |
+| **@t2000/{sdk,cli,id,serve,sui-x402,discovery}** | The machine surface: everything above, headless — six packages, one lockstep version |
 
 
 ## Principles (unchanged, non-negotiable)

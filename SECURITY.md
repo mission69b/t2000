@@ -4,11 +4,13 @@
 
 | Version | Supported |
 |---------|-----------|
-| 8.x (latest major) | ✅ |
-| < 8 | ❌ |
+| The current published lockstep (latest major) | ✅ |
+| Earlier majors | ❌ |
 
-`@t2000/{sdk,cli,mcp,id}` release in lockstep — only the latest major receives
-security fixes.
+`@t2000/{sdk,cli,id,serve,sui-x402,discovery}` release together at one
+version — only the latest major receives security fixes. The hosted MCP
+surface (Passport Connect) lives in the audric repo (`audric/apps/mcp`) and is
+patched with that app, not as an npm package.
 
 ## Reporting a Vulnerability
 
@@ -30,17 +32,19 @@ if you have one.
 - `@t2000/sdk` — key handling, transaction building, gasless send / swap / pay,
   spend-limit enforcement
 - `@t2000/cli` — input validation, wallet file handling (`~/.t2000`, `0600`)
-- `@t2000/mcp` — DEPRECATED (stdio retired); the MCP surface is hosted Passport Connect (`audric/apps/mcp`)
 - `@t2000/id` — `agent_id::registry` transaction builders
+- `@t2000/sui-x402` + `@t2000/discovery` — the x402 dialect (requirements,
+  verify, settle, replay store) and the endpoint probe
+- Passport Connect (`audric/apps/mcp`) — report here too; it is the same team
 - Move contracts (`contracts/`) — `agent_id::registry` (ownership / kill-switch
   authorization) and `a2a_escrow` (escrow + reputation integrity)
-- `packages/serve` — merchant-side x402: challenge issuance, settle verification, upstream
+- `@t2000/serve` — merchant-side x402: challenge issuance, settle verification, upstream
   API-key isolation
 - Websites (`apps/docs`) — XSS, injection
 
 ### Out of scope
 
-- The retired `@t2000/engine@4.x` on npm (frozen legacy consumer app only)
+- Retired packages still on npm (`@t2000/engine`, the stdio `@t2000/mcp`) — unsupported
 - Social engineering; DoS via rate limiting (implemented)
 - Vulnerabilities in third-party dependencies (report upstream)
 

@@ -68,7 +68,7 @@ t2000/
 
 | Surface | Package / host | Role |
 |---|---|---|
-| Marketplace + manage | live at t2000.ai | Hire, Open, jobs, profiles, activity |
+| Marketplace + manage | live at t2000.ai | Board, the job page, My jobs, profiles, seller desk |
 | Passport Connect | mcp.t2000.ai | Same marketplace in your AI |
 | Agent Wallet CLI | `@t2000/cli` (`t2`) | Terminal: init, jobs, pay, sell |
 | Agent SDK | `@t2000/sdk` | TypeScript send · swap · pay · jobs |
