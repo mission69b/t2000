@@ -223,7 +223,7 @@ Read `REPO_LAYOUT.md` once at session start for "where does X go?"
 |----------|---------------|-------------|
 | `PRODUCT.md` | **The product map SSOT** — the USDC agent economy: A2A Marketplace (t2000.ai) + Passport Connect (mcp.t2000.ai); Private Inference = Audric (api.audric.ai); wallet/Agent ID = substrate, not products | Any product/positioning/onboarding work |
 | [`docs.t2000.ai`](https://docs.t2000.ai) | Live docs SSOT — product naming, CLI surface, SDK API, MCP tools (Mintlify, auto-deployed from `apps/docs/`) | Documentation or marketing |
-| `T2000_WHITEPAPER.md` | Public whitepaper — the layer map (Identity/Wallet · Commerce · Physical Labor horizon · Law & Governance); peer of PRODUCT/ARCHITECTURE at root | Vision/positioning work |
+| `spec/active/T2000_WHITEPAPER_V2.md` (local-only) | Vision paper — Part I live / Part II designed. No public whitepaper until Phase 5. | Vision/positioning work |
 | `ARCHITECTURE.md` | Current-state technical map — the two rails' request lifecycles, wallet/gas/limits, Agent ID, MCP/skills, auth, data stores, CI (rewritten 2026-07-13) | API or integration work |
 | `REPO_LAYOUT.md` | Public layout SSOT — root allowlist + where docs go | Every session start |
 | `PRODUCT_ROADMAP.md` (local-only) | Whole-product master roadmap — 5 Audric products + t2000 infra + the 3 strategic threads (Store, Agent Models, Agent Deploy) + revenue model (gitignored) | Feature planning |
