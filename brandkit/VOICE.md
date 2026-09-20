@@ -227,6 +227,7 @@ Never "Audric is the marketplace." **t2000.ai is the market.**
 
 | Surface | Pull |
 |---|---|
+| What is live / money / not-this | `PRODUCT.md` (not this file) |
 | Connector forms | § Connect + `connect-directory/DESCRIPTION.md` |
 | Home fold | GET WORK DONE + this file’s hero stack |
 | docs intro / meta | Open marketplace + three doors |

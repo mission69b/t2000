@@ -53,6 +53,18 @@ const { TOKEN_MAP } = await import('@t2000/sdk');
 const supportedTokens = Object.keys(TOKEN_MAP).join(', ');
 ```
 
+**Live product is the same rule.** `PRODUCT.md` is the one-page map of what
+we sell. Passport plan SKUs live in `audric/packages/accounts/src/tiers.ts`
+(+ `featured-cap.ts` for pin caps). Job bounds / escrow bps live in SDK
+constants + Move. Do not write those tables from memory, and do not invent
+a second catalog (`FEATURE_INVENTORY.md`, a revival of
+`SITE_REPOSITIONING_BRIEF.md`). Kill a sold perk in audric → patch t2000
+`PRODUCT.md` the same day.
+
+**What went wrong once:** S.1290 removed marketplace Assist in
+`tiers.ts` + the desk; `PRODUCT.md` still sold Assist until a founder
+caught it. The ship ritual pointed at a brief that no longer existed.
+
 ## 3. Ask "does this scale?" before every implementation
 
 Before hardcoding any list, map, or constant: "Where is the source of truth? Can I

@@ -1,9 +1,13 @@
 # t2000 — The Product Map
 
-> One page. What we sell, under which brands, and how people start. For the
-> technical picture see [`ARCHITECTURE.md`](ARCHITECTURE.md); for docs see
-> [docs.t2000.ai](https://docs.t2000.ai). Public copy follows
-> [`brandkit/VOICE.md`](brandkit/VOICE.md).
+> One page. **Live product only** — what we sell, under which brands, how we
+> make money, and how people start. Designed / horizon lives in the internal
+> v2 papers, not here. Stack: [`ARCHITECTURE.md`](ARCHITECTURE.md). Docs:
+> [docs.t2000.ai](https://docs.t2000.ai). Public copy: [`brandkit/VOICE.md`](brandkit/VOICE.md).
+>
+> Plan numbers come from audric `packages/accounts/src/tiers.ts` +
+> `featured-cap.ts`. Job bounds and the 5% come from the SDK / Move
+> constants. Do not write the Money table from memory.
 
 ## Scraper / pitch card (keep in sync with README)
 
@@ -11,10 +15,11 @@
 |---|---|
 | **Product** | The open marketplace — hire · work · earn |
 | **Stage** | Traction (live mainnet) |
-| **Wedge** | Hire → deliver → pay, for humans and machines; USDC locks at post, pays on settle, refunds on timeout |
+| **Who** | Humans and machines |
+| **Wedge** | Hire → deliver → pay; USDC locks at post, pays on settle, refunds on timeout. No bank. No card. |
 | **Live** | https://t2000.ai · https://mcp.t2000.ai/mcp · https://docs.t2000.ai |
 | **This repo** | Rails (CLI/SDK/contracts/docs). The marketplace + Connect **apps** deploy from the audric repo — same product, split hosting. |
-| **Not** | A token launchpad; not "infra only." |
+| **Not** | A token. Not a connector directory. Not infra without a storefront. |
 
 ## Voice (public copy)
 
@@ -30,11 +35,12 @@ the internal name for the skill tier + CLI group. Connector paste:
 
 | Brand | Role | Money |
 |---|---|---|
-| **[t2000.ai](https://t2000.ai)** | **The open marketplace** + Passport Connect + the rails (SDK / CLI / contracts) | **USDC only** |
+| **[t2000.ai](https://t2000.ai)** | **The open marketplace** + Passport Connect + the rails (SDK / CLI / contracts) | **USDC** |
 | **[audric.ai](https://audric.ai)** | **AI you can put to work** on that marketplace; private chat + Private Inference are extra | **Credit** (chat / models) · **USDC** on Passport for jobs and paid APIs |
 
 **One Passport:** same Google zkLogin → same Sui address on both brands. No
-parallel consumer brands, no second wallet.
+parallel consumer brands, no second wallet. Discovery of work = **t2000.ai**.
+Distribution into other AIs = **Passport Connect**.
 
 ## Live surfaces
 
@@ -76,12 +82,28 @@ a fulfillment mode of a Service). Docs nav for hire/sell/pay = **Commerce**.
 
 ## Money
 
+Two companies, two ledgers. Marketplace work always settles in **USDC on t2000**.
+Audric never takes the 5%. Canonical plan numbers:
+`audric/packages/accounts/src/tiers.ts` + `featured-cap.ts`.
+
 | Where | We take |
 |---|---|
 | Escrow Job settle | **5%** of the seller payout, enforced by the `a2a_escrow` Move contract |
 | Refunds (missed deadline, decline, cancel) | **0%** — the buyer gets 100% back |
 | x402 per-call | **0%** — USDC goes straight to the seller |
-| Audric chat / models | credit, Audric's concern |
+| Connect, list, claim, Agent ID | **0%** — listing is free. **Featured** is paid (Passport plan) |
+| Audric chat / models / Private Inference | credit (Stripe). A PI key needs **≥ $5** |
+
+**Passport plan** (one Stripe invoice, both brands) — Free / Pro $8 / Pro+ $15.
+Not a second cut on jobs. The plan does not meter AI on t2000.
+
+| | Featured Services | Agent | Audric |
+|---|---|---|---|
+| Free | 0 | — | Pay-as-you-go credit |
+| Pro | **1** pin (hire or Instant API) | **PRO badge** | $5/mo included credit |
+| Pro+ | **5** pins (shared cap) | Everything in Pro | $20/mo included credit |
+
+Pins sort first on marketplace browse.
 
 ## The substrate (this repo)
 
@@ -93,8 +115,13 @@ Skills: `t2000-skills/` — optional playbooks; Connect needs none.
 
 ## Explicit non-goals
 
+- Marketplace Assist. The paid plan is **featured Services** + a **PRO badge** on the agent.
 - New consumer domains or a second zkLogin
 - A t2000-hosted proxy catalog of third-party APIs — sellers list their own
 - Private Inference on t2000 hosts (that is Audric)
 - A platform token; platform custody; a platform judge on disputes
 - Multi-chain
+- Robot sellers as a live door
+
+Horizon (identity NFT, AgentEquity, T2K, robots, lending) lives in the internal
+v2 papers — not here, not on the live site.

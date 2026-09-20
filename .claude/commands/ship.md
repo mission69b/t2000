@@ -49,14 +49,21 @@ against the live source:
 - MCP tools → `audric/apps/mcp/lib/tools.ts` (Connect; stdio package is deprecated/frozen)
 - Skills → `t2000-skills/skills/`
 - CLI defaults → the CLI source
+- Passport plan SKUs / prices / featured caps → `audric/packages/accounts/src/tiers.ts` + `featured-cap.ts`
 
 Hand-written "should exist" lists are how the 2026-07-02 agent-payments fiction
 shipped (Bing / Kagi / Midjourney / BlockVision — none of them on the rail).
 Cross-check before writing, and prefer linking the live endpoint over duplicating it.
 
-## Positioning capture
+## Live product map
 
-- [ ] Append the slice's feature + proof point to `SITE_REPOSITIONING_BRIEF.md` §6
+- [ ] If this slice changed a door, fee, job/board bound, SKU on sale,
+      featured cap, host URL, brand money split, or **killed a user-facing
+      perk**, patch `PRODUCT.md` in the same change (paired t2000 PR if the
+      code landed in audric). Read `tiers.ts` + `featured-cap.ts` + SDK/Move
+      constants — do not write Revenue from memory. Chrome / copy nits /
+      Connect cards / tracker-only → write N/A. Never create a second
+      live-product catalog.
 - [ ] Land the docs.t2000.ai factual delta if the dev-facing contract changed
 
 ## Then

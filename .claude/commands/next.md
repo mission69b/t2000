@@ -8,19 +8,19 @@ Figure out what to work on next.
 
 1. **`audric/HANDOFF_NEXT_AGENT.md` → "Active backlog" table** — this is the
    canonical, ranked list for product / agent-ownable tasks (with effort + notes)
-   plus founder ops.
+   plus founder ops. (local-only)
 2. **`HANDOFF_NEXT_AGENT.md`** (this repo) — the infra forward window and
    cross-repo cleanup. It defers the product backlog to the audric one, so don't
-   treat a gap here as "nothing to do."
-3. **`PRODUCT.md`** — the product map SSOT (2 products: Private Inference · x402
-   gateway; one customer + one path each). Use it to sanity-check that a candidate
-   task actually serves a live product rather than a retired surface.
+   treat a gap here as "nothing to do." (local-only)
+3. **`PRODUCT.md`** (this repo, **public**) — live product map. Sanity-check
+   the candidate is a live door/SKU, not a retired surface or a Designed
+   paper. Plan numbers: `audric/packages/accounts/src/tiers.ts`.
 4. **Top of `audric-build-tracker.md`** — the last few `S.N` entries, to see what
    just landed and whether it left "founder ops owed" or "held for founder nod"
-   items that are now unblocked.
+   items that are now unblocked. (local-only)
 
-All of these are local-only (gitignored, mounted from the private
-`mission69b/t2000-internal` repo at `spec/`).
+Handoffs and the tracker are gitignored, mounted from the private
+`mission69b/t2000-internal` repo at `spec/`. `PRODUCT.md` is not.
 
 ## Then
 

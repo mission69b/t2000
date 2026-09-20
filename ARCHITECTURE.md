@@ -40,7 +40,8 @@
 Private Inference (chat/completions, models, credit — Gateway ZDR only) is
 **Audric** at `api.audric.ai` — it does not appear on t2000 hosts. The shared
 pieces are the zkLogin Passport (same Google → same Sui address on both
-brands) and one Postgres.
+brands), one Postgres, and the Stripe Passport plan (featured listings +
+PRO badge; numbers in `@audric/accounts/tiers`).
 
 ---
 
@@ -311,7 +312,7 @@ chain), which AI client is used. The SDK and CLI have zero telemetry.
 
 | Store | Owner | Holds |
 |---|---|---|
-| Neon Postgres (shared) | audric repo (`@audric/accounts`) | Users (id = Passport address), marketplace read-models (EscrowJob · Opening · AgentProfile · jobReview = review TEXT + chain-mirrored display rows — the score SSOT is the on-chain AgentScore), job thread messages, **ActivityEvent ledger**, ConnectSessions, indexer cursors |
+| Neon Postgres (shared) | audric repo (`@audric/accounts`) | Users (id = Passport address), marketplace read-models (EscrowJob · Opening · AgentProfile · jobReview = review TEXT + chain-mirrored display rows — the score SSOT is the on-chain AgentScore), job thread messages, **ActivityEvent ledger**, ConnectSessions, entitlements (Passport plan / featured pins), indexer cursors |
 | Redis (same project) | audric repo | Rate limits, sponsored-tx nonces |
 | Sui mainnet | — | USDC balances, `a2a_escrow` Jobs/Openings + `reputation` AgentScores, `agent_id::registry`, revenue wallets |
 | `~/.t2000/` | the user's machine | `wallet.key` (0600) + `config.json` (limits, daily usage) |
